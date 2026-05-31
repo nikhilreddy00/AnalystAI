@@ -88,3 +88,16 @@ async def test_get_summary_enforces_user_id():
     assert (await store.get_summary("a", "u1")).dataset_name == "t"
     assert await store.get_summary("a", "u2") is None
     assert await store.get_summary("missing", "u1") is None
+
+
+async def test_delete_removes_session_files(tmp_path, monkeypatch):
+    from memory import session_data
+    monkeypatch.setattr(session_data, "_DATA_DIR", tmp_path)
+    store = InMemorySessionStore()
+    await store.save(_make_session("a", user_id="u1"))
+    # Drop a parquet file as if cleaning had written one.
+    session_data.write_cleaned_parquet("a", b"bytes")
+    assert (tmp_path / "a" / "cleaned_data.parquet").exists()
+
+    await store.delete("a")
+    assert not (tmp_path / "a").exists()

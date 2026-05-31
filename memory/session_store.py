@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from orchestrator.state import AnalysisSession, MessageRole
+from memory.session_data import delete_session_files
 
 
 class Base(DeclarativeBase):
@@ -76,6 +77,7 @@ class InMemorySessionStore:
 
     async def delete(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
+        delete_session_files(session_id)
 
     async def pin_chart(self, user_id: str, session_id: str, chart_data: dict) -> None:
         from orchestrator.state import ChartConfig
@@ -215,6 +217,7 @@ class SessionStore:
         async with self._session_factory() as db:
             await db.execute(delete(SessionRecord).where(SessionRecord.session_id == session_id))
             await db.commit()
+        delete_session_files(session_id)
 
     # ── Dashboard chart pinning ────────────────────────────────────────────────
 
