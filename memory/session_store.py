@@ -108,6 +108,55 @@ class InMemorySessionStore:
             return None
         return max(candidates, key=lambda s: s.updated_at)
 
+    def _summary_from_entry(self, session_id: str, entry: dict) -> "SessionSummary":
+        from orchestrator.state import SessionSummary
+        s = AnalysisSession.model_validate_json(entry["data"])
+        first_user = next(
+            (m.content for m in s.conversation_history if m.role.value == "user"),
+            None,
+        )
+        row_count = s.data_contract.row_count if s.data_contract else None
+        column_count = s.data_contract.column_count if s.data_contract else None
+        meta = entry["meta"]
+        return SessionSummary(
+            session_id=session_id,
+            dataset_name=meta["dataset_name"],
+            original_query=first_user,
+            row_count=row_count,
+            column_count=column_count,
+            status=meta["status"],
+            created_at=meta["created_at"],
+            updated_at=meta["updated_at"],
+        )
+
+    async def list_sessions(self, user_id: str, limit: int = 50) -> list["SessionSummary"]:
+        items = [
+            (sid, entry) for sid, entry in self._sessions.items()
+            if entry["meta"]["user_id"] == user_id
+        ]
+        items.sort(key=lambda kv: kv[1]["meta"]["updated_at"], reverse=True)
+        return [self._summary_from_entry(sid, entry) for sid, entry in items[:limit]]
+
+    async def find_by_hash(self, user_id: str, file_hash: str) -> "SessionSummary | None":
+        if not file_hash:
+            return None
+        # Newest first — if multiple sessions share a hash, dedup prompts the most recent.
+        items = [
+            (sid, entry) for sid, entry in self._sessions.items()
+            if entry["meta"]["user_id"] == user_id and entry["meta"]["file_hash"] == file_hash
+        ]
+        if not items:
+            return None
+        items.sort(key=lambda kv: kv[1]["meta"]["updated_at"], reverse=True)
+        sid, entry = items[0]
+        return self._summary_from_entry(sid, entry)
+
+    async def get_summary(self, session_id: str, user_id: str) -> "SessionSummary | None":
+        entry = self._sessions.get(session_id)
+        if not entry or entry["meta"]["user_id"] != user_id:
+            return None
+        return self._summary_from_entry(session_id, entry)
+
 
 class SessionStore:
     def __init__(self, database_url: str) -> None:
@@ -223,3 +272,53 @@ class SessionStore:
                 if s.insight_report is not None:
                     return s
             return None
+
+    async def _summary_from_record(self, record: SessionRecord) -> "SessionSummary":
+        from orchestrator.state import SessionSummary
+        s = AnalysisSession.model_validate_json(record.data)
+        first_user = next(
+            (m.content for m in s.conversation_history if m.role.value == "user"),
+            None,
+        )
+        row_count = s.data_contract.row_count if s.data_contract else None
+        column_count = s.data_contract.column_count if s.data_contract else None
+        return SessionSummary(
+            session_id=record.session_id,
+            dataset_name=record.dataset_name,
+            original_query=first_user,
+            row_count=row_count,
+            column_count=column_count,
+            status=record.status,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+        )
+
+    async def list_sessions(self, user_id: str, limit: int = 50) -> list["SessionSummary"]:
+        async with self._session_factory() as db:
+            result = await db.execute(
+                select(SessionRecord)
+                .where(SessionRecord.user_id == user_id)
+                .order_by(SessionRecord.updated_at.desc())
+                .limit(limit)
+            )
+            return [await self._summary_from_record(r) for r in result.scalars()]
+
+    async def find_by_hash(self, user_id: str, file_hash: str) -> "SessionSummary | None":
+        if not file_hash:
+            return None
+        async with self._session_factory() as db:
+            result = await db.execute(
+                select(SessionRecord)
+                .where(SessionRecord.user_id == user_id, SessionRecord.file_hash == file_hash)
+                .order_by(SessionRecord.updated_at.desc())
+                .limit(1)
+            )
+            record = result.scalars().first()
+            return await self._summary_from_record(record) if record else None
+
+    async def get_summary(self, session_id: str, user_id: str) -> "SessionSummary | None":
+        async with self._session_factory() as db:
+            record = await db.get(SessionRecord, session_id)
+            if not record or record.user_id != user_id:
+                return None
+            return await self._summary_from_record(record)
