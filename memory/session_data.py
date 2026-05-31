@@ -11,6 +11,8 @@ from pathlib import Path
 
 from api.config import settings
 
+# Resolved once at import; tests must monkeypatch _DATA_DIR directly,
+# not via the SESSION_DATA_DIR env var (which is read at module-load time).
 _DATA_DIR: Path = Path(settings.session_data_dir).resolve()
 _PARQUET_NAME = "cleaned_data.parquet"
 
@@ -26,8 +28,12 @@ def write_cleaned_parquet(session_id: str, df_parquet_bytes: bytes) -> str:
     d = session_dir(session_id)
     final = d / _PARQUET_NAME
     tmp = d / f"{_PARQUET_NAME}.tmp"
-    tmp.write_bytes(df_parquet_bytes)
-    os.replace(tmp, final)
+    try:
+        tmp.write_bytes(df_parquet_bytes)
+        os.replace(tmp, final)
+    finally:
+        # Clean up the staging file if os.replace failed (e.g. cross-device rename).
+        tmp.unlink(missing_ok=True)
     return str(final.resolve())
 
 
@@ -39,7 +45,11 @@ def read_cleaned_parquet(session_id: str) -> bytes | None:
 
 
 def delete_session_files(session_id: str) -> None:
-    """Remove the per-session directory if it exists. Idempotent."""
+    """Remove the per-session directory if it exists. Idempotent.
+    Handles symlinks safely: unlinks the link itself, does not follow it.
+    """
     d = _DATA_DIR / session_id
-    if d.exists():
+    if d.is_symlink():
+        d.unlink()
+    elif d.is_dir():
         shutil.rmtree(d, ignore_errors=True)
