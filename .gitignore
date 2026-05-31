@@ -1,0 +1,25 @@
+.env
+.env.local
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+.DS_Store
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+
+# Data uploads (never commit user data)
+uploads/
+*.parquet
+*.csv
+*.xlsx
+
+# Session data (per-session artifacts and parquet cache)
+session_data/
