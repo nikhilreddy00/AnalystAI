@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 
 from api.auth import UserProfile, get_current_user
 from api.rate_limit import limiter
+from orchestrator.state import MessageRole
 
 router = APIRouter()
 
@@ -59,7 +60,7 @@ async def get_session_results(
         raise HTTPException(status_code=404, detail="Session not found")
 
     first_user = next(
-        (m.content for m in session.conversation_history if m.role.value == "user"),
+        (m.content for m in session.conversation_history if m.role == MessageRole.USER),
         None,
     )
     return {
