@@ -11,7 +11,7 @@ from sqlalchemy import Column, DateTime, String, Text, select, delete, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
-from orchestrator.state import AnalysisSession
+from orchestrator.state import AnalysisSession, MessageRole
 
 
 class Base(DeclarativeBase):
@@ -109,10 +109,11 @@ class InMemorySessionStore:
         return max(candidates, key=lambda s: s.updated_at)
 
     def _summary_from_entry(self, session_id: str, entry: dict) -> "SessionSummary":
+        # Lazy import to keep this module importable in isolation if state.py grows further runtime deps.
         from orchestrator.state import SessionSummary
         s = AnalysisSession.model_validate_json(entry["data"])
         first_user = next(
-            (m.content for m in s.conversation_history if m.role.value == "user"),
+            (m.content for m in s.conversation_history if m.role == MessageRole.USER),
             None,
         )
         row_count = s.data_contract.row_count if s.data_contract else None
@@ -138,7 +139,7 @@ class InMemorySessionStore:
         return [self._summary_from_entry(sid, entry) for sid, entry in items[:limit]]
 
     async def find_by_hash(self, user_id: str, file_hash: str) -> "SessionSummary | None":
-        if not file_hash:
+        if file_hash is None:
             return None
         # Newest first — if multiple sessions share a hash, dedup prompts the most recent.
         items = [
@@ -273,11 +274,12 @@ class SessionStore:
                     return s
             return None
 
-    async def _summary_from_record(self, record: SessionRecord) -> "SessionSummary":
+    def _summary_from_record(self, record: SessionRecord) -> "SessionSummary":
+        # Lazy import to keep this module importable in isolation if state.py grows further runtime deps.
         from orchestrator.state import SessionSummary
         s = AnalysisSession.model_validate_json(record.data)
         first_user = next(
-            (m.content for m in s.conversation_history if m.role.value == "user"),
+            (m.content for m in s.conversation_history if m.role == MessageRole.USER),
             None,
         )
         row_count = s.data_contract.row_count if s.data_contract else None
@@ -301,10 +303,10 @@ class SessionStore:
                 .order_by(SessionRecord.updated_at.desc())
                 .limit(limit)
             )
-            return [await self._summary_from_record(r) for r in result.scalars()]
+            return [self._summary_from_record(r) for r in result.scalars()]
 
     async def find_by_hash(self, user_id: str, file_hash: str) -> "SessionSummary | None":
-        if not file_hash:
+        if file_hash is None:
             return None
         async with self._session_factory() as db:
             result = await db.execute(
@@ -314,11 +316,11 @@ class SessionStore:
                 .limit(1)
             )
             record = result.scalars().first()
-            return await self._summary_from_record(record) if record else None
+            return self._summary_from_record(record) if record else None
 
     async def get_summary(self, session_id: str, user_id: str) -> "SessionSummary | None":
         async with self._session_factory() as db:
             record = await db.get(SessionRecord, session_id)
             if not record or record.user_id != user_id:
                 return None
-            return await self._summary_from_record(record)
+            return self._summary_from_record(record)
