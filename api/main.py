@@ -73,11 +73,12 @@ app.add_middleware(
 )
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
-from api.routes import chat, dashboard, connectors  # noqa: E402
+from api.routes import chat, dashboard, connectors, sessions  # noqa: E402
 
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
+app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
 
 
 @app.exception_handler(Exception)
