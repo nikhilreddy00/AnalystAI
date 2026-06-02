@@ -18,6 +18,7 @@ Conditional branches:
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -48,7 +49,10 @@ from orchestrator.routing import (
     route_after_insight_node,
     route_after_quality_check,
 )
+from memory.session_data import write_cleaned_parquet
 from orchestrator.state import AnalysisSession, MessageRole
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(TypedDict):
@@ -184,6 +188,15 @@ async def cleaning_node(state: AgentState) -> dict:
             })
     except Exception as exc:
         session.error_message = f"Data cleaning failed: {exc}"
+
+    # Best-effort cache of cleaned data for fast follow-ups. Never blocks the pipeline.
+    cached = session.__dict__.get("_df_parquet") or state.get("df_parquet")
+    if cached and not session.error_message:
+        try:
+            path = write_cleaned_parquet(session.session_id, cached)
+            session.cleaned_data_path = path
+        except Exception as exc:
+            logger.warning("cached parquet write failed for %s: %s", session.session_id, exc)
 
     df_parquet: bytes | None = session.__dict__.pop("_df_parquet", state.get("df_parquet"))
     return {"session": session, "df_parquet": df_parquet}
