@@ -125,6 +125,7 @@ export default function ChatInterface() {
 
   const handleNewAnalysis = () => {
     resetWorkspace();
+    setConnected(false);
   };
 
   const handleConnectorReady = (payload: {
@@ -143,6 +144,7 @@ export default function ChatInterface() {
     const ok = await deleteSession(id);
     if (ok && sessionId === id) {
       resetWorkspace();
+      setConnected(false);
     }
   };
 
