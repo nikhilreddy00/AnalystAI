@@ -36,6 +36,8 @@ export function useAnalysis() {
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequiredEvent | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const connectorConfig = useRef<Record<string, unknown> | null>(null);
+  const fileHashRef = useRef<string | null>(null);
+  const datasetNameRef = useRef<string | null>(null);
 
   const sendMessage = useCallback(
     async (content: string, isApproval = false) => {
@@ -78,6 +80,8 @@ export function useAnalysis() {
             session_id: sessionId,
             is_approval: isApproval,
             connector_config: connectorConfig.current,
+            file_hash: fileHashRef.current,
+            dataset_name: datasetNameRef.current,
           }),
         });
 
@@ -227,6 +231,10 @@ export function useAnalysis() {
     setConnectorConfig: (cfg: Record<string, unknown>) => {
       connectorConfig.current = cfg;
     },
+    setUploadMeta: (hash: string | null, name: string | null) => {
+      fileHashRef.current = hash;
+      datasetNameRef.current = name;
+    },
     hydrateFromSnapshot,
     resetWorkspace: () => {
       setMessages([]);
@@ -236,6 +244,8 @@ export function useAnalysis() {
       setPendingApproval(null);
       setSuggestedQuestions([]);
       connectorConfig.current = null;
+      fileHashRef.current = null;
+      datasetNameRef.current = null;
     },
   };
 }

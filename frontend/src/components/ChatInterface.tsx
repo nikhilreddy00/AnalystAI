@@ -109,6 +109,7 @@ export default function ChatInterface() {
     setPendingApproval,
     sendMessage,
     setConnectorConfig,
+    setUploadMeta,
     hydrateFromSnapshot,
     resetWorkspace,
   } = useAnalysis();
@@ -125,6 +126,18 @@ export default function ChatInterface() {
   const handleNewAnalysis = () => {
     resetWorkspace();
   };
+
+  const handleConnectorReady = (payload: {
+    connector_config: Record<string, unknown>;
+    file_hash: string;
+    dataset_name: string;
+  }) => {
+    setConnectorConfig(payload.connector_config);
+    setUploadMeta(payload.file_hash, payload.dataset_name);
+    setConnected(true);
+  };
+
+  const handleLoadExistingSession = (id: string) => handleLoadSession(id);
 
   const handleDeleteSession = async (id: string) => {
     const ok = await deleteSession(id);
@@ -188,10 +201,8 @@ export default function ChatInterface() {
         <div className="p-4 overflow-y-auto">
           {!connected ? (
             <ConnectorSetup
-              onConnected={(cfg) => {
-                setConnectorConfig(cfg as unknown as Record<string, unknown>);
-                setConnected(true);
-              }}
+              onConnectorReady={handleConnectorReady}
+              onLoadExistingSession={handleLoadExistingSession}
             />
           ) : (
             <div className="space-y-4">
