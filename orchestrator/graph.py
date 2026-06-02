@@ -49,7 +49,7 @@ from orchestrator.routing import (
     route_after_insight_node,
     route_after_quality_check,
 )
-from memory.session_data import write_cleaned_parquet
+from memory.session_data import write_cleaned_parquet, read_cleaned_parquet
 from orchestrator.state import AnalysisSession, MessageRole
 
 logger = logging.getLogger(__name__)
@@ -112,40 +112,53 @@ async def ingestion_node(state: AgentState) -> dict:
     if not is_resuming:
         _emit(state, {"type": "agent_start", "agent": "ingestion", "message": "Loading your data..."})
 
-    try:
-        contract = await run_ingestion_agent(session)
+    cached_used = False
+    if is_resuming and session.cleaned_data_path:
+        # Try the on-disk cache before re-loading from the connector. Cuts a full
+        # connector round-trip on every follow-up question and detaches the
+        # follow-up from connector drift (a re-queried SQL table won't surprise us).
+        try:
+            payload = read_cleaned_parquet(session.session_id)
+            if payload is not None:
+                session.__dict__["_df_parquet"] = payload
+                cached_used = True
+                logger.info("loaded cached parquet for session %s", session.session_id)
+        except Exception as exc:
+            logger.warning("cached parquet read failed for %s: %s", session.session_id, exc)
 
-        if not is_resuming:
-            # First-run: store the contract and emit progress
-            session.data_contract = contract
-            _emit(state, {
-                "type": "agent_complete",
-                "agent": "ingestion",
-                "message": f"Loaded {contract.row_count:,} rows × {contract.column_count} columns",
-            })
+    if not cached_used:
+        try:
+            contract = await run_ingestion_agent(session)
 
-            # FEAT-01: Auto-suggest questions after data connect
-            try:
-                questions = await generate_proactive_questions(contract)
-                if questions:
-                    _emit(state, {
-                        "type": "suggested_questions",
-                        "questions": questions,
-                    })
-            except Exception:
-                pass
+            if not is_resuming:
+                # First-run: store the contract and emit progress
+                session.data_contract = contract
+                _emit(state, {
+                    "type": "agent_complete",
+                    "agent": "ingestion",
+                    "message": f"Loaded {contract.row_count:,} rows × {contract.column_count} columns",
+                })
 
-            # PROMPT-2 follow-up: build display-name + entity narrative once per
-            # dataset. Cached on session so downstream rendering agents (KPI,
-            # charts, alerts) read humanized labels without further LLM calls.
-            if session.narrative is None:
+                # FEAT-01: Auto-suggest questions after data connect
                 try:
-                    session.narrative = await generate_data_narrative(contract)
+                    questions = await generate_proactive_questions(contract)
+                    if questions:
+                        _emit(state, {
+                            "type": "suggested_questions",
+                            "questions": questions,
+                        })
                 except Exception:
                     pass
-        # On resume: data_contract already set from prior session; we just restored df_parquet
-    except Exception as exc:
-        session.error_message = f"Data ingestion failed: {exc}"
+
+                # PROMPT-2 follow-up: build display-name + entity narrative once per dataset.
+                if session.narrative is None:
+                    try:
+                        session.narrative = await generate_data_narrative(contract)
+                    except Exception:
+                        pass
+            # On resume without cache: data_contract already set from prior session; df_parquet just restored.
+        except Exception as exc:
+            session.error_message = f"Data ingestion failed: {exc}"
 
     df_parquet: bytes | None = session.__dict__.pop("_df_parquet", None)
     # BUG-13: Validate that df_parquet is available on resume
