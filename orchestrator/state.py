@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────────
@@ -34,11 +34,12 @@ class AnalysisType(str, Enum):
 class QuestionIntent(str, Enum):
     """Phase A: classifier output that drives pipeline routing.
 
-    OVERVIEW / DEEP_DIVE run the full 7-agent pipeline.
-    All other intents route through `targeted_analysis_node` for a compact answer.
+    OVERVIEW runs the full 7-agent pipeline.
+    DRILL_DOWN runs a compact follow-up via drill_down_node.
+    All other intents route through targeted_analysis_node for a compact answer.
     """
     OVERVIEW = "overview"
-    DEEP_DIVE = "deep_dive"
+    DRILL_DOWN = "drill_down"
     CORRELATION = "correlation"
     DISTRIBUTION = "distribution"
     TOP_N = "top_n"
@@ -47,6 +48,9 @@ class QuestionIntent(str, Enum):
     HYPOTHESIS_TEST = "hypothesis_test"
     AB_SIGNIFICANCE = "ab_significance"
     OUTLIER_SCAN = "outlier_scan"
+    CHART_REQUEST = "chart_request"
+    EXPORT_REQUEST = "export_request"
+    META_QUESTION = "meta_question"
 
 
 class ChartType(str, Enum):
@@ -130,6 +134,7 @@ class TargetedParams(BaseModel):
     frequency: str | None = None            # TIME_SERIES: "D" | "W" | "M" | "Q" | "Y"
     test_type: str | None = None            # HYPOTHESIS_TEST: "ttest" | "chi2" | "anova"
     aggregation: str | None = None          # TOP_N / SEGMENT_COMPARE: sum/mean/count/median
+    chart_type: ChartType | None = None     # CHART_REQUEST: bar/line/scatter/etc.
 
 
 class AnalysisTask(BaseModel):
@@ -147,6 +152,16 @@ class AnalysisTask(BaseModel):
     # and any code path that hasn't been updated to set this explicitly.
     question_intent: QuestionIntent = QuestionIntent.OVERVIEW
     targeted_params: TargetedParams = Field(default_factory=TargetedParams)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_deprecated_intents(cls, data):
+        # Persisted sessions from before the DEEP_DIVE → DRILL_DOWN rename will
+        # carry "deep_dive" in their JSON. Silently upgrade so model_validate_json
+        # never blows up loading them.
+        if isinstance(data, dict) and data.get("question_intent") == "deep_dive":
+            data = {**data, "question_intent": "drill_down"}
+        return data
 
 
 # ── Agent 2 output: DataContract ──────────────────────────────────────────────
