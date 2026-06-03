@@ -33,6 +33,11 @@ from agents.intake_agent import (
     run_intake_agent,
 )
 from agents.senior_expert_agent import run_senior_expert_agent
+from agents.intent_handlers import (
+    handle_chart_request,
+    handle_export_request,
+    handle_meta_question,
+)
 from agents.targeted_analysis_agent import run_targeted_analysis
 from agents.visualization_agent import (
     classify_columns,
@@ -50,7 +55,7 @@ from orchestrator.routing import (
     route_after_quality_check,
 )
 from memory.session_data import write_cleaned_parquet, read_cleaned_parquet
-from orchestrator.state import AnalysisSession, MessageRole
+from orchestrator.state import AnalysisSession, MessageRole, QuestionIntent
 
 logger = logging.getLogger(__name__)
 
@@ -454,7 +459,19 @@ async def targeted_analysis_node(state: AgentState) -> dict:
         session.__dict__["_df_parquet"] = state["df_parquet"]
 
     try:
-        response = run_targeted_analysis(session)
+        intent = session.task_plan.question_intent if session.task_plan else None
+        if intent == QuestionIntent.META_QUESTION:
+            response = handle_meta_question(session)
+        elif intent == QuestionIntent.EXPORT_REQUEST:
+            response = handle_export_request(session, lambda ev: _emit(state, ev))
+        elif intent == QuestionIntent.CHART_REQUEST:
+            df_bytes = state.get("df_parquet")
+            import io
+            import pandas as pd
+            df = pd.read_parquet(io.BytesIO(df_bytes)) if df_bytes else pd.DataFrame()
+            response = handle_chart_request(session, df)
+        else:
+            response = run_targeted_analysis(session)
         session.targeted_response = response
 
         _emit(state, {"type": "targeted_response", "data": response.model_dump()})

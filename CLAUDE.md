@@ -1,0 +1,184 @@
+# AnalystAI — CLAUDE.md
+
+> **Purpose**: Canonical project context for AI coding assistants. Read this FIRST to avoid re-reading every file on every session. Reduces token burn by ~80%.
+
+---
+
+## What This Is
+
+AnalystAI is a **multi-agent AI data analyst** — six specialized agents form a pipeline that replaces a human analyst: intake → ingest → clean → analyze → visualize → deliver insights. It's self-hosted via Docker Compose, open source, and designed for small companies.
+
+---
+
+## Tech Stack (Frozen Decisions)
+
+| Layer              | Tech                                              |
+| ------------------ | ------------------------------------------------- |
+| Orchestration      | **LangGraph** (stateful routing) + **CrewAI** (agent definition) |
+| Primary LLM        | **Claude Sonnet 4.6** (via `anthropic` SDK)     |
+| Speed-tier LLM     | **Groq / Llama 3.3-70B** (via `crewai` LLM)      |
+| Embeddings         | **nomic-embed-text** via Ollama (self-hosted)      |
+| Backend            | **FastAPI** (Python 3.11+, `uv` managed)           |
+| Code Sandbox       | **E2B** (isolates LLM-generated Python from main process) |
+| Frontend           | **Next.js 16** + Tailwind v4 + shadcn/ui v4 + Recharts v3 |
+| Session Store      | **PostgreSQL** (JSONB via SQLAlchemy async)         |
+| Vector Store       | **Qdrant** (institutional memory)                   |
+| Package Manager    | Python: `uv` · JS: `npm`                           |
+
+---
+
+## Agent Pipeline
+
+```
+User query
+  │
+  ▼
+[1. Intake Agent]      Claude  — NL → AnalysisTask (structured plan)
+  │
+  ▼
+[2. Ingestion Agent]   Groq    — connector.load() → DataFrame + DataContract
+  │
+  ▼
+[3. Cleaning Agent]    Claude  — impute/dedup/coerce → CleaningAudit
+  │
+  ▼
+[4. Analysis Agent]    Claude  — generates Python → E2B sandbox → AnalysisFindings
+  │
+  ▼
+[5. Visualization Agent]       — deterministic (no LLM) → list[ChartConfig]
+  │
+  ▼
+[6. Insight Agent]     Claude  — synthesizes all → InsightReport
+  │
+  ▼
+[Quality Check Node]   (no LLM) — FEAT-02: validates report → retry analysis once, else END
+```
+
+### Graph Entry Point (IMPORTANT)
+The LangGraph entry point is `ingestion`, NOT `intake`. The graph runs:
+`ingestion → intake → cleaning → analysis → visualization → insight → quality_check → END`
+
+This is intentional: ingestion loads data first so the intake agent has schema context (column names, row count) when parsing the user's question.
+
+### Quality Check Retry Loop (FEAT-02)
+After `insight_node`, the graph routes to either `error_node` (if `session.error_message` is set) or `quality_check_node`. The quality check inspects the report for missing/short summary, missing technical findings, or missing charts. If issues are found AND `session.quality_check_attempts < 2`, it clears the analysis state and routes back to `analysis` for one retry; the retry budget is reset to 0 at the start of every graph run inside `ingestion_node`. The node is the single source of truth for the retry decision — `route_after_quality_check` only translates "did the node clear `insight_report`?" into `analysis` vs `end`.
+
+### Multi-Turn Resume
+When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps directly from ingestion to analysis. The DataFrame is re-loaded from the connector (not stored in DB).
+
+### Human Approval Gates
+- **Clarification**: intake detects ambiguous query → `human_approval` node → SSE `approval_required` event
+- **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend
+
+---
+
+## Key File Map
+
+```
+agents/
+  intake_agent.py          — async, raw Anthropic SDK, returns AnalysisTask
+  ingestion_agent.py       — CrewAI agent, Groq LLM, returns DataContract
+  cleaning_agent.py        — async, Anthropic SDK, returns (DataFrame, CleaningAudit)
+  analysis_agent.py        — async, Anthropic SDK, E2B sandbox, returns AnalysisFindings
+  visualization_agent.py   — PURE PYTHON (no LLM), returns list[ChartConfig]
+  insight_agent.py         — async, Anthropic SDK, returns InsightReport
+
+orchestrator/
+  state.py                 — ALL Pydantic schemas (AnalysisSession is the master state)
+  graph.py                 — LangGraph StateGraph with 9 nodes + conditional edges (incl. quality_check, human_approval, error)
+  routing.py               — 7 routing functions (one per conditional edge, incl. route_after_insight_node + route_after_quality_check)
+
+connectors/
+  base.py                  — DataConnector ABC + get_connector() factory
+  csv_connector.py         — CSV/Excel with encoding detection
+  sql_connector.py         — SQLAlchemy + Claude NL→SQL
+  sheets_connector.py      — gspread + OAuth2
+  api_connector.py         — httpx + pagination + auth
+
+memory/
+  session_store.py         — PostgreSQL + InMemorySessionStore fallback
+  vector_store.py          — Qdrant + Ollama embedding
+
+sandbox/
+  executor.py              — E2B wrapper: parquet→CSV, run code, parse output
+
+api/
+  main.py                  — FastAPI app, lifespan, CORS, rate limiter
+  config.py                — pydantic-settings (reads .env)
+  routes/chat.py           — POST /chat → SSE stream (runs full LangGraph)
+  routes/dashboard.py      — GET/POST/DELETE pinned charts
+  routes/connectors.py     — POST /connectors/test, /connectors/upload
+
+frontend/src/
+  app/page.tsx             — Landing page
+  app/chat/page.tsx        — Chat view (wraps ChatInterface)
+  app/dashboard/page.tsx   — Dashboard view (wraps DashboardCanvas)
+  components/
+    ChatInterface.tsx      — Main chat UI with sidebar, messages, input
+    AgentProgressStream.tsx — Step-by-step agent progress indicator
+    ChartRenderer.tsx      — Recharts chart-type router (Line/Bar/Pie/Scatter/Composed)
+    InsightPanel.tsx       — Executive/Analyst toggle view
+    ConnectorSetup.tsx     — Data source configuration panel
+    ApprovalModal.tsx      — Human approval gate modal
+    DashboardCanvas.tsx    — Pinned chart grid
+  hooks/useAnalysis.ts     — SSE stream consumer, state management
+  types/index.ts           — TypeScript mirrors of Python Pydantic models
+  lib/api.ts               — fetch wrappers for dashboard endpoints
+```
+
+---
+
+## Data Flow Through the System
+
+1. **DataFrame is NEVER stored in the database.** It flows as parquet bytes through `session.__dict__["_df_parquet"]` (a transient attribute, not a Pydantic field).
+2. In `graph.py`, each node pops `_df_parquet` from session and passes it via `AgentState["df_parquet"]`.
+3. For E2B, parquet is converted to CSV locally (`_parquet_to_csv_bytes`) because E2B's Python env lacks pyarrow.
+4. The final `analysis_node` discards `_df_parquet` — it's not needed after analysis.
+
+---
+
+## SSE Event Protocol
+
+The `/chat` endpoint streams these event types in order:
+```
+session_id        → {type: "session_id", value: "<uuid>"}
+agent_start       → {type: "agent_start", agent: "<name>", message: "<status>"}
+agent_complete    → {type: "agent_complete", agent: "<name>", message: "<result>"}
+approval_required → {type: "approval_required", context: "clarification"|"high_null", ...}
+suggested_questions → {type: "suggested_questions", questions: string[]}  // FEAT-01
+charts            → {type: "charts", data: ChartConfig[]}
+export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
+insight           → {type: "insight", data: InsightReport}
+quality_retry     → {type: "quality_retry", message: "<reason>; Re-running analysis..."}  // FEAT-02
+error             → {type: "error", message: "<user-readable>"}
+done              → {type: "done"}  // always last
+```
+
+---
+
+## Code Conventions
+
+- **Python**: 3.11+, `ruff` linter, 100-char line length, `async/await` everywhere
+- **Pydantic v2**: all schemas use `BaseModel`, `model_dump_json()`, `model_validate_json()`
+- **LLM responses**: always strip markdown fences (```` ```json ... ``` ````) before JSON parsing
+- **Error handling**: every agent wraps its core logic in try/except, sets `session.error_message`
+- **Frontend**: TypeScript strict, Tailwind v4 with `@import "tailwindcss"`, `"use client"` on all interactive components
+- **No test files exist yet** — testing is manual via the UI
+
+---
+
+## Environment Variables
+
+Required: `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `E2B_API_KEY`
+Optional: `DATABASE_URL`, `QDRANT_HOST`, `QDRANT_PORT`, `OLLAMA_HOST`, `FRONTEND_URL`, `APP_ENV`
+
+---
+
+## Common Pitfalls
+
+1. **`_df_parquet` is NOT a Pydantic field** — it's stored via `session.__dict__["_df_parquet"]`. Don't try to serialize it.
+2. **Visualization agent has NO LLM** — it's pure Python with deterministic chart selection rules. The design doc says Groq but the code doesn't use any LLM.
+3. **The graph entry point is `ingestion`**, not `intake`. This is by design for schema-aware intake.
+4. **API keys are in `.env`** — NEVER commit real keys. The `.env` file should be gitignored.
+5. **SQL connector blocking calls are wrapped in `asyncio.to_thread`** — every sync SQLAlchemy call in `sql_connector.py` goes through `await asyncio.to_thread(...)`. Don't add raw `engine.connect()` calls inside `async def` methods.
+6. **`layout.tsx` is a server component** — `"use client"` lives in `providers.tsx`, not the root layout. Don't move it; metadata exports depend on the layout staying server-side.
