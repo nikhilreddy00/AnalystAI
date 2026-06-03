@@ -400,7 +400,7 @@ class InsightReport(BaseModel):
 class TargetedResponse(BaseModel):
     """
     Compact response for a targeted question (correlation, top-N, etc).
-    Replaces the full InsightReport for non-overview/non-deep_dive intents.
+    Replaces the full InsightReport for non-overview/non-drill_down intents.
     Rendered as a single chat card in the UI; chart is not auto-pinned.
     """
     intent: QuestionIntent

@@ -52,7 +52,8 @@ Return ONLY a JSON object with these exact fields:
     "order": null,
     "frequency": null,
     "test_type": null,
-    "aggregation": null
+    "aggregation": null,
+    "chart_type": null
   }
 }
 
@@ -71,6 +72,8 @@ Question-intent classifier (pick exactly one, drives routing):
   "tell me more about why revenue dropped"
   "what's driving the spike in churn"
   "break down the anomaly you found in March"
+  Use correlation when the user wants a numeric correlation; use drill_down
+  only when the user is asking WHY a previously observed result happened.
 - chart_request    → user wants a specific chart, not a full analysis. Examples:
   "show me a bar chart of revenue by region"
   "plot price vs square footage"
@@ -107,6 +110,7 @@ targeted_params extraction (fill ONLY what the chosen intent needs, leave others
 - hypothesis_test  → target_columns=[<cols involved>], test_type ("ttest"|"chi2"|"anova")
 - ab_significance  → variant_column, metric_column
 - outlier_scan     → target_columns=[<cols to scan>] (empty = all numeric)
+- chart_request    → chart_type, target_columns, metric_column, group_by
 - overview/drill_down/export_request/meta_question → leave all targeted_params fields empty
 
 Context awareness for follow-ups:

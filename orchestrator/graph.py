@@ -435,7 +435,7 @@ async def quality_check_node(state: AgentState) -> dict:
 
 async def targeted_analysis_node(state: AgentState) -> dict:
     """
-    Phase A: handles every non-overview/non-deep_dive intent. Runs deterministic
+    Phase A: handles every non-overview/non-drill_down intent. Runs deterministic
     pandas/scipy via targeted_analysis_agent, emits a single compact card, commits
     to history + persistence, and ends the graph. No insight/expert pass.
     """
