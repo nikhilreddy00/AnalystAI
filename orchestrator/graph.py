@@ -98,6 +98,19 @@ async def intake_node(state: AgentState) -> dict:
                 "context": "clarification",
                 "question": task.clarification_question,
             })
+        elif (task.question_intent == QuestionIntent.OVERVIEW
+              and session.overview_done
+              and session.status == "completed"
+              and not state.get("is_approval")):
+            _emit(state, {
+                "type": "approval_required",
+                "context": "rerun_overview",
+                "question": (
+                    "You already have a complete analysis for this dataset. "
+                    "Load the previous one, or run fresh?"
+                ),
+            })
+            task.clarification_needed = True   # routes to human_approval via existing route_after_intake
         else:
             _emit(state, {"type": "agent_complete", "agent": "intake", "message": "Analysis plan ready"})
     except Exception as exc:
