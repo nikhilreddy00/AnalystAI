@@ -507,6 +507,13 @@ async def drill_down_node(state: AgentState) -> dict:
 
     if not session.insight_report:
         session.error_message = "Drill-down requires a prior analysis. Ask for an overview first."
+        ss = state.get("session_store")
+        if ss:
+            try:
+                await ss.save(session)
+            except Exception:
+                pass
+        _emit(state, {"type": "done"})
         return {"session": session}
 
     if state.get("df_parquet"):
