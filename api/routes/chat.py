@@ -44,6 +44,7 @@ class ChatRequest(BaseModel):
     connector_config: dict | None = None   # required on first message when no prior session
     file_hash: str | None = Field(default=None, max_length=128)
     dataset_name: str | None = Field(default=None, max_length=256)
+    approval_context: str | None = Field(default=None, max_length=64)
 
 
 @router.post("")
@@ -96,6 +97,13 @@ async def chat(
         if session.connector_config != incoming:
             session.connector_config = incoming
             session.overview_done = False
+
+    if session is not None and body.is_approval and body.approval_context == "rerun_overview":
+        # User chose "Run fresh" on the rerun-overview modal. Reset the
+        # session so the graph runs a clean OVERVIEW from intake forward.
+        session.overview_done = False
+        session.status = "in_progress"
+        session.task_plan = None
 
     event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
