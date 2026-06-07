@@ -39,6 +39,7 @@ from agents.intent_handlers import (
     handle_meta_question,
 )
 from agents.targeted_analysis_agent import run_targeted_analysis
+from agents.drill_down_agent import run_drill_down_agent
 from agents.visualization_agent import (
     classify_columns,
     compute_briefing_extras,
@@ -497,6 +498,45 @@ async def targeted_analysis_node(state: AgentState) -> dict:
     return {"session": session}
 
 
+async def drill_down_node(state: AgentState) -> dict:
+    """DRILL_DOWN: compact follow-up that reuses prior insight context.
+    Mirrors targeted_analysis_node's SSE + persistence pattern; no dashboard rebuild.
+    """
+    _emit(state, {"type": "agent_start", "agent": "drill_down", "message": "Investigating..."})
+    session: AnalysisSession = state["session"]
+
+    if not session.insight_report:
+        session.error_message = "Drill-down requires a prior analysis. Ask for an overview first."
+        return {"session": session}
+
+    if state.get("df_parquet"):
+        session.__dict__["_df_parquet"] = state["df_parquet"]
+
+    try:
+        response = await run_drill_down_agent(session, state.get("df_parquet"))
+        session.targeted_response = response
+        _emit(state, {"type": "targeted_response", "data": response.model_dump()})
+        _emit(state, {"type": "agent_complete", "agent": "drill_down", "message": "Answer ready"})
+
+        if response.answer_text:
+            session.add_message(MessageRole.ASSISTANT, response.answer_text)
+        session.iteration += 1
+    except Exception as exc:
+        session.error_message = f"Drill-down failed: {exc}"
+
+    session.__dict__.pop("_df_parquet", None)
+
+    ss = state.get("session_store")
+    if ss:
+        try:
+            await ss.save(session)
+        except Exception:
+            pass
+
+    _emit(state, {"type": "done"})
+    return {"session": session}
+
+
 async def senior_expert_node(state: AgentState) -> dict:
     """
     Phase 6: 7th agent — principal analyst critique of the first-run analysis.
@@ -572,6 +612,7 @@ def build_graph():
     graph.add_node("quality_check", quality_check_node)  # FEAT-02
     graph.add_node("senior_expert", senior_expert_node)  # Phase 6
     graph.add_node("targeted_analysis", targeted_analysis_node)  # Phase A — wired in A4
+    graph.add_node("drill_down", drill_down_node)
     graph.add_node("human_approval", human_approval_node)
     graph.add_node("error", error_node)
 
@@ -583,11 +624,13 @@ def build_graph():
         "intake": "intake",
         "analysis": "analysis",                  # multi-turn resume skips intake re-run
         "targeted_analysis": "targeted_analysis",  # Phase A: resume + targeted intent
+        "drill_down": "drill_down",
         "error": "error",
     })
     graph.add_conditional_edges("intake", route_after_intake, {
         "cleaning": "cleaning",
         "targeted_analysis": "targeted_analysis",  # Phase A: non-overview intents
+        "drill_down": "drill_down",
         "human_approval": "human_approval",
         "error": "error",
     })
@@ -619,6 +662,7 @@ def build_graph():
     })
     graph.add_edge("senior_expert", END)
     graph.add_edge("targeted_analysis", END)  # Phase A: terminal node
+    graph.add_edge("drill_down", END)
 
     graph.add_edge("human_approval", END)
     graph.add_edge("error", END)

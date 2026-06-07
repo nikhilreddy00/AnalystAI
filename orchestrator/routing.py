@@ -35,7 +35,12 @@ def route_after_ingestion(state: dict) -> str:
     # Multi-turn resume: skip intake + cleaning. Pre-existing task already has
     # an intent classification — honor it. Targeted intents take the shortcut.
     if task and task.resume_from == "analysis":
-        return "targeted_analysis" if _is_targeted(task) else "analysis"
+        # Multi-turn resume: skip intake. Pick the right terminal node by intent.
+        if task.question_intent == QuestionIntent.DRILL_DOWN:
+            return "drill_down"
+        if task.question_intent in _FULL_PIPELINE_INTENTS:
+            return "analysis"
+        return "targeted_analysis"
     return "intake"
 
 
@@ -46,6 +51,8 @@ def route_after_intake(state: dict) -> str:
     task = session.task_plan
     if task and task.clarification_needed:
         return "human_approval"
+    if task and task.question_intent == QuestionIntent.DRILL_DOWN:
+        return "drill_down"
     # Phase A: skip cleaning + full analysis + insight for targeted Q&A.
     # Handlers in targeted_analysis_agent use .dropna() per-column so they're
     # safe on uncleaned data; trade-off is intentional to keep follow-ups fast.
