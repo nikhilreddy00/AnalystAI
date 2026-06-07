@@ -7,11 +7,11 @@ small JSON response into a TargetedResponse.
 from __future__ import annotations
 
 import json
-import re
 import uuid
 
 from anthropic import AsyncAnthropic
 
+from agents.utils import strip_markdown_fences
 from api.config import settings
 from orchestrator.state import (
     AnalysisSession,
@@ -46,20 +46,37 @@ Respond with ONLY a JSON object (no markdown fences, no extra text):
 """
 
 
-def _strip_fences(text: str) -> str:
-    """Remove ```json ... ``` wrappers if the model added them despite instructions."""
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```\s*$", "", text)
-    return text
-
-
 async def run_drill_down_agent(
     session: AnalysisSession,
     df_parquet: bytes | None,
 ) -> TargetedResponse:
-    """Single Claude call. Returns a fully-formed TargetedResponse."""
+    """
+    Answer a drill-down follow-up question using the prior analysis context.
+
+    Makes a single Claude call (with one automatic retry on JSON parse failure)
+    using the session's insight_report, data_contract, and analysis_findings as
+    context. Returns a TargetedResponse containing a 2-3 sentence answer and an
+    optional stub ChartConfig.
+
+    Parameters
+    ----------
+    session:
+        Must have ``insight_report`` set; the agent short-circuits to an error
+        message if no prior analysis exists. ``task_plan.raw_query`` supplies the
+        follow-up question text.
+    df_parquet:
+        Reserved for future use. The agent currently produces empty-data chart
+        specs (``ChartConfig.data == []``) so no DataFrame loading is needed.
+        Richer chart data would require deserialising this parquet buffer, which
+        is deferred to a later iteration.
+
+    Returns
+    -------
+    TargetedResponse
+        Always returned — never raises for normal LLM or JSON parsing errors.
+        On persistent parse failure the ``answer_text`` carries a user-readable
+        fallback message.
+    """
     if not session.insight_report:
         return TargetedResponse(
             intent=QuestionIntent.DRILL_DOWN,
@@ -103,7 +120,33 @@ Answer in JSON as specified.
     )
 
     raw_text = "".join(b.text for b in msg.content if hasattr(b, "text"))
-    payload = json.loads(_strip_fences(raw_text))
+    cleaned = strip_markdown_fences(raw_text)
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Retry once with an explicit "raw JSON only" reminder — mirrors the
+        # pattern used in insight_agent.py (lines 351-367).
+        retry_msg = await _client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            system=_SYSTEM,
+            messages=[
+                {"role": "user", "content": user_prompt},
+                {"role": "assistant", "content": raw_text},
+                {"role": "user", "content": (
+                    "Your previous response was not valid JSON. "
+                    "Respond again with ONLY the JSON object — no markdown, no commentary."
+                )},
+            ],
+        )
+        retry_text = "".join(b.text for b in retry_msg.content if hasattr(b, "text"))
+        try:
+            payload = json.loads(strip_markdown_fences(retry_text))
+        except json.JSONDecodeError:
+            return TargetedResponse(
+                intent=QuestionIntent.DRILL_DOWN,
+                answer_text="I had trouble formatting an answer. Try rephrasing your question.",
+            )
 
     answer = payload.get("answer_text", "").strip()
     chart_configs: list[ChartConfig] = []
