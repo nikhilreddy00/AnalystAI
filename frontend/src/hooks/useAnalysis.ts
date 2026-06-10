@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL, downloadLatestReportPptx } from "@/lib/api";
 import type { AgentEvent, ApprovalRequiredEvent, BriefingData, ChatMessage, ChartConfig, ExpertReview, InsightReport, SessionResultsSnapshot, TargetedResponse } from "@/types";
 
 async function* parseSSEStream(response: Response): AsyncGenerator<AgentEvent> {
@@ -40,7 +40,7 @@ export function useAnalysis() {
   const datasetNameRef = useRef<string | null>(null);
 
   const sendMessage = useCallback(
-    async (content: string, isApproval = false) => {
+    async (content: string, isApproval = false, approvalContext: string | null = null) => {
       setIsLoading(true);
       setAgentEvents([]);
       setPendingApproval(null);
@@ -79,6 +79,7 @@ export function useAnalysis() {
             message: content,
             session_id: sessionId,
             is_approval: isApproval,
+            approval_context: approvalContext,
             connector_config: connectorConfig.current,
             file_hash: fileHashRef.current,
             dataset_name: datasetNameRef.current,
@@ -96,6 +97,11 @@ export function useAnalysis() {
               break;
             case "briefing":
               briefing = event.data;
+              break;
+            case "export":
+              if (event.format === "pptx") {
+                void downloadLatestReportPptx();
+              }
               break;
             case "charts":
               charts = event.data;
