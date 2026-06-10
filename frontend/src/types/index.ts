@@ -137,7 +137,7 @@ export interface AgentCompleteEvent {
 
 export interface ApprovalRequiredEvent {
   type: "approval_required";
-  context: "clarification" | "high_null";
+  context: "clarification" | "high_null" | "rerun_overview";
   question?: string;
   high_null_columns?: string[];
 }
