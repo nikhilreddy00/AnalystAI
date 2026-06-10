@@ -65,21 +65,21 @@ export default function ApprovalModal({ event, onSubmit, onDismiss, onLoadPrevio
             <button
               type="button"
               onClick={onCancel}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+              className="px-4 py-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={onLoadPrevious}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+              className="px-5 py-2 text-sm border border-zinc-600 text-zinc-300 hover:border-zinc-400 hover:text-white rounded-xl transition-all"
             >
               Load previous
             </button>
             <button
               type="button"
               onClick={onRunFresh}
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-5 py-2 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-indigo-500/20"
             >
               Run fresh
             </button>

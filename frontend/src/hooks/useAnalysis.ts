@@ -100,7 +100,9 @@ export function useAnalysis() {
               break;
             case "export":
               if (event.format === "pptx") {
-                void downloadLatestReportPptx();
+                downloadLatestReportPptx().catch((err) => {
+                  console.error("PPTX download failed:", err);
+                });
               }
               break;
             case "charts":

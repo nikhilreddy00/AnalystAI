@@ -160,6 +160,7 @@ export default function ChatInterface() {
     const lastUserMessage =
       [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
     setPendingApproval(null);
+    if (!lastUserMessage) return;
     void sendMessage(lastUserMessage, true, "rerun_overview");
   };
 
