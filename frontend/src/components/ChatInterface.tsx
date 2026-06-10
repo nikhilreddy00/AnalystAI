@@ -148,6 +148,25 @@ export default function ChatInterface() {
     }
   };
 
+  const handleLoadPrevious = async () => {
+    if (sessionId) {
+      const snapshot = await getSessionResults(sessionId);
+      if (snapshot) hydrateFromSnapshot(snapshot);
+    }
+    setPendingApproval(null);
+  };
+
+  const handleRunFresh = () => {
+    const lastUserMessage =
+      [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    setPendingApproval(null);
+    void sendMessage(lastUserMessage, true, "rerun_overview");
+  };
+
+  const handleCancelApproval = () => {
+    setPendingApproval(null);
+  };
+
   const [input, setInput] = useState("");
   const [connected, setConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -383,6 +402,9 @@ export default function ChatInterface() {
           event={pendingApproval}
           onSubmit={handleApproval}
           onDismiss={() => setPendingApproval(null)}
+          onLoadPrevious={handleLoadPrevious}
+          onRunFresh={handleRunFresh}
+          onCancel={handleCancelApproval}
         />
       )}
     </div>
