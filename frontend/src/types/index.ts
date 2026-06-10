@@ -210,6 +210,12 @@ export interface DoneEvent {
   type: "done";
 }
 
+export interface ExportEvent {
+  type: "export";
+  format: string;
+  url: string;
+}
+
 export type AgentEvent =
   | SessionIdEvent
   | AgentStartEvent
@@ -223,7 +229,8 @@ export type AgentEvent =
   | TargetedResponseEvent
   | QualityRetryEvent
   | ErrorEvent
-  | DoneEvent;
+  | DoneEvent
+  | ExportEvent;
 
 export interface ChatMessage {
   role: "user" | "assistant";
