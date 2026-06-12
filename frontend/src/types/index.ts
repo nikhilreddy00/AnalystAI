@@ -286,3 +286,22 @@ export interface UploadResponse {
   dataset_name: string;
   existing_session: ExistingSessionHint | null;
 }
+
+export interface ColumnRoles {
+  id_cols: string[];
+  target_col: string | null;
+  binary_cols: string[];
+  low_card_cat: string[];
+  high_card_cat: string[];
+  continuous: string[];
+  datetime_cols: string[];
+  ordinal_cols: string[];
+  skip_cols: string[];
+}
+
+export interface DashboardDataPayload {
+  session_id: string;
+  row_count: number;
+  column_roles: ColumnRoles;
+  rows: Record<string, unknown>[];
+}
