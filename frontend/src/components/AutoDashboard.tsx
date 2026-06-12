@@ -10,8 +10,6 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
-  ChevronDown,
-  ChevronUp,
   Download,
   EyeOff,
   FileText,
@@ -37,10 +35,7 @@ import {
 import { useDashboardData } from "@/context/DashboardDataContext";
 import { aggregateForChart } from "@/lib/aggregateForChart";
 import { resolveLayout, useDashboardLayout } from "@/hooks/useDashboardLayout";
-import BriefingPanel from "./BriefingPanel";
 import ChartRenderer from "./ChartRenderer";
-import ExpertReviewPanel from "./ExpertReviewPanel";
-import InsightPanel from "./InsightPanel";
 import KPISection from "./KPISection";
 import type { ChartConfig } from "@/types";
 
@@ -56,7 +51,6 @@ function AutoDashboardInner() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [busy, setBusy] = useState<string | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
   const { filters, setFilter, clearFilters } = useDashboardFilter();
@@ -343,36 +337,6 @@ function AutoDashboardInner() {
           </div>
         )}
 
-        {/* Collapsible details */}
-        {(hasBriefing || hasDetails) && (
-          <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-            <button
-              onClick={() => setDetailsOpen((v) => !v)}
-              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-50 transition-colors"
-              data-html2canvas-ignore
-            >
-              <div className="flex items-center gap-2 text-sm font-semibold text-zinc-800">
-                <FileText className="w-4 h-4 text-indigo-600" />
-                Analysis details
-                <span className="text-xs font-normal text-zinc-500">
-                  (briefing tables · insight · expert review)
-                </span>
-              </div>
-              {detailsOpen ? (
-                <ChevronUp className="w-4 h-4 text-zinc-500" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-zinc-500" />
-              )}
-            </button>
-            {detailsOpen && (
-              <div className="border-t border-zinc-200 p-5 space-y-4 bg-zinc-50/40">
-                {latest?.briefing && <BriefingPanel data={latest.briefing} />}
-                {latest?.insight && <InsightPanel report={latest.insight} onFollowUp={() => {}} />}
-                {latest?.expert_review && <ExpertReviewPanel review={latest.expert_review} />}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </section>
   );
