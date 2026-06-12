@@ -62,6 +62,34 @@ function AutoDashboardInner() {
   const { filters, setFilter, clearFilters } = useDashboardFilter();
   const { status, rows, rowCount, detail } = useDashboardData();
 
+  // NEW: Early status gates from useDashboardData() — MUST appear before latestLoading check
+  if (status === "loading") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">Loading dashboard…</div>
+    );
+  }
+  if (status === "empty") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">
+        Run an analysis first to populate the dashboard.
+      </div>
+    );
+  }
+  if (status === "too_large") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">
+        {detail ?? "Dataset too large for the interactive dashboard."}
+      </div>
+    );
+  }
+  if (status === "error") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">
+        {detail ?? "Couldn't load dashboard data."}
+      </div>
+    );
+  }
+
   const filteredRows = useMemo(
     () => applyFilters(rows, filters),
     [rows, filters],
@@ -144,33 +172,6 @@ function AutoDashboardInner() {
       setBusy(null);
     }
   };
-
-  if (status === "loading") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">Loading dashboard…</div>
-    );
-  }
-  if (status === "empty") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">
-        Run an analysis first to populate the dashboard.
-      </div>
-    );
-  }
-  if (status === "too_large") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">
-        {detail ?? "Dataset too large for the interactive dashboard."}
-      </div>
-    );
-  }
-  if (status === "error") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">
-        {detail ?? "Couldn't load dashboard data."}
-      </div>
-    );
-  }
 
   const hasBriefing = !!latest?.briefing;
   const hasDetails = !!latest?.insight || !!latest?.expert_review;
@@ -297,7 +298,6 @@ function AutoDashboardInner() {
         {visible.length > 0 ? (
           <ChartGrid
             charts={visible}
-            filters={filters}
             filteredRows={filteredRows}
             hasActiveFilters={hasActiveFilters}
             onElementClick={setFilter}
@@ -380,7 +380,6 @@ function AutoDashboardInner() {
 
 function ChartGrid({
   charts,
-  filters,
   filteredRows,
   hasActiveFilters,
   onElementClick,
@@ -394,7 +393,6 @@ function ChartGrid({
   onHide,
 }: {
   charts: ChartConfig[];
-  filters: Record<string, string | number | boolean>;
   filteredRows: Record<string, unknown>[];
   hasActiveFilters: boolean;
   onElementClick: (key: string, value: string | number | boolean) => void;
