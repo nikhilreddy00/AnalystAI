@@ -1,6 +1,7 @@
 import type {
   BriefingData,
   ChartConfig,
+  DashboardDataPayload,
   ExpertReview,
   InsightReport,
   SessionSummary,
@@ -122,6 +123,25 @@ export async function deleteSession(sessionId: string): Promise<boolean> {
     headers: getAuthHeaders(),
   });
   return res.ok;
+}
+
+export type DashboardDataResult =
+  | { status: "ok"; payload: DashboardDataPayload }
+  | { status: "empty" }
+  | { status: "too_large"; detail: string }
+  | { status: "error"; detail: string };
+
+export async function getLatestDashboardData(): Promise<DashboardDataResult> {
+  const res = await fetch(`${API_URL}/dashboard/latest/data`, {
+    headers: getAuthHeaders(),
+  });
+  if (res.status === 404) return { status: "empty" };
+  if (res.status === 422) {
+    const body = await res.json().catch(() => ({}));
+    return { status: "too_large", detail: body.detail ?? "Dataset too large." };
+  }
+  if (!res.ok) return { status: "error", detail: `${res.status} ${res.statusText}` };
+  return { status: "ok", payload: (await res.json()) as DashboardDataPayload };
 }
 
 export { API_URL };
