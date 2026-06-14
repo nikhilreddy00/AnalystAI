@@ -263,12 +263,30 @@ class SegmentResult(BaseModel):
     results: list[dict[str, Any]]         # [{segment: "West", value: 42000}, ...]
 
 
+class KPIRecipe(BaseModel):
+    """Structured recipe describing how a KPI is computed.
+    Lets the frontend recompute the filtered value deterministically from raw rows."""
+    kind: Literal[
+        "row_count",
+        "target_rate",
+        "metric_avg",
+        "top_cat",
+        "comparison_split",
+        "highest_cv",
+    ]
+    column: str | None = None
+    target_column: str | None = None
+    segment_column: str | None = None
+    format_kind: str | None = None  # "currency" | "percent" | "count" | "number"
+
+
 class KPI(BaseModel):
     """A single hero metric card. Backend computes formatted display strings so the
     frontend never has to guess whether a value is currency, percent, or count."""
     label: str                            # Title-cased card label (e.g. "Survival Rate")
     value: str                            # pre-formatted display string ("62.5%", "$12,450.00")
     context: str = ""                     # one-line sublabel (range, share, comparison)
+    recipe: KPIRecipe | None = None
 
 
 class DataNarrative(BaseModel):

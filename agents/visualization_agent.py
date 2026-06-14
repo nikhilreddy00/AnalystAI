@@ -31,6 +31,7 @@ from orchestrator.state import (
     DataContract,
     DataNarrative,
     KPI,
+    KPIRecipe,
     TargetedParams,
 )
 
@@ -1058,6 +1059,7 @@ def _comparison_kpi_chi2(
         label=f"{target_label} by {_display(best_col, narrative)}",
         value=f"{high_rate * 100:.1f}% vs {low_rate * 100:.1f}%",
         context=f"{high_label}: {high_rate * 100:.1f}% vs {low_label}: {low_rate * 100:.1f}%",
+        recipe=KPIRecipe(kind="comparison_split", target_column=target_col, segment_column=best_col),
     )
 
 
@@ -1098,6 +1100,7 @@ def _highest_cv_kpi(
         label=f"{_display(best, narrative)} Variability",
         value=f"CV {best_cv:.2f}",
         context=f"Mean {_format_value(mean, kind)} ± {_format_value(std, kind)}",
+        recipe=KPIRecipe(kind="highest_cv", column=best, format_kind=kind),
     )
 
 
@@ -1135,6 +1138,7 @@ def generate_smart_kpis(
         label=f"Total {entity_pl.title()}",
         value=_format_count(len(df)),
         context=f"{len(df):,} {entity_sg} records",
+        recipe=KPIRecipe(kind="row_count"),
     ))
 
     # KPI 2 — target positive-class rate (never reference raw '0'/'1' values)
@@ -1149,6 +1153,7 @@ def generate_smart_kpis(
                 label=_rate_label(target_col, narrative),
                 value=f"{rate * 100:.1f}%",
                 context=f"{pos_count:,} of {total:,} {entity_pl} {pos_phrase}",
+                recipe=KPIRecipe(kind="target_rate", column=target_col),
             ))
 
     # KPI 3 — primary continuous metric
@@ -1164,6 +1169,7 @@ def generate_smart_kpis(
                 label=f"Avg {_display(primary, narrative)}",
                 value=_format_value(mean, kind),
                 context=f"Range {_format_value(mn, kind)} – {_format_value(mx, kind)}",
+                recipe=KPIRecipe(kind="metric_avg", column=primary, format_kind=kind),
             ))
 
     # KPI 4 — top category (humanize ordinal numerics: 3 → "Class 3" or "3rd")
@@ -1178,6 +1184,7 @@ def generate_smart_kpis(
                 label=f"Top {_display(top_cat, narrative)}",
                 value=_humanize_value(top_val, top_cat, df, ordinal_cols, narrative),
                 context=f"{share:.1f}% of {entity_pl}",
+                recipe=KPIRecipe(kind="top_cat", column=top_cat),
             ))
 
     # KPI 5 — comparison split (target ⊥ cat) OR highest-CV continuous
