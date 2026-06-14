@@ -31,7 +31,23 @@ import {
   DashboardFilterProvider,
   applyFilters,
   useDashboardFilter,
+  type FilterValue,
 } from "@/context/DashboardFilterContext";
+
+function formatFilterChip(f: FilterValue): string {
+  switch (f.kind) {
+    case "equality":
+      return String(f.value);
+    case "in":
+      return f.values.length <= 3
+        ? f.values.map(String).join(", ")
+        : `${f.values.length} selected`;
+    case "range":
+      return `${f.min}–${f.max}`;
+    case "date_range":
+      return `${f.from} → ${f.to}`;
+  }
+}
 import { useDashboardData } from "@/context/DashboardDataContext";
 import { aggregateForChart } from "@/lib/aggregateForChart";
 import { resolveLayout, useDashboardLayout } from "@/hooks/useDashboardLayout";
@@ -252,16 +268,16 @@ function AutoDashboardInner() {
               </span>
             ) : (
               <div className="flex items-center gap-1.5 flex-wrap pl-1">
-                {Object.entries(filters).map(([key, value]) => (
+                {Object.entries(filters).map(([key, f]) => (
                   <button
                     key={key}
-                    onClick={() => setFilter(key, value)}
+                    onClick={() => setFilter(key, null)}
                     className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full hover:bg-indigo-100 transition-colors"
                     title="Click to remove this filter"
                   >
                     <span className="text-indigo-500">{key}</span>
-                    <span>=</span>
-                    <span className="font-semibold">{String(value)}</span>
+                    <span>:</span>
+                    <span className="font-semibold">{formatFilterChip(f)}</span>
                     <X className="w-3 h-3" />
                   </button>
                 ))}
@@ -359,7 +375,7 @@ function ChartGrid({
   charts: ChartConfig[];
   filteredRows: Record<string, unknown>[];
   hasActiveFilters: boolean;
-  onElementClick: (key: string, value: string | number | boolean) => void;
+  onElementClick: (key: string, value: FilterValue) => void;
   chartRefs: React.RefObject<Map<string, HTMLDivElement>>;
   busy: string | null;
   onDownloadChart: (id: string, title: string) => void;
