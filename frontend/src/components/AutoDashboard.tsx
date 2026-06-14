@@ -33,6 +33,7 @@ import {
   useDashboardFilter,
   type FilterValue,
 } from "@/context/DashboardFilterContext";
+import { FilterSidebar } from "@/components/FilterSidebar";
 
 function formatFilterChip(f: FilterValue): string {
   switch (f.kind) {
@@ -294,64 +295,69 @@ function AutoDashboardInner() {
           </button>
         </div>
 
-        {/* KPI row */}
-        {hasBriefing && latest?.briefing && <KPISection briefing={latest.briefing} />}
+        <div className="flex gap-4">
+          <FilterSidebar />
+          <div className="flex-1 min-w-0 space-y-4">
+            {/* KPI row */}
+            {hasBriefing && latest?.briefing && <KPISection briefing={latest.briefing} />}
 
-        {/* Records indicator */}
-        {hasActiveFilters && (
-          <div className="text-xs text-zinc-500 mb-2 px-6">
-            Showing {filteredRows.length.toLocaleString()} of {rowCount.toLocaleString()} records
-          </div>
-        )}
+            {/* Records indicator */}
+            {hasActiveFilters && (
+              <div className="text-xs text-zinc-500 mb-2 px-6">
+                Showing {filteredRows.length.toLocaleString()} of {rowCount.toLocaleString()} records
+              </div>
+            )}
 
-        {/* Chart grid */}
-        {visible.length > 0 ? (
-          <ChartGrid
-            charts={visible}
-            filteredRows={filteredRows}
-            hasActiveFilters={hasActiveFilters}
-            onElementClick={setFilter}
-            chartRefs={chartRefs}
-            busy={busy}
-            onDownloadChart={handleDownloadChart}
-            editMode={editMode}
-            visibleOrder={visibleOrder}
-            onMoveUp={(id) => moveUp(id, visibleOrder)}
-            onMoveDown={(id) => moveDown(id, visibleOrder)}
-            onHide={(id) => hide(id, visibleOrder)}
-          />
-        ) : (
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500">
-            {totalPool > 0
-              ? "All charts are hidden. Restore some below in edit mode."
-              : "No charts on the latest analysis. Run an overview in the chat to populate the grid."}
-          </div>
-        )}
+            {/* Chart grid */}
+            {visible.length > 0 ? (
+              <ChartGrid
+                charts={visible}
+                filteredRows={filteredRows}
+                hasActiveFilters={hasActiveFilters}
+                onElementClick={setFilter}
+                chartRefs={chartRefs}
+                busy={busy}
+                onDownloadChart={handleDownloadChart}
+                editMode={editMode}
+                visibleOrder={visibleOrder}
+                onMoveUp={(id) => moveUp(id, visibleOrder)}
+                onMoveDown={(id) => moveDown(id, visibleOrder)}
+                onHide={(id) => hide(id, visibleOrder)}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500">
+                {totalPool > 0
+                  ? "All charts are hidden. Restore some below in edit mode."
+                  : "No charts on the latest analysis. Run an overview in the chat to populate the grid."}
+              </div>
+            )}
 
-        {/* Hidden-chart restore panel — only shows in edit mode */}
-        {editMode && hidden.length > 0 && (
-          <div
-            className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden"
-            data-html2canvas-ignore
-          >
-            <div className="px-5 py-3 border-b border-zinc-200 flex items-center gap-2 text-sm font-semibold text-zinc-800">
-              <EyeOff className="w-4 h-4 text-zinc-500" />
-              Hidden charts ({hidden.length})
-            </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {hidden.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => restore(c.id, visibleOrder)}
-                  className="text-left text-xs bg-zinc-50 hover:bg-indigo-50 border border-zinc-200 hover:border-indigo-300 text-zinc-700 hover:text-indigo-700 px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate">{c.title}</span>
-                </button>
-              ))}
-            </div>
+            {/* Hidden-chart restore panel — only shows in edit mode */}
+            {editMode && hidden.length > 0 && (
+              <div
+                className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden"
+                data-html2canvas-ignore
+              >
+                <div className="px-5 py-3 border-b border-zinc-200 flex items-center gap-2 text-sm font-semibold text-zinc-800">
+                  <EyeOff className="w-4 h-4 text-zinc-500" />
+                  Hidden charts ({hidden.length})
+                </div>
+                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {hidden.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => restore(c.id, visibleOrder)}
+                      className="text-left text-xs bg-zinc-50 hover:bg-indigo-50 border border-zinc-200 hover:border-indigo-300 text-zinc-700 hover:text-indigo-700 px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Plus className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{c.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
       </div>
     </section>
