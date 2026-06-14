@@ -147,12 +147,21 @@ export interface SuggestedQuestionsEvent {
   questions: string[];
 }
 
+export interface KPIRecipe {
+  kind: "row_count" | "target_rate" | "metric_avg" | "top_cat" | "comparison_split" | "highest_cv";
+  column?: string | null;
+  target_column?: string | null;
+  segment_column?: string | null;
+  format_kind?: "currency" | "percent" | "count" | "number" | null;
+}
+
 // PROMPT-2: backend-computed hero KPI card. Values are pre-formatted display
 // strings — the frontend renders them verbatim, no numeric guessing required.
 export interface KPI {
   label: string;
   value: string;
   context: string;
+  recipe?: KPIRecipe | null;
 }
 
 export interface BriefingData {
