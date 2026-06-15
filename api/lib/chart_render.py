@@ -14,7 +14,7 @@ from __future__ import annotations
 import warnings
 from io import BytesIO
 
-from orchestrator.state import ChartConfig
+from orchestrator.state import ChartConfig, ChartType
 
 # matplotlib package shell is cheap to import (~5ms); pyplot is the expensive
 # bit (~300ms), so we set the backend once at module init and defer pyplot to
@@ -46,8 +46,16 @@ def render_chart_to_png(config: ChartConfig) -> bytes | None:
 
 def _dispatch(config: ChartConfig, plt) -> bytes | None:
     """Type-dispatch. Returns None for unhandled types."""
-    # Stubs filled in by Tasks 2 + 3.
-    return None
+    handlers = {
+        ChartType.BAR: _render_bar,
+        ChartType.LINE: _render_line,
+        ChartType.PIE: _render_pie,
+        ChartType.DONUT: _render_donut,
+    }
+    handler = handlers.get(config.chart_type)
+    if handler is None:
+        return None
+    return handler(config, plt)
 
 
 def _resolve_colors(config: ChartConfig, n: int) -> list[str]:
@@ -77,3 +85,97 @@ def _fig_to_png(fig) -> bytes:
     fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     return buf.getvalue()
+
+
+def _safe_float(v) -> float:
+    try:
+        return float(v) if v is not None else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _render_bar(config: ChartConfig, plt) -> bytes | None:
+    """Vertical bar chart with value labels on top of each bar."""
+    if not config.data or not config.y_keys:
+        return None
+    x_key = config.x_key
+    y_key = config.y_keys[0]
+    labels = [str(r.get(x_key, "")) for r in config.data]
+    values = [_safe_float(r.get(y_key)) for r in config.data]
+    colors = _resolve_colors(config, len(values))
+
+    fig, ax = plt.subplots(figsize=(10, 5.5), dpi=150)
+    bars = ax.bar(labels, values, color=colors)
+
+    fmt = "{:.1f}%" if config.value_format == "percent" else "{:g}"
+    for bar, v in zip(bars, values):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            fmt.format(v),
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            color="#333333",
+        )
+
+    if config.x_label:
+        ax.set_xlabel(config.x_label)
+    if config.y_label:
+        ax.set_ylabel(config.y_label)
+    _finalize_axes(ax, config.value_format)
+    return _fig_to_png(fig)
+
+
+def _render_line(config: ChartConfig, plt) -> bytes | None:
+    """Line chart. One line per y_key. Color comes from config.colors[i] or DEFAULT_COLOR."""
+    if not config.data or not config.y_keys:
+        return None
+    xs = [str(r.get(config.x_key, "")) for r in config.data]
+    fig, ax = plt.subplots(figsize=(10, 5.5), dpi=150)
+
+    colors = _resolve_colors(config, len(config.y_keys))
+    for i, y_key in enumerate(config.y_keys):
+        ys = [_safe_float(r.get(y_key)) for r in config.data]
+        ax.plot(xs, ys, color=colors[i], marker="o", linewidth=2, label=y_key)
+
+    if config.show_legend and len(config.y_keys) > 1:
+        ax.legend(loc="best", fontsize=10, frameon=False)
+
+    if config.x_label:
+        ax.set_xlabel(config.x_label)
+    if config.y_label:
+        ax.set_ylabel(config.y_label)
+    _finalize_axes(ax, config.value_format)
+    return _fig_to_png(fig)
+
+
+def _render_pie(config: ChartConfig, plt) -> bytes | None:
+    """Pie chart with autopct labels. Uses per-slice colors from config.colors."""
+    if not config.data or not config.y_keys:
+        return None
+    y_key = config.y_keys[0]
+    labels = [str(r.get(config.x_key, "")) for r in config.data]
+    values = [_safe_float(r.get(y_key)) for r in config.data]
+    colors = _resolve_colors(config, len(values))
+
+    fig, ax = plt.subplots(figsize=(10, 5.5), dpi=150)
+    ax.pie(values, labels=labels, colors=colors, autopct="%1.1f%%", startangle=90, textprops={"fontsize": 11})
+    ax.set_aspect("equal")
+    return _fig_to_png(fig)
+
+
+def _render_donut(config: ChartConfig, plt) -> bytes | None:
+    """Donut chart — same as pie + a white circle in the center."""
+    if not config.data or not config.y_keys:
+        return None
+    y_key = config.y_keys[0]
+    labels = [str(r.get(config.x_key, "")) for r in config.data]
+    values = [_safe_float(r.get(y_key)) for r in config.data]
+    colors = _resolve_colors(config, len(values))
+
+    fig, ax = plt.subplots(figsize=(10, 5.5), dpi=150)
+    ax.pie(values, labels=labels, colors=colors, autopct="%1.1f%%", startangle=90, textprops={"fontsize": 11})
+    ax.add_artist(plt.Circle((0, 0), 0.55, color="white"))
+    ax.set_aspect("equal")
+    return _fig_to_png(fig)
