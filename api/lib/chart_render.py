@@ -14,9 +14,15 @@ from __future__ import annotations
 import warnings
 from io import BytesIO
 
-from orchestrator.state import ChartConfig, ChartType
+from orchestrator.state import ChartConfig
 
-# Brand accent — matches the KPI shape border in report_pptx.py.
+# matplotlib package shell is cheap to import (~5ms); pyplot is the expensive
+# bit (~300ms), so we set the backend once at module init and defer pyplot to
+# the render entry point.
+import matplotlib as _mpl
+_mpl.use("Agg")
+
+# Brand accent purple.
 DEFAULT_COLOR = "#534AB7"
 
 # Quiet seaborn's DeprecationWarning noise on certain pandas combos.
@@ -30,11 +36,7 @@ def render_chart_to_png(config: ChartConfig) -> bytes | None:
     caller falls back to a data table inside the chart slide. The deck
     never errors out on a single bad chart.
     """
-    # Lazy imports: matplotlib has ~300ms cold-start; we don't pay it on
-    # routes that never call render_chart_to_png.
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt  # noqa: F401  (imported for side effects + downstream use)
+    import matplotlib.pyplot as plt
 
     try:
         return _dispatch(config, plt)
@@ -61,10 +63,8 @@ def _finalize_axes(ax, value_format: str = "number") -> None:
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.tick_params(axis="both", labelsize=10)
-    if hasattr(ax, "xaxis"):
-        ax.xaxis.label.set_size(11)
-    if hasattr(ax, "yaxis"):
-        ax.yaxis.label.set_size(11)
+    ax.xaxis.label.set_size(11)
+    ax.yaxis.label.set_size(11)
     if value_format == "percent":
         import matplotlib.pyplot as plt
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.0f}%"))
