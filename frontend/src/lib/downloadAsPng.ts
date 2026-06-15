@@ -44,6 +44,9 @@ export async function downloadElementAsPng(
 
 // FOOTER_H is in source-px; we multiply by the toPng pixelRatio (2) so the
 // footer band visually matches the rendered dashboard's resolution.
+// PIXEL_RATIO MUST be kept in sync with the pixelRatio option passed to toPng
+// above — they are coupled. If you change one, change the other or the footer
+// band will be sized incorrectly relative to the captured image.
 const FOOTER_H = 48;
 const PIXEL_RATIO = 2;
 

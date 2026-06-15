@@ -270,7 +270,7 @@ function AutoDashboardInner() {
             when filters are active. Interactive chrome (X icons, Reset button)
             is marked data-html2canvas-ignore so the PNG sees flat chip labels. */}
       <div className="flex gap-4">
-        <div data-html2canvas-ignore>
+        <div data-html2canvas-ignore className="flex-shrink-0">
           <FilterSidebar />
         </div>
         <div ref={sectionRef} className="flex-1 min-w-0 space-y-4">
