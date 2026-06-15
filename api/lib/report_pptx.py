@@ -18,7 +18,8 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 from io import BytesIO
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -120,12 +121,12 @@ def _add_kpi_slide(prs: Presentation, session: AnalysisSession) -> None:
     n = len(kpis)
     gap = Inches(0.3)
     total_gap = gap * (n - 1) if n > 1 else 0
-    shape_w = Inches((CONTENT_W - total_gap) / Inches(1) / n)
+    shape_w = (CONTENT_W - total_gap) // n
     shape_h = Inches(1.8)
     top = Inches(1.8)
 
     for i, kpi in enumerate(kpis):
-        cur_left = Inches(MARGIN / Inches(1) + i * (shape_w / Inches(1) + gap / Inches(1)))
+        cur_left = MARGIN + i * (shape_w + gap)
         _add_kpi_shape(slide, kpi, cur_left, top, shape_w, shape_h)
 
 
