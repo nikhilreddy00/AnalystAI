@@ -73,34 +73,8 @@ function AutoDashboardInner() {
   const { filters, setFilter, clearFilters } = useDashboardFilter();
   const { status, rows, rowCount, detail } = useDashboardData();
 
-  // NEW: Early status gates from useDashboardData() — MUST appear before latestLoading check
-  if (status === "loading") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">Loading dashboard…</div>
-    );
-  }
-  if (status === "empty") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">
-        Run an analysis first to populate the dashboard.
-      </div>
-    );
-  }
-  if (status === "too_large") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">
-        {detail ?? "Dataset too large for the interactive dashboard."}
-      </div>
-    );
-  }
-  if (status === "error") {
-    return (
-      <div className="px-6 py-12 text-sm text-zinc-500">
-        {detail ?? "Couldn't load dashboard data."}
-      </div>
-    );
-  }
-
+  // All hooks must be called unconditionally on every render (Rules of Hooks).
+  // Early returns for status/loading gates live BELOW this hook block.
   const filteredRows = useMemo(
     () => applyFilters(rows, filters),
     [rows, filters],
@@ -132,6 +106,34 @@ function AutoDashboardInner() {
     }
     return resolveLayout(pool, layout);
   }, [latest, pinned, layout]);
+
+  // === Early returns (after all hooks) ===
+  if (status === "loading") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">Loading dashboard…</div>
+    );
+  }
+  if (status === "empty") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">
+        Run an analysis first to populate the dashboard.
+      </div>
+    );
+  }
+  if (status === "too_large") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">
+        {detail ?? "Dataset too large for the interactive dashboard."}
+      </div>
+    );
+  }
+  if (status === "error") {
+    return (
+      <div className="px-6 py-12 text-sm text-zinc-500">
+        {detail ?? "Couldn't load dashboard data."}
+      </div>
+    );
+  }
 
   if (latestLoading) {
     return (
