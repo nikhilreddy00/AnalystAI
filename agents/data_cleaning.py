@@ -25,7 +25,7 @@ import pandas as pd
 # ── Layer 1 patterns ──────────────────────────────────────────────────────────
 _URL_RE = re.compile(r"(?i)https?://|www\.")
 _IMAGE_EXT_RE = re.compile(
-    r"(?i)\.(jpe?g|png|gif|bmp|webp|svg|pdf|csv|xlsx?|docx?|mp[34]|mov)(?:[?#]|$)"
+    r"(?i)\.(?:jpe?g|png|gif|bmp|webp|svg|pdf|csv|xlsx?|docx?|mp[34]|mov)(?:[?#]|$)"
     r"|[\\/][^\\/]+\.\w{2,5}$"
 )
 _ID_NAME_RE = re.compile(r"(?i)(_id$|^id_|^id$|_key$|_hash$|_uuid$|_code$)")
@@ -33,9 +33,9 @@ _ID_NAME_RE = re.compile(r"(?i)(_id$|^id_|^id$|_key$|_hash$|_uuid$|_code$)")
 # ── Layer 2 numeric patterns (order-dependent — comma stripping LAST) ─────────
 _CURRENCY_RE = re.compile(r"[₹¥₩₽₫฿$€£¢]|R\$|kr\.?|zł|CHF|AED|SAR|Rs\.?|USD|EUR|GBP|INR|JPY|CNY")
 _PCT_TAIL_RE = re.compile(r"\s*%\s*$")
-_RATING_RE = re.compile(r"\s*(out\s+of|/)\s*[\d.]+\s*$")
+_RATING_RE = re.compile(r"\s*(?:out\s+of|/)\s*[\d.]+\s*$")
 _UNIT_RE = re.compile(
-    r"(?i)\s*(kg|g|mg|ml|l|cm|mm|m|km|lb|oz|ft|in|sq\.?\s*ft|hrs?|mins?|secs?|pcs?|units?)\s*$"
+    r"(?i)\s*(?:kg|g|mg|ml|l|cm|mm|m|km|lb|oz|ft|in|sq\.?\s*ft|hrs?|mins?|secs?|pcs?|units?)\s*$"
 )
 _COMMA_NUM_RE = re.compile(r"\d,\d")
 
@@ -154,9 +154,9 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
             return None
         # Epoch seconds range: 2001-09-09 to 2286-11-20. >1e13 is likely millis;
         # we skip those in v1 to avoid wrong conversions.
-        if (vals > 1e9).mean() > 0.8 and (vals < 1e13).mean() > 0.8:
+        if (vals > 1e9).mean() >= 0.8 and (vals < 1e13).mean() >= 0.8:
             converted = pd.to_datetime(series, unit="s", errors="coerce")
-            if int(converted.notna().sum()) / original_non_null > 0.8:
+            if int(converted.notna().sum()) / original_non_null >= 0.8:
                 return converted
         return None
 
@@ -169,9 +169,9 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
             parsed_sample = pd.to_datetime(
                 sample.head(200), format="mixed", dayfirst=dayfirst, errors="coerce"
             )
-            if int(parsed_sample.notna().sum()) / max(len(parsed_sample), 1) > 0.8:
+            if int(parsed_sample.notna().sum()) / max(len(parsed_sample), 1) >= 0.8:
                 full = pd.to_datetime(series, format="mixed", dayfirst=dayfirst, errors="coerce")
-                if int(full.notna().sum()) / original_non_null > 0.8:
+                if int(full.notna().sum()) / original_non_null >= 0.8:
                     return full
         except Exception:
             continue
