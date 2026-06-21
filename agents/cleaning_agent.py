@@ -5,11 +5,14 @@ Cleaning is done in Python for reliability; Claude Sonnet reasons about the
 imputation strategy per column based on distribution shape and domain context.
 
 Operations (in order):
-1. Type coercion — cast date columns to datetime
-2. Whitespace normalization — strip + lowercase low-cardinality object cols
-3. Duplicate removal
-4. Missing value imputation — strategy decided by Claude per column
-5. Outlier detection — IQR flagging on metric columns (flag only, not remove)
+1. Triage — flag URL/long-text/image-path/secondary-ID columns into a skip_set
+2. Type coercion — strip currency/%/units/commas then try numeric; fall back to
+   aggressive date detection (dayfirst both ways + epoch seconds)
+3. Whitespace normalization — strip + lowercase low-cardinality object cols
+   (skipped columns excluded)
+4. Duplicate removal
+5. Missing value imputation — strategy decided by Claude per column (skip_set excluded)
+6. Outlier detection — IQR flagging on metric columns (flag only, not remove)
 
 LangGraph checks CleaningAudit.high_null_columns to route to approval gate (>40% null).
 """
@@ -22,6 +25,11 @@ import pandas as pd
 from anthropic import AsyncAnthropic
 
 from agents.anomaly_detector import detect_anomalies
+from agents.data_cleaning import (
+    detect_dates_aggressive,
+    triage_columns,
+    try_numeric_conversion,
+)
 from agents.utils import strip_markdown_fences
 from agents.visualization_agent import classify_columns
 from api.config import settings
@@ -33,6 +41,13 @@ from orchestrator.state import (
 )
 
 _client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+_SKIP_REASON = {
+    "url": "URL column — not analytically useful",
+    "long_text": "Long free-text column — not categorical",
+    "image_path": "Image/file path column — not analytically useful",
+    "secondary_id": "Secondary identifier — first ID kept; this one skipped",
+}
 
 
 async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, CleaningAudit]:
@@ -58,20 +73,8 @@ async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, Cl
     #     coercion. Skipped columns stay in df (so the schema table sees them)
     #     but are excluded from whitespace normalization, LLM-driven imputation,
     #     and downstream chart/KPI generation. ===
-    from agents.data_cleaning import (
-        detect_dates_aggressive,
-        triage_columns,
-        try_numeric_conversion,
-    )
-
     triage = triage_columns(df)
     skip_set: set[str] = set()
-    _skip_reason = {
-        "url": "URL column — not analytically useful",
-        "long_text": "Long free-text column — not categorical",
-        "image_path": "Image/file path column — not analytically useful",
-        "secondary_id": "Secondary identifier — first ID kept; this one skipped",
-    }
     for kind, cols in triage.items():
         strategy = kind.removesuffix("_cols")
         for col in cols:
@@ -81,7 +84,7 @@ async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, Cl
                 column=col,
                 operation="skip",
                 strategy=strategy,
-                reason=_skip_reason[strategy],
+                reason=_SKIP_REASON[strategy],
                 rows_affected=rows_affected,
                 before_null_pct=0.0,
                 after_null_pct=0.0,
@@ -120,8 +123,7 @@ async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, Cl
         dt = detect_dates_aggressive(df[col])
         if dt is not None:
             df[col] = dt
-            if col not in columns_coerced:
-                columns_coerced.append(col)
+            columns_coerced.append(col)
             decisions.append(CleaningDecision(
                 column=col,
                 operation="type_coerce",
