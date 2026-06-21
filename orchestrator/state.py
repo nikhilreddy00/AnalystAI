@@ -229,6 +229,7 @@ class CleaningAudit(BaseModel):
     high_null_columns: list[str]           # columns >40% null (triggers approval gate)
     summary: str                           # paragraph for the UI
     anomaly_report: AnomalyDetectionReport | None = None  # PROMPT-5: structured detector output
+    skipped_columns: list[str] = Field(default_factory=list)
 
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────
