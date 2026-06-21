@@ -271,6 +271,14 @@ async def analysis_node(state: AgentState) -> dict:
                 findings.target_correlations = extras.get("target_correlations", {})
                 findings.target_col = extras.get("target_col")
                 findings.column_roles_summary = extras.get("column_roles_summary", {})
+                # Overlay the cleaning-stage skip set: any column the triage
+                # layer excluded gets a 'skipped' role so the schema table can
+                # render the gray badge regardless of what classify_columns
+                # inferred.
+                if session.cleaning_audit and session.cleaning_audit.skipped_columns:
+                    for col in session.cleaning_audit.skipped_columns:
+                        if col in findings.column_roles_summary:
+                            findings.column_roles_summary[col] = "skipped"
             except Exception:
                 findings.kpis = []
 
