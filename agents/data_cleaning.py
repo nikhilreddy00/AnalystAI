@@ -60,8 +60,10 @@ def triage_columns(df: pd.DataFrame) -> dict[str, list[str]]:
         if s.empty:
             continue
 
-        # Non-object columns can still be ID-like by name.
-        if s.dtype != object:
+        # Non-string columns can still be ID-like by name.
+        # pandas 2.x+ may report string columns as StringDtype rather than
+        # 'object', so use is_string_dtype which covers both.
+        if not pd.api.types.is_string_dtype(s):
             if _ID_NAME_RE.search(col) and (s.nunique() / max(len(s), 1)) > 0.9:
                 id_like_in_order.append(col)
             continue
@@ -160,7 +162,7 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
                 return converted
         return None
 
-    if s.dtype != object:
+    if not pd.api.types.is_string_dtype(s):
         return None
 
     sample = s.astype(str).str.strip()

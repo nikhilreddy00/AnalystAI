@@ -98,7 +98,9 @@ async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, Cl
         if col in skip_set:
             continue
 
-        if df[col].dtype == object:
+        # pandas 2.x+ may report string columns as StringDtype rather than
+        # 'object', so use is_string_dtype which covers both.
+        if pd.api.types.is_string_dtype(df[col]):
             num_result = try_numeric_conversion(df[col])
             if num_result is not None:
                 new_series, transformations = num_result
@@ -134,8 +136,9 @@ async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, Cl
                 after_null_pct=0.0,
             ))
 
-    # 2. Whitespace normalization on object columns
-    for col in df.select_dtypes(include="object").columns:
+    # 2. Whitespace normalization on string columns (object or StringDtype)
+    string_cols = [c for c in df.columns if pd.api.types.is_string_dtype(df[c])]
+    for col in string_cols:
         if col in skip_set:
             continue
         # BUG-12: guard against mixed-type object columns (e.g., strings + ints + None)

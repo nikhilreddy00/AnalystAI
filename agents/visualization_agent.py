@@ -142,7 +142,7 @@ def classify_columns(df: pd.DataFrame) -> dict:
         if pd.api.types.is_datetime64_any_dtype(s):
             roles["datetime_cols"].append(col)  # type: ignore[union-attr]
             continue
-        if s.dtype == object and nunique > 3:
+        if pd.api.types.is_string_dtype(s) and nunique > 3:
             sample = s.head(100)
             try:
                 parsed = pd.to_datetime(sample, errors="coerce")
