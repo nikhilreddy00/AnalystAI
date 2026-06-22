@@ -145,7 +145,7 @@ def classify_columns(df: pd.DataFrame) -> dict:
         if pd.api.types.is_string_dtype(s) and nunique > 3:
             sample = s.head(100)
             try:
-                parsed = pd.to_datetime(sample, errors="coerce")
+                parsed = pd.to_datetime(sample, format="mixed", errors="coerce")
                 if parsed.notna().sum() / len(parsed) > 0.8:
                     roles["datetime_cols"].append(col)  # type: ignore[union-attr]
                     continue
