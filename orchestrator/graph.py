@@ -90,6 +90,16 @@ async def intake_node(state: AgentState) -> dict:
         is_overview = not session.overview_done
         task = await run_intake_agent(session, state["user_message"], is_overview_request=is_overview)
         session.task_plan = task
+        logger.info(
+            "Intent classified as: %s for query: %s",
+            task.question_intent.value if task.question_intent else None,
+            task.raw_query,
+        )
+        logger.info(
+            "Intake: raw_query='%s', intent=%s",
+            session.task_plan.raw_query,
+            session.task_plan.question_intent,
+        )
         session.add_message(MessageRole.USER, state["user_message"])
 
         if task.clarification_needed:
@@ -374,6 +384,7 @@ async def insight_node(state: AgentState) -> dict:
     try:
         report = await run_insight_agent(session, similar_insights or None)
         session.insight_report = report
+        logger.info("Setting session status to completed for %s", session.session_id)
         session.status = "completed"
 
         _emit(state, {"type": "insight", "data": report.model_dump()})
@@ -503,6 +514,10 @@ async def targeted_analysis_node(state: AgentState) -> dict:
         if response.answer_text:
             session.add_message(MessageRole.ASSISTANT, response.answer_text)
         session.iteration += 1
+        # Follow-up turns reset status to in_progress in ingestion_node; mark the
+        # session completed again so the sidebar doesn't stick on in_progress.
+        session.status = "completed"
+        logger.info("Setting session status to completed for %s", session.session_id)
     except Exception as exc:
         session.error_message = f"Targeted analysis failed: {exc}"
 
@@ -525,6 +540,15 @@ async def drill_down_node(state: AgentState) -> dict:
     """
     _emit(state, {"type": "agent_start", "agent": "drill_down", "message": "Investigating..."})
     session: AnalysisSession = state["session"]
+
+    logger.info(
+        "Drill-down: raw_query='%s'",
+        session.task_plan.raw_query if session.task_plan else None,
+    )
+    logger.info(
+        "Drill-down: conversation_history has %d messages",
+        len(session.conversation_history),
+    )
 
     if not session.insight_report:
         session.error_message = "Drill-down requires a prior analysis. Ask for an overview first."
@@ -549,6 +573,10 @@ async def drill_down_node(state: AgentState) -> dict:
         if response.answer_text:
             session.add_message(MessageRole.ASSISTANT, response.answer_text)
         session.iteration += 1
+        # Follow-up turns reset status to in_progress in ingestion_node; mark the
+        # session completed again so the sidebar doesn't stick on in_progress.
+        session.status = "completed"
+        logger.info("Setting session status to completed for %s", session.session_id)
     except Exception as exc:
         session.error_message = f"Drill-down failed: {exc}"
 

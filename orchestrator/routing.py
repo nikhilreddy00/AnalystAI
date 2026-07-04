@@ -31,16 +31,17 @@ def route_after_ingestion(state: dict) -> str:
     session: AnalysisSession = state["session"]
     if session.error_message:
         return "error"
-    task = session.task_plan
-    # Multi-turn resume: skip intake + cleaning. Pre-existing task already has
-    # an intent classification — honor it. Targeted intents take the shortcut.
-    if task and task.resume_from == "analysis":
-        # Multi-turn resume: skip intake. Pick the right terminal node by intent.
-        if task.question_intent == QuestionIntent.DRILL_DOWN:
-            return "drill_down"
-        if task.question_intent in _FULL_PIPELINE_INTENTS:
-            return "analysis"
-        return "targeted_analysis"
+    # Always run intake on every turn. Each turn carries a NEW user message that
+    # must be re-classified, and intake is the only node that refreshes
+    # task_plan.raw_query / intent and appends the user message to history.
+    #
+    # The multi-turn "resume" optimization (skip re-ingestion/cleaning) lives in
+    # ingestion_node, keyed on task_plan.resume_from == "analysis" — it does NOT
+    # need a routing shortcut here. An earlier version short-circuited straight to
+    # drill_down/targeted/analysis when the PREVIOUS turn left resume_from set,
+    # which skipped intake and left raw_query stale, so every follow-up after the
+    # first repeated the first follow-up's answer. route_after_intake dispatches to
+    # the correct terminal node from the freshly classified intent.
     return "intake"
 
 

@@ -67,13 +67,21 @@ Selection rules for analysis_types (EDA is always included first):
 
 Question-intent classifier (pick exactly one, drives routing):
 - overview         → broad first-pass survey: "give me an overview", "what's in this data", "explore", "summarize"
-- drill_down       → follow-up that builds on a prior finding. Requires that the user
-  has already received an analysis in this session. Examples:
+- drill_down       → any follow-up that builds on, re-explains, or reframes a
+  prior analysis/finding. Requires that the user has already received an analysis
+  in this session. This is the DEFAULT bucket for follow-up questions about the
+  RESULTS (not the data structure). Examples:
   "tell me more about why revenue dropped"
   "what's driving the spike in churn"
   "break down the anomaly you found in March"
-  Use correlation when the user wants a numeric correlation; use drill_down
-  only when the user is asking WHY a previously observed result happened.
+  "explain the findings"  /  "explain this to me"
+  "summarize all the findings for non-technical stakeholders"
+  "how do I explain this to a non-technical audience?"
+  "what does this mean for the business?"
+  "why is X happening"
+  Use correlation when the user wants a NEW numeric correlation computed; use
+  drill_down whenever the user is asking WHY a result happened OR to explain,
+  summarize, simplify, or reframe an analysis they already received.
 - chart_request    → user wants a specific chart, not a full analysis. Examples:
   "show me a bar chart of revenue by region"
   "plot price vs square footage"
@@ -86,11 +94,20 @@ Question-intent classifier (pick exactly one, drives routing):
   "download as pptx", "export the report", "save this analysis",
   "give me a powerpoint", "send me the report"
   No additional parameter extraction needed.
-- meta_question    → user asks ABOUT the data structure, not about its content.
-  Examples:
-  "how many columns", "what are the column names", "what's the schema",
-  "what data types are these", "how many rows", "show me a preview"
+- meta_question    → STRICTLY questions about the data's STRUCTURE — shape, schema,
+  column names, data types, or a raw preview. NOTHING about the analysis results,
+  meaning, or business implications. Examples (these are the ONLY kind that qualify):
+  "how many columns", "how many rows", "what's the schema", "what columns exist",
+  "what are the column names", "what data types are these", "show me a preview"
   Leave TargetedParams empty unless the user names specific columns.
+  These are NOT meta_question (do NOT classify them here):
+  - "explain the findings" / "explain this to me"        → drill_down
+  - "summarize for stakeholders" / "summarize the results" → drill_down
+  - "why is X happening" / "what's driving X"            → drill_down
+  - any request about what the analysis MEANS or implies   → drill_down
+  When uncertain whether a follow-up is about structure vs. results, prefer
+  drill_down — only use meta_question when the user is unambiguously asking about
+  the schema/shape of the table.
 - correlation      → "correlat", "related to", "relationship between A and B", "what affects", "associated with"
 - distribution     → "distribution of X", "histogram", "how is X spread", "range of X"
 - top_n            → "top/bottom N", "best/worst", "highest/lowest", "rank", "leaderboard"
@@ -99,7 +116,15 @@ Question-intent classifier (pick exactly one, drives routing):
 - hypothesis_test  → "is X significantly different", "test if A > B", "p-value of"
 - ab_significance  → "A/B test", "control vs treatment", "variant", "lift", "experiment"
 - outlier_scan     → "outliers", "anomalies", "unusual values", "weird rows"
-Default to "overview" when ambiguous or genuinely broad.
+
+Greetings / chit-chat ("hi", "hello", "hey", "thanks", "ok", "what can you do?"):
+classify as "overview". These are NOT meta_question — never answer a greeting with
+schema facts. On an already-analyzed dataset the router will offer the user fresh
+starting points rather than re-dumping the table shape.
+
+Default to "overview" when ambiguous or genuinely broad. NEVER fall back to
+meta_question when uncertain — meta_question is only for explicit structure/schema
+questions.
 
 targeted_params extraction (fill ONLY what the chosen intent needs, leave others as null/[]):
 - correlation      → target_columns=[<2 or more numeric cols>] (empty = full numeric matrix)

@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,14 @@ from api.config import settings
 from api.rate_limit import limiter
 from memory.session_store import SessionStore
 from memory.vector_store import VectorStore
+
+# Surface application INFO logs (intent classification, status changes, etc.).
+# Without this the root logger defaults to WARNING and our logger.info() calls
+# in the orchestrator are silently dropped.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 # ── Shared singletons (attached to app.state) ──────────────────────────────────
 session_store: SessionStore | None = None
