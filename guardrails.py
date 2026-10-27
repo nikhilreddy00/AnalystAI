@@ -168,7 +168,7 @@ def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list
 
 _PII_COL_RE = re.compile(
     r"(?:^|_)(?:e?mail|phone|mobile|ssn|address|street|dob|birth|passport|"
-    r"first_?name|last_?name|full_?name|names?)(?:$|_)", re.I)
+    r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
 _THING_NAME_RE = re.compile(
@@ -192,7 +192,7 @@ def _luhn(digits: str) -> bool:
 
 
 def is_pii_column(name: str) -> bool:
-    name = str(name)
+    name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", str(name))   # CustomerName → Customer_Name
     return bool(_PII_COL_RE.search(name)) and not _THING_NAME_RE.search(name)
 
 
