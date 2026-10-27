@@ -71,6 +71,10 @@ _BANNED_ATTRS = {"to_csv", "to_parquet", "to_pickle", "to_json", "to_excel", "to
                  "savez", "savetxt", "loadtxt", "fromfile", "tofile", "system", "popen"}
 
 
+def _banned_io(name: str) -> bool:
+    return name in _BANNED_ATTRS or name.startswith("read_")
+
+
 def check_code(code: str) -> str | None:
     """AST allowlist for sandbox code: analysis libraries only, no file/process/reflection."""
     try:
@@ -87,12 +91,17 @@ def check_code(code: str) -> str | None:
         for m in mods:
             if m.split(".")[0] not in _ALLOWED_IMPORTS:
                 return f"import not allowed: {m}"
-        if isinstance(node, ast.Name) and node.id in _BANNED_NAMES:
+        if isinstance(node, ast.ImportFrom):   # `from pandas import read_csv` dodges the attr check
+            bad = next((a.name for a in node.names
+                        if a.name in _BANNED_NAMES or _banned_io(a.name)), None)
+            if bad:
+                return f"import not allowed: {bad}"
+        if isinstance(node, ast.Name) and (node.id in _BANNED_NAMES or _banned_io(node.id)):
             return f"call not allowed: {node.id}"
         if isinstance(node, ast.Attribute):
             if node.attr.startswith("__"):
                 return f"dunder attribute access not allowed: {node.attr}"
-            if node.attr in _BANNED_ATTRS or node.attr.startswith("read_"):
+            if _banned_io(node.attr):
                 return f"I/O call not allowed: {node.attr}"
     return None
 
