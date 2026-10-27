@@ -34,7 +34,7 @@ from evals.scoring import (
     false_findings,
     hard_rule,
 )
-from llm.client import trace_meter
+from llm.client import get_client, trace_meter
 from orchestrator.state import (
     AnalysisSession,
     AnalysisTask,
@@ -73,7 +73,7 @@ async def run_analysis_case(case: dict) -> dict:
 
     findings, error = None, None
     try:
-        findings = await run_analysis_agent(session)
+        findings = await run_analysis_agent(session, get_client())
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
 

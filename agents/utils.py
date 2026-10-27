@@ -15,6 +15,7 @@ def strip_markdown_fences(raw: str) -> str:
       - ```python ... ```
       - ``` ... ``` (no language specifier)
       - Triple backticks embedded inside content (uses first/last fence pair)
+      - Prose before/after a fenced block (returns the longest block)
     """
     raw = raw.strip()
     match = re.match(
@@ -24,7 +25,9 @@ def strip_markdown_fences(raw: str) -> str:
     )
     if match:
         return match.group(1).strip()
-    return raw
+    # Prose around the block ("Now I have what I need: ```python ...```"): take the longest block.
+    blocks = re.findall(r"```(?:json|python|sql)?[ \t]*\n(.*?)```", raw, re.DOTALL)
+    return max(blocks, key=len).strip() if blocks else raw
 
 
 def safe_column_name(col: str) -> str:

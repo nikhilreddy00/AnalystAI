@@ -320,6 +320,20 @@ class DataNarrative(BaseModel):
     entity_plural: str = "records"         # plural form — "passengers", "orders"
 
 
+class Evidence(BaseModel):
+    """Why one finding can be trusted (ADR-0001): built deterministically from the code that ran
+    and its output, never written by the model."""
+    id: str                                # stable: "corr:revenue__units", "seg:segment/revenue"
+    kind: Literal["correlation", "trend", "segment", "anomaly", "test"]
+    claim: str                             # one line, from the computed values
+    code: str                              # the analysis body that produced it
+    result_excerpt: str                    # the finding's JSON, truncated
+    row_count: int                         # rows behind it (min non-null of its columns)
+    confidence: Literal["high", "medium", "low"]
+    confidence_reason: str
+    assumptions: list[str] = Field(default_factory=list)
+
+
 class AnalysisFindings(BaseModel):
     """Produced by the Analysis Agent from E2B sandbox execution."""
     eda_summary: dict[str, Any]           # describe() output per metric column
@@ -345,6 +359,7 @@ class AnalysisFindings(BaseModel):
     target_correlations: dict[str, float] = Field(default_factory=dict)        # Pearson r vs target_col (when one exists)
     target_col: str | None = None                                              # auto-detected target column name
     column_roles_summary: dict[str, str] = Field(default_factory=dict)         # column → role (id/binary/continuous/...)
+    evidence: list[Evidence] = Field(default_factory=list)                     # Phase 3: one per finding
 
 
 # ── Agent 5 output: ChartConfig ───────────────────────────────────────────────

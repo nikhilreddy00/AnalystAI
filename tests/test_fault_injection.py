@@ -53,7 +53,7 @@ def sandbox(monkeypatch):
 async def test_analysis_llm_stop_reasons_raise_typed(recorded_llm, sandbox, response, error):
     recorded_llm.responses.append(response)
     with pytest.raises(error):
-        await analysis_agent.run_analysis_agent(_session())
+        await analysis_agent.run_analysis_agent(_session(), recorded_llm)
     assert sandbox.calls == []
 
 
@@ -82,14 +82,14 @@ async def test_api_timeout_is_typed():
 async def test_bad_code_is_blocked_before_the_sandbox(recorded_llm, sandbox, bad_body, reason):
     recorded_llm.responses += [bad_body, bad_body]          # the guided retry repeats the mistake
     with pytest.raises(GuardrailViolation, match=reason):
-        await analysis_agent.run_analysis_agent(_session())
+        await analysis_agent.run_analysis_agent(_session(), recorded_llm)
     assert sandbox.calls == []                               # never reached E2B
     assert "rejected" in recorded_llm.calls[1]["messages"][-1]["content"]
 
 
 async def test_guided_retry_recovers(recorded_llm, sandbox):
     recorded_llm.responses += ["import os", GOOD_BODY]
-    findings = await analysis_agent.run_analysis_agent(_session())
+    findings = await analysis_agent.run_analysis_agent(_session(), recorded_llm)
     assert findings.correlations == {"revenue__units": 0.1}
     assert len(sandbox.calls) == 1
 
@@ -114,7 +114,35 @@ async def test_sandbox_failure_is_typed_not_empty(recorded_llm, sandbox, result)
     recorded_llm.responses.append(GOOD_BODY)
     sandbox.result = result
     with pytest.raises(SandboxError):
-        await analysis_agent.run_analysis_agent(_session())
+        await analysis_agent.run_analysis_agent(_session(), recorded_llm)
+
+
+# ── Post-execution hard rules: empty, invented columns, ungrounded numbers ─────────────────
+
+_TEST = {"test_name": "t-test revenue by segment", "statistic": 2.5, "p_value": 0.012}
+
+
+@pytest.mark.parametrize("output, reason", [
+    ({}, "empty"),
+    ({"correlations": {"profit__units": 0.4}}, "unknown column"),
+    ({"statistical_tests": [{**_TEST, "interpretation": "revenue rose 37.5% after discounts"}]},
+     "37.5"),
+])
+async def test_bad_findings_get_one_retry_then_raise(recorded_llm, sandbox, output, reason):
+    recorded_llm.responses += [GOOD_BODY, GOOD_BODY]
+    sandbox.result = ExecutionResult("", "", None, output_json=json.dumps(output))
+    with pytest.raises(GuardrailViolation, match=reason):
+        await analysis_agent.run_analysis_agent(_session(), recorded_llm)
+    assert len(sandbox.calls) == 2                               # retried once, then loud
+    assert reason in recorded_llm.calls[1]["messages"][-1]["content"]   # the model was told why
+
+
+async def test_grounded_interpretation_passes(recorded_llm, sandbox):
+    recorded_llm.responses.append(GOOD_BODY)
+    sandbox.result = ExecutionResult("", "", None, output_json=json.dumps(
+        {"statistical_tests": [{**_TEST, "interpretation": "t=2.50, p=0.012 (< 0.05)"}]}))
+    findings = await analysis_agent.run_analysis_agent(_session(), recorded_llm)
+    assert findings.statistical_tests[0].p_value == 0.012 and findings.evidence
 
 
 # ── SQL ────────────────────────────────────────────────────────────────────────
@@ -155,7 +183,7 @@ async def test_column_names_are_delimited_in_analysis_and_intake_prompts(recorde
     recorded_llm.responses += [GOOD_BODY, json.dumps({
         "raw_query": "q", "target_metrics": ["revenue"], "analysis_types": ["eda"]})]
 
-    await analysis_agent.run_analysis_agent(session)
+    await analysis_agent.run_analysis_agent(session, recorded_llm)
     await run_intake_agent(session, "q")
 
     for call in recorded_llm.calls:
@@ -176,7 +204,7 @@ def _find_all(text: str, sub: str) -> list[int]:
 # ── Graph: a typed error becomes the SSE error event ───────────────────────────
 
 async def test_typed_error_surfaces_as_sse_error_event(monkeypatch):
-    async def boom(session):
+    async def boom(session, llm):
         raise SandboxError("analysis", "Timeout", "The analysis code failed in the sandbox: Timeout")
 
     monkeypatch.setattr(graph, "run_analysis_agent", boom)
