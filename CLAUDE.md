@@ -23,8 +23,8 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 0 | Research + gap map + ADRs (`docs/research/`, `docs/adr/`) | ✅ done (2026-10-27) |
 | 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | ✅ done (2026-10-27) — `docs/baselines/phase1.md` |
 | 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | ✅ done (2026-10-27) — `docs/baselines/phase2.md` (analysis 87.5%, e2e 45.0%) |
-| 3 | Analysis agent as the agent-contract template | ⏭ next |
-| 4 | SQL path + YAML semantic layer | pending |
+| 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
+| 4 | SQL path + YAML semantic layer | ⏭ next |
 | 5 | Roll the contract out: Intake → Cleaning → Insight → Quality check → Ingestion → Visualization | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 

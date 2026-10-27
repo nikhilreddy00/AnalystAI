@@ -52,18 +52,21 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
 
 ### 6. Guardrails
 - Pure checks live in `guardrails.py`. Each returns `None` or a reason.
-- The agent decides whether a reason is hard (retry, then raise a typed `AgentError`) or soft. Analysis has four hard rules:
+- The agent decides whether a reason is hard or soft, and how a hard rule is enforced. Analysis has four hard rules:
   1. the code AST allowlist, plus the column references in the code;
   2. findings are non-empty (EDA counts only for an EDA question);
   3. finding columns exist;
   4. every number in the prose is grounded in a computed value (`ungrounded_numbers`).
-- One guided retry covers all four. The rejection message quotes the offending sentence, because "numbers [...] are ungrounded" alone made the model repeat the mistake.
+- Rules 1–3 get one guided retry, then raise a typed `AgentError`.
+- Rule 4 is enforced by **rewriting** the offending sentence from the stored values (`ground_prose`), and the evidence records that it was rewritten. A retry cost ~25s per run and set the p95. A deterministic repair holds the rule by construction for free.
+- Prefer a repair whenever the rule has a deterministic fix.
 - Every rejection writes a trace line holding only the rule label (`trace_verdict`), since reasons quote data. Eval reports count `runs_with_guardrail_retry`.
 
 ## What the analysis agent taught us
 - **Look for scorer and schema bugs before blaming the model.** `trends: list[TrendResult | dict]` coerced every dict into a model object, so the scorer's dict-only filter saw no trends. That made trend fail in every case in Phases 1 and 2, while the agent was reporting the right number.
 - **Put one-right-answer statistics in deterministic code.** Asking the model for per-segment MoM and joint breakdowns doubled its output (3–4.6k tokens, 45–60s per call), and it still used a second MoM definition. `_build_standard_code` computes them for the requested types, and its MoM replaces the model's. The model keeps the judgment work: tests, anomalies, interpretation. Smoke cost fell from ~$0.08 to ~$0.03 per question.
 - **A hard rule needs a precise check.** Grounding read `p=5.7e-40` as `5.7` and `40` and rejected correct prose. Before you make a check hard, run it over real output.
+- **Delimit data wherever it surfaces, not just where it enters.** A cleaned frame can be just the injected row, and then a group name *is* the injection. The insight prompt delimited the head rows but not the segment names derived from data, and E2E caught the echo.
 - **The rejection count is the latency budget.** p95 tracked the retry rate almost one for one. Prevent the causes in the prompt: the model wrote `department=Easy` as a column, and EDA-only answers counted as empty.
 - **The evidence UI found bugs the eval couldn't.** One real run in the drawer showed `discount` (a rate) being summed for MoM and per-segment trends claiming all 3,025 rows. The evals don't score evidence, so read some by hand.
 - **Security review on every commit pays off.** It caught four masking and delimiting gaps in shared guardrails: a fail-open PII name list, camelCase names, integer and float PII, and close-tag spellings. Fix those in the shared function, not at the caller.
