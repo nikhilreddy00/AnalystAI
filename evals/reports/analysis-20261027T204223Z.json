@@ -1,0 +1,1955 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261027T204223Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "cbeaa54",
+  "started_at": "20261027T204223Z",
+  "only": null
+ },
+ "summary": {
+  "cases": 46,
+  "runs": 46,
+  "pass_rate": 0.7609,
+  "case_majority_pass_rate": 0.7609,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 5,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "cost_per_question_usd": 0.0305,
+  "latency_p50_s": 27.88,
+  "latency_p95_s": 33.16,
+  "numeric_accuracy": 0.7317,
+  "insight_recall": 0.5769,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 1395
+ },
+ "runs": {
+  "aggregation-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 29.6,
+    "cost_usd": 0.035,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 23.97,
+    "cost_usd": 0.02617,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 28.21,
+    "cost_usd": 0.03254,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 29.19,
+    "cost_usd": 0.03092,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 31.16,
+    "cost_usd": 0.03554,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-1": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 19.74,
+    "cost_usd": 0.02072,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-2": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 17.95,
+    "cost_usd": 0.02072,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-3": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 17.63,
+    "cost_usd": 0.01919,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-4": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 22.03,
+    "cost_usd": 0.02135,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-5": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 17.72,
+    "cost_usd": 0.01955,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5695, want 0.569",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 39,
+     "details": []
+    },
+    "latency_s": 30.13,
+    "cost_usd": 0.03164,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5452, want 0.545",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 39,
+     "details": []
+    },
+    "latency_s": 28.42,
+    "cost_usd": 0.03164,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5716, want 0.572",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": false,
+      "detail": "ungrounded numbers ['7.11', '7.11', '7.11', '7.11', '7.11']"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 39,
+     "details": []
+    },
+    "latency_s": 26.37,
+    "cost_usd": 0.0296,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5513, want 0.551",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 39,
+     "details": []
+    },
+    "latency_s": 28.29,
+    "cost_usd": 0.03268,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.6225, want 0.623",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": false,
+      "detail": "ungrounded numbers ['3.91', '3.91', '3.91', '3.91']"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 39,
+     "details": []
+    },
+    "latency_s": 28.49,
+    "cost_usd": 0.03188,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 40,
+     "details": []
+    },
+    "latency_s": 31.6,
+    "cost_usd": 0.03502,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 40,
+     "details": []
+    },
+    "latency_s": 29.8,
+    "cost_usd": 0.03502,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 40,
+     "details": []
+    },
+    "latency_s": 30.59,
+    "cost_usd": 0.03511,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 40,
+     "details": []
+    },
+    "latency_s": 32.22,
+    "cost_usd": 0.03727,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 40,
+     "details": []
+    },
+    "latency_s": 30.46,
+    "cost_usd": 0.03502,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 31,
+     "details": []
+    },
+    "latency_s": 24.95,
+    "cost_usd": 0.02882,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 34,
+     "details": []
+    },
+    "latency_s": 23.04,
+    "cost_usd": 0.02702,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 34,
+     "details": []
+    },
+    "latency_s": 28.86,
+    "cost_usd": 0.03562,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 34,
+     "details": []
+    },
+    "latency_s": 22.27,
+    "cost_usd": 0.02653,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 34,
+     "details": []
+    },
+    "latency_s": 28.7,
+    "cost_usd": 0.03562,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 10.3,
+    "cost_usd": 0.01151,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 9.9,
+    "cost_usd": 0.00935,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 21.53,
+    "cost_usd": 0.02363,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 29,
+     "details": []
+    },
+    "latency_s": 19.12,
+    "cost_usd": 0.0232,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 34,
+     "details": []
+    },
+    "latency_s": 22.07,
+    "cost_usd": 0.02758,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment_trend-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": false,
+      "detail": "no MoM trend for revenue in segment B (want -12.00%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 31,
+     "details": []
+    },
+    "latency_s": 33.32,
+    "cost_usd": 0.03986,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "segment_trend-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": false,
+      "detail": "no MoM trend for revenue in segment B (want -12.00%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 31,
+     "details": []
+    },
+    "latency_s": 34.34,
+    "cost_usd": 0.04094,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "segment_trend-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": false,
+      "detail": "no MoM trend for revenue in segment B (want -12.00%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 34,
+     "details": []
+    },
+    "latency_s": 33.97,
+    "cost_usd": 0.04016,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "simpson-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "latency_s": 23.13,
+    "cost_usd": 0.02855,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "latency_s": 23.32,
+    "cost_usd": 0.0295,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "latency_s": 23.15,
+    "cost_usd": 0.02869,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "latency_s": 27.54,
+    "cost_usd": 0.04788,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "latency_s": 18.61,
+    "cost_usd": 0.02243,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson_strat-1": [
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": false,
+      "detail": "no department\u00d7group breakdown of converted",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": false,
+      "detail": "ungrounded numbers ['12.10', '11.84']"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 20,
+     "details": []
+    },
+    "latency_s": 28.92,
+    "cost_usd": 0.03701,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "simpson_strat-2": [
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": false,
+      "detail": "no department\u00d7group breakdown of converted",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": false,
+      "detail": "ungrounded numbers ['11.72', '12.09']"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 28.72,
+    "cost_usd": 0.03545,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "simpson_strat-3": [
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": false,
+      "detail": "no department\u00d7group breakdown of converted",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": false,
+      "detail": "unknown columns ['count']"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 16,
+     "details": []
+    },
+    "latency_s": 26.54,
+    "cost_usd": 0.03238,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-1": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want -3.11%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 32.68,
+    "cost_usd": 0.03969,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-2": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 5.97%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 31.91,
+    "cost_usd": 0.03827,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-3": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 2.48%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 25.01,
+    "cost_usd": 0.03015,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-4": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 13.70%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 25.64,
+    "cost_usd": 0.02978,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-5": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 0.59%)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 31.5,
+    "cost_usd": 0.03806,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ]
+ }
+}
