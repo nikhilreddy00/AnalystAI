@@ -143,6 +143,8 @@ def test_summary_and_paired_compare():
     assert s["pass_rate"] == pytest.approx(5 / 9, abs=1e-3)
     assert s["flip_rate"] == pytest.approx(1 / 3, abs=1e-3)
     assert s["case_majority_pass_rate"] == pytest.approx(2 / 3, abs=1e-3)
+    lat = summarize({"a": [_run(True, latency=x) for x in (1.0, 2.0, 10.0)]})
+    assert lat["latency_p95_s"] <= 10.0                     # never extrapolates past the max
 
     prev = {"meta": {"report": "prev"}, "summary": {"pass_rate": 1.0},
             "runs": {"a": [_run(True)] * 3, "b": [_run(True)] * 3, "c": [_run(True)] * 3}}

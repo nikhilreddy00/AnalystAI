@@ -28,7 +28,7 @@ trace_meter: ContextVar[list[dict] | None] = ContextVar("trace_meter", default=N
 
 
 class LLMError(Exception):
-    """The model refused or was truncated — the output must not be trusted."""
+    """The model refused — there is no output to use."""
 
 
 @dataclass
@@ -49,8 +49,10 @@ class LLMClient(Protocol):
 
 
 def _check(result: LLMResult, agent: str) -> LLMResult:
-    if result.stop_reason in ("refusal", "max_tokens"):
-        raise LLMError(f"{agent}: model stopped with '{result.stop_reason}'")
+    # ponytail: max_tokens is traced, not raised. The baseline showed the analysis agent truncates
+    # in most runs; raising would change prod behavior in Phase 1. Typed handling lands in Phase 2.
+    if result.stop_reason == "refusal":
+        raise LLMError(f"{agent}: model stopped with 'refusal'")
     return result
 
 

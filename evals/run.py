@@ -135,13 +135,16 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict:
         out["latency_s"] = round(time.perf_counter() - start, 2)
         out["cost_usd"] = round(sum(r["cost_usd"] for r in meter), 5)
         out["llm_calls"] = len(meter)
+        out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in meter)
         out["passed"] = all(c["ok"] for c in out["checks"])
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
 
 
 def _pct(values: list[float], q: float) -> float:
-    return round(statistics.quantiles(values, n=100)[q - 1], 2) if len(values) > 1 else (values or [0])[0]
+    if len(values) < 2:
+        return (values or [0])[0]
+    return round(statistics.quantiles(values, n=100, method="inclusive")[q - 1], 2)
 
 
 def summarize(runs: dict[str, list[dict]]) -> dict:
@@ -155,6 +158,7 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "flip_rate": round(sum(len({r["passed"] for r in rs}) > 1 for rs in runs.values()) / len(runs), 4),
         "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
         "errors": sum(bool(r["error"]) for r in flat),
+        "runs_with_truncated_llm_output": sum(r.get("truncated_calls", 0) > 0 for r in flat),
         "cost_per_question_usd": round(statistics.mean(r["cost_usd"] for r in flat), 4),
         "latency_p50_s": _pct([r["latency_s"] for r in flat], 50),
         "latency_p95_s": _pct([r["latency_s"] for r in flat], 95),

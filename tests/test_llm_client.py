@@ -19,11 +19,13 @@ async def test_recorded_client_replays_in_order_and_records_calls():
         await client.complete(messages=[], max_tokens=10, agent="t", prompt_version="v0")
 
 
-@pytest.mark.parametrize("stop", ["refusal", "max_tokens"])
-async def test_untrustworthy_stop_reasons_raise(stop):
-    client = RecordedClient([LLMResult(text="partial", stop_reason=stop)])
-    with pytest.raises(LLMError, match=stop):
+async def test_refusal_raises_but_truncation_is_returned():
+    client = RecordedClient([LLMResult(text="", stop_reason="refusal"),
+                             LLMResult(text="partial", stop_reason="max_tokens")])
+    with pytest.raises(LLMError, match="refusal"):
         await client.complete(messages=[], max_tokens=10, agent="t", prompt_version="v0")
+    truncated = await client.complete(messages=[], max_tokens=10, agent="t", prompt_version="v0")
+    assert truncated.stop_reason == "max_tokens"   # Phase 1: traced, not raised
 
 
 def _fake_sdk(captured: dict):
