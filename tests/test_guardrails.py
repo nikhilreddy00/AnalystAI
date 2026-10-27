@@ -37,6 +37,9 @@ def test_code_allowlist():
     assert "to_csv" in g.check_code("df.to_csv('/tmp/out.csv')")
     assert "read_csv" in g.check_code("from pandas import read_csv as rc\nrc('http://x')")
     assert "load" in g.check_code("from numpy import load")
+    assert g.check_code("v = getattr(s, 'value', s)") is None
+    assert "getattr" in g.check_code("getattr(pd, 'read_' + 'csv')('x')")
+    assert "getattr" in g.check_code("getattr(x, '__class__')")
     assert g.check_code("d = df.to_dict('records'); t = pd.to_datetime(df['d'])") is None
 
 
