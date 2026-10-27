@@ -91,6 +91,10 @@ Rules:
 - For correlations: only numeric columns, skip pairs with |r| < 0.2
 - For segmentation: use the segment columns from the task, top 10 groups by count
 - Return NOTHING — just mutate `result` dict
+- Sandbox rules (code that breaks them is rejected): imports only from pandas, numpy, scipy,
+  sklearn, statsmodels, json, math, statistics, datetime, re, collections, itertools; no
+  file or network I/O (no read_*/to_csv/open); no eval/exec/getattr/setattr/__dunder__ access.
+  Reference only columns listed in the schema.
 - Be compact: at most ~120 lines, no comments, no helper docstrings. Cover only the
   requested analysis types. Output that runs past the length limit is discarded.\
 """
@@ -256,7 +260,7 @@ async def _generate_code(prompt: str, known_columns: list[str]) -> str:
     messages = [{"role": "user", "content": prompt}]
     for _ in range(2):
         response = await get_client().complete(
-            agent="analysis", prompt_version="v1",
+            agent="analysis", prompt_version="v2",
             max_tokens=8000,   # v0's 3000 truncated 73% of runs (Phase 1 baseline)
             system=_CODE_SYSTEM,
             messages=messages,
