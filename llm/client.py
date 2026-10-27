@@ -72,6 +72,12 @@ def _trace(record: dict) -> None:
         pass  # tracing must never break an analysis
 
 
+def trace_verdict(agent: str, prompt_version: str, rule: str) -> None:
+    """Record a guardrail rejection (ADR-0005). The rule label only: reasons quote data."""
+    _trace({"ts": datetime.now(timezone.utc).isoformat(), "agent": agent,
+            "prompt_version": prompt_version, "guardrail": rule})
+
+
 class ClaudeClient:
     def __init__(self, model: str | None = None):
         self.model = model or settings.llm_model

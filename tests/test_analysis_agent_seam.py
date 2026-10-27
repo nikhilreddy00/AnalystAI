@@ -63,12 +63,15 @@ def _fake_sandbox(monkeypatch, output: dict):
 async def test_tool_results_are_masked_and_delimited(recorded_llm, monkeypatch):
     _fake_sandbox(monkeypatch, {"correlations": {"revenue__units": 0.5}})
     recorded_llm.responses += [
+        "import os",                                   # rejected → the retry may use tools
         _tool_call("sample_rows", {"n": 3, "columns": ["customer_email", "customer_name", "revenue"]}),
         "result['correlations']['revenue__units'] = 0.5",
     ]
     await analysis_agent.run_analysis_agent(_session(), recorded_llm)
 
-    second = recorded_llm.calls[1]["messages"]
+    assert recorded_llm.calls[0]["tools"] is None      # first attempt: schema + samples suffice
+    assert recorded_llm.calls[1]["tools"] == analysis_agent.TOOLS
+    second = recorded_llm.calls[2]["messages"]
     tool_result = second[-1]["content"][0]
     assert second[-2]["role"] == "assistant" and second[-2]["content"][0]["type"] == "tool_use"
     assert tool_result["tool_use_id"] == "t1" and not tool_result["is_error"]
@@ -80,11 +83,12 @@ async def test_tool_results_are_masked_and_delimited(recorded_llm, monkeypatch):
 async def test_tool_loop_is_bounded(recorded_llm, monkeypatch):
     _fake_sandbox(monkeypatch, {"correlations": {"revenue__units": 0.5}})
     rounds = analysis_agent._MAX_TOOL_ROUNDS
+    recorded_llm.responses.append("import os")
     recorded_llm.responses += [_tool_call("get_schema", {"column": "revenue"}, f"t{i}")
                                for i in range(rounds)]
     recorded_llm.responses.append("result['correlations']['revenue__units'] = 0.5")
     await analysis_agent.run_analysis_agent(_session(), recorded_llm)
-    assert [c["tool_choice"] for c in recorded_llm.calls] == [None] * rounds + [{"type": "none"}]
+    assert [c["tool_choice"] for c in recorded_llm.calls[1:]] == [None] * rounds + [{"type": "none"}]
 
 
 def test_unknown_column_tool_call_is_an_error_not_a_crash():
@@ -129,3 +133,48 @@ def test_fences_are_found_inside_prose():
     assert strip_markdown_fences(text) == "x = 1"
     assert strip_markdown_fences("```json\n{\"a\": 1}\n```") == '{"a": 1}'
     assert strip_markdown_fences("plain") == "plain"
+
+
+def _run_builtin(df, task: AnalysisTask) -> dict:
+    """Execute header + standard + guaranteed code locally (as E2B would) on `df`."""
+    import contextlib
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
+            + analysis_agent._build_standard_code(contract, task)
+            + analysis_agent._build_guaranteed_code(contract) + analysis_agent._CODE_FOOTER)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        exec(code, {"df": df})
+    return json.loads(out.getvalue())
+
+
+def test_standard_block_computes_planted_truths():
+    df, truth = datagen.make_sales(2)
+    raw = _run_builtin(df, AnalysisTask(raw_query="q", target_metrics=["revenue", "discount"],
+                                        segments=["segment"],
+                                        analysis_types=["trend", "correlation"]))
+    mom = {t["segment"]: t["pct_change"] for t in raw["trends"] if t["column"] == "revenue"}
+    assert mom[None] == pytest.approx(truth["total_mom_pct"], abs=0.01)
+    assert mom["B"] == pytest.approx(truth["segB_mom_pct"], abs=0.01)
+    assert raw["correlations"]["revenue__discount"] == pytest.approx(truth["corr_revenue_discount"], abs=1e-3)
+    assert "trend:revenue (B):MoM" in raw["builtin"] and "corr:revenue__discount" in raw["builtin"]
+
+    simpson, t = datagen.make_simpson(1)
+    raw = _run_builtin(simpson, AnalysisTask(raw_query="q", target_metrics=["converted"],
+                                             segments=["group", "department"],
+                                             analysis_types=["segmentation"]))
+    joint = next(s for s in raw["segments"] if s["segment_column"] == "group|department")
+    got = {r["name"]: r["value"] for r in joint["results"]}
+    assert got["treatment|Hard"] == pytest.approx(t["dept_conversion"]["Hard:treatment"])
+    assert not raw["trends"]                                   # trend wasn't requested
+
+
+def test_standard_block_never_overrides_the_model():
+    df, _ = datagen.make_sales(1)
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    code = analysis_agent._build_standard_code(contract, AnalysisTask(
+        raw_query="q", target_metrics=["revenue", "units"], analysis_types=["correlation"]))
+    g = {"df": df, "pd": __import__("pandas"),
+         "result": {"correlations": {"units__revenue": 0.5}, "trends": [], "segments": []}}
+    exec(code, g)
+    assert g["result"]["correlations"] == {"units__revenue": 0.5} and not g["result"]["builtin"]

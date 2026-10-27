@@ -6,6 +6,7 @@ import ast
 import asyncio
 import json
 from pathlib import Path
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import httpx
@@ -17,6 +18,7 @@ from agents.errors import (
     GuardrailViolation, LLMOutputError, LLMRefusal, LLMTruncated, LLMUnavailable, SandboxError,
 )
 from agents.ingestion_agent import _enrich_schema_with_llm
+from api.config import settings
 from agents.intake_agent import generate_data_narrative, run_intake_agent
 from connectors.csv_connector import CSVConnector
 from connectors.sql_connector import SQLConnector
@@ -134,6 +136,9 @@ async def test_bad_findings_get_one_retry_then_raise(recorded_llm, sandbox, outp
     with pytest.raises(GuardrailViolation, match=reason):
         await analysis_agent.run_analysis_agent(_session(), recorded_llm)
     assert len(sandbox.calls) == 2                               # retried once, then loud
+    trace = (Path(settings.trace_dir) / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl").read_text()
+    assert '"guardrail": ' in trace                           # the label, never the data:
+    assert "profit" not in trace and "37.5" not in trace
     assert reason in recorded_llm.calls[1]["messages"][-1]["content"]   # the model was told why
 
 

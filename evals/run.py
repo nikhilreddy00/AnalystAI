@@ -155,9 +155,11 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict:
         start = time.perf_counter()
         out = await (run_analysis_case if suite == "analysis" else run_e2e_case)(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
-        out["cost_usd"] = round(sum(r["cost_usd"] for r in meter), 5)
-        out["llm_calls"] = len(meter)
-        out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in meter)
+        calls = [r for r in meter if "model" in r]
+        out["cost_usd"] = round(sum(r["cost_usd"] for r in calls), 5)
+        out["llm_calls"] = len(calls)
+        out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
+        out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
         out["passed"] = all(c["ok"] for c in out["checks"])
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
@@ -181,6 +183,7 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
         "errors": sum(bool(r["error"]) for r in flat),
         "runs_with_truncated_llm_output": sum(r.get("truncated_calls", 0) > 0 for r in flat),
+        "runs_with_guardrail_retry": sum(bool(r.get("rejections")) for r in flat),
         "cost_per_question_usd": round(statistics.mean(r["cost_usd"] for r in flat), 4),
         "latency_p50_s": _pct([r["latency_s"] for r in flat], 50),
         "latency_p95_s": _pct([r["latency_s"] for r in flat], 95),
@@ -256,7 +259,8 @@ def to_markdown(report: dict) -> str:
         notes = sorted({f"{c['kind']}: {c['detail']}" for r in rs for c in r["checks"] if not c["ok"]}
                        | {f"HARD {h['rule']}: {h['detail']}" for r in rs for h in r["hard"] if not h["ok"]}
                        | {f"false: {d}" for r in rs for d in (r.get("false_findings") or {}).get("details", [])}
-                       | {f"error: {r['error'][:120]}" for r in rs if r["error"]})
+                       | {f"error: {r['error'][:120]}" for r in rs if r["error"]}
+                       | {f"retry: {g}" for r in rs for g in r.get("rejections", [])})
         cell = "<br>".join(n.replace("|", "\\|") for n in notes) or "—"
         lines.append(f"| {cid} | {sum(r['passed'] for r in rs)}/{len(rs)} | {cell} |")
     return "\n".join(lines) + "\n"

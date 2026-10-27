@@ -33,10 +33,11 @@ from guardrails import (
     mask_row,
     ungrounded_numbers,
 )
-from llm.client import LLMClient
+from llm.client import LLMClient, trace_verdict
 from orchestrator.state import (
     AgentCard,
     AnalysisFindings,
+    AnalysisTask,
     AnalysisSession,
     AnomalyRecord,
     CleaningAudit,
@@ -49,7 +50,7 @@ from orchestrator.state import (
 )
 from sandbox.executor import run_code
 
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v6"
 
 ANALYSIS_CARD = AgentCard(
     name="analysis",
@@ -91,6 +92,7 @@ result = {
     "head_preview": [],
     "dtypes_summary": {},
     "missing_pct": {},
+    "assumptions": [],
 }
 """
 
@@ -190,6 +192,71 @@ except Exception:
     return "\n".join(lines)
 
 
+def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
+    """Statistics with one right answer, for the requested analysis types, computed here rather
+    than by the model (shorter generated code, no arithmetic slips). Each fills a gap only: if
+    the model already reported it, the model's entry stands. Ids go to result['builtin'] so
+    evidence can show this code instead of the model's."""
+    types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
+    names = {c.name for c in contract.columns}
+    targets = [c for c in task.target_metrics if c in contract.metric_columns]
+    segments = [c for c in task.segments if c in names]
+    date = next(iter(contract.date_columns), None)
+    return f"""
+# ─── Standard statistics (deterministic, fill gaps only) ───
+result['builtin'] = []
+_targets, _segs, _date = {targets!r}, {segments!r}, {date!r}
+try:
+    if {bool(types & {"correlation", "hypothesis"})!r}:
+        for _i, _a in enumerate(_targets):
+            for _b in _targets[_i + 1:]:
+                if f'{{_a}}__{{_b}}' not in result['correlations'] and f'{{_b}}__{{_a}}' not in result['correlations']:
+                    _r = df[_a].corr(df[_b])
+                    if _r == _r:
+                        result['correlations'][f'{{_a}}__{{_b}}'] = round(float(_r), 4)
+                        result['builtin'].append(f'corr:{{_a}}__{{_b}}')
+except Exception:
+    pass
+try:
+    if _date and {bool(types & {"trend", "forecasting"})!r}:
+        _month = pd.to_datetime(df[_date], errors='coerce').dt.to_period('M')
+        _have = {{(t.get('column'), t.get('period'), t.get('segment')) for t in result['trends'] if isinstance(t, dict)}}
+        def _mom(_frame, _col):
+            _tot = _frame.groupby(_month.loc[_frame.index])[_col].sum().sort_index()
+            if len(_tot) < 2 or _tot.iloc[-2] == 0:
+                return None
+            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2)
+        for _c in _targets:
+            _jobs = [(None, df)]
+            if _segs:
+                _top = df[_segs[0]].value_counts().head(10).index
+                _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]
+            for _seg, _frame in _jobs:
+                if (_c, 'MoM', _seg) in _have:
+                    continue
+                _p = _mom(_frame, _c)
+                if _p is not None:
+                    result['trends'].append({{'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg,
+                                             'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'}})
+                    result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':MoM')
+except Exception:
+    pass
+try:
+    if len(_segs) >= 2 and 'segmentation' in {sorted(types)!r}:
+        _joint = '|'.join(_segs[:2])
+        for _c in _targets:
+            if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):
+                continue
+            _g = df.groupby(_segs[:2])[_c].mean()
+            _n = df.groupby(_segs[:2]).size().sort_values(ascending=False).head(20).index
+            result['segments'].append({{'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',
+                                       'results': [{{'name': f'{{_a}}|{{_b}}', 'value': round(float(_g[(_a, _b)]), 4)}} for _a, _b in _n]}})
+            result['builtin'].append(f'seg:{{_joint}}/{{_c}}')
+except Exception:
+    pass
+"""
+
+
 class AnalysisContext(BaseModel):
     """Everything the model is told about this run (ADR-0001 context builder)."""
     row_count: int
@@ -202,6 +269,7 @@ class AnalysisContext(BaseModel):
     analysis_types: list[str]
     timeframe: str
     cleaning_notes: list[str]
+    samples: dict[str, list[Any]]      # 3 masked values per column (from the DataContract)
 
     def render(self) -> str:
         # Column names come from the user's file, so the whole schema block is delimited.
@@ -212,7 +280,8 @@ class AnalysisContext(BaseModel):
             f"Date columns: {self.date_columns}\n"
             f"Categorical columns: {self.categorical_columns}\n"
             f"Segment columns: {self.segments}\n"
-            f"Target metrics from task: {self.target_metrics}"
+            f"Target metrics from task: {self.target_metrics}\n"
+            f"Sample values (PII masked): {json.dumps(self.samples, default=str)}"
         )
         cleaning = ("\n\nCleaning already applied:\n" + delimit_untrusted(
             "\n".join(self.cleaning_notes))) if self.cleaning_notes else ""
@@ -261,6 +330,7 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         analysis_types=[t.value if hasattr(t, "value") else t for t in task.analysis_types],
         timeframe=task.timeframe or "full dataset",
         cleaning_notes=notes[:_MAX_NOTES],
+        samples={c.name: (c.sample_values or [])[:3] for c in contract.columns[:_MAX_COLUMNS]},
     )
 
 
@@ -320,14 +390,18 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
 
     messages: list[dict] = [{"role": "user", "content": ctx.render()}]
-    for _ in range(2):
+    for attempt in range(2):
+        # Tools only on the guided retry: the first attempt already has the full schema and
+        # masked samples, and in Phase 3 smoke runs every first-attempt lookup was redundant
+        # (+5s, +$0.02 per question). After a rejection, looking at the data can help.
+        tools = TOOLS if attempt else None
         for round_ in range(_MAX_TOOL_ROUNDS + 1):
             response = await llm.complete(
                 agent="analysis", prompt_version=PROMPT_VERSION,
                 max_tokens=8000,   # v0's 3000 truncated 73% of runs (Phase 1 baseline)
-                system=_SYSTEM, messages=messages, tools=TOOLS,
+                system=_SYSTEM, messages=messages, tools=tools,
                 # Last round: tools stay defined (the history has tool blocks) but can't be called.
-                tool_choice={"type": "none"} if round_ == _MAX_TOOL_ROUNDS else None,
+                tool_choice={"type": "none"} if tools and round_ == _MAX_TOOL_ROUNDS else None,
             )
             if not response.tool_calls:
                 break
@@ -344,8 +418,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
         body = strip_markdown_fences(response.text.strip())
         reason = check_code(body) or check_columns(code_column_refs(body), known)
         if reason is None:
-            full_code = (_CODE_HEADER + "\n" + body + "\n" + _build_guaranteed_code(contract)
-                         + _CODE_FOOTER)
+            standard = _build_standard_code(contract, session.task_plan)
+            full_code = (_CODE_HEADER + "\n" + body + "\n" + standard + "\n"
+                         + _build_guaranteed_code(contract) + _CODE_FOOTER)
             execution = await run_code(full_code, df_parquet)
             # Never return empty findings for a failed run: no JSON on stdout means the code died.
             try:
@@ -357,15 +432,28 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             findings = _parse_findings(raw, full_code, execution.figures_base64)
             reason = review_findings(findings, raw, known)
             if reason is None:
-                findings.evidence = build_evidence(findings, raw, body, session.cleaning_audit)
+                findings.evidence = build_evidence(findings, raw, body, standard,
+                                                   session.cleaning_audit)
                 return findings
+        trace_verdict("analysis", PROMPT_VERSION, _rule(reason))
         messages = messages + [
             {"role": "assistant", "content": response.text},
             {"role": "user", "content": f"That code was rejected: {reason}. Rewrite it using only "
-                                        "the listed columns and pandas/numpy/scipy/stdlib math."},
+                                        "the listed columns and pandas/numpy/scipy/stdlib math. "
+                                        "You may call get_schema or sample_rows to look at the "
+                                        "data first."},
         ]
     raise GuardrailViolation("analysis", reason,
                              f"The analysis output was rejected: {reason}.")
+
+
+def _rule(reason: str) -> str:
+    """A fixed label for a rejection reason, safe to write to traces."""
+    for prefix, label in (("every finding", "empty"), ("findings name", "finding_columns"),
+                          ("numbers", "grounding"), ("unknown column", "code_columns")):
+        if reason.startswith(prefix):
+            return label
+    return "code_guard"
 
 
 # ── Post-execution hard rules ──────────────────────────────────────────────────────────────
@@ -398,10 +486,11 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str]) -> str | N
                                      for t in raw.get("statistical_tests", []) if isinstance(t, dict)]
     computed["anomalies"] = [{k: v for k, v in a.items() if k != "explanation"}
                              for a in raw.get("anomalies", []) if isinstance(a, dict)]
-    bad = [n for t in texts for n in ungrounded_numbers(t, [computed, _CONVENTIONS])]
+    bad = [(t, n) for t in texts for n in ungrounded_numbers(t, [computed, _CONVENTIONS])]
     if bad:
-        return (f"numbers {sorted(set(bad))[:8]} in interpretation/explanation text appear in no "
-                "computed result. Build those strings only from computed variables")
+        nums = sorted({n for _, n in bad})[:8]
+        return (f"numbers {nums} in interpretation/explanation text appear in no computed result "
+                f"(e.g. {bad[0][0][:160]!r}). Build those strings only from values you store")
     return None
 
 
@@ -422,8 +511,9 @@ def confidence(n: int, p: float | None = None, r: float | None = None,
     return "high", f"{n} rows" + (f", p = {p:.3g}" if p is not None else "")
 
 
-def build_evidence(f: AnalysisFindings, raw: dict, body: str,
+def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                    audit: CleaningAudit | None) -> list[Evidence]:
+    builtin = set(raw.get("builtin") or []) if isinstance(raw.get("builtin"), list) else set()
     non_null = raw.get("non_null") if isinstance(raw.get("non_null"), dict) else {}
     n_rows = int(raw.get("n_rows") or 0)
     imputed = {d.column: d.before_null_pct for d in (audit.decisions if audit else [])
@@ -439,7 +529,8 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str,
         imp = max((imputed.get(c, 0.0) for c in cols), default=0.0)
         level, why = confidence(n, p, r, imp)
         notes = [f"{c}: {imputed[c]:.0f}% nulls were imputed" for c in cols if c in imputed]
-        return Evidence(id=id_, kind=kind, claim=claim, code=body,
+        return Evidence(id=id_, kind=kind, claim=claim,
+                        code=standard if id_ in builtin else body,
                         result_excerpt=json.dumps(payload, default=str)[:500], row_count=n,
                         confidence=level, confidence_reason=why,
                         assumptions=notes + model_notes)
