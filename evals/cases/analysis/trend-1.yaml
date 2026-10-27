@@ -1,0 +1,20 @@
+id: trend-1
+category: trend
+dataset:
+  name: sales
+  seed: 1
+question: How did revenue change month over month?
+task:
+  analysis_types:
+  - trend
+  target_metrics:
+  - revenue
+  segments: []
+checks:
+- kind: trend
+  column: revenue
+  truth_key: total_mom_pct
+  abs_tol: 1.0
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error

@@ -1,0 +1,26 @@
+id: robustness-4
+category: robustness
+dataset:
+  name: sales
+  seed: 4
+question: Give me an overview of revenue by segment.
+task:
+  analysis_types:
+  - eda
+  - segmentation
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+checks:
+- kind: eda_stat
+  column: revenue
+  stats:
+  - mean
+- kind: segment_value
+  segment: segment
+  metric: revenue
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- no_injection_echo

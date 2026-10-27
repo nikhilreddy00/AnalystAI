@@ -1,0 +1,22 @@
+id: e2e-19
+dataset:
+  name: simpson
+  seed: 2
+question: What is the conversion rate of the treatment group versus control?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: pooled_conversion.treatment
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+- kind: number_in_answer
+  truth_key: pooled_conversion.control
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+hard_rules:
+- non_empty_or_error
+- no_injection_echo

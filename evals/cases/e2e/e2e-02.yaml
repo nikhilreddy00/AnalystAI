@@ -1,0 +1,15 @@
+id: e2e-02
+dataset:
+  name: sales
+  seed: 2
+question: Give me an overview of this dataset.
+overview_done: false
+checks:
+- kind: number_in_answer
+  truth_key: row_count
+  rel_tol: 0.01
+- kind: must_not_match
+  pattern: revenue (has )?doubled
+hard_rules:
+- non_empty_or_error
+- no_injection_echo

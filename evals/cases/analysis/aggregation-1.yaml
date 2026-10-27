@@ -1,0 +1,23 @@
+id: aggregation-1
+category: aggregation
+dataset:
+  name: sales
+  seed: 1
+question: What's the typical order revenue?
+task:
+  analysis_types:
+  - eda
+  target_metrics:
+  - revenue
+  segments: []
+checks:
+- kind: eda_stat
+  column: revenue
+  stats:
+  - mean
+  - median
+  - min
+  - max
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
