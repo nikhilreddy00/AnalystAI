@@ -1,22 +1,18 @@
 """
 SQL connector — PostgreSQL and MySQL via SQLAlchemy.
-NL→SQL translation uses Vanna.ai for schema-trained generation with Claude fallback.
+NL→SQL goes through the shared LLM client (dead path until Phase 4 rewires it).
 Parameterized queries only — no raw SQL injection risk.
 """
 
 from __future__ import annotations
 
 import asyncio
-import logging
 
-import anthropic
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
 
-from api.config import settings
 from connectors.base import DataConnector
-
-logger = logging.getLogger(__name__)
+from llm.client import get_client
 
 
 def _assert_single_select(sql: str) -> str:
@@ -38,29 +34,6 @@ def _assert_single_select(sql: str) -> str:
 
 
 class SQLConnector(DataConnector):
-    def __init__(self, config):
-        super().__init__(config)
-        # BUG-07: Pass API key from settings instead of relying on env var
-        self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        self._vanna = None  # lazy-initialized
-
-    def _init_vanna(self, engine):
-        """Lazy-initialize Vanna.ai with database schema for NL→SQL."""
-        if self._vanna is not None:
-            return
-        try:
-            from vanna.remote import VannaDefault
-            self._vanna = VannaDefault(model="analystai", api_key=settings.groq_api_key)
-            # Train Vanna on the database schema
-            schema_context = self._get_schema_context(engine)
-            for line in schema_context.split("\n"):
-                if line.strip():
-                    self._vanna.train(ddl=line)
-            logger.info("Vanna.ai initialized and trained on schema")
-        except Exception as exc:
-            logger.warning(f"Vanna.ai initialization failed, will use Claude fallback: {exc}")
-            self._vanna = None
-
     def _engine(self):
         conn_str = self.config.connection_string
         if not conn_str:
@@ -80,7 +53,7 @@ class SQLConnector(DataConnector):
             parts.append(f"Table `{table}`: {col_desc}")
         return "\n".join(parts)
 
-    def _nl_to_sql(self, natural_language: str, schema_context: str) -> str:
+    async def _nl_to_sql(self, natural_language: str, schema_context: str) -> str:
         """Convert a natural language query to SQL using Claude."""
         prompt = f"""You are a SQL expert. Given the database schema below, write a safe,
 read-only SQL SELECT query that answers the user's question.
@@ -96,12 +69,11 @@ Rules:
 - Limit results to 10000 rows maximum using LIMIT.
 - Return ONLY the SQL query, no explanation, no markdown fences.
 """
-        response = self._client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=512,
+        response = await get_client().complete(
+            agent="sql", prompt_version="v0", max_tokens=512,
             messages=[{"role": "user", "content": prompt}],
         )
-        sql = response.content[0].text.strip()
+        sql = response.text.strip()
         return _assert_single_select(sql)
 
     @staticmethod
@@ -131,23 +103,8 @@ Rules:
         """Execute a natural language query against the connected database."""
         engine = self._engine()
 
-        # Try Vanna.ai first for trained NL→SQL
-        sql = None
-        try:
-            self._init_vanna(engine)
-            if self._vanna is not None:
-                sql = self._vanna.generate_sql(natural_language)
-                logger.info(f"Vanna generated SQL: {sql}")
-        except Exception as exc:
-            logger.warning(f"Vanna.ai NL→SQL failed, falling back to Claude: {exc}")
-            sql = None
-
-        # Claude fallback
-        if not sql:
-            schema_context = await asyncio.to_thread(
-                lambda: self._get_schema_context(engine)
-            )
-            sql = self._nl_to_sql(natural_language, schema_context)
+        schema_context = await asyncio.to_thread(lambda: self._get_schema_context(engine))
+        sql = await self._nl_to_sql(natural_language, schema_context)
 
         # Reject multi-statement / non-SELECT injection attempts before execution
         sql = _assert_single_select(sql)

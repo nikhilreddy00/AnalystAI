@@ -42,7 +42,7 @@ AnalystAI is a **multi-agent AI data analyst** — six specialized agents form a
 
 | Layer              | Tech                                              |
 | ------------------ | ------------------------------------------------- |
-| Orchestration      | **LangGraph** (stateful routing); agents are plain async functions on `llm/client.py` (CrewAI package still installed until Phase 2, unused) |
+| Orchestration      | **LangGraph** (stateful routing); agents are plain async functions on `llm/client.py` |
 | Primary LLM        | **Claude Sonnet 4.6** (via `anthropic` SDK)     |
 | Speed-tier LLM     | **Claude Haiku 4.5** (`settings.llm_fast_model`; Groq retired in Phase 1) |
 | Embeddings         | **nomic-embed-text** via Ollama (self-hosted)      |
@@ -199,7 +199,7 @@ done              → {type: "done"}  // always last
 
 ## Environment Variables
 
-Required: `ANTHROPIC_API_KEY`, `E2B_API_KEY`, `SUPABASE_URL`, `ENCRYPTION_KEY` (the API refuses to start without the last two). `GROQ_API_KEY` is no longer used at runtime (removed with CrewAI in Phase 2)
+Required: `ANTHROPIC_API_KEY`, `E2B_API_KEY`, `SUPABASE_URL`, `ENCRYPTION_KEY` (the API refuses to start without the last two).
 Frontend (`frontend/.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 Optional: `DATABASE_URL`, `QDRANT_HOST`, `QDRANT_PORT`, `OLLAMA_HOST`, `FRONTEND_URL`, `APP_ENV`
 
@@ -208,7 +208,7 @@ Optional: `DATABASE_URL`, `QDRANT_HOST`, `QDRANT_PORT`, `OLLAMA_HOST`, `FRONTEND
 ## Common Pitfalls
 
 1. **`_df_parquet` is NOT a Pydantic field** — it's stored via `session.__dict__["_df_parquet"]`. Don't try to serialize it.
-2. **Visualization agent has NO LLM** — it's pure Python with deterministic chart selection rules. The design doc says Groq but the code doesn't use any LLM.
+2. **Visualization agent has NO LLM** — it's pure Python with deterministic chart selection rules.
 3. **The graph entry point is `ingestion`**, not `intake`. This is by design for schema-aware intake.
 4. **API keys are in `.env`** — NEVER commit real keys. The `.env` file should be gitignored.
 5. **SQL connector blocking calls are wrapped in `asyncio.to_thread`** — every sync SQLAlchemy call in `sql_connector.py` goes through `await asyncio.to_thread(...)`. Don't add raw `engine.connect()` calls inside `async def` methods.

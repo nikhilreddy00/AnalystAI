@@ -10,6 +10,10 @@ The system must think like a senior data analyst — not just run queries, but r
 
 ## Decisions Made
 
+> **Superseded (2026-10-27):** CrewAI, Groq and Vanna were removed in Phase 2. Every agent is a plain
+> async function on the shared Claude client (`llm/client.py`, ADR-0005); NL→SQL is rebuilt in Phase 4
+> (ADR-0003). Sections below that mention them are historical.
+
 | Decision | Choice | Reason |
 |----------|--------|--------|
 | Orchestration | Hybrid: CrewAI agents + LangGraph routing | CrewAI for fast agent definition; LangGraph for stateful conditional routing and multi-turn |
