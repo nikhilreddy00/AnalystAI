@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      eval_suite:
+        description: "Run a real-model eval (spends API money)"
+        type: choice
+        options: [none, analysis, e2e]
+        default: none
+      k:
+        description: "Repeats per case"
+        default: "3"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check .
+      - run: uv run pytest -q   # no secrets: the autouse RecordedClient makes model calls impossible
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  evals:
+    if: github.event_name == 'workflow_dispatch' && inputs.eval_suite != 'none'
+    needs: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - run: uv sync --frozen
+      - run: uv run python -m evals.run ${{ inputs.eval_suite }} --k ${{ inputs.k }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-report-${{ inputs.eval_suite }}
+          path: evals/reports/
