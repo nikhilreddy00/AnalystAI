@@ -79,7 +79,7 @@ User query
 [6. Insight Agent]     Claude  — synthesizes all → InsightReport
   │
   ▼
-[Quality Check Node]   (no LLM) — FEAT-02: validates report → retry analysis once, else END
+[Quality Check Node]  checks + critic — FEAT-02 retry once; first run: grounding check + LLM critic (expert_review) → END
 ```
 
 ### Graph Entry Point (IMPORTANT)
@@ -89,7 +89,10 @@ The LangGraph entry point is `ingestion`, NOT `intake`. The graph runs:
 This is intentional: ingestion loads data first so the intake agent has schema context (column names, row count) when parsing the user's question.
 
 ### Quality Check Retry Loop (FEAT-02)
-After `insight_node`, the graph routes to either `error_node` (if `session.error_message` is set) or `quality_check_node`. The quality check inspects the report for missing/short summary, missing technical findings, or missing charts. If issues are found AND `session.quality_check_attempts < 2`, it clears the analysis state and routes back to `analysis` for one retry; the retry budget is reset to 0 at the start of every graph run inside `ingestion_node`. The node is the single source of truth for the retry decision — `route_after_quality_check` only translates "did the node clear `insight_report`?" into `analysis` vs `end`.
+After `insight_node`, the graph routes to either `error_node` (if `session.error_message` is set) or `quality_check_node`. The quality check inspects the report for missing/short summary, missing technical findings, or missing charts. If issues are found AND `session.quality_check_attempts < 2`, it clears the analysis state and routes back to `analysis` for one retry; the retry budget is reset to 0 at the start of every graph run inside `ingestion_node`. The node is the single source of truth for the retry decision — `route_after_quality_check` only translates "did the node clear `insight_report`?" into `analysis` vs `end`. On the first run's commit path the node also runs the critic (`agents/quality_critic.py`, formerly the `senior_expert` node), fed by the numeric-grounding check, then flips `overview_done`.
+
+### Errors (Phase 2)
+Agents raise typed `AgentError` subclasses (`agents/errors.py`); graph nodes route every failure through `_fail()`, which puts `exc.user_message` into `session.error_message` → `error_node` → SSE `error`. Never return empty output on failure, and never `except ...: pass` in `orchestrator/` (a test enforces it). `targeted_analysis` / `drill_down` failures also route to `error_node`.
 
 ### Multi-Turn Resume
 When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps directly from ingestion to analysis. The DataFrame is re-loaded from the connector (not stored in DB).
@@ -104,22 +107,29 @@ When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps
 
 ```
 agents/
-  intake_agent.py          — async, raw Anthropic SDK, returns AnalysisTask
-  ingestion_agent.py       — async, shared LLM client (Haiku), returns DataContract
-  cleaning_agent.py        — async, Anthropic SDK, returns (DataFrame, CleaningAudit)
-  analysis_agent.py        — async, Anthropic SDK, E2B sandbox, returns AnalysisFindings
+  intake_agent.py          — returns AnalysisTask (drops columns not in the DataContract)
+  ingestion_agent.py       — shared LLM client (Haiku), returns DataContract
+  cleaning_agent.py        — returns (DataFrame, CleaningAudit)
+  analysis_agent.py        — code gen → guardrails (1 guided retry) → E2B → AnalysisFindings
   visualization_agent.py   — PURE PYTHON (no LLM), returns list[ChartConfig]
-  insight_agent.py         — async, Anthropic SDK, returns InsightReport
+  insight_agent.py         — returns InsightReport
+  quality_critic.py        — LLM critic run by quality_check_node → ExpertReview
+  drill_down_agent.py      — follow-up answer + chart computed from the df
+  targeted_analysis_agent.py — deterministic answers for non-overview intents
+  errors.py                — AgentError hierarchy (LLMRefusal/Truncated/Unavailable/OutputError, GuardrailViolation, SandboxError)
+
+guardrails.py              — pure checks: code AST allowlist, column refs, read-only SQL (sqlglot),
+                             numeric grounding, PII masking, <untrusted_data> delimiting
 
 orchestrator/
   state.py                 — ALL Pydantic schemas (AnalysisSession is the master state)
-  graph.py                 — LangGraph StateGraph with 9 nodes + conditional edges (incl. quality_check, human_approval, error)
-  routing.py               — 7 routing functions (one per conditional edge, incl. route_after_insight_node + route_after_quality_check)
+  graph.py                 — LangGraph StateGraph: 11 nodes + conditional edges (incl. quality_check, targeted_analysis, drill_down, human_approval, error)
+  routing.py               — one routing function per conditional edge
 
 connectors/
   base.py                  — DataConnector ABC + get_connector() factory
   csv_connector.py         — CSV/Excel with encoding detection
-  sql_connector.py         — SQLAlchemy + Claude NL→SQL
+  sql_connector.py         — SQLAlchemy + NL→SQL on the shared client, parsed read-only guard
   sheets_connector.py      — gspread + OAuth2
   api_connector.py         — httpx + pagination + auth
 
@@ -178,6 +188,7 @@ charts            → {type: "charts", data: ChartConfig[]}
 export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
 insight           → {type: "insight", data: InsightReport}
 quality_retry     → {type: "quality_retry", message: "<reason>; Re-running analysis..."}  // FEAT-02
+expert_review     → {type: "expert_review", data: ExpertReview}  // quality critic, first run only
 error             → {type: "error", message: "<user-readable>"}
 done              → {type: "done"}  // always last
 ```
@@ -191,6 +202,7 @@ done              → {type: "done"}  // always last
 - **LLM responses**: always strip markdown fences (```` ```json ... ``` ````) before JSON parsing
 - **Error handling**: every agent wraps its core logic in try/except, sets `session.error_message`
 - **Frontend**: TypeScript strict, Tailwind v4 with `@import "tailwindcss"`, `"use client"` on all interactive components
+- **Untrusted data**: dataset text in a prompt goes through `delimit_untrusted()` with `UNTRUSTED_NOTE` in the system prompt; PII is masked once in `build_data_contract` (mask anything else you send, e.g. `mask_row`)
 - **LLM calls**: always `get_client().complete(...)` from `llm/client.py` — never a new `AsyncAnthropic`. Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl`
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
 - **Evals**: `uv run python -m evals.run {analysis|e2e} --k 3 [--compare <prev.json>]` — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch

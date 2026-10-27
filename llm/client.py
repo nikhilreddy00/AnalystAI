@@ -87,13 +87,14 @@ class ClaudeClient:
         model = model or self.model
         kwargs = {"system": system} if system else {}
         start = time.perf_counter()
-        from anthropic import APIConnectionError   # also the base of APITimeoutError
+        # APIConnectionError also covers APITimeoutError; 429/5xx arrive after the SDK's retries.
+        from anthropic import APIConnectionError, InternalServerError, RateLimitError
         try:
             response = await self._client().messages.create(
                 model=model, max_tokens=max_tokens, temperature=0,
                 messages=messages, **kwargs,
             )
-        except APIConnectionError as exc:
+        except (APIConnectionError, InternalServerError, RateLimitError) as exc:
             raise LLMUnavailable(agent, f"{type(exc).__name__}: {exc}",
                                  "The language model is unreachable right now. Try again.") from exc
         in_price, out_price = _PRICES.get(model, (0.0, 0.0))
