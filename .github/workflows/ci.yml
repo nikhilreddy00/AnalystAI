@@ -56,7 +56,10 @@ jobs:
         with:
           python-version: "3.11"
       - run: uv sync --frozen
-      - run: uv run python -m evals.run ${{ inputs.eval_suite }} --k ${{ inputs.k }}
+      - env:
+          SUITE: ${{ inputs.eval_suite }}
+          K: ${{ inputs.k }}
+        run: uv run python -m evals.run "$SUITE" --k "$K"
       - uses: actions/upload-artifact@v4
         with:
           name: eval-report-${{ inputs.eval_suite }}
