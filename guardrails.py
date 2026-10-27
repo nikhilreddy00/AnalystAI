@@ -166,9 +166,10 @@ def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list
 
 # ── PII ────────────────────────────────────────────────────────────────────────
 
+# Person names only: `customer_name`, `first_name`, plain `name` — not `product_name`/`file_name`.
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|ssn|address|street|dob|birth|passport|"
-    r"first_?name|last_?name|full_?name|customer_?name|name)(?:$|_)", re.I)
+    r"(?:^|_)(?:e?mail|phone|mobile|ssn|address|street|dob|birth|passport)(?:$|_)"
+    r"|(?:^|_)(?:first|last|full|customer|contact)_?name$|^name$", re.I)
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 _PHONE_RE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)")

@@ -15,7 +15,13 @@ import json
 
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import strip_markdown_fences, safe_column_name
-from guardrails import check_code, check_columns, code_column_refs
+from guardrails import (
+    UNTRUSTED_NOTE,
+    check_code,
+    check_columns,
+    code_column_refs,
+    delimit_untrusted,
+)
 from llm.client import get_client
 from orchestrator.state import (
     AnalysisFindings,
@@ -96,8 +102,8 @@ Rules:
   file or network I/O (no read_*/to_csv/open); no eval/exec/getattr/setattr/__dunder__ access.
   Reference only columns listed in the schema.
 - Be compact: at most ~120 lines, no comments, no helper docstrings. Cover only the
-  requested analysis types. Output that runs past the length limit is discarded.\
-"""
+  requested analysis types. Output that runs past the length limit is discarded.
+""" + UNTRUSTED_NOTE
 
 
 def _build_guaranteed_code(contract: DataContract) -> str:
@@ -223,8 +229,8 @@ async def run_analysis_agent(session: AnalysisSession) -> AnalysisFindings:
     )
 
     prompt = f"""\
-Dataset schema:
-{schema_desc}
+Dataset schema (column names come from the user's file):
+{delimit_untrusted(schema_desc)}
 
 Write the analysis body for analysis types: {analysis_types}
 

@@ -58,6 +58,15 @@ def test_ungrounded_numbers():
     assert g.ungrounded_numbers("Revenue doubled to 9,999.", evidence) == ["9,999"]
 
 
+@pytest.mark.parametrize("col,pii", [
+    ("name", True), ("customer_name", True), ("contact_name", True), ("first_name", True),
+    ("lastname", True), ("billing_customer_name", True), ("customer_email", True),
+    ("product_name", False), ("company_name", False), ("file_name", False), ("username", False),
+])
+def test_pii_column_names(col, pii):
+    assert g.is_pii_column(col) is pii
+
+
 def test_pii_masking():
     assert g.is_pii_column("customer_email") and g.is_pii_column("customer_name")
     assert not g.is_pii_column("region") and not g.is_pii_column("units")
