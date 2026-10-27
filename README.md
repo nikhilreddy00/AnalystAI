@@ -99,7 +99,7 @@ cd AnalystAI
 
 # 2. Set your API keys
 cp .env.example .env
-# Edit .env and fill in ANTHROPIC_API_KEY, GROQ_API_KEY, E2B_API_KEY
+# Edit .env and fill in ANTHROPIC_API_KEY, E2B_API_KEY
 
 # 3. Pull the embedding model (needed for institutional memory)
 docker compose up ollama -d
@@ -171,7 +171,6 @@ All configuration is via environment variables (see `.env.example`):
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `ANTHROPIC_API_KEY` | Claude API key | required |
-| `GROQ_API_KEY` | Groq API key | required |
 | `E2B_API_KEY` | E2B sandbox key | required |
 | `DATABASE_URL` | PostgreSQL connection string | in-memory fallback |
 | `QDRANT_HOST` / `QDRANT_PORT` | Vector store location | optional |

@@ -21,10 +21,8 @@ from __future__ import annotations
 import json
 import re
 
-from anthropic import AsyncAnthropic
-
 from agents.utils import strip_markdown_fences
-from api.config import settings
+from llm.client import get_client
 from orchestrator.state import AnalysisSession, ExpertReview
 
 
@@ -38,7 +36,6 @@ def _cap_sentences(text: str, max_n: int = 2) -> str:
     parts = [p.strip() for p in _SENTENCE_SPLIT_RE.split((text or "").strip()) if p.strip()]
     return " ".join(parts[:max_n]).strip()
 
-_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 _SYSTEM = """\
 You are a Principal Data Analyst at a mature data team reviewing the output of
@@ -184,16 +181,15 @@ async def run_senior_expert_agent(session: AnalysisSession) -> ExpertReview:
 
 
 async def _call_and_parse(prompt: str) -> dict:
-    response = await _client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await get_client().complete(
+        agent="senior_expert", prompt_version="v0",
         max_tokens=2000,
         system=_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
     )
-    text_blocks = [b.text for b in response.content if getattr(b, "type", None) == "text"]
-    if not text_blocks:
+    if not response.text:
         raise ValueError("LLM returned no text blocks")
-    raw = strip_markdown_fences("".join(text_blocks).strip())
+    raw = strip_markdown_fences(response.text.strip())
     if not raw:
         raise ValueError("LLM returned empty text after stripping")
     return json.loads(raw)

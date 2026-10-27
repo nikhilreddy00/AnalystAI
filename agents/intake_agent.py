@@ -10,10 +10,8 @@ from __future__ import annotations
 
 import json
 
-from anthropic import AsyncAnthropic
-
 from agents.utils import strip_markdown_fences
-from api.config import settings
+from llm.client import get_client
 from orchestrator.state import (
     AnalysisSession,
     AnalysisTask,
@@ -24,7 +22,6 @@ from orchestrator.state import (
     TargetedParams,
 )
 
-_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 _SYSTEM = """\
 You are a senior data analyst's intake specialist. Translate user requests into structured analysis plans.
@@ -225,14 +222,14 @@ async def run_intake_agent(
 
     system_prompt = _SYSTEM + _OVERVIEW_OVERRIDE if is_overview_request else _SYSTEM
 
-    response = await _client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await get_client().complete(
+        agent="intake", prompt_version="v0",
         max_tokens=1024,
         system=system_prompt,
         messages=[{"role": "user", "content": user_content}],
     )
 
-    raw = response.content[0].text.strip()
+    raw = response.text.strip()
     raw = strip_markdown_fences(raw)
 
     data = json.loads(raw)
@@ -298,12 +295,12 @@ Rules:
 """
 
     try:
-        response = await _client.messages.create(
-            model="claude-sonnet-4-6",
+        response = await get_client().complete(
+            agent="intake", prompt_version="v0",
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = strip_markdown_fences(response.content[0].text.strip())
+        raw = strip_markdown_fences(response.text.strip())
         data = json.loads(raw)
     except Exception:
         # Fallback narrative — entity stays generic, display names empty so the
@@ -359,12 +356,12 @@ Rules:
 - Return a JSON array of 5 strings — no explanation, no markdown fences."""
 
     try:
-        response = await _client.messages.create(
-            model="claude-sonnet-4-6",
+        response = await get_client().complete(
+            agent="intake", prompt_version="v0",
             max_tokens=512,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = strip_markdown_fences(response.content[0].text.strip())
+        raw = strip_markdown_fences(response.text.strip())
         questions = json.loads(raw)
         if isinstance(questions, list) and len(questions) > 0:
             return questions[:5]

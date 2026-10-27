@@ -1,0 +1,21 @@
+id: null_effect-5
+category: null_effect
+dataset:
+  name: sales
+  seed: 5
+question: Check discount vs revenue relationship.
+task:
+  analysis_types:
+  - correlation
+  - hypothesis
+  target_metrics:
+  - revenue
+  - discount
+  segments: []
+checks:
+- kind: correlation_absent
+  a: revenue
+  b: discount
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error

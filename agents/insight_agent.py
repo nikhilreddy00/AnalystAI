@@ -14,10 +14,8 @@ from __future__ import annotations
 import json
 import re
 
-from anthropic import AsyncAnthropic
-
 from agents.utils import strip_markdown_fences
-from api.config import settings
+from llm.client import get_client
 from orchestrator.state import (
     ActionItem,
     AnalysisSession,
@@ -30,7 +28,6 @@ from orchestrator.state import (
     Severity,
 )
 
-_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 _SYSTEM = """\
 You are a senior data analyst delivering findings to stakeholders. The user already
@@ -261,7 +258,7 @@ async def run_insight_agent(
     # to specific rows / dtypes / missing columns in its narrative.
     if findings.head_preview:
         context_parts.append(
-            f"Sample rows (head 5):\n  " + "\n  ".join(str(r) for r in findings.head_preview)
+            "Sample rows (head 5):\n  " + "\n  ".join(str(r) for r in findings.head_preview)
         )
     if findings.dtypes_summary:
         context_parts.append(
@@ -657,16 +654,15 @@ def _flatten_executive_to_text(ev: ExecutiveSummary) -> str:
 
 async def _call_and_parse(prompt: str) -> dict:
     """Single Claude call + JSON parse. Raises on empty/invalid output."""
-    response = await _client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await get_client().complete(
+        agent="insight", prompt_version="v0",
         max_tokens=4000,        # bumped from 2000: full schema for wide datasets needs headroom
         system=_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
     )
-    text_blocks = [b.text for b in response.content if getattr(b, "type", None) == "text"]
-    if not text_blocks:
+    if not response.text:
         raise ValueError("LLM returned no text blocks")
-    raw = strip_markdown_fences("".join(text_blocks).strip())
+    raw = strip_markdown_fences(response.text.strip())
     if not raw:
         raise ValueError("LLM returned empty text after stripping")
     return json.loads(raw)

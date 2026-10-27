@@ -1,0 +1,21 @@
+id: null_effect-2
+category: null_effect
+dataset:
+  name: sales
+  seed: 2
+question: Is there a link between discount and revenue?
+task:
+  analysis_types:
+  - correlation
+  - hypothesis
+  target_metrics:
+  - revenue
+  - discount
+  segments: []
+checks:
+- kind: correlation_absent
+  a: revenue
+  b: discount
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error

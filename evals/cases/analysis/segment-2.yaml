@@ -1,0 +1,20 @@
+id: segment-2
+category: segment
+dataset:
+  name: sales
+  seed: 2
+question: Break down revenue by region.
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - revenue
+  segments:
+  - region
+checks:
+- kind: segment_value
+  segment: region
+  metric: revenue
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error

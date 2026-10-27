@@ -11,7 +11,7 @@ from sqlalchemy import Column, DateTime, String, Text, select, delete, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
-from orchestrator.state import AnalysisSession, MessageRole
+from orchestrator.state import AnalysisSession, MessageRole, SessionSummary
 from memory.session_data import delete_session_files
 
 
@@ -148,9 +148,8 @@ class InMemorySessionStore:
             return None
         return max(candidates, key=lambda s: s.updated_at)
 
-    def _summary_from_entry(self, session_id: str, entry: dict) -> "SessionSummary":
+    def _summary_from_entry(self, session_id: str, entry: dict) -> SessionSummary:
         # Lazy import to keep this module importable in isolation if state.py grows further runtime deps.
-        from orchestrator.state import SessionSummary
         s = AnalysisSession.model_validate_json(entry["data"])
         first_user = next(
             (m.content for m in s.conversation_history if m.role == MessageRole.USER),
@@ -315,9 +314,8 @@ class SessionStore:
                     return s
             return None
 
-    def _summary_from_record(self, record: SessionRecord) -> "SessionSummary":
+    def _summary_from_record(self, record: SessionRecord) -> SessionSummary:
         # Lazy import to keep this module importable in isolation if state.py grows further runtime deps.
-        from orchestrator.state import SessionSummary
         s = _load(record.data)
         first_user = next(
             (m.content for m in s.conversation_history if m.role == MessageRole.USER),

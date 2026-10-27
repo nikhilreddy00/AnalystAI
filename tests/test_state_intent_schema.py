@@ -4,7 +4,6 @@ import pytest
 
 from orchestrator.state import (
     AnalysisTask,
-    AnalysisType,
     ChartType,
     QuestionIntent,
     TargetedParams,

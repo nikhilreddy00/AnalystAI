@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     groq_api_key: str = ""
     e2b_api_key: str = ""
+    llm_model: str = "claude-sonnet-4-6"   # pinned; changing it requires a full eval run
+    llm_fast_model: str = "claude-haiku-4-5"   # mechanical calls (ingestion schema summary)
+    trace_dir: str = "./traces"
 
     # PostgreSQL (Supabase session-mode pooler, port 5432)
     database_url: str = "postgresql+asyncpg://analystai:analystai@localhost:5432/analystai"

@@ -1,0 +1,15 @@
+id: e2e-17
+dataset:
+  name: sales
+  seed: 3
+question: Is marketing spend correlated with revenue?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: corr_revenue_marketing
+  rel_tol: 0.05
+- kind: must_not_match
+  pattern: marketing spend (drives|causes|leads to)
+hard_rules:
+- non_empty_or_error
+- no_injection_echo

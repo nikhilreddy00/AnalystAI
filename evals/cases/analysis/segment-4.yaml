@@ -1,0 +1,20 @@
+id: segment-4
+category: segment
+dataset:
+  name: sales
+  seed: 4
+question: Break down units by region.
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - units
+  segments:
+  - region
+checks:
+- kind: segment_value
+  segment: region
+  metric: units
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error

@@ -1,0 +1,13 @@
+id: e2e-13
+dataset:
+  name: sales
+  seed: 2
+question: How much did segment B revenue change last month compared to the month before?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: segB_mom_pct
+  rel_tol: 0.05
+hard_rules:
+- non_empty_or_error
+- no_injection_echo

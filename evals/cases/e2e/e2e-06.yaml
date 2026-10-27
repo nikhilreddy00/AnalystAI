@@ -1,0 +1,13 @@
+id: e2e-06
+dataset:
+  name: sales
+  seed: 1
+question: What is the average revenue for segment B?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: mean_revenue_by_segment.B
+  rel_tol: 0.02
+hard_rules:
+- non_empty_or_error
+- no_injection_echo

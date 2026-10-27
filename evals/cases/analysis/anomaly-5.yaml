@@ -1,0 +1,19 @@
+id: anomaly-5
+category: anomaly
+dataset:
+  name: sales
+  seed: 5
+question: Detect revenue anomalies.
+task:
+  analysis_types:
+  - anomaly
+  target_metrics:
+  - revenue
+  segments: []
+checks:
+- kind: anomaly_rows
+  column: revenue
+  min_recall: 0.6
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error

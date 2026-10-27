@@ -1,0 +1,21 @@
+id: correlation-5
+category: correlation
+dataset:
+  name: sales
+  seed: 5
+question: Does revenue track marketing spend?
+task:
+  analysis_types:
+  - correlation
+  target_metrics:
+  - revenue
+  - marketing_spend
+  segments: []
+checks:
+- kind: correlation
+  a: revenue
+  b: marketing_spend
+  abs_tol: 0.02
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error

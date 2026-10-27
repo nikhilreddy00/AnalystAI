@@ -1,0 +1,23 @@
+id: aggregation-3
+category: aggregation
+dataset:
+  name: sales
+  seed: 3
+question: Summarize marketing spend per order.
+task:
+  analysis_types:
+  - eda
+  target_metrics:
+  - marketing_spend
+  segments: []
+checks:
+- kind: eda_stat
+  column: marketing_spend
+  stats:
+  - mean
+  - median
+  - min
+  - max
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
