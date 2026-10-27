@@ -272,9 +272,10 @@ class AnomalyRecord(BaseModel):
 
 class TrendResult(BaseModel):
     column: str
-    period: str                            # MoM | YoY | 7d_rolling
-    direction: str                         # up | down | flat
+    period: str = ""                       # MoM | YoY | 7d_rolling
+    direction: str = "flat"                # up | down | flat
     pct_change: float = 0.0
+    segment: str | None = None             # set for a per-segment trend (e.g. segment "B")
 
 
 class SegmentResult(BaseModel):
@@ -338,7 +339,9 @@ class AnalysisFindings(BaseModel):
     """Produced by the Analysis Agent from E2B sandbox execution."""
     eda_summary: dict[str, Any]           # describe() output per metric column
     correlations: dict[str, float]        # column_pair → correlation coefficient
-    trends: list[TrendResult | dict[str, Any]]  # rolling avg, MoM/YoY
+    # Was `list[TrendResult | dict]`: pydantic coerced every dict to TrendResult anyway, so
+    # dict-only consumers saw nothing and extra keys were dropped.
+    trends: list[TrendResult]
     segments: list[SegmentResult]
     anomalies: list[AnomalyRecord]
     statistical_tests: list[StatisticalResult]

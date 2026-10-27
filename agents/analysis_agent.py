@@ -45,6 +45,7 @@ from orchestrator.state import (
     SegmentResult,
     Severity,
     StatisticalResult,
+    TrendResult,
 )
 from sandbox.executor import run_code
 
@@ -376,7 +377,7 @@ def _finding_columns(f: AnalysisFindings) -> set[str]:
     cols = set(f.eda_summary)
     for key in f.correlations:
         cols.update(key.split("__"))
-    cols.update(t.get("column") for t in f.trends if isinstance(t, dict) and t.get("column"))
+    cols.update(t.column for t in f.trends)
     for s in f.segments:
         cols.update(c for c in s.segment_column.split("|") if c)
         cols.add(s.metric_column)
@@ -449,13 +450,10 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str,
         out.append(item("correlation", f"corr:{key}", f"{a} and {b}: r = {r:.3f}", [a, b],
                         {key: r}, r=r))
     for t in f.trends:
-        if isinstance(t, dict) and t.get("column"):
-            seg = f" ({t['segment']})" if t.get("segment") is not None else ""
-            pct = t.get("pct_change")
-            claim = (f"{t['column']}{seg} {t.get('period', '')}: {pct:+.1f}%"
-                     if isinstance(pct, (int, float)) else f"{t['column']}{seg} trend")
-            out.append(item("trend", f"trend:{t['column']}{seg}:{t.get('period', '')}", claim,
-                            [t["column"]], t))
+        seg = f" ({t.segment})" if t.segment else ""
+        out.append(item("trend", f"trend:{t.column}{seg}:{t.period}",
+                        f"{t.column}{seg} {t.period}: {t.pct_change:+.1f}%", [t.column],
+                        t.model_dump()))
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
         out.append(item("segment", f"seg:{s.segment_column}/{s.metric_column}",
@@ -508,6 +506,18 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
         for t in raw.get("statistical_tests", [])
     ]
 
+    trends = []
+    for t in raw.get("trends", []):
+        if isinstance(t, dict) and t.get("column"):
+            pct = _to_float(t.get("pct_change"))
+            trends.append(TrendResult(
+                column=str(t["column"]), period=str(t.get("period") or ""),
+                direction=str(t.get("direction")
+                              or ("up" if pct > 0 else "down" if pct < 0 else "flat")),
+                pct_change=pct,
+                segment=None if t.get("segment") is None else str(t["segment"]),
+            ))
+
     distributions_raw = raw.get("distributions", {})
     distributions: dict[str, list] = {}
     for col, dist in distributions_raw.items():
@@ -535,7 +545,7 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
     return AnalysisFindings(
         eda_summary=raw.get("eda_summary", {}),
         correlations=raw.get("correlations", {}),
-        trends=raw.get("trends", []),
+        trends=trends,
         segments=segments,
         anomalies=anomalies,
         statistical_tests=statistical_tests,
@@ -547,6 +557,14 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
         dtypes_summary=dtypes_summary,
         missing_pct=missing_pct,
     )
+
+
+def _to_float(v: Any) -> float:
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return 0.0
+    return f if f == f else 0.0   # NaN → 0.0
 
 
 def _map_severity(s: str) -> Severity:

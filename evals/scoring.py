@@ -98,12 +98,11 @@ def check_correlation_absent(f: AnalysisFindings, df: pd.DataFrame, a: str, b: s
 def check_trend(f: AnalysisFindings, truth: dict, column: str, truth_key: str,
                 abs_tol: float = 1.0) -> tuple[bool, str]:
     want = _truth_value(truth, truth_key)
-    trends = [t for t in f.trends if isinstance(t, dict) and t.get("column") == column
-              and t.get("period") == "MoM"]
+    trends = [t for t in f.trends if t.column == column and t.period == "MoM" and not t.segment]
     if not trends:
         return False, f"no MoM trend for '{column}' (want {want:.2f}%)"
-    ok = any(_close(t.get("pct_change"), want, 0, abs_tol) for t in trends)
-    return ok, f"pct_change: got {[t.get('pct_change') for t in trends]}, want {want:.2f}"
+    ok = any(_close(t.pct_change, want, 0, abs_tol) for t in trends)
+    return ok, f"pct_change: got {[t.pct_change for t in trends]}, want {want:.2f}"
 
 
 def check_anomaly_rows(f: AnalysisFindings, truth: dict, column: str,
@@ -128,12 +127,12 @@ def check_pair_reported(f: AnalysisFindings, df: pd.DataFrame, a: str, b: str) -
 def check_segment_trend(f: AnalysisFindings, truth: dict, column: str, segment: str,
                         truth_key: str, abs_tol: float = 1.0) -> tuple[bool, str]:
     want = _truth_value(truth, truth_key)
-    trends = [t for t in f.trends if isinstance(t, dict) and t.get("column") == column
-              and str(t.get("segment")) == segment and t.get("period") == "MoM"]
+    trends = [t for t in f.trends if t.column == column and t.segment == segment
+              and t.period == "MoM"]
     if not trends:
         return False, f"no MoM trend for {column} in segment {segment} (want {want:.2f}%)"
-    ok = any(_close(t.get("pct_change"), want, 0, abs_tol) for t in trends)
-    return ok, f"pct_change: got {[t.get('pct_change') for t in trends]}, want {want:.2f}"
+    ok = any(_close(t.pct_change, want, 0, abs_tol) for t in trends)
+    return ok, f"pct_change: got {[t.pct_change for t in trends]}, want {want:.2f}"
 
 
 _SPLIT = re.compile(r"\s*[|:/,]\s*|\s+x\s+")
@@ -242,7 +241,7 @@ def _referenced_columns(f: AnalysisFindings) -> set[str]:
     cols = set(f.eda_summary)
     for key in f.correlations:
         cols.update(key.split("__"))
-    cols.update(t.get("column") for t in f.trends if isinstance(t, dict) and t.get("column"))
+    cols.update(t.column for t in f.trends)
     for s in f.segments:
         cols.update(_strata(s.segment_column) + ([s.metric_column] if s.metric_column else []))
     cols.update(a.column for a in f.anomalies)

@@ -296,16 +296,8 @@ async def run_insight_agent(
     if findings.trends:
         trend_lines = []
         for t in findings.trends:
-            # BUG-16: Support both TrendResult objects and legacy dicts
-            if hasattr(t, 'column'):
-                trend_lines.append(
-                    f"  {t.column}: {t.direction} {t.pct_change:.1f}% ({t.period})"
-                )
-            else:
-                trend_lines.append(
-                    f"  {t.get('column', '?')}: {t.get('direction', '?')} "
-                    f"{float(t.get('pct_change', 0)):.1f}% ({t.get('period', '?')})"
-                )
+            seg = f" [{t.segment}]" if t.segment else ""
+            trend_lines.append(f"  {t.column}{seg}: {t.direction} {t.pct_change:.1f}% ({t.period})")
         context_parts.append("Trends:\n" + "\n".join(trend_lines))
 
     if findings.segments:

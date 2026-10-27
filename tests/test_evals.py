@@ -18,6 +18,7 @@ from evals.scoring import (
     check_segment_trend,
     check_segment_value,
     check_simpson_reversal,
+    check_trend,
     false_findings,
     hard_rule,
 )
@@ -132,6 +133,15 @@ def test_null_effect_must_be_reported(sales):
     t = StatisticalResult(test_name="pearson revenue~discount", statistic=0.01, p_value=0.6,
                           interpretation="no significant link")
     assert check_pair_reported(_findings(statistical_tests=[t]), df, "revenue", "discount")[0]
+
+
+def test_trend_check_reads_typed_trends(sales):
+    """Regression: trends used to be scored only if they stayed dicts, but pydantic always
+    coerced them to TrendResult, so every trend case failed whatever the agent reported."""
+    _, truth = sales
+    f = _findings(trends=[{"column": "revenue", "period": "MoM", "direction": "down",
+                           "pct_change": truth["total_mom_pct"]}])
+    assert check_trend(f, truth, "revenue", "total_mom_pct")[0]
 
 
 def test_segment_trend(sales):
