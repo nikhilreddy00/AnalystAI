@@ -90,7 +90,7 @@ async def run_e2e_case(case: dict) -> dict:
     df, truth, csv = dataset(case)
     UPLOADS.mkdir(parents=True, exist_ok=True)
     path = UPLOADS / f"{case['dataset']['name']}-{case['dataset']['seed']}.csv"
-    if not path.exists():
+    if not path.exists() or path.read_text() != csv:   # sync, so no interleaving between tasks
         path.write_text(csv)
 
     session = AnalysisSession(

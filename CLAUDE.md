@@ -199,7 +199,7 @@ done              → {type: "done"}  // always last
 
 ## Environment Variables
 
-Required: `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `E2B_API_KEY`, `SUPABASE_URL`, `ENCRYPTION_KEY` (the API refuses to start without the last two)
+Required: `ANTHROPIC_API_KEY`, `E2B_API_KEY`, `SUPABASE_URL`, `ENCRYPTION_KEY` (the API refuses to start without the last two). `GROQ_API_KEY` is no longer used at runtime (removed with CrewAI in Phase 2)
 Frontend (`frontend/.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 Optional: `DATABASE_URL`, `QDRANT_HOST`, `QDRANT_PORT`, `OLLAMA_HOST`, `FRONTEND_URL`, `APP_ENV`
 
