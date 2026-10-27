@@ -4,6 +4,34 @@
 
 ---
 
+## Roadmap & Current Phase (READ THIS SECOND)
+
+The project is executing **`docs/ROADMAP.md`** — the "trustworthy agents" plan (approved 2026-10-27):
+every agent gets guardrails, memory context, an agent card (self-knowledge), retrieval tools,
+evals/tests, and evidence-backed justification; then an open-source v0.1 release.
+
+**Working rules**
+- **One phase per session.** Finish the phase, verify its "Done when" criteria, post a short review
+  note (built / metrics / deviations), update the status table below, then tell the user
+  "Phase N done" — they `/clear` and start the next phase in a fresh session.
+- Never start the next phase without the user's explicit sign-off.
+- "Done" requires a committed test run or eval report showing the number — no metric, not done.
+- Measure before changing: every phase must not regress the Phase 1 baseline.
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Research + gap map + ADRs (`docs/adr/`) | ⏭ next |
+| 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | pending |
+| 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | pending |
+| 3 | Analysis agent as the agent-contract template | pending |
+| 4 | SQL path + YAML semantic layer | pending |
+| 5 | Roll the contract out: Intake → Cleaning → Insight → Quality check → Ingestion → Visualization | pending |
+| 6 | E2E hardening + open-source v0.1 release | pending |
+
+Per-agent metrics and targets: see the table at the end of `docs/ROADMAP.md`.
+
+---
+
 ## What This Is
 
 AnalystAI is a **multi-agent AI data analyst** — six specialized agents form a pipeline that replaces a human analyst: intake → ingest → clean → analyze → visualize → deliver insights. It's self-hosted via Docker Compose, open source, and designed for small companies.
@@ -163,13 +191,14 @@ done              → {type: "done"}  // always last
 - **LLM responses**: always strip markdown fences (```` ```json ... ``` ````) before JSON parsing
 - **Error handling**: every agent wraps its core logic in try/except, sets `session.error_message`
 - **Frontend**: TypeScript strict, Tailwind v4 with `@import "tailwindcss"`, `"use client"` on all interactive components
-- **No test files exist yet** — testing is manual via the UI
+- **Tests**: `tests/` holds ~55 deterministic pytest unit tests (`asyncio_mode = "auto"`). No LLM evals, CI, or frontend tests yet — Phase 1 of the roadmap adds them
 
 ---
 
 ## Environment Variables
 
-Required: `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `E2B_API_KEY`
+Required: `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `E2B_API_KEY`, `SUPABASE_URL`, `ENCRYPTION_KEY` (the API refuses to start without the last two)
+Frontend (`frontend/.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 Optional: `DATABASE_URL`, `QDRANT_HOST`, `QDRANT_PORT`, `OLLAMA_HOST`, `FRONTEND_URL`, `APP_ENV`
 
 ---
