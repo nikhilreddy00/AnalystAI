@@ -156,8 +156,8 @@ Clarification rules:
 - One clarifying question max — make it multiple-choice if possible
 - Examples of vague: "how are we doing?", "check the data", "any insights?"
 
-Return ONLY the JSON — no explanation, no markdown fences.\
-"""
+Return ONLY the JSON — no explanation, no markdown fences.
+""" + UNTRUSTED_NOTE
 
 # Phase 3: appended to the system prompt when this is the FIRST run on a freshly
 # connected dataset. Overrides the user's specific wording to guarantee a full
@@ -221,7 +221,7 @@ async def run_intake_agent(
     user_content = "\n\n".join(filter(bool, [
         f"User message: {user_message}",
         f"Conversation history:\n{history_text}" if history_text else "",
-        f"Dataset schema:\n{schema_text}" if schema_text else "",
+        f"Dataset schema:\n{delimit_untrusted(schema_text)}" if schema_text else "",
         existing_task,
     ]))
 

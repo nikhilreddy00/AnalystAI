@@ -1,6 +1,6 @@
 # ADR-0001: The agent contract is a convention, not a framework
 
-- Status: Proposed (Phase 0, 2026-10-27)
+- Status: Accepted (Phase 3, 2026-10-27; first implemented by the analysis agent)
 - Gaps addressed: G1, G2, G4, G6, G7 (see `docs/research/2026-10-27-data-agents.md`)
 
 ## Context

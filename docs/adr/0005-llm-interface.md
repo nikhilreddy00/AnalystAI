@@ -1,6 +1,6 @@
 # ADR-0005: One thin async LLM client, used by every agent, that owns model config, retries and traces
 
-- Status: Proposed (Phase 0, 2026-10-27)
+- Status: Accepted (Phase 3, 2026-10-27; first implemented by the analysis agent)
 - Gaps addressed: G1, G13 (CrewAI), G14
 
 ## Context

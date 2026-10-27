@@ -26,8 +26,15 @@ from scipy.stats import binomtest
 
 from api.config import settings
 from evals import datagen
-from evals.scoring import ANALYSIS_CHECKS, E2E_CHECKS, answer_text, hard_rule
-from llm.client import trace_meter
+from evals.scoring import (
+    ANALYSIS_CHECKS,
+    E2E_CHECKS,
+    NUMERIC_CHECKS,
+    answer_text,
+    false_findings,
+    hard_rule,
+)
+from llm.client import get_client, trace_meter
 from orchestrator.state import (
     AnalysisSession,
     AnalysisTask,
@@ -66,17 +73,20 @@ async def run_analysis_case(case: dict) -> dict:
 
     findings, error = None, None
     try:
-        findings = await run_analysis_agent(session)
+        findings = await run_analysis_agent(session, get_client())
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
 
     checks = []
     for spec in case["checks"]:
-        kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k != "kind"}
+        kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}
         ok, detail = ANALYSIS_CHECKS[kind](findings, df, truth, **kwargs) if findings else (False, "no findings")
-        checks.append({"kind": kind, "ok": ok, "detail": detail})
-    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings)))) for r in case["hard_rules"]]
-    return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error}
+        checks.append({"kind": kind, "ok": ok, "detail": detail, "planted": spec.get("planted", False)})
+    types = frozenset(case["task"].get("analysis_types", []))
+    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings, types=types))))
+            for r in case["hard_rules"]]
+    return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
+            "false_findings": false_findings(findings, df, truth) if findings else None}
 
 
 _GRAPH = None
@@ -147,9 +157,11 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict:
         start = time.perf_counter()
         out = await (run_analysis_case if suite == "analysis" else run_e2e_case)(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
-        out["cost_usd"] = round(sum(r["cost_usd"] for r in meter), 5)
-        out["llm_calls"] = len(meter)
-        out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in meter)
+        calls = [r for r in meter if "model" in r]
+        out["cost_usd"] = round(sum(r["cost_usd"] for r in calls), 5)
+        out["llm_calls"] = len(calls)
+        out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
+        out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
         out["passed"] = all(c["ok"] for c in out["checks"])
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
@@ -173,10 +185,39 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
         "errors": sum(bool(r["error"]) for r in flat),
         "runs_with_truncated_llm_output": sum(r.get("truncated_calls", 0) > 0 for r in flat),
+        "runs_with_guardrail_retry": sum(any(g != "grounding_rewritten" for g in r.get("rejections", []))
+                                         for r in flat),
+        "runs_with_prose_rewritten": sum("grounding_rewritten" in r.get("rejections", []) for r in flat),
         "cost_per_question_usd": round(statistics.mean(r["cost_usd"] for r in flat), 4),
         "latency_p50_s": _pct([r["latency_s"] for r in flat], 50),
         "latency_p95_s": _pct([r["latency_s"] for r in flat], 95),
+        **_quality(flat),
     }
+
+
+def _quality(flat: list[dict]) -> dict:
+    """Phase 3 analysis metrics. numeric_accuracy: share of numeric checks that pass.
+    insight_recall: share of planted-insight checks that pass. false_finding_rate: wrong
+    verifiable claims / all verifiable claims (evals.scoring.false_findings)."""
+    checks = [c for r in flat for c in r["checks"]]
+    numeric = [c["ok"] for c in checks if c["kind"] in NUMERIC_CHECKS]
+    planted = [c["ok"] for c in checks if c.get("planted")]
+    ff = [r["false_findings"] for r in flat if r.get("false_findings")]
+    claims = sum(x["verifiable"] for x in ff)
+    out = {}
+    if numeric:
+        out["numeric_accuracy"] = round(sum(numeric) / len(numeric), 4)
+    if planted:
+        out["insight_recall"] = round(sum(planted) / len(planted), 4)
+    if ff:
+        out["false_finding_rate"] = round(sum(x["false"] for x in ff) / claims, 4) if claims else 0.0
+        out["verifiable_claims"] = claims
+    return out
+
+
+def _rate(runs: dict[str, list[dict]], ids: list[str]) -> float:
+    flat = [r for c in ids for r in runs[c]]
+    return sum(r["passed"] for r in flat) / len(flat) if flat else 0.0
 
 
 def compare(runs: dict[str, list[dict]], prev: dict) -> dict:
@@ -192,7 +233,10 @@ def compare(runs: dict[str, list[dict]], prev: dict) -> dict:
     n = len(broke) + len(fixed)
     return {
         "previous": prev["meta"]["report"],
-        "pass_rate_delta_pts": round((summarize(runs)["pass_rate"] - prev["summary"]["pass_rate"]) * 100, 2),
+        # On the cases both reports ran, so adding cases doesn't move the delta.
+        "pass_rate_delta_pts": round((_rate(runs, common) - _rate(prev["runs"], common)) * 100, 2),
+        "common_cases": len(common),
+        "new_cases": sorted(set(runs) - set(prev["runs"])),
         "broke": broke,
         "fixed": fixed,
         "mcnemar_p": round(binomtest(min(len(broke), len(fixed)), n, 0.5).pvalue, 4) if n else 1.0,
@@ -209,14 +253,18 @@ def to_markdown(report: dict) -> str:
     ]
     if c := report.get("compare"):
         lines += [f"## Diff vs `{c['previous']}`", "",
-                  f"- pass rate Δ: {c['pass_rate_delta_pts']:+} pts · McNemar p = {c['mcnemar_p']}",
+                  f"- pass rate Δ on {c.get('common_cases', '?')} common cases: "
+                  f"{c['pass_rate_delta_pts']:+} pts · McNemar p = {c['mcnemar_p']}",
                   f"- broke: {', '.join(c['broke']) or 'none'}",
-                  f"- fixed: {', '.join(c['fixed']) or 'none'}", ""]
+                  f"- fixed: {', '.join(c['fixed']) or 'none'}",
+                  f"- new (no prior): {', '.join(c.get('new_cases', [])) or 'none'}", ""]
     lines += ["## Cases", "", "| case | passes | failing checks / hard rules / error |", "|---|---|---|"]
     for cid, rs in report["runs"].items():
         notes = sorted({f"{c['kind']}: {c['detail']}" for r in rs for c in r["checks"] if not c["ok"]}
                        | {f"HARD {h['rule']}: {h['detail']}" for r in rs for h in r["hard"] if not h["ok"]}
-                       | {f"error: {r['error'][:120]}" for r in rs if r["error"]})
+                       | {f"false: {d}" for r in rs for d in (r.get("false_findings") or {}).get("details", [])}
+                       | {f"error: {r['error'][:120]}" for r in rs if r["error"]}
+                       | {f"retry: {g}" for r in rs for g in r.get("rejections", [])})
         cell = "<br>".join(n.replace("|", "\\|") for n in notes) or "—"
         lines.append(f"| {cid} | {sum(r['passed'] for r in rs)}/{len(rs)} | {cell} |")
     return "\n".join(lines) + "\n"

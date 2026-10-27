@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { API_URL, downloadLatestReportPptx, getAuthHeaders } from "@/lib/api";
-import type { AgentEvent, ApprovalRequiredEvent, BriefingData, ChatMessage, ChartConfig, ExpertReview, InsightReport, SessionResultsSnapshot, TargetedResponse } from "@/types";
+import type { AgentEvent, ApprovalRequiredEvent, BriefingData, ChatMessage, ChartConfig, Evidence, ExpertReview, InsightReport, SessionResultsSnapshot, TargetedResponse } from "@/types";
 
 async function* parseSSEStream(response: Response): AsyncGenerator<AgentEvent> {
   const reader = response.body!.getReader();
@@ -54,6 +54,7 @@ export function useAnalysis() {
       let briefing: BriefingData | null = null;
       let expertReview: ExpertReview | null = null;
       let targetedResponse: TargetedResponse | null = null;
+      let evidence: Evidence[] = [];
       const assistantMsg: ChatMessage = { role: "assistant", content: "", isStreaming: true };
       setMessages((prev) => [...prev, assistantMsg]);
 
@@ -93,6 +94,9 @@ export function useAnalysis() {
               break;
             case "charts":
               charts = event.data;
+              break;
+            case "evidence":
+              evidence = event.data;
               break;
             case "insight":
               insight = event.data;
@@ -156,6 +160,7 @@ export function useAnalysis() {
                         insight: insight ?? undefined,
                         expertReview: expertReview ?? undefined,
                         targetedResponse: targetedResponse ?? undefined,
+                        evidence: evidence.length > 0 ? evidence : undefined,
                       }
                     : m
                 )
@@ -207,6 +212,7 @@ export function useAnalysis() {
           insight: snapshot.insight_report ?? undefined,
           expertReview: snapshot.expert_review ?? undefined,
           targetedResponse: snapshot.targeted_response ?? undefined,
+          evidence: snapshot.evidence?.length ? snapshot.evidence : undefined,
         };
       }
     }

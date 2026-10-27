@@ -16,6 +16,11 @@ checks:
 - kind: correlation_absent
   a: revenue
   b: discount
+- kind: pair_reported
+  a: revenue
+  b: discount
+  planted: true
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error
+- numbers_grounded

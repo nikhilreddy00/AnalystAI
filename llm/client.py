@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import time
 from contextvars import ContextVar
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -38,12 +38,15 @@ class LLMResult:
     output_tokens: int = 0
     latency_ms: int = 0
     cost_usd: float = 0.0
+    tool_calls: list[dict] = field(default_factory=list)   # [{"id", "name", "input"}]
+    content: list[dict] = field(default_factory=list)      # raw blocks, to echo the assistant turn
 
 
 class LLMClient(Protocol):
     async def complete(
         self, *, messages: list[dict], max_tokens: int, agent: str, prompt_version: str,
         system: str | None = None, model: str | None = None,
+        tools: list[dict] | None = None, tool_choice: dict | None = None,
     ) -> LLMResult: ...
 
 
@@ -69,6 +72,12 @@ def _trace(record: dict) -> None:
         pass  # tracing must never break an analysis
 
 
+def trace_verdict(agent: str, prompt_version: str, rule: str) -> None:
+    """Record a guardrail rejection (ADR-0005). The rule label only: reasons quote data."""
+    _trace({"ts": datetime.now(timezone.utc).isoformat(), "agent": agent,
+            "prompt_version": prompt_version, "guardrail": rule})
+
+
 class ClaudeClient:
     def __init__(self, model: str | None = None):
         self.model = model or settings.llm_model
@@ -83,9 +92,14 @@ class ClaudeClient:
     async def complete(
         self, *, messages: list[dict], max_tokens: int, agent: str, prompt_version: str,
         system: str | None = None, model: str | None = None,
+        tools: list[dict] | None = None, tool_choice: dict | None = None,
     ) -> LLMResult:
         model = model or self.model
         kwargs = {"system": system} if system else {}
+        if tools:
+            kwargs["tools"] = tools
+        if tool_choice:
+            kwargs["tool_choice"] = tool_choice
         start = time.perf_counter()
         # APIConnectionError also covers APITimeoutError; 429/5xx arrive after the SDK's retries.
         from anthropic import APIConnectionError, InternalServerError, RateLimitError
@@ -106,8 +120,13 @@ class ClaudeClient:
             output_tokens=usage.output_tokens,
             latency_ms=int((time.perf_counter() - start) * 1000),
             cost_usd=(usage.input_tokens * in_price + usage.output_tokens * out_price) / 1e6,
+            tool_calls=[{"id": b.id, "name": b.name, "input": b.input}
+                        for b in response.content if getattr(b, "type", None) == "tool_use"],
+            content=[b.model_dump(exclude_none=True) for b in response.content],
         )
-        record = {k: v for k, v in asdict(result).items() if k != "text"}
+        # Metadata only: tool names, never their inputs or the text (no data/PII on disk).
+        record = {k: v for k, v in asdict(result).items() if k not in ("text", "content")}
+        record["tool_calls"] = [c["name"] for c in result.tool_calls]
         _trace({
             "ts": datetime.now(timezone.utc).isoformat(),
             "agent": agent, "prompt_version": prompt_version, "model": model, **record,
@@ -125,8 +144,10 @@ class RecordedClient:
     async def complete(
         self, *, messages: list[dict], max_tokens: int, agent: str, prompt_version: str,
         system: str | None = None, model: str | None = None,
+        tools: list[dict] | None = None, tool_choice: dict | None = None,
     ) -> LLMResult:
-        self.calls.append({"agent": agent, "system": system, "messages": messages, "model": model})
+        self.calls.append({"agent": agent, "system": system, "messages": messages, "model": model,
+                           "tools": tools, "tool_choice": tool_choice})
         if not self.responses:
             raise LLMError(agent, "RecordedClient has no recorded response left")
         r = self.responses.pop(0)

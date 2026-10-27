@@ -18,3 +18,4 @@ checks:
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error
+- numbers_grounded

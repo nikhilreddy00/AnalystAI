@@ -12,9 +12,11 @@ task:
   segments: []
 checks:
 - kind: trend
+  planted: true
   column: revenue
   truth_key: total_mom_pct
   abs_tol: 1.0
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error
+- numbers_grounded

@@ -24,3 +24,4 @@ hard_rules:
 - no_unknown_columns
 - non_empty_or_error
 - no_injection_echo
+- numbers_grounded

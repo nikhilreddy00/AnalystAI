@@ -185,6 +185,24 @@ export interface BriefingEvent {
   data: BriefingData;
 }
 
+// Phase 3 (ADR-0001): why a finding can be trusted. Mirrors orchestrator/state.py Evidence.
+export interface Evidence {
+  id: string;
+  kind: "correlation" | "trend" | "segment" | "anomaly" | "test";
+  claim: string;
+  code: string;
+  result_excerpt: string;
+  row_count: number;
+  confidence: "high" | "medium" | "low";
+  confidence_reason: string;
+  assumptions: string[];
+}
+
+export interface EvidenceEvent {
+  type: "evidence";
+  data: Evidence[];
+}
+
 export interface ChartsEvent {
   type: "charts";
   data: ChartConfig[];
@@ -233,6 +251,7 @@ export type AgentEvent =
   | SuggestedQuestionsEvent
   | BriefingEvent
   | ChartsEvent
+  | EvidenceEvent
   | InsightEvent
   | ExpertReviewEvent
   | TargetedResponseEvent
@@ -249,6 +268,7 @@ export interface ChatMessage {
   insight?: InsightReport;
   expertReview?: ExpertReview; // Phase 6: senior-expert critique (first-run only)
   targetedResponse?: TargetedResponse; // Phase A: compact answer for targeted intents
+  evidence?: Evidence[];       // Phase 3: one item per analysis finding
   isStreaming?: boolean;
 }
 
@@ -276,6 +296,7 @@ export interface SessionResultsSnapshot {
   targeted_response: TargetedResponse | null;
   expert_review: ExpertReview | null;
   chart_configs: ChartConfig[];
+  evidence?: Evidence[];
   conversation_history: { role: "user" | "assistant" | "system"; content: string }[];
 }
 

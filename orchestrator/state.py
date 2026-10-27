@@ -234,6 +234,26 @@ class CleaningAudit(BaseModel):
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────
 
+class AgentCard(BaseModel):
+    """Self-knowledge of one agent (ADR-0001): injected into its system prompt, and what the UI
+    shows as the agent's role and limits. `version` is the prompt version the agent runs."""
+    name: str
+    version: str
+    scope: str
+    inputs: list[str]
+    outputs: list[str]
+    limits: list[str]
+    refusal_rules: list[str]
+
+    def render(self) -> str:
+        def bullets(items: list[str]) -> str:
+            return "\n".join(f"- {i}" for i in items)
+        return (f"# Agent card: {self.name} ({self.version})\n{self.scope}\n\n"
+                f"Inputs:\n{bullets(self.inputs)}\nOutputs:\n{bullets(self.outputs)}\n"
+                f"Known limits:\n{bullets(self.limits)}\n"
+                f"Refuse or say so when:\n{bullets(self.refusal_rules)}")
+
+
 class StatisticalResult(BaseModel):
     test_name: str
     statistic: float
@@ -252,9 +272,10 @@ class AnomalyRecord(BaseModel):
 
 class TrendResult(BaseModel):
     column: str
-    period: str                            # MoM | YoY | 7d_rolling
-    direction: str                         # up | down | flat
+    period: str = ""                       # MoM | YoY | 7d_rolling
+    direction: str = "flat"                # up | down | flat
     pct_change: float = 0.0
+    segment: str | None = None             # set for a per-segment trend (e.g. segment "B")
 
 
 class SegmentResult(BaseModel):
@@ -300,11 +321,27 @@ class DataNarrative(BaseModel):
     entity_plural: str = "records"         # plural form — "passengers", "orders"
 
 
+class Evidence(BaseModel):
+    """Why one finding can be trusted (ADR-0001): built deterministically from the code that ran
+    and its output, never written by the model."""
+    id: str                                # stable: "corr:revenue__units", "seg:segment/revenue"
+    kind: Literal["correlation", "trend", "segment", "anomaly", "test"]
+    claim: str                             # one line, from the computed values
+    code: str                              # the analysis body that produced it
+    result_excerpt: str                    # the finding's JSON, truncated
+    row_count: int                         # rows behind it (min non-null of its columns)
+    confidence: Literal["high", "medium", "low"]
+    confidence_reason: str
+    assumptions: list[str] = Field(default_factory=list)
+
+
 class AnalysisFindings(BaseModel):
     """Produced by the Analysis Agent from E2B sandbox execution."""
     eda_summary: dict[str, Any]           # describe() output per metric column
     correlations: dict[str, float]        # column_pair → correlation coefficient
-    trends: list[TrendResult | dict[str, Any]]  # rolling avg, MoM/YoY
+    # Was `list[TrendResult | dict]`: pydantic coerced every dict to TrendResult anyway, so
+    # dict-only consumers saw nothing and extra keys were dropped.
+    trends: list[TrendResult]
     segments: list[SegmentResult]
     anomalies: list[AnomalyRecord]
     statistical_tests: list[StatisticalResult]
@@ -325,6 +362,7 @@ class AnalysisFindings(BaseModel):
     target_correlations: dict[str, float] = Field(default_factory=dict)        # Pearson r vs target_col (when one exists)
     target_col: str | None = None                                              # auto-detected target column name
     column_roles_summary: dict[str, str] = Field(default_factory=dict)         # column → role (id/binary/continuous/...)
+    evidence: list[Evidence] = Field(default_factory=list)                     # Phase 3: one per finding
 
 
 # ── Agent 5 output: ChartConfig ───────────────────────────────────────────────

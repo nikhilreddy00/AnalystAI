@@ -47,6 +47,7 @@ from agents.visualization_agent import (
     generate_smart_kpis,
     run_visualization_agent,
 )
+from llm.client import get_client
 from orchestrator.routing import (
     route_after_analysis,
     route_after_cleaning,
@@ -273,8 +274,9 @@ async def analysis_node(state: AgentState) -> dict:
         session.__dict__["_df_parquet"] = state["df_parquet"]
 
     try:
-        findings = await run_analysis_agent(session)
+        findings = await run_analysis_agent(session, get_client())
         session.analysis_findings = findings
+        _emit(state, {"type": "evidence", "data": [e.model_dump() for e in findings.evidence]})
 
         # PROMPT-2: smart KPI selection. Compute from df + column roles before
         # df_parquet is dropped so the briefing event can carry typed KPI cards.

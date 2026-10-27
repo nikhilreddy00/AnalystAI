@@ -296,18 +296,12 @@ async def run_insight_agent(
     if findings.trends:
         trend_lines = []
         for t in findings.trends:
-            # BUG-16: Support both TrendResult objects and legacy dicts
-            if hasattr(t, 'column'):
-                trend_lines.append(
-                    f"  {t.column}: {t.direction} {t.pct_change:.1f}% ({t.period})"
-                )
-            else:
-                trend_lines.append(
-                    f"  {t.get('column', '?')}: {t.get('direction', '?')} "
-                    f"{float(t.get('pct_change', 0)):.1f}% ({t.get('period', '?')})"
-                )
-        context_parts.append("Trends:\n" + "\n".join(trend_lines))
+            seg = f" [{t.segment}]" if t.segment else ""
+            trend_lines.append(f"  {t.column}{seg}: {t.direction} {t.pct_change:.1f}% ({t.period})")
+        context_parts.append("Trends:\n" + delimit_untrusted("\n".join(trend_lines)))
 
+    # Group names, trend segments, anomaly values and the analysis code's prose all carry cell
+    # values (a cleaned frame can be just the injected row), so these sections are delimited.
     if findings.segments:
         seg_lines = []
         for seg in findings.segments[:5]:
@@ -316,21 +310,21 @@ async def run_insight_agent(
                 f"  {seg.metric_column} by {seg.segment_column}: "
                 + ", ".join(f"{r.get('name')}={r.get('value')}" for r in top_results)
             )
-        context_parts.append("Segmentation:\n" + "\n".join(seg_lines))
+        context_parts.append("Segmentation:\n" + delimit_untrusted("\n".join(seg_lines)))
 
     if findings.anomalies:
         anomaly_lines = [
             f"  {a.column}: value={a.value}, severity={a.severity.value}, {a.explanation}"
             for a in findings.anomalies[:5]
         ]
-        context_parts.append("Anomalies detected:\n" + "\n".join(anomaly_lines))
+        context_parts.append("Anomalies detected:\n" + delimit_untrusted("\n".join(anomaly_lines)))
 
     if findings.statistical_tests:
         test_lines = [
             f"  {t.test_name}: statistic={t.statistic:.4f}, p={t.p_value}, {t.interpretation}"
             for t in findings.statistical_tests
         ]
-        context_parts.append("Statistical tests:\n" + "\n".join(test_lines))
+        context_parts.append("Statistical tests:\n" + delimit_untrusted("\n".join(test_lines)))
 
     if findings.correlations:
         strong = [(k, v) for k, v in findings.correlations.items() if abs(v) >= 0.5]

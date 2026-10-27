@@ -23,8 +23,8 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 0 | Research + gap map + ADRs (`docs/research/`, `docs/adr/`) | ✅ done (2026-10-27) |
 | 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | ✅ done (2026-10-27) — `docs/baselines/phase1.md` |
 | 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | ✅ done (2026-10-27) — `docs/baselines/phase2.md` (analysis 87.5%, e2e 45.0%) |
-| 3 | Analysis agent as the agent-contract template | ⏭ next |
-| 4 | SQL path + YAML semantic layer | pending |
+| 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
+| 4 | SQL path + YAML semantic layer | ⏭ next |
 | 5 | Roll the contract out: Intake → Cleaning → Insight → Quality check → Ingestion → Visualization | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -110,13 +110,17 @@ agents/
   intake_agent.py          — returns AnalysisTask (drops columns not in the DataContract)
   ingestion_agent.py       — shared LLM client (Haiku), returns DataContract
   cleaning_agent.py        — returns (DataFrame, CleaningAudit)
-  analysis_agent.py        — code gen → guardrails (1 guided retry) → E2B → AnalysisFindings
+  analysis_agent.py        — the agent-contract reference (docs/agent-contract.md): ANALYSIS_CARD,
+                             build_context, tools (retry only), code → guard → E2B → built-in
+                             standard stats → hard rules (1 guided retry) → findings + Evidence
   visualization_agent.py   — PURE PYTHON (no LLM), returns list[ChartConfig]
   insight_agent.py         — returns InsightReport
   quality_critic.py        — LLM critic run by quality_check_node → ExpertReview
   drill_down_agent.py      — follow-up answer + chart computed from the df
   targeted_analysis_agent.py — deterministic answers for non-overview intents
   errors.py                — AgentError hierarchy (LLMRefusal/Truncated/Unavailable/OutputError, GuardrailViolation, SandboxError)
+
+prompts/<agent>/v<N>.md    — versioned system prompts (analysis: v3 = old v2 verbatim … v7 current)
 
 guardrails.py              — pure checks: code AST allowlist, column refs, read-only SQL (sqlglot),
                              numeric grounding, PII masking, <untrusted_data> delimiting
@@ -159,6 +163,7 @@ frontend/src/
     ConnectorSetup.tsx     — Data source configuration panel
     ApprovalModal.tsx      — Human approval gate modal
     DashboardCanvas.tsx    — Pinned chart grid
+    EvidencePanel.tsx      — Evidence list + <dialog> drawer (code, rows, confidence, assumptions)
   hooks/useAnalysis.ts     — SSE stream consumer, state management
   types/index.ts           — TypeScript mirrors of Python Pydantic models
   lib/api.ts               — fetch wrappers for dashboard endpoints
@@ -184,6 +189,7 @@ agent_start       → {type: "agent_start", agent: "<name>", message: "<status>"
 agent_complete    → {type: "agent_complete", agent: "<name>", message: "<result>"}
 approval_required → {type: "approval_required", context: "clarification"|"high_null", ...}
 suggested_questions → {type: "suggested_questions", questions: string[]}  // FEAT-01
+evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding
 charts            → {type: "charts", data: ChartConfig[]}
 export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
 insight           → {type: "insight", data: InsightReport}
@@ -203,7 +209,8 @@ done              → {type: "done"}  // always last
 - **Error handling**: every agent wraps its core logic in try/except, sets `session.error_message`
 - **Frontend**: TypeScript strict, Tailwind v4 with `@import "tailwindcss"`, `"use client"` on all interactive components
 - **Untrusted data**: dataset text in a prompt goes through `delimit_untrusted()` with `UNTRUSTED_NOTE` in the system prompt; PII is masked once in `build_data_contract` (mask anything else you send, e.g. `mask_row`)
-- **LLM calls**: always `get_client().complete(...)` from `llm/client.py` — never a new `AsyncAnthropic`. Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl`
+- **LLM calls**: through `llm/client.py` — never a new `AsyncAnthropic`. Contract agents (analysis so far) take `llm: LLMClient` as a parameter; the rest still call `get_client()` until Phase 5. Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl` (metadata, tool names and guardrail rule labels only)
+- **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
 - **Evals**: `uv run python -m evals.run {analysis|e2e} --k 3 [--compare <prev.json>]` — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
 

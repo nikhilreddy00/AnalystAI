@@ -1,0 +1,22 @@
+id: simpson_strat-2
+category: simpson
+dataset:
+  name: simpson
+  seed: 2
+question: Compare conversion between treatment and control.
+task:
+  analysis_types:
+  - segmentation
+  - hypothesis
+  target_metrics:
+  - converted
+  segments:
+  - group
+  - department
+checks:
+- kind: simpson_reversal
+  planted: true
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
