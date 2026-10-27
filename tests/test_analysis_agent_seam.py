@@ -106,7 +106,8 @@ async def test_every_finding_carries_evidence(recorded_llm, monkeypatch):
         "statistical_tests": [{"test_name": "pearson revenue~discount", "statistic": 0.01,
                                "p_value": 0.62, "interpretation": "r=0.01, p=0.62: no link"}],
         "non_null": {"revenue": 3025, "discount": 3025}, "n_rows": 3025,
-        "assumptions": ["Pearson r assumes a linear relationship"],
+        "assumptions": ["Pearson r between revenue and discount assumes a linear relationship",
+                        "units is capped at 8 per order"],
     })
     recorded_llm.responses.append("result['correlations']['revenue__discount'] = 0.01")
     findings = await analysis_agent.run_analysis_agent(_session(), recorded_llm)
@@ -117,7 +118,7 @@ async def test_every_finding_carries_evidence(recorded_llm, monkeypatch):
     assert corr.row_count == 3025 and corr.confidence == "medium"          # weak |r|
     assert "revenue__discount" in corr.result_excerpt and "revenue__discount" in corr.code
     assert ev["test:0"].confidence == "low" and "not significant" in ev["test:0"].confidence_reason
-    assert "Pearson r assumes a linear relationship" in corr.assumptions
+    assert corr.assumptions == ["Pearson r between revenue and discount assumes a linear relationship"]
 
 
 @pytest.mark.parametrize("n, p, r, imputed, level", [

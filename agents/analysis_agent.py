@@ -204,7 +204,7 @@ def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
     segments = [c for c in task.segments if c in names]
     date = next(iter(contract.date_columns), None)
     return f"""
-# ─── Standard statistics (deterministic, fill gaps only) ───
+# ─── Standard statistics (deterministic) ───
 result['builtin'] = []
 _targets, _segs, _date = {targets!r}, {segments!r}, {date!r}
 try:
@@ -528,8 +528,8 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                if d.operation == "impute"}
     model_notes = [str(a) for a in raw.get("assumptions", []) if isinstance(a, str)][:5] \
         if isinstance(raw.get("assumptions"), list) else []
-    if audit and audit.duplicates_removed:
-        model_notes.append(f"{audit.duplicates_removed} duplicate rows were removed first")
+    audit_notes = [f"{audit.duplicates_removed} duplicate rows were removed first"] \
+        if audit and audit.duplicates_removed else []
 
     def item(kind: str, id_: str, claim: str, cols: list[str], payload: Any,
              p: float | None = None, r: float | None = None, n: int | None = None) -> Evidence:
@@ -538,11 +538,13 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         imp = max((imputed.get(c, 0.0) for c in cols), default=0.0)
         level, why = confidence(n, p, r, imp)
         notes = [f"{c}: {imputed[c]:.0f}% nulls were imputed" for c in cols if c in imputed]
+        # The model's notes are global; keep the ones about this finding's columns.
+        relevant = [m for m in model_notes if not cols or any(c in m for c in cols)]
         return Evidence(id=id_, kind=kind, claim=claim,
                         code=standard if id_ in builtin else body,
                         result_excerpt=json.dumps(payload, default=str)[:500], row_count=n,
                         confidence=level, confidence_reason=why,
-                        assumptions=notes + model_notes)
+                        assumptions=notes + relevant + audit_notes)
 
     out = []
     for key, r in f.correlations.items():
