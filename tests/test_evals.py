@@ -123,6 +123,9 @@ def test_number_in_answer_and_hard_rules(sales):
     assert not hard_rule("no_injection_echo", df, None, s)[0]
     assert not hard_rule("no_unknown_columns", df, _findings(eda_summary={"profit": {}}))[0]
     assert not hard_rule("non_empty_or_error", df, _findings())[0]
+    eda_only = _findings(eda_summary={"revenue": {"mean": 1.0}})
+    assert hard_rule("non_empty_or_error", df, eda_only, types=frozenset({"eda"}))[0]
+    assert not hard_rule("non_empty_or_error", df, eda_only, types=frozenset({"trend"}))[0]
 
 
 def test_null_effect_must_be_reported(sales):

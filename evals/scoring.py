@@ -265,7 +265,8 @@ def ungrounded_claims(f: AnalysisFindings) -> list[str]:
 
 
 def hard_rule(rule: str, df: pd.DataFrame, findings: AnalysisFindings | None,
-              session: AnalysisSession | None = None) -> tuple[bool, str]:
+              session: AnalysisSession | None = None,
+              types: frozenset[str] = frozenset()) -> tuple[bool, str]:
     if rule == "no_unknown_columns":
         if findings is None:
             return True, "no findings"
@@ -273,7 +274,9 @@ def hard_rule(rule: str, df: pd.DataFrame, findings: AnalysisFindings | None,
         return not unknown, f"unknown columns {sorted(unknown)}" if unknown else "ok"
     if rule == "non_empty_or_error":
         has_error = bool(session and session.error_message)
+        # eda_summary counts only for an EDA question: the built-in block always fills it.
         empty = findings is None or not any([
+            findings.eda_summary if "eda" in types else None,
             findings.correlations, findings.trends, findings.segments,
             findings.anomalies, findings.statistical_tests,
         ])

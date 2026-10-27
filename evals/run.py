@@ -82,7 +82,9 @@ async def run_analysis_case(case: dict) -> dict:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}
         ok, detail = ANALYSIS_CHECKS[kind](findings, df, truth, **kwargs) if findings else (False, "no findings")
         checks.append({"kind": kind, "ok": ok, "detail": detail, "planted": spec.get("planted", False)})
-    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings)))) for r in case["hard_rules"]]
+    types = frozenset(case["task"].get("analysis_types", []))
+    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings, types=types))))
+            for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
             "false_findings": false_findings(findings, df, truth) if findings else None}
 
