@@ -1,0 +1,5849 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261027T214125Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "cecaedb",
+  "started_at": "20261027T214125Z",
+  "only": null
+ },
+ "summary": {
+  "cases": 46,
+  "runs": 138,
+  "pass_rate": 0.9783,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0652,
+  "hard_rule_violations": 0,
+  "errors": 1,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 11,
+  "cost_per_question_usd": 0.028,
+  "latency_p50_s": 18.32,
+  "latency_p95_s": 52.38,
+  "numeric_accuracy": 0.9756,
+  "insight_recall": 0.9872,
+  "false_finding_rate": 0.0098,
+  "verifiable_claims": 4604
+ },
+ "runs": {
+  "aggregation-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 13.27,
+    "cost_usd": 0.01425,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 9.55,
+    "cost_usd": 0.00955,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 13.81,
+    "cost_usd": 0.01432,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "aggregation-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 9.64,
+    "cost_usd": 0.01062,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 9.46,
+    "cost_usd": 0.01062,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 9.2,
+    "cost_usd": 0.01048,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "aggregation-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 14.33,
+    "cost_usd": 0.01394,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 8.91,
+    "cost_usd": 0.01015,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 13.71,
+    "cost_usd": 0.01442,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "aggregation-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 8.55,
+    "cost_usd": 0.01052,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 8.1,
+    "cost_usd": 0.01025,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 8.76,
+    "cost_usd": 0.01009,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "aggregation-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 8.38,
+    "cost_usd": 0.01038,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 7.78,
+    "cost_usd": 0.00997,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 8.2,
+    "cost_usd": 0.01004,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "anomaly-1": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 18.82,
+    "cost_usd": 0.02159,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 18.82,
+    "cost_usd": 0.0217,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 21.51,
+    "cost_usd": 0.02513,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "anomaly-2": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 21.15,
+    "cost_usd": 0.02508,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 21.73,
+    "cost_usd": 0.02522,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 19.59,
+    "cost_usd": 0.02178,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "anomaly-3": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 21.4,
+    "cost_usd": 0.02577,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 21.37,
+    "cost_usd": 0.02438,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 20.0,
+    "cost_usd": 0.02527,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "anomaly-4": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 19.13,
+    "cost_usd": 0.02243,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 20.86,
+    "cost_usd": 0.02475,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 20.65,
+    "cost_usd": 0.02466,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "anomaly-5": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 19.01,
+    "cost_usd": 0.02316,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 20.0,
+    "cost_usd": 0.02244,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 19.26,
+    "cost_usd": 0.02269,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "correlation-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.569476, want 0.569",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 9.83,
+    "cost_usd": 0.01137,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.569476, want 0.569",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 7.38,
+    "cost_usd": 0.01002,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.569476, want 0.569",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 7.93,
+    "cost_usd": 0.01018,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "correlation-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.54519, want 0.545",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 9.3,
+    "cost_usd": 0.01117,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.54519, want 0.545",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 8.62,
+    "cost_usd": 0.01072,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.54519, want 0.545",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 9.41,
+    "cost_usd": 0.01081,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "correlation-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.571596, want 0.572",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 9.46,
+    "cost_usd": 0.01126,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.571596, want 0.572",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 10.38,
+    "cost_usd": 0.01126,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.571596, want 0.572",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 8.35,
+    "cost_usd": 0.01071,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "correlation-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.551283, want 0.551",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 9.65,
+    "cost_usd": 0.01098,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.551283, want 0.551",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 8.38,
+    "cost_usd": 0.01093,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.551283, want 0.551",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 7.51,
+    "cost_usd": 0.01018,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "correlation-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.622529, want 0.623",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 8.6,
+    "cost_usd": 0.01093,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.622529, want 0.623",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 8.67,
+    "cost_usd": 0.01042,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.622529, want 0.623",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 25,
+     "details": []
+    },
+    "latency_s": 8.01,
+    "cost_usd": 0.0109,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "null_effect-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 45.87,
+    "cost_usd": 0.08936,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 20.98,
+    "cost_usd": 0.02902,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 25.18,
+    "cost_usd": 0.03423,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "null_effect-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 54.33,
+    "cost_usd": 0.09243,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 22.34,
+    "cost_usd": 0.03193,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 51.91,
+    "cost_usd": 0.09072,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   }
+  ],
+  "null_effect-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 23.44,
+    "cost_usd": 0.03227,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 56.1,
+    "cost_usd": 0.10999,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 26.57,
+    "cost_usd": 0.03266,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "null_effect-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 24.06,
+    "cost_usd": 0.03083,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 52.96,
+    "cost_usd": 0.10514,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 25.0,
+    "cost_usd": 0.03528,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "null_effect-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 52.35,
+    "cost_usd": 0.09099,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 52.58,
+    "cost_usd": 0.08983,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "pair_reported",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 27,
+     "details": []
+    },
+    "latency_s": 57.84,
+    "cost_usd": 0.11238,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   }
+  ],
+  "robustness-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 43,
+     "details": []
+    },
+    "latency_s": 12.37,
+    "cost_usd": 0.01791,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 49,
+     "details": []
+    },
+    "latency_s": 16.85,
+    "cost_usd": 0.02263,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 53,
+     "details": []
+    },
+    "latency_s": 18.91,
+    "cost_usd": 0.02635,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "robustness-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "invented group 'East:A' in revenue by segment",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 12,
+     "verifiable": 57,
+     "details": [
+      "mean revenue[East:A]",
+      "mean revenue[East:B]",
+      "mean revenue[East:C]",
+      "mean revenue[South:A]",
+      "mean revenue[South:B]",
+      "mean revenue[South:C]",
+      "mean revenue[North:A]",
+      "mean revenue[North:B]",
+      "mean revenue[North:C]",
+      "mean revenue[West:A]"
+     ]
+    },
+    "latency_s": 15.59,
+    "cost_usd": 0.02202,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 43,
+     "details": []
+    },
+    "latency_s": 14.16,
+    "cost_usd": 0.01784,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 60,
+     "details": []
+    },
+    "latency_s": 17.47,
+    "cost_usd": 0.02436,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "robustness-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 51,
+     "details": []
+    },
+    "latency_s": 18.28,
+    "cost_usd": 0.02346,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 43,
+     "details": []
+    },
+    "latency_s": 13.9,
+    "cost_usd": 0.01812,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 50,
+     "details": []
+    },
+    "latency_s": 16.99,
+    "cost_usd": 0.02227,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "robustness-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 53,
+     "details": []
+    },
+    "latency_s": 19.29,
+    "cost_usd": 0.02385,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 37,
+     "details": []
+    },
+    "latency_s": 13.67,
+    "cost_usd": 0.0185,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 53,
+     "details": []
+    },
+    "latency_s": 18.28,
+    "cost_usd": 0.02385,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "robustness-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 51,
+     "details": []
+    },
+    "latency_s": 16.15,
+    "cost_usd": 0.02245,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 50,
+     "details": []
+    },
+    "latency_s": 15.03,
+    "cost_usd": 0.02034,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 43,
+     "details": []
+    },
+    "latency_s": 13.01,
+    "cost_usd": 0.01799,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 57,
+     "details": []
+    },
+    "latency_s": 16.25,
+    "cost_usd": 0.02223,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 57,
+     "details": []
+    },
+    "latency_s": 16.61,
+    "cost_usd": 0.02223,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 51,
+     "details": []
+    },
+    "latency_s": 20.55,
+    "cost_usd": 0.02884,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 54,
+     "details": []
+    },
+    "latency_s": 18.35,
+    "cost_usd": 0.02514,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 54,
+     "details": []
+    },
+    "latency_s": 18.15,
+    "cost_usd": 0.02429,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 54,
+     "details": []
+    },
+    "latency_s": 18.38,
+    "cost_usd": 0.02429,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 53,
+     "details": []
+    },
+    "latency_s": 19.29,
+    "cost_usd": 0.02628,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 61,
+     "details": []
+    },
+    "latency_s": 16.74,
+    "cost_usd": 0.02225,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 60,
+     "details": []
+    },
+    "latency_s": 18.23,
+    "cost_usd": 0.02179,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 54,
+     "details": []
+    },
+    "latency_s": 17.48,
+    "cost_usd": 0.02467,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 51,
+     "details": []
+    },
+    "latency_s": 16.52,
+    "cost_usd": 0.02258,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 51,
+     "details": []
+    },
+    "latency_s": 17.56,
+    "cost_usd": 0.0236,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 51,
+     "details": []
+    },
+    "latency_s": 20.39,
+    "cost_usd": 0.02711,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 5,
+     "verifiable": 70,
+     "details": [
+      "mean marketing_spend[East]",
+      "mean marketing_spend[West]",
+      "mean marketing_spend[West]",
+      "mean marketing_spend[East]",
+      "mean marketing_spend[North]"
+     ]
+    },
+    "latency_s": 17.29,
+    "cost_usd": 0.02212,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 12,
+     "verifiable": 63,
+     "details": [
+      "mean marketing_spend[East (segment=A)]",
+      "mean marketing_spend[North (segment=A)]",
+      "mean marketing_spend[South (segment=A)]",
+      "mean marketing_spend[West (segment=A)]",
+      "mean marketing_spend[East (segment=B)]",
+      "mean marketing_spend[North (segment=B)]",
+      "mean marketing_spend[South (segment=B)]",
+      "mean marketing_spend[West (segment=B)]",
+      "mean marketing_spend[East (segment=C)]",
+      "mean marketing_spend[North (segment=C)]"
+     ]
+    },
+    "latency_s": 18.44,
+    "cost_usd": 0.02437,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment_trend-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 49,
+     "details": []
+    },
+    "latency_s": 21.26,
+    "cost_usd": 0.02657,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 57,
+     "details": []
+    },
+    "latency_s": 23.8,
+    "cost_usd": 0.02983,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 56,
+     "details": []
+    },
+    "latency_s": 22.44,
+    "cost_usd": 0.03014,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment_trend-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 55,
+     "details": []
+    },
+    "latency_s": 21.93,
+    "cost_usd": 0.02821,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 51,
+     "details": []
+    },
+    "latency_s": 20.81,
+    "cost_usd": 0.02632,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 56,
+     "details": []
+    },
+    "latency_s": 21.53,
+    "cost_usd": 0.02774,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "segment_trend-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 57,
+     "details": []
+    },
+    "latency_s": 22.41,
+    "cost_usd": 0.02885,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 50,
+     "details": []
+    },
+    "latency_s": 24.1,
+    "cost_usd": 0.03403,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_trend",
+      "ok": true,
+      "detail": "pct_change: got [-12.0], want -12.00",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 50,
+     "details": []
+    },
+    "latency_s": 24.66,
+    "cost_usd": 0.03514,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 14.85,
+    "cost_usd": 0.0214,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "latency_s": 17.56,
+    "cost_usd": 0.02542,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 25.32,
+    "cost_usd": 0.03428,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "invented group 'control (Easy)' in converted by group",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 4,
+     "verifiable": 30,
+     "details": [
+      "mean converted[control (Easy)]",
+      "mean converted[treatment (Easy)]",
+      "mean converted[control (Hard)]",
+      "mean converted[treatment (Hard)]"
+     ]
+    },
+    "latency_s": 16.5,
+    "cost_usd": 0.02335,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "latency_s": 18.49,
+    "cost_usd": 0.02567,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "latency_s": 17.36,
+    "cost_usd": 0.02551,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 17.63,
+    "cost_usd": 0.02429,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 21.56,
+    "cost_usd": 0.0268,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 15.0,
+    "cost_usd": 0.02105,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 4,
+     "verifiable": 30,
+     "details": [
+      "mean converted[control (dept=Hard)]",
+      "mean converted[treatment (dept=Hard)]",
+      "mean converted[control (dept=Easy)]",
+      "mean converted[treatment (dept=Easy)]"
+     ]
+    },
+    "latency_s": 18.16,
+    "cost_usd": 0.02395,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 4,
+     "verifiable": 28,
+     "details": [
+      "mean converted[Easy|control]",
+      "mean converted[Easy|treatment]",
+      "mean converted[Hard|control]",
+      "mean converted[Hard|treatment]"
+     ]
+    },
+    "latency_s": 14.82,
+    "cost_usd": 0.01988,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 4,
+     "verifiable": 30,
+     "details": [
+      "mean converted[control (dept=Hard)]",
+      "mean converted[treatment (dept=Hard)]",
+      "mean converted[control (dept=Easy)]",
+      "mean converted[treatment (dept=Easy)]"
+     ]
+    },
+    "latency_s": 21.19,
+    "cost_usd": 0.02584,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 14.87,
+    "cost_usd": 0.02044,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 15.3,
+    "cost_usd": 0.02153,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 26,
+     "details": []
+    },
+    "latency_s": 17.5,
+    "cost_usd": 0.02503,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson_strat-1": [
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 44,
+     "details": []
+    },
+    "latency_s": 24.93,
+    "cost_usd": 0.02905,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 78.15,
+    "cost_usd": 0.12232,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "finding_columns"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 44,
+     "details": []
+    },
+    "latency_s": 27.95,
+    "cost_usd": 0.03583,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson_strat-2": [
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 26.64,
+    "cost_usd": 0.03511,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 32,
+     "details": []
+    },
+    "latency_s": 23.6,
+    "cost_usd": 0.03022,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 24.92,
+    "cost_usd": 0.03177,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "simpson_strat-3": [
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 27.26,
+    "cost_usd": 0.03523,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 28.06,
+    "cost_usd": 0.03921,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "simpson_reversal",
+      "ok": true,
+      "detail": "ok",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 28,
+     "details": []
+    },
+    "latency_s": 28.63,
+    "cost_usd": 0.03921,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "trend-1": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [-3.11], want -3.11",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 21.96,
+    "cost_usd": 0.02914,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [-3.11], want -3.11",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 20.92,
+    "cost_usd": 0.02074,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [-3.11], want -3.11",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 18.98,
+    "cost_usd": 0.02458,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "trend-2": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [5.97], want 5.97",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 53.47,
+    "cost_usd": 0.08321,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding"
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no findings",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "no findings"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "explicit error"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "no findings"
+     }
+    ],
+    "error": "GuardrailViolation: analysis: numbers ['-0.178'] in interpretation/explanation text appear in no computed result (e.g. 'slope=-308.0443, r=-0.178, p=0.580576; no significant trend'). Build those strings only from values you store",
+    "false_findings": null,
+    "latency_s": 46.01,
+    "cost_usd": 0.07638,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding",
+     "grounding"
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [5.97], want 5.97",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 17.84,
+    "cost_usd": 0.02281,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "trend-3": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [2.48], want 2.48",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 18.46,
+    "cost_usd": 0.02521,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [2.48], want 2.48",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 16.85,
+    "cost_usd": 0.0211,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [2.48], want 2.48",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 19.56,
+    "cost_usd": 0.02471,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "trend-4": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [13.7], want 13.70",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 19.18,
+    "cost_usd": 0.02171,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [13.7], want 13.70",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 21.29,
+    "cost_usd": 0.02752,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [13.7], want 13.70",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 15.74,
+    "cost_usd": 0.01991,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "trend-5": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [0.59], want 0.59",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 17.94,
+    "cost_usd": 0.02152,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [0.59], want 0.59",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 17.17,
+    "cost_usd": 0.02329,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": true,
+      "detail": "pct_change: got [0.59], want 0.59",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "latency_s": 14.46,
+    "cost_usd": 0.01732,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ },
+ "compare": {
+  "previous": "analysis-20261027T194402Z",
+  "pass_rate_delta_pts": 10.0,
+  "common_cases": 40,
+  "new_cases": [
+   "segment_trend-1",
+   "segment_trend-2",
+   "segment_trend-3",
+   "simpson_strat-1",
+   "simpson_strat-2",
+   "simpson_strat-3"
+  ],
+  "broke": [],
+  "fixed": [
+   "trend-1",
+   "trend-2",
+   "trend-3",
+   "trend-4",
+   "trend-5"
+  ],
+  "mcnemar_p": 0.0625
+ }
+}

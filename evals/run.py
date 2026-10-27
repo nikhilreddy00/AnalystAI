@@ -185,7 +185,9 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
         "errors": sum(bool(r["error"]) for r in flat),
         "runs_with_truncated_llm_output": sum(r.get("truncated_calls", 0) > 0 for r in flat),
-        "runs_with_guardrail_retry": sum(bool(r.get("rejections")) for r in flat),
+        "runs_with_guardrail_retry": sum(any(g != "grounding_rewritten" for g in r.get("rejections", []))
+                                         for r in flat),
+        "runs_with_prose_rewritten": sum("grounding_rewritten" in r.get("rejections", []) for r in flat),
         "cost_per_question_usd": round(statistics.mean(r["cost_usd"] for r in flat), 4),
         "latency_p50_s": _pct([r["latency_s"] for r in flat], 50),
         "latency_p95_s": _pct([r["latency_s"] for r in flat], 95),

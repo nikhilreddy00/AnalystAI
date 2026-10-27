@@ -437,6 +437,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             findings = _parse_findings(raw, full_code, execution.figures_base64)
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
+                if repaired := ground_prose(findings, raw):
+                    trace_verdict("analysis", PROMPT_VERSION, "grounding_rewritten")
+                    raw["assumptions"] = [*(raw.get("assumptions") or []), *repaired]
                 findings.evidence = build_evidence(findings, raw, body, standard,
                                                    session.cleaning_audit)
                 return findings
@@ -455,7 +458,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
 def _rule(reason: str) -> str:
     """A fixed label for a rejection reason, safe to write to traces."""
     for prefix, label in (("every finding", "empty"), ("findings name", "finding_columns"),
-                          ("numbers", "grounding"), ("unknown column", "code_columns")):
+                          ("unknown column", "code_columns")):
         if reason.startswith(prefix):
             return label
     return "code_guard"
@@ -480,26 +483,41 @@ def _finding_columns(f: AnalysisFindings) -> set[str]:
 
 def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
                     types: set[str] = frozenset()) -> str | None:
-    """Hard rules on what the code produced: non-empty, real columns, grounded numbers.
-    eda_summary counts only when EDA was asked for: the built-in block always fills it."""
+    """Hard rules that need a retry: non-empty output and real columns. eda_summary counts only
+    when EDA was asked for: the built-in block always fills it. Grounding is enforced by
+    ground_prose instead (a rewrite, not a retry)."""
     eda = f.eda_summary if "eda" in types else None
     if not any([eda, f.correlations, f.trends, f.segments, f.anomalies, f.statistical_tests]):
         return ("every finding section is empty. Report what you computed, even a null result "
                 "(a near-zero correlation or a non-significant test is a finding)")
     if reason := check_columns(_finding_columns(f), known):
         return f"findings name {reason}"
-    texts = [t.interpretation for t in f.statistical_tests] + [a.explanation for a in f.anomalies]
+    return None
+
+
+def ground_prose(f: AnalysisFindings, raw: dict) -> list[str]:
+    """Hard rule: no number in prose that the code didn't compute. A sentence that breaks it is
+    rewritten from the stored values. Rewriting costs nothing; a guided retry cost ~25s and
+    was most of the p95 in Phase 3 (8% of runs). Returns notes for the evidence."""
     computed = {k: v for k, v in raw.items() if k not in ("head_preview", "distributions")}
     computed["statistical_tests"] = [{k: v for k, v in t.items() if k != "interpretation"}
                                      for t in raw.get("statistical_tests", []) if isinstance(t, dict)]
     computed["anomalies"] = [{k: v for k, v in a.items() if k != "explanation"}
                              for a in raw.get("anomalies", []) if isinstance(a, dict)]
-    bad = [(t, n) for t in texts for n in ungrounded_numbers(t, [computed, _CONVENTIONS])]
-    if bad:
-        nums = sorted({n for _, n in bad})[:8]
-        return (f"numbers {nums} in interpretation/explanation text appear in no computed result "
-                f"(e.g. {bad[0][0][:160]!r}). Build those strings only from values you store")
-    return None
+    pool = [computed, _CONVENTIONS]
+    notes = []
+    for t in f.statistical_tests:
+        if ungrounded_numbers(t.interpretation, pool):
+            p = t.p_value
+            verdict = "" if p is None else (
+                f", p={p:.3g}: " + ("significant" if p < 0.05 else "not significant") + " at 0.05")
+            t.interpretation = f"statistic={t.statistic:.4g}{verdict}"
+            notes.append(f"{t.test_name}: interpretation rewritten from the computed values")
+    for a in f.anomalies:
+        if ungrounded_numbers(a.explanation, pool):
+            a.explanation = f"{a.value} lies outside the expected range {a.expected_range}"
+            notes.append(f"{a.column}: anomaly explanation rewritten from the computed values")
+    return notes
 
 
 # ── Evidence (ADR-0001): deterministic, one item per finding ───────────────────────────────

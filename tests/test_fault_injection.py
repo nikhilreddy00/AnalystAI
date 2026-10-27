@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import json
+import re
 from pathlib import Path
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -127,8 +128,6 @@ _TEST = {"test_name": "t-test revenue by segment", "statistic": 2.5, "p_value": 
 @pytest.mark.parametrize("output, reason", [
     ({}, "empty"),
     ({"correlations": {"profit__units": 0.4}}, "unknown column"),
-    ({"statistical_tests": [{**_TEST, "interpretation": "revenue rose 37.5% after discounts"}]},
-     "37.5"),
 ])
 async def test_bad_findings_get_one_retry_then_raise(recorded_llm, sandbox, output, reason):
     recorded_llm.responses += [GOOD_BODY, GOOD_BODY]
@@ -140,6 +139,20 @@ async def test_bad_findings_get_one_retry_then_raise(recorded_llm, sandbox, outp
     assert '"guardrail": ' in trace                           # the label, never the data:
     assert "profit" not in trace and "37.5" not in trace
     assert reason in recorded_llm.calls[1]["messages"][-1]["content"]   # the model was told why
+
+
+async def test_ungrounded_prose_is_rewritten_not_retried(recorded_llm, sandbox):
+    recorded_llm.responses.append(GOOD_BODY)
+    sandbox.result = ExecutionResult("", "", None, output_json=json.dumps({"statistical_tests": [
+        {**_TEST, "interpretation": "revenue rose 37.5% after discounts"}]}))
+    findings = await analysis_agent.run_analysis_agent(_session(), recorded_llm)
+
+    assert len(sandbox.calls) == 1 and len(recorded_llm.calls) == 1        # no retry
+    text = findings.statistical_tests[0].interpretation
+    assert "37.5" not in text and text == "statistic=2.5, p=0.012: significant at 0.05"
+    assert any("rewritten" in a for a in findings.evidence[0].assumptions)
+    trace = (Path(settings.trace_dir) / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl").read_text()
+    assert '"guardrail": "grounding_rewritten"' in trace and "37.5" not in trace
 
 
 async def test_grounded_interpretation_passes(recorded_llm, sandbox):
@@ -204,6 +217,30 @@ def _find_all(text: str, sub: str) -> list[int]:
         out.append(i)
         i = text.find(sub, i + 1)
     return out
+
+
+async def test_injected_group_names_reach_insight_only_delimited(recorded_llm):
+    """Phase 3 E2E regression: cleaning can leave only the injected row, so a segment group or
+    trend segment can be the injection text. The insight prompt must keep it delimited."""
+    from agents.insight_agent import run_insight_agent
+    from orchestrator.state import AnalysisFindings, SegmentResult, TrendResult
+    session = _session()
+    session.analysis_findings = AnalysisFindings(
+        eda_summary={}, correlations={}, anomalies=[], statistical_tests=[], code_executed="",
+        trends=[TrendResult(column="revenue", period="MoM", pct_change=-3.0,
+                            segment=datagen.INJECTION)],
+        segments=[SegmentResult(segment_column="segment|notes", metric_column="revenue",
+                                aggregation="mean",
+                                results=[{"name": f"A|{datagen.INJECTION}", "value": 1.0}])])
+    recorded_llm.responses.append("{}")
+    try:
+        await run_insight_agent(session)
+    except Exception:   # only the prompt matters here
+        pass
+    prompt = recorded_llm.calls[0]["messages"][0]["content"]
+    blocks = re.findall(r"<untrusted_data>.*?</untrusted_data>", prompt, re.S)
+    outside = re.sub(r"<untrusted_data>.*?</untrusted_data>", "", prompt, flags=re.S)
+    assert datagen.INJECTION not in outside and any(datagen.INJECTION in b for b in blocks)
 
 
 # ── Graph: a typed error becomes the SSE error event ───────────────────────────
