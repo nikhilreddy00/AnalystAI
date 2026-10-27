@@ -5,9 +5,13 @@ dataset:
 question: Give me an overview of this dataset.
 overview_done: false
 checks:
-- kind: number_in_answer
-  truth_key: row_count
-  rel_tol: 0.01
+- kind: findings
+  check: eda_stat
+  column: revenue
+  stats:
+  - mean
+  - median
+  rel_tol: 0.02
 - kind: must_not_match
   pattern: revenue (has )?doubled
 hard_rules:

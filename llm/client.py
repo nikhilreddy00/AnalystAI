@@ -44,7 +44,7 @@ class LLMResult:
 class LLMClient(Protocol):
     async def complete(
         self, *, messages: list[dict], max_tokens: int, agent: str, prompt_version: str,
-        system: str | None = None,
+        system: str | None = None, model: str | None = None,
     ) -> LLMResult: ...
 
 
@@ -82,15 +82,16 @@ class ClaudeClient:
 
     async def complete(
         self, *, messages: list[dict], max_tokens: int, agent: str, prompt_version: str,
-        system: str | None = None,
+        system: str | None = None, model: str | None = None,
     ) -> LLMResult:
+        model = model or self.model
         kwargs = {"system": system} if system else {}
         start = time.perf_counter()
         response = await self._client().messages.create(
-            model=self.model, max_tokens=max_tokens, temperature=0,
+            model=model, max_tokens=max_tokens, temperature=0,
             messages=messages, **kwargs,
         )
-        in_price, out_price = _PRICES.get(self.model, (0.0, 0.0))
+        in_price, out_price = _PRICES.get(model, (0.0, 0.0))
         usage = response.usage
         result = LLMResult(
             text="".join(b.text for b in response.content if getattr(b, "type", None) == "text"),
@@ -103,7 +104,7 @@ class ClaudeClient:
         record = {k: v for k, v in asdict(result).items() if k != "text"}
         _trace({
             "ts": datetime.now(timezone.utc).isoformat(),
-            "agent": agent, "prompt_version": prompt_version, "model": self.model, **record,
+            "agent": agent, "prompt_version": prompt_version, "model": model, **record,
         })
         return _check(result, agent)
 
@@ -117,9 +118,9 @@ class RecordedClient:
 
     async def complete(
         self, *, messages: list[dict], max_tokens: int, agent: str, prompt_version: str,
-        system: str | None = None,
+        system: str | None = None, model: str | None = None,
     ) -> LLMResult:
-        self.calls.append({"agent": agent, "system": system, "messages": messages})
+        self.calls.append({"agent": agent, "system": system, "messages": messages, "model": model})
         if not self.responses:
             raise LLMError(f"RecordedClient: no recorded response left for agent '{agent}'")
         r = self.responses.pop(0)

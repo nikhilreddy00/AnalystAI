@@ -26,7 +26,7 @@ from scipy.stats import binomtest
 
 from api.config import settings
 from evals import datagen
-from evals.scoring import ANALYSIS_CHECKS, E2E_CHECKS, hard_rule
+from evals.scoring import ANALYSIS_CHECKS, E2E_CHECKS, answer_text, hard_rule
 from llm.client import trace_meter
 from orchestrator.state import (
     AnalysisSession,
@@ -76,9 +76,7 @@ async def run_analysis_case(case: dict) -> dict:
         ok, detail = ANALYSIS_CHECKS[kind](findings, df, truth, **kwargs) if findings else (False, "no findings")
         checks.append({"kind": kind, "ok": ok, "detail": detail})
     hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings)))) for r in case["hard_rules"]]
-    if error and "non_empty_or_error" in case["hard_rules"]:
-        hard = [h if h["rule"] != "non_empty_or_error" else {**h, "ok": True, "detail": "explicit error"} for h in hard]
-    return {"checks": checks, "hard": hard, "error": error}
+    return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error}
 
 
 _GRAPH = None
@@ -100,30 +98,46 @@ async def run_e2e_case(case: dict) -> dict:
         connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)),
         overview_done=case.get("overview_done", False),
     )
-    events: asyncio.Queue = asyncio.Queue()
-    error = None
-    try:
-        final = await _GRAPH.ainvoke({
-            "session": session, "df_parquet": None, "event_queue": events,
-            "user_message": case["question"], "is_approval": False,
-            "session_store": None, "vector_store": None,
-        })
-        session = final["session"]
-        error = session.error_message
-    except Exception as exc:
-        error = f"{type(exc).__name__}: {exc}"
-    seen = [events.get_nowait() for _ in range(events.qsize())]
-    if any(e.get("type") == "approval_required" for e in seen) and not error:
-        error = "stopped at approval_required"
+    error, approvals = None, []
+    # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
+    # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
+    for message, is_approval in ((case["question"], False), ("Continue with imputation", True)):
+        events: asyncio.Queue = asyncio.Queue()
+        try:
+            final = await _GRAPH.ainvoke({
+                "session": session, "df_parquet": None, "event_queue": events,
+                "user_message": message, "is_approval": is_approval,
+                "session_store": None, "vector_store": None,
+            })
+            session = final["session"]
+            error = session.error_message
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+        gates = [e.get("context") for e in (events.get_nowait() for _ in range(events.qsize()))
+                 if e.get("type") == "approval_required"]
+        approvals += gates
+        if error or gates != ["high_null"]:
+            break
+    if approvals and approvals[-1] != "high_null" and not error:
+        error = f"stopped at approval_required ({approvals[-1]})"
 
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k != "kind"}
-        ok, detail = E2E_CHECKS[kind](session, truth, **kwargs)
+        ok, detail = E2E_CHECKS[kind](session, df, truth, **kwargs)
         checks.append({"kind": kind, "ok": ok, "detail": detail})
     hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, session.analysis_findings, session))))
             for r in case["hard_rules"]]
-    return {"checks": checks, "hard": hard, "error": error}
+    return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
+            "approvals": approvals, "answer": answer_text(session)[:1500]}
+
+
+def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
+    """A surfaced error or question is not a *silent* empty result."""
+    if not error:
+        return hard
+    return [{**h, "ok": True, "detail": "explicit error"} if h["rule"] == "non_empty_or_error" else h
+            for h in hard]
 
 
 async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict:

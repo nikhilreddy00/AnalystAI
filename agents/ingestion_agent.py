@@ -1,48 +1,27 @@
 """
-Data Ingestion Agent — CrewAI agent that:
+Data Ingestion Agent:
 1. Calls the appropriate connector to load data into a DataFrame
-2. Uses Groq (Llama 3.3-70B) to enrich the schema inference with business context
+2. Asks a fast-tier Claude model for a business-readable schema summary
 3. Returns a DataContract that all downstream agents consume
 
-Why Groq here: schema inference is fast + structured — Llama 3.3-70B on Groq
-handles "cust_id is an identifier, revenue_usd is a metric" in <1s.
-No need to burn Claude tokens on this mechanical task.
+Phase 1: the summary call moved from Groq/CrewAI onto the shared LLM client (ADR-0005)
+after Groq stopped serving llama-3.3-70b-versatile, which broke every ingestion.
 """
 
 from __future__ import annotations
 
-
-from crewai import Agent, Crew, LLM, Task
-from crewai.process import Process
-
 from api.config import settings
 from connectors.base import get_connector
+from llm.client import get_client
 from orchestrator.state import AnalysisSession, DataContract
 
-
-_groq_llm = LLM(
-    model="groq/llama-3.3-70b-versatile",
-    api_key=settings.groq_api_key,
-    temperature=0.0,
+# The former CrewAI agent's role/goal/backstory, kept as the system prompt.
+_SYSTEM = (
+    "You are a Data Ingestion Specialist: a data engineer who has connected to hundreds of "
+    "data sources. You know how to detect column types, identify key business metrics, date "
+    "columns, and identifier columns just by looking at column names and samples. Your goal: "
+    "produce a complete schema description that business and technical users can understand."
 )
-
-
-def _make_agent() -> Agent:
-    return Agent(
-        role="Data Ingestion Specialist",
-        goal=(
-            "Connect to the specified data source, load the data, and produce a "
-            "complete schema description that business and technical users can understand."
-        ),
-        backstory=(
-            "You are a data engineer who has connected to hundreds of data sources. "
-            "You know how to detect column types, identify key business metrics, "
-            "date columns, and identifier columns just by looking at column names and samples."
-        ),
-        llm=_groq_llm,
-        verbose=False,
-        allow_delegation=False,
-    )
 
 
 async def run_ingestion_agent(session: AnalysisSession) -> DataContract:
@@ -62,7 +41,7 @@ async def run_ingestion_agent(session: AnalysisSession) -> DataContract:
     # Build the base DataContract from structural analysis
     contract = connector.build_data_contract(df)
 
-    # Enrich with Groq LLM: confirm metric/date/id classifications and add context
+    # Enrich with an LLM summary: business context for the downstream agents
     enriched_summary = await _enrich_schema_with_llm(contract, session.task_plan)
 
     contract.schema_summary = enriched_summary
@@ -78,7 +57,7 @@ async def run_ingestion_agent(session: AnalysisSession) -> DataContract:
 
 
 async def _enrich_schema_with_llm(contract: DataContract, task_plan) -> str:
-    """Ask Groq to produce a richer, business-aware schema summary."""
+    """Ask the fast-tier model for a richer, business-aware schema summary."""
     col_descriptions = "\n".join(
         f"- {c.name} ({c.dtype}): sample={c.sample_values[:3]}, null%={c.null_pct}"
         for c in contract.columns
@@ -87,9 +66,10 @@ async def _enrich_schema_with_llm(contract: DataContract, task_plan) -> str:
     if task_plan:
         task_context = f"The analyst is trying to answer: {task_plan.raw_query}"
 
-    agent = _make_agent()
-    task = Task(
-        description=f"""
+    response = await get_client().complete(
+        agent="ingestion", prompt_version="v0", model=settings.llm_fast_model,
+        max_tokens=400, system=_SYSTEM,
+        messages=[{"role": "user", "content": f"""
 Given this dataset schema, write a 2-3 sentence business-readable summary that explains:
 - What this dataset represents
 - Which columns are the key business metrics
@@ -102,11 +82,6 @@ COLUMNS:
 {col_descriptions}
 
 Return ONLY the plain text summary, no bullet points, no headers.
-""",
-        expected_output="A 2-3 sentence plain text schema summary",
-        agent=agent,
+"""}],
     )
-
-    crew = Crew(agents=[agent], tasks=[task], process=Process.sequential, verbose=False)
-    result = await crew.kickoff_async()
-    return str(result).strip()
+    return response.text.strip()

@@ -191,7 +191,16 @@ ANALYSIS_CHECKS = {
     "anomaly_rows": lambda f, df, truth, **kw: check_anomaly_rows(f, truth, **kw),
 }
 
+def check_findings(session: AnalysisSession, df: pd.DataFrame, truth: dict, check: str,
+                   **kwargs) -> tuple[bool, str]:
+    """Run an analysis check on the findings the full pipeline produced (after cleaning)."""
+    if session.analysis_findings is None:
+        return False, "pipeline produced no analysis findings"
+    return ANALYSIS_CHECKS[check](session.analysis_findings, df, truth, **kwargs)
+
+
 E2E_CHECKS = {
-    "number_in_answer": lambda s, truth, **kw: check_number_in_answer(s, truth, **kw),
-    "must_not_match": lambda s, truth, **kw: check_must_not_match(s, **kw),
+    "number_in_answer": lambda s, df, truth, **kw: check_number_in_answer(s, truth, **kw),
+    "must_not_match": lambda s, df, truth, **kw: check_must_not_match(s, **kw),
+    "findings": lambda s, df, truth, **kw: check_findings(s, df, truth, **kw),
 }
