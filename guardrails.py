@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ast
 import math
+import numbers
 import re
 from typing import Any, Iterable
 
@@ -199,8 +200,12 @@ def is_pii_column(name: str) -> bool:
 def mask_pii(value: Any) -> Any:
     """Mask PII patterns inside a single value. Integers are checked as text too (a card
     number stored as int); other non-strings pass through."""
-    if isinstance(value, int) and not isinstance(value, bool):
-        return MASK if mask_pii(str(value)) != str(value) else value
+    if isinstance(value, numbers.Number) and not isinstance(value, bool):
+        try:   # numpy ints, and floats like 4111111111111111.0 from a column with NaNs
+            text = str(int(value)) if float(value).is_integer() else str(value)
+        except (TypeError, ValueError, OverflowError):   # complex, inf, nan
+            return value
+        return MASK if mask_pii(text) != text else value
     if not isinstance(value, str):
         return value
     v = _EMAIL_RE.sub(MASK, value)

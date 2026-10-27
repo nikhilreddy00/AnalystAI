@@ -86,7 +86,11 @@ def test_delimit_untrusted_cannot_be_closed_early():
 
 
 def test_integer_pii_is_masked():
+    import numpy as np
     assert g.mask_pii(4111111111111111) == g.MASK          # Luhn-valid card stored as int
+    assert g.mask_pii(np.int64(4111111111111111)) == g.MASK
+    assert g.mask_pii(4111111111111111.0) == g.MASK        # card column with NaNs → float64
+    assert g.mask_pii(float("nan")) != g.MASK and g.mask_pii(12.5) == 12.5
     assert g.mask_pii(3025) == 3025 and g.mask_pii(True) is True
 
 
