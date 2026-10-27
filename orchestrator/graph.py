@@ -8,12 +8,12 @@ State design:
 - `event_queue` is an asyncio.Queue the SSE endpoint drains for streaming events
 
 Node execution order (happy path):
-  intake → ingestion → cleaning → analysis → visualization → insight → END
+  ingestion → intake → cleaning → analysis → visualization → insight → quality_check → END
 
 Conditional branches:
   intake       → human_approval  (clarification needed)
   cleaning     → human_approval  (>40% null columns found)
-  any node     → error           (unhandled exception)
+  any node     → error           (typed AgentError or unexpected exception → SSE error event)
   ingestion    → analysis        (multi-turn resume: skip re-cleaning)
 """
 from __future__ import annotations
@@ -32,7 +32,6 @@ from agents.intake_agent import (
     generate_proactive_questions,
     run_intake_agent,
 )
-from agents.senior_expert_agent import run_senior_expert_agent
 from agents.intent_handlers import (
     handle_chart_request,
     handle_export_request,
@@ -40,6 +39,8 @@ from agents.intent_handlers import (
 )
 from agents.targeted_analysis_agent import run_targeted_analysis
 from agents.drill_down_agent import run_drill_down_agent
+from agents.errors import AgentError
+from agents.quality_critic import run_quality_critic
 from agents.visualization_agent import (
     classify_columns,
     compute_briefing_extras,
@@ -54,7 +55,9 @@ from orchestrator.routing import (
     route_after_visualization,
     route_after_insight_node,
     route_after_quality_check,
+    route_after_terminal,
 )
+from guardrails import ungrounded_numbers
 from memory.session_data import write_cleaned_parquet, read_cleaned_parquet
 from orchestrator.state import AnalysisSession, MessageRole, QuestionIntent
 
@@ -77,6 +80,24 @@ def _emit(state: AgentState, event: dict) -> None:
     q = state.get("event_queue")
     if q is not None:
         q.put_nowait(event)
+
+
+def _fail(session: AnalysisSession, stage: str, exc: Exception) -> None:
+    """Route a node failure to error_node. Typed errors carry their own user message."""
+    logger.error("%s failed", stage, exc_info=exc)
+    session.error_message = (
+        exc.user_message if isinstance(exc, AgentError) else f"{stage} failed: {exc}"
+    )
+
+
+async def _save(state: AgentState) -> None:
+    ss = state.get("session_store")
+    if ss:
+        try:
+            await ss.save(state["session"])
+        except Exception:
+            # Losing a save loses the turn's history; log loudly but still finish the stream.
+            logger.error("session save failed for %s", state["session"].session_id, exc_info=True)
 
 
 # ── Nodes ──────────────────────────────────────────────────────────────────────
@@ -124,7 +145,7 @@ async def intake_node(state: AgentState) -> dict:
         else:
             _emit(state, {"type": "agent_complete", "agent": "intake", "message": "Analysis plan ready"})
     except Exception as exc:
-        session.error_message = f"Intake agent failed: {exc}"
+        _fail(session, "Intake agent", exc)
 
     return {"session": session}
 
@@ -177,17 +198,17 @@ async def ingestion_node(state: AgentState) -> dict:
                             "questions": questions,
                         })
                 except Exception:
-                    pass
+                    logger.warning("suggested questions skipped", exc_info=True)
 
                 # PROMPT-2 follow-up: build display-name + entity narrative once per dataset.
                 if session.narrative is None:
                     try:
                         session.narrative = await generate_data_narrative(contract)
                     except Exception:
-                        pass
+                        logger.warning("data narrative skipped", exc_info=True)
             # On resume without cache: data_contract already set from prior session; df_parquet just restored.
         except Exception as exc:
-            session.error_message = f"Data ingestion failed: {exc}"
+            _fail(session, "Data ingestion", exc)
 
     df_parquet: bytes | None = session.__dict__.pop("_df_parquet", None)
     # BUG-13: Validate that df_parquet is available on resume
@@ -229,7 +250,7 @@ async def cleaning_node(state: AgentState) -> dict:
                 "high_null_columns": audit.high_null_columns,
             })
     except Exception as exc:
-        session.error_message = f"Data cleaning failed: {exc}"
+        _fail(session, "Data cleaning", exc)
 
     # Best-effort cache of cleaned data for fast follow-ups. Never blocks the pipeline.
     cached = session.__dict__.get("_df_parquet") or state.get("df_parquet")
@@ -290,6 +311,7 @@ async def analysis_node(state: AgentState) -> dict:
                         if col in findings.column_roles_summary:
                             findings.column_roles_summary[col] = "skipped"
             except Exception:
+                logger.warning("KPI / briefing extras skipped", exc_info=True)
                 findings.kpis = []
 
         n_anomalies = len(findings.anomalies)
@@ -329,7 +351,7 @@ async def analysis_node(state: AgentState) -> dict:
                 },
             })
     except Exception as exc:
-        session.error_message = f"Analysis failed: {exc}"
+        _fail(session, "Analysis", exc)
 
     session.__dict__.pop("_df_parquet", None)
     return {"session": session}
@@ -359,7 +381,7 @@ async def visualization_node(state: AgentState) -> dict:
             "data": [c.model_dump() for c in charts],
         })
     except Exception as exc:
-        session.error_message = f"Visualization failed: {exc}"
+        _fail(session, "Visualization", exc)
 
     # Drop the parquet bytes once viz is done — insight/expert don't need the df.
     session.__dict__.pop("_df_parquet", None)
@@ -379,7 +401,7 @@ async def insight_node(state: AgentState) -> dict:
                 f"{p['task_summary']}: {p['executive_summary']}" for p in past
             ]
         except Exception:
-            pass
+            logger.warning("past-insight retrieval skipped", exc_info=True)
 
     try:
         report = await run_insight_agent(session, similar_insights or None)
@@ -390,7 +412,7 @@ async def insight_node(state: AgentState) -> dict:
         _emit(state, {"type": "insight", "data": report.model_dump()})
         _emit(state, {"type": "agent_complete", "agent": "insight", "message": "Insight generated"})
     except Exception as exc:
-        session.error_message = f"Insight generation failed: {exc}"
+        _fail(session, "Insight generation", exc)
 
     # Commit side-effects (add_message, iteration++, vector_store, done)
     # live in quality_check_node so that a retry doesn't corrupt history,
@@ -400,8 +422,9 @@ async def insight_node(state: AgentState) -> dict:
 
 async def quality_check_node(state: AgentState) -> dict:
     """
-    FEAT-02: Evaluate insight quality and decide whether to loop back.
-    Checks that the insight report is substantive enough to deliver.
+    FEAT-02 + Phase 2: the quality check. Deterministic checks decide one retry of analysis;
+    on the first-run commit path the critic (formerly the senior_expert node) reviews the
+    report, informed by the numeric-grounding check.
     """
     session: AnalysisSession = state["session"]
     # Count this entry first so the routing function reads the post-increment value
@@ -453,21 +476,38 @@ async def quality_check_node(state: AgentState) -> dict:
                     task_summary=session.task_plan.raw_query,
                 )
             except Exception:
-                pass
+                logger.warning("insight not stored in vector memory", exc_info=True)
 
-    ss = state.get("session_store")
-    if ss:
+    # First run: the critic reviews the report. Follow-up turns skip it to stay fast.
+    if report and not session.overview_done:
+        _emit(state, {"type": "agent_start", "agent": "quality_check",
+                      "message": "Reviewing the analysis..."})
+        findings = session.analysis_findings
+        evidence = findings.model_dump(exclude={"code_executed", "figures_base64"}) \
+            if findings else {}
+        if session.data_contract:
+            evidence["row_count"] = session.data_contract.row_count
+        claims = " ".join([report.executive_summary, *report.technical_findings])
+        ungrounded = ungrounded_numbers(claims, evidence)
+        if ungrounded:
+            logger.info("quality check: ungrounded numbers %s", ungrounded)
         try:
-            await ss.save(session)
-        except Exception:
-            pass
+            review = await run_quality_critic(session, ungrounded)
+            session.expert_review = review
+            _emit(state, {"type": "expert_review", "data": review.model_dump()})
+            _emit(state, {"type": "agent_complete", "agent": "quality_check",
+                          "message": "Review ready"})
+        except Exception as exc:
+            # The user already has the insight; the review is an add-on.
+            logger.warning("quality critic skipped", exc_info=True)
+            msg = exc.user_message if isinstance(exc, AgentError) else str(exc)
+            _emit(state, {"type": "agent_complete", "agent": "quality_check",
+                          "message": f"Review skipped: {msg}"})
+        # Flip after the first full run so the next turn becomes targeted Q&A.
+        session.overview_done = True
 
-    # Phase 6: done emission moved to terminal nodes (senior_expert on first-runs,
-    # the follow-up branch below on subsequent turns). overview_done flip moved to
-    # senior_expert_node so routing here can still detect first-run via !overview_done.
-    if session.overview_done:
-        # Follow-up turn — no senior_expert review will run, emit done now.
-        _emit(state, {"type": "done"})
+    await _save(state)
+    _emit(state, {"type": "done"})
     return {"session": session}
 
 
@@ -475,7 +515,7 @@ async def targeted_analysis_node(state: AgentState) -> dict:
     """
     Phase A: handles every non-overview/non-drill_down intent. Runs deterministic
     pandas/scipy via targeted_analysis_agent, emits a single compact card, commits
-    to history + persistence, and ends the graph. No insight/expert pass.
+    to history + persistence, and ends the graph. No insight/critic pass.
     """
     intent_label = "targeted"
     session: AnalysisSession = state["session"]
@@ -519,18 +559,12 @@ async def targeted_analysis_node(state: AgentState) -> dict:
         session.status = "completed"
         logger.info("Setting session status to completed for %s", session.session_id)
     except Exception as exc:
-        session.error_message = f"Targeted analysis failed: {exc}"
+        _fail(session, "Targeted analysis", exc)
 
     session.__dict__.pop("_df_parquet", None)
-
-    ss = state.get("session_store")
-    if ss:
-        try:
-            await ss.save(session)
-        except Exception:
-            pass
-
-    _emit(state, {"type": "done"})
+    if not session.error_message:   # failures go on to error_node, which saves + emits
+        await _save(state)
+        _emit(state, {"type": "done"})
     return {"session": session}
 
 
@@ -541,28 +575,9 @@ async def drill_down_node(state: AgentState) -> dict:
     _emit(state, {"type": "agent_start", "agent": "drill_down", "message": "Investigating..."})
     session: AnalysisSession = state["session"]
 
-    logger.info(
-        "Drill-down: raw_query='%s'",
-        session.task_plan.raw_query if session.task_plan else None,
-    )
-    logger.info(
-        "Drill-down: conversation_history has %d messages",
-        len(session.conversation_history),
-    )
-
     if not session.insight_report:
         session.error_message = "Drill-down requires a prior analysis. Ask for an overview first."
-        ss = state.get("session_store")
-        if ss:
-            try:
-                await ss.save(session)
-            except Exception:
-                pass
-        _emit(state, {"type": "done"})
         return {"session": session}
-
-    if state.get("df_parquet"):
-        session.__dict__["_df_parquet"] = state["df_parquet"]
 
     try:
         response = await run_drill_down_agent(session, state.get("df_parquet"))
@@ -578,61 +593,18 @@ async def drill_down_node(state: AgentState) -> dict:
         session.status = "completed"
         logger.info("Setting session status to completed for %s", session.session_id)
     except Exception as exc:
-        session.error_message = f"Drill-down failed: {exc}"
+        _fail(session, "Drill-down", exc)
 
-    session.__dict__.pop("_df_parquet", None)
-
-    ss = state.get("session_store")
-    if ss:
-        try:
-            await ss.save(session)
-        except Exception:
-            pass
-
-    _emit(state, {"type": "done"})
-    return {"session": session}
-
-
-async def senior_expert_node(state: AgentState) -> dict:
-    """
-    Phase 6: 7th agent — principal analyst critique of the first-run analysis.
-    Only entered on first-run via route_after_quality_check (gated on !overview_done).
-    """
-    _emit(state, {"type": "agent_start", "agent": "senior_expert", "message": "Principal analyst reviewing..."})
-    session: AnalysisSession = state["session"]
-
-    try:
-        review = await run_senior_expert_agent(session)
-        session.expert_review = review
-        _emit(state, {"type": "expert_review", "data": review.model_dump()})
-        _emit(state, {"type": "agent_complete", "agent": "senior_expert", "message": "Expert review ready"})
-    except Exception as exc:
-        # Don't fail the run — the user already has the insight. Log and continue.
-        _emit(state, {"type": "agent_complete", "agent": "senior_expert", "message": f"Expert review skipped: {exc}"})
-
-    # Flip overview_done here (not in quality_check) so the next turn becomes targeted Q&A.
-    session.overview_done = True
-
-    ss = state.get("session_store")
-    if ss:
-        try:
-            await ss.save(session)
-        except Exception:
-            pass
-
-    _emit(state, {"type": "done"})
+    if not session.error_message:   # failures go on to error_node, which saves + emits
+        await _save(state)
+        _emit(state, {"type": "done"})
     return {"session": session}
 
 
 async def human_approval_node(state: AgentState) -> dict:
     # The approval_required event was already emitted by the node that triggered routing here.
     # End graph — next user message re-enters at intake with approval context.
-    ss = state.get("session_store")
-    if ss:
-        try:
-            await ss.save(state["session"])
-        except Exception:
-            pass
+    await _save(state)
     _emit(state, {"type": "done"})
     return {"session": state["session"]}
 
@@ -643,14 +615,7 @@ async def error_node(state: AgentState) -> dict:
     msg = session.error_message or "An unexpected error occurred."
     _emit(state, {"type": "error", "message": msg})
     _emit(state, {"type": "done"})
-
-    ss = state.get("session_store")
-    if ss:
-        try:
-            await ss.save(session)
-        except Exception:
-            pass
-
+    await _save(state)
     return {"session": session}
 
 
@@ -666,7 +631,6 @@ def build_graph():
     graph.add_node("visualization", visualization_node)
     graph.add_node("insight", insight_node)
     graph.add_node("quality_check", quality_check_node)  # FEAT-02
-    graph.add_node("senior_expert", senior_expert_node)  # Phase 6
     graph.add_node("targeted_analysis", targeted_analysis_node)  # Phase A — wired in A4
     graph.add_node("drill_down", drill_down_node)
     graph.add_node("human_approval", human_approval_node)
@@ -714,11 +678,13 @@ def build_graph():
     graph.add_conditional_edges("quality_check", route_after_quality_check, {
         "end": END,
         "analysis": "analysis",       # FEAT-02 feedback loop
-        "senior_expert": "senior_expert",  # Phase 6: first-run critique
     })
-    graph.add_edge("senior_expert", END)
-    graph.add_edge("targeted_analysis", END)  # Phase A: terminal node
-    graph.add_edge("drill_down", END)
+    graph.add_conditional_edges("targeted_analysis", route_after_terminal, {
+        "end": END, "error": "error",
+    })
+    graph.add_conditional_edges("drill_down", route_after_terminal, {
+        "end": END, "error": "error",
+    })
 
     graph.add_edge("human_approval", END)
     graph.add_edge("error", END)

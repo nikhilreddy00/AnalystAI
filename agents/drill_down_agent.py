@@ -6,9 +6,13 @@ small JSON response into a TargetedResponse.
 """
 from __future__ import annotations
 
+import io
 import json
 import uuid
 
+import pandas as pd
+
+from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
 from llm.client import get_client
 from orchestrator.state import (
@@ -62,17 +66,13 @@ async def run_drill_down_agent(
         message if no prior analysis exists. ``task_plan.raw_query`` supplies the
         follow-up question text.
     df_parquet:
-        Reserved for future use. The agent currently produces empty-data chart
-        specs (``ChartConfig.data == []``) so no DataFrame loading is needed.
-        Richer chart data would require deserialising this parquet buffer, which
-        is deferred to a later iteration.
+        The session DataFrame; the suggested chart's data is computed from it. Without it,
+        no chart is attached.
 
     Returns
     -------
     TargetedResponse
-        Always returned — never raises for normal LLM or JSON parsing errors.
-        On persistent parse failure the ``answer_text`` carries a user-readable
-        fallback message.
+        Raises ``LLMOutputError`` if the model's JSON is unparseable twice.
     """
     if not session.insight_report:
         return TargetedResponse(
@@ -139,11 +139,11 @@ Answer in JSON as specified.
         retry_text = retry_msg.text
         try:
             payload = json.loads(strip_markdown_fences(retry_text))
-        except json.JSONDecodeError:
-            return TargetedResponse(
-                intent=QuestionIntent.DRILL_DOWN,
-                answer_text="I had trouble formatting an answer. Try rephrasing your question.",
-            )
+        except json.JSONDecodeError as exc:
+            raise LLMOutputError(
+                "drill_down", f"malformed JSON twice: {exc}",
+                "I had trouble formatting an answer. Try rephrasing your question.",
+            ) from exc
 
     answer = payload.get("answer_text", "").strip()
     chart_configs: list[ChartConfig] = []
@@ -152,20 +152,19 @@ Answer in JSON as specified.
         chart_type_str = spec.get("chart_type")
         x = spec.get("x_column")
         y = spec.get("y_column")
-        # Only build the chart if both columns exist in the contract.
-        if chart_type_str and x in column_names and y in column_names:
+        # Only build the chart if both columns exist and there is data to plot.
+        data = _chart_data(df_parquet, chart_type_str, x, y) \
+            if chart_type_str and x in column_names and y in column_names else []
+        if data:
             try:
                 chart_type = ChartType(chart_type_str)
             except ValueError:
                 chart_type = ChartType.BAR
-            # Lightweight chart from EDA — no pandas join here, we hand a stub
-            # ChartConfig that the frontend renderer can display. If a richer
-            # plot is needed, the user can switch to CHART_REQUEST.
             chart_configs.append(ChartConfig(
                 id=str(uuid.uuid4()),
                 chart_type=chart_type,
                 title=f"{y} vs {x}",
-                data=[],   # frontend renders an empty-state placeholder for now
+                data=data,
                 x_key=x,
                 y_keys=[y],
                 colors=["#6366f1"],
@@ -179,3 +178,25 @@ Answer in JSON as specified.
         answer_text=answer or "I couldn't formulate a direct answer to that.",
         chart_configs=chart_configs,
     )
+
+
+def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str) -> list[dict]:
+    """Rows for the suggested chart: raw points for a scatter, mean of y per x otherwise
+    (top 20 by value for categorical charts, x-ordered for lines)."""
+    if not df_parquet:
+        return []
+    df = pd.read_parquet(io.BytesIO(df_parquet), columns=list(dict.fromkeys([x, y]))).dropna()
+    if df.empty:
+        return []
+    if chart_type == ChartType.SCATTER.value:
+        pts = df.sample(min(len(df), 500), random_state=0)
+        return json.loads(pts.to_json(orient="records", date_format="iso"))
+    if x == y or not pd.api.types.is_numeric_dtype(df[y]):
+        grouped = df.groupby(x).size()       # non-numeric y: count rows per x
+    else:
+        grouped = df.groupby(x)[y].mean()
+    if chart_type == ChartType.LINE.value:
+        grouped = grouped.sort_index().tail(200)
+    else:
+        grouped = grouped.sort_values(ascending=False).head(20)
+    return [{x: str(k), y: round(float(v), 4)} for k, v in grouped.items()]

@@ -1,5 +1,7 @@
 """
-Senior Expert Agent (Phase 6) — the 7th agent.
+Quality critic — the LLM half of the quality check (formerly the senior_expert node; folded
+into quality_check_node in Phase 2). The deterministic half (numeric grounding) runs first and
+its verdicts are handed to the critic.
 
 Acts as a principal data analyst reviewing a junior analyst's work. Takes the
 full session context (briefing, findings, charts, insight report) and produces
@@ -19,11 +21,14 @@ empty/malformed + minimal fallback report so the user always sees something.
 from __future__ import annotations
 
 import json
+import logging
 import re
 
 from agents.utils import strip_markdown_fences
 from llm.client import get_client
 from orchestrator.state import AnalysisSession, ExpertReview
+
+logger = logging.getLogger(__name__)
 
 
 # PROMPT-9: shared sentence splitter used by the deterministic 2-sentence cap
@@ -72,10 +77,13 @@ PROMPT-9 RULES — apply to every bullet:
 """
 
 
-async def run_senior_expert_agent(session: AnalysisSession) -> ExpertReview:
+async def run_quality_critic(
+    session: AnalysisSession, ungrounded: list[str] | None = None,
+) -> ExpertReview:
     """
-    Generate a senior-expert critique of the session's analysis.
-    Returns a fallback ExpertReview if Claude fails twice.
+    Critique the session's analysis. `ungrounded` are numbers in the report that the
+    deterministic grounding check could not find in the findings.
+    Returns a fallback ExpertReview if Claude's output is unparseable twice.
     """
     context_parts: list[str] = []
 
@@ -147,6 +155,13 @@ async def run_senior_expert_agent(session: AnalysisSession) -> ExpertReview:
             + "; ".join(f"({a.priority}) {a.action}" for a in r.recommended_actions[:4])
         )
 
+    if ungrounded:
+        context_parts.append(
+            "Deterministic grounding check: these numbers in the junior's report do not appear "
+            f"in the computed findings: {ungrounded}. If they are factual claims, raise them as "
+            "methodology concerns (unsupported numbers)."
+        )
+
     prompt = "\n\n".join(context_parts)
 
     try:
@@ -159,8 +174,9 @@ async def run_senior_expert_agent(session: AnalysisSession) -> ExpertReview:
         )
         try:
             data = await _call_and_parse(retry_prompt)
-        except Exception:
-            return _fallback_review(session)
+        except (json.JSONDecodeError, ValueError, IndexError) as exc:
+            logger.warning("quality critic: unparseable twice, using fallback review: %s", exc)
+            return _fallback_review(session, ungrounded)
 
     # PROMPT-9: deterministic 2-sentence cap on every bullet so the panel stays
     # scannable even when the LLM ignores the prompt rule.
@@ -182,7 +198,7 @@ async def run_senior_expert_agent(session: AnalysisSession) -> ExpertReview:
 
 async def _call_and_parse(prompt: str) -> dict:
     response = await get_client().complete(
-        agent="senior_expert", prompt_version="v0",
+        agent="quality_critic", prompt_version="v0",
         max_tokens=2000,
         system=_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
@@ -195,7 +211,7 @@ async def _call_and_parse(prompt: str) -> dict:
     return json.loads(raw)
 
 
-def _fallback_review(session: AnalysisSession) -> ExpertReview:
+def _fallback_review(session: AnalysisSession, ungrounded: list[str] | None = None) -> ExpertReview:
     """Built from session data when the LLM fails — user gets something useful."""
     contract = session.data_contract
     findings = session.analysis_findings
@@ -203,8 +219,10 @@ def _fallback_review(session: AnalysisSession) -> ExpertReview:
 
     strengths = []
     gaps = []
-    next_inv = ["Re-run the senior-expert review (the LLM call failed this time)."]
+    next_inv = ["Re-run the review (the LLM call failed this time)."]
     concerns = ["The expert review could not be generated automatically; treat the insight report as preliminary."]
+    if ungrounded:
+        concerns.append(f"These numbers in the report are not in the computed findings: {ungrounded}.")
 
     if findings and findings.eda_summary:
         strengths.append(f"Computed EDA statistics for {len(findings.eda_summary)} column(s).")

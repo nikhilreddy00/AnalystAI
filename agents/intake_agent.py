@@ -9,8 +9,11 @@ Claude Sonnet 4.6 handles:
 from __future__ import annotations
 
 import json
+import logging
 
+from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
+from guardrails import UNTRUSTED_NOTE, delimit_untrusted
 from llm.client import get_client
 from orchestrator.state import (
     AnalysisSession,
@@ -21,6 +24,8 @@ from orchestrator.state import (
     QuestionIntent,
     TargetedParams,
 )
+
+logger = logging.getLogger(__name__)
 
 
 _SYSTEM = """\
@@ -232,7 +237,21 @@ async def run_intake_agent(
     raw = response.text.strip()
     raw = strip_markdown_fences(raw)
 
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise LLMOutputError("intake", f"malformed JSON: {exc}",
+                             "I couldn't parse my own plan for that question. Try rephrasing.") from exc
+
+    # Hard rule: the plan never names a column the dataset doesn't have.
+    if session.data_contract:
+        known = {c.name for c in session.data_contract.columns}
+        for key in ("target_metrics", "segments"):
+            cols = data.get(key) or []
+            invented = [c for c in cols if c not in known]
+            if invented:
+                logger.warning("intake: dropped invented %s %s", key, invented)
+                data[key] = [c for c in cols if c in known]
 
     valid_types = {t.value for t in AnalysisType}
     data["analysis_types"] = [t for t in data.get("analysis_types", ["eda"]) if t in valid_types]
@@ -270,8 +289,10 @@ async def generate_data_narrative(contract: DataContract) -> DataNarrative:
     prompt = f"""\
 You are labeling a dataset for human-readable display.
 
+{UNTRUSTED_NOTE}
+
 Dataset columns ({contract.row_count:,} rows × {contract.column_count} columns):
-{columns_block}
+{delimit_untrusted(columns_block)}
 
 Return ONLY a JSON object with these exact keys:
 {{
@@ -302,7 +323,8 @@ Rules:
         )
         raw = strip_markdown_fences(response.text.strip())
         data = json.loads(raw)
-    except Exception:
+    except Exception as exc:
+        logger.warning("intake: narrative fell back to defaults: %s", exc)
         # Fallback narrative — entity stays generic, display names empty so the
         # KPI helpers fall back to deterministic title-casing.
         return DataNarrative()
@@ -365,8 +387,8 @@ Rules:
         questions = json.loads(raw)
         if isinstance(questions, list) and len(questions) > 0:
             return questions[:5]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("intake: suggested questions fell back to defaults: %s", exc)
 
     # Fallback: generate generic but dataset-aware questions
     fallback = []

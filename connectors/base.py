@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from guardrails import MASK, is_pii_column, mask_pii, mask_row
 from orchestrator.state import ConnectorConfig, DataContract, ColumnInfo, ConnectorType
 
 
@@ -40,7 +41,9 @@ class DataConnector(ABC):
         for col in df.columns:
             dtype_str = str(df[col].dtype)
             null_pct = round(df[col].isna().mean() * 100, 2)
+            # PII never leaves here unmasked: every LLM prompt reads samples from the contract.
             sample = df[col].dropna().head(5).tolist()
+            sample = [MASK] * len(sample) if is_pii_column(col) else [mask_pii(v) for v in sample]
 
             # BUG-34: Use endswith('_at') for 'at' to avoid false positives like 'category'
             is_date = "datetime" in dtype_str or any(
@@ -80,7 +83,7 @@ class DataConnector(ABC):
             row_count=len(df),
             column_count=len(df.columns),
             columns=columns,
-            sample_rows=df.head(5).fillna("").to_dict(orient="records"),
+            sample_rows=[mask_row(r) for r in df.head(5).fillna("").to_dict(orient="records")],
             date_columns=date_cols,
             id_columns=id_cols,
             metric_columns=metric_cols,

@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
+from agents.errors import LLMError, LLMRefusal, LLMTruncated, LLMUnavailable
 from api.config import settings
+
+__all__ = ["LLMError", "LLMRefusal", "LLMTruncated", "LLMUnavailable"]
 
 # USD per million tokens (input, output). Unknown models trace cost as 0.
 _PRICES = {
@@ -25,10 +28,6 @@ _PRICES = {
 
 # When set (eval runner), every trace record of the current task is appended here too.
 trace_meter: ContextVar[list[dict] | None] = ContextVar("trace_meter", default=None)
-
-
-class LLMError(Exception):
-    """The model refused — there is no output to use."""
 
 
 @dataclass
@@ -49,10 +48,11 @@ class LLMClient(Protocol):
 
 
 def _check(result: LLMResult, agent: str) -> LLMResult:
-    # ponytail: max_tokens is traced, not raised. The baseline showed the analysis agent truncates
-    # in most runs; raising would change prod behavior in Phase 1. Typed handling lands in Phase 2.
     if result.stop_reason == "refusal":
-        raise LLMError(f"{agent}: model stopped with 'refusal'")
+        raise LLMRefusal(agent, "model refused", "The model declined to answer this request.")
+    if result.stop_reason == "max_tokens":
+        raise LLMTruncated(agent, "output hit max_tokens",
+                           f"The {agent} step produced too much output and was cut off.")
     return result
 
 
@@ -87,10 +87,16 @@ class ClaudeClient:
         model = model or self.model
         kwargs = {"system": system} if system else {}
         start = time.perf_counter()
-        response = await self._client().messages.create(
-            model=model, max_tokens=max_tokens, temperature=0,
-            messages=messages, **kwargs,
-        )
+        # APIConnectionError also covers APITimeoutError; 429/5xx arrive after the SDK's retries.
+        from anthropic import APIConnectionError, InternalServerError, RateLimitError
+        try:
+            response = await self._client().messages.create(
+                model=model, max_tokens=max_tokens, temperature=0,
+                messages=messages, **kwargs,
+            )
+        except (APIConnectionError, InternalServerError, RateLimitError) as exc:
+            raise LLMUnavailable(agent, f"{type(exc).__name__}: {exc}",
+                                 "The language model is unreachable right now. Try again.") from exc
         in_price, out_price = _PRICES.get(model, (0.0, 0.0))
         usage = response.usage
         result = LLMResult(
@@ -122,7 +128,7 @@ class RecordedClient:
     ) -> LLMResult:
         self.calls.append({"agent": agent, "system": system, "messages": messages, "model": model})
         if not self.responses:
-            raise LLMError(f"RecordedClient: no recorded response left for agent '{agent}'")
+            raise LLMError(agent, "RecordedClient has no recorded response left")
         r = self.responses.pop(0)
         return _check(LLMResult(text=r) if isinstance(r, str) else r, agent)
 
