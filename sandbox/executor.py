@@ -51,7 +51,8 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
 
     # BUG-25: Wrap sandbox creation in try/except with clear error message
     try:
-        sandbox = await AsyncSandbox.create()
+        # No internet: generated code can read the uploaded CSV but cannot send it anywhere.
+        sandbox = await AsyncSandbox.create(allow_internet_access=False)
     except Exception as exc:
         return ExecutionResult(
             stdout="",

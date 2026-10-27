@@ -31,7 +31,7 @@ const FULL_PIPELINE: AgentMeta[] = [
   { key: "analysis",      label: "Analyze",   Icon: BarChart3,      tint: "#76B7B2" },
   { key: "visualization", label: "Visualize", Icon: PieChart,       tint: "#59A14F" },
   { key: "insight",       label: "Insight",   Icon: Lightbulb,      tint: "#EDC948" },
-  { key: "senior_expert", label: "Review",    Icon: GraduationCap,  tint: "#B07AA1" },
+  { key: "quality_check", label: "Review",    Icon: GraduationCap,  tint: "#B07AA1" },
 ];
 
 const TARGETED_PIPELINE: AgentMeta[] = [

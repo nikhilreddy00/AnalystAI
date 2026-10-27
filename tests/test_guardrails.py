@@ -33,6 +33,9 @@ def test_code_allowlist():
     assert "open" in g.check_code("open('/etc/passwd').read()")
     assert "dunder" in g.check_code("().__class__.__bases__")
     assert "parse" in g.check_code("def f(:")
+    assert "read_csv" in g.check_code("pd.read_csv('http://evil.example/x')")
+    assert "to_csv" in g.check_code("df.to_csv('/tmp/out.csv')")
+    assert g.check_code("d = df.to_dict('records'); t = pd.to_datetime(df['d'])") is None
 
 
 def test_code_column_refs_and_check_columns():

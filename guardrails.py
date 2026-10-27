@@ -64,6 +64,11 @@ _ALLOWED_IMPORTS = {"pandas", "numpy", "scipy", "json", "math", "statistics", "d
                     "collections", "itertools", "warnings", "sklearn", "statsmodels"}
 _BANNED_NAMES = {"open", "exec", "eval", "compile", "__import__", "globals", "locals", "vars",
                  "getattr", "setattr", "delattr", "input", "breakpoint"}
+# File/network/pickle I/O on pandas/numpy objects. The trusted header reads the data; the model's
+# body never needs to. E2B (no internet access) is the real boundary — this is defense in depth.
+_BANNED_ATTRS = {"to_csv", "to_parquet", "to_pickle", "to_json", "to_excel", "to_sql", "to_hdf",
+                 "to_feather", "to_stata", "to_html", "to_xml", "to_clipboard", "load", "save",
+                 "savez", "savetxt", "loadtxt", "fromfile", "tofile", "system", "popen"}
 
 
 def check_code(code: str) -> str | None:
@@ -84,8 +89,11 @@ def check_code(code: str) -> str | None:
                 return f"import not allowed: {m}"
         if isinstance(node, ast.Name) and node.id in _BANNED_NAMES:
             return f"call not allowed: {node.id}"
-        if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
-            return f"dunder attribute access not allowed: {node.attr}"
+        if isinstance(node, ast.Attribute):
+            if node.attr.startswith("__"):
+                return f"dunder attribute access not allowed: {node.attr}"
+            if node.attr in _BANNED_ATTRS or node.attr.startswith("read_"):
+                return f"I/O call not allowed: {node.attr}"
     return None
 
 

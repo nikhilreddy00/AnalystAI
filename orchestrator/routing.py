@@ -100,17 +100,16 @@ def route_after_insight_node(state: dict) -> str:
 
 def route_after_quality_check(state: dict) -> str:
     """
-    FEAT-02 + Phase 6: Route after quality_check_node.
-    Three outcomes:
-      - insight_report cleared → node decided to retry → "analysis"
-      - committed AND first-run (overview_done still False) → "senior_expert"
-      - committed AND follow-up (overview_done True) → "end"
-    quality_check_node now leaves overview_done untouched — the flip happens
-    in senior_expert_node so we can still detect first-run here.
+    FEAT-02: quality_check_node is the single source of truth for the retry decision —
+    it clears insight_report when it wants one more analysis pass. The attempts bound is a
+    backstop so a node that ends with no report can't loop.
     """
     session: AnalysisSession = state["session"]
-    if session.insight_report is None:
+    if session.insight_report is None and session.quality_check_attempts < 2:
         return "analysis"
-    if not session.overview_done:
-        return "senior_expert"
     return "end"
+
+
+def route_after_terminal(state: dict) -> str:
+    """targeted_analysis / drill_down: a failure must reach error_node (SSE error event)."""
+    return "error" if state["session"].error_message else "end"

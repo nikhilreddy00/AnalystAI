@@ -7,7 +7,7 @@ amount of clearly-correct code. Returns a compact TargetedResponse rendered as
 a single chat card.
 
 Routing: the graph's targeted_analysis_node calls run_targeted_analysis() instead
-of analysis_agent + visualization_agent + insight_agent + senior_expert_agent
+of analysis_agent + visualization_agent + insight_agent + quality_critic
 when task.question_intent is anything other than OVERVIEW or DRILL_DOWN.
 """
 from __future__ import annotations
