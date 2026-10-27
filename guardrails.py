@@ -121,7 +121,7 @@ def check_code(code: str) -> str | None:
 
 # ── Numeric grounding ──────────────────────────────────────────────────────────
 
-_NUM_RE = re.compile(r"(?<![\w.])[-+]?\d[\d,]*(?:\.\d+)?%?")
+_NUM_RE = re.compile(r"(?<![\w.])[-+]?\d[\d,]*(?:\.\d+)?(?:[eE][-+]?\d+)?%?")
 
 
 def _numbers_in(obj: Any) -> list[float]:
@@ -143,8 +143,18 @@ def _numbers_in(obj: Any) -> list[float]:
 
 
 def _decimals(token: str) -> int:
-    t = token.rstrip("%")
+    t = token.rstrip("%").lower().split("e")[0]
     return len(t.split(".")[1]) if "." in t else 0
+
+
+def _shown_as(e: float, token: str) -> bool:
+    """Does evidence value `e` print as `token` at the token's precision? `5.7e-40` is
+    compared in scientific notation, `12.30` at 2 decimals."""
+    val = abs(float(token.rstrip("%").replace(",", "")))
+    d = _decimals(token)
+    if "e" in token.lower():
+        return f"{e:.{d}e}" == f"{val:.{d}e}"
+    return round(e, d) == val
 
 
 def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list[str]:
@@ -159,8 +169,7 @@ def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list
         val = abs(float(token.rstrip("%").replace(",", "")))
         if val.is_integer() and abs(val) <= 10:
             continue
-        d = _decimals(token)
-        if not any(math.isclose(val, e, rel_tol=rel_tol) or round(e, d) == val for e in pool):
+        if not any(math.isclose(val, e, rel_tol=rel_tol) or _shown_as(e, token) for e in pool):
             bad.append(token)
     return bad
 
