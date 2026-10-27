@@ -5,7 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from llm.client import ClaudeClient, LLMError, LLMResult, RecordedClient, trace_meter
+from llm.client import (
+    ClaudeClient, LLMError, LLMRefusal, LLMResult, LLMTruncated, RecordedClient, trace_meter,
+)
 
 
 async def test_recorded_client_replays_in_order_and_records_calls():
@@ -19,13 +21,13 @@ async def test_recorded_client_replays_in_order_and_records_calls():
         await client.complete(messages=[], max_tokens=10, agent="t", prompt_version="v0")
 
 
-async def test_refusal_raises_but_truncation_is_returned():
+async def test_refusal_and_truncation_raise_typed_errors():
     client = RecordedClient([LLMResult(text="", stop_reason="refusal"),
                              LLMResult(text="partial", stop_reason="max_tokens")])
-    with pytest.raises(LLMError, match="refusal"):
+    with pytest.raises(LLMRefusal):
         await client.complete(messages=[], max_tokens=10, agent="t", prompt_version="v0")
-    truncated = await client.complete(messages=[], max_tokens=10, agent="t", prompt_version="v0")
-    assert truncated.stop_reason == "max_tokens"   # Phase 1: traced, not raised
+    with pytest.raises(LLMTruncated):
+        await client.complete(messages=[], max_tokens=10, agent="t", prompt_version="v0")
 
 
 def _fake_sdk(captured: dict):
