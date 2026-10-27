@@ -12,8 +12,10 @@ task:
   segments: []
 checks:
 - kind: anomaly_rows
+  planted: true
   column: revenue
   min_recall: 0.6
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error
+- numbers_grounded

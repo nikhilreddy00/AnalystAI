@@ -86,6 +86,7 @@ def make_sales(seed: int) -> tuple[pd.DataFrame, dict]:
         "mean_revenue_by_segment": df.groupby("segment")["revenue"].mean().to_dict(),
         "total_revenue_by_region": df.groupby("region")["revenue"].sum().to_dict(),
         "top_region_total_revenue": float(df.groupby("region")["revenue"].sum().max()),
+        "null_pairs": [["revenue", "discount"]],   # a "significant" test here is a false finding
     }
     return df, truth
 

@@ -1,0 +1,25 @@
+id: segment_trend-2
+category: segment_trend
+dataset:
+  name: sales
+  seed: 2
+question: How did each segment's revenue move month over month?
+task:
+  analysis_types:
+  - trend
+  - segmentation
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+checks:
+- kind: segment_trend
+  column: revenue
+  segment: B
+  truth_key: segB_mom_pct
+  abs_tol: 1.0
+  planted: true
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

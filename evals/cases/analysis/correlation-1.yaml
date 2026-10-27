@@ -13,9 +13,11 @@ task:
   segments: []
 checks:
 - kind: correlation
+  planted: true
   a: revenue
   b: marketing_spend
   abs_tol: 0.02
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error
+- numbers_grounded

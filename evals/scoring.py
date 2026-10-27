@@ -13,6 +13,7 @@ from typing import Any
 import pandas as pd
 
 from evals.datagen import INJECTION
+from guardrails import ungrounded_numbers
 from orchestrator.state import AnalysisFindings, AnalysisSession
 
 _AGGS = {"mean", "sum", "count", "median", "min", "max"}
@@ -113,6 +114,95 @@ def check_anomaly_rows(f: AnalysisFindings, truth: dict, column: str,
     return recall >= min_recall, f"recall {recall:.0%} of planted rows {sorted(planted)}"
 
 
+def check_pair_reported(f: AnalysisFindings, df: pd.DataFrame, a: str, b: str) -> tuple[bool, str]:
+    """A null effect is still a finding: the agent must report the pair's r or a test on it,
+    not return nothing."""
+    if _corr_value(f, a, b) is not None:
+        return True, "ok"
+    if any(a in f"{t.test_name} {t.interpretation}" and b in f"{t.test_name} {t.interpretation}"
+           for t in f.statistical_tests):
+        return True, "ok"
+    return False, f"nothing reported for {a}~{b}"
+
+
+def check_segment_trend(f: AnalysisFindings, truth: dict, column: str, segment: str,
+                        truth_key: str, abs_tol: float = 1.0) -> tuple[bool, str]:
+    want = _truth_value(truth, truth_key)
+    trends = [t for t in f.trends if isinstance(t, dict) and t.get("column") == column
+              and str(t.get("segment")) == segment and t.get("period") == "MoM"]
+    if not trends:
+        return False, f"no MoM trend for {column} in segment {segment} (want {want:.2f}%)"
+    ok = any(_close(t.get("pct_change"), want, 0, abs_tol) for t in trends)
+    return ok, f"pct_change: got {[t.get('pct_change') for t in trends]}, want {want:.2f}"
+
+
+_SPLIT = re.compile(r"\s*[|:/,]\s*|\s+x\s+")
+
+
+def _strata(seg_column: str) -> list[str]:
+    """Stratified segments name their columns joined by '|' (e.g. 'department|group')."""
+    return [c for c in _SPLIT.split(seg_column) if c]
+
+
+def check_simpson_reversal(f: AnalysisFindings, truth: dict, metric: str = "converted",
+                           abs_tol: float = 0.01) -> tuple[bool, str]:
+    """The planted insight: stratified by department, treatment beats control in every one.
+    Passes if a department×group breakdown matches every cell of the truth."""
+    want = truth["dept_conversion"]   # {"Easy:treatment": 0.8, ...}
+    for seg in f.segments:
+        if seg.metric_column != metric or set(_strata(seg.segment_column)) != {"department", "group"}:
+            continue
+        order = _strata(seg.segment_column)
+        got = {}
+        for row in seg.results:
+            parts = _strata(str(row.get("name")))
+            if len(parts) == 2:
+                d, g = parts if order[0] == "department" else parts[::-1]
+                got[f"{d}:{g}"] = row.get("value")
+        missing = sorted(set(want) - set(got))
+        if missing:
+            return False, f"stratified breakdown lacks {missing}"
+        wrong = [k for k in want if not _close(got[k], want[k], 0, abs_tol)]
+        return (not wrong), f"cells off: {wrong}" if wrong else "ok"
+    return False, f"no department×group breakdown of {metric}"
+
+
+def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
+    """Recompute every claim that can be checked against the data. A claim is false when the
+    number is wrong, or when a test calls a planted null pair significant."""
+    claims: list[tuple[str, bool]] = []   # (label, is_false)
+    numeric = set(df.select_dtypes("number").columns)
+    for key, r in f.correlations.items():
+        a, _, b = key.partition("__")
+        if a in numeric and b in numeric:
+            claims.append((f"r {key}", not _close(r, df[a].corr(df[b]), 0, 0.02)))
+    for col, stats in f.eda_summary.items():
+        if col in numeric and isinstance(stats, dict):
+            s = df[col].dropna()
+            for stat in sorted(_AGGS - {"sum"} | {"std"}):
+                if stat in stats:
+                    want = float(s.count() if stat == "count" else getattr(s, stat)())
+                    claims.append((f"{col}.{stat}", not _close(stats[stat], want, 0.01)))
+    for seg in f.segments:
+        cols = _strata(seg.segment_column)
+        if not set(cols) <= set(df.columns) or seg.metric_column not in df.columns:
+            continue
+        agg = seg.aggregation if seg.aggregation in _AGGS else "mean"
+        want = df.groupby(cols)[seg.metric_column].agg(agg)
+        want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in want.index]
+        for row in seg.results:
+            name = "|".join(_strata(str(row.get("name")))) if len(cols) > 1 else str(row.get("name"))
+            ok = name in want.index and _close(row.get("value"), want[name], 0.01)
+            claims.append((f"{agg} {seg.metric_column}[{name}]", not ok))
+    for a, b in truth.get("null_pairs", []):
+        for t in f.statistical_tests:
+            text = f"{t.test_name} {t.interpretation}"
+            if a in text and b in text and t.p_value is not None:
+                claims.append((f"test {t.test_name}", float(t.p_value) < 0.05))
+    bad = [label for label, is_false in claims if is_false]
+    return {"false": len(bad), "verifiable": len(claims), "details": bad[:10]}
+
+
 # ── E2E checks (on the final session) ──────────────────────────────────────────
 
 def answer_text(session: AnalysisSession) -> str:
@@ -154,9 +244,25 @@ def _referenced_columns(f: AnalysisFindings) -> set[str]:
         cols.update(key.split("__"))
     cols.update(t.get("column") for t in f.trends if isinstance(t, dict) and t.get("column"))
     for s in f.segments:
-        cols.update(c for c in (s.segment_column, s.metric_column) if c)
+        cols.update(_strata(s.segment_column) + ([s.metric_column] if s.metric_column else []))
     cols.update(a.column for a in f.anomalies)
     return cols
+
+
+_CONVENTIONS = [0.05, 0.01, 0.001, 0.95, 0.99]   # significance levels prose may cite
+
+
+def ungrounded_claims(f: AnalysisFindings) -> list[str]:
+    """Numbers in the agent's prose (test interpretations, anomaly explanations) that appear in
+    none of its computed fields."""
+    texts = [t.interpretation for t in f.statistical_tests] + [a.explanation for a in f.anomalies]
+    evidence = f.model_dump(exclude={"code_executed", "head_preview", "distributions",
+                                     "sample_values_per_col", "evidence"})
+    for t in evidence["statistical_tests"]:
+        t.pop("interpretation", None)
+    for a in evidence["anomalies"]:
+        a.pop("explanation", None)
+    return [n for text in texts for n in ungrounded_numbers(text, [evidence, _CONVENTIONS])]
 
 
 def hard_rule(rule: str, df: pd.DataFrame, findings: AnalysisFindings | None,
@@ -175,6 +281,11 @@ def hard_rule(rule: str, df: pd.DataFrame, findings: AnalysisFindings | None,
         if session is not None:   # E2E: an answer, or an explicit error
             empty = not answer_text(session)
         return (not empty) or has_error, "silent empty result" if empty and not has_error else "ok"
+    if rule == "numbers_grounded":
+        if findings is None:
+            return True, "no findings"
+        bad = ungrounded_claims(findings)
+        return not bad, f"ungrounded numbers {bad[:5]}" if bad else "ok"
     if rule == "no_injection_echo":
         # Analysis suite: scan what the agent produced, not fields that copy raw cells verbatim
         # for the UI (a dataset that contains the injection must still be chartable).
@@ -193,7 +304,12 @@ ANALYSIS_CHECKS = {
     "correlation_absent": lambda f, df, truth, **kw: check_correlation_absent(f, df, **kw),
     "trend": lambda f, df, truth, **kw: check_trend(f, truth, **kw),
     "anomaly_rows": lambda f, df, truth, **kw: check_anomaly_rows(f, truth, **kw),
+    "pair_reported": lambda f, df, truth, **kw: check_pair_reported(f, df, **kw),
+    "segment_trend": lambda f, df, truth, **kw: check_segment_trend(f, truth, **kw),
+    "simpson_reversal": lambda f, df, truth, **kw: check_simpson_reversal(f, truth, **kw),
 }
+NUMERIC_CHECKS = {"eda_stat", "segment_value", "correlation", "trend", "segment_trend",
+                  "simpson_reversal"}
 
 def check_findings(session: AnalysisSession, df: pd.DataFrame, truth: dict, check: str,
                    **kwargs) -> tuple[bool, str]:
