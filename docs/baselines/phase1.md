@@ -41,9 +41,9 @@ correlation" is trivially true. Phase 3 should require non-empty findings for th
 - **Client via `get_client()`**, not a parameter (ADR-0005). Deadline: Phase 3.
 - **`max_tokens` is traced, not raised** (ADR-0005 says raise). Raising would have turned
   today's silent empty report into an error screen in 73% of analyses, a prod behavior change.
-  Fix in Phase 2/3 against this baseline.
+  Fix in Phase 2/3 against this baseline. **Resolved in Phase 2** (`docs/baselines/phase2.md`).
 - **Ingestion moved to Claude Haiku in Phase 1** (planned for Phase 2) because Groq broke it.
-  CrewAI/Groq packages are still in `pyproject.toml`; removal stays in Phase 2.
+  CrewAI/Groq packages are still in `pyproject.toml`; removal stays in Phase 2. **Removed in Phase 2.**
 - **`tools=` / structured output** not built yet; first caller is Phase 3.
 - **Fan-out join** dataset deferred to Phase 4 (SQL).
 - `sql_connector.query_nl` still uses its own sync client (dead code; Phase 4 rewrites it).

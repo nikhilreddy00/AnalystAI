@@ -1,0 +1,3526 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261027T193448Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "0c7587b",
+  "started_at": "20261027T193448Z",
+  "only": null
+ },
+ "summary": {
+  "cases": 40,
+  "runs": 120,
+  "pass_rate": 0.85,
+  "case_majority_pass_rate": 0.85,
+  "flip_rate": 0.05,
+  "hard_rule_violations": 0,
+  "errors": 3,
+  "runs_with_truncated_llm_output": 0,
+  "cost_per_question_usd": 0.0279,
+  "latency_p50_s": 24.5,
+  "latency_p95_s": 34.89
+ },
+ "runs": {
+  "aggregation-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 21.3,
+    "cost_usd": 0.0243,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.75,
+    "cost_usd": 0.03659,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 29.87,
+    "cost_usd": 0.03677,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 22.14,
+    "cost_usd": 0.02337,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.0,
+    "cost_usd": 0.02438,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 20.94,
+    "cost_usd": 0.02411,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.99,
+    "cost_usd": 0.03647,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 31.51,
+    "cost_usd": 0.03802,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 29.59,
+    "cost_usd": 0.03647,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 20.03,
+    "cost_usd": 0.02294,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 19.39,
+    "cost_usd": 0.0228,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.24,
+    "cost_usd": 0.02847,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "aggregation-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.41,
+    "cost_usd": 0.03585,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.17,
+    "cost_usd": 0.02579,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 20.75,
+    "cost_usd": 0.02348,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-1": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 19.8,
+    "cost_usd": 0.02082,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 18.6,
+    "cost_usd": 0.02001,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.63,
+    "cost_usd": 0.01967,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-2": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 19.18,
+    "cost_usd": 0.01916,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 16.48,
+    "cost_usd": 0.01821,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 15.41,
+    "cost_usd": 0.01764,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-3": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.11,
+    "cost_usd": 0.01817,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.92,
+    "cost_usd": 0.01763,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.73,
+    "cost_usd": 0.01848,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-4": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.6,
+    "cost_usd": 0.01754,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.36,
+    "cost_usd": 0.01967,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 19.92,
+    "cost_usd": 0.0212,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-5": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 16.77,
+    "cost_usd": 0.018,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 15.6,
+    "cost_usd": 0.018,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.98,
+    "cost_usd": 0.01967,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.569476, want 0.569"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.73,
+    "cost_usd": 0.03227,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5694761445917612, want 0.569"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.89,
+    "cost_usd": 0.03166,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.569476, want 0.569"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.67,
+    "cost_usd": 0.03218,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.54519, want 0.545"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.31,
+    "cost_usd": 0.03206,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5452, want 0.545"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.28,
+    "cost_usd": 0.02961,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.54519, want 0.545"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.88,
+    "cost_usd": 0.03275,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5716, want 0.572"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.15,
+    "cost_usd": 0.02984,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.571596, want 0.572"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 27.97,
+    "cost_usd": 0.03442,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.571596, want 0.572"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.55,
+    "cost_usd": 0.02994,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.551283, want 0.551"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 45.51,
+    "cost_usd": 0.06708,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.5512827852382368, want 0.551"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.65,
+    "cost_usd": 0.03276,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.551283, want 0.551"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.45,
+    "cost_usd": 0.02994,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.6225292670425417, want 0.623"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.41,
+    "cost_usd": 0.03166,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.622529, want 0.623"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.58,
+    "cost_usd": 0.03275,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.622529, want 0.623"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.45,
+    "cost_usd": 0.02994,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 29.06,
+    "cost_usd": 0.03626,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 29.19,
+    "cost_usd": 0.03524,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.84,
+    "cost_usd": 0.04329,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.4,
+    "cost_usd": 0.03725,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 31.09,
+    "cost_usd": 0.03687,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.31,
+    "cost_usd": 0.03678,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.75,
+    "cost_usd": 0.04214,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 27.5,
+    "cost_usd": 0.03339,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 31.67,
+    "cost_usd": 0.0389,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 29.62,
+    "cost_usd": 0.03524,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 31.02,
+    "cost_usd": 0.03504,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.55,
+    "cost_usd": 0.03449,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "null_effect-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 33.13,
+    "cost_usd": 0.04088,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 32.36,
+    "cost_usd": 0.03824,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.79,
+    "cost_usd": 0.03578,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.34,
+    "cost_usd": 0.0291,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 22.74,
+    "cost_usd": 0.02655,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.63,
+    "cost_usd": 0.02982,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.37,
+    "cost_usd": 0.02918,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.08,
+    "cost_usd": 0.02918,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no findings"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no findings"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "no findings"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "explicit error"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": "GuardrailViolation: analysis: call not allowed: getattr",
+    "latency_s": 37.26,
+    "cost_usd": 0.06081,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "robustness-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.7,
+    "cost_usd": 0.03332,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.37,
+    "cost_usd": 0.02961,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.72,
+    "cost_usd": 0.02924,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.23,
+    "cost_usd": 0.02655,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.56,
+    "cost_usd": 0.03194,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.44,
+    "cost_usd": 0.03194,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "robustness-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.34,
+    "cost_usd": 0.03689,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.45,
+    "cost_usd": 0.03602,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.32,
+    "cost_usd": 0.02786,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 8.66,
+    "cost_usd": 0.00828,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 11.96,
+    "cost_usd": 0.00828,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 9.82,
+    "cost_usd": 0.00828,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 9.85,
+    "cost_usd": 0.00794,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 7.87,
+    "cost_usd": 0.00822,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 6.94,
+    "cost_usd": 0.00581,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 8.39,
+    "cost_usd": 0.00759,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 7.7,
+    "cost_usd": 0.00759,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 8.92,
+    "cost_usd": 0.00828,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 8.76,
+    "cost_usd": 0.00764,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 7.57,
+    "cost_usd": 0.00764,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 6.87,
+    "cost_usd": 0.0054,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 8.69,
+    "cost_usd": 0.00844,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 10.07,
+    "cost_usd": 0.00844,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 8.86,
+    "cost_usd": 0.00844,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 17.07,
+    "cost_usd": 0.02111,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 37.39,
+    "cost_usd": 0.05656,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 13.6,
+    "cost_usd": 0.01516,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 14.77,
+    "cost_usd": 0.01516,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 14.68,
+    "cost_usd": 0.01877,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 8.93,
+    "cost_usd": 0.01034,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 12.83,
+    "cost_usd": 0.01345,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 14.97,
+    "cost_usd": 0.01697,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 14.62,
+    "cost_usd": 0.01697,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no findings"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "no findings"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "explicit error"
+     }
+    ],
+    "error": "GuardrailViolation: analysis: call not allowed: getattr",
+    "latency_s": 28.0,
+    "cost_usd": 0.0487,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 13.62,
+    "cost_usd": 0.01655,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no findings"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "no findings"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "explicit error"
+     }
+    ],
+    "error": "GuardrailViolation: analysis: call not allowed: getattr",
+    "latency_s": 32.53,
+    "cost_usd": 0.05424,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "simpson-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 16.78,
+    "cost_usd": 0.01966,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.55,
+    "cost_usd": 0.05299,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.61,
+    "cost_usd": 0.05422,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "trend-1": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want -3.11%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 29.98,
+    "cost_usd": 0.03612,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want -3.11%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 32.15,
+    "cost_usd": 0.03996,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want -3.11%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 27.7,
+    "cost_usd": 0.03483,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-2": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 5.97%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.58,
+    "cost_usd": 0.02985,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 5.97%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.87,
+    "cost_usd": 0.02985,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 5.97%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.91,
+    "cost_usd": 0.0379,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-3": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 2.48%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.81,
+    "cost_usd": 0.0316,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 2.48%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 30.72,
+    "cost_usd": 0.03549,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 2.48%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.22,
+    "cost_usd": 0.0316,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-4": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 13.70%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 33.57,
+    "cost_usd": 0.03873,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 13.70%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.97,
+    "cost_usd": 0.0316,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 13.70%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.22,
+    "cost_usd": 0.0316,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "trend-5": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 0.59%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 32.63,
+    "cost_usd": 0.0379,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 0.59%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 32.88,
+    "cost_usd": 0.03996,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 0.59%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 31.46,
+    "cost_usd": 0.0379,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ]
+ },
+ "compare": {
+  "previous": "analysis-20261027T183233Z",
+  "pass_rate_delta_pts": 45.0,
+  "broke": [
+   "simpson-4"
+  ],
+  "fixed": [
+   "aggregation-1",
+   "aggregation-2",
+   "aggregation-3",
+   "aggregation-4",
+   "aggregation-5",
+   "correlation-1",
+   "correlation-2",
+   "correlation-3",
+   "correlation-4",
+   "correlation-5",
+   "robustness-1",
+   "robustness-2",
+   "robustness-3",
+   "robustness-4",
+   "robustness-5",
+   "segment-1",
+   "segment-2",
+   "segment-3",
+   "segment-4",
+   "segment-5"
+  ],
+  "mcnemar_p": 0.0
+ }
+}
