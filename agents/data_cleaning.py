@@ -141,7 +141,7 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
     """Layer 2 date path. Returns a datetime Series if >=80% of non-null values
     parse as dates, else None.
 
-    For numeric input: tries epoch seconds (values in [1e9, 1e13)).
+    For numeric input: tries epoch seconds (values in [1e9, 1e10)).
     For object input: tries dayfirst=False then dayfirst=True with a 200-row
     sample gate to avoid expensive full-column parse on non-date columns."""
     original_non_null = int(series.notna().sum())
@@ -154,9 +154,9 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
         vals = pd.to_numeric(s, errors="coerce").dropna()
         if len(vals) == 0:
             return None
-        # Epoch seconds range: 2001-09-09 to 2286-11-20. >1e13 is likely millis;
+        # Epoch seconds range: 2001-09-09 to 2286-11-20. >=1e10 is likely millis;
         # we skip those in v1 to avoid wrong conversions.
-        if (vals > 1e9).mean() >= 0.8 and (vals < 1e13).mean() >= 0.8:
+        if (vals > 1e9).mean() >= 0.8 and (vals < 1e10).mean() >= 0.8:
             converted = pd.to_datetime(series, unit="s", errors="coerce")
             if int(converted.notna().sum()) / original_non_null >= 0.8:
                 return converted

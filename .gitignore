@@ -26,3 +26,6 @@ session_data/
 
 # Local agent-tooling state
 .claude-flow/
+
+# LLM call traces (Phase 1)
+traces/

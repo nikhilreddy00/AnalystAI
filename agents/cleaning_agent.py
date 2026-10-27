@@ -22,7 +22,6 @@ import io
 import json
 
 import pandas as pd
-from anthropic import AsyncAnthropic
 
 from agents.anomaly_detector import detect_anomalies
 from agents.data_cleaning import (
@@ -32,7 +31,7 @@ from agents.data_cleaning import (
 )
 from agents.utils import strip_markdown_fences
 from agents.visualization_agent import classify_columns
-from api.config import settings
+from llm.client import get_client
 from orchestrator.state import (
     AnalysisSession,
     CleaningAudit,
@@ -40,7 +39,6 @@ from orchestrator.state import (
     DataContract,
 )
 
-_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 _SKIP_REASON = {
     "url": "URL column — not analytically useful",
@@ -291,13 +289,13 @@ Columns:
 Return ONLY the JSON object — no explanation.\
 """
 
-    response = await _client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await get_client().complete(
+        agent="cleaning", prompt_version="v0",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw = response.content[0].text.strip()
+    raw = response.text.strip()
     raw = strip_markdown_fences(raw)
 
     return json.loads(raw.strip())

@@ -13,10 +13,8 @@ from __future__ import annotations
 
 import json
 
-from anthropic import AsyncAnthropic
-
 from agents.utils import strip_markdown_fences, safe_column_name
-from api.config import settings
+from llm.client import get_client
 from orchestrator.state import (
     AnalysisFindings,
     AnalysisSession,
@@ -27,8 +25,6 @@ from orchestrator.state import (
     StatisticalResult,
 )
 from sandbox.executor import run_code
-
-_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 # Boilerplate injected at the top of every generated code block
 _CODE_HEADER = """\
@@ -232,14 +228,14 @@ For hypothesis: t-test or chi-square based on data types.
 Only run trend analysis if date columns exist.\
 """
 
-    response = await _client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await get_client().complete(
+        agent="analysis", prompt_version="v0",
         max_tokens=3000,
         system=_CODE_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    code_body = response.content[0].text.strip()
+    code_body = response.text.strip()
     code_body = strip_markdown_fences(code_body)
 
     # Append guaranteed distribution/EDA code AFTER Claude's body.
