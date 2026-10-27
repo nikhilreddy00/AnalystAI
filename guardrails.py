@@ -166,10 +166,16 @@ def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list
 
 # ── PII ────────────────────────────────────────────────────────────────────────
 
-# Person names only: `customer_name`, `first_name`, plain `name` — not `product_name`/`file_name`.
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|ssn|address|street|dob|birth|passport)(?:$|_)"
-    r"|(?:^|_)(?:first|last|full|customer|contact)_?name$|^name$", re.I)
+    r"(?:^|_)(?:e?mail|phone|mobile|ssn|address|street|dob|birth|passport|"
+    r"first_?name|last_?name|full_?name|names?)(?:$|_)", re.I)
+# Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
+# (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
+_THING_NAME_RE = re.compile(
+    r"(?:^|_)(?:product|company|file|brand|category|item|sku|host|table|column|field|sheet|"
+    r"store|shop|city|country|state|region|department|dept|team|project|campaign|vendor|"
+    r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment)"
+    r"_names?$", re.I)
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 _PHONE_RE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)")
@@ -186,7 +192,8 @@ def _luhn(digits: str) -> bool:
 
 
 def is_pii_column(name: str) -> bool:
-    return bool(_PII_COL_RE.search(str(name)))
+    name = str(name)
+    return bool(_PII_COL_RE.search(name)) and not _THING_NAME_RE.search(name)
 
 
 def mask_pii(value: Any) -> Any:

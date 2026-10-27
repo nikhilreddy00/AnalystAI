@@ -61,6 +61,7 @@ def test_ungrounded_numbers():
 @pytest.mark.parametrize("col,pii", [
     ("name", True), ("customer_name", True), ("contact_name", True), ("first_name", True),
     ("lastname", True), ("billing_customer_name", True), ("customer_email", True),
+    ("Name", True), ("patient_name", True), ("employee_name", True), ("user_name", True),
     ("product_name", False), ("company_name", False), ("file_name", False), ("username", False),
 ])
 def test_pii_column_names(col, pii):
