@@ -12,9 +12,11 @@ The frontend renders one block per tab.
 from __future__ import annotations
 
 import json
+import logging
 import re
 
 from agents.utils import strip_markdown_fences
+from guardrails import UNTRUSTED_NOTE, delimit_untrusted, mask_row
 from llm.client import get_client
 from orchestrator.state import (
     ActionItem,
@@ -27,6 +29,8 @@ from orchestrator.state import (
     RecommendedAction,
     Severity,
 )
+
+logger = logging.getLogger(__name__)
 
 
 _SYSTEM = """\
@@ -258,7 +262,8 @@ async def run_insight_agent(
     # to specific rows / dtypes / missing columns in its narrative.
     if findings.head_preview:
         context_parts.append(
-            "Sample rows (head 5):\n  " + "\n  ".join(str(r) for r in findings.head_preview)
+            "Sample rows (head 5):\n"
+            + delimit_untrusted("\n".join(str(mask_row(r)) for r in findings.head_preview))
         )
     if findings.dtypes_summary:
         context_parts.append(
@@ -358,9 +363,10 @@ async def run_insight_agent(
         )
         try:
             data = await _call_and_parse(retry_prompt)
-        except Exception:
+        except (json.JSONDecodeError, ValueError, IndexError) as exc:
             # Last resort: ship a structured report built from the findings we already have.
-            # The user sees something useful instead of a crash + empty UI.
+            # Typed LLM errors (refusal, truncation, outage) still propagate.
+            logger.warning("insight: unparseable twice, using fallback report: %s", exc)
             return _fallback_report(session, contract, findings)
 
     # PROMPT-3: parse the two structured blocks, sanitize the executive block,
@@ -657,7 +663,7 @@ async def _call_and_parse(prompt: str) -> dict:
     response = await get_client().complete(
         agent="insight", prompt_version="v0",
         max_tokens=4000,        # bumped from 2000: full schema for wide datasets needs headroom
-        system=_SYSTEM,
+        system=_SYSTEM + "\n\n" + UNTRUSTED_NOTE,
         messages=[{"role": "user", "content": prompt}],
     )
     if not response.text:

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from api.config import settings
 from connectors.base import get_connector
+from guardrails import UNTRUSTED_NOTE, delimit_untrusted
 from llm.client import get_client
 from orchestrator.state import AnalysisSession, DataContract
 
@@ -68,7 +69,7 @@ async def _enrich_schema_with_llm(contract: DataContract, task_plan) -> str:
 
     response = await get_client().complete(
         agent="ingestion", prompt_version="v0", model=settings.llm_fast_model,
-        max_tokens=400, system=_SYSTEM,
+        max_tokens=400, system=_SYSTEM + " " + UNTRUSTED_NOTE,
         messages=[{"role": "user", "content": f"""
 Given this dataset schema, write a 2-3 sentence business-readable summary that explains:
 - What this dataset represents
@@ -79,7 +80,7 @@ Given this dataset schema, write a 2-3 sentence business-readable summary that e
 {task_context}
 
 COLUMNS:
-{col_descriptions}
+{delimit_untrusted(col_descriptions)}
 
 Return ONLY the plain text summary, no bullet points, no headers.
 """}],

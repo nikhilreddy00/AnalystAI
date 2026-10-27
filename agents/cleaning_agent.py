@@ -29,6 +29,7 @@ from agents.data_cleaning import (
     triage_columns,
     try_numeric_conversion,
 )
+from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
 from agents.visualization_agent import classify_columns
 from llm.client import get_client
@@ -298,7 +299,11 @@ Return ONLY the JSON object — no explanation.\
     raw = response.text.strip()
     raw = strip_markdown_fences(raw)
 
-    return json.loads(raw.strip())
+    try:
+        return json.loads(raw.strip())
+    except json.JSONDecodeError as exc:
+        raise LLMOutputError("cleaning", f"malformed JSON: {exc}",
+                             "The cleaning step couldn't parse its imputation plan.") from exc
 
 
 def _build_summary(

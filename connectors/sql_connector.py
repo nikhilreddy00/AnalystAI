@@ -11,26 +11,19 @@ import asyncio
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
 
+from agents.errors import GuardrailViolation
 from connectors.base import DataConnector
+from guardrails import check_sql_readonly
 from llm.client import get_client
 
 
 def _assert_single_select(sql: str) -> str:
-    """Reject anything that isn't a single SELECT statement.
-    Defends against prompt-injection like `SELECT 1; DROP TABLE users; --`."""
-    stripped = sql.strip().rstrip(";").strip()
-    if not stripped:
-        raise ValueError("Empty SQL statement.")
-    # Multiple statements: split on `;` and require exactly one non-empty piece
-    pieces = [p.strip() for p in stripped.split(";") if p.strip()]
-    if len(pieces) != 1:
-        raise ValueError(
-            f"Only a single SQL statement is allowed (got {len(pieces)} statements)."
-        )
-    first_word = pieces[0].split()[0].upper()
-    if first_word != "SELECT":
-        raise ValueError(f"Generated SQL is not a SELECT statement: {pieces[0][:80]}")
-    return pieces[0]
+    """Reject anything that isn't a single read query (parsed, not prefix-matched)."""
+    sql = sql.strip().rstrip(";").strip()
+    reason = check_sql_readonly(sql)
+    if reason:
+        raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
+    return sql
 
 
 class SQLConnector(DataConnector):

@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import json
 
+from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import strip_markdown_fences, safe_column_name
+from guardrails import check_code, check_columns, code_column_refs
 from llm.client import get_client
 from orchestrator.state import (
     AnalysisFindings,
@@ -230,15 +232,7 @@ For hypothesis: t-test or chi-square based on data types.
 Only run trend analysis if date columns exist.\
 """
 
-    response = await get_client().complete(
-        agent="analysis", prompt_version="v1",
-        max_tokens=8000,   # v0's 3000 truncated 73% of runs (Phase 1 baseline)
-        system=_CODE_SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    code_body = response.text.strip()
-    code_body = strip_markdown_fences(code_body)
+    code_body = await _generate_code(prompt, all_cols)
 
     # Append guaranteed distribution/EDA code AFTER Claude's body.
     # This ensures chart data is always populated even if Claude's code fails.
@@ -246,46 +240,42 @@ Only run trend analysis if date columns exist.\
     full_code = _CODE_HEADER + "\n" + code_body + "\n" + guaranteed_code + _CODE_FOOTER
 
     execution = await run_code(full_code, df_parquet)
-
-    return _parse_findings(execution.output_json, full_code, execution.figures_base64, execution.error)
-
-
-def _parse_findings(
-    output_json: str | None,
-    code_executed: str,
-    figures_base64: list[str],
-    error: str | None,
-) -> AnalysisFindings:
-    """Parse the JSON output from E2B into an AnalysisFindings object."""
-    if not output_json:
-        return AnalysisFindings(
-            eda_summary={},
-            correlations={},
-            trends=[],
-            segments=[],
-            anomalies=[],
-            statistical_tests=[],
-            forecast_points=[],
-            distributions={},
-            code_executed=code_executed,
-            figures_base64=figures_base64,
-        )
-
+    # Never return empty findings for a failed run: no JSON on stdout means the code died.
     try:
-        raw = json.loads(output_json)
+        raw = json.loads(execution.output_json or "")
     except json.JSONDecodeError:
-        return AnalysisFindings(
-            eda_summary={},
-            correlations={},
-            trends=[],
-            segments=[],
-            anomalies=[],
-            statistical_tests=[],
-            forecast_points=[],
-            distributions={},
-            code_executed=code_executed,
-            figures_base64=figures_base64,
+        detail = (execution.error or "no JSON output").strip()
+        raise SandboxError("analysis", detail,
+                           f"The analysis code failed in the sandbox: {detail[:200]}") from None
+
+    return _parse_findings(raw, full_code, execution.figures_base64)
+
+
+async def _generate_code(prompt: str, known_columns: list[str]) -> str:
+    """Generate the analysis body; one guided retry if a guardrail rejects it."""
+    messages = [{"role": "user", "content": prompt}]
+    for _ in range(2):
+        response = await get_client().complete(
+            agent="analysis", prompt_version="v1",
+            max_tokens=8000,   # v0's 3000 truncated 73% of runs (Phase 1 baseline)
+            system=_CODE_SYSTEM,
+            messages=messages,
         )
+        body = strip_markdown_fences(response.text.strip())
+        reason = check_code(body) or check_columns(code_column_refs(body), known_columns)
+        if reason is None:
+            return body
+        messages = messages + [
+            {"role": "assistant", "content": response.text},
+            {"role": "user", "content": f"That code was rejected: {reason}. Rewrite it using only "
+                                        "the listed columns and pandas/numpy/scipy/stdlib math."},
+        ]
+    raise GuardrailViolation("analysis", reason,
+                             f"The generated analysis code was rejected: {reason}.")
+
+
+def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) -> AnalysisFindings:
+    """Parse the JSON output from E2B into an AnalysisFindings object."""
 
     anomalies = [
         AnomalyRecord(

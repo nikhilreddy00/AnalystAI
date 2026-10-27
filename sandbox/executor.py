@@ -65,7 +65,11 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
             await sandbox.files.write("/data/df.csv", csv_bytes)
 
         # BUG-40: Add timeout to prevent infinite loops in LLM-generated code
-        execution = await sandbox.run_code(code, timeout=60)
+        try:
+            execution = await sandbox.run_code(code, timeout=60)
+        except Exception as exc:   # e2b raises on timeout; callers get a typed SandboxError
+            return ExecutionResult(stdout="", stderr=str(exc),
+                                   error=f"Sandbox execution failed: {type(exc).__name__}: {exc}")
 
         figures: list[str] = []
         for result in execution.results:
