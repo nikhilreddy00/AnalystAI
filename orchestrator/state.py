@@ -234,6 +234,26 @@ class CleaningAudit(BaseModel):
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────
 
+class AgentCard(BaseModel):
+    """Self-knowledge of one agent (ADR-0001): injected into its system prompt, and what the UI
+    shows as the agent's role and limits. `version` is the prompt version the agent runs."""
+    name: str
+    version: str
+    scope: str
+    inputs: list[str]
+    outputs: list[str]
+    limits: list[str]
+    refusal_rules: list[str]
+
+    def render(self) -> str:
+        def bullets(items: list[str]) -> str:
+            return "\n".join(f"- {i}" for i in items)
+        return (f"# Agent card: {self.name} ({self.version})\n{self.scope}\n\n"
+                f"Inputs:\n{bullets(self.inputs)}\nOutputs:\n{bullets(self.outputs)}\n"
+                f"Known limits:\n{bullets(self.limits)}\n"
+                f"Refuse or say so when:\n{bullets(self.refusal_rules)}")
+
+
 class StatisticalResult(BaseModel):
     test_name: str
     statistic: float
