@@ -88,7 +88,9 @@ Rules:
   medium if > Q3 + 3×IQR, low otherwise.
 - For correlations: only numeric columns, skip pairs with |r| < 0.2
 - For segmentation: use the segment columns from the task, top 10 groups by count
-- Return NOTHING — just mutate `result` dict\
+- Return NOTHING — just mutate `result` dict
+- Be compact: at most ~120 lines, no comments, no helper docstrings. Cover only the
+  requested analysis types. Output that runs past the length limit is discarded.\
 """
 
 
@@ -229,8 +231,8 @@ Only run trend analysis if date columns exist.\
 """
 
     response = await get_client().complete(
-        agent="analysis", prompt_version="v0",
-        max_tokens=3000,
+        agent="analysis", prompt_version="v1",
+        max_tokens=8000,   # v0's 3000 truncated 73% of runs (Phase 1 baseline)
         system=_CODE_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
     )
