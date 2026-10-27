@@ -1,0 +1,3496 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261027T180935Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7858e7b",
+  "started_at": "20261027T180935Z",
+  "only": null
+ },
+ "summary": {
+  "cases": 40,
+  "runs": 120,
+  "pass_rate": 0.3917,
+  "case_majority_pass_rate": 0.4,
+  "flip_rate": 0.025,
+  "hard_rule_violations": 88,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 88,
+  "cost_per_question_usd": 0.0443,
+  "latency_p50_s": 35.21,
+  "latency_p95_s": 37.14
+ },
+ "runs": {
+  "aggregation-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 37.31,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.02,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 37.94,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "aggregation-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'units'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.51,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'units'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 37.93,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'units'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.23,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "aggregation-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'marketing_spend'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.45,
+    "cost_usd": 0.04817,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'marketing_spend'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.49,
+    "cost_usd": 0.04817,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'marketing_spend'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 39.75,
+    "cost_usd": 0.04817,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "aggregation-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'discount'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.57,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'discount'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.46,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'discount'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.44,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "aggregation-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 39.52,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.82,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.31,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "anomaly-1": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.54,
+    "cost_usd": 0.02514,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 26.95,
+    "cost_usd": 0.03068,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [219, 294, 1059, 1167, 1491]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.64,
+    "cost_usd": 0.02706,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-2": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 22.29,
+    "cost_usd": 0.02542,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.61,
+    "cost_usd": 0.02875,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [283, 1011, 1372, 1412, 1901]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 22.15,
+    "cost_usd": 0.02529,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-3": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.96,
+    "cost_usd": 0.02578,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 25.36,
+    "cost_usd": 0.0288,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [632, 754, 1594, 2048, 2212]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 21.8,
+    "cost_usd": 0.02529,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-4": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 21.85,
+    "cost_usd": 0.02523,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.22,
+    "cost_usd": 0.02662,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 100% of planted rows [65, 552, 762, 1000, 1460]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.97,
+    "cost_usd": 0.02635,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "anomaly-5": [
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 24.13,
+    "cost_usd": 0.02679,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 23.42,
+    "cost_usd": 0.02558,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "anomaly_rows",
+      "ok": true,
+      "detail": "recall 80% of planted rows [305, 407, 811, 930, 2336]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 21.5,
+    "cost_usd": 0.02529,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "correlation-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.569)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.61,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.569)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 33.96,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.569)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.87,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "correlation-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.545)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.76,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.545)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.63,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.545)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.63,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "correlation-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.572)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.64,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.572)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.73,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.572)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.66,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "correlation-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.551)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.8,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.551)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.72,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.551)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.79,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "correlation-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.623)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.6,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.623)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.29,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": false,
+      "detail": "no correlation reported for revenue~marketing_spend (true r=0.623)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.76,
+    "cost_usd": 0.04818,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "null_effect-1": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 37.13,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.43,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.28,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   }
+  ],
+  "null_effect-2": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.35,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.6,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.2,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   }
+  ],
+  "null_effect-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.29,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.42,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.1,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   }
+  ],
+  "null_effect-4": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.92,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.75,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.58,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   }
+  ],
+  "null_effect-5": [
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.64,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.5,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "correlation_absent",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.18,
+    "cost_usd": 0.0482,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": true
+   }
+  ],
+  "robustness-1": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.18,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.82,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.91,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "robustness-2": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.98,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.95,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.31,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "robustness-3": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.93,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.82,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.92,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "robustness-4": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.7,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.88,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.65,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "robustness-5": [
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.72,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.88,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "eda_stat",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.87,
+    "cost_usd": 0.04813,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "segment-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.66,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.55,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 33.74,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "segment-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by region"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.96,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by region"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.42,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for revenue by region"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.62,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "segment-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for units by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.85,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for units by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.52,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for units by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.52,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "segment-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.42,
+    "cost_usd": 0.04598,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for units by region"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.14,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 39.61,
+    "cost_usd": 0.04797,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "segment-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for marketing_spend by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.14,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for marketing_spend by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.19,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": false,
+      "detail": "no segment result for marketing_spend by segment"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.07,
+    "cost_usd": 0.04811,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "simpson-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.05,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 27.68,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.89,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.06,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 27.63,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 27.56,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-3": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.41,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 27.63,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 28.05,
+    "cost_usd": 0.03652,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 33.74,
+    "cost_usd": 0.04051,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 32.6,
+    "cost_usd": 0.04153,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 32.14,
+    "cost_usd": 0.03997,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "simpson-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.81,
+    "cost_usd": 0.04298,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.08,
+    "cost_usd": 0.04469,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "latency_s": 32.22,
+    "cost_usd": 0.04247,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "trend-1": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want -3.11%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.84,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want -3.11%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.88,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want -3.11%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.79,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "trend-2": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 5.97%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.23,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 5.97%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.51,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 5.97%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.52,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "trend-3": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 2.48%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.26,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 2.48%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.28,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 2.48%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.07,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "trend-4": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 13.70%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.55,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 13.70%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 34.99,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 13.70%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.49,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "trend-5": [
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 0.59%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.38,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 0.59%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 35.23,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "trend",
+      "ok": false,
+      "detail": "no MoM trend for 'revenue' (want 0.59%)"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": false,
+      "detail": "silent empty result"
+     }
+    ],
+    "error": null,
+    "latency_s": 36.9,
+    "cost_usd": 0.04816,
+    "llm_calls": 1,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ]
+ }
+}

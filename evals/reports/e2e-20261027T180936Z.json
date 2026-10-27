@@ -1,0 +1,2001 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261027T180936Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7858e7b",
+  "started_at": "20261027T180936Z",
+  "only": null
+ },
+ "summary": {
+  "cases": 20,
+  "runs": 60,
+  "pass_rate": 0.45,
+  "case_majority_pass_rate": 0.45,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 15,
+  "cost_per_question_usd": 0.0505,
+  "latency_p50_s": 13.68,
+  "latency_p95_s": 132.47
+ },
+ "runs": {
+  "e2e-01": [
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation is complete, but a near-total data collapse after deduplication demands immediate investigation before any analysis proceeds. This dataset covers transactional order records from November 2025, tracking revenue, units sold, discounts, and marketing spend across customer segments and geographic regions across 3,025 original rows. After removing 25 duplicate rows and applying missing-value estimates to one column, the dataset collapsed from 3,025 rows to just 1 usable row \u2014 a loss of over 99.9% of all records. This near-total data loss is a critical integrity failure: either the deduplication logic is treating nearly every order as a duplicate, or the source data contains a structural error that makes rows appear identical when they should not be. Pause all downstream analysis immediately and audit the source data export and deduplication rules before re-running the pipeline.\nThe pipeline began with 3,025 rows and 11 columns. Duplicate detection was applied across the full row or a subset of key columns (exact method requires confirmation), removing 25 rows. Median imputation was applied to 1 numeric column with missing values. Post-cleaning, the DataFrame shape is 1 row \u00d7 11 columns \u2014 a result that is almost certainly erroneous and indicative of an overly aggressive deduplication key or a data export issue. A Correlation Heatmap was generated on the numeric columns (`revenue`, `units`, `discount`, `marketing_spend`) to assess linear relationships. The `notes` column",
+    "latency_s": 127.25,
+    "cost_usd": 0.14364,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation is complete, but a near-total data collapse after deduplication demands immediate investigation before any analysis proceeds. This dataset covers transactional order records from November 2025, tracking revenue, units sold, discounts, and marketing spend across customer segments and geographic regions across 3,025 original rows. After removing 25 duplicate rows and applying missing-value estimates to one column, the dataset collapsed from 3,025 rows to just 1 usable row \u2014 a loss of over 99.9% of all records. This near-total data loss is a critical integrity failure: either the deduplication logic is treating nearly every order as a duplicate, or the source data contains a structural error that makes rows appear identical when they should not be. Pause all downstream analysis immediately and audit the source data export and deduplication rules before re-running the pipeline.\nThe pipeline began with 3,025 rows and 11 columns. Duplicate detection was applied across the full row or a subset of key columns (exact method requires confirmation), removing 25 rows. Median imputation was applied to 1 numeric column with missing values. Post-cleaning, the DataFrame shape is 1 row \u00d7 11 columns \u2014 a result that is almost certainly erroneous and indicative of an overly aggressive deduplication key or a data export issue. A Correlation Heatmap was generated on the numeric columns (`revenue`, `units`, `discount`, `marketing_spend`) to assess linear relationships. The `notes` column",
+    "latency_s": 124.06,
+    "cost_usd": 0.14274,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: all key financial fields are fully populated and ready for analysis. This dataset covers transactional order records from November 2025, originally containing 3,025 orders across customer segments, regions, revenue, units, discounts, and marketing spend. Data preparation is now complete \u2014 missing values in one financial column have been filled using statistical estimates, and 25 duplicate orders were removed, leaving a clean, analysis-ready dataset. The Notes field is effectively empty (over 99% blank) and should be excluded from any downstream analysis, as it carries no usable information; additionally, the post-cleaning row count of 1 flagged in the quality report warrants immediate verification, as this may indicate an over-aggressive deduplication or filter step. Confirm the final cleaned dataset contains the expected number of orders before proceeding to segmentation or revenue trend analysis.\nThe pipeline began with 3,025 rows and 11 columns. Duplicate rows were identified using all columns as the composite key and 25 duplicates were dropped, retaining the first occurrence. Missing value imputation was applied to 1 numeric column (exact column not specified in the schema summary, but drawn from ['revenue', 'units', 'discount', 'marketing_spend']); median imputation was used as the strategy given the likely right-skewed distribution of financial metrics, which is robust to outliers. The `notes` column was flagged as non-informative with a null rate o",
+    "latency_s": 130.44,
+    "cost_usd": 0.14179,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "e2e-02": [
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: all key financial fields are clean and ready for analysis across 3,000 orders. This dataset covers 3,025 individual sales orders with financial and customer details recorded daily from November 1, 2025, spanning multiple regions and customer segments. Data quality is strong across all core business metrics \u2014 Revenue, Units, Discount, and Marketing Spend all had zero missing values before imputation, and the one column requiring imputation has now been filled using statistical estimates. The Notes field is effectively empty (over 99% blank) and should be excluded from any downstream analysis, and 25 duplicate orders were removed during cleaning \u2014 these may warrant a brief review to confirm they were true duplicates rather than legitimate repeat transactions. With imputation now complete, the dataset is ready for segmentation, revenue trend analysis, or marketing efficiency modeling \u2014 the next logical step is to validate the imputed column's distribution before proceeding.\nThe pipeline began with a deduplication pass that removed 25 exact duplicate rows from the original 3,025-row dataset. Missing value imputation was then applied to 1 column; based on the schema context and the numeric column set (`revenue`, `units`, `discount`, `marketing_spend`), median imputation was the most likely strategy applied given the skew-robustness it provides for financial data. The `notes` column was flagged as high-null (>99.97% missing) and excluded from imputation and dow",
+    "latency_s": 123.33,
+    "cost_usd": 0.14147,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: all key financial fields are clean and ready for analysis across 3,000 orders. This dataset covers 3,025 individual sales orders with financial and customer details recorded daily from November 1, 2025, spanning multiple regions and customer segments. Data quality is strong across all core business metrics \u2014 Revenue, Units, Discount, and Marketing Spend all had zero missing values before imputation, and the one column requiring imputation has now been filled using statistical estimates. The Notes field is effectively empty (over 99% blank) and should be excluded from any downstream analysis, and 25 duplicate orders were removed during cleaning \u2014 these may warrant a brief review to confirm they were true duplicates rather than legitimate repeat transactions. With imputation now complete, the dataset is ready for segmentation, revenue trend analysis, or marketing efficiency modeling \u2014 the next logical step is to validate the imputed column's distribution before proceeding.\nThe pipeline began with a deduplication pass that removed 25 exact duplicate rows from the original 3,025-row dataset. Missing value imputation was then applied to 1 column; based on the schema context and the numeric column set (`revenue`, `units`, `discount`, `marketing_spend`), median imputation was the most likely strategy applied given the skew-robustness it provides for financial data. The `notes` column was flagged as high-null (>99.97% missing) and excluded from imputation and dow",
+    "latency_s": 123.48,
+    "cost_usd": 0.14135,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: all key financial fields are clean and ready for analysis across 3,000 orders. This dataset covers 3,025 individual sales orders with financial and customer details recorded daily from November 1, 2025, spanning multiple regions and customer segments. Data quality is strong across all core business metrics \u2014 Revenue, Units, Discount, and Marketing Spend all had zero missing values before imputation, and the one column requiring imputation has now been filled using statistical estimates. The Notes field is effectively empty (over 99% blank) and should be excluded from any downstream analysis, and 25 duplicate orders were removed during cleaning \u2014 these may warrant a brief review to confirm they were true duplicates rather than legitimate repeat transactions. With imputation now complete, the dataset is ready for segmentation, revenue trend analysis, or marketing efficiency modeling \u2014 the next logical step is to validate the imputed column's distribution before proceeding.\nThe pipeline began with a deduplication pass that removed 25 exact duplicate rows from the original 3,025-row dataset. Missing value imputation was then applied to 1 column; based on the schema context and the numeric column set (`revenue`, `units`, `discount`, `marketing_spend`), median imputation was the most likely strategy applied given the skew-robustness it provides for financial data. The `notes` column was flagged as high-null (>99.97% missing) and excluded from imputation and dow",
+    "latency_s": 121.66,
+    "cost_usd": 0.13973,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "e2e-03": [
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete \u2014 data is clean and ready for analysis across 3,000 November 2025 orders. The dataset covers individual sales orders from November 2025, spanning multiple business segments and geographic regions with key metrics including revenue, units sold, discount rates, and marketing spend. After removing 25 duplicate records and filling in missing values in one column, the dataset is now clean and structurally sound for downstream analysis. The notes field is almost entirely empty (over 99% blank) and should be excluded from any analysis, as it carries no meaningful signal; additionally, a data quality log flagged an unusually low final row count that warrants a quick verification before proceeding. Confirm the post-cleaning row count reflects the expected ~3,000 orders, then proceed to segment- and region-level performance analysis using revenue and marketing spend.\nThe pipeline began with 3,025 rows and 11 columns. Duplicate detection was performed using all columns as the composite key, resulting in 25 rows removed. Missing value imputation was applied to 1 column (likely a numeric field given the schema); median imputation was the assumed strategy for numeric columns given standard pipeline defaults. The `notes` column was flagged for high null rate (>40% threshold trigger; actual rate ~99.97%) and excluded from imputation and analysis. A Pearson correlation heatmap was generated across the four numeric columns: `revenue`, `units`, `discount`, and `marketing_spe",
+    "latency_s": 121.99,
+    "cost_usd": 0.13984,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete \u2014 data is clean and ready for analysis, though one field remains too sparse to use. This dataset covers individual sales orders from November 2025, spanning multiple business segments and geographic regions with key metrics including revenue, units sold, discount rates, and marketing spend. After removing 25 duplicate records and filling in missing values across one column using statistical estimates, the dataset is now clean and consistent for downstream analysis. The notes field is effectively empty across nearly all records (over 99% blank) and should be excluded from any analysis, as it will not contribute meaningful signal. Proceed to exploratory analysis \u2014 segment and region breakdowns of revenue and marketing spend are the logical next step given the clean numeric columns now available.\nThe pipeline began with a deduplication pass that removed 25 exact duplicate rows from the original 3,025-row dataset. Missing value imputation was then applied to 1 numeric column (exact column not specified in the schema summary, but drawn from ['revenue', 'units', 'discount', 'marketing_spend']); median imputation was the assumed strategy given the numeric nature of the column and the risk of mean imputation being skewed by outliers. The `notes` column was flagged for exclusion due to a >99.97% null rate, exceeding the high-null threshold of 40%. A correlation heatmap was generated across all four numeric columns to assess multicollinearity. Post-cleaning, the dat",
+    "latency_s": 131.49,
+    "cost_usd": 0.14342,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete \u2014 data is clean and ready for analysis across 3,000 November 2025 orders. The dataset covers individual sales orders from November 2025, spanning multiple business segments and geographic regions with key metrics including revenue, units sold, discount rates, and marketing spend. After removing 25 duplicate records and filling in missing values in one column, the dataset is structurally clean with no remaining gaps in any operational field. The notes field is effectively empty across nearly all records and should be excluded from any downstream analysis, as it carries no usable information. Proceed to exploratory analysis \u2014 segment- and region-level breakdowns of revenue and marketing efficiency are the logical next step given the clean state of the data.\nThe pipeline began with deduplication, removing 25 exact duplicate rows from the original 3,025-row dataset. Missing value imputation was applied to 1 numeric column; based on the schema context (revenue, units, discount, marketing_spend), median imputation was the most likely strategy applied to preserve robustness against skew. A high-null flag was triggered on the `notes` column (>99.97% null), which was flagged for exclusion rather than imputed. Post-cleaning, the operational dataset retains 3,000 rows across 11 columns (10 usable). A Correlation Heatmap was generated across the four numeric columns (`revenue`, `units`, `discount`, `marketing_spend`) to assess linear relationships. Note: the reported ",
+    "latency_s": 122.48,
+    "cost_usd": 0.13739,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "e2e-04": [
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: missing values filled across two key columns, dataset ready for analysis with one low-priority field flagged for review. This dataset covers transactional order records from November 2025, capturing revenue, units sold, discounts, and marketing spend across two customer segments and two geographic regions. The imputation step successfully filled missing values in two columns \u2014 most notably Units, which had roughly 10% of values absent \u2014 bringing the dataset to a clean, analysis-ready state after also removing 21 duplicate orders. The Notes field remains a concern, with nearly all entries blank (over 99% missing), meaning it carries no analytical value and could introduce noise if included in downstream models or reports. Exclude the Notes field from further analysis and proceed to segmentation or trend analysis using the now-complete Revenue, Units, Discount, and Marketing Spend columns.\nPre-processing began with deduplication, removing 21 exact duplicate rows from the original 3,025-row dataset. Missing value imputation was then applied to 2 numeric columns: `units` (~10% null rate) and at least one additional column identified during profiling. Median imputation was the assumed strategy for numeric columns given the skew-resistance it provides over mean imputation. The `notes` column (99.97% null) was flagged but not imputed, as it is effectively an empty field. The Correlation Heatmap was generated post-imputation on the cleaned numeric columns (`reven",
+    "latency_s": 127.56,
+    "cost_usd": 0.14402,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: missing values filled across two key columns, dataset ready for analysis with one low-priority field flagged for review. This dataset covers transactional order records from November 2025, capturing revenue, units sold, discounts, and marketing spend across two customer segments and two geographic regions. The imputation step successfully filled missing values in two columns \u2014 most notably Units, which had roughly 10% of values absent \u2014 bringing the dataset to a clean, analysis-ready state after also removing 21 duplicate orders. The Notes field remains a concern, with nearly all entries blank (over 99% missing), meaning it carries no analytical value and could introduce noise if included in downstream models or reports. Exclude the Notes field from further analysis and proceed to segmentation or trend analysis using the now-complete Revenue, Units, Discount, and Marketing Spend columns.\nPre-processing began with deduplication, removing 21 exact duplicate rows from the original 3,025-row dataset. Missing value imputation was then applied to 2 numeric columns: `units` (~10% null rate) and at least one additional column identified during profiling. Median imputation was the assumed strategy for numeric columns given the skew-resistance it provides over mean imputation. The `notes` column (99.97% null) was flagged but not imputed, as it is effectively an empty field. The Correlation Heatmap was generated post-imputation on the cleaned numeric columns (`reven",
+    "latency_s": 125.28,
+    "cost_usd": 0.14278,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: missing values filled across two key columns, dataset ready for analysis with one low-priority field flagged for review. This dataset covers transactional order records from November 2025, tracking revenue, units sold, discounts, and marketing spend across two customer segments and two geographic regions. The imputation step successfully filled missing values in two columns \u2014 most notably Units, which had roughly 10% of entries missing \u2014 bringing the dataset to a clean, analysis-ready state after also removing 21 duplicate orders. The Notes field is almost entirely empty (over 99% blank) and should be excluded from any modeling or segmentation work, as it adds no analytical value and could introduce noise. Proceed to exploratory analysis or segmentation modeling now that the dataset is clean; confirm with the data engineering team whether the Notes field should be deprecated from future data exports.\nPre-processing began with deduplication, removing 21 exact duplicate rows based on all 11 columns, reducing the working dataset from 3,025 to 3,004 rows. Missing value imputation was then applied to 2 numeric columns: `units` (~10% null rate, approximately 300 rows) and a second column identified during schema review. Median imputation was applied within group strata (segment \u00d7 region) to preserve distributional integrity across subgroups rather than applying a global median, which would conflate segment- and region-level differences. The `notes` column (99.9",
+    "latency_s": 135.52,
+    "cost_usd": 0.14705,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "e2e-05": [
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: missing values filled across two columns, dataset ready for analysis with one data quality flag remaining. This dataset covers transactional order records from November 2025, tracking revenue, units sold, discounts, and marketing spend across two customer segments and three geographic regions. The imputation step successfully filled missing values in two columns \u2014 most notably Units, which had roughly 10% of values absent \u2014 and 17 duplicate orders were removed, improving overall data integrity. The Notes field remains a concern, with over 99% of entries blank; while this appears intentional (notes are only logged for exceptions), it cannot be used as a reliable analytical variable without further context. Confirm the imputation approach aligns with business expectations for Units before proceeding to segmentation or trend analysis.\nPre-processing began with deduplication, removing 17 duplicate rows based on full-row matching, reducing the dataset from 3,025 to 3,008 rows. Missing value imputation was applied to 2 numeric columns: `units` (~10% null rate, ~301 affected rows) and one additional column identified during profiling. Imputation strategy applied was median imputation per segment-region group to preserve distributional characteristics within subgroups, avoiding global median bias. The `notes` column (99.97% null) was retained but flagged as non-analytical. A Pearson correlation heatmap was generated across all four numeric columns (`revenue`, `un",
+    "latency_s": 132.31,
+    "cost_usd": 0.14546,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: missing values filled across two key columns, dataset ready for analysis with one structural concern flagged. This dataset covers transactional order records from November 2025, tracking revenue, units sold, discounts, and marketing spend across two customer segments and three geographic regions. The imputation step successfully filled missing values in two columns \u2014 most notably Units, which had roughly 10% of values absent \u2014 bringing the dataset to a clean, analysis-ready state after also removing 17 duplicate records. The Notes field is almost entirely empty (over 99% blank), which is not a data error but means it cannot be used for any analytical purpose; separately, a post-cleaning row count of 1 row flagged in the quality report warrants immediate verification, as this may indicate a pipeline or reporting error rather than the true final dataset size. Confirm the final cleaned dataset row count is accurate before proceeding to segmentation or revenue trend analysis, and formally exclude the Notes field from all downstream models.\nPre-processing began with deduplication, removing 17 duplicate rows from the original 3,025-row dataset based on full-row matching. Missing value imputation was applied to 2 columns: `units` (~10% null rate, approximately 303 rows) and a second unspecified column. Imputation strategy assumed median imputation per group (segment \u00d7 region) for `units` given its numeric, right-skew-prone nature in transactional data, though th",
+    "latency_s": 143.11,
+    "cost_usd": 0.15428,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "findings",
+      "ok": false,
+      "detail": "no eda_summary for 'revenue'"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [
+     "high_null"
+    ],
+    "answer": "Imputation complete: missing values filled across two key columns, dataset ready for analysis with one structural concern flagged. This dataset covers transactional order records from November 2025, tracking revenue, units sold, discounts, and marketing spend across two customer segments and three geographic regions. The imputation step successfully filled missing values in two columns \u2014 most notably Units, which had roughly 10% of values absent \u2014 bringing the dataset to a cleaner, more analysis-ready state after also removing 17 duplicate records. The Notes field is almost entirely empty (over 99% blank), which is not a data error but means it cannot be used for any analytical purpose; separately, a post-cleaning row count of 1 row appears in the quality report and should be verified, as this may indicate a pipeline or reporting artifact rather than the true final dataset size. Confirm the final row count reflects the full cleaned dataset before proceeding to segmentation or revenue trend analysis.\nThe pipeline began with 3,025 rows and 11 columns. Duplicate detection was performed on the full row set, identifying and removing 17 exact duplicate records. Missing value imputation was applied to 2 columns: `units` (~10% null rate, ~302 rows affected) and at least one additional column identified during profiling. Imputation strategy applied was median imputation for numeric columns (`units`), which is robust to the moderate right-skew typical in sales volume data. A high-null ",
+    "latency_s": 135.76,
+    "cost_usd": 0.1488,
+    "llm_calls": 12,
+    "truncated_calls": 1,
+    "passed": false
+   }
+  ],
+  "e2e-06": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.12 (\u00d7[1]) in answer; saw [121.33, 78.88]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 121.33, 'C' trails at 78.88.",
+    "latency_s": 12.9,
+    "cost_usd": 0.01973,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.12 (\u00d7[1]) in answer; saw [121.33, 78.88]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 121.33, 'C' trails at 78.88.",
+    "latency_s": 14.42,
+    "cost_usd": 0.01955,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.12 (\u00d7[1]) in answer; saw [121.33, 78.88]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 121.33, 'C' trails at 78.88.",
+    "latency_s": 13.14,
+    "cost_usd": 0.01964,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "e2e-07": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.21 (\u00d7[1]) in answer; saw [123.29, 80.39]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 123.29, 'C' trails at 80.39.",
+    "latency_s": 14.88,
+    "cost_usd": 0.01926,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.21 (\u00d7[1]) in answer; saw [123.29, 80.39]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 123.29, 'C' trails at 80.39.",
+    "latency_s": 12.63,
+    "cost_usd": 0.01969,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.21 (\u00d7[1]) in answer; saw [123.29, 80.39]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 123.29, 'C' trails at 80.39.",
+    "latency_s": 12.7,
+    "cost_usd": 0.01917,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "e2e-08": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.19 (\u00d7[1]) in answer; saw [121.88, 80.53]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 121.88, 'C' trails at 80.53.",
+    "latency_s": 13.51,
+    "cost_usd": 0.01986,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.19 (\u00d7[1]) in answer; saw [121.88, 80.53]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 121.88, 'C' trails at 80.53.",
+    "latency_s": 14.66,
+    "cost_usd": 0.01977,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224898.19 (\u00d7[1]) in answer; saw [121.88, 80.53]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "mean(revenue) by segment: 'A' leads at 121.88, 'C' trails at 80.53.",
+    "latency_s": 13.28,
+    "cost_usd": 0.01995,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "e2e-09": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22488.044e+04 (\u00d7[1]) in answer; saw [1.0, 80435.95]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 80,435.95.",
+    "latency_s": 12.83,
+    "cost_usd": 0.01988,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22488.044e+04 (\u00d7[1]) in answer; saw [1.0, 80435.95]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 80,435.95.",
+    "latency_s": 13.06,
+    "cost_usd": 0.01971,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22488.044e+04 (\u00d7[1]) in answer; saw [1.0, 80435.95]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 80,435.95.",
+    "latency_s": 14.93,
+    "cost_usd": 0.02004,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-10": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22488.213e+04 (\u00d7[1]) in answer; saw [1.0, 82131.33]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 82,131.33.",
+    "latency_s": 13.84,
+    "cost_usd": 0.01945,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22488.213e+04 (\u00d7[1]) in answer; saw [1.0, 82131.33]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 82,131.33.",
+    "latency_s": 13.11,
+    "cost_usd": 0.01944,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22488.213e+04 (\u00d7[1]) in answer; saw [1.0, 82131.33]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 82,131.33.",
+    "latency_s": 12.52,
+    "cost_usd": 0.01987,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-11": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22487.957e+04 (\u00d7[1]) in answer; saw [1.0, 79573.13]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 79,573.13.",
+    "latency_s": 13.28,
+    "cost_usd": 0.01989,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22487.957e+04 (\u00d7[1]) in answer; saw [1.0, 79573.13]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 79,573.13.",
+    "latency_s": 14.54,
+    "cost_usd": 0.01997,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22487.957e+04 (\u00d7[1]) in answer; saw [1.0, 79573.13]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Top 1 region by sum(revenue). Leader: East = 79,573.13.",
+    "latency_s": 13.26,
+    "cost_usd": 0.01999,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-12": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [148871.49, 58530.54]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 148,871.49, 'C' trails at 58,530.54.",
+    "latency_s": 13.05,
+    "cost_usd": 0.02023,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [148871.49, 58530.54]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 148,871.49, 'C' trails at 58,530.54.",
+    "latency_s": 13.28,
+    "cost_usd": 0.02021,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [148871.49, 58530.54]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 148,871.49, 'C' trails at 58,530.54.",
+    "latency_s": 14.94,
+    "cost_usd": 0.02015,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "e2e-13": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [150286.32, 61817.88]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 150,286.32, 'C' trails at 61,817.88.",
+    "latency_s": 13.93,
+    "cost_usd": 0.01994,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [150286.32, 61817.88]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 150,286.32, 'C' trails at 61,817.88.",
+    "latency_s": 13.27,
+    "cost_usd": 0.01971,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [150286.32, 61817.88]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 150,286.32, 'C' trails at 61,817.88.",
+    "latency_s": 14.37,
+    "cost_usd": 0.02001,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "e2e-14": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [150037.31, 61442.7]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 150,037.31, 'C' trails at 61,442.70.",
+    "latency_s": 14.88,
+    "cost_usd": 0.02025,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [150037.31, 61442.7]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 150,037.31, 'C' trails at 61,442.70.",
+    "latency_s": 14.48,
+    "cost_usd": 0.02036,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224812 (\u00d7[1]) in answer; saw [150037.31, 61442.7]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "sum(revenue) by segment: 'A' leads at 150,037.31, 'C' trails at 61,442.70.",
+    "latency_s": 13.73,
+    "cost_usd": 0.02024,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": false
+   }
+  ],
+  "e2e-15": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5695 (\u00d7[1]) in answer; saw [0.57, 1.0, 1.0, 0.569, 0.569, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.57). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.569}\n{'variable': 'revenue', 'marketing_spend': 0.569, 'revenue': 1.0}",
+    "latency_s": 12.36,
+    "cost_usd": 0.01941,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5695 (\u00d7[1]) in answer; saw [0.57, 1.0, 1.0, 0.569, 0.569, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.57). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.569}\n{'variable': 'revenue', 'marketing_spend': 0.569, 'revenue': 1.0}",
+    "latency_s": 13.06,
+    "cost_usd": 0.01977,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5695 (\u00d7[1]) in answer; saw [0.57, 1.0, 1.0, 0.569, 0.569, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.57). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.569}\n{'variable': 'revenue', 'marketing_spend': 0.569, 'revenue': 1.0}",
+    "latency_s": 12.75,
+    "cost_usd": 0.0198,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-16": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5452 (\u00d7[1]) in answer; saw [0.55, 1.0, 1.0, 0.545, 0.545, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.55). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.545}\n{'variable': 'revenue', 'marketing_spend': 0.545, 'revenue': 1.0}",
+    "latency_s": 13.48,
+    "cost_usd": 0.02,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5452 (\u00d7[1]) in answer; saw [0.55, 1.0, 1.0, 0.545, 0.545, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.55). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.545}\n{'variable': 'revenue', 'marketing_spend': 0.545, 'revenue': 1.0}",
+    "latency_s": 13.62,
+    "cost_usd": 0.01999,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5452 (\u00d7[1]) in answer; saw [0.55, 1.0, 1.0, 0.545, 0.545, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.55). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.545}\n{'variable': 'revenue', 'marketing_spend': 0.545, 'revenue': 1.0}",
+    "latency_s": 12.36,
+    "cost_usd": 0.01921,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-17": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5716 (\u00d7[1]) in answer; saw [0.57, 1.0, 1.0, 0.572, 0.572, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.57). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.572}\n{'variable': 'revenue', 'marketing_spend': 0.572, 'revenue': 1.0}",
+    "latency_s": 14.28,
+    "cost_usd": 0.02005,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5716 (\u00d7[1]) in answer; saw [0.57, 1.0, 1.0, 0.572, 0.572, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.57). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.572}\n{'variable': 'revenue', 'marketing_spend': 0.572, 'revenue': 1.0}",
+    "latency_s": 13.59,
+    "cost_usd": 0.01999,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.5716 (\u00d7[1]) in answer; saw [0.57, 1.0, 1.0, 0.572, 0.572, 1.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "Strongest correlation: marketing_spend and revenue are positively correlated (r=0.57). Showing top 1 pairs.\n{'variable': 'marketing_spend', 'marketing_spend': 1.0, 'revenue': 0.572}\n{'variable': 'revenue', 'marketing_spend': 0.572, 'revenue': 1.0}",
+    "latency_s": 17.12,
+    "cost_usd": 0.01999,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-18": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 13.02,
+    "cost_usd": 0.01776,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 14.3,
+    "cost_usd": 0.01776,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 13.26,
+    "cost_usd": 0.01788,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-19": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 12.58,
+    "cost_usd": 0.018,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 12.55,
+    "cost_usd": 0.01795,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 12.47,
+    "cost_usd": 0.01799,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ],
+  "e2e-20": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 11.53,
+    "cost_usd": 0.01787,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 11.22,
+    "cost_usd": 0.01787,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 (\u00d7[1, 100]) in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "approvals": [],
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\n{'metric': 'mean(control)', 'value': 0.6}\n{'metric': 'mean(treatment)', 'value': 0.4}\n{'metric': 'lift_pct', 'value': -33.3333}\n{'metric': 'p_value', 'value': 0.0}\n{'metric': 'significant_at_0.05', 'value': 'yes'}",
+    "latency_s": 11.31,
+    "cost_usd": 0.01787,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "passed": true
+   }
+  ]
+ }
+}
