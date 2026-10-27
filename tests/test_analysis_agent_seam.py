@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 
+import pandas as pd
 import pytest
 
 import agents.analysis_agent as analysis_agent
@@ -158,6 +159,12 @@ def test_standard_block_computes_planted_truths():
     assert mom["B"] == pytest.approx(truth["segB_mom_pct"], abs=0.01)
     assert raw["correlations"]["revenue__discount"] == pytest.approx(truth["corr_revenue_discount"], abs=1e-3)
     assert "trend:revenue (B):MoM" in raw["builtin"] and "corr:revenue__discount" in raw["builtin"]
+    seg_b = next(t for t in raw["trends"] if t["column"] == "revenue" and t["segment"] == "B")
+    month = pd.to_datetime(df["order_date"]).dt.to_period("M")
+    assert seg_b["n"] == int(((df["segment"] == "B") & month.isin(month.unique()[-2:])).sum())
+    disc = next(t for t in raw["trends"] if t["column"] == "discount" and t["segment"] is None)
+    by_month = df.groupby(month)["discount"].mean().sort_index()   # a rate: mean, not sum
+    assert disc["pct_change"] == pytest.approx((by_month.iloc[-1] / by_month.iloc[-2] - 1) * 100, abs=0.01)
 
     simpson, t = datagen.make_simpson(1)
     raw = _run_builtin(simpson, AnalysisTask(raw_query="q", target_metrics=["converted"],

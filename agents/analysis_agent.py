@@ -62,7 +62,8 @@ ANALYSIS_CARD = AgentCard(
     outputs=["AnalysisFindings: eda, correlations, trends, segments, anomalies, tests",
              "Evidence per finding: code, result excerpt, rows used, confidence, assumptions"],
     limits=["Correlations are Pearson r: linear association only, never causation.",
-            "Trends need a date column; month-over-month compares calendar months.",
+            "Trends need a date column; month-over-month compares calendar-month totals "
+            "(month means for rates and flags, i.e. values within 0-1).",
             "At most 25 anomaly records; heavy-tailed columns are noted, not flagged.",
             "The sandbox has no internet and no file access beyond the dataset.",
             "Findings on fewer than 30 rows, or on heavily imputed columns, are low confidence."],
@@ -222,20 +223,25 @@ try:
         _month = pd.to_datetime(df[_date], errors='coerce').dt.to_period('M')
         # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
         result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
+        # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else
+        # by month total. A semantic layer (Phase 4) can declare the aggregation instead.
         def _mom(_frame, _col):
-            _tot = _frame.groupby(_month.loc[_frame.index])[_col].sum().sort_index()
+            _agg = 'mean' if df[_col].dropna().between(0, 1).all() else 'sum'
+            _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
-                return None
-            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2)
+                return None, 0
+            _last2 = _month.loc[_frame.index].isin(_tot.index[-2:])
+            _n = int(_frame.loc[_last2, _col].notna().sum())
+            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n
         for _c in _targets:
             _jobs = [(None, df)]
             if _segs:
                 _top = df[_segs[0]].value_counts().head(10).index
                 _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]
             for _seg, _frame in _jobs:
-                _p = _mom(_frame, _c)
+                _p, _n = _mom(_frame, _c)
                 if _p is not None:
-                    result['trends'].append({{'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg,
+                    result['trends'].append({{'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,
                                              'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'}})
                     result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':MoM')
 except Exception:
@@ -526,8 +532,9 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         model_notes.append(f"{audit.duplicates_removed} duplicate rows were removed first")
 
     def item(kind: str, id_: str, claim: str, cols: list[str], payload: Any,
-             p: float | None = None, r: float | None = None) -> Evidence:
-        n = min((int(non_null.get(c, n_rows)) for c in cols), default=n_rows)
+             p: float | None = None, r: float | None = None, n: int | None = None) -> Evidence:
+        if n is None:
+            n = min((int(non_null.get(c, n_rows)) for c in cols), default=n_rows)
         imp = max((imputed.get(c, 0.0) for c in cols), default=0.0)
         level, why = confidence(n, p, r, imp)
         notes = [f"{c}: {imputed[c]:.0f}% nulls were imputed" for c in cols if c in imputed]
@@ -542,11 +549,14 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         a, _, b = key.partition("__")
         out.append(item("correlation", f"corr:{key}", f"{a} and {b}: r = {r:.3f}", [a, b],
                         {key: r}, r=r))
+    # Rows behind a trend (the two months compared), when the code reported them.
+    trend_n = {(t.get("column"), t.get("period"), t.get("segment")): t["n"]
+               for t in raw.get("trends", []) if isinstance(t, dict) and isinstance(t.get("n"), int)}
     for t in f.trends:
         seg = f" ({t.segment})" if t.segment else ""
         out.append(item("trend", f"trend:{t.column}{seg}:{t.period}",
                         f"{t.column}{seg} {t.period}: {t.pct_change:+.1f}%", [t.column],
-                        t.model_dump()))
+                        t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
         out.append(item("segment", f"seg:{s.segment_column}/{s.metric_column}",
