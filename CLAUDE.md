@@ -21,8 +21,8 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Research + gap map + ADRs (`docs/research/`, `docs/adr/`) | ✅ done (2026-10-27) |
-| 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | 🔄 built; baseline confirmation run pending (`docs/baselines/phase1.md`) |
-| 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | pending |
+| 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | ✅ done (2026-10-27) — `docs/baselines/phase1.md` |
+| 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | ⏭ next |
 | 3 | Analysis agent as the agent-contract template | pending |
 | 4 | SQL path + YAML semantic layer | pending |
 | 5 | Roll the contract out: Intake → Cleaning → Insight → Quality check → Ingestion → Visualization | pending |
@@ -44,7 +44,7 @@ AnalystAI is a **multi-agent AI data analyst** — six specialized agents form a
 | ------------------ | ------------------------------------------------- |
 | Orchestration      | **LangGraph** (stateful routing) + **CrewAI** (agent definition) |
 | Primary LLM        | **Claude Sonnet 4.6** (via `anthropic` SDK)     |
-| Speed-tier LLM     | **Groq / Llama 3.3-70B** (via `crewai` LLM)      |
+| Speed-tier LLM     | **Claude Haiku 4.5** (`settings.llm_fast_model`; Groq retired in Phase 1) |
 | Embeddings         | **nomic-embed-text** via Ollama (self-hosted)      |
 | Backend            | **FastAPI** (Python 3.11+, `uv` managed)           |
 | Code Sandbox       | **E2B** (isolates LLM-generated Python from main process) |
@@ -64,7 +64,7 @@ User query
 [1. Intake Agent]      Claude  — NL → AnalysisTask (structured plan)
   │
   ▼
-[2. Ingestion Agent]   Groq    — connector.load() → DataFrame + DataContract
+[2. Ingestion Agent]   Haiku   — connector.load() → DataFrame + DataContract
   │
   ▼
 [3. Cleaning Agent]    Claude  — impute/dedup/coerce → CleaningAudit
@@ -105,7 +105,7 @@ When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps
 ```
 agents/
   intake_agent.py          — async, raw Anthropic SDK, returns AnalysisTask
-  ingestion_agent.py       — CrewAI agent, Groq LLM, returns DataContract
+  ingestion_agent.py       — async, shared LLM client (Haiku), returns DataContract
   cleaning_agent.py        — async, Anthropic SDK, returns (DataFrame, CleaningAudit)
   analysis_agent.py        — async, Anthropic SDK, E2B sandbox, returns AnalysisFindings
   visualization_agent.py   — PURE PYTHON (no LLM), returns list[ChartConfig]
@@ -191,7 +191,9 @@ done              → {type: "done"}  // always last
 - **LLM responses**: always strip markdown fences (```` ```json ... ``` ````) before JSON parsing
 - **Error handling**: every agent wraps its core logic in try/except, sets `session.error_message`
 - **Frontend**: TypeScript strict, Tailwind v4 with `@import "tailwindcss"`, `"use client"` on all interactive components
-- **Tests**: `tests/` holds ~55 deterministic pytest unit tests (`asyncio_mode = "auto"`). No LLM evals, CI, or frontend tests yet — Phase 1 of the roadmap adds them
+- **LLM calls**: always `get_client().complete(...)` from `llm/client.py` — never a new `AsyncAnthropic`. Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl`
+- **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
+- **Evals**: `uv run python -m evals.run {analysis|e2e} --k 3 [--compare <prev.json>]` — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
 
 ---
 

@@ -1,19 +1,19 @@
-# Phase 1 baseline (status: PENDING confirmation run)
+# Phase 1 baseline
 
 Model `claude-sonnet-4-6` (ingestion: `claude-haiku-4-5`), temperature 0, k=3, 2026-10-27.
-Reports: `evals/reports/analysis-20261027T180935Z.*`, `evals/reports/e2e-20261027T180936Z.*`.
+Reports: `evals/reports/analysis-20261027T180935Z.*` (run 1), `evals/reports/analysis-20261027T183233Z.*`
+(run 2, paired against run 1), `evals/reports/e2e-20261027T180936Z.*`.
 
-**Not yet done:** the ±3-point agreement gate needs a second analysis run. The first attempt
-(2026-10-27 18:21Z) was invalidated when the Anthropic credit balance ran out mid-run (34/120
-runs returned HTTP 400 before reaching the model). Re-run once credits are topped up:
+**Run-to-run agreement gate: met.** Analysis run 2 vs run 1: +0.83 pts (39.2% → 40.0%);
+1 case flipped (`segment-4`), McNemar p = 1.0. An earlier second run (18:21Z) was discarded:
+the Anthropic credit balance ran out mid-run (34/120 runs got HTTP 400 before reaching the model).
 
-    uv run python -m evals.run analysis --k 3 --compare evals/reports/analysis-20261027T180935Z.json
-
-## Numbers (run 1)
+## Numbers
 
 | suite | pass rate | flip rate | runs w/ truncated LLM output | hard-rule violations | cost / question | p50 / p95 latency |
 |---|---|---|---|---|---|---|
-| analysis (40 × 3) | **39.2%** (26.7% non-vacuous¹) | 2.5% | 88 / 120 | 88 (all `non_empty_or_error`) | $0.044 | 35.2s / 37.1s |
+| analysis run 1 (40 × 3) | **39.2%** (26.7% non-vacuous¹) | 2.5% | 88 / 120 | 88 (all `non_empty_or_error`) | $0.044 | 35.2s / 37.1s |
+| analysis run 2 (40 × 3) | **40.0%** (27.5% non-vacuous¹) | 7.5% | 87 / 120 | 87 (all `non_empty_or_error`) | $0.044 | 35.3s / 37.0s |
 | e2e (20 × 3) | **45.0%** | 0% | 15 / 60 | 0 | $0.051 | 13.7s / 132.5s |
 
 ¹ The 15 `null_effect` passes are vacuous: findings were empty, so "did not claim a discount
@@ -27,7 +27,7 @@ correlation" is trivially true. Phase 3 should require non-empty findings for th
 1. **Ingestion was broken in production.** Groq no longer serves `llama-3.3-70b-versatile`
    (`model_not_found`), so as-found E2E was 0%. Fixed in Phase 1 by moving the call onto the
    shared client per ADR-0005.
-2. **Analysis truncates in 73% of runs.** The generated code hits `max_tokens=3000`, fails to
+2. **Analysis truncates in ~73% of runs.** The generated code hits `max_tokens=3000`, fails to
    parse in E2B, and comes back as silent empty findings. This is the dominant failure; only
    anomaly and Simpson cases (short code) pass reliably. Every overview E2E case fails for
    this reason.
