@@ -12,6 +12,7 @@ import ConnectorSetup from "./ConnectorSetup";
 import ExpertReviewPanel from "./ExpertReviewPanel";
 import { SessionSidebar } from "@/components/SessionSidebar";
 import InsightPanel from "./InsightPanel";
+import EvidencePanel from "./EvidencePanel";
 import TargetedResponsePanel from "./TargetedResponsePanel";
 import { pinChart, getSessionResults } from "@/lib/api";
 import type { ChatMessage } from "@/types";
@@ -76,6 +77,8 @@ function MessageBubble({
         {message.insight && !message.isStreaming && (
           <InsightPanel report={message.insight} onFollowUp={onFollowUp} />
         )}
+
+        {message.evidence && !message.isStreaming && <EvidencePanel items={message.evidence} />}
 
         {message.expertReview && !message.isStreaming && (
           <ExpertReviewPanel review={message.expertReview} />

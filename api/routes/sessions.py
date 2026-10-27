@@ -74,6 +74,8 @@ async def get_session_results(
         "targeted_response": session.targeted_response.model_dump(mode="json") if session.targeted_response else None,
         "expert_review": session.expert_review.model_dump(mode="json") if session.expert_review else None,
         "chart_configs": [c.model_dump(mode="json") for c in session.chart_configs],
+        "evidence": [e.model_dump(mode="json") for e in session.analysis_findings.evidence]
+        if session.analysis_findings else [],
         "conversation_history": [m.model_dump(mode="json") for m in session.conversation_history],
     }
 

@@ -178,3 +178,38 @@ def test_standard_block_never_overrides_the_model():
          "result": {"correlations": {"units__revenue": 0.5}, "trends": [], "segments": []}}
     exec(code, g)
     assert g["result"]["correlations"] == {"units__revenue": 0.5} and not g["result"]["builtin"]
+
+
+async def test_analysis_node_streams_evidence(recorded_llm, monkeypatch):
+    import asyncio
+    import orchestrator.graph as graph
+    _fake_sandbox(monkeypatch, {"correlations": {"revenue__units": 0.5},
+                                "non_null": {"revenue": 3025, "units": 3025}, "n_rows": 3025})
+    recorded_llm.responses.append("result['correlations']['revenue__units'] = 0.5")
+    monkeypatch.setattr(graph, "get_client", lambda: recorded_llm)
+    queue: asyncio.Queue = asyncio.Queue()
+    session = _session()
+    await graph.analysis_node({"session": session, "df_parquet": session.__dict__["_df_parquet"],
+                               "event_queue": queue})
+    events = [queue.get_nowait() for _ in range(queue.qsize())]
+    ev = next(e for e in events if e["type"] == "evidence")
+    assert ev["data"][0]["id"] == "corr:revenue__units" and ev["data"][0]["row_count"] == 3025
+
+
+def test_builtin_mom_replaces_the_models():
+    df, truth = datagen.make_sales(2)
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    code = analysis_agent._build_standard_code(contract, AnalysisTask(
+        raw_query="q", target_metrics=["revenue"], analysis_types=["trend"]))
+    wrong = {"column": "revenue", "period": "MoM", "direction": "up", "pct_change": 2.49}
+    g = {"df": df, "pd": __import__("pandas"),
+         "result": {"correlations": {}, "trends": [wrong], "segments": []}}
+    exec(code, g)
+    (mom,) = [t for t in g["result"]["trends"] if t["segment"] is None]
+    assert mom["pct_change"] == pytest.approx(truth["total_mom_pct"], abs=0.01)
+
+
+def test_eda_only_findings_are_not_empty_when_eda_was_asked():
+    f = analysis_agent._parse_findings({"eda_summary": {"revenue": {"mean": 1.0}}}, "", [])
+    assert analysis_agent.review_findings(f, {}, ["revenue"], {"eda"}) is None
+    assert "empty" in analysis_agent.review_findings(f, {}, ["revenue"], {"correlation"})

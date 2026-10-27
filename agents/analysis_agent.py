@@ -50,7 +50,7 @@ from orchestrator.state import (
 )
 from sandbox.executor import run_code
 
-PROMPT_VERSION = "v6"
+PROMPT_VERSION = "v7"
 
 ANALYSIS_CARD = AgentCard(
     name="analysis",
@@ -194,9 +194,9 @@ except Exception:
 
 def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
     """Statistics with one right answer, for the requested analysis types, computed here rather
-    than by the model (shorter generated code, no arithmetic slips). Each fills a gap only: if
-    the model already reported it, the model's entry stands. Ids go to result['builtin'] so
-    evidence can show this code instead of the model's."""
+    than by the model (shorter generated code, no arithmetic slips). MoM of a target metric
+    replaces any model entry (one definition: calendar-month totals); target-pair r and the
+    joint breakdown fill gaps only. Ids go to result['builtin'] so evidence shows this code."""
     types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
     names = {c.name for c in contract.columns}
     targets = [c for c in task.target_metrics if c in contract.metric_columns]
@@ -220,7 +220,8 @@ except Exception:
 try:
     if _date and {bool(types & {"trend", "forecasting"})!r}:
         _month = pd.to_datetime(df[_date], errors='coerce').dt.to_period('M')
-        _have = {{(t.get('column'), t.get('period'), t.get('segment')) for t in result['trends'] if isinstance(t, dict)}}
+        # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
+        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
         def _mom(_frame, _col):
             _tot = _frame.groupby(_month.loc[_frame.index])[_col].sum().sort_index()
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
@@ -232,8 +233,6 @@ try:
                 _top = df[_segs[0]].value_counts().head(10).index
                 _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]
             for _seg, _frame in _jobs:
-                if (_c, 'MoM', _seg) in _have:
-                    continue
                 _p = _mom(_frame, _c)
                 if _p is not None:
                     result['trends'].append({{'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg,
@@ -430,7 +429,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 raise SandboxError("analysis", detail,
                                    f"The analysis code failed in the sandbox: {detail[:200]}") from None
             findings = _parse_findings(raw, full_code, execution.figures_base64)
-            reason = review_findings(findings, raw, known)
+            reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
                 findings.evidence = build_evidence(findings, raw, body, standard,
                                                    session.cleaning_audit)
@@ -473,9 +472,12 @@ def _finding_columns(f: AnalysisFindings) -> set[str]:
     return cols - {""}
 
 
-def review_findings(f: AnalysisFindings, raw: dict, known: list[str]) -> str | None:
-    """Hard rules on what the code produced: non-empty, real columns, grounded numbers."""
-    if not any([f.correlations, f.trends, f.segments, f.anomalies, f.statistical_tests]):
+def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
+                    types: set[str] = frozenset()) -> str | None:
+    """Hard rules on what the code produced: non-empty, real columns, grounded numbers.
+    eda_summary counts only when EDA was asked for: the built-in block always fills it."""
+    eda = f.eda_summary if "eda" in types else None
+    if not any([eda, f.correlations, f.trends, f.segments, f.anomalies, f.statistical_tests]):
         return ("every finding section is empty. Report what you computed, even a null result "
                 "(a near-zero correlation or a non-significant test is a finding)")
     if reason := check_columns(_finding_columns(f), known):
