@@ -29,6 +29,12 @@ vector_store: VectorStore | None = None
 async def lifespan(app: FastAPI):
     global session_store, vector_store
 
+    # Fail fast: with these unset every token is rejected / secrets can't be
+    # stored safely, and the failure would otherwise only show up as 401s.
+    missing = [n for n in ("supabase_url", "encryption_key") if not getattr(settings, n)]
+    if missing:
+        raise RuntimeError(f"Required settings not set: {', '.join(n.upper() for n in missing)}")
+
     # Bootstrap on-disk artifact dir for per-session parquet cache.
     from pathlib import Path
     Path(settings.session_data_dir).mkdir(parents=True, exist_ok=True)
@@ -75,7 +81,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:3000"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

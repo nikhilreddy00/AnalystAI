@@ -24,7 +24,7 @@ from typing import AsyncIterator
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from api.auth import get_current_user, UserProfile
-from api.rate_limit import limiter
+from api.rate_limit import ip_limit, limiter
 from pydantic import BaseModel, Field
 
 from orchestrator.graph import AgentState, build_graph
@@ -49,6 +49,7 @@ class ChatRequest(BaseModel):
 
 @router.post("")
 @limiter.limit("30/minute")
+@ip_limit
 async def chat(
     request: Request,
     body: ChatRequest,

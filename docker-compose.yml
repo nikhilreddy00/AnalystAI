@@ -57,7 +57,9 @@ services:
       - E2B_API_KEY=${E2B_API_KEY}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - APP_ENV=${APP_ENV:-development}
-      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
+      - SUPABASE_URL=${SUPABASE_URL:?set SUPABASE_URL}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,6 +88,8 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:?set SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY}
       - NODE_ENV=production
     volumes:
       - ./frontend:/app

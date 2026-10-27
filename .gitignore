@@ -23,3 +23,6 @@ uploads/
 
 # Session data (per-session artifacts and parquet cache)
 session_data/
+
+# Local agent-tooling state
+.claude-flow/

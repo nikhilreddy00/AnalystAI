@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { API_URL, downloadLatestReportPptx } from "@/lib/api";
+import { API_URL, downloadLatestReportPptx, getAuthHeaders } from "@/lib/api";
 import type { AgentEvent, ApprovalRequiredEvent, BriefingData, ChatMessage, ChartConfig, ExpertReview, InsightReport, SessionResultsSnapshot, TargetedResponse } from "@/types";
 
 async function* parseSSEStream(response: Response): AsyncGenerator<AgentEvent> {
@@ -58,23 +58,9 @@ export function useAnalysis() {
       setMessages((prev) => [...prev, assistantMsg]);
 
       try {
-        let token = "";
-        if (typeof window !== "undefined") {
-          const saved = localStorage.getItem("analystai_user");
-          if (saved) {
-            try {
-              const user = JSON.parse(saved);
-              token = user?.token || "";
-            } catch {}
-          }
-        }
-
         const res = await fetch(`${API_URL}/chat`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-          },
+          headers: await getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             message: content,
             session_id: sessionId,

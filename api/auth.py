@@ -1,8 +1,20 @@
-import base64
-import json
+"""Supabase JWT authentication.
+
+Every request is verified locally against the project's signing key — no
+network round-trip per request, no trusted-by-default path. There is
+deliberately NO development bypass: a missing or invalid token is a 401 in
+every environment. Tests sign their own HS256 tokens with the configured
+secret rather than skipping verification.
+"""
+
+import asyncio
 import logging
+import threading
+import time
+from functools import lru_cache
 from typing import Any, Dict
 
+import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -12,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 # Reusable security scheme
 security_scheme = HTTPBearer(auto_error=False)
+
+_ASYMMETRIC_ALGS = ["ES256", "RS256"]
 
 
 class UserProfile:
@@ -29,30 +43,76 @@ class UserProfile:
         }
 
 
-def decode_jwt_payload_unverified(token: str) -> Dict[str, Any]:
-    """Helper to decode JWT payload without verification (useful for mock/dev auth)."""
-    try:
-        parts = token.split(".")
-        if len(parts) < 2:
-            return {}
-        payload_b64 = parts[1]
-        # Pad base64 string if necessary
-        padded = payload_b64 + "=" * (4 - len(payload_b64) % 4)
-        payload_bytes = base64.urlsafe_b64decode(padded)
-        return json.loads(payload_bytes)
-    except Exception as e:
-        logger.warning(f"Failed to decode unverified JWT payload: {e}")
-        return {}
+@lru_cache(maxsize=1)
+def _jwk_client() -> jwt.PyJWKClient:
+    """One client per process. The JWK set is cached for 5 minutes (PyJWT's
+    default lifespan), so a key revoked in Supabase stops verifying within
+    that window. No `cache_keys` — that would pin a resolved kid forever."""
+    return jwt.PyJWKClient(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
+
+
+# An unknown kid makes PyJWKClient refetch the JWKS. Tokens are attacker
+# input, so cap forced refetches at one per interval across the process.
+_FORCED_REFRESH_INTERVAL = 60.0
+_last_forced_refresh = 0.0
+_refresh_lock = threading.Lock()
+
+
+def _signing_key(token: str) -> Any:
+    kid = jwt.get_unverified_header(token).get("kid")
+    client = _jwk_client()
+    for k in client.get_signing_keys():  # served from the 5-minute cache
+        if k.key_id == kid:
+            return k.key
+
+    global _last_forced_refresh
+    with _refresh_lock:
+        now = time.monotonic()
+        if now - _last_forced_refresh < _FORCED_REFRESH_INTERVAL:
+            raise jwt.InvalidTokenError(f"Unknown signing key id: {kid!r}")
+        _last_forced_refresh = now
+    return client.get_signing_key(kid).key
+
+
+def _decode_token(token: str) -> Dict[str, Any]:
+    """Verify and decode a Supabase access token. Blocking — call via to_thread.
+
+    Routes on the token's own `alg` header instead of try/except-ing between
+    algorithms, so an expired asymmetric token reports "expired" rather than
+    falling through to a confusing HS256 signature error.
+    """
+    issuer = f"{settings.supabase_url}/auth/v1"
+    alg = jwt.get_unverified_header(token).get("alg")
+
+    # Reject anything outside the allowlist before touching a key — in
+    # particular `none`, which must never reach the verification path.
+    if alg not in _ASYMMETRIC_ALGS and alg != "HS256":
+        raise jwt.InvalidAlgorithmError(f"Unsupported token algorithm: {alg!r}")
+
+    if alg == "HS256":
+        # Legacy Supabase projects (and the test suite) sign symmetrically.
+        if not settings.supabase_jwt_secret:
+            raise jwt.InvalidTokenError("HS256 token received but SUPABASE_JWT_SECRET is not set")
+        key: Any = settings.supabase_jwt_secret
+        algorithms = ["HS256"]
+    else:
+        key = _signing_key(token)
+        algorithms = _ASYMMETRIC_ALGS
+
+    return jwt.decode(
+        token,
+        key,
+        algorithms=algorithms,
+        audience="authenticated",
+        issuer=issuer,
+    )
 
 
 async def get_current_user(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme)
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
 ) -> UserProfile:
-    """
-    FastAPI dependency to secure routes.
-    Extracts Bearer token and validates via Firebase or local development mock.
-    """
+    """FastAPI dependency: resolve the caller from a verified Supabase JWT."""
     if not credentials or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -60,69 +120,36 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = credentials.credentials
+    try:
+        claims = await asyncio.to_thread(_decode_token, credentials.credentials)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as exc:
+        logger.warning("Token verification failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    # 1. Firebase Auth Verification (uses Firebase Admin SDK — the correct API for ID tokens)
-    if settings.firebase_project_id:
-        try:
-            import firebase_admin
-            from firebase_admin import auth as firebase_auth, credentials
+    uid = claims.get("sub")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing subject (sub) claim.",
+        )
 
-            if not firebase_admin._apps:
-                # Initialize once per process. Uses GOOGLE_APPLICATION_CREDENTIALS
-                # env var if present, otherwise falls back to default credentials.
-                try:
-                    firebase_admin.initialize_app(
-                        options={"projectId": settings.firebase_project_id}
-                    )
-                except Exception:
-                    firebase_admin.initialize_app(
-                        credentials.ApplicationDefault(),
-                        options={"projectId": settings.firebase_project_id},
-                    )
+    metadata = claims.get("user_metadata") or {}
+    # Stashed for the rate limiter's key function (see api/rate_limit.py), which
+    # only receives the Request.
+    request.state.user_id = uid
 
-            decoded = firebase_auth.verify_id_token(token)
-            uid = decoded.get("uid") or decoded.get("sub") or decoded.get("user_id")
-            if not uid:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token missing subject (UID) claim.",
-                )
-
-            return UserProfile(
-                uid=uid,
-                email=decoded.get("email"),
-                display_name=decoded.get("name"),
-            )
-        except HTTPException:
-            raise
-        except Exception as exc:
-            logger.error(f"Firebase token verification failed: {exc}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Firebase authentication token.",
-            )
-
-    # 2. Local Mock / Developer Fallback Mode
-    if settings.app_env == "development":
-        # Supports simple strings like "mock_user_123" or standard unverified JWTs
-        if token.startswith("mock_"):
-            uid = token.replace("mock_", "")
-            return UserProfile(uid=uid, email=f"{uid}@example.com", display_name=uid.capitalize())
-
-        # If it looks like a JWT, let's decode and trust it in dev
-        payload = decode_jwt_payload_unverified(token)
-        if payload:
-            uid = payload.get("sub") or payload.get("uid") or payload.get("user_id") or "default"
-            email = payload.get("email")
-            name = payload.get("name") or payload.get("displayName")
-            return UserProfile(uid=uid, email=email, display_name=name)
-
-        # Fallback to "default" if token is set but unrecognized in dev
-        return UserProfile(uid="default", email="default@example.com", display_name="Default User")
-
-    # In production, strict Firebase / OAuth verification is mandatory
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Production environment requires active Firebase Auth configuration.",
+    return UserProfile(
+        uid=uid,
+        email=claims.get("email"),
+        display_name=metadata.get("full_name") or metadata.get("name"),
     )

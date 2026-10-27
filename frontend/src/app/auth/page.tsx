@@ -10,11 +10,13 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     if (!email || !password) {
       setError("Please fill in all fields.");
       return;
@@ -24,7 +26,10 @@ export default function AuthPage() {
       if (isLogin) {
         await login(email, password);
       } else {
-        await register(email, password);
+        if (await register(email, password)) {
+          setNotice(`Check ${email} for a confirmation link, then sign in.`);
+          setIsLogin(true);
+        }
       }
     } catch (err: any) {
       setError(err?.message || "Authentication failed. Please try again.");
@@ -88,6 +93,12 @@ export default function AuthPage() {
           {error && (
             <div className="text-xs bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-center font-medium">
               ⚠️ {error}
+            </div>
+          )}
+
+          {notice && (
+            <div role="status" className="text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-emerald-400 text-center font-medium">
+              {notice}
             </div>
           )}
 

@@ -10,7 +10,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { API_URL } from "@/lib/api";
+import { API_URL, getAuthHeaders } from "@/lib/api";
 
 type ConnectorType = "csv" | "sql" | "sheets" | "api";
 
@@ -124,17 +124,9 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
       const form = new FormData();
       form.append("file", file);
 
-      let token = "";
-      if (typeof window !== "undefined") {
-        try {
-          const saved = localStorage.getItem("analystai_user");
-          token = saved ? JSON.parse(saved)?.token : "";
-        } catch {}
-      }
-
       const res = await fetch(`${API_URL}/connectors/upload`, {
         method: "POST",
-        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+        headers: await getAuthHeaders(),
         body: form,
       });
       const data = await res.json() as UploadResponse;
@@ -188,20 +180,9 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
     try {
       const body: ConnectorConfig = { type, ...config } as ConnectorConfig;
 
-      let token = "";
-      if (typeof window !== "undefined") {
-        try {
-          const saved = localStorage.getItem("analystai_user");
-          token = saved ? JSON.parse(saved)?.token : "";
-        } catch {}
-      }
-
       const res = await fetch(`${API_URL}/connectors/test`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-        },
+        headers: await getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(body),
       });
       const data = await res.json();

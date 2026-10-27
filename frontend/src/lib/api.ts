@@ -8,6 +8,8 @@ import type {
   SessionResultsSnapshot,
 } from "@/types";
 
+import { getAccessToken } from "@/lib/supabase";
+
 export interface LatestAnalysis {
   session_id: string;
   updated_at: string;
@@ -20,19 +22,16 @@ export interface LatestAnalysis {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export function getAuthHeaders(headers: Record<string, string> = {}): Record<string, string> {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("analystai_user");
-    if (saved) {
-      try {
-        const user = JSON.parse(saved);
-        if (user?.token) {
-          headers["Authorization"] = `Bearer ${user.token}`;
-        }
-      } catch (e) {
-        console.error("Error reading auth token for headers", e);
-      }
-    }
+/**
+ * The single place an access token is read. Async because Supabase refreshes
+ * expired tokens on demand — never cache the result across requests.
+ */
+export async function getAuthHeaders(
+  headers: Record<string, string> = {},
+): Promise<Record<string, string>> {
+  const token = await getAccessToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
 }
@@ -44,7 +43,7 @@ export async function fetchHealth() {
 
 export async function getDashboard(userId = "default"): Promise<ChartConfig[]> {
   const res = await fetch(`${API_URL}/dashboard?user_id=${userId}`, {
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
   });
   const data = await res.json();
   return (data.charts ?? data) as ChartConfig[];
@@ -53,7 +52,7 @@ export async function getDashboard(userId = "default"): Promise<ChartConfig[]> {
 export async function pinChart(sessionId: string, chart: object, userId = "default") {
   await fetch(`${API_URL}/dashboard/pin`, {
     method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    headers: await getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ session_id: sessionId, user_id: userId, chart }),
   });
 }
@@ -61,13 +60,13 @@ export async function pinChart(sessionId: string, chart: object, userId = "defau
 export async function unpinChart(chartId: string, userId = "default") {
   await fetch(`${API_URL}/dashboard/${chartId}?user_id=${userId}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
   });
 }
 
 export async function getLatestAnalysis(): Promise<LatestAnalysis | null> {
   const res = await fetch(`${API_URL}/dashboard/latest`, {
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
   });
   if (!res.ok) return null;
   const data = await res.json();
@@ -80,7 +79,7 @@ export async function getLatestAnalysis(): Promise<LatestAnalysis | null> {
  */
 export async function downloadLatestReportPptx(): Promise<void> {
   const res = await fetch(`${API_URL}/dashboard/latest/report.pptx`, {
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
   });
   if (!res.ok) {
     throw new Error(`Report download failed: ${res.status} ${res.statusText}`);
@@ -102,7 +101,7 @@ export async function downloadLatestReportPptx(): Promise<void> {
 }
 
 export async function listSessions(): Promise<SessionSummary[]> {
-  const res = await fetch(`${API_URL}/api/sessions`, { headers: getAuthHeaders() });
+  const res = await fetch(`${API_URL}/api/sessions`, { headers: await getAuthHeaders() });
   if (!res.ok) return [];
   return (await res.json()) as SessionSummary[];
 }
@@ -111,7 +110,7 @@ export async function getSessionResults(
   sessionId: string
 ): Promise<SessionResultsSnapshot | null> {
   const res = await fetch(`${API_URL}/api/sessions/${sessionId}/results`, {
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
   });
   if (!res.ok) return null;
   return (await res.json()) as SessionResultsSnapshot;
@@ -120,7 +119,7 @@ export async function getSessionResults(
 export async function deleteSession(sessionId: string): Promise<boolean> {
   const res = await fetch(`${API_URL}/api/sessions/${sessionId}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
   });
   return res.ok;
 }
@@ -133,7 +132,7 @@ export type DashboardDataResult =
 
 export async function getLatestDashboardData(): Promise<DashboardDataResult> {
   const res = await fetch(`${API_URL}/dashboard/latest/data`, {
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
   });
   if (res.status === 404) return { status: "empty" };
   if (res.status === 422) {

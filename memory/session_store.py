@@ -15,6 +15,44 @@ from orchestrator.state import AnalysisSession, MessageRole
 from memory.session_data import delete_session_files
 
 
+_SECRET_FIELDS = ("connection_string", "service_account_json", "auth_value")
+_ENC_PREFIX = "enc:"
+
+
+def _fernet():
+    from cryptography.fernet import Fernet
+    from api.config import settings
+    return Fernet(settings.encryption_key.encode())
+
+
+def _dump(session: AnalysisSession) -> str:
+    """Serialize with connector secrets Fernet-encrypted (never plaintext at rest)."""
+    cfg = session.connector_config
+    if cfg is None:
+        return session.model_dump_json()
+    f = _fernet()
+    enc = {
+        k: _ENC_PREFIX + f.encrypt(v.encode()).decode()
+        for k in _SECRET_FIELDS if (v := getattr(cfg, k))
+    }
+    return session.model_copy(
+        update={"connector_config": cfg.model_copy(update=enc)}
+    ).model_dump_json()
+
+
+def _load(data: str) -> AnalysisSession:
+    s = AnalysisSession.model_validate_json(data)
+    cfg = s.connector_config
+    if cfg is None:
+        return s
+    f = _fernet()
+    for k in _SECRET_FIELDS:
+        v = getattr(cfg, k)
+        if v and v.startswith(_ENC_PREFIX):  # rows written before encryption stay readable
+            setattr(cfg, k, f.decrypt(v[len(_ENC_PREFIX):].encode()).decode())
+    return s
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -188,7 +226,7 @@ class SessionStore:
     async def save(self, session: AnalysisSession) -> None:
         async with self._session_factory() as db:
             existing = await db.get(SessionRecord, session.session_id)
-            payload = session.model_dump_json()
+            payload = _dump(session)
             if existing:
                 existing.data = payload
                 existing.dataset_name = session.dataset_name
@@ -211,7 +249,7 @@ class SessionStore:
             record = await db.get(SessionRecord, session_id)
             if not record:
                 return None
-            return AnalysisSession.model_validate_json(record.data)
+            return _load(record.data)
 
     async def delete(self, session_id: str) -> None:
         async with self._session_factory() as db:
@@ -272,7 +310,7 @@ class SessionStore:
                 .limit(20)
             )
             for record in result.scalars():
-                s = AnalysisSession.model_validate_json(record.data)
+                s = _load(record.data)
                 if s.insight_report is not None:
                     return s
             return None
@@ -280,7 +318,7 @@ class SessionStore:
     def _summary_from_record(self, record: SessionRecord) -> "SessionSummary":
         # Lazy import to keep this module importable in isolation if state.py grows further runtime deps.
         from orchestrator.state import SessionSummary
-        s = AnalysisSession.model_validate_json(record.data)
+        s = _load(record.data)
         first_user = next(
             (m.content for m in s.conversation_history if m.role == MessageRole.USER),
             None,
