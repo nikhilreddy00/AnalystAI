@@ -21,7 +21,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Research + gap map + ADRs (`docs/research/`, `docs/adr/`) | ✅ done (2026-10-27) |
-| 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | ⏭ next |
+| 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | 🔄 built; baseline confirmation run pending (`docs/baselines/phase1.md`) |
 | 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | pending |
 | 3 | Analysis agent as the agent-contract template | pending |
 | 4 | SQL path + YAML semantic layer | pending |
