@@ -42,7 +42,7 @@ AnalystAI is a **multi-agent AI data analyst** — six specialized agents form a
 
 | Layer              | Tech                                              |
 | ------------------ | ------------------------------------------------- |
-| Orchestration      | **LangGraph** (stateful routing) + **CrewAI** (agent definition) |
+| Orchestration      | **LangGraph** (stateful routing); agents are plain async functions on `llm/client.py` (CrewAI package still installed until Phase 2, unused) |
 | Primary LLM        | **Claude Sonnet 4.6** (via `anthropic` SDK)     |
 | Speed-tier LLM     | **Claude Haiku 4.5** (`settings.llm_fast_model`; Groq retired in Phase 1) |
 | Embeddings         | **nomic-embed-text** via Ollama (self-hosted)      |

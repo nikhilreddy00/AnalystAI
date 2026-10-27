@@ -28,7 +28,7 @@ Your question
 [1. Intake Agent]         Claude Sonnet 4.6  — translates plain English into a structured analysis plan
     │
     ▼
-[2. Ingestion Agent]      Groq / Llama 3.3-70B — loads data, infers schema, builds a data contract
+[2. Ingestion Agent]      Claude Haiku 4.5 — loads data, infers schema, builds a data contract
     │
     ▼
 [3. Cleaning Agent]       Claude Sonnet 4.6  — imputes nulls, removes dupes, coerces types, flags outliers
@@ -52,7 +52,7 @@ Your question
 Streaming chat UI  +  pinnable dashboard
 ```
 
-**LangGraph** handles stateful routing, conditional gates (human approval on ambiguous questions or poor data quality), a self-correcting quality-check retry loop, and multi-turn conversation re-entry. **CrewAI** defines the agents. **E2B** isolates every line of LLM-generated Python from the host process.
+**LangGraph** handles stateful routing, conditional gates (human approval on ambiguous questions or poor data quality), a self-correcting quality-check retry loop, and multi-turn conversation re-entry. Agents are plain async Python functions that call Claude through one shared client (`llm/client.py`). **E2B** isolates every line of LLM-generated Python from the host process.
 
 ### Multi-turn follow-ups
 
@@ -69,9 +69,9 @@ After the first analysis, keep asking questions in the same session. Each turn i
 
 | Layer            | Technology                                                        |
 | ---------------- | ----------------------------------------------------------------- |
-| Orchestration    | **LangGraph** (stateful routing) + **CrewAI** (agent definition)  |
+| Orchestration    | **LangGraph** (stateful routing) + plain async agents             |
 | Primary LLM      | **Claude Sonnet 4.6** via the `anthropic` SDK                     |
-| Speed-tier LLM   | **Groq / Llama 3.3-70B** for schema inference                     |
+| Speed-tier LLM   | **Claude Haiku 4.5** for the ingestion schema summary             |
 | Code sandbox     | **E2B** — isolates LLM-generated Python                           |
 | Backend          | **FastAPI** (Python 3.11+, `uv`-managed, fully async)             |
 | Frontend         | **Next.js 16** + Tailwind v4 + shadcn/ui + Recharts + TanStack Query |
@@ -85,7 +85,6 @@ After the first analysis, keep asking questions in the same session. Each turn i
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 - [Anthropic API key](https://console.anthropic.com) — for Claude Sonnet 4.6
-- [Groq API key](https://console.groq.com) — for Llama 3.3-70B (free tier available)
 - [E2B API key](https://e2b.dev/dashboard) — for the code sandbox (free tier available)
 
 ---
@@ -154,7 +153,7 @@ AnalystAI/
 
 **LLM routing**
 - **Claude Sonnet 4.6** — intake, cleaning strategy, code generation, insight narrative, expert critique
-- **Groq / Llama 3.3-70B** — schema inference (fast + cheap)
+- **Claude Haiku 4.5** — ingestion schema summary (fast + cheap)
 - **nomic-embed-text** (Ollama, self-hosted) — institutional-memory embeddings
 - **Visualization is pure Python** — deterministic chart selection, no LLM call
 
