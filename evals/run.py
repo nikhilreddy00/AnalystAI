@@ -258,6 +258,9 @@ def _pct(values: list[float], q: float) -> float:
     return round(statistics.quantiles(values, n=100, method="inclusive")[q - 1], 2)
 
 
+_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly"}
+
+
 def summarize(runs: dict[str, list[dict]]) -> dict:
     flat = [r for rs in runs.values() for r in rs]
     return {
@@ -270,7 +273,8 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
         "errors": sum(bool(r["error"]) for r in flat),
         "runs_with_truncated_llm_output": sum(r.get("truncated_calls", 0) > 0 for r in flat),
-        "runs_with_guardrail_retry": sum(any(g != "grounding_rewritten" for g in r.get("rejections", []))
+        # Refusals and read-only blocks end the run; they are never retried.
+        "runs_with_guardrail_retry": sum(any(g not in _NOT_RETRIES for g in r.get("rejections", []))
                                          for r in flat),
         "runs_with_prose_rewritten": sum("grounding_rewritten" in r.get("rejections", []) for r in flat),
         "cost_per_question_usd": round(statistics.mean(r["cost_usd"] for r in flat), 4),

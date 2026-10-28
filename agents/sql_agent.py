@@ -192,15 +192,19 @@ class SQLAnswer:
 
 
 def _parse(text: str) -> dict:
-    try:
-        out = json.loads(strip_markdown_fences(text))
-    except json.JSONDecodeError:
-        raise LLMOutputError("sql", "reply is not JSON",
-                             "The SQL step returned an unreadable answer.") from None
-    if not isinstance(out, dict) or not (out.get("sql") or out.get("refusal")):
-        raise LLMOutputError("sql", "reply has neither sql nor refusal",
-                             "The SQL step returned an unreadable answer.")
-    return out
+    """The reply's JSON object. Takes the last `{...}` that parses when the model wraps it in
+    prose; anything else is an LLMOutputError (detail keeps a snippet, never shown to users)."""
+    raw = strip_markdown_fences(text)
+    candidates = [raw] + [raw[i:] for i in range(len(raw) - 1, -1, -1) if raw[i] == "{"]
+    for cand in candidates:
+        try:
+            out, _ = json.JSONDecoder().raw_decode(cand.strip())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(out, dict) and (out.get("sql") or out.get("refusal")):
+            return out
+    raise LLMOutputError("sql", f"reply has no JSON with sql or refusal: {text[:200]!r}",
+                         "The SQL step returned an unreadable answer.")
 
 
 def _review(sql: str, metrics_used: list[str], layer, dialect: str) -> tuple[str, str] | None:
@@ -268,7 +272,17 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
             messages = messages + [{"role": "assistant", "content": response.content},
                                    {"role": "user", "content": results}]
 
-        out = _parse(response.text)
+        try:
+            out = _parse(response.text)
+        except LLMOutputError:
+            if attempt:
+                raise
+            trace_verdict("sql", PROMPT_VERSION, "format")
+            messages = messages + [
+                {"role": "assistant", "content": response.content or response.text},
+                {"role": "user", "content": "Your reply was not the JSON object asked for. "
+                                            "Reply with the JSON only."}]
+            continue
         if out.get("refusal"):
             trace_verdict("sql", PROMPT_VERSION, "refused_write")
             raise GuardrailViolation("sql", "model refused a write request", str(out["refusal"]))

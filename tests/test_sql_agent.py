@@ -120,10 +120,18 @@ async def test_tool_rounds_are_bounded(recorded_llm, connector):
     assert recorded_llm.calls[3]["tool_choice"] == {"type": "none"}
 
 
-async def test_unparseable_reply_is_a_typed_error(recorded_llm, connector):
-    recorded_llm.responses.append("Sure! Here is the query: SELECT 1")
+async def test_unparseable_reply_gets_one_retry_then_a_typed_error(recorded_llm, connector):
+    recorded_llm.responses += ["Sure! Here is the query: SELECT 1"] * 2
     with pytest.raises(LLMOutputError):
         await sql_agent.run_sql_agent("q", connector, LAYER, recorded_llm)
+    assert "JSON only" in recorded_llm.calls[1]["messages"][-1]["content"]
+
+
+async def test_json_wrapped_in_prose_is_accepted(recorded_llm, connector):
+    recorded_llm.responses.append('Checked the data. {"note": 1} Final: '
+                                  + _answer("SELECT COUNT(*) FROM orders") + " Done.")
+    ans = await sql_agent.run_sql_agent("how many", connector, LAYER, recorded_llm)
+    assert ans.result.rows == [(2,)] and len(recorded_llm.calls) == 1
 
 
 async def test_without_a_layer_the_introspected_schema_is_delimited(recorded_llm, connector):

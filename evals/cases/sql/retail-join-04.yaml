@@ -1,8 +1,8 @@
 id: retail-join-04
 domain: retail
 category: join
-question: How many orders (any status) came from each customer region? Treat a missing region as its own
-  group.
+question: How many orders (any status) came from each customer region? Include customers with no region
+  as one more group, with the region left NULL.
 golden_sql: |
   SELECT c.region, COUNT(*) AS orders
   FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id

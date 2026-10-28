@@ -15,7 +15,7 @@ tables:
          sample_values: [north, south, east, west]}
       - {name: segment, type: dimension, sample_values: [consumer, smb, enterprise]}
       - {name: signup_date, type: time}
-      - {name: is_internal, type: dimension, description: Staff and test accounts (not real customers)}
+      - {name: is_internal, type: dimension, description: Staff and test accounts. Plain counts include them; only a metric that says so (active_customers) excludes them.}
   - name: products
     source: shop.products
     primary_key: product_id
