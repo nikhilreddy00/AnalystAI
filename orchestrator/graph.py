@@ -179,7 +179,13 @@ async def ingestion_node(state: AgentState) -> dict:
 
     if not cached_used:
         try:
-            contract = await run_ingestion_agent(session)
+            # The question a SQL source is queried with: this message on a fresh question, the
+            # original question when this run is an approval answer or a follow-up re-load.
+            again = state.get("is_approval") or is_resuming
+            question = (session.task_plan.raw_query if again and session.task_plan
+                        else state.get("user_message"))
+            reuse = session.data_contract.source_query if again and session.data_contract else None
+            contract = await run_ingestion_agent(session, question, reuse)
 
             if not is_resuming:
                 # First-run: store the contract and emit progress
@@ -275,6 +281,8 @@ async def analysis_node(state: AgentState) -> dict:
 
     try:
         findings = await run_analysis_agent(session, get_client())
+        if session.data_contract and session.data_contract.source_query:
+            findings.evidence.insert(0, session.data_contract.source_query)   # where rows came from
         session.analysis_findings = findings
         _emit(state, {"type": "evidence", "data": [e.model_dump() for e in findings.evidence]})
 

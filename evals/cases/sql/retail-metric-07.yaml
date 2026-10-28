@@ -1,0 +1,14 @@
+id: retail-metric-07
+domain: retail
+category: metric
+question: What was the average order value for the app channel in calendar year 2025?
+golden_sql: |
+  SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed') / COUNT(DISTINCT o.order_id) FILTER (WHERE o.status = 'completed')
+  FROM shop.order_items oi JOIN shop.orders o ON o.order_id = oi.order_id
+  WHERE o.channel = 'app'
+    AND o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+trap_sql: |
+  SELECT AVG(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FROM shop.order_items oi JOIN shop.orders o ON o.order_id = oi.order_id
+  WHERE o.channel = 'app' AND o.status = 'completed'
+    AND o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+metric: average_order_value

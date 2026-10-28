@@ -1,0 +1,64 @@
+# Semantic layer for the banking eval schema `bank` (evals/sqlgen.py): a second domain, so the
+# SQL agent is never only tuned to retail names. Golden SQL lives in evals/cases/sql/.
+dialect: postgres
+tables:
+  - name: accounts
+    source: bank.accounts
+    primary_key: account_id
+    description: One row per account. A customer may hold several accounts.
+    columns:
+      - {name: account_id, type: id}
+      - {name: holder_name, type: dimension, description: Account holder (PII)}
+      - {name: account_type, type: dimension, sample_values: [checking, savings, credit]}
+      - {name: branch, type: dimension, sample_values: [downtown, airport, harbor, uptown]}
+      - {name: currency, type: dimension, description: Currency of every amount on the account,
+         sample_values: [USD, EUR]}
+      - {name: opened_date, type: time}
+  - name: transactions
+    source: bank.transactions
+    primary_key: txn_id
+    description: One row per posted transaction. amount is signed - negative is money out
+      (debits, fees), positive is money in (deposits, salary). In the account's currency.
+    columns:
+      - {name: txn_id, type: id}
+      - {name: account_id, type: id}
+      - {name: posted_date, type: time}
+      - {name: amount, type: fact, description: Signed; negative = outflow}
+      - {name: category, type: dimension,
+         sample_values: [salary, deposit, groceries, rent, dining, transfer, fees]}
+      - {name: merchant, type: dimension}
+  - name: daily_balances
+    source: bank.daily_balances
+    primary_key: [account_id, balance_date]
+    description: End-of-day balance snapshot, one row per account per day.
+    columns:
+      - {name: account_id, type: id}
+      - {name: balance_date, type: time}
+      - {name: balance, type: fact, description: End-of-day balance in the account's currency}
+metrics:
+  - name: total_spend
+    table: transactions
+    expr: >-
+      -SUM(transactions.amount) FILTER (WHERE transactions.amount < 0
+      AND transactions.category NOT IN ('transfer', 'fees'))
+    description: Money spent, as a positive number. Excludes transfers between own accounts
+      and bank fees.
+    synonyms: [spend, spending, outflow]
+  - name: fee_income
+    table: transactions
+    expr: -SUM(transactions.amount) FILTER (WHERE transactions.category = 'fees')
+    description: Fees charged to customers (overdraft and service fees), as a positive number.
+    synonyms: [fees charged, overdraft fees]
+  - name: ending_balance
+    table: daily_balances
+    expr: SUM(daily_balances.balance)
+    non_additive_dimension: {name: balance_date, window: last}
+    description: Sum of each account's balance on the last day of the period. Balances are
+      snapshots - never add up a balance across days.
+    synonyms: [balance, total balance, deposits held]
+relationships:
+  - {from: transactions.account_id, to: accounts.account_id, cardinality: many_to_one}
+  - {from: daily_balances.account_id, to: accounts.account_id, cardinality: many_to_one}
+verified_queries:
+  - question: Number of accounts by type
+    sql: SELECT account_type, COUNT(*) AS accounts FROM bank.accounts GROUP BY account_type

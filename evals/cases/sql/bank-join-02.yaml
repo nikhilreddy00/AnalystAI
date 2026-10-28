@@ -1,0 +1,16 @@
+id: bank-join-02
+domain: banking
+category: join
+question: By account type, how many distinct accounts had at least one dining transaction in March 2025?
+golden_sql: |
+  SELECT a.account_type, COUNT(DISTINCT t.account_id) AS accounts
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE t.category = 'dining'
+    AND t.posted_date >= DATE '2025-03-01' AND t.posted_date < DATE '2025-04-01'
+  GROUP BY a.account_type
+trap_sql: |
+  SELECT a.account_type, COUNT(t.account_id) AS accounts
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE t.category = 'dining'
+    AND t.posted_date >= DATE '2025-03-01' AND t.posted_date < DATE '2025-04-01'
+  GROUP BY a.account_type

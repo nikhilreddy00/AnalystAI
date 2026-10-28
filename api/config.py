@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     llm_model: str = "claude-sonnet-4-6"   # pinned; changing it requires a full eval run
     llm_fast_model: str = "claude-haiku-4-5"   # mechanical calls (ingestion schema summary)
     trace_dir: str = "./traces"
+    # Semantic layer YAML for the SQL connector (ADR-0003). Empty = schema introspection only.
+    semantic_layer_path: str = ""
 
     # PostgreSQL (Supabase session-mode pooler, port 5432)
     database_url: str = "postgresql+asyncpg://analystai:analystai@localhost:5432/analystai"

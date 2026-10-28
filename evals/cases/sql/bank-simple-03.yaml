@@ -1,0 +1,6 @@
+id: bank-simple-03
+domain: banking
+category: simple
+question: How many fee transactions were posted in 2025?
+golden_sql: |
+  SELECT COUNT(*) FROM bank.transactions WHERE category = 'fees' AND posted_date >= DATE '2025-01-01' AND posted_date < DATE '2026-01-01'

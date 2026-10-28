@@ -1,0 +1,8 @@
+id: retail-simple-04
+domain: retail
+category: simple
+question: How many orders were placed in January 2026, from 1 January to 31 January inclusive, any status?
+golden_sql: |
+  SELECT COUNT(*) FROM shop.orders WHERE order_date >= DATE '2026-01-01' AND order_date < DATE '2026-02-01'
+trap_sql: |
+  SELECT COUNT(*) FROM shop.orders WHERE order_date >= DATE '2026-01-01' AND order_date < DATE '2026-01-31'

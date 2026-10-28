@@ -35,6 +35,10 @@ async def lifespan(app: FastAPI):
     if missing:
         raise RuntimeError(f"Required settings not set: {', '.join(n.upper() for n in missing)}")
 
+    # ADR-0003: an invalid semantic layer stops the boot instead of failing every SQL question.
+    from semantic_layer import configured_layer
+    configured_layer()
+
     # Bootstrap on-disk artifact dir for per-session parquet cache.
     from pathlib import Path
     Path(settings.session_data_dir).mkdir(parents=True, exist_ok=True)

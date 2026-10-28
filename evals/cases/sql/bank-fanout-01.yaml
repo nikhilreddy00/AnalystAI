@@ -1,0 +1,22 @@
+id: bank-fanout-01
+domain: banking
+category: fanout
+question: 'For each branch: how many USD accounts are there, and how much in fees (as a positive amount)
+  did those accounts pay in 2025?'
+golden_sql: |
+  SELECT a.branch, COUNT(*) AS accounts,
+         COALESCE(SUM(f.fees), 0) AS fees
+  FROM bank.accounts a
+  LEFT JOIN (SELECT account_id, -SUM(amount) AS fees FROM bank.transactions
+             WHERE category = 'fees'
+               AND posted_date >= DATE '2025-01-01' AND posted_date < DATE '2026-01-01'
+             GROUP BY account_id) f ON f.account_id = a.account_id
+  WHERE a.currency = 'USD'
+  GROUP BY a.branch
+trap_sql: |
+  SELECT a.branch, COUNT(a.account_id) AS accounts,
+         -SUM(t.amount) FILTER (WHERE t.category = 'fees') AS fees
+  FROM bank.accounts a JOIN bank.transactions t ON t.account_id = a.account_id
+  WHERE a.currency = 'USD'
+    AND t.posted_date >= DATE '2025-01-01' AND t.posted_date < DATE '2026-01-01'
+  GROUP BY a.branch

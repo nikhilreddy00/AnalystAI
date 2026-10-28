@@ -1,0 +1,8 @@
+id: retail-simple-02
+domain: retail
+category: simple
+question: How many customers have no region recorded?
+golden_sql: |
+  SELECT COUNT(*) FROM shop.customers WHERE region IS NULL
+trap_sql: |
+  SELECT COUNT(*) FROM shop.customers WHERE region = ''

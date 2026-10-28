@@ -1,0 +1,14 @@
+id: retail-fanout-02
+domain: retail
+category: fanout
+question: For completed web orders, what were the total shipping fees and the total units ordered?
+golden_sql: |
+  SELECT (SELECT SUM(shipping_fee) FROM shop.orders
+          WHERE status = 'completed' AND channel = 'web') AS shipping_fees,
+         (SELECT SUM(oi.quantity) FROM shop.order_items oi
+          JOIN shop.orders o ON o.order_id = oi.order_id
+          WHERE o.status = 'completed' AND o.channel = 'web') AS units
+trap_sql: |
+  SELECT SUM(o.shipping_fee) AS shipping_fees, SUM(oi.quantity) AS units
+  FROM shop.orders o JOIN shop.order_items oi ON oi.order_id = o.order_id
+  WHERE o.status = 'completed' AND o.channel = 'web'

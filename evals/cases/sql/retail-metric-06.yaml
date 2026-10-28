@@ -1,0 +1,21 @@
+id: retail-metric-06
+domain: retail
+category: metric
+question: What was the gross margin by product category in calendar year 2025?
+golden_sql: |
+  SELECT p.category,
+         SUM(oi.quantity * (oi.unit_price * (1 - oi.discount_pct) - p.unit_cost))
+           FILTER (WHERE o.status = 'completed') AS gross_margin
+  FROM shop.order_items oi
+  JOIN shop.orders o ON o.order_id = oi.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+  GROUP BY p.category
+trap_sql: |
+  SELECT p.category, SUM(oi.quantity * (oi.unit_price - p.unit_cost)) AS gross_margin
+  FROM shop.order_items oi
+  JOIN shop.orders o ON o.order_id = oi.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+  GROUP BY p.category
+metric: gross_margin

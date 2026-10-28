@@ -8,7 +8,7 @@ on:
       eval_suite:
         description: "Run a real-model eval (spends API money)"
         type: choice
-        options: [none, analysis, e2e]
+        options: [none, analysis, e2e, sql]
         default: none
       k:
         description: "Repeats per case"
@@ -17,6 +17,17 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:   # Phase 4: SQL eval gates and the read-only execution tests run against it
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: analystai_eval
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_PG_URL: postgresql+psycopg://postgres:postgres@localhost:5432/analystai_eval
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -47,7 +58,17 @@ jobs:
     needs: backend
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    services:
+      postgres:   # Phase 4: SQL eval gates and the read-only execution tests run against it
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: analystai_eval
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      TEST_PG_URL: postgresql+psycopg://postgres:postgres@localhost:5432/analystai_eval
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
     steps:

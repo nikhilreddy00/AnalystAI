@@ -1,0 +1,10 @@
+id: bank-join-03
+domain: banking
+category: join
+question: What was the average grocery transaction size, as a positive amount, on USD checking accounts
+  in 2025?
+golden_sql: |
+  SELECT AVG(-t.amount)
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE t.category = 'groceries' AND a.currency = 'USD' AND a.account_type = 'checking'
+    AND t.posted_date >= DATE '2025-01-01' AND t.posted_date < DATE '2026-01-01'

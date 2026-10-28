@@ -1,0 +1,14 @@
+id: retail-fanout-03
+domain: retail
+category: fanout
+question: How many completed orders contained at least one apparel item?
+golden_sql: |
+  SELECT COUNT(DISTINCT o.order_id) FROM shop.orders o
+  JOIN shop.order_items oi ON oi.order_id = o.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.status = 'completed' AND p.category = 'apparel'
+trap_sql: |
+  SELECT COUNT(o.order_id) FROM shop.orders o
+  JOIN shop.order_items oi ON oi.order_id = o.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.status = 'completed' AND p.category = 'apparel'

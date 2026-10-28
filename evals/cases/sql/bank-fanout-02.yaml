@@ -1,0 +1,26 @@
+id: bank-fanout-02
+domain: banking
+category: fanout
+question: 'For USD accounts, by account type: the total balance on 31 December 2025, and the number of
+  transactions posted in December 2025.'
+golden_sql: |
+  SELECT a.account_type,
+         SUM(b.balance) AS balance,
+         SUM(COALESCE(t.n, 0)) AS transactions
+  FROM bank.accounts a
+  JOIN bank.daily_balances b
+    ON b.account_id = a.account_id AND b.balance_date = DATE '2025-12-31'
+  LEFT JOIN (SELECT account_id, COUNT(*) AS n FROM bank.transactions
+             WHERE posted_date >= DATE '2025-12-01' AND posted_date < DATE '2026-01-01'
+             GROUP BY account_id) t ON t.account_id = a.account_id
+  WHERE a.currency = 'USD'
+  GROUP BY a.account_type
+trap_sql: |
+  SELECT a.account_type, SUM(b.balance) AS balance, COUNT(t.txn_id) AS transactions
+  FROM bank.accounts a
+  JOIN bank.daily_balances b
+    ON b.account_id = a.account_id AND b.balance_date = DATE '2025-12-31'
+  JOIN bank.transactions t ON t.account_id = a.account_id
+    AND t.posted_date >= DATE '2025-12-01' AND t.posted_date < DATE '2026-01-01'
+  WHERE a.currency = 'USD'
+  GROUP BY a.account_type

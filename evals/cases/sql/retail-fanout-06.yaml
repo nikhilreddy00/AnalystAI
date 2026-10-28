@@ -1,0 +1,18 @@
+id: retail-fanout-06
+domain: retail
+category: fanout
+question: 'For completed orders placed in December 2025, what was the total charged to customers: net
+  line value after discounts plus shipping fees?'
+golden_sql: |
+  SELECT (SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FROM shop.order_items oi
+          JOIN shop.orders o ON o.order_id = oi.order_id
+          WHERE o.status = 'completed'
+            AND o.order_date >= DATE '2025-12-01' AND o.order_date < DATE '2026-01-01')
+       + (SELECT SUM(shipping_fee) FROM shop.orders
+          WHERE status = 'completed'
+            AND order_date >= DATE '2025-12-01' AND order_date < DATE '2026-01-01') AS total
+trap_sql: |
+  SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct) + o.shipping_fee) FROM shop.order_items oi
+  JOIN shop.orders o ON o.order_id = oi.order_id
+  WHERE o.status = 'completed'
+    AND o.order_date >= DATE '2025-12-01' AND o.order_date < DATE '2026-01-01'

@@ -1,0 +1,25 @@
+id: retail-fanout-04
+domain: retail
+category: fanout
+question: 'For each customer segment: how many completed orders were placed, and how many units were returned?'
+golden_sql: |
+  WITH ord AS (
+    SELECT c.segment, COUNT(*) AS completed_orders
+    FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+    WHERE o.status = 'completed' GROUP BY c.segment),
+  ret AS (
+    SELECT c.segment, SUM(r.quantity) AS units_returned
+    FROM shop.returns r
+    JOIN shop.order_items oi ON oi.order_item_id = r.order_item_id
+    JOIN shop.orders o ON o.order_id = oi.order_id
+    JOIN shop.customers c ON c.customer_id = o.customer_id
+    WHERE o.status = 'completed' GROUP BY c.segment)
+  SELECT ord.segment, ord.completed_orders, COALESCE(ret.units_returned, 0) AS units_returned
+  FROM ord LEFT JOIN ret ON ret.segment = ord.segment
+trap_sql: |
+  SELECT c.segment, COUNT(o.order_id) AS completed_orders, SUM(r.quantity) AS units_returned
+  FROM shop.customers c
+  JOIN shop.orders o ON o.customer_id = c.customer_id
+  JOIN shop.order_items oi ON oi.order_id = o.order_id
+  LEFT JOIN shop.returns r ON r.order_item_id = oi.order_item_id
+  WHERE o.status = 'completed' GROUP BY c.segment

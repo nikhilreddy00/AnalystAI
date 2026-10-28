@@ -1,0 +1,124 @@
+# Semantic layer for the retail eval schema `shop` (evals/sqlgen.py). Also the sample layer for
+# operators: copy it, point `source` at your tables, and write your own metric definitions.
+# Eval golden SQL lives in evals/cases/sql/ and must never be copied into verified_queries.
+dialect: postgres
+tables:
+  - name: customers
+    source: shop.customers
+    primary_key: customer_id
+    description: One row per customer account.
+    columns:
+      - {name: customer_id, type: id}
+      - {name: full_name, type: dimension, description: Person's name (PII)}
+      - {name: email, type: dimension, description: Contact email (PII)}
+      - {name: region, type: dimension, description: Sales region; NULL when unknown,
+         sample_values: [north, south, east, west]}
+      - {name: segment, type: dimension, sample_values: [consumer, smb, enterprise]}
+      - {name: signup_date, type: time}
+      - {name: is_internal, type: dimension, description: Staff and test accounts. Plain counts include them; only a metric that says so (active_customers) excludes them.}
+  - name: products
+    source: shop.products
+    primary_key: product_id
+    description: One row per product in the catalogue.
+    columns:
+      - {name: product_id, type: id}
+      - {name: product_name, type: dimension}
+      - {name: category, type: dimension, description: Stored lower-case,
+         sample_values: [electronics, home, apparel, toys, grocery]}
+      - {name: unit_cost, type: fact, description: What one unit costs us in USD}
+  - name: orders
+    source: shop.orders
+    primary_key: order_id
+    description: One row per order (the order header). Refunds flip status to 'refunded'.
+    columns:
+      - {name: order_id, type: id}
+      - {name: customer_id, type: id}
+      - {name: order_date, type: time}
+      - {name: status, type: dimension, sample_values: [completed, refunded, cancelled]}
+      - {name: channel, type: dimension, synonyms: [source], sample_values: [web, store, app]}
+      - {name: shipping_fee, type: fact,
+         description: Per-order fee in USD. Order grain - never sum it across line items.}
+  - name: order_items
+    source: shop.order_items
+    primary_key: order_item_id
+    description: One row per product line on an order.
+    columns:
+      - {name: order_item_id, type: id}
+      - {name: order_id, type: id}
+      - {name: product_id, type: id}
+      - {name: quantity, type: fact}
+      - {name: unit_price, type: fact, description: List price per unit in USD}
+      - {name: discount_pct, type: fact, description: Discount as a 0-1 fraction}
+  - name: returns
+    source: shop.returns
+    primary_key: return_id
+    description: One row per returned order line (a line is returned at most once).
+    columns:
+      - {name: return_id, type: id}
+      - {name: order_item_id, type: id}
+      - {name: return_date, type: time}
+      - {name: quantity, type: fact, description: Units returned}
+      - {name: refund_amount, type: fact, description: USD refunded}
+  - name: dim_date
+    source: shop.dim_date
+    primary_key: date_day
+    description: Calendar. The fiscal year starts on 1 February and is named after the calendar
+      year it ends in (FY2025 = 2024-02-01 .. 2025-01-31).
+    columns:
+      - {name: date_day, type: time}
+      - {name: calendar_year, type: dimension}
+      - {name: calendar_month, type: dimension}
+      - {name: fiscal_year, type: dimension}
+      - {name: fiscal_quarter, type: dimension, description: 1-4 within the fiscal year}
+      - {name: is_weekend, type: dimension}
+metrics:
+  - name: net_revenue
+    table: order_items
+    joins: [orders]
+    expr: >-
+      SUM(order_items.quantity * order_items.unit_price * (1 - order_items.discount_pct))
+      FILTER (WHERE orders.status = 'completed')
+    description: Revenue after discounts, completed orders only (refunded and cancelled
+      excluded). Excludes shipping fees.
+    synonyms: [revenue, sales, turnover]
+  - name: gross_margin
+    table: order_items
+    joins: [orders, products]
+    expr: >-
+      SUM(order_items.quantity * (order_items.unit_price * (1 - order_items.discount_pct)
+      - products.unit_cost)) FILTER (WHERE orders.status = 'completed')
+    description: Net revenue minus product cost, completed orders only.
+    synonyms: [margin, profit]
+  - name: average_order_value
+    table: order_items
+    joins: [orders]
+    expr: >-
+      SUM(order_items.quantity * order_items.unit_price * (1 - order_items.discount_pct))
+      FILTER (WHERE orders.status = 'completed')
+      / COUNT(DISTINCT orders.order_id) FILTER (WHERE orders.status = 'completed')
+    description: Net revenue per completed order.
+    synonyms: [aov, basket size]
+  - name: active_customers
+    table: orders
+    joins: [customers]
+    expr: >-
+      COUNT(DISTINCT orders.customer_id)
+      FILTER (WHERE orders.status = 'completed' AND NOT customers.is_internal)
+    description: Distinct external customers with at least one completed order in the period
+      asked about.
+    synonyms: [active users, buying customers]
+relationships:
+  - {from: orders.customer_id, to: customers.customer_id, cardinality: many_to_one}
+  - {from: order_items.order_id, to: orders.order_id, cardinality: many_to_one}
+  - {from: order_items.product_id, to: products.product_id, cardinality: many_to_one}
+  - {from: returns.order_item_id, to: order_items.order_item_id, cardinality: one_to_one}
+  - {from: orders.order_date, to: dim_date.date_day, cardinality: many_to_one}
+verified_queries:
+  - question: Net revenue by sales channel for calendar 2024
+    sql: >-
+      SELECT o.channel,
+             SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct))
+               FILTER (WHERE o.status = 'completed') AS net_revenue
+      FROM shop.order_items oi JOIN shop.orders o ON o.order_id = oi.order_id
+      WHERE o.order_date >= DATE '2024-01-01' AND o.order_date < DATE '2025-01-01'
+      GROUP BY o.channel

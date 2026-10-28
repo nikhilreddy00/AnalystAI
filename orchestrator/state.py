@@ -178,6 +178,9 @@ class DataContract(BaseModel):
     id_columns: list[str]
     metric_columns: list[str]
     schema_summary: str                    # human-readable description for LLM prompts
+    # Phase 4: the SQL query that produced this data (SQL connector without a table), so the
+    # answer's evidence starts with where the rows came from.
+    source_query: "Evidence | None" = None
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────
@@ -326,7 +329,7 @@ class Evidence(BaseModel):
     """Why one finding can be trusted (ADR-0001): built deterministically from the code that ran
     and its output, never written by the model."""
     id: str                                # stable: "corr:revenue__units", "seg:segment/revenue"
-    kind: Literal["correlation", "trend", "segment", "anomaly", "test"]
+    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query"]
     claim: str                             # one line, from the computed values
     code: str                              # the analysis body that produced it
     result_excerpt: str                    # the finding's JSON, truncated

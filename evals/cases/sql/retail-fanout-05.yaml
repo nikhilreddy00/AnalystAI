@@ -1,0 +1,19 @@
+id: retail-fanout-05
+domain: retail
+category: fanout
+question: 'For each product category: the total shipping fees of completed orders that contain that category
+  (an order counts once under each category it contains).'
+golden_sql: |
+  SELECT c.category, SUM(o.shipping_fee) AS shipping_fees
+  FROM shop.orders o
+  JOIN (SELECT DISTINCT oi.order_id, p.category FROM shop.order_items oi
+        JOIN shop.products p ON p.product_id = oi.product_id) c ON c.order_id = o.order_id
+  WHERE o.status = 'completed'
+  GROUP BY c.category
+trap_sql: |
+  SELECT p.category, SUM(o.shipping_fee) AS shipping_fees
+  FROM shop.orders o
+  JOIN shop.order_items oi ON oi.order_id = o.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.status = 'completed'
+  GROUP BY p.category

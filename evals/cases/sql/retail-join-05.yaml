@@ -1,0 +1,12 @@
+id: retail-join-05
+domain: retail
+category: join
+question: For each product category and sales channel, how many distinct completed orders contained at
+  least one item of that category?
+golden_sql: |
+  SELECT p.category, o.channel, COUNT(DISTINCT o.order_id) AS orders
+  FROM shop.order_items oi
+  JOIN shop.orders o ON o.order_id = oi.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.status = 'completed'
+  GROUP BY p.category, o.channel

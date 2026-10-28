@@ -1,0 +1,12 @@
+id: retail-metric-01
+domain: retail
+category: metric
+question: What was our revenue in calendar year 2025?
+golden_sql: |
+  SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed') FROM shop.order_items oi JOIN shop.orders o ON o.order_id = oi.order_id
+  WHERE o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+trap_sql: |
+  SELECT SUM(oi.quantity * oi.unit_price) FROM shop.order_items oi
+  JOIN shop.orders o ON o.order_id = oi.order_id
+  WHERE o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+metric: net_revenue

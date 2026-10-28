@@ -1,0 +1,15 @@
+id: retail-join-03
+domain: retail
+category: join
+question: What are the top 5 products by units sold on completed orders? Highest first, with the units.
+golden_sql: |
+  SELECT p.product_name, SUM(oi.quantity) AS units
+  FROM shop.order_items oi
+  JOIN shop.orders o ON o.order_id = oi.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.status = 'completed'
+  GROUP BY p.product_id, p.product_name
+  ORDER BY units DESC
+  LIMIT 5
+ordered: true
+top_n: 5

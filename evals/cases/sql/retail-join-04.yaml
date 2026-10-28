@@ -1,0 +1,13 @@
+id: retail-join-04
+domain: retail
+category: join
+question: How many orders (any status) came from each customer region? Include customers with no region
+  as one more group, with the region left NULL.
+golden_sql: |
+  SELECT c.region, COUNT(*) AS orders
+  FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+  GROUP BY c.region
+trap_sql: |
+  SELECT c.region, COUNT(*) AS orders
+  FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+  WHERE c.region IS NOT NULL GROUP BY c.region

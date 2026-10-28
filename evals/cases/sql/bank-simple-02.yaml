@@ -1,0 +1,8 @@
+id: bank-simple-02
+domain: banking
+category: simple
+question: How many EUR-denominated savings accounts are there?
+golden_sql: |
+  SELECT COUNT(*) FROM bank.accounts WHERE currency = 'EUR' AND account_type = 'savings'
+trap_sql: |
+  SELECT COUNT(*) FROM bank.accounts WHERE account_type = 'savings'

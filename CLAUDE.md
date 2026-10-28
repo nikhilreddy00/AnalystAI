@@ -25,8 +25,9 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | ✅ done (2026-10-27) — `docs/baselines/phase2.md` (analysis 87.5%, e2e 45.0%) |
 | 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
-| 4 | SQL path + YAML semantic layer | ⏭ next |
-| 5 | Roll the contract out: Intake → Cleaning → Insight → Quality check → Ingestion → Visualization | pending |
+| 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
+| 5 | Roll the contract out: Intake → Cleaning → Insight → Quality check → Ingestion → Visualization | ⏭ next |
+| 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
 Per-agent metrics and targets: see the table at the end of `docs/ROADMAP.md`.
@@ -117,13 +118,20 @@ agents/
   visualization_agent.py   — PURE PYTHON (no LLM), returns list[ChartConfig]
   insight_agent.py         — returns InsightReport
   quality_critic.py        — LLM critic run by quality_check_node → ExpertReview
+  sql_agent.py             — Phase 4: question → one read-only SQL query (SQL_CARD, prompts/sql/vN.md,
+                             tools get_metric_definition/run_sql, fan-out + metric hard rules,
+                             Evidence kind "query"); called by ingestion for a SQL source with no table
   drill_down_agent.py      — follow-up answer + chart computed from the df
   targeted_analysis_agent.py — deterministic answers for non-overview intents
   errors.py                — AgentError hierarchy (LLMRefusal/Truncated/Unavailable/OutputError, GuardrailViolation, SandboxError)
 
 prompts/<agent>/v<N>.md    — versioned system prompts (analysis: v3 = old v2 verbatim … v7 current)
 
+semantic_layer.py          — YAML semantic layer (ADR-0003): tables + grain, metrics, relationships;
+                             strict loader, check_against_db; SEMANTIC_LAYER_PATH (invalid = no boot)
+
 guardrails.py              — pure checks: code AST allowlist, column refs, read-only SQL (sqlglot),
+                             SQL fan-out (grain/cardinality) and metric adherence,
                              numeric grounding, PII masking, <untrusted_data> delimiting
 
 orchestrator/
@@ -134,7 +142,8 @@ orchestrator/
 connectors/
   base.py                  — DataConnector ABC + get_connector() factory
   csv_connector.py         — CSV/Excel with encoding detection
-  sql_connector.py         — SQLAlchemy + NL→SQL on the shared client, parsed read-only guard
+  sql_connector.py         — SQLAlchemy (psycopg 3 for Postgres); query() = parse guard → READ ONLY
+                             txn (always rolled back) → statement timeout → 10k-row cap
   sheets_connector.py      — gspread + OAuth2
   api_connector.py         — httpx + pagination + auth
 
@@ -222,9 +231,14 @@ done              → {type: "done"}  // always last
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
 - **Eval budget (real money, the user's prepaid credits)**: iterate with `--only <case> --k 1`; one full k=3
   run per suite per phase, at the end; E2E at k=1 except at the phase gate. `--max-usd` (default $2)
-  refuses over-budget runs — raise it deliberately, say the estimate to the user first. Phases 0–3 cost
+  refuses over-budget runs — raise it deliberately, say the estimate to the user first. Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost
   ~$59 (2026-10-27), mostly repeated full k=3 rounds.
-- **Evals**: `uv run python -m evals.run {analysis|e2e} --k 3 [--compare <prev.json>]` — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
+- **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
+  URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
+  PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
+  `pg_ctl -D <dir> -o "-p 54329 -c unix_socket_directories='' -c listen_addresses=localhost" start`, `createdb -h localhost -p 54329 -U postgres analystai_eval`. Cases: `evals/cases/sql/` (golden SQL never goes
+  in a layer's `verified_queries` or a prompt — a test checks)
+- **Evals**: `uv run python -m evals.run {analysis|e2e|sql} --k 3 [--compare <prev.json>]` — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
 
 ---
 
@@ -232,7 +246,7 @@ done              → {type: "done"}  // always last
 
 Required: `ANTHROPIC_API_KEY`, `E2B_API_KEY`, `SUPABASE_URL`, `ENCRYPTION_KEY` (the API refuses to start without the last two).
 Frontend (`frontend/.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-Optional: `DATABASE_URL`, `QDRANT_HOST`, `QDRANT_PORT`, `OLLAMA_HOST`, `FRONTEND_URL`, `APP_ENV`
+Optional: `SEMANTIC_LAYER_PATH` (SQL connector), `DATABASE_URL`, `QDRANT_HOST`, `QDRANT_PORT`, `OLLAMA_HOST`, `FRONTEND_URL`, `APP_ENV`
 
 ---
 

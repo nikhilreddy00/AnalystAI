@@ -1,0 +1,14 @@
+id: bank-metric-02
+domain: banking
+category: metric
+question: What was the total balance held across all USD accounts at the end of June 2025?
+golden_sql: |
+  SELECT SUM(b.balance)
+  FROM bank.daily_balances b JOIN bank.accounts a ON a.account_id = b.account_id
+  WHERE a.currency = 'USD' AND b.balance_date = DATE '2025-06-30'
+trap_sql: |
+  SELECT SUM(b.balance)
+  FROM bank.daily_balances b JOIN bank.accounts a ON a.account_id = b.account_id
+  WHERE a.currency = 'USD'
+    AND b.balance_date >= DATE '2025-06-01' AND b.balance_date < DATE '2025-07-01'
+metric: ending_balance

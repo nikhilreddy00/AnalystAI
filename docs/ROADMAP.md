@@ -325,6 +325,23 @@ Each PR is done when its row in the table below is met and E2E is not below its 
   7. The backend sends `colors: []` for generic charts (the frontend currently filters the Tableau
      cycle); keep the PPTX export working.
 
+### Phase 5.5: Domain coverage (added 2026-10-27 at the user's request)
+- **Why:** the goal is an analyst any company can use, in any domain. At Phase 4 the evals cover
+  sales-style data only (53 of 66 analysis/E2E cases use one `sales` table; the SQL eval adds
+  banking). Nothing tests healthcare, insurance, HR, SaaS, IoT or logistics, so no claim of
+  "works for every domain" is backed by a number.
+- **Work:**
+  1. Synthetic datasets with planted truths for ~8 domains: retail, banking, healthcare,
+     insurance, HR, SaaS/product analytics, manufacturing/IoT sensors, logistics. Each plants a
+     domain trap (e.g. semi-additive balances, readmission windows, censored tenure, sensor drift).
+  2. Run them through the analysis and E2E suites; a domain is "supported" only once it passes.
+  3. PHI masking for healthcare (record numbers, diagnosis codes, dates of birth, small cells).
+     Until then the project makes no HIPAA claim.
+  4. Generic KPI and chart labels (today's heuristics match English, sales-style column names).
+  5. A sample semantic layer per supported domain; domain meaning lives in YAML, not in code.
+- **Done when:** each listed domain passes its suite at the analysis/E2E targets, PII/PHI recall
+  ≥ 95% on the healthcare set, and the README lists exactly the domains that passed.
+
 ### Phase 6: End-to-end hardening and open-source release (v0.1)
 - **Work:**
   - Raise the E2E eval to 50 questions.

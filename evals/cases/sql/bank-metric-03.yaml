@@ -1,0 +1,17 @@
+id: bank-metric-03
+domain: banking
+category: metric
+question: How much in fees did we charge USD accounts at each branch in 2025?
+golden_sql: |
+  SELECT a.branch, -SUM(t.amount) FILTER (WHERE t.category = 'fees') AS fees
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE a.currency = 'USD'
+    AND t.posted_date >= DATE '2025-01-01' AND t.posted_date < DATE '2026-01-01'
+  GROUP BY a.branch
+trap_sql: |
+  SELECT a.branch, SUM(t.amount) AS fees
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE a.currency = 'USD' AND t.category = 'fees'
+    AND t.posted_date >= DATE '2025-01-01' AND t.posted_date < DATE '2026-01-01'
+  GROUP BY a.branch
+metric: fee_income
