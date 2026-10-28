@@ -662,8 +662,9 @@ def score_cleaning(output: dict | None, received: pd.DataFrame, expected: pd.Dat
                or not _same_cell(got[r], clean_cell(expected.at[r, column]))]
         if bad:
             r = bad[0]
+            seen = "row removed" if r not in got else f"got {got[r]!r}"
             return False, (f"{len(bad)}/{len(rows)} cells wrong in {column}, e.g. row {r}: "
-                           f"got {got.get(r)!r}, want {clean_cell(expected.at[r, column])!r}")
+                           f"{seen}, want {clean_cell(expected.at[r, column])!r}")
         return True, "ok"
 
     for m in manifest:
