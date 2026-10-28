@@ -40,6 +40,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm run lint
 
   evals:
     if: github.event_name == 'workflow_dispatch' && inputs.eval_suite != 'none'

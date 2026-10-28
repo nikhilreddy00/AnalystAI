@@ -29,3 +29,6 @@ session_data/
 
 # LLM call traces (Phase 1)
 traces/
+scripts/ui_check/fixtures/dash_*.json
+scripts/ui_check/fixtures/scenario
+.playwright-mcp/
