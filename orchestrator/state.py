@@ -376,8 +376,10 @@ class ChartRationale(BaseModel):
     deterministically by the chart code, never by a model. `code` recomputes the plotted numbers."""
     rule: str                              # "trend→line", "segment→bar", "profile:time_series" …
     reason: str                            # one plain sentence
-    columns: list[str]
-    aggregation: str                       # sum | mean | rate | count | none
+    x: str                                 # the column on x (the date column for a time axis)
+    y: str                                 # the measured column; "count" for row counts
+    split: str | None = None               # series column, if any
+    aggregation: str                       # sum | mean | count | none
     n_rows: int
     evidence_ids: list[str] = Field(default_factory=list)  # Evidence.id(s) it shows; [] = data profile
     code: str = ""                         # pandas expression, e.g. df.groupby('segment')['revenue'].mean()

@@ -124,6 +124,7 @@ async def chat(
             "event_queue": event_queue,
             "user_message": body.message,
             "is_approval": body.is_approval,
+            "approval_context": body.approval_context,
             "session_store": session_store,
             "vector_store": vector_store,
         }

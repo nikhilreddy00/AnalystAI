@@ -38,7 +38,9 @@ export interface ChartConfig {
 export interface ChartRationale {
   rule: string;
   reason: string;
-  columns: string[];
+  x: string;
+  y: string;
+  split?: string | null;
   aggregation: string;
   n_rows: number;
   evidence_ids: string[];

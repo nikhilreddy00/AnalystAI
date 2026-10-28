@@ -479,7 +479,8 @@ def chart_lint(chart: dict, measures: Iterable[str] = (), outcome: str | None = 
     kind, data = chart.get("chart_type"), chart.get("data") or []
     x, ys = chart.get("x_key"), list(chart.get("y_keys") or [])
     out = []
-    if not data or not ys or not any(_num(r.get(y)) for r in data for y in ys):
+    values = ["value"] if kind == "HeatmapChart" else ys
+    if not data or not values or not any(_num(r.get(v)) for r in data for v in values):
         out.append("empty_chart")
     if kind in _CARTESIAN and not (chart.get("x_label") and chart.get("y_label")):
         out.append("missing_axis_label")

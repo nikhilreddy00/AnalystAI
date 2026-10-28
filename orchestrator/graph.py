@@ -71,6 +71,7 @@ class AgentState(TypedDict):
     event_queue: Any                   # asyncio.Queue[dict | None]
     user_message: str
     is_approval: bool
+    approval_context: str | None       # which gate the approval answers ("high_null", …)
     session_store: Any                 # SessionStore | None
     vector_store: Any                  # VectorStore | None
 
@@ -106,6 +107,15 @@ async def _save(state: AgentState) -> None:
 async def intake_node(state: AgentState) -> dict:
     _emit(state, {"type": "agent_start", "agent": "intake", "message": "Understanding your request..."})
     session: AnalysisSession = state["session"]
+
+    # The high-null gate's answer ("Continue with imputation") approves the cleaning; it is not a
+    # new question. Keep the plan, so raw_query (read by charts, insight and memory) stays the
+    # user's. A clarification answer still goes through intake: it answers intake's question.
+    if (state.get("is_approval") and state.get("approval_context") == "high_null"
+            and session.task_plan and not session.task_plan.clarification_needed):
+        session.add_message(MessageRole.USER, state["user_message"])
+        _emit(state, {"type": "agent_complete", "agent": "intake", "message": "Analysis plan ready"})
+        return {"session": session}
 
     try:
         # Phase 3: signal first-run so intake forces a comprehensive plan.

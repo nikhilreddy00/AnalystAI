@@ -202,8 +202,10 @@ export default function ChatInterface() {
   };
 
   function handleApproval(response: string) {
+    // The gate travels with the answer: a high-null approval keeps the plan (and the question).
+    const context = pendingApproval?.context ?? null;
     setPendingApproval(null);
-    sendMessage(response, true);
+    sendMessage(response, true, context);
   }
 
   const paneTab = (id: "chat" | "report", label: string) => (

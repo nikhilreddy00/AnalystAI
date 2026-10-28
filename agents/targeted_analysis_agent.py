@@ -20,6 +20,15 @@ import numpy as np
 import pandas as pd
 
 from agents.utils import pandas_freq
+from agents.visualization_agent import (
+    VizContext,
+    _why,
+    build_context,
+    fence_histogram,
+    finalize_charts,
+    group_bars,
+    oriented_scatter,
+)
 from scipy import stats
 
 from orchestrator.state import (
@@ -64,7 +73,12 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
             f"Intent '{intent.value}' is not handled by the targeted pipeline.",
             ["Ask for an overview", "Rephrase as a top-N or comparison question"],
         )
-    return handler(df, params, contract)
+    # Phase 5: every chart a user sees follows the visualization policy and its lint.
+    ctx = build_context(df, session.task_plan, narrative=session.narrative)
+    extra = {"strata": session.task_plan.segments} if intent == QuestionIntent.AB_SIGNIFICANCE else {}
+    response = handler(df, params, contract, ctx=ctx, **extra)
+    response.chart_configs = finalize_charts(response.chart_configs, ctx)
+    return response
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -104,7 +118,8 @@ def _suggest_metric_questions(contract: DataContract) -> list[str]:
 
 # ── Per-intent handlers ──────────────────────────────────────────────────────
 
-def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                       ctx: VizContext | None = None) -> TargetedResponse:
     requested = [c for c in params.target_columns if c in df.columns]
     cols = [c for c in (requested or _numeric_cols(df, contract))
             if pd.api.types.is_numeric_dtype(df[c])]
@@ -141,27 +156,26 @@ def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataC
         f"correlated (r={strongest[2]:.2f}). Showing top {min(10, len(pairs))} pairs."
     )
 
-    chart_data = [{"pair": f"{a} ↔ {b}", "correlation": round(r, 3)} for a, b, r in pairs[:10]]
-    chart = _chart(
-        ChartType.HORIZONTAL_BAR,
-        "Strongest correlations",
-        chart_data,
-        x_key="pair",
-        y_keys=["correlation"],
-        x_label="Variable pair",
-        y_label="Pearson r",
-        source="correlation",
-    )
+    # The pair asked about (else the strongest) as a scatter: a bar of r values hides the data.
+    ctx = ctx or build_context(df)
+    a, b = (requested[0], requested[1]) if len(requested) == 2 else strongest[:2]
+    chart = oriented_scatter(df, a, b, ctx)
+    if chart and chart.rationale:
+        r = chart.rationale
+        _why(chart, ctx, "targeted:correlation→scatter", f"A relationship between two measures is "
+             f"a scatter; {r.reason}. All pairwise r values are in the table.", r.x, r.y, "none",
+             r.n_rows, code=r.code)
     return TargetedResponse(
         intent=QuestionIntent.CORRELATION,
         answer_text=answer,
-        chart_configs=[chart],
+        chart_configs=[chart] if chart else [],
         table_data=table_data,
         table_columns=table_columns,
     )
 
 
-def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                        ctx: VizContext | None = None) -> TargetedResponse:
     col = (params.target_columns[0] if params.target_columns else None) \
         or (contract.metric_columns[0] if contract.metric_columns else None)
     if not col or col not in df.columns:
@@ -188,6 +202,9 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
             ChartType.HISTOGRAM, f"Distribution of {col}", chart_data,
             x_key="bin", y_keys=["count"], x_label=col, y_label="Count", source="distribution",
         )
+        _why(chart, ctx, "targeted:distribution→histogram", f"How {col} is distributed, in 20 "
+             "equal-width bins.", col, "count", "count", len(series),
+             code=f"np.histogram(df[{col!r}].dropna(), bins=20)")
         answer = (
             f"{col}: mean={series.mean():.2f}, median={series.median():.2f}, "
             f"std={series.std():.2f}, range=[{series.min():.2f}, {series.max():.2f}]."
@@ -199,6 +216,9 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
             ChartType.BAR, f"Value counts: {col}", chart_data,
             x_key="value", y_keys=["count"], x_label=col, y_label="Count", source="distribution",
         )
+        _why(chart, ctx, "targeted:distribution→bars", f"{col} is categorical, so its "
+             "distribution is the number of rows per value (top 20).", col, "count", "count",
+             len(series), code=f"df[{col!r}].value_counts().head(20)")
         answer = (
             f"{col}: {series.nunique()} unique values; top = '{vc.index[0]}' "
             f"({int(vc.iloc[0])} rows, {vc.iloc[0] / len(series) * 100:.1f}%)."
@@ -207,7 +227,8 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
     return TargetedResponse(intent=QuestionIntent.DISTRIBUTION, answer_text=answer, chart_configs=[chart])
 
 
-def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                 ctx: VizContext | None = None) -> TargetedResponse:
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
     group = params.group_by
     if not metric or metric not in df.columns:
@@ -251,6 +272,10 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
         chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=f"{agg}({metric})",
         source="top_n",
     )
+    _why(chart, ctx, "targeted:top_n→ranked bars", f"Ranks {group} by {agg} {metric}, "
+         f"{'lowest' if asc else 'highest'} first.", group, metric, agg,
+         int(df[[group, metric]].dropna().shape[0]),
+         code=f"df.groupby({group!r})[{metric!r}].{agg}().sort_values(ascending={asc}).head({n})")
     return TargetedResponse(intent=QuestionIntent.TOP_N, answer_text=answer, chart_configs=[chart])
 
 
@@ -266,7 +291,8 @@ def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
     return lower.get(str(val).lower())
 
 
-def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                       ctx: VizContext | None = None) -> TargetedResponse:
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
     date = params.date_column or (contract.date_columns[0] if contract.date_columns else None)
     if not metric or metric not in df.columns:
@@ -332,10 +358,14 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         x_key="period", y_keys=[metric], x_label="Period", y_label=f"{agg}({metric})",
         source="time_series",
     )
+    _why(chart, ctx, "targeted:time_series→line", f"{metric} over time, {agg} per period "
+         f"({freq}){scope}.", date, metric, agg, len(s),
+         code=f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r}).{agg}()")
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
 
 
-def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                           ctx: VizContext | None = None) -> TargetedResponse:
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
     segment = params.segment_column
     if not metric or metric not in df.columns:
@@ -365,7 +395,6 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
             ["Try a different aggregation", "Pick a different segment"],
         )
 
-    chart_data = [{segment: str(k), metric: float(v)} for k, v in grouped.items()]
     top_seg, top_val = grouped.index[0], grouped.iloc[0]
     bottom_seg, bottom_val = grouped.index[-1], grouped.iloc[-1]
     answer = (
@@ -376,15 +405,19 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     if group is not None:
         value = df.loc[df[segment].astype(str) == group, metric].agg(agg)
         answer = f"{agg}({metric}) for {segment} '{group}': {value:,.2f}. " + answer
-    chart = _chart(
-        ChartType.BAR, f"{agg}({metric}) by {segment}",
-        chart_data, x_key=segment, y_keys=[metric], x_label=segment, y_label=f"{agg}({metric})",
-        source="segment_compare",
-    )
-    return TargetedResponse(intent=QuestionIntent.SEGMENT_COMPARE, answer_text=answer, chart_configs=[chart])
+    ctx = ctx or build_context(df)
+    chart = group_bars(df, segment, metric, agg, ctx, top=20)
+    if chart and chart.rationale:
+        r = chart.rationale
+        _why(chart, ctx, "targeted:segment_compare→bars", f"Compares {agg} {metric} across "
+             f"{segment}" + ("; whiskers are 95% confidence intervals." if chart.error_key else "."),
+             r.x, r.y, r.aggregation, r.n_rows, code=r.code)
+    return TargetedResponse(intent=QuestionIntent.SEGMENT_COMPARE, answer_text=answer,
+                            chart_configs=[chart] if chart else [])
 
 
-def handle_hypothesis_test(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_hypothesis_test(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                           ctx: VizContext | None = None) -> TargetedResponse:
     cols = [c for c in params.target_columns if c in df.columns]
     test = (params.test_type or "ttest").lower()
     if len(cols) < 2:
@@ -438,7 +471,9 @@ def handle_hypothesis_test(df: pd.DataFrame, params: TargetedParams, contract: D
     )
 
 
-def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                           ctx: VizContext | None = None,
+                           strata: list[str] | tuple = ()) -> TargetedResponse:
     variant = params.variant_column
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
     if not variant or variant not in df.columns:
@@ -480,13 +515,17 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
         f"{levels[0]} mean={mean_a:.3f} (n={len(a)}), {levels[1]} mean={mean_b:.3f} (n={len(b)}). "
         f"Lift = {lift:+.2f}%; p={p:.4f} ({verdict})."
     )
-    chart = _chart(
-        ChartType.BAR, f"{metric} by {variant}",
-        [{variant: str(levels[0]), metric: float(mean_a)},
-         {variant: str(levels[1]), metric: float(mean_b)}],
-        x_key=variant, y_keys=[metric], x_label=variant, y_label=f"mean({metric})",
-        source="ab",
-    )
+    # Group means with 95% CIs; within each stratum when the plan names one, because a pooled
+    # comparison can reverse inside every stratum (Simpson's paradox).
+    ctx = ctx or build_context(df)
+    stratum = next((c for c in strata if c in df.columns and c != variant), None)
+    chart = group_bars(df, stratum or variant, metric, "mean", ctx, split=variant if stratum else None)
+    if chart and chart.rationale:
+        r = chart.rationale
+        _why(chart, ctx, "targeted:ab→group means", f"Mean {metric} per {variant} with 95% "
+             "confidence intervals" + (f", inside each {stratum} so a confounded pooled "
+             "comparison can't mislead" if stratum else "") + ". The test result is in the table.",
+             r.x, r.y, r.aggregation, r.n_rows, code=r.code, split=r.split)
     table_data = [
         {"metric": f"mean({levels[0]})", "value": round(float(mean_a), 4)},
         {"metric": f"mean({levels[1]})", "value": round(float(mean_b), 4)},
@@ -497,13 +536,14 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
     return TargetedResponse(
         intent=QuestionIntent.AB_SIGNIFICANCE,
         answer_text=answer,
-        chart_configs=[chart],
+        chart_configs=[chart] if chart else [],
         table_data=table_data,
         table_columns=["metric", "value"],
     )
 
 
-def handle_outlier_scan(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
+def handle_outlier_scan(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
+                        ctx: VizContext | None = None) -> TargetedResponse:
     requested = [c for c in params.target_columns if c in df.columns]
     cols = [c for c in (requested or _numeric_cols(df, contract))
             if pd.api.types.is_numeric_dtype(df[c])]
@@ -538,16 +578,18 @@ def handle_outlier_scan(df: pd.DataFrame, params: TargetedParams, contract: Data
         + (f"'{worst['column']}' has the most outliers: {worst['outliers']} ({worst['pct']}%)."
            if worst else "No outliers detected.")
     )
-    chart = _chart(
-        ChartType.HORIZONTAL_BAR, "Outlier count by column",
-        [{"column": r["column"], "outliers": r["outliers"]} for r in rows[:15]],
-        x_key="column", y_keys=["outliers"], x_label="Column", y_label="Outlier count",
-        source="outlier_scan",
-    )
+    # The worst column's distribution with the same 1.5×IQR fences as the table.
+    ctx = ctx or build_context(df)
+    chart = fence_histogram(df, worst["column"], ctx, k=1.5) if worst else None
+    if chart and chart.rationale:
+        r = chart.rationale
+        _why(chart, ctx, "targeted:outliers→histogram", f"Outliers sit in the tails of {r.x}'s "
+             "distribution; the lines mark the Tukey fences (Q ± 1.5×IQR). Every scanned column "
+             "is in the table.", r.x, r.y, r.aggregation, r.n_rows, code=r.code)
     return TargetedResponse(
         intent=QuestionIntent.OUTLIER_SCAN,
         answer_text=answer,
-        chart_configs=[chart],
+        chart_configs=[chart] if chart else [],
         table_data=rows,
         table_columns=["column", "outliers", "pct", "lower_bound", "upper_bound"],
     )
@@ -555,7 +597,7 @@ def handle_outlier_scan(df: pd.DataFrame, params: TargetedParams, contract: Data
 
 # ── Dispatch table (kept at the bottom so handler functions are already defined) ──
 
-_HANDLERS: dict[QuestionIntent, Callable[[pd.DataFrame, TargetedParams, DataContract], TargetedResponse]] = {
+_HANDLERS: dict[QuestionIntent, Callable[..., TargetedResponse]] = {
     QuestionIntent.CORRELATION: handle_correlation,
     QuestionIntent.DISTRIBUTION: handle_distribution,
     QuestionIntent.TOP_N: handle_top_n,

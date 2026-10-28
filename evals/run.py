@@ -131,6 +131,7 @@ async def run_e2e_case(case: dict) -> dict:
             final = await _GRAPH.ainvoke({
                 "session": session, "df_parquet": None, "event_queue": events,
                 "user_message": message, "is_approval": is_approval,
+                "approval_context": "high_null" if is_approval else None,
                 "session_store": None, "vector_store": None,
             })
             session = final["session"]

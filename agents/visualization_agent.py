@@ -1,18 +1,16 @@
 """
-Visualization Agent — smart chart selection from a DataFrame.
+Visualization Agent — the chart an analyst would draw for each finding, and why.
 
-Two stages:
-  1. `classify_columns(df)` — bucket every column into a role (id / target /
-     binary / categorical / continuous / datetime / skip / ordinal).
-  2. `auto_generate_charts(df, roles, query)` — pick the highest-value chart
-     types based on those roles. Priorities:
-       a) target rate by top categorical features
-       b) continuous distribution split by target
-       c) time series (auto-granularity)
-       d) value counts / histograms / scatter when no target exists
+  1. `charts_for_findings(ctx)` — one chart per analysis finding, picked from what the finding is:
+     trend → monthly line, comparison → bars of the metric with 95% CIs, relationship → scatter
+     with the driver on x, unusual values → histogram with the fences marked.
+  2. `generate_dashboard_charts` — data-profile charts when there are few or no findings (an
+     overview); row-count charts go to the Data tab.
+  3. `finalize_charts` — every chart (here, targeted answers, chart requests, drill-down) is
+     linted (guardrails.chart_lint) and repaired or dropped; the user's own choices get a note.
 
-Drives off the *raw* DataFrame so chart correctness no longer depends on the
-LLM-generated analysis code in E2B emitting exact distribution payloads.
+Deterministic, no LLM: the analysis agent decided what is true; this decides how to show it.
+Every chart carries a ChartRationale (rule, columns, aggregation, rows, evidence ids, code).
 """
 from __future__ import annotations
 
@@ -20,19 +18,27 @@ import io
 import math
 import re
 import uuid
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
+from scipy import stats as scipy_stats
 
 from agents.utils import pandas_freq
+from guardrails import chart_lint
+from llm.client import trace_verdict
 
 from orchestrator.state import (
     AgentCard,
+    AnalysisFindings,
     AnalysisSession,
+    AnalysisTask,
     ChartConfig,
+    ChartRationale,
     ChartType,
     DataContract,
     DataNarrative,
+    Evidence,
     KPI,
     KPIRecipe,
     TargetedParams,
@@ -691,107 +697,6 @@ def _build_scatter(df: pd.DataFrame, x_col: str, y_col: str) -> ChartConfig | No
 # ── Stage 2: smart chart selector ────────────────────────────────────────────
 
 _TIME_KEYWORDS = ("trend", "over time", "weekly", "monthly", "yearly", "quarterly", "growth", "year over year", "month over month")
-
-
-def auto_generate_charts(
-    df: pd.DataFrame, column_roles: dict, query: str = ""
-) -> list[ChartConfig]:
-    """Pick the most informative charts for this dataset. Max 6, at most one
-    standalone histogram, relationship charts prioritized. `query` is used as a
-    soft hint — when it mentions trend/time keywords, the time-series chart is
-    bumped ahead of the target-vs-cat charts."""
-    charts: list[ChartConfig] = []
-    target: str | None = column_roles.get("target_col")  # type: ignore[assignment]
-    target_colors = _target_color_map(df, target) if target else {}
-    cat_pool: list[str] = [
-        c for c in (list(column_roles["low_card_cat"]) + list(column_roles["binary_cols"]))  # type: ignore[arg-type]
-        if c != target
-    ]
-    continuous: list[str] = list(column_roles["continuous"])  # type: ignore[assignment]
-    datetime_cols: list[str] = list(column_roles["datetime_cols"])  # type: ignore[assignment]
-    ordinal_cols: set[str] = set(column_roles["ordinal_cols"])  # type: ignore[arg-type]
-
-    q_lower = query.lower()
-    wants_time = bool(datetime_cols) and bool(continuous) and any(k in q_lower for k in _TIME_KEYWORDS)
-
-    # Priority boost — if the question asks about trends and we have what we
-    # need, lead with the time-series chart instead of the target-rate charts.
-    if wants_time:
-        chart = _build_time_series(df, datetime_cols[0], continuous[0])
-        if chart:
-            charts.append(chart)
-
-    # Priority 1 — target rate by top categoricals (most informative when a target exists)
-    if target and cat_pool:
-        ranked = _ranked_categoricals_by_target_separation(df, target, cat_pool)
-        for c in ranked[:3]:
-            chart = _build_target_rate_by_cat(df, c, target)
-            if chart:
-                charts.append(chart)
-                if len(charts) >= 6:
-                    return charts
-
-    # Priority 2 — continuous distribution split by target
-    if target and continuous:
-        for c in continuous[:2]:
-            chart = _build_continuous_split_by_target(df, c, target, target_colors)
-            if chart:
-                charts.append(chart)
-                if len(charts) >= 6:
-                    return charts
-
-    # Priority 3 — time series of primary continuous over primary date (skip if already added by the time-keyword boost)
-    if datetime_cols and continuous and not wants_time:
-        chart = _build_time_series(df, datetime_cols[0], continuous[0])
-        if chart:
-            charts.append(chart)
-            if len(charts) >= 6:
-                return charts
-
-    # Priority 4 — no-target fallbacks (only when no target exists)
-    if not target:
-        if continuous and not any(ch.chart_type == ChartType.HISTOGRAM for ch in charts):
-            chart = _build_histogram(df, continuous[0])
-            if chart:
-                charts.append(chart)
-        if cat_pool:
-            top_cat = cat_pool[0]
-            chart = _build_value_counts(df, top_cat, ordinal=top_cat in ordinal_cols)
-            if chart:
-                charts.append(chart)
-        if len(continuous) >= 2:
-            pair = _best_correlated_pair(df, continuous)
-            if pair:
-                chart = _build_scatter(df, pair[0], pair[1])
-                if chart:
-                    charts.append(chart)
-
-    # Priority 5 — value_counts for remaining categoricals, BUT only when no
-    # target exists. PROMPT-2 fix 5: a standalone "Pclass breakdown" (count) is
-    # always less informative than "Survival Rate by Pclass" — and we already
-    # ran that in Priority 1. So skip value_counts entirely when target is set.
-    if target is None:
-        used = {ch.x_key for ch in charts}
-        for c in cat_pool:
-            if len(charts) >= 6:
-                break
-            if c in used:
-                continue
-            chart = _build_value_counts(df, c, ordinal=c in ordinal_cols)
-            if chart:
-                charts.append(chart)
-                used.add(c)
-
-    # Spec invariant: at most ONE standalone histogram (split-by-target charts don't count).
-    standalone = [ch for ch in charts if ch.chart_type == ChartType.HISTOGRAM and ch.source_finding == "distribution"]
-    if len(standalone) > 1:
-        keep_id = standalone[0].id
-        charts = [
-            ch for ch in charts
-            if not (ch.chart_type == ChartType.HISTOGRAM and ch.source_finding == "distribution" and ch.id != keep_id)
-        ]
-
-    return charts[:6]
 
 
 # ── PROMPT-2: smart KPI selector ─────────────────────────────────────────────
@@ -1528,6 +1433,7 @@ def generate_dashboard_charts(
     column_roles: dict,
     query: str = "",
     narrative: DataNarrative | None = None,
+    ctx: "VizContext | None" = None,
 ) -> list[ChartConfig]:
     """Build a varied, insight-driven dashboard for any dataset shape.
 
@@ -1541,12 +1447,18 @@ def generate_dashboard_charts(
     Every chart carries a layout_hint ('half_width' / 'full_width') and shares
     a global color_map so categorical values render consistently across charts.
     """
+    ctx = ctx or build_context(df, narrative=narrative)
     target: str | None = column_roles.get("target_col")  # type: ignore[assignment]
+    # Phase 5: a measure (`units` 1-8) is never a category axis.
     cat_pool: list[str] = [
         c for c in (list(column_roles.get("low_card_cat") or []) + list(column_roles.get("binary_cols") or []))
-        if c != target
+        if c != target and c not in ctx.measures
     ]
     continuous: list[str] = list(column_roles.get("continuous") or [])
+    # The headline measure: the planned metric, else an outcome-like name, else the first.
+    planned = [c for c in (ctx.task.target_metrics if ctx.task else []) if c in continuous]
+    primary = next(iter(planned), None) or next(
+        (c for c in continuous if _KPI_PRIMARY_RE.search(c)), continuous[0] if continuous else None)
     datetime_cols: list[str] = list(column_roles.get("datetime_cols") or [])
     ordinal_cols: set[str] = set(column_roles.get("ordinal_cols") or [])
     numeric_cols = [
@@ -1558,6 +1470,13 @@ def generate_dashboard_charts(
     target_colors = _target_color_map(df, target) if target else {}
     charts: list[ChartConfig] = []
 
+    # A measure the question names comes first, as its distribution (`units` 1-8 included).
+    for c in [m for m in (ctx.task.target_metrics if ctx.task else []) if m in ctx.measures][:2]:
+        ch = _build_histogram(df, c)
+        if ch:
+            ch.x_label = c
+            charts.append(ch)
+
     # When the user's query asks about time/trends, surface the time-series
     # chart ahead of the target-by-cat block instead of after.
     wants_time = (
@@ -1565,7 +1484,7 @@ def generate_dashboard_charts(
         and any(k in query.lower() for k in _TIME_KEYWORDS)
     )
     if wants_time:
-        ch = _build_time_series(df, datetime_cols[0], continuous[0])
+        ch = month_line(df, datetime_cols[0], primary, ctx)
         if ch:
             ch.layout_hint = "full_width"
             charts.append(ch)
@@ -1594,7 +1513,7 @@ def generate_dashboard_charts(
 
     # ── Priority 2: time series (skip if already pushed up by `wants_time`) ─
     if datetime_cols and continuous and not wants_time:
-        ch = _build_time_series(df, datetime_cols[0], continuous[0])
+        ch = month_line(df, datetime_cols[0], primary, ctx)
         if ch:
             ch.layout_hint = "full_width"
             charts.append(ch)
@@ -1609,6 +1528,7 @@ def generate_dashboard_charts(
     )
     if composition_cat is None and cat_pool:
         composition_cat = cat_pool[0]
+    composition_cat = composition_cat if composition_cat not in ctx.measures else None
     if composition_cat:
         nu = int(df[composition_cat].dropna().nunique())
         ch: ChartConfig | None = None
@@ -1634,7 +1554,7 @@ def generate_dashboard_charts(
     if len(charts) < 8 and len(continuous) >= 2:
         pair = _best_correlated_pair(df, continuous)
         if pair:
-            ch = _build_scatter(df, pair[0], pair[1])
+            ch = oriented_scatter(df, pair[0], pair[1], ctx)
             if ch:
                 ch.layout_hint = "half_width"
                 charts.append(ch)
@@ -1676,8 +1596,56 @@ def generate_dashboard_charts(
     # don't need to know about the narrative.
     for ch in charts:
         ch.title = _humanize_title(ch.title, narrative)
+        _profile_rationale(ch, ctx)
 
     return charts[:8]
+
+
+def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
+    """Rationale for a data-profile chart (overview with no findings to show). Row-count charts
+    go to the Data tab: they describe the table, not an answer."""
+    target = ctx.roles.get("target_col")
+    src, x0 = ch.source_finding, ch.x_label or ch.x_key
+    col = next((c for c in ctx.df.columns if c == ch.x_key or c == x0 or
+                _display(c, ctx.narrative) == x0), ch.x_key)
+    if src == "time_series" and ch.rationale:
+        _why(ch, ctx, "profile:trend", "The main measure over time, totalled per month for an "
+             "additive measure and averaged for a rate.", ch.rationale.x, ch.rationale.y,
+             ch.rationale.aggregation, ch.rationale.n_rows, code=ch.rationale.code)
+    elif src == "target_rate_by_cat" and target:
+        for row in ch.data:   # Wilson CI from each bar's rate and n
+            rate, n = row[ch.y_keys[0]] / 100, row.get("n", 0)
+            ci = _ci(pd.Series([1] * round(rate * n) + [0] * (n - round(rate * n))), "mean") if n else None
+            if ci:
+                row[f"{ch.y_keys[0]}__ci"] = ci
+        ch.error_key = "__ci"
+        _why(ch, ctx, "profile:outcome_rate", f"The outcome ({target}) is a 0/1 flag, so each bar "
+             f"is its rate (%) in that {col}; whiskers are 95% Wilson intervals. Bars above the "
+             "overall rate are green.", col, target, "mean", int(ctx.df[[col, target]].dropna().shape[0]),
+             code=f"df.groupby({col!r})[{target!r}].mean() * 100")
+    elif src == "continuous_split_by_target" and target:
+        col = next((c for c in ctx.df.columns if ch.title.lower().startswith(str(c).lower())), col)
+        _why(ch, ctx, "profile:distribution_by_outcome", f"How {col} is distributed for each "
+             f"{target} value.", col, "count", "count", int(ctx.df[col].notna().sum()), split=target,
+             code=f"df.groupby({target!r})[{col!r}].value_counts(bins=...)")
+    elif src == "scatter" and ch.rationale:
+        _why(ch, ctx, "profile:relationship", f"The most correlated pair of measures; "
+             f"{ch.rationale.reason}.", ch.rationale.x, ch.rationale.y, "none", ch.rationale.n_rows,
+             code=ch.rationale.code)
+    elif src == "correlation_heatmap":
+        _why(ch, ctx, "profile:correlation_matrix", "Pearson r for every pair of numeric columns.",
+             "numeric columns", "pearson r", "none", len(ctx.df), code="df.corr(numeric_only=True)")
+    elif src == "distribution":
+        col = ch.x_label if ch.x_label in ctx.df.columns else col
+        _why(ch, ctx, "profile:distribution", f"How {col} is distributed.", col, "count", "count",
+             int(ctx.df[col].notna().sum()) if col in ctx.df.columns else len(ctx.df),
+             code=f"np.histogram(df[{col!r}].dropna())")
+    else:   # value counts, donut, top-N composition, stacked composition: describe the table
+        ch.placement = "data"
+        stacked = src == "composition_stacked" and target
+        _why(ch, ctx, "profile:row_count", f"How many rows fall in each {col}" +
+             (f", split by {target}." if stacked else "."), col, "count", "count", len(ctx.df),
+             split=target if stacked else None, code=f"df[{col!r}].value_counts()")
 
 
 # ── Last-resort fallback (DataContract only, no df available) ────────────────
@@ -1704,6 +1672,12 @@ def _contract_fallback_charts(contract: DataContract) -> list[ChartConfig]:
             y_label="Missing %",
             show_legend=False,
             source_finding="contract_fallback",
+            placement="data",
+            rationale=ChartRationale(
+                rule="profile:missing_values", reason="The data frame was not available, so this "
+                "shows the share of missing values per column from the data contract.",
+                x="column", y="missing %", aggregation="none", n_rows=contract.row_count,
+                code="df.isna().mean() * 100"),
         ))
     return charts
 
@@ -1804,64 +1778,516 @@ def _safe_sample(v):
         return None
 
 
+# ── Chart policy (Phase 5 Visualization): one chart per finding, why, and the lint ──────────
+# An analyst's chart choice is a lookup from what the finding is to what shows it:
+# trend → line over calendar months; comparison → bars of the metric with 95% CIs (means/rates);
+# relationship → scatter, driver on x; unusual values → histogram with the fences marked.
+# Every chart leaves through finalize_charts: lint, then repair or drop (agent's charts) or
+# warn (the user's charts). Rationale is built here from what was computed, never by a model.
+
+_OUTCOME_NAME = re.compile(
+    r"(?i)(revenue|sales|profit|margin|income|convert|churn|retain|retention|surviv|default|"
+    r"fraud|target|outcome|label)")
+_GENERIC_COLORS = {c.lower() for c in _PALETTE} | {_NEUTRAL_TEAL.lower(), "#6366f1"}
+_MAX_SUMMARY = 6
+_MAX_SERIES = 8
+_AGG_WORD = {"sum": "Total", "mean": "Average", "count": "Number of", "median": "Median",
+             "min": "Minimum", "max": "Maximum"}
+_LINT_NOTE = {
+    "pie_non_additive": "A pie shows parts of a whole, and an average is not one; bars compare "
+                        "these values more accurately.",
+    "pie_too_many_slices": "More than 5 slices are hard to compare; a bar chart reads more "
+                           "accurately.",
+    "measure_on_category_axis": "This axis is a measured quantity; a histogram shows its "
+                                "distribution better than one bar per value.",
+    "outcome_on_x": "The outcome usually goes on the vertical axis, with its driver on x.",
+    "too_many_series": "More than 8 series are hard to tell apart.",
+    "line_over_unordered": "A line implies an order; these categories have none, so bars fit "
+                           "better.",
+    "missing_axis_label": "An axis has no label.",
+    "empty_chart": "There is no data to plot for this choice.",
+    "dual_axis": "Two value axes on one chart invite false comparisons.",
+}
+
+
+@dataclass
+class VizContext:
+    """Everything chart selection reads (ADR-0001 context builder). No prompt: nothing to render."""
+    df: pd.DataFrame
+    roles: dict
+    measures: set[str]
+    date: str | None
+    task: AnalysisTask | None = None
+    findings: AnalysisFindings | None = None
+    evidence: dict[str, Evidence] = field(default_factory=dict)
+    narrative: DataNarrative | None = None
+
+
+def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
+    """Numeric quantities: continuous columns plus small integer measures (`units` 1-8), but not
+    ordinal codes (`Pclass`), flags or ids. A measure is never a category axis."""
+    ordinal = set(roles.get("ordinal_cols") or [])
+    small = {c for c in roles.get("low_card_cat") or []
+             if pd.api.types.is_numeric_dtype(df[c]) and c not in ordinal}
+    return set(roles.get("continuous") or []) | small
+
+
+def build_context(df: pd.DataFrame, task: AnalysisTask | None = None,
+                  findings: AnalysisFindings | None = None,
+                  narrative: DataNarrative | None = None) -> VizContext:
+    roles = classify_columns(df)
+    dates = list(roles.get("datetime_cols") or [])
+    return VizContext(df=df, roles=roles, measures=measure_columns(df, roles),
+                      date=dates[0] if dates else None, task=task, findings=findings,
+                      evidence={e.id: e for e in (findings.evidence if findings else [])},
+                      narrative=narrative)
+
+
+def month_agg(s: pd.Series) -> str:
+    """The analysis agent's MoM rule: values within 0-1 (rates, flags) by mean, else by total."""
+    v = pd.to_numeric(s, errors="coerce").dropna()
+    return "mean" if len(v) and v.between(0, 1).all() else "sum"
+
+
+def _is_flag(s: pd.Series) -> bool:
+    v = pd.to_numeric(s, errors="coerce").dropna()
+    return len(v) > 0 and set(v.unique()) <= {0, 1}
+
+
+def pick_outcome(cols: list[str], ctx: VizContext) -> tuple[str | None, str]:
+    """Which of a relationship's columns is the outcome (y), and why."""
+    planned = [c for c in (ctx.task.target_metrics if ctx.task else []) if c in cols]
+    for c in planned:
+        if _OUTCOME_NAME.search(c):
+            return c, f"{c} is the planned metric and names a business outcome"
+    target = ctx.roles.get("target_col")
+    if target in cols:
+        return target, f"{target} is the dataset's outcome column"
+    named = [c for c in cols if _OUTCOME_NAME.search(c)]
+    if len(named) == 1:
+        return named[0], f"{named[0]} names a business outcome"
+    return None, "neither column is marked as the outcome, so the order is the analysis order"
+
+
+def _label(metric: str, agg: str, ctx: VizContext) -> str:
+    disp = _display(metric, ctx.narrative)
+    if agg == "mean" and _is_flag(ctx.df[metric]):
+        return f"{_rate_label(metric, ctx.narrative)} (%)"
+    return f"{_AGG_WORD.get(agg, agg.title())} {disp.lower() if agg == 'count' else disp}"
+
+
+def _why(chart: ChartConfig, ctx: VizContext | None, rule: str, reason: str, x: str, y: str,
+         agg: str, n: int, ids: list[str] | None = None, code: str = "",
+         split: str | None = None) -> ChartConfig:
+    ids = [i for i in (ids or []) if ctx is None or i in ctx.evidence]
+    levels = [ctx.evidence[i].confidence for i in ids] if ctx else []
+    conf = min(levels, key=["low", "medium", "high"].index) if levels else None
+    chart.rationale = ChartRationale(rule=rule, reason=reason, x=x, y=y, split=split,
+                                     aggregation=agg, n_rows=int(n), evidence_ids=ids, code=code,
+                                     confidence=conf)
+    return chart
+
+
+def _ci(s: pd.Series, agg: str) -> list[float] | None:
+    """95% CI as [minus, plus] around the plotted value: Wilson for a 0/1 rate, t for a mean,
+    none for totals and counts (no sampling error to show)."""
+    v = pd.to_numeric(s, errors="coerce").dropna()
+    n = len(v)
+    if agg != "mean" or n < 2:
+        return None
+    if set(v.unique()) <= {0, 1}:
+        p, z = float(v.mean()), 1.96
+        centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+        half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+        return [round(max(p - (centre - half), 0) * 100, 3), round(max(centre + half - p, 0) * 100, 3)]
+    half = float(scipy_stats.t.ppf(0.975, n - 1) * v.std(ddof=1) / math.sqrt(n))
+    return [round(half, 4), round(half, 4)] if math.isfinite(half) else None
+
+
+def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
+               split: str | None = None, top: int = 15) -> ChartConfig | None:
+    """Bars of agg(metric) per x (one bar per split value inside each x), zero baseline, 95% CI
+    for means and rates, n per bar. Sorted by value unless x has a natural order."""
+    if agg == "pct":
+        agg = "mean"
+    cols = [x, metric] + ([split] if split else [])
+    if any(c not in df.columns for c in cols):
+        return None
+    sub = df[cols].copy()
+    sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
+    sub = sub.dropna()
+    if sub.empty or sub[x].nunique() < 2 and not split:
+        return None
+    rate = agg == "mean" and _is_flag(sub[metric])
+    scale = 100.0 if rate else 1.0
+    order = sub.groupby(x)[metric].agg(agg).sort_values(ascending=False)
+    natural = _sort_key_for(order.index)   # numeric labels (1, 2, 3) keep their order
+    keys = sorted(order.index[:top], key=natural) if natural else list(order.index[:top])
+    series = [None] if not split else list(sub[split].value_counts().index[:_MAX_SERIES])
+    data, any_ci = [], False
+    for k in keys:
+        row: dict = {x: str(k)}
+        for sv in series:
+            part = sub[(sub[x] == k) & ((sub[split] == sv) if split else True)][metric]
+            name = metric if sv is None else str(sv)
+            if part.empty:
+                continue
+            row[name] = round(float(part.agg(agg)) * scale, 4)
+            row[f"{name}__n"] = int(len(part))
+            if (ci := _ci(part, agg)) is not None:
+                row[f"{name}__ci"], any_ci = ci, True
+        data.append(row)
+    y_keys = [metric] if not split else [str(s) for s in series]
+    disp_x = _display(x, ctx.narrative)
+    title = f"{_label(metric, agg, ctx).replace(' (%)', '')} by {disp_x}" + (
+        f" and {_display(split, ctx.narrative)}" if split else "")
+    groupby = f"[{x!r}, {split!r}]" if split else repr(x)
+    return ChartConfig(
+        id=str(uuid.uuid4()),
+        chart_type=ChartType.BAR if len(keys) <= 8 else ChartType.HORIZONTAL_BAR,
+        title=title, data=data, x_key=x, y_keys=y_keys, colors=[],
+        x_label=disp_x, y_label=_label(metric, agg, ctx), show_legend=bool(split),
+        source_finding="group_bars", value_format="percent" if rate else "number",
+        error_key="__ci" if any_ci else None, split_key=split,
+        rationale=ChartRationale(rule="", reason="", x=x, y=metric, split=split, aggregation=agg,
+                                 n_rows=len(sub), code=f"df.groupby({groupby})[{metric!r}].{agg}()"),
+    )
+
+
+def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
+               split: str | None = None) -> ChartConfig | None:
+    """agg(metric) per calendar month (per day under ~3 months), one line per split value (top 8
+    by rows). Months match the analysis agent's MoM, so the chart shows the reported change."""
+    cols = [date, metric] + ([split] if split else [])
+    if any(c not in df.columns for c in cols):
+        return None
+    sub = df[cols].copy()
+    sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
+    sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
+    sub = sub.dropna()
+    if sub.empty:
+        return None
+    agg = month_agg(df[metric])
+    monthly = (sub[date].max() - sub[date].min()).days >= 90
+    period = sub[date].dt.to_period("M" if monthly else "D").astype(str)
+    rate = agg == "mean" and _is_flag(sub[metric])
+    scale = 100.0 if rate else 1.0
+    keys = [None] if not split else list(sub[split].value_counts().index[:_MAX_SERIES])
+    table = (sub.groupby([period] + ([sub[split]] if split else []))[metric].agg(agg) * scale)
+    if split:
+        table = table.unstack()[keys]
+    if len(table) < 2:
+        return None
+    data = []
+    for p, v in table.iterrows() if split else table.items():
+        row = {"period": str(p)}
+        if split:
+            row.update({str(k): round(float(v[k]), 4) for k in keys if pd.notna(v[k])})
+        else:
+            row[metric] = round(float(v), 4)
+        data.append(row)
+    step = "month" if monthly else "day"
+    by = f", per {_display(split, ctx.narrative)}" if split else ""
+    freq = "M" if monthly else "D"
+    groupby = f"[_period, {split!r}]" if split else "_period"
+    return ChartConfig(
+        id=str(uuid.uuid4()), chart_type=ChartType.LINE,
+        title=f"{_label(metric, agg, ctx).replace(' (%)', '')} by {step}{by}",
+        data=data, x_key="period", y_keys=[metric] if not split else [str(k) for k in keys],
+        colors=[], x_label=step.title(), y_label=_label(metric, agg, ctx),
+        show_legend=bool(split), source_finding="time_series", split_key=split,
+        value_format="percent" if rate else "number", layout_hint="full_width",
+        rationale=ChartRationale(
+            rule="", reason="", x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
+            code=f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
+                 f"df.groupby({groupby})[{metric!r}].{agg}()"),
+    )
+
+
+def fence_histogram(df: pd.DataFrame, col: str, ctx: VizContext, k: float = 3.0) -> ChartConfig | None:
+    """Full-range histogram (no tail clipping: the tail is the point) with the Tukey fences
+    Q1 - k·IQR and Q3 + k·IQR marked, and the count beyond them in the title."""
+    s = pd.to_numeric(df[col], errors="coerce").dropna() if col in df.columns else pd.Series()
+    if len(s) < 4:
+        return None
+    q1, q3 = float(s.quantile(0.25)), float(s.quantile(0.75))
+    lo, hi = q1 - k * (q3 - q1), q3 + k * (q3 - q1)
+    counts, edges = np.histogram(s, bins=max(_sturges_bins(len(s)), 20))
+    fmt = _bin_label_formatter(col, s)
+    data = [{"bin": fmt(edges[i]), "count": int(counts[i])} for i in range(len(counts))]
+
+    def bin_of(v: float) -> str:
+        return data[int(min(max(np.searchsorted(edges, v, side="right") - 1, 0), len(data) - 1))]["bin"]
+
+    refs = [{"axis": "x", "value": bin_of(hi), "label": f"Q3 + {k:g}×IQR = {hi:,.2f}"}]
+    if lo > float(s.min()):
+        refs.insert(0, {"axis": "x", "value": bin_of(lo), "label": f"Q1 − {k:g}×IQR = {lo:,.2f}"})
+    n_out = int(((s < lo) | (s > hi)).sum())
+    disp = _display(col, ctx.narrative)
+    return ChartConfig(
+        id=str(uuid.uuid4()), chart_type=ChartType.HISTOGRAM,
+        title=f"{n_out} unusual {disp.lower()} value{'s' if n_out != 1 else ''} outside "
+              f"{lo:,.2f} – {hi:,.2f}",
+        data=data, x_key="bin", y_keys=["count"], colors=[], x_label=disp, y_label="Rows",
+        show_legend=False, source_finding="anomaly", reference_lines=refs,
+        rationale=ChartRationale(
+            rule="", reason="", x=col, y="count", aggregation="count", n_rows=len(s),
+            code=f"q1, q3 = df[{col!r}].quantile([.25, .75]); "
+                 f"df[{col!r}].between(q1 - {k:g}*(q3-q1), q3 + {k:g}*(q3-q1))"),
+    )
+
+
+def oriented_scatter(df: pd.DataFrame, a: str, b: str, ctx: VizContext) -> ChartConfig | None:
+    """Scatter of a relationship with the driver on x and the outcome on y."""
+    outcome, why = pick_outcome([a, b], ctx)
+    x, y = (b, a) if outcome == a else (a, b)
+    chart = _build_scatter(df, x, y) if x in df.columns and y in df.columns else None
+    if chart is None:
+        return None
+    chart.colors = []
+    chart.x_label, chart.y_label = _display(x, ctx.narrative), _display(y, ctx.narrative)
+    n = int(df[[x, y]].dropna().shape[0])
+    r = df[x].corr(df[y]) if pd.api.types.is_numeric_dtype(df[x]) and pd.api.types.is_numeric_dtype(df[y]) else None
+    chart.title = f"{chart.y_label} vs {chart.x_label}" + (f" (r = {r:.2f})" if r is not None and pd.notna(r) else "")
+    return _why(chart, None, "", why, x, y, "none", n,
+                code=f"df[[{x!r}, {y!r}]].dropna().sample(min(n, 500), random_state=42)")
+
+
+def _finding_chart(kind: str, ctx: VizContext, ids: list[str], *args) -> ChartConfig | None:
+    df = ctx.df
+    if kind == "trend":
+        metric, split, claim = args
+        chart = month_line(df, ctx.date, metric, ctx, split) if ctx.date else None
+        rule, reason = ("trend→line", f"A trend is change over time; one line per {split} shows "
+                        f"which moved. {claim}") if split else (
+            "trend→line", f"A trend is change over time. {claim}")
+    elif kind == "segment":
+        x, metric, agg, split = args
+        chart = group_bars(df, x, metric, agg, ctx, split)
+        rule = "segment→bars"
+        reason = (f"Compares {agg} {metric} across {x}" + (f", one bar per {split} inside each "
+                  f"{x}, so the comparison holds within every {x}" if split else "")
+                  + ("; whiskers are 95% confidence intervals" if agg in ("mean", "pct") else
+                     "; totals have no sampling error, so no interval") + ".")
+    elif kind == "test":
+        x, metric = args
+        chart = group_bars(df, x, metric, "mean", ctx)
+        rule, reason = "test→group means", (f"The test compares mean {metric} between {x} groups;"
+                                            " bars show each mean with its 95% CI.")
+    elif kind == "correlation":
+        a, b = args
+        chart = oriented_scatter(df, a, b, ctx)
+        rule = "correlation→scatter"
+        reason = (f"A relationship between two measures is a scatter; {chart.rationale.reason}."
+                  if chart and chart.rationale else "")
+    else:   # anomaly
+        (col,) = args
+        chart = fence_histogram(df, col, ctx)
+        rule, reason = "anomaly→histogram", ("Unusual values sit in the tail of the distribution; "
+                                             "the lines mark the Tukey fences (Q ± 3×IQR).")
+    if chart is None or chart.rationale is None:
+        return None
+    r = chart.rationale
+    return _why(chart, ctx, rule, reason, r.x, r.y, r.aggregation, r.n_rows, ids, r.code, r.split)
+
+
+def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
+    """One chart per finding, in the order the plan asked for its kind (then analysis order)."""
+    f, task = ctx.findings, ctx.task
+    if f is None:
+        return []
+    cols = set(ctx.df.columns)
+    jobs: dict[str, list[tuple]] = {k: [] for k in ("trend", "segment", "correlation", "anomaly", "test")}
+
+    by_col: dict[str, list] = {}
+    for t in f.trends:
+        if t.column in cols:
+            by_col.setdefault(t.column, []).append(t)
+    split = next((s for s in (task.segments if task else []) if s in cols), None)
+    def tid(t) -> str:   # build_evidence's trend id
+        return f"trend:{t.column}" + (f" ({t.segment})" if t.segment else "") + f":{t.period}"
+
+    for col, ts in by_col.items():
+        per_seg = [t for t in ts if t.segment]
+        overall = [t for t in ts if not t.segment]
+        if per_seg and split:
+            top = max(per_seg, key=lambda t: abs(t.pct_change))
+            claim = f"{top.segment} changed {top.pct_change:+.1f}% {top.period or 'last period'}."
+            jobs["trend"].append(((col, split, claim), [tid(t) for t in per_seg]))
+        for t in overall:
+            claim = f"{col} changed {t.pct_change:+.1f}% {t.period or 'last period'}."
+            jobs["trend"].append(((col, None, claim), [tid(t)]))
+
+    seen: set[tuple] = set()
+    for s in sorted(f.segments, key=lambda s: "|" not in s.segment_column):   # stratified first
+        parts = [c for c in s.segment_column.split("|") if c]
+        if not parts or any(c not in cols for c in parts) or s.metric_column not in cols:
+            continue
+        x, sp = (parts[1], parts[0]) if len(parts) >= 2 else (parts[0], None)
+        seen.add((parts[0], s.metric_column))
+        jobs["segment"].append(((x, s.metric_column, s.aggregation or "mean", sp),
+                                [f"seg:{s.segment_column}/{s.metric_column}"]))
+    for i, t in enumerate(f.statistical_tests):
+        if not task or not task.target_metrics or not task.segments:
+            continue
+        x, metric = task.segments[0], task.target_metrics[0]
+        if x not in cols or metric not in cols:
+            continue
+        if (x, metric) in seen:   # already charted as a comparison: cite the test there
+            for args, ids in jobs["segment"]:
+                if args[0] == x and args[1] == metric or args[3] == x and args[1] == metric:
+                    ids.append(f"test:{i}")
+                    break
+            continue
+        seen.add((x, metric))
+        jobs["test"].append(((x, metric), [f"test:{i}"]))
+    for key in f.correlations:
+        a, _, b = key.partition("__")
+        if a in cols and b in cols:
+            jobs["correlation"].append(((a, b), [f"corr:{key}"]))
+    for col in dict.fromkeys(a.column for a in f.anomalies):
+        if col in cols:
+            jobs["anomaly"].append(((col,), [f"anom:{col}"]))
+
+    order = {"trend": "trend", "segmentation": "segment", "correlation": "correlation",
+             "anomaly": "anomaly", "hypothesis": "test"}
+    asked = [order[t.value if hasattr(t, "value") else t] for t in (task.analysis_types if task else [])
+             if (t.value if hasattr(t, "value") else t) in order]
+    kinds = list(dict.fromkeys(asked + list(jobs)))
+    charts: list[ChartConfig] = []
+    for kind in kinds:
+        for args, ids in jobs[kind]:
+            if len(charts) >= _MAX_SUMMARY:
+                return charts
+            chart = _finding_chart(kind, ctx, ids, *args)
+            if chart:
+                charts.append(chart)
+    return charts
+
+
+def _repair(chart: ChartConfig, label: str, ctx: VizContext) -> ChartConfig | None:
+    """The deterministic fix for one lint rule, or None to drop the chart."""
+    r = chart.rationale
+    if label == "missing_axis_label":
+        chart.x_label = chart.x_label or (_display(r.x, ctx.narrative) if r else chart.x_key)
+        chart.y_label = chart.y_label or (_label(r.y, r.aggregation, ctx) if r and r.y in ctx.df.columns
+                                          else "Rows")
+        return chart
+    if label in ("pie_too_many_slices", "pie_non_additive"):
+        chart.chart_type = ChartType.HORIZONTAL_BAR
+        if r:
+            r.reason += " Shown as bars: a pie only works for up to 5 parts of a whole."
+        return _repair(chart, "missing_axis_label", ctx)
+    if label == "line_over_unordered":
+        chart.chart_type = ChartType.BAR
+        return chart
+    if label == "too_many_series":
+        totals = {k: sum(float(d.get(k) or 0) for d in chart.data) for k in chart.y_keys}
+        keep = sorted(chart.y_keys, key=lambda k: -abs(totals[k]))[:_MAX_SERIES]
+        chart.y_keys = [k for k in chart.y_keys if k in keep]
+        if r:
+            r.reason += f" Showing the {_MAX_SERIES} largest series."
+        return chart
+    if label == "outcome_on_x" and len(chart.y_keys) == 1:
+        x, y = chart.x_key, chart.y_keys[0]
+        chart.x_key, chart.y_keys = y, [x]
+        chart.x_label, chart.y_label = chart.y_label, chart.x_label
+        if r:
+            r.x, r.y = y, x
+        return chart
+    if label == "measure_on_category_axis" and r and r.x in ctx.df.columns:
+        hist = _build_histogram(ctx.df, r.x)
+        if hist is None:
+            return None
+        hist.colors, hist.placement = [], chart.placement
+        return _why(hist, ctx, "distribution→histogram",
+                    f"{r.x} is a measured quantity, so its distribution is a histogram.",
+                    r.x, "count", "count", int(ctx.df[r.x].notna().sum()), r.evidence_ids,
+                    f"np.histogram(df[{r.x!r}].dropna())")
+    return None   # empty_chart, dual_axis: nothing honest to repair
+
+
+def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
+                    user_chosen: bool = False) -> list[ChartConfig]:
+    """Every chart passes here before it leaves the backend. Agent-chosen charts are repaired or
+    dropped until they lint clean (a trace line per drop); a chart the user chose is drawn as
+    asked, with a note per lint objection. Generic palette colours become [] (theme decides)."""
+    out = []
+    for chart in charts:
+        if chart.colors and all(c.lower() in _GENERIC_COLORS for c in chart.colors):
+            chart.colors = []
+        if chart.rationale is None:
+            if not user_chosen:
+                trace_verdict("visualization", VIZ_CARD.version, "no_rationale")
+                continue
+            _why(chart, ctx, "user:choice", "Drawn as you asked.", chart.x_key,
+                 (chart.y_keys or [""])[0], "?", len(chart.data))
+        scatter = chart.chart_type == ChartType.SCATTER
+        outcome = pick_outcome([chart.x_key, *chart.y_keys], ctx)[0] if scatter else None
+        labels = chart_lint(chart.model_dump(mode="json"), ctx.measures, outcome)
+        if user_chosen:
+            chart.lint_warnings = [_LINT_NOTE.get(lb, lb) for lb in labels]
+            out.append(chart)
+            continue
+        for _ in range(3):
+            if not labels or chart is None:
+                break
+            chart = _repair(chart, labels[0], ctx)
+            if chart is not None:
+                labels = chart_lint(chart.model_dump(mode="json"), ctx.measures,
+                                    outcome if chart.chart_type == ChartType.SCATTER else None)
+        if chart is None or labels:
+            trace_verdict("visualization", VIZ_CARD.version, f"dropped:{(labels or ['repair'])[0]}")
+            continue
+        out.append(chart)
+    return out
+
+
 # ── Public entry point ───────────────────────────────────────────────────────
 
 async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]:
-    """Build Recharts chart configs by classifying the DataFrame's columns and
-    picking informative visualizations. Falls back to contract metadata if df
-    isn't available (resume failure, etc)."""
+    """One chart per finding (charts_for_findings), topped up with data-profile charts when there
+    are fewer than 4, then linted (finalize_charts). Falls back to contract metadata when the
+    frame isn't available (resume failure, etc)."""
     contract = session.data_contract
     if contract is None:
         raise ValueError("DataContract must be present before visualization.")
 
     df_parquet: bytes | None = session.__dict__.get("_df_parquet")
-    if df_parquet is None:
-        return _contract_fallback_charts(contract)
-
     try:
-        df = pd.read_parquet(io.BytesIO(df_parquet))
+        df = pd.read_parquet(io.BytesIO(df_parquet)) if df_parquet else pd.DataFrame()
     except Exception:
-        return _contract_fallback_charts(contract)
-
+        df = pd.DataFrame()
     if df.empty:
         return _contract_fallback_charts(contract)
 
-    query = session.task_plan.raw_query if session.task_plan else ""
-    roles = classify_columns(df)
-    # PROMPT-6: generate_dashboard_charts replaces the old auto_generate_charts.
-    # It adds composition charts (donut, stacked-bar, horizontal-bar),
-    # correlation heatmaps, layout hints, color-consistency across charts, and
-    # insight-bearing titles. `narrative` provides humanized column labels.
-    charts = generate_dashboard_charts(df, roles, query=query, narrative=session.narrative)
-
-    if not charts:
-        return _contract_fallback_charts(contract)
-    return charts
+    ctx = build_context(df, session.task_plan, session.analysis_findings, session.narrative)
+    charts = charts_for_findings(ctx)
+    if len(charts) < 4:
+        query = session.task_plan.raw_query if session.task_plan else ""
+        shown = {(c.rationale.x, c.rationale.y) for c in charts if c.rationale}
+        for ch in generate_dashboard_charts(df, ctx.roles, query=query,
+                                            narrative=session.narrative, ctx=ctx):
+            if ch.rationale and (ch.rationale.x, ch.rationale.y) in shown:
+                continue
+            if ch.placement == "summary" and sum(c.placement == "summary" for c in charts) >= _MAX_SUMMARY:
+                continue
+            charts.append(ch)
+    charts = finalize_charts(charts, ctx)
+    return charts or _contract_fallback_charts(contract)
 
 
 def build_single_chart(
     df: "pd.DataFrame",
     params: "TargetedParams",
 ) -> "ChartConfig":
-    """Build one ChartConfig from CHART_REQUEST params + DataFrame.
-
-    Deterministic — no LLM call. Falls back to a reasonable default when
-    columns the user named aren't present in the dataframe (returns a chart
-    over whatever columns are valid).
-    """
+    """One chart the user asked for (CHART_REQUEST). Deterministic; drawn as asked, with a lint
+    note when the choice misleads. Bars and pies aggregate the analysis way: totals for additive
+    measures, means for rates; a time x becomes a monthly line's axis."""
     chart_type = params.chart_type or ChartType.BAR
-
-    # Resolve x and y from TargetedParams. Prefer explicit metric_column for y,
-    # group_by for x. Fall back to the first column the user listed in
-    # target_columns. Only keep columns that actually exist in df.
     available = list(df.columns)
-    x_key = None
-    y_keys: list[str] = []
-
-    if params.group_by and params.group_by in available:
-        x_key = params.group_by
-    if params.metric_column and params.metric_column in available:
-        y_keys = [params.metric_column]
+    x_key = params.group_by if params.group_by in available else None
+    y_keys: list[str] = [params.metric_column] if params.metric_column in available else []
     for col in params.target_columns:
         if col not in available:
             continue
@@ -1870,48 +2296,42 @@ def build_single_chart(
         elif col not in y_keys:
             y_keys.append(col)
 
+    ctx = build_context(df)
     if x_key is None or not y_keys:
-        # Last-resort fallback: pick first non-id column for x, first continuous for y.
-        roles = classify_columns(df)
-        id_cols: list[str] = roles.get("id_cols", [])  # type: ignore[assignment]
-        continuous_cols: list[str] = roles.get("continuous", [])  # type: ignore[assignment]
-        for col in df.columns:
-            if col not in id_cols:
-                x_key = x_key or col
-                break
-        for col in df.columns:
-            if col in continuous_cols:
-                if col != x_key:
-                    y_keys = [col]
-                    break
-        if x_key is None and len(df.columns) > 0:
-            x_key = df.columns[0]
-        if not y_keys and len(df.columns) > 1:
-            y_keys = [df.columns[1]]
+        # Last resort: first non-id column on x, first measure on y.
+        id_cols = set(ctx.roles.get("id_cols") or [])
+        x_key = x_key or next((c for c in available if c not in id_cols), available[0] if available else "")
+        y_keys = y_keys or [next((c for c in available if c in ctx.measures and c != x_key),
+                                 available[1] if len(available) > 1 else x_key)]
+    y = y_keys[0]
+    numeric_y = y in df.columns and pd.api.types.is_numeric_dtype(df[y])
+    agg = month_agg(df[y]) if numeric_y else "count"
 
-    # Build chart data: small aggregation so chat-rendered charts stay light.
-    grouped_types = {ChartType.BAR, ChartType.HORIZONTAL_BAR, ChartType.PIE, ChartType.DONUT}
-    if chart_type in grouped_types and x_key and y_keys:
-        try:
-            agg = df.groupby(x_key)[y_keys].sum().reset_index().head(20)
-            data = agg.to_dict("records")
-        except Exception:
-            data = df[[x_key] + y_keys].head(20).to_dict("records")
-    elif x_key and y_keys:
-        # Line / scatter / histogram: pass raw rows, truncated.
-        data = df[[x_key] + y_keys].dropna().head(200).to_dict("records")
-    else:
-        data = []
-
-    return ChartConfig(
-        id=str(uuid.uuid4()),
-        chart_type=chart_type,
-        title=f"{y_keys[0]} by {x_key}" if y_keys and x_key else f"{x_key or 'data'} distribution",
-        data=data,
-        x_key=x_key or "",
-        y_keys=y_keys,
-        colors=["#6366f1"] * max(len(y_keys), 1),
-        show_legend=True,
-        show_grid=True,
-        source_finding="user_chart_request",
-    )
+    chart: ChartConfig | None = None
+    if chart_type == ChartType.SCATTER and numeric_y:
+        chart = _build_scatter(df, x_key, y)
+        if chart:
+            chart.colors, agg = [], "none"
+    elif chart_type == ChartType.HISTOGRAM:
+        chart = _build_histogram(df, y if numeric_y else x_key)
+        agg = "count"
+    elif x_key == ctx.date and numeric_y:
+        chart = month_line(df, x_key, y, ctx)
+    elif numeric_y:
+        chart = group_bars(df, x_key, y, agg, ctx, top=20)
+    if chart is None:   # non-numeric y or nothing to aggregate: rows per x
+        vc = df[x_key].astype(str).value_counts().head(20)
+        chart = ChartConfig(id=str(uuid.uuid4()), chart_type=chart_type, title=f"Rows by {x_key}",
+                            data=[{x_key: k, "count": int(v)} for k, v in vc.items()], x_key=x_key,
+                            y_keys=["count"], x_label=_display(x_key, None), y_label="Rows",
+                            source_finding="user_chart_request")
+        agg, y = "count", "count"
+    chart.chart_type = chart_type
+    chart.source_finding = "user_chart_request"
+    chart.error_key = chart.error_key if chart_type in (ChartType.BAR, ChartType.HORIZONTAL_BAR) else None
+    r = chart.rationale
+    _why(chart, ctx, "user:chart_request", f"Drawn as you asked: {chart_type.value} of "
+         f"{agg if agg not in ('none', 'count') else ''} {y} by {x_key}.".replace("  ", " "),
+         r.x if r else x_key, r.y if r else y, agg, r.n_rows if r else len(df),
+         code=r.code if r else "")
+    return finalize_charts([chart], ctx, user_chosen=True)[0]
