@@ -86,20 +86,53 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
 # Fan-out and metric checks read a semantic layer (semantic_layer.SemanticLayer); typed loosely to
 # keep this module free of imports from the layer, which imports it.
 
+def _same_grain_source(query: exp.Expression) -> exp.Table | None:
+    """The one table a subquery/CTE only filters or projects (no join, GROUP BY, aggregate or
+    DISTINCT), so its rows have that table's grain; else None."""
+    if not isinstance(query, exp.Select) or query.args.get("joins") or query.args.get("group") \
+            or query.args.get("distinct") or query.find(exp.AggFunc):
+        return None
+    src = query.args.get("from") or query.args.get("from_")
+    return src.this if src is not None and isinstance(src.this, exp.Table) else None
+
+
 def _logical_tables(stmt: exp.Expression, layer) -> dict[str, str]:
     """alias (or bare table name) -> the layer's logical table name, over the whole statement.
+    Subqueries and CTEs that keep one table's grain resolve to that table, so
+    `(SELECT order_id, fee FROM orders WHERE ...) o` is still the orders grain.
     ponytail: one map for all scopes; an alias reused across CTEs resolves to the last one."""
     by_source = {}
     for t in layer.tables:
         by_source[t.source.lower()] = t.name
         by_source[t.name.lower()] = t.name
+
+    def base(tbl: exp.Table) -> str | None:
+        full = ".".join(p for p in (tbl.db, tbl.name) if p).lower()
+        return by_source.get(full) or by_source.get(tbl.name.lower())
+
+    ctes = {}
+    for cte in stmt.find_all(exp.CTE):
+        src = _same_grain_source(cte.this)
+        if src is not None and base(src):
+            ctes[cte.alias.lower()] = base(src)
     out = {}
     for tbl in stmt.find_all(exp.Table):
-        full = ".".join(p for p in (tbl.db, tbl.name) if p).lower()
-        logical = by_source.get(full) or by_source.get(tbl.name.lower())
+        logical = ctes.get(tbl.name.lower()) if not tbl.db else None
+        logical = logical or base(tbl)
         if logical:
-            out[(tbl.alias_or_name).lower()] = logical
+            out[tbl.alias_or_name.lower()] = logical
+    for sq in stmt.find_all(exp.Subquery):
+        src = _same_grain_source(sq.this)
+        if sq.alias and src is not None and base(src):
+            out[sq.alias.lower()] = base(src)
     return out
+
+
+def _scope(select: exp.Select, aliases: dict[str, str]) -> list[str]:
+    """Aliases of the tables and same-grain subqueries this SELECT reads directly."""
+    nodes = [*select.find_all(exp.Table), *select.find_all(exp.Subquery)]
+    return [n.alias_or_name.lower() for n in nodes
+            if n.find_ancestor(exp.Select) is select and n.alias_or_name.lower() in aliases]
 
 
 def _owner(col: exp.Column, aliases: dict[str, str], scope_aliases: list[str], layer) -> str | None:
@@ -135,8 +168,7 @@ def sql_fanout(sql: str, layer, dialect: str = "postgres") -> str | None:
         (ft, fc), (tt, tc) = r.from_.split("."), r.to.split(".")
         rels[(ft, fc, tt, tc)] = r.cardinality
     for select in stmt.find_all(exp.Select):
-        scope = [t.alias_or_name.lower() for t in select.find_all(exp.Table)
-                 if t.find_ancestor(exp.Select) is select and t.alias_or_name.lower() in aliases]
+        scope = _scope(select, aliases)
         edges = []   # (one_alias, many_alias)
         for eq in select.find_all(exp.EQ):
             if eq.find_ancestor(exp.Select) is not select:
@@ -190,13 +222,20 @@ def _canonical(node: exp.Expression, aliases: dict[str, str], dialect: str) -> s
 
 
 def sql_uses_metric(sql: str, metric, layer, dialect: str = "postgres") -> bool:
-    """Does the query contain the metric's expression, up to table aliases and whitespace?"""
+    """Does the query contain the metric's expression, up to table aliases, column qualification
+    and whitespace?"""
     try:
         stmt = sqlglot.parse_one(sql, read=dialect)
     except sqlglot.errors.ParseError:
         return False
     target = _canonical(sqlglot.parse_one(metric.expr, read=dialect), {}, dialect)
     aliases = _logical_tables(stmt, layer)
+    for select in stmt.find_all(exp.Select):   # `SUM(amount)` in a one-table scope is qualified
+        scope = _scope(select, aliases)
+        for col in select.find_all(exp.Column):
+            if not col.table and col.find_ancestor(exp.Select) is select \
+                    and (owner := _owner(col, aliases, scope, layer)):
+                col.set("table", exp.to_identifier(owner))
     return any(_canonical(n, aliases, dialect) == target
                for n in stmt.walk() if type(n) is type(metric.parsed))
 

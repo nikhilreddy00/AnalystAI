@@ -154,3 +154,35 @@ def test_connection_is_usable_after_a_read_only_query(engine):
     run_readonly(engine, "SELECT 1")
     with engine.connect() as conn:   # the pooled connection must not stay read-only
         assert conn.execute(text("SHOW transaction_read_only")).scalar() == "off"
+
+
+# Regressions from the Phase 4 k=3 run (sql-20261028T024536Z): the model's own SQL.
+
+def test_fanout_through_a_same_grain_subquery_is_flagged():
+    sql = """
+    SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) AS net_line_value,
+           SUM(o_fees.shipping_fee) AS total_shipping_fees
+    FROM shop.order_items oi
+    JOIN shop.orders o ON o.order_id = oi.order_id
+    JOIN (SELECT order_id, shipping_fee FROM shop.orders
+          WHERE status = 'completed') o_fees ON o_fees.order_id = oi.order_id
+    WHERE o.status = 'completed'"""
+    assert "orders" in g.sql_fanout(sql, LAYERS["retail"])
+    cte = ("WITH c AS (SELECT order_id, shipping_fee FROM shop.orders WHERE status = 'completed') "
+           "SELECT SUM(c.shipping_fee) FROM c JOIN shop.order_items oi ON oi.order_id = c.order_id")
+    assert g.sql_fanout(cte, LAYERS["retail"])
+    grouped = ("SELECT SUM(f.fee) FROM shop.order_items oi JOIN (SELECT order_id, SUM(shipping_fee) "
+               "AS fee FROM shop.orders GROUP BY order_id) f ON f.order_id = oi.order_id")
+    assert g.sql_fanout(grouped, LAYERS["retail"]) is None   # a grouped subquery has its own grain
+
+
+def test_metric_with_unqualified_columns_in_a_one_table_scope_counts():
+    layer = LAYERS["banking"]
+    sql = """
+    SELECT a.branch, COALESCE(SUM(f.fees), 0) AS fees
+    FROM bank.accounts a
+    LEFT JOIN (SELECT account_id, -SUM(amount) FILTER (WHERE category = 'fees') AS fees
+               FROM bank.transactions GROUP BY account_id) f ON f.account_id = a.account_id
+    GROUP BY a.branch"""
+    assert g.sql_uses_metric(sql, layer.metric("fee_income"), layer)
+    assert g.sql_fanout(sql, layer) is None
