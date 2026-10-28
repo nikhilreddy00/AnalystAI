@@ -1,0 +1,6 @@
+id: bank-simple-01
+domain: banking
+category: simple
+question: How many accounts does each branch have?
+golden_sql: |
+  SELECT branch, COUNT(*) FROM bank.accounts GROUP BY branch

@@ -1,0 +1,15 @@
+id: retail-fanout-01
+domain: retail
+category: fanout
+question: What was the total shipping fee collected on completed orders that included at least one electronics
+  item?
+golden_sql: |
+  SELECT SUM(o.shipping_fee) FROM shop.orders o
+  WHERE o.status = 'completed' AND EXISTS (
+    SELECT 1 FROM shop.order_items oi JOIN shop.products p ON p.product_id = oi.product_id
+    WHERE oi.order_id = o.order_id AND p.category = 'electronics')
+trap_sql: |
+  SELECT SUM(o.shipping_fee) FROM shop.orders o
+  JOIN shop.order_items oi ON oi.order_id = o.order_id
+  JOIN shop.products p ON p.product_id = oi.product_id
+  WHERE o.status = 'completed' AND p.category = 'electronics'

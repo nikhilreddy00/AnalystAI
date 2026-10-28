@@ -6,7 +6,9 @@ datagen `truth` dict — never typed by hand into a case, so a case can't drift 
 """
 from __future__ import annotations
 
+import datetime
 import math
+import numbers
 import re
 from typing import Any
 
@@ -326,3 +328,67 @@ E2E_CHECKS = {
     "must_not_match": lambda s, df, truth, **kw: check_must_not_match(s, **kw),
     "findings": lambda s, df, truth, **kw: check_findings(s, df, truth, **kw),
 }
+
+
+# ── SQL (Phase 4): execution accuracy by result-set equality ───────────────────
+
+def _cell(v: Any) -> tuple:
+    """Sortable, comparable form of one result cell. Numbers (incl. Decimal and bool) compare
+    as floats; dates and midnight timestamps as ISO dates; everything else as text."""
+    if v is None:
+        return (0, 0.0)
+    if isinstance(v, numbers.Number):
+        return (1, float(v))
+    if isinstance(v, datetime.datetime):
+        return (2, (v.date() if v.time() == datetime.time() else v).isoformat())
+    if isinstance(v, datetime.date):
+        return (2, v.isoformat())
+    return (2, str(v))
+
+
+def _same(a: tuple, b: tuple) -> bool:
+    if a[0] == 1 and b[0] == 1:
+        return math.isclose(a[1], b[1], rel_tol=1e-4, abs_tol=0.005)
+    return a == b
+
+
+def _same_seq(xs: list, ys: list) -> bool:
+    return len(xs) == len(ys) and all(_same(x, y) for x, y in zip(xs, ys))
+
+
+def result_matches(pred: list[tuple], gold: list[tuple], ordered: bool = False
+                   ) -> tuple[bool, str]:
+    """Does the predicted result set equal the golden one? Column names and order are
+    ignored and extra predicted columns are allowed (each golden column must map to a
+    distinct predicted column); rows must match exactly as a multiset, or as a sequence when
+    the question asks for an order. Numbers within rel 1e-4 / abs 0.005."""
+    if len(pred) != len(gold):
+        return False, f"{len(pred)} rows, expected {len(gold)}"
+    if not gold:
+        return True, "both empty"
+    p_rows = [[_cell(v) for v in r] for r in pred]
+    g_rows = [[_cell(v) for v in r] for r in gold]
+    n_p, n_g = len(p_rows[0]), len(g_rows[0])
+    if n_p < n_g:
+        return False, f"{n_p} columns, expected at least {n_g}"
+    if n_p > 8 and n_p > n_g:   # ponytail: mapping search is exponential in columns
+        return False, f"{n_p} columns: too many to map onto {n_g}"
+    p_cols = [sorted(r[i] for r in p_rows) for i in range(n_p)]
+    g_cols = [sorted(r[j] for r in g_rows) for j in range(n_g)]
+    cands = [[i for i in range(n_p) if _same_seq(p_cols[i], g_cols[j])] for j in range(n_g)]
+    if not all(cands):
+        return False, f"no predicted column matches golden column(s) {[j for j, c in enumerate(cands) if not c]}"
+
+    def rows_match(mapping: list[int]) -> bool:
+        proj = [[r[i] for i in mapping] for r in p_rows]
+        a, b = (proj, g_rows) if ordered else (sorted(proj), sorted(g_rows))
+        return all(_same_seq(x, y) for x, y in zip(a, b))
+
+    def search(j: int, used: list[int]) -> bool:
+        if j == n_g:
+            return rows_match(used)
+        return any(search(j + 1, used + [i]) for i in cands[j] if i not in used)
+
+    if search(0, []):
+        return True, "match"
+    return False, "columns match but rows differ" + (" (order)" if ordered else "")

@@ -1,0 +1,6 @@
+id: retail-simple-05
+domain: retail
+category: simple
+question: What is the average shipping fee per order for web orders, any status?
+golden_sql: |
+  SELECT AVG(shipping_fee) FROM shop.orders WHERE channel = 'web'

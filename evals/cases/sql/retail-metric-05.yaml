@@ -1,0 +1,15 @@
+id: retail-metric-05
+domain: retail
+category: metric
+question: How many active customers did we have in each calendar month of 2025? One row per month.
+golden_sql: |
+  SELECT date_trunc('month', o.order_date)::date AS month, COUNT(DISTINCT o.customer_id) FILTER (WHERE o.status = 'completed' AND NOT c.is_internal) AS active_customers
+  FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+  WHERE o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+  GROUP BY 1
+trap_sql: |
+  SELECT date_trunc('month', o.order_date)::date AS month, COUNT(DISTINCT o.customer_id)
+  FROM shop.orders o
+  WHERE o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+  GROUP BY 1
+metric: active_customers

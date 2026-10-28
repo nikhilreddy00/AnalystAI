@@ -1,0 +1,8 @@
+id: retail-join-01
+domain: retail
+category: join
+question: For each customer segment, how many distinct customers placed at least one order (any status)?
+golden_sql: |
+  SELECT c.segment, COUNT(DISTINCT o.customer_id) AS customers
+  FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+  GROUP BY c.segment

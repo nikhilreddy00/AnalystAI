@@ -1,0 +1,15 @@
+id: bank-join-01
+domain: banking
+category: join
+question: How much salary was paid into USD accounts at each branch in 2025?
+golden_sql: |
+  SELECT a.branch, SUM(t.amount) AS salary
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE t.category = 'salary' AND a.currency = 'USD'
+    AND t.posted_date >= DATE '2025-01-01' AND t.posted_date < DATE '2026-01-01'
+  GROUP BY a.branch
+trap_sql: |
+  SELECT a.branch, SUM(t.amount) AS salary
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE t.category = 'salary'
+  GROUP BY a.branch

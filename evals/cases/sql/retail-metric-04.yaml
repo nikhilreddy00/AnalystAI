@@ -1,0 +1,11 @@
+id: retail-metric-04
+domain: retail
+category: metric
+question: How many active customers did we have in Q4 2025 (October to December 2025)?
+golden_sql: |
+  SELECT COUNT(DISTINCT o.customer_id) FILTER (WHERE o.status = 'completed' AND NOT c.is_internal) FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+  WHERE o.order_date >= DATE '2025-10-01' AND o.order_date < DATE '2026-01-01'
+trap_sql: |
+  SELECT COUNT(DISTINCT customer_id) FROM shop.orders
+  WHERE order_date >= DATE '2025-10-01' AND order_date < DATE '2026-01-01'
+metric: active_customers

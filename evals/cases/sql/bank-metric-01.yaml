@@ -1,0 +1,15 @@
+id: bank-metric-01
+domain: banking
+category: metric
+question: What was total spending on USD accounts in 2025?
+golden_sql: |
+  SELECT -SUM(t.amount) FILTER (WHERE t.amount < 0 AND t.category NOT IN ('transfer', 'fees'))
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE a.currency = 'USD'
+    AND t.posted_date >= DATE '2025-01-01' AND t.posted_date < DATE '2026-01-01'
+trap_sql: |
+  SELECT -SUM(t.amount)
+  FROM bank.transactions t JOIN bank.accounts a ON a.account_id = t.account_id
+  WHERE a.currency = 'USD' AND t.amount < 0
+    AND t.posted_date >= DATE '2025-01-01' AND t.posted_date < DATE '2026-01-01'
+metric: total_spend

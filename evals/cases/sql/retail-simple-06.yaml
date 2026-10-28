@@ -1,0 +1,6 @@
+id: retail-simple-06
+domain: retail
+category: simple
+question: How many internal (staff or test) customer accounts are there?
+golden_sql: |
+  SELECT COUNT(*) FROM shop.customers WHERE is_internal

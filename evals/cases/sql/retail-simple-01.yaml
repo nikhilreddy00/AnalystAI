@@ -1,0 +1,6 @@
+id: retail-simple-01
+domain: retail
+category: simple
+question: How many orders were placed through each sales channel? Count every order whatever its status.
+golden_sql: |
+  SELECT channel, COUNT(*) AS orders FROM shop.orders GROUP BY channel

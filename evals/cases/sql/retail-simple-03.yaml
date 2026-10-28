@@ -1,0 +1,8 @@
+id: retail-simple-03
+domain: retail
+category: simple
+question: How many products are in the Electronics category?
+golden_sql: |
+  SELECT COUNT(*) FROM shop.products WHERE category = 'electronics'
+trap_sql: |
+  SELECT COUNT(*) FROM shop.products WHERE category = 'Electronics'
