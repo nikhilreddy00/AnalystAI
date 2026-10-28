@@ -1,7 +1,7 @@
 # Phase 5, PR 3 review: Cleaning agent on the agent contract
 
 Deterministic (no LLM), card `cleaning rules-v1`, 2026-10-28, branch `phase-5-cleaning`.
-- **Final cleaning report: `evals/reports/cleaning-20261028T225227Z.*`**: 25 cases (5 holdout),
+- **Final cleaning report: `evals/reports/cleaning-20261028T230928Z.*`** (after the second audit): 25 cases (5 holdout),
   k=3, $0. Paired against the baseline `cleaning-20261028T223727Z-rescored` (the old LLM agent, k=1,
   $0.07; rescored once for a detail-text fix, verdicts unchanged).
 - **E2E "before":** `e2e-20261028T172325Z`, the last Visualization gate.
@@ -148,4 +148,21 @@ injection text, so every row got it.
   - the resume path reloads the cleaned cache, so the cleaning evidence matches the analysed frame;
   - the critic never reads evidence;
   - no other suite runs cleaning (pinned by `test_other_suites_never_run_cleaning`).
-- **Still open:** none for Cleaning. The carry-overs are listed above.
+- **Second audit (before the next phase), each with a test that fails on the old code.** Found by
+  fuzzing (300 random messy frames, plus targeted edge frames):
+  - text without a year (`Jan`, `Monday`, `12:30`) was parsed as dates with an invented year or
+    today's date. A date now needs a 4-digit year or a full d/m/y;
+  - list or dict cells (possible from the API connector) crashed cleaning. They're skipped and logged,
+    and duplicates are compared on a hashable view;
+  - duplicate or non-string column names (a SQL join returning two `id`, Excel year headers) failed at
+    ingestion's parquet handoff. Every connector's frame now gets unique string names
+    (`id`, `id.1`), like `read_csv`;
+  - "Drop those columns" removed the columns from the frame but not from the DataContract, so later
+    agents saw columns that no longer exist;
+  - one unreadable value made the cleaning evidence "medium" confidence. Now it takes > 5% of a
+    column.
+- The E2E path is proven unchanged: the cleaned frames and audits on the 3 E2E datasets are
+  byte-identical before and after (SHA-1 compared), so there was no paid re-run. Cleaning k=3 still
+  scores 100% / 0% / 0 hard.
+- **Still open:** none for Cleaning. The carry-overs are listed above (contract `row_count` is still
+  the loaded count after dedup; analysis takes its n from the code that ran).

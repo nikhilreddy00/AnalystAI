@@ -38,6 +38,7 @@ _UNIT_RE = re.compile(
     r"(?i)\s*(?:kg|g|mg|ml|l|cm|mm|m|km|lb|oz|ft|in|sq\.?\s*ft|hrs?|mins?|secs?|pcs?|units?)\s*$"
 )
 _COMMA_NUM_RE = re.compile(r"\d,\d")
+_HAS_YEAR_RE = re.compile(r"\d{4}|\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2}\b")
 
 
 def triage_columns(df: pd.DataFrame) -> dict[str, list[str]]:
@@ -169,6 +170,9 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
         return None
 
     sample = s.astype(str).str.strip()
+    # A date needs a year: "Jan", "Monday" or "12:30" would parse with an invented year or today.
+    if sample.head(200).str.contains(_HAS_YEAR_RE, regex=True).mean() < 0.8:
+        return None
     for dayfirst in (False, True):
         try:
             parsed_sample = pd.to_datetime(

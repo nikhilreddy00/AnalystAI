@@ -153,6 +153,14 @@ async def run_cleaning_agent(session: AnalysisSession, drop_high_null: bool = Fa
     parquet back on the session. The frame keeps the input's row labels."""
     ctx = build_context(session, drop_high_null)
     df, audit = clean(ctx)
+    dropped = {d.column for d in audit.decisions if d.operation == "drop_column"}
+    if dropped and session.data_contract:   # downstream agents read columns from the contract
+        c = session.data_contract
+        c.columns = [ci for ci in c.columns if ci.name not in dropped]
+        c.column_count = len(c.columns)
+        for name in ("date_columns", "id_columns", "metric_columns"):
+            setattr(c, name, [x for x in getattr(c, name) if x not in dropped])
+        c.sample_rows = [{k: v for k, v in r.items() if k not in dropped} for r in c.sample_rows]
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
     session.__dict__["_df_parquet"] = buf.getvalue()
@@ -174,9 +182,15 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             rows_affected=rows, before_null_pct=before_pct, after_null_pct=after_pct,
             rows_removed=removed))
 
-    # 1. Triage: obvious non-analytic columns are left exactly as they are.
-    skip: set[str] = set()
-    for kind, cols in triage_columns(df).items():
+    # 1. Triage: obvious non-analytic columns are left exactly as they are. Nested values
+    #    (lists / objects from an API) can't be compared, parsed or merged: skipped too.
+    nested = [c for c in df.columns if df[c].dtype == object
+              and df[c].map(lambda v: isinstance(v, (list, dict, set, tuple))).any()]
+    skip: set[str] = set(nested)
+    for col in nested:
+        log(col, "skip", "nested", "Nested values (lists / objects) — left as-is",
+            int(df[col].notna().sum()))
+    for kind, cols in triage_columns(df.drop(columns=nested)).items():
         strategy = kind.removesuffix("_cols")
         for col in cols:
             skip.add(col)
@@ -246,7 +260,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
 
     # 5. Exact duplicate rows, when a row key says what one record is. Without one, identical
     #    rows can be real repeats (two equal purchases, two equal survey answers): kept, flagged.
-    dup = df.duplicated()
+    dup = df.assign(**{c: df[c].map(repr) for c in nested}).duplicated()
     n_dup = int(dup.sum())
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
@@ -300,7 +314,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log(col, "drop_column", "user_choice", "Dropped at your request (mostly empty).", 0)
 
     # 9. Outliers: flagged, never removed.
-    df, anomaly_report = detect_anomalies(df, classify_columns(df))
+    flat = df.drop(columns=[c for c in nested if c in df.columns])
+    _, anomaly_report = detect_anomalies(flat, classify_columns(flat))
     outliers = [f.message for f in anomaly_report.flags]
 
     rows_before, rows_after = len(before), len(df)
@@ -363,8 +378,10 @@ def _build_summary(decisions: list[CleaningDecision], outliers: list[str], high_
 def build_evidence(audit: CleaningAudit) -> Evidence:
     """One Evidence item for what cleaning changed, from the audit only: counts and the
     decisions' reasons, no cell values beyond masked labels."""
+    # Medium only when it matters: a mostly-empty column, or > 5% of a column unreadable.
     risky = [d.column for d in audit.decisions
-             if d.after_null_pct > HIGH_NULL_PCT or "could not be read" in d.reason]
+             if d.after_null_pct > HIGH_NULL_PCT
+             or (d.operation == "type_coerce" and d.after_null_pct - d.before_null_pct > 5)]
     level, why = (("medium", f"many missing or unreadable values in {', '.join(risky[:3])}")
                   if risky else ("high", "rule-based; every change below is logged"))
     return Evidence(

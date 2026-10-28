@@ -244,13 +244,16 @@ def test_guardrail_checks():
     assert protected_filled(before, after, ["b"]) is None
 
 
-def test_a_rule_bug_raises_a_typed_error(monkeypatch):
-    def tampering_detector(df, roles):   # a step that changes data without logging it
-        from orchestrator.state import AnomalyDetectionReport
-        return df.assign(amount=df["amount"] * 2), AnomalyDetectionReport()
-    monkeypatch.setattr(cleaning_agent, "detect_anomalies", tampering_detector)
+def test_a_rule_bug_raises_a_typed_error(monkeypatch, tmp_path):
+    """A failed self-check is a bug in the rules: typed error, and a label-only trace line.
+    (The detector's returned frame is ignored now, so it can no longer tamper with the data.)"""
+    from api.config import settings
+    monkeypatch.setattr(cleaning_agent, "unlogged_changes", lambda *a: "changed without a decision: ['x']")
     with pytest.raises(GuardrailViolation):
         clean(_ctx(pd.DataFrame({"amount": [1.0, 2.0, 3.0]})))
+    trace = "".join(p.read_text() for p in (tmp_path / "traces").glob("*.jsonl")) \
+        if (tmp_path / "traces").exists() else ""
+    assert settings.trace_dir and "unlogged_changes" in trace and "amount" not in trace
 
 
 # ── Property: random combinations of planted issues always satisfy the hard rules ─
@@ -275,3 +278,58 @@ def test_hard_rules_hold_on_random_dirty_tables():
         checks, hard = score_cleaning(out, rec, exp, man, prot, None)
         assert all(h["ok"] for h in hard), (case, hard)
         assert all(c["ok"] for c in checks), (case, [c for c in checks if not c["ok"]])
+
+
+# ── Senior audit (2026-10-28): each test fails on the code before the fix ─────
+
+@pytest.mark.parametrize("values", [["Jan", "Feb", "Mar", "Apr"], ["Monday", "Friday", "Monday", "Tuesday"],
+                                    ["12:30", "13:45", "09:00", "10:15"]])
+def test_text_without_a_year_is_never_a_date(values):
+    df = pd.DataFrame({"when": values * 5, "n": range(20)})
+    out, audit = clean(_ctx(df))
+    assert out["when"].tolist() == df["when"].tolist()
+    assert not [d for d in audit.decisions if d.column == "when"]
+
+
+def test_dates_with_a_year_still_parse():
+    df = pd.DataFrame({"d": ["Jan 2026", "2026-02-03", "03/04/26", "Mar 5, 2026"] * 5, "n": range(20)})
+    out, _ = clean(_ctx(df))
+    assert str(out["d"].dtype).startswith("datetime64") and out["d"].notna().all()
+
+
+def test_nested_values_are_skipped_not_a_crash():
+    df = pd.DataFrame({"tags": [["a"], ["b"], ["a"], ["c"]], "meta": [{"x": 1}, {"x": 2}, {"x": 1}, {}],
+                       "n": [1, 2, 1, 3]})
+    out, audit = clean(_ctx(df))
+    assert out["tags"].tolist() == df["tags"].tolist()
+    assert {d.column for d in audit.decisions if d.strategy == "nested"} == {"tags", "meta"}
+    assert [d.strategy for d in audit.decisions if d.column == "*"] == ["repeated_rows"]  # no ID: kept
+
+
+def test_one_unreadable_value_is_not_medium_confidence():
+    df = pd.DataFrame({"amount": [str(v) for v in range(1, 100)] + ["TBD"]})
+    _, audit = clean(_ctx(df))
+    assert build_evidence(audit).confidence == "high"
+    df = pd.DataFrame({"amount": [str(v) for v in range(1, 90)] + ["TBD"] * 11})
+    _, audit = clean(_ctx(df))
+    assert build_evidence(audit).confidence == "medium"
+
+
+def test_ingestion_gives_every_frame_unique_string_names():
+    from agents.ingestion_agent import unique_names
+    names = unique_names(["id", "id", "x", 0, "id.1", "id"])
+    assert len(set(names)) == 6 and all(isinstance(n, str) for n in names)
+    assert names[:4] == ["id", "id.1", "x", "0"]
+    df = pd.DataFrame([[1, 2, "a"]], columns=["id", "id", 2024])
+    df.columns = unique_names(df.columns)
+    df.to_parquet(io.BytesIO(), index=False)   # parquet rejected the original names
+
+
+async def test_dropped_columns_leave_the_contract_too():
+    df = pd.DataFrame({"memo": ["x", None, None, None, None], "amount": [1.0, 2, 3, 4, 5]})
+    s = _session(df)
+    out, _ = await run_cleaning_agent(s, drop_high_null=True)
+    assert "memo" not in out.columns
+    c = s.data_contract
+    assert [ci.name for ci in c.columns] == ["amount"] and c.column_count == 1
+    assert all("memo" not in r for r in c.sample_rows)

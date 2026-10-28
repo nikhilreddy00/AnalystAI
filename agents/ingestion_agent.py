@@ -58,6 +58,10 @@ async def run_ingestion_agent(session: AnalysisSession, question: str | None = N
     else:
         df = await connector.load()
 
+    # Every connector's frame gets unique string names (read_csv's "id", "id.1" rule): a SQL join
+    # can return two "id" columns, and parquet rejects duplicates and non-string names.
+    df.columns = unique_names(df.columns)
+
     # Build the base DataContract from structural analysis
     contract = connector.build_data_contract(df)
     contract.source_query = source_query
@@ -75,6 +79,20 @@ async def run_ingestion_agent(session: AnalysisSession, question: str | None = N
     session.__dict__["_df_parquet"] = buf.getvalue()
 
     return contract
+
+
+def unique_names(columns) -> list[str]:
+    seen: dict[str, int] = {}
+    out = []
+    for c in map(str, columns):
+        name, n = c, seen.get(c, 0)
+        while name in seen:
+            n += 1
+            name = f"{c}.{n}"
+        seen[c] = n
+        seen[name] = seen.get(name, 0)
+        out.append(name)
+    return out
 
 
 async def _enrich_schema_with_llm(contract: DataContract, task_plan) -> str:
