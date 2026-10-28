@@ -11,7 +11,7 @@ Allowed operations, in order. Each change is one CleaningDecision:
                    (code-like columns, e.g. leading-zero codes, stay text)
 4. normalize       label variants equal after trim / space-collapse / casefold merge to the most
                    common spelling (OpenRefine's key-collision method, conservative key)
-5. drop_duplicates exact duplicate rows
+5. drop_duplicates exact duplicate rows, only when a row key (ID column) exists; else flagged
 6. drop_rows       rows with no value at all
 7. fill_unknown    missing labels become "Unknown"; keep: missing numbers, IDs, dates, targets
                    and >40%-empty columns stay missing (nothing is imputed)
@@ -63,7 +63,8 @@ CLEANING_CARD = AgentCard(
     outputs=["The cleaned frame and a CleaningAudit: one decision per change, with rows and "
              "missing % before and after; rows_before - rows removed = rows_after",
              "One Evidence item (kind 'cleaning') listing the decisions, counts only"],
-    limits=["Rule-based: no fuzzy or near-duplicate matching; only exact duplicate rows are removed.",
+    limits=["Rule-based: no fuzzy or near-duplicate matching. Exact duplicate rows are removed only "
+            "when an ID column defines a record; without one they are kept and flagged.",
             "Missing numbers stay missing (totals and means use the non-missing rows); missing "
             "labels become 'Unknown'. Nothing is imputed.",
             "A text column becomes numeric or a date only when >= 80% of its values parse; the "
@@ -103,10 +104,6 @@ class CleanContext:
     targets: set[str]       # the plan's metrics: never filled
     drop_high_null: bool    # the user chose "Drop those columns" at the high-null gate
 
-    @property
-    def protected(self) -> set[str]:
-        return self.ids | self.dates | self.targets
-
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
     df_parquet = session.__dict__.get("_df_parquet")
@@ -116,8 +113,7 @@ def build_context(session: AnalysisSession, drop_high_null: bool = False) -> Cle
     if contract is None:
         raise ValueError("No DataContract in session.")
     df = pd.read_parquet(io.BytesIO(df_parquet))
-    ids = {c.name for c in contract.columns if c.is_id} | {
-        c for c in df.columns if _code_like(df[c])}
+    ids = {c.name for c in contract.columns if c.is_id}
     dates = {c.name for c in contract.columns if c.is_date} - ids
     task = session.task_plan
     targets = {m for m in (task.target_metrics if task else []) if m in df.columns}
@@ -167,6 +163,9 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     before = ctx.df
     df = before.copy()
     decisions: list[CleaningDecision] = []
+    # Codes are identifiers wherever the rules run, whoever built the context.
+    ids = ctx.ids | {c for c in df.columns if _code_like(df[c])}
+    protected = ids | ctx.dates | ctx.targets
 
     def log(column: str, operation: str, strategy: str, reason: str, rows: int,
             before_pct: float = 0.0, after_pct: float = 0.0, removed: int = 0) -> None:
@@ -198,7 +197,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     # 3. Types: numbers, then dates. IDs and codes stay as they are.
     coerced: list[str] = []
     for col in df.columns:
-        if col in skip or col in ctx.ids:
+        if col in skip or col in ids:
             continue
         s = df[col]
         new, strategy, how = None, "", ""
@@ -222,7 +221,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         log(col, "type_coerce", strategy, reason, int(new.notna().sum()), pct, _null_pct(new))
 
     # 4. Label variants: trim, and merge spellings equal up to case and spacing.
-    for col in _text_cols(df, skip | ctx.ids):
+    for col in _text_cols(df, skip | ids):
         s = df[col]
         v = s.dropna().astype(str)
         if v.empty:
@@ -245,12 +244,19 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         log(col, "normalize", "merge_variants",
             f"Merged spelling variants: {examples}.", int(changed.sum()))
 
-    # 5. Exact duplicate rows.
-    n = len(df)
-    df = df[~df.duplicated()]
-    if len(df) < n:
-        log("*", "drop_duplicates", "exact", f"Removed {n - len(df)} exact duplicate rows.",
-            n - len(df), removed=n - len(df))
+    # 5. Exact duplicate rows, when a row key says what one record is. Without one, identical
+    #    rows can be real repeats (two equal purchases, two equal survey answers): kept, flagged.
+    dup = df.duplicated()
+    n_dup = int(dup.sum())
+    keys = [c for c in ids if c in df.columns
+            and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
+    if n_dup and keys:
+        df = df[~dup]
+        log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
+            f"(same {keys[0]} and every other value).", n_dup, removed=n_dup)
+    elif n_dup:
+        log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
+            "there is no ID column to tell a copy from a repeated record.", n_dup)
 
     # 6. Rows with no value at all.
     n = len(df)
@@ -271,7 +277,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             high_null.append(col)
             log(col, "keep", "high_null", f"{pct:.0f}% missing: too empty to use with confidence; "
                 "left as missing.", 0, pct, pct)
-        elif (pd.api.types.is_string_dtype(df[col]) and col not in ctx.protected
+        elif (pd.api.types.is_string_dtype(df[col]) and col not in protected
               and col not in coerced):
             spelled = next((u for u in df[col].dropna().unique()
                             if str(u).casefold() == UNKNOWN.casefold()), UNKNOWN)
@@ -279,7 +285,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log(col, "fill_unknown", "unknown_label",
                 f"{missing} missing labels grouped as '{spelled}' (not guessed).", missing, pct, 0.0)
         else:
-            role = ("identifier" if col in ctx.ids else "date" if col in ctx.dates
+            role = ("identifier" if col in ids else "date" if col in ctx.dates
                     else "metric of the question" if col in ctx.targets else "value")
             log(col, "keep", "left_missing",
                 f"{missing} missing ({pct:.0f}%), {role}: left as missing; totals and averages "
@@ -299,7 +305,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     for rule, reason in (
             ("unreconciled_rows", unreconciled_rows(rows_before, rows_after, decisions)),
             ("unlogged_changes", unlogged_changes(before, df, {d.column for d in decisions})),
-            ("protected_filled", protected_filled(before, df, ctx.protected))):
+            ("protected_filled", protected_filled(before, df, protected))):
         if reason:   # a bug in the rules above, never the user's data: fail loudly
             trace_verdict("cleaning", CLEANING_CARD.version, rule)
             raise GuardrailViolation("cleaning", reason,

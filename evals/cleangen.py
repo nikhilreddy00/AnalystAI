@@ -79,6 +79,11 @@ def _base(schema: str, rng: np.random.Generator) -> tuple[pd.DataFrame, list[int
     return df, sorted(int(r) for r in (*src, *dst))
 
 
+def _fmt(current: pd.Series, text: list[str]) -> pd.Series:
+    """Re-written text for a whole column, keeping cells an earlier issue already emptied."""
+    return pd.Series(text, dtype=object).where(current.notna(), current)
+
+
 def _rows(rng: np.random.Generator, share: float, taken: set[int]) -> list[int]:
     """Distinct base rows, never reused by another cell issue, so issues don't overlap."""
     free = np.array(sorted(set(range(N)) - taken))
@@ -108,21 +113,21 @@ def make(schema: str, seed: int, issues: list[str]) -> tuple[pd.DataFrame, pd.Da
     for issue in issues:
         if issue == "currency":                  # "$1,234.50" for every value
             c = roles["money"]
-            dirty[c] = pd.Series([f"${v:,.2f}" for v in base[c]], dtype=object)
+            dirty[c] = _fmt(dirty[c], [f"${v:,.2f}" for v in base[c]])
             plant(issue, c, list(range(N)))
         elif issue == "thousands":               # "1,234.5" for every value
             c = roles["money"]
-            dirty[c] = pd.Series([f"{v:,.2f}" for v in base[c]], dtype=object)
+            dirty[c] = _fmt(dirty[c], [f"{v:,.2f}" for v in base[c]])
             plant(issue, c, list(range(N)))
         elif issue == "percent":                 # 0.125 written as "12.5%"
             c = roles["rate"]
-            dirty[c] = pd.Series([f"{v * 100:g}%" for v in base[c]], dtype=object)
+            dirty[c] = _fmt(dirty[c], [f"{v * 100:g}%" for v in base[c]])
             plant(issue, c, list(range(N)))
         elif issue == "mixed_dates":             # three unambiguous formats in one column
             c = roles["date"]
             d = pd.to_datetime(base[c])
             fmt = rng.choice(["%Y-%m-%d", "%b %d, %Y", "%d %B %Y"], size=N)
-            dirty[c] = pd.Series([x.strftime(f) for x, f in zip(d, fmt)], dtype=object)
+            dirty[c] = _fmt(dirty[c], [x.strftime(f) for x, f in zip(d, fmt)])
             plant(issue, c, list(range(N)))
         elif issue == "sentinels":               # placeholder text meaning "missing"
             c, rows = roles["sentinel"], _rows(rng, 0.06, taken)
