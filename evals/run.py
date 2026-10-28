@@ -38,6 +38,7 @@ from evals.scoring import (
 )
 from llm.client import get_client, trace_meter
 from orchestrator.state import (
+    AnalysisFindings,
     AnalysisSession,
     AnalysisTask,
     ConnectorConfig,
@@ -48,9 +49,9 @@ EVALS_DIR = Path(__file__).parent
 UPLOADS = EVALS_DIR.parent / "uploads" / "evals"   # the CSV connector only reads uploads/
 
 
-def load_cases(suite: str, only: str | None) -> list[dict]:
+def load_cases(suite: str, only: str | None, exclude: str | None = None) -> list[dict]:
     cases = [yaml.safe_load(p.read_text()) for p in sorted((EVALS_DIR / "cases" / suite).glob("*.yaml"))]
-    return [c for c in cases if not only or only in c["id"]]
+    return [c for c in cases if (not only or only in c["id"]) and not (exclude and exclude in c["id"])]
 
 
 def dataset(case: dict) -> tuple[pd.DataFrame, dict, str]:
@@ -79,6 +80,13 @@ async def run_analysis_case(case: dict) -> dict:
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
 
+    return {**score_analysis(case, findings, error),
+            "output": findings.model_dump(mode="json") if findings else None}
+
+
+def score_analysis(case: dict, findings, error: str | None) -> dict:
+    """Scores one analysis run from its stored output (so `rescore` costs nothing)."""
+    df, truth, _ = dataset(case)
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}
@@ -133,6 +141,12 @@ async def run_e2e_case(case: dict) -> dict:
     if approvals and approvals[-1] != "high_null" and not error:
         error = f"stopped at approval_required ({approvals[-1]})"
 
+    return {**score_e2e(case, session, error), "approvals": approvals,
+            "output": session.model_dump(mode="json")}
+
+
+def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
+    df, truth, _ = dataset(case)
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k != "kind"}
@@ -141,7 +155,7 @@ async def run_e2e_case(case: dict) -> dict:
     hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, session.analysis_findings, session))))
             for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
-            "approvals": approvals, "answer": answer_text(session)[:1500]}
+            "answer": answer_text(session)[:1500]}
 
 
 _SQL: dict = {}   # engine, layers and golden rows, set up once per sql run
@@ -226,7 +240,7 @@ def estimate_usd(suite: str, n_runs: int, reports: Path) -> float:
     """Cost of n_runs at the last full report's cost per question (a guess before any run)."""
     for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
         rep = json.loads(p.read_text())
-        if not rep["meta"].get("only"):
+        if not rep["meta"].get("only") and not rep["meta"].get("exclude"):
             return round(rep["summary"]["cost_per_question_usd"] * n_runs, 2)
     return 0.0
 
@@ -250,6 +264,34 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         _budget["spent"] += out["cost_usd"]
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
+
+
+# Re-scores a stored output: (case, output, error) -> checks/hard/error. SQL needs the database.
+RESCORERS = {
+    "analysis": lambda c, o, e: score_analysis(c, AnalysisFindings.model_validate(o) if o else None, e),
+    "e2e": lambda c, o, e: score_e2e(c, AnalysisSession.model_validate(o), e),
+}
+
+
+def rescore(path: Path) -> Path:
+    """Apply the current scorer to a report's stored outputs: a scorer fix costs $0, not a re-run.
+    Cost and latency are kept from the original runs."""
+    report = json.loads(path.read_text())
+    suite = report["meta"]["suite"]
+    cases = {c["id"]: c for c in load_cases(suite, None)}
+    for cid, rs in report["runs"].items():
+        for r in rs:
+            if "output" not in r:
+                raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
+            r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+            r["passed"] = all(c["ok"] for c in r["checks"])
+    report["summary"] = summarize(report["runs"])
+    report["meta"]["rescored_from"] = report["meta"]["report"]
+    report["meta"]["report"] = name = f"{report['meta']['report']}-rescored"
+    out = path.parent / f"{name}.json"
+    out.write_text(json.dumps(report, indent=1, default=str))
+    (path.parent / f"{name}.md").write_text(to_markdown(report))
+    return out
 
 
 def _pct(values: list[float], q: float) -> float:
@@ -364,6 +406,8 @@ def to_markdown(report: dict) -> str:
     lines = [
         f"# Eval report: {m['suite']} ({m['report']})", "",
         f"model `{m['model']}` · k={m['k']} · commit `{m['git_sha']}` · {m['started_at']}", "",
+        *([f"Rescored with the current scorer from `{m['rescored_from']}` (no new model calls).", ""]
+          if m.get("rescored_from") else []),
         "| metric | value |", "|---|---|",
         *[f"| {k} | {v} |" for k, v in s.items()], "",
     ]
@@ -387,19 +431,24 @@ def to_markdown(report: dict) -> str:
 
 
 async def main() -> None:
+    import sys
+    if sys.argv[1:2] == ["rescore"]:
+        print(f"→ {rescore(Path(sys.argv[2]))}")
+        return
     ap = argparse.ArgumentParser()
     ap.add_argument("suite", choices=["analysis", "e2e", "sql"])
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--compare", help="previous report JSON for the paired diff")
     ap.add_argument("--only", help="substring filter on case ids (smoke runs)")
+    ap.add_argument("--exclude", help="skip case ids containing this (e.g. the intake holdout)")
     ap.add_argument("--out", default=str(EVALS_DIR / "reports"))
     ap.add_argument("--max-usd", type=float, default=2.0,
                     help="refuse to start if the estimate exceeds this; stop starting runs once "
                          "spend reaches it (default $2 — raise it on purpose for a final k=3 run)")
     args = ap.parse_args()
 
-    cases = load_cases(args.suite, args.only)
+    cases = load_cases(args.suite, args.only, args.exclude)
     estimate = estimate_usd(args.suite, len(cases) * args.k, Path(args.out))
     print(f"estimated cost ≈ ${estimate} (cap ${args.max_usd})", flush=True)
     if estimate > args.max_usd:
@@ -428,7 +477,7 @@ async def main() -> None:
     name = f"{args.suite}-{stamp}"
     report = {
         "meta": {"suite": args.suite, "report": name, "k": args.k, "model": settings.llm_model,
-                 "git_sha": sha, "started_at": stamp, "only": args.only,
+                 "git_sha": sha, "started_at": stamp, "only": args.only, "exclude": args.exclude,
                  "skipped_over_budget": skipped},
         "summary": summarize(runs),
         "runs": runs,

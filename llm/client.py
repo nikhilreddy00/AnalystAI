@@ -21,6 +21,8 @@ from api.config import settings
 __all__ = ["LLMError", "LLMRefusal", "LLMTruncated", "LLMUnavailable"]
 
 # USD per million tokens (input, output). Unknown models trace cost as 0.
+# Prompt cache: a 5-minute write costs 1.25x input, a read 0.1x.
+_CACHE_WRITE, _CACHE_READ = 1.25, 0.1
 _PRICES = {
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-4-5": (1.0, 5.0),
@@ -36,6 +38,8 @@ class LLMResult:
     stop_reason: str = "end_turn"
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_write_tokens: int = 0
+    cache_read_tokens: int = 0
     latency_ms: int = 0
     cost_usd: float = 0.0
     tool_calls: list[dict] = field(default_factory=list)   # [{"id", "name", "input"}]
@@ -95,7 +99,11 @@ class ClaudeClient:
         tools: list[dict] | None = None, tool_choice: dict | None = None,
     ) -> LLMResult:
         model = model or self.model
-        kwargs = {"system": system} if system else {}
+        # Every agent's system prompt is a module constant, so it is cached (with the tools, which
+        # render before it). Prompts under the model's minimum (1024 tokens on Sonnet 4.6, 4096
+        # on Haiku 4.5) are silently not cached and cost nothing extra.
+        kwargs = {"system": [{"type": "text", "text": system,
+                              "cache_control": {"type": "ephemeral"}}]} if system else {}
         if tools:
             kwargs["tools"] = tools
         if tool_choice:
@@ -113,13 +121,18 @@ class ClaudeClient:
                                  "The language model is unreachable right now. Try again.") from exc
         in_price, out_price = _PRICES.get(model, (0.0, 0.0))
         usage = response.usage
+        cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+        cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
         result = LLMResult(
             text="".join(b.text for b in response.content if getattr(b, "type", None) == "text"),
             stop_reason=response.stop_reason or "end_turn",
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
+            cache_write_tokens=cache_write,
+            cache_read_tokens=cache_read,
             latency_ms=int((time.perf_counter() - start) * 1000),
-            cost_usd=(usage.input_tokens * in_price + usage.output_tokens * out_price) / 1e6,
+            cost_usd=(usage.input_tokens * in_price + usage.output_tokens * out_price
+                      + (cache_write * _CACHE_WRITE + cache_read * _CACHE_READ) * in_price) / 1e6,
             tool_calls=[{"id": b.id, "name": b.name, "input": b.input}
                         for b in response.content if getattr(b, "type", None) == "tool_use"],
             content=[b.model_dump(exclude_none=True) for b in response.content],

@@ -84,3 +84,23 @@ async def test_tool_calls_are_parsed_and_traced_without_their_inputs(tmp_path):
     assert [b["type"] for b in result.content] == ["text", "tool_use"]
     line = next((tmp_path / "traces").glob("*.jsonl")).read_text()
     assert '"tool_calls": ["sample_rows"]' in line and "secret" not in line
+
+
+async def test_system_prompt_is_cached_and_cache_tokens_are_priced():
+    captured: dict = {}
+    client = ClaudeClient(model="claude-sonnet-4-6")
+    sdk = _fake_sdk(captured)
+
+    async def create(**kwargs):
+        resp = await sdk.messages.create(**kwargs)
+        resp.usage = SimpleNamespace(input_tokens=100, output_tokens=200,
+                                     cache_creation_input_tokens=2000, cache_read_input_tokens=3000)
+        return resp
+    client._sdk = SimpleNamespace(messages=SimpleNamespace(create=create))
+    result = await client.complete(messages=[], max_tokens=50, agent="intake",
+                                   prompt_version="v1", system="card + prompt")
+
+    assert captured["system"] == [{"type": "text", "text": "card + prompt",
+                                   "cache_control": {"type": "ephemeral"}}]
+    assert (result.cache_write_tokens, result.cache_read_tokens) == (2000, 3000)
+    assert result.cost_usd == pytest.approx((100 * 3 + 200 * 15 + 2000 * 3.75 + 3000 * 0.3) / 1e6)

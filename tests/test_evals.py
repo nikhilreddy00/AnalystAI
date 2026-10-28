@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from evals import datagen
-from evals.run import compare, estimate_usd, load_cases, summarize
+from evals.run import compare, estimate_usd, load_cases, rescore, summarize
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
@@ -257,3 +257,28 @@ def test_sql_summary_metrics():
     assert s["metric_adherence"] == 0.0 and s["attacks_blocked"] == 1.0
     assert s["fanout_cases_majority_pass"] == "1/2"
     assert s["pass_rate_by_category"]["attack"] == 1.0
+
+
+def test_rescore_recomputes_checks_from_stored_outputs_for_free(tmp_path):
+    import json
+
+    from evals.run import dataset
+    case = next(c for c in load_cases("analysis", "aggregation-1"))
+    s = dataset(case)[0]["revenue"]
+    right = _findings(eda_summary={"revenue": {k: getattr(s, k)() for k in
+                                               ("mean", "median", "min", "max")}})
+    stale = {"checks": [{"kind": "eda_stat", "ok": False, "detail": "old scorer"}], "hard": [],
+             "passed": False, "error": None, "cost_usd": 0.03, "latency_s": 9.0}
+    report = {"meta": {"suite": "analysis", "report": "analysis-x", "k": 1, "model": "m",
+                       "git_sha": "abc", "started_at": "t"},
+              "runs": {"aggregation-1": [{**stale, "output": right.model_dump(mode="json")},
+                                         {**stale, "passed": True, "output": None,
+                                          "error": "LLMOutputError: boom"}]}}
+    path = tmp_path / "analysis-x.json"
+    path.write_text(json.dumps(report))
+
+    out = json.loads(rescore(path).read_text())
+    good, failed = out["runs"]["aggregation-1"]
+    assert good["passed"] and good["cost_usd"] == 0.03       # rescored, original cost kept
+    assert not failed["passed"]                              # no output → fails, not stale "passed"
+    assert out["meta"]["rescored_from"] == "analysis-x" and out["summary"]["pass_rate"] == 0.5
