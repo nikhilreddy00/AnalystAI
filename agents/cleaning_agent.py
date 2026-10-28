@@ -34,12 +34,42 @@ from agents.utils import strip_markdown_fences
 from agents.visualization_agent import classify_columns
 from llm.client import get_client
 from orchestrator.state import (
+    AgentCard,
     AnalysisSession,
     CleaningAudit,
     CleaningDecision,
     DataContract,
 )
 
+
+CLEANING_CARD = AgentCard(
+    name="cleaning",
+    version="rules-v1",
+    scope="Makes the uploaded table analysable without changing what it says: turns placeholder "
+          "text into missing values, parses numbers and dates, merges spelling variants of a label, "
+          "removes exact duplicate and fully blank rows, and flags unusual values. Every change is "
+          "one logged decision.",
+    inputs=["The ingested data frame and its DataContract (column roles)",
+            "The analysis plan (its target metrics are protected)",
+            "The user's answer at the high-null gate, if any"],
+    outputs=["The cleaned frame and a CleaningAudit: one decision per change, with rows and "
+             "missing % before and after; rows_before - rows removed = rows_after",
+             "One Evidence item (kind 'cleaning') listing the decisions, counts only"],
+    limits=["Rule-based: no fuzzy or near-duplicate matching; only exact duplicate rows are removed.",
+            "Missing numbers stay missing (totals and means use the non-missing rows); missing "
+            "labels become 'Unknown'. Nothing is imputed.",
+            "A text column becomes numeric or a date only when >= 80% of its values parse; the "
+            "rest become missing and the decision counts them.",
+            "Ambiguous dates (03/04) are read month-first unless the column proves day-first.",
+            "Label variants merge only when equal after trimming, collapsing spaces and ignoring "
+            "case; the most common spelling wins.",
+            "Targeted follow-up questions skip cleaning (they read the uploaded data as-is)."],
+    refusal_rules=["Never fill ID, date or target-metric columns.",
+                   "Never remove a row without a decision that counts it.",
+                   "Never change a column's values without a decision that names it.",
+                   "Never remove outliers: flag them only.",
+                   "Never turn code-like text with leading zeros (zip, account codes) into numbers."],
+)
 
 _MAX_DROP_ROWS_PCT = 5.0   # drop_rows may remove at most this share of rows
 
