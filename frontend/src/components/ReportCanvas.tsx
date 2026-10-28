@@ -83,7 +83,7 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
       sessionId={sessionId}
       onEvidence={hasEvidence ? openEvidence : undefined}
       onDraft={onDraft}
-      action={sessionId && <PinButton sessionId={sessionId} chart={chart} />}
+      action={(current) => sessionId && <PinButton sessionId={sessionId} chart={current} />}
     />
   );
 

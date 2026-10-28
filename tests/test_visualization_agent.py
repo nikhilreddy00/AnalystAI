@@ -236,3 +236,46 @@ async def test_chart_feedback_persists_a_safe_switch_and_refuses_the_rest(tmp_pa
     lines = [json.loads(x) for f in (tmp_path / "traces").glob("*.jsonl") for x in f.read_text().splitlines()]
     fb = [r for r in lines if r.get("feedback") == "chart_override"]
     assert fb and fb[0]["before"] == "BarChart" and "discount" not in json.dumps(fb[0])
+
+
+async def test_injection_in_a_chart_title_reaches_the_insight_prompt_delimited(monkeypatch):
+    """Finding titles carry data values (a segment name); the insight prompt treats them as data."""
+    import re
+
+    from agents import insight_agent
+    from orchestrator.state import AnalysisFindings
+
+    seen = {}
+
+    async def capture(prompt):
+        seen["prompt"] = prompt
+        raise RuntimeError("stop after the prompt")
+
+    monkeypatch.setattr(insight_agent, "_call_and_parse", capture)
+    df = pd.DataFrame({"segment": ["A", INJECTION] * 20, "revenue": np.arange(40.0)})
+    chart = viz.group_bars(df, "segment", "revenue", "mean", viz.build_context(df))
+    chart.title = f"Average revenue by segment: {INJECTION} highest"
+    session = AnalysisSession(session_id="i", chart_configs=[chart], analysis_findings=AnalysisFindings(
+        eda_summary={}, correlations={}, trends=[], segments=[], anomalies=[], statistical_tests=[],
+        code_executed=""))
+    try:
+        await insight_agent.run_insight_agent(session)
+    except Exception:
+        pass
+    outside = re.sub(r"<untrusted_data>.*?</untrusted_data>", "", seen["prompt"], flags=re.S)
+    assert INJECTION in seen["prompt"] and INJECTION not in outside
+
+
+@pytest.mark.parametrize("cid", ["viz-v01", "viz-v02", "viz-v10"])
+def test_trend_chart_title_states_the_same_change_as_the_finding(cid):
+    """The chart and the analysis use one MoM definition, so the title's % is the finding's %."""
+    import re
+    case = _case(cid)
+    df = dataset(case)[0]
+    session, _ = viz_session(case, df)
+    ctx = viz.build_context(df, session.task_plan, session.analysis_findings)
+    chart = viz.charts_for_findings(ctx)[0]
+    trends = session.analysis_findings.trends
+    best = max(trends, key=lambda t: abs(t.pct_change))
+    shown = float(re.search(r"(\d+\.\d)%", chart.title).group(1))
+    assert shown == pytest.approx(abs(best.pct_change), abs=0.051), chart.title

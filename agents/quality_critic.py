@@ -25,6 +25,7 @@ import logging
 import re
 
 from agents.utils import strip_markdown_fences
+from guardrails import delimit_untrusted, mask_pii
 from llm.client import get_client
 from orchestrator.state import AnalysisSession, ExpertReview
 
@@ -142,9 +143,10 @@ async def run_quality_critic(
             context_parts.append("Statistical tests:\n" + "\n".join(test_lines))
 
     if session.chart_configs:
-        context_parts.append(
-            "Visualizations: " + ", ".join(c.title for c in session.chart_configs)
-        )
+        # Chart titles carry data values (Phase 5), so they are delimited like data. The critic's
+        # other sections are delimited in the Quality-check contract PR.
+        context_parts.append("Visualizations:\n" + delimit_untrusted(
+            "\n".join(str(mask_pii(c.title)) for c in session.chart_configs)))
 
     if session.insight_report:
         r = session.insight_report

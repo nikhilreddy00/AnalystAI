@@ -1929,6 +1929,8 @@ def pick_outcome(cols: list[str], ctx: VizContext) -> tuple[str | None, str]:
 
 
 def _label(metric: str, agg: str, ctx: VizContext) -> str:
+    if agg == "count":
+        return "Rows"
     disp = _display(metric, ctx.narrative)
     if agg == "mean" and _is_flag(ctx.df[metric]):
         return f"{_rate_label(metric, ctx.narrative)} (%)"
@@ -2014,7 +2016,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
 
 
 def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
-               split: str | None = None) -> ChartConfig | None:
+               split: str | None = None, monthly: bool | None = None) -> ChartConfig | None:
     """agg(metric) per calendar month (per day under ~3 months), one line per split value (top 8
     by rows). Months match the analysis agent's MoM, so the chart shows the reported change."""
     cols = [date, metric] + ([split] if split else [])
@@ -2027,7 +2029,8 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     if sub.empty:
         return None
     agg = month_agg(df[metric])
-    monthly = (sub[date].max() - sub[date].min()).days >= 90
+    if monthly is None:   # a month-over-month finding always gets months
+        monthly = (sub[date].max() - sub[date].min()).days >= 90
     period = sub[date].dt.to_period("M" if monthly else "D").astype(str)
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
@@ -2116,7 +2119,7 @@ def _finding_chart(kind: str, ctx: VizContext, ids: list[str], *args) -> ChartCo
     df = ctx.df
     if kind == "trend":
         metric, split, claim = args
-        chart = month_line(df, ctx.date, metric, ctx, split) if ctx.date else None
+        chart = month_line(df, ctx.date, metric, ctx, split, monthly=True) if ctx.date else None
         rule, reason = ("trend→line", f"A trend is change over time; one line per {split} shows "
                         f"which moved. {claim}") if split else (
             "trend→line", f"A trend is change over time. {claim}")

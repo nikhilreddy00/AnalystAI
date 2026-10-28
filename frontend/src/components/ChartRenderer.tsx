@@ -28,8 +28,9 @@ import { sendChartFeedback } from "@/lib/api";
 interface Props {
   config: ChartConfig;
   height?: number;
-  /** Optional slot rendered top-right of the card (e.g. a pin button). */
-  action?: React.ReactNode;
+  /** Optional slot rendered top-right of the card (e.g. a pin button). A function receives the
+   *  chart as the user currently sees it (after a type switch), so pinning keeps their choice. */
+  action?: React.ReactNode | ((current: ChartConfig) => React.ReactNode);
   onElementClick?: (key: string, value: FilterValue) => void;
   /** Phase 5: opens the evidence item a chart cites. */
   onEvidence?: (id: string) => void;
@@ -429,7 +430,7 @@ export default function ChartRenderer({ config: original, height = 260, action, 
             </p>
           )}
         </div>
-        {action}
+        {typeof action === "function" ? action(config) : action}
       </figcaption>
       {!!config.lint_warnings?.length && (
         <p role="note" className="rounded-md border border-border bg-muted px-2.5 py-1.5 text-xs text-foreground">
