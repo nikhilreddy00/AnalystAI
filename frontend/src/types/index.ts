@@ -183,6 +183,7 @@ export interface KPI {
   value: string;
   context: string;
   recipe?: KPIRecipe | null;
+  how?: string;   // Phase 5: how the number was computed
 }
 
 export interface BriefingData {

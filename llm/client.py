@@ -82,6 +82,12 @@ def trace_verdict(agent: str, prompt_version: str, rule: str) -> None:
             "prompt_version": prompt_version, "guardrail": rule})
 
 
+def trace_feedback(agent: str, event: str, rule: str, before: str, after: str) -> None:
+    """Record user feedback on an agent output (labels only, never data): e.g. a chart override."""
+    _trace({"ts": datetime.now(timezone.utc).isoformat(), "agent": agent, "feedback": event,
+            "rule": rule, "before": before, "after": after})
+
+
 class ClaudeClient:
     def __init__(self, model: str | None = None):
         self.model = model or settings.llm_model

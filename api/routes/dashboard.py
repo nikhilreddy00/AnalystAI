@@ -9,12 +9,20 @@ from api.auth import get_current_user, UserProfile
 from api.rate_limit import limiter
 from pydantic import BaseModel
 
+from orchestrator.state import ChartType
+
 router = APIRouter()
 
 
 class PinChartRequest(BaseModel):
     session_id: str
     chart: dict
+
+
+class ChartFeedbackRequest(BaseModel):
+    session_id: str
+    chart_id: str
+    chart_type: ChartType      # the type the user switched to
 
 
 @router.get("")
@@ -85,6 +93,37 @@ async def pin_chart(
     store = request.app.state.session_store
     await store.pin_chart(current_user.uid, body.session_id, body.chart)
     return {"status": "pinned"}
+
+
+@router.post("/chart-feedback")
+async def chart_feedback(
+    request: Request,
+    body: ChartFeedbackRequest,
+    current_user: UserProfile = Depends(get_current_user)
+):
+    """The user switched a chart's type (Phase 5 Visualization). Persist it on the stored chart, so
+    pinning and the PowerPoint show the user's choice, and log the override (labels only)."""
+    from agents.visualization_agent import _LINT_NOTE, VIZ_CARD, swap_options
+    from guardrails import chart_lint
+    from llm.client import trace_feedback
+
+    store = request.app.state.session_store
+    session = await store.load(body.session_id)
+    if not session or session.user_id != current_user.uid:
+        raise HTTPException(status_code=404, detail="Session not found")
+    charts = list(session.chart_configs) + (
+        list(session.targeted_response.chart_configs) if session.targeted_response else [])
+    chart = next((c for c in charts if c.id == body.chart_id), None)
+    if chart is None:
+        raise HTTPException(status_code=404, detail="Chart not found")
+    if body.chart_type not in swap_options(chart):
+        raise HTTPException(status_code=422, detail="That chart type would misrepresent this data")
+    before, chart.chart_type = chart.chart_type, body.chart_type
+    chart.lint_warnings = [_LINT_NOTE.get(lb, lb) for lb in chart_lint(chart.model_dump(mode="json"))]
+    await store.save(session)
+    trace_feedback(VIZ_CARD.name, "chart_override",
+                   chart.rationale.rule if chart.rationale else "none", before.value, body.chart_type.value)
+    return {"chart": chart.model_dump(mode="json")}
 
 
 @router.delete("/{chart_id}")

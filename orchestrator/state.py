@@ -313,6 +313,7 @@ class KPI(BaseModel):
     value: str                            # pre-formatted display string ("62.5%", "$12,450.00")
     context: str = ""                     # one-line sublabel (range, share, comparison)
     recipe: KPIRecipe | None = None
+    how: str = ""                         # Phase 5: how it was computed, in words
 
 
 class DataNarrative(BaseModel):

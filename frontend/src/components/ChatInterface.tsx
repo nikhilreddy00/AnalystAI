@@ -109,6 +109,7 @@ export default function ChatInterface() {
   // A past session opened from History shows its report without a live connection.
   const [viewingHistory, setViewingHistory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -345,6 +346,7 @@ export default function ChatInterface() {
               }}
             >
               <input
+                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -393,6 +395,11 @@ export default function ChatInterface() {
               sessionId={sessionId}
               isLatest={reportIdx === latestReport}
               onFollowUp={ask}
+              onDraft={(q) => {
+                setInput(q);
+                setPane("chat");
+                inputRef.current?.focus();
+              }}
             />
           ) : (
             <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-2 text-center">

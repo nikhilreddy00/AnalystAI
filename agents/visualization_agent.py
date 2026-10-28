@@ -1143,7 +1143,64 @@ def generate_smart_kpis(
             continue
         seen.add(k.label)
         unique.append(k)
+    for k in unique:
+        k.how = _kpi_how(k.recipe, len(df))
     return unique[:5]
+
+
+def _kpi_how(r: KPIRecipe | None, n: int) -> str:
+    """The tile's computation in words (Phase 5: every number says how it was made)."""
+    if r is None:
+        return ""
+    return {
+        "row_count": f"Count of all {n:,} rows after cleaning.",
+        "target_rate": f"Share of rows where {r.column} is the positive value.",
+        "metric_avg": f"Mean of {r.column} over its non-missing rows.",
+        "top_cat": f"Most frequent value of {r.column}, and its share of rows.",
+        "comparison_split": f"{r.target_column} rate in the highest and lowest {r.segment_column} "
+                            "group (the column that separates it most, by chi-square).",
+        "highest_cv": f"Coefficient of variation (std / |mean|) of {r.column}, the most variable "
+                      "measure.",
+    }.get(r.kind, "")
+
+
+def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None) -> list[str]:
+    """Labels of tiles whose number doesn't match the data: each is recomputed from its recipe on
+    this frame, and an average must also match the report's own statistics (eda_summary)."""
+    bad = []
+    for k in kpis:
+        r = k.recipe
+        if r is None:
+            continue
+        col = r.column
+        try:
+            if r.kind == "row_count":
+                ok = k.value == _format_count(len(df))
+            elif r.kind == "target_rate":
+                ok = k.value == f"{float(_to_01(df[col]).mean()) * 100:.1f}%"
+            elif r.kind == "metric_avg":
+                mean = float(pd.to_numeric(df[col], errors="coerce").dropna().mean())
+                ok = k.value == _format_value(mean, r.format_kind or "number")
+                stated = ((eda or {}).get(col) or {}).get("mean")
+                if ok and isinstance(stated, (int, float)) and mean:
+                    ok = abs(float(stated) - mean) <= 0.005 * abs(mean)
+            elif r.kind == "top_cat":
+                vc = df[col].dropna().value_counts()
+                top = vc.index[0]
+                ok = k.context.startswith(f"{float(vc.iloc[0]) / float(vc.sum()) * 100:.1f}%") and (
+                    str(top) in k.value or k.value == _humanize_value(top, col, df, set(), None))
+            elif r.kind == "comparison_split":
+                g = pd.Series(_to_01(df[r.target_column]).values, index=df[r.segment_column]) \
+                    .groupby(level=0).mean().dropna().sort_values(ascending=False)
+                ok = k.value == f"{g.iloc[0] * 100:.1f}% vs {g.iloc[-1] * 100:.1f}%"
+            else:   # highest_cv
+                s = pd.to_numeric(df[col], errors="coerce").dropna()
+                ok = k.value == f"CV {float(s.std()) / abs(float(s.mean())):.2f}"
+        except Exception:
+            ok = False
+        if not ok:
+            bad.append(k.label)
+    return bad
 
 
 # ── PROMPT-6: dashboard generator with layout hints + color consistency ─────
@@ -1637,6 +1694,8 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
              "numeric columns", "pearson r", "none", len(ctx.df), code="df.corr(numeric_only=True)")
     elif src == "distribution":
         col = ch.x_label if ch.x_label in ctx.df.columns else col
+        if ch.title.startswith(str(col)):
+            ch.title = _display(col, ctx.narrative) + ch.title[len(str(col)):]
         _why(ch, ctx, "profile:distribution", f"How {col} is distributed.", col, "count", "count",
              int(ctx.df[col].notna().sum()) if col in ctx.df.columns else len(ctx.df),
              code=f"np.histogram(df[{col!r}].dropna())")
@@ -2088,7 +2147,45 @@ def _finding_chart(kind: str, ctx: VizContext, ids: list[str], *args) -> ChartCo
     if chart is None or chart.rationale is None:
         return None
     r = chart.rationale
+    chart.title = _finding_title(kind, chart, ctx, args) or chart.title
     return _why(chart, ctx, rule, reason, r.x, r.y, r.aggregation, r.n_rows, ids, r.code, r.split)
+
+
+def _month_name(period: str) -> str:
+    try:
+        return pd.Period(period).strftime("%b %Y")
+    except Exception:
+        return period
+
+
+def _finding_title(kind: str, chart: ChartConfig, ctx: VizContext, args: tuple) -> str | None:
+    """A title that states the finding, from the plotted numbers (never from model prose)."""
+    d, r = chart.data, chart.rationale
+    disp = _display(r.y, ctx.narrative) if r.y in ctx.df.columns else r.y
+    if kind == "trend" and len(d) >= 2:
+        keys = chart.y_keys
+        moves = {k: (d[-1].get(k), d[-2].get(k)) for k in keys}
+        moves = {k: (a / b - 1) * 100 for k, (a, b) in moves.items()
+                 if isinstance(a, (int, float)) and isinstance(b, (int, float)) and b}
+        if not moves:
+            return None
+        k = max(moves, key=lambda m: abs(moves[m]))
+        who = f"{disp} for {r.split} {k}" if r.split else disp
+        verb = "rose" if moves[k] > 0 else "fell" if moves[k] < 0 else "held"
+        return (f"{who} {verb} {abs(moves[k]):.1f}% in {_month_name(d[-1]['period'])} "
+                f"vs {_month_name(d[-2]['period'])}")
+    if kind in ("segment", "test") and not r.split and len(d) >= 2:
+        y = chart.y_keys[0]
+        ranked = sorted((row for row in d if isinstance(row.get(y), (int, float))),
+                        key=lambda row: -row[y])
+        if len(ranked) < 2:
+            return None
+        fmt = (lambda v: f"{v:.1f}%") if chart.value_format == "percent" else (lambda v: f"{v:,.2f}")
+        top, low = ranked[0], ranked[-1]
+        return (f"{_label(r.y, r.aggregation, ctx).replace(' (%)', '')} by "
+                f"{_display(r.x, ctx.narrative)}: {top[r.x]} highest ({fmt(top[y])}), "
+                f"{low[r.x]} lowest ({fmt(low[y])})")
+    return None
 
 
 def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
@@ -2205,6 +2302,24 @@ def _repair(chart: ChartConfig, label: str, ctx: VizContext) -> ChartConfig | No
                     r.x, "count", "count", int(ctx.df[r.x].notna().sum()), r.evidence_ids,
                     f"np.histogram(df[{r.x!r}].dropna())")
     return None   # empty_chart, dual_axis: nothing honest to repair
+
+
+_SWAP_FREE = {ChartType.SCATTER, ChartType.HISTOGRAM, ChartType.HEATMAP, ChartType.COMPOSED}
+
+
+def swap_options(chart: ChartConfig) -> list[ChartType]:
+    """Chart types a user can switch to on the spot without misleading: bars ↔ horizontal bars,
+    a line only over an ordered x, a pie/donut only for ≤ 5 additive parts. Mirrors
+    frontend ChartRenderer swapOptions()."""
+    if chart.chart_type in _SWAP_FREE:
+        return []
+    xs = [d.get(chart.x_key) for d in chart.data]
+    ordered = chart.x_key == "period" or bool(xs) and all(_sort_key_for([x]) for x in xs)
+    agg = chart.rationale.aggregation if chart.rationale else None
+    parts = len(chart.y_keys) == 1 and len(chart.data) <= 5 and agg in ("sum", "count")
+    opts = [ChartType.BAR, ChartType.HORIZONTAL_BAR] + ([ChartType.LINE] if ordered else []) \
+        + ([ChartType.DONUT, ChartType.PIE] if parts else [])
+    return opts if chart.chart_type in opts else [chart.chart_type, *opts]
 
 
 def finalize_charts(charts: list[ChartConfig], ctx: VizContext,

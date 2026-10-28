@@ -173,3 +173,66 @@ def test_property_every_chart_is_linted_and_explained(seed):
     user = viz.build_single_chart(df, TargetedParams(chart_type=kind, group_by="kind",
                                                      metric_column="amount"))
     assert user.rationale is not None and session.session_id == "p"
+
+
+@pytest.mark.parametrize("make", [datagen.make_sales, datagen.make_simpson])
+def test_kpi_check_catches_a_wrong_tile_of_every_kind(make, tmp_path):
+    df, _ = make(1)
+    kpis = viz.generate_smart_kpis(df, viz.classify_columns(df))
+    assert kpis and viz.kpi_mismatches(kpis, df) == [] and all(k.how for k in kpis)
+    for i in range(len(kpis)):
+        planted = [k.model_copy() for k in kpis]
+        planted[i].value = "999"
+        assert viz.kpi_mismatches(planted, df) == [planted[i].label]
+    avg = next((k for k in kpis if k.recipe.kind == "metric_avg"), None)
+    if avg:   # the report's own mean disagrees → the tile is wrong for this report
+        assert viz.kpi_mismatches([avg], df, {avg.recipe.column: {"mean": 1e9}}) == [avg.label]
+
+
+def test_swap_options_never_offer_a_misleading_type():
+    df, _ = datagen.make_sales(1)
+    ctx = viz.build_context(df)
+    means = viz.group_bars(df, "region", "discount", "mean", ctx)
+    totals = viz.group_bars(df, "segment", "revenue", "sum", ctx)
+    totals.rationale.aggregation = "sum"
+    assert ChartType.PIE not in viz.swap_options(means)        # an average is not a part of a whole
+    assert ChartType.LINE not in viz.swap_options(means)       # regions have no order
+    assert ChartType.DONUT in viz.swap_options(totals)
+    assert viz.swap_options(viz.fence_histogram(df, "revenue", ctx)) == []
+
+
+async def test_chart_feedback_persists_a_safe_switch_and_refuses_the_rest(tmp_path):
+    """POST /dashboard/chart-feedback: owner only, misleading types refused (422), the switch is
+    saved on the stored chart and logged with labels only."""
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+
+    from api.auth import UserProfile
+    from api.routes.dashboard import ChartFeedbackRequest, chart_feedback
+    from memory.session_store import InMemorySessionStore
+
+    df, _ = datagen.make_sales(1)
+    ctx = viz.build_context(df)
+    chart = viz.group_bars(df, "region", "discount", "mean", ctx)
+    viz._why(chart, ctx, "segment→bars", "r", "region", "discount", "mean", len(df))
+    store = InMemorySessionStore()
+    session = AnalysisSession(session_id="s1", user_id="owner", chart_configs=[chart])
+    await store.save(session)
+    req = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(session_store=store)))
+
+    def body(t):
+        return ChartFeedbackRequest(session_id="s1", chart_id=chart.id, chart_type=t)
+
+    with pytest.raises(HTTPException) as e:
+        await chart_feedback(req, body(ChartType.HORIZONTAL_BAR), UserProfile("intruder"))
+    assert e.value.status_code == 404
+    with pytest.raises(HTTPException) as e:
+        await chart_feedback(req, body(ChartType.PIE), UserProfile("owner"))   # pie of an average
+    assert e.value.status_code == 422
+    out = await chart_feedback(req, body(ChartType.HORIZONTAL_BAR), UserProfile("owner"))
+    assert out["chart"]["chart_type"] == "HorizontalBarChart"
+    assert (await store.load("s1")).chart_configs[0].chart_type == ChartType.HORIZONTAL_BAR
+    lines = [json.loads(x) for f in (tmp_path / "traces").glob("*.jsonl") for x in f.read_text().splitlines()]
+    fb = [r for r in lines if r.get("feedback") == "chart_override"]
+    assert fb and fb[0]["before"] == "BarChart" and "discount" not in json.dumps(fb[0])

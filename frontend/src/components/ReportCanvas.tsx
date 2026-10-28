@@ -26,17 +26,23 @@ interface Props {
   /** Only the newest report has a server-side PowerPoint. */
   isLatest: boolean;
   onFollowUp: (q: string) => void;
+  /** Prefills the chat box (a chart's "Change variables…"). */
+  onDraft?: (q: string) => void;
 }
 
 export function hasReport(m: ChatMessage) {
   return !m.isStreaming && !!(m.insight || m.charts?.length || m.targetedResponse || m.briefing || m.evidence?.length);
 }
 
-export default function ReportCanvas({ message, question, sessionId, isLatest, onFollowUp }: Props) {
+export default function ReportCanvas({ message, question, sessionId, isLatest, onFollowUp, onDraft }: Props) {
+  // Phase 5: row-count / profile charts describe the table, so they live in the Data tab.
+  const summaryCharts = (message.charts ?? []).filter((c) => c.placement !== "data");
+  const dataCharts = (message.charts ?? []).filter((c) => c.placement === "data");
+  const [evidenceId, setEvidenceId] = useState<string | null>(null);
   const tabs: { id: Tab; label: string }[] = [
     { id: "summary" as const, label: "Summary" },
     ...(message.evidence?.length ? [{ id: "evidence" as const, label: `Evidence · ${message.evidence.length}` }] : []),
-    ...(message.briefing ? [{ id: "data" as const, label: "Data" }] : []),
+    ...(message.briefing || dataCharts.length ? [{ id: "data" as const, label: "Data" }] : []),
     ...(message.expertReview ? [{ id: "review" as const, label: "Review" }] : []),
   ];
   const [tab, setTab] = useState<Tab>("summary");
@@ -63,6 +69,23 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
   }
 
   const kpis = message.briefing?.kpis ?? [];
+  const hasEvidence = !!message.evidence?.length;
+
+  function openEvidence(id: string) {
+    setEvidenceId(id);
+    setTab("evidence");
+  }
+
+  const chartCard = (chart: (typeof summaryCharts)[number]) => (
+    <ChartRenderer
+      key={chart.id}
+      config={chart}
+      sessionId={sessionId}
+      onEvidence={hasEvidence ? openEvidence : undefined}
+      onDraft={onDraft}
+      action={sessionId && <PinButton sessionId={sessionId} chart={chart} />}
+    />
+  );
 
   return (
     <article className="mx-auto w-full max-w-5xl space-y-4">
@@ -119,7 +142,7 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
             {kpis.length > 0 && (
               <KPIStrip count={kpis.length}>
                 {kpis.map((k, i) => (
-                  <KPICard key={`${k.label}-${i}`} label={k.label} value={k.value} sublabel={k.context || undefined} />
+                  <KPICard key={`${k.label}-${i}`} label={k.label} value={k.value} sublabel={k.context || undefined} how={k.how} />
                 ))}
               </KPIStrip>
             )}
@@ -131,21 +154,25 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
                 <InsightPanel report={message.insight} />
               </div>
             )}
-            {!!message.charts?.length && (
-              <div className="grid gap-3 xl:grid-cols-2">
-                {message.charts.map((chart) => (
-                  <ChartRenderer
-                    key={chart.id}
-                    config={chart}
-                    action={sessionId && <PinButton sessionId={sessionId} chart={chart} />}
-                  />
-                ))}
-              </div>
+            {summaryCharts.length > 0 && (
+              <div className="grid gap-3 xl:grid-cols-2">{summaryCharts.map(chartCard)}</div>
             )}
           </>
         )}
-        {active === "evidence" && message.evidence && <EvidencePanel items={message.evidence} />}
-        {active === "data" && message.briefing && <BriefingPanel data={message.briefing} />}
+        {active === "evidence" && message.evidence && (
+          <EvidencePanel items={message.evidence} openId={evidenceId} onClosed={() => setEvidenceId(null)} />
+        )}
+        {active === "data" && (
+          <>
+            {message.briefing && <BriefingPanel data={message.briefing} />}
+            {dataCharts.length > 0 && (
+              <section aria-label="Data profile charts" className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rows by category</h3>
+                <div className="grid gap-3 xl:grid-cols-2">{dataCharts.map(chartCard)}</div>
+              </section>
+            )}
+          </>
+        )}
         {active === "review" && message.expertReview && <ExpertReviewPanel review={message.expertReview} />}
       </div>
     </article>

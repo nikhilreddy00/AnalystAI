@@ -44,10 +44,12 @@ from agents.quality_critic import run_quality_critic
 from agents.visualization_agent import (
     classify_columns,
     compute_briefing_extras,
+    VIZ_CARD,
     generate_smart_kpis,
+    kpi_mismatches,
     run_visualization_agent,
 )
-from llm.client import get_client
+from llm.client import get_client, trace_verdict
 from orchestrator.routing import (
     route_after_analysis,
     route_after_cleaning,
@@ -315,6 +317,11 @@ async def analysis_node(state: AgentState) -> dict:
                 findings.kpis = generate_smart_kpis(
                     df, roles, query, narrative=session.narrative
                 )
+                # Phase 5: a tile whose number doesn't match the data or the report is dropped.
+                wrong = set(kpi_mismatches(findings.kpis, df, findings.eda_summary))
+                for _ in wrong:
+                    trace_verdict("visualization", VIZ_CARD.version, "kpi_mismatch")
+                findings.kpis = [k for k in findings.kpis if k.label not in wrong]
                 extras = compute_briefing_extras(df, roles, session.data_contract)
                 findings.unique_counts = extras.get("unique_counts", {})
                 findings.sample_values_per_col = extras.get("sample_values_per_col", {})

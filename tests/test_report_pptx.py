@@ -156,3 +156,21 @@ def test_slide_titles_use_georgia(fixture_session):
                 if run.font.name:
                     fonts_seen.append(run.font.name)
     assert TITLE_FONT in fonts_seen, f"Expected Georgia on title slide; saw {fonts_seen}"
+
+
+def test_grouped_bars_with_ci_and_empty_colours_render():
+    """Phase 5: a Simpson-style grouped chart (2 series, CI whiskers, colors=[]) renders in the
+    deck with distinct series colours instead of dropping the second series."""
+    from api.lib import chart_render
+    from orchestrator.state import ChartConfig, ChartType
+
+    chart = ChartConfig(id="g", chart_type=ChartType.BAR, title="Conversion by department",
+                        x_key="department", y_keys=["treatment", "control"], colors=[],
+                        error_key="__ci", split_key="group", value_format="percent",
+                        data=[{"department": "Easy", "treatment": 80.0, "treatment__ci": [5.0, 4.0],
+                               "control": 70.0, "control__ci": [3.0, 3.0]},
+                              {"department": "Hard", "treatment": 30.0, "treatment__ci": [3.0, 3.0],
+                               "control": 20.0, "control__ci": [5.0, 6.0]}],
+                        source_finding="group_bars")
+    assert chart_render.render_chart_to_png(chart)[:4] == b"\x89PNG"
+    assert len(set(chart_render._resolve_colors(chart, 2))) == 2

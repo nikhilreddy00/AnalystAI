@@ -58,6 +58,22 @@ export async function pinChart(sessionId: string, chart: object, userId = "defau
   if (!res.ok) throw new Error(`Pin failed: ${res.status}`);
 }
 
+/** The user switched a chart's type: persist it on the stored chart and log the override.
+ *  Returns the updated chart (with any lint note), or null when the server didn't keep it. */
+export async function sendChartFeedback(
+  sessionId: string,
+  chartId: string,
+  chartType: ChartConfig["chart_type"],
+): Promise<ChartConfig | null> {
+  const res = await fetch(`${API_URL}/dashboard/chart-feedback`, {
+    method: "POST",
+    headers: await getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ session_id: sessionId, chart_id: chartId, chart_type: chartType }),
+  });
+  if (!res.ok) return null;
+  return ((await res.json()) as { chart: ChartConfig }).chart;
+}
+
 export async function unpinChart(chartId: string, userId = "default") {
   await fetch(`${API_URL}/dashboard/${chartId}?user_id=${userId}`, {
     method: "DELETE",
