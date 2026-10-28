@@ -21,23 +21,38 @@ import {
 import type { ChartConfig } from "@/types";
 import type { FilterValue } from "@/context/DashboardFilterContext";
 
-type Theme = "dark" | "light";
-
 interface Props {
   config: ChartConfig;
   height?: number;
-  theme?: Theme;
+  /** Optional slot rendered top-right of the card (e.g. a pin button). */
+  action?: React.ReactNode;
   onElementClick?: (key: string, value: FilterValue) => void;
 }
 
-// B1: Tableau 10 categorical palette — distinct from indigo/purple UI accents.
-const FALLBACK_COLORS = [
-  "#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F",
-  "#EDC948", "#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC",
-];
+// Phase 3.5: the categorical slots live in globals.css (--chart-1..8, validated for both
+// themes), so charts re-colour with the theme. Assign in order, never cycle past 8.
+const SERIES = Array.from({ length: 8 }, (_, i) => `var(--chart-${i + 1})`);
 
+// The backend fills `colors` even when they mean nothing: its Tableau-10 cycle, neutral
+// teal and indigo (mirrors _PALETTE / _NEUTRAL_TEAL in agents/visualization_agent.py).
+// Those give way to the theme slots; anything else (target green/red, ordinal ramp,
+// below-average) encodes meaning and is kept.
+const GENERIC = new Set([
+  "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+  "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac", "#6366f1",
+]);
+function meaningful(config: ChartConfig) {
+  return config.colors.some((c) => !GENERIC.has(c.toLowerCase()));
+}
 function colors(config: ChartConfig) {
-  return config.colors.length > 0 ? config.colors : FALLBACK_COLORS;
+  return meaningful(config) ? config.colors : SERIES;
+}
+
+// Category bars whose labels are all numbers (units 1..8) read in numeric order, not by count.
+function orderedData(config: ChartConfig) {
+  const xs = config.data.map((d) => d[config.x_key]);
+  const numeric = xs.length > 1 && xs.every((x) => x !== null && x !== "" && !Number.isNaN(Number(x)));
+  return numeric ? [...config.data].sort((a, b) => Number(a[config.x_key]) - Number(b[config.x_key])) : config.data;
 }
 
 // PROMPT-2 fix 1: when config.value_format === "percent", values are pre-multiplied
@@ -67,64 +82,31 @@ const LEGEND_PROPS = {
   height: 28,
 };
 
-// D1: dual-theme styles. Dark variant powers the chat surfaces (chart-as-dark-card
-// on dark canvas). Light variant powers the new Power BI dashboard at /dashboard.
-const THEMES = {
-  dark: {
-    cardClass:
-      "rounded-2xl border border-zinc-700/40 bg-zinc-900/60 backdrop-blur-sm p-5 space-y-3 shadow-xl hover:border-indigo-500/20 transition-colors duration-300",
-    titleClass: "text-sm font-semibold text-zinc-200",
-    badgeClass: "text-xs text-zinc-600 bg-zinc-800 px-2 py-0.5 rounded-full",
-    tooltip: {
-      contentStyle: {
-        background: "#18181b",
-        border: "1px solid rgba(99,102,241,0.2)",
-        borderRadius: 10,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-        fontSize: 12,
-        color: "#e4e4e7",
-      },
-      itemStyle: { color: "#a5b4fc" },
-      labelStyle: { color: "#71717a", marginBottom: 4 },
+// Recessive axes and grid; text wears text tokens, never the series colour.
+const T = {
+  tooltip: {
+    contentStyle: {
+      background: "var(--popover)",
+      border: "1px solid var(--border)",
+      borderRadius: 6,
+      boxShadow: "0 6px 20px -8px rgb(0 0 0 / 0.25)",
+      fontSize: 12,
+      color: "var(--popover-foreground)",
     },
-    axis: {
-      tick: { fill: "#71717a", fontSize: 11 },
-      axisLine: { stroke: "#3f3f46" },
-      tickLine: { stroke: "#3f3f46" },
-    },
-    grid: { strokeDasharray: "3 3", stroke: "#27272a", opacity: 0.6 },
-    legendColor: "#71717a",
-    labelFill: "#52525b",
+    itemStyle: { color: "var(--popover-foreground)" },
+    labelStyle: { color: "var(--muted-foreground)", marginBottom: 4 },
   },
-  light: {
-    cardClass:
-      "rounded-2xl border border-zinc-200 bg-white p-5 space-y-3 shadow-sm hover:border-zinc-300 transition-colors duration-300",
-    titleClass: "text-sm font-semibold text-zinc-900",
-    badgeClass: "text-xs text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full",
-    tooltip: {
-      contentStyle: {
-        background: "#ffffff",
-        border: "1px solid #e4e4e7",
-        borderRadius: 10,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-        fontSize: 12,
-        color: "#18181b",
-      },
-      itemStyle: { color: "#4f46e5" },
-      labelStyle: { color: "#71717a", marginBottom: 4 },
-    },
-    axis: {
-      tick: { fill: "#71717a", fontSize: 11 },
-      axisLine: { stroke: "#d4d4d8" },
-      tickLine: { stroke: "#d4d4d8" },
-    },
-    grid: { strokeDasharray: "3 3", stroke: "#e4e4e7", opacity: 1 },
-    legendColor: "#52525b",
-    labelFill: "#71717a",
+  axis: {
+    tick: { fill: "var(--muted-foreground)", fontSize: 11 },
+    axisLine: { stroke: "var(--border)" },
+    tickLine: false as const,
   },
-} as const;
+  grid: { strokeDasharray: "3 3", stroke: "var(--border)", vertical: false },
+  legendColor: "var(--muted-foreground)",
+  labelFill: "var(--muted-foreground)",
+};
 
-type ThemeStyles = (typeof THEMES)[Theme];
+type ThemeStyles = typeof T;
 
 interface ViewProps {
   config: ChartConfig;
@@ -149,7 +131,7 @@ function LineChartView({ config, height, t, onElementClick }: ViewProps) {
         <XAxis dataKey={config.x_key} {...t.axis} label={config.x_label ? { value: config.x_label, position: "insideBottom", fill: t.labelFill, fontSize: 11 } : undefined} />
         <YAxis {...t.axis} tickFormatter={tickFormatter(config)} label={config.y_label ? { value: config.y_label, angle: -90, position: "insideLeft", fill: t.labelFill, fontSize: 11 } : undefined} />
         <Tooltip {...t.tooltip} formatter={tooltipFormatter(config)} />
-        {config.show_legend && <Legend {...LEGEND_PROPS} wrapperStyle={{ fontSize: 12, color: t.legendColor }} />}
+        {config.show_legend && config.y_keys.length > 1 && <Legend {...LEGEND_PROPS} wrapperStyle={{ fontSize: 12, color: t.legendColor }} />}
         {config.y_keys.map((key, i) => (
           <Line
             key={key}
@@ -157,7 +139,7 @@ function LineChartView({ config, height, t, onElementClick }: ViewProps) {
             dataKey={key}
             stroke={colors(config)[i % colors(config).length]}
             dot={false}
-            strokeWidth={2.5}
+            strokeWidth={2}
             activeDot={{ r: 5, strokeWidth: 0 }}
           />
         ))}
@@ -168,11 +150,13 @@ function LineChartView({ config, height, t, onElementClick }: ViewProps) {
 
 function BarChartView({ config, height, t, horizontal, onElementClick }: ViewProps & { horizontal?: boolean }) {
   const clrs = colors(config);
-  const isMultiColor = clrs.length > 1 || config.y_keys.length === 1;
+  // Per-bar colours only when they encode something (backend-supplied); a single
+  // series otherwise stays one colour.
+  const perBar = meaningful(config) && config.colors.length > 1 && config.y_keys.length === 1;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart
-        data={config.data}
+        data={config.chart_type === "HistogramChart" ? config.data : orderedData(config)}
         layout={horizontal ? "vertical" : "horizontal"}
         barCategoryGap="25%"
         onClick={(state) => {
@@ -194,11 +178,11 @@ function BarChartView({ config, height, t, horizontal, onElementClick }: ViewPro
             <YAxis {...t.axis} tickFormatter={tickFormatter(config)} label={config.y_label ? { value: config.y_label, angle: -90, position: "insideLeft", fill: t.labelFill, fontSize: 11 } : undefined} />
           </>
         )}
-        <Tooltip {...t.tooltip} formatter={tooltipFormatter(config)} />
-        {config.show_legend && <Legend {...LEGEND_PROPS} wrapperStyle={{ fontSize: 12, color: t.legendColor }} />}
+        <Tooltip {...t.tooltip} cursor={{ fill: "var(--muted)" }} formatter={tooltipFormatter(config)} />
+        {config.show_legend && config.y_keys.length > 1 && <Legend {...LEGEND_PROPS} wrapperStyle={{ fontSize: 12, color: t.legendColor }} />}
         {config.y_keys.map((key, i) => (
-          <Bar key={key} dataKey={key} fill={clrs[i % clrs.length]} radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} maxBarSize={48}>
-            {isMultiColor && clrs.length > 1 && config.data.map((_, di) => (
+          <Bar key={key} dataKey={key} fill={clrs[i % clrs.length]} radius={horizontal ? [0, 3, 3, 0] : [3, 3, 0, 0]} maxBarSize={44}>
+            {perBar && config.data.map((_, di) => (
               <Cell key={di} fill={clrs[di % clrs.length]} />
             ))}
           </Bar>
@@ -222,16 +206,18 @@ function PieChartView({ config, height, t, donut, onElementClick }: ViewProps & 
           innerRadius={donut ? "52%" : 0}
           outerRadius="72%"
           paddingAngle={2}
+          stroke="var(--card)"
           label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
           labelLine={false}
-          onClick={(data: any) => {
-            if (data && onElementClick) {
-              onElementClick(config.x_key, { kind: "equality", value: data.name || data[config.x_key] });
+          onClick={(data: unknown) => {
+            const d = data as Record<string, string> | null;
+            if (d && onElementClick) {
+              onElementClick(config.x_key, { kind: "equality", value: d.name || d[config.x_key] });
             }
           }}
         >
           {config.data.map((_, i) => (
-            <Cell key={i} fill={pieColors[i % pieColors.length]} strokeWidth={0} />
+            <Cell key={i} fill={pieColors[i % pieColors.length]} strokeWidth={2} />
           ))}
         </Pie>
         <Tooltip {...t.tooltip} formatter={tooltipFormatter(config)} />
@@ -244,18 +230,19 @@ function PieChartView({ config, height, t, donut, onElementClick }: ViewProps & 
 function ScatterChartView({ config, height, t, onElementClick }: ViewProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ScatterChart style={{ cursor: onElementClick ? "pointer" : "default" }}>
+      <ScatterChart margin={{ bottom: 12 }} style={{ cursor: onElementClick ? "pointer" : "default" }}>
         {config.show_grid && <CartesianGrid {...t.grid} />}
-        <XAxis dataKey={config.x_key} name={config.x_label ?? config.x_key} {...t.axis} />
-        <YAxis dataKey={config.y_keys[0]} name={config.y_label ?? config.y_keys[0]} {...t.axis} tickFormatter={tickFormatter(config)} />
-        <Tooltip cursor={{ strokeDasharray: "3 3" }} {...t.tooltip} />
+        <XAxis type="number" dataKey={config.x_key} name={config.x_label ?? config.x_key} domain={["auto", "auto"]} {...t.axis} label={{ value: config.x_label ?? config.x_key, position: "insideBottom", offset: -4, fill: t.labelFill, fontSize: 11 }} />
+        <YAxis type="number" dataKey={config.y_keys[0]} name={config.y_label ?? config.y_keys[0]} domain={["auto", "auto"]} {...t.axis} tickFormatter={tickFormatter(config)} />
+        <Tooltip cursor={{ strokeDasharray: "3 3", stroke: "var(--border)" }} {...t.tooltip} />
         <Scatter
           data={config.data}
           fill={colors(config)[0]}
-          opacity={0.8}
-          onClick={(data: any) => {
-            if (data && onElementClick) {
-              onElementClick(config.x_key, { kind: "equality", value: data[config.x_key] });
+          fillOpacity={0.5}
+          onClick={(data: unknown) => {
+            const d = data as Record<string, string> | null;
+            if (d && onElementClick) {
+              onElementClick(config.x_key, { kind: "equality", value: d[config.x_key] });
             }
           }}
         />
@@ -284,7 +271,7 @@ function ComposedChartView({ config, height, t, onElementClick }: ViewProps) {
         {config.show_legend && <Legend {...LEGEND_PROPS} wrapperStyle={{ fontSize: 12, color: t.legendColor }} />}
         {firstKey && <Bar dataKey={firstKey} fill={colors(config)[0]} radius={[4, 4, 0, 0]} maxBarSize={40} />}
         {restKeys.map((key, i) => (
-          <Line key={key} type="monotone" dataKey={key} stroke={colors(config)[(i + 1) % colors(config).length]} dot={false} strokeWidth={2.5} />
+          <Line key={key} type="monotone" dataKey={key} stroke={colors(config)[(i + 1) % colors(config).length]} dot={false} strokeWidth={2} />
         ))}
       </ComposedChart>
     </ResponsiveContainer>
@@ -293,8 +280,8 @@ function ComposedChartView({ config, height, t, onElementClick }: ViewProps) {
 
 // PROMPT-6 fix 1: real heatmap renderer. The backend ships `data` as a flat
 // list of {row, col, value} records; we pivot into a grid and color each cell
-// by interpolating r ∈ [-1, +1] from red → white → green.
-function HeatmapView({ config, theme }: { config: ChartConfig; theme: Theme }) {
+// by r ∈ [-1, +1] on a diverging scale.
+function HeatmapView({ config }: { config: ChartConfig }) {
   const data = config.data as { row: string; col: string; value: number }[];
   const rows: string[] = [];
   const cols: string[] = [];
@@ -307,31 +294,19 @@ function HeatmapView({ config, theme }: { config: ChartConfig; theme: Theme }) {
   const lookup = new Map<string, number>();
   for (const d of data) lookup.set(`${d.row}|${d.col}`, d.value);
 
+  // Diverging: two hues (chart blue / chart red) through the card colour at r = 0.
+  // Capped at 60% so the foreground text stays readable in both themes.
   const cellColor = (r: number): string => {
-    // Clamp to [-1, +1], interpolate between the project's _NEGATIVE and _POSITIVE.
     const x = Math.max(-1, Math.min(1, r));
-    // Anchors (matches Python _NEGATIVE / _POSITIVE):
-    //   r = -1 → rgb(163, 45, 45)
-    //   r =  0 → rgb(255, 255, 255)
-    //   r = +1 → rgb(29, 158, 117)
-    const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
-    if (x < 0) {
-      const t = -x;
-      return `rgb(${lerp(255, 163, t)}, ${lerp(255, 45, t)}, ${lerp(255, 45, t)})`;
-    }
-    const t = x;
-    return `rgb(${lerp(255, 29, t)}, ${lerp(255, 158, t)}, ${lerp(255, 117, t)})`;
+    const pole = x >= 0 ? "var(--chart-1)" : "var(--chart-8)";
+    return `color-mix(in oklch, ${pole} ${Math.round(Math.abs(x) * 60)}%, var(--card))`;
   };
-
-  const textColor = (r: number): string => (Math.abs(r) > 0.55 ? "#ffffff" : "#1f2937");
-  const headerCls = theme === "light"
-    ? "text-zinc-700 bg-zinc-50 border-zinc-200"
-    : "text-zinc-300 bg-zinc-800/60 border-zinc-700";
-  const borderCls = theme === "light" ? "border-zinc-200" : "border-zinc-700";
+  const headerCls = "text-foreground bg-muted border-border";
+  const borderCls = "border-border";
 
   return (
     <div className="overflow-x-auto">
-      <table className={`text-xs border-collapse ${theme === "light" ? "text-zinc-800" : "text-zinc-200"}`}>
+      <table className="text-xs border-collapse text-foreground">
         <thead>
           <tr>
             <th className={`sticky left-0 z-10 px-2.5 py-1.5 border ${headerCls}`}></th>
@@ -350,8 +325,8 @@ function HeatmapView({ config, theme }: { config: ChartConfig; theme: Theme }) {
                   return <td key={c} className={`px-2.5 py-1.5 border ${borderCls}`} />;
                 }
                 const isDiagonal = r === c;
-                const bg = isDiagonal ? (theme === "light" ? "#f4f4f5" : "#27272a") : cellColor(v);
-                const fg = isDiagonal ? (theme === "light" ? "#a1a1aa" : "#71717a") : textColor(v);
+                const bg = isDiagonal ? "var(--muted)" : cellColor(v);
+                const fg = isDiagonal ? "var(--muted-foreground)" : "var(--foreground)";
                 return (
                   <td
                     key={c}
@@ -371,18 +346,18 @@ function HeatmapView({ config, theme }: { config: ChartConfig; theme: Theme }) {
   );
 }
 
-export default function ChartRenderer({ config, height = 280, theme = "dark", onElementClick }: Props) {
+export default function ChartRenderer({ config, height = 260, action, onElementClick }: Props) {
   if (!config.data || config.data.length === 0) return null;
 
-  const t = THEMES[theme];
+  const t = T;
 
   return (
-    <div className={t.cardClass}>
-      <div className="flex items-center justify-between">
-        <h3 className={t.titleClass}>{config.title}</h3>
-        <span className={t.badgeClass}>{config.chart_type.replace("Chart", "")}</span>
-      </div>
-      <div className="pt-1">
+    <figure className="m-0 rounded-lg border border-border bg-card p-4 space-y-2 min-w-0">
+      <figcaption className="flex items-start justify-between gap-3">
+        <h3 className="text-sm font-medium text-foreground">{config.title}</h3>
+        {action}
+      </figcaption>
+      <div>
         {(() => {
           switch (config.chart_type) {
             case "LineChart":
@@ -399,7 +374,7 @@ export default function ChartRenderer({ config, height = 280, theme = "dark", on
             case "ScatterChart":
               return <ScatterChartView config={config} height={height} t={t} onElementClick={onElementClick} />;
             case "HeatmapChart":
-              return <HeatmapView config={config} theme={theme} />;
+              return <HeatmapView config={config} />;
             case "ComposedChart":
               return <ComposedChartView config={config} height={height} t={t} onElementClick={onElementClick} />;
             default:
@@ -407,6 +382,6 @@ export default function ChartRenderer({ config, height = 280, theme = "dark", on
           }
         })()}
       </div>
-    </div>
+    </figure>
   );
 }

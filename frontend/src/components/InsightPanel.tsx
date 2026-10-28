@@ -7,11 +7,12 @@ import type { ExecutiveSummary, AnalystDetail, InsightReport, RecommendedAction,
 // Executive: plain English, business framing, no stats notation.
 // Analyst:   methodology, statistical notes, caveats, code references.
 
+// Severity is carried by a stripe colour and its label, never colour alone.
 const SEVERITY = {
-  low: { bg: "bg-zinc-50 border-zinc-200", badge: "bg-zinc-100 text-zinc-700", dot: "bg-zinc-400" },
-  medium: { bg: "bg-amber-50 border-amber-200", badge: "bg-amber-100 text-amber-800", dot: "bg-amber-500" },
-  high: { bg: "bg-orange-50 border-orange-200", badge: "bg-orange-100 text-orange-800", dot: "bg-orange-500" },
-  critical: { bg: "bg-red-50 border-red-200", badge: "bg-red-100 text-red-800", dot: "bg-red-500 animate-pulse" },
+  low: "border-l-muted-foreground/50",
+  medium: "border-l-warning",
+  high: "border-l-warning",
+  critical: "border-l-destructive",
 };
 
 interface Props {
@@ -23,33 +24,30 @@ export default function InsightPanel({ report, onFollowUp }: Props) {
   const [view, setView] = useState<"executive" | "analyst">("executive");
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 space-y-4 max-w-2xl shadow-sm">
+    <section className="space-y-4" aria-label="Analysis report">
       <Header view={view} onChange={setView} />
       {view === "executive" ? (
         <ExecutiveView report={report} onFollowUp={onFollowUp} />
       ) : (
         <AnalystView report={report} />
       )}
-    </div>
+    </section>
   );
 }
 
 function Header({ view, onChange }: { view: "executive" | "analyst"; onChange: (v: "executive" | "analyst") => void }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className="text-base text-indigo-600">✦</span>
-        <span className="text-xs font-semibold text-zinc-700 uppercase tracking-widest">Analysis Report</span>
-      </div>
-      <div className="flex rounded-xl overflow-hidden border border-zinc-200 p-0.5 gap-0.5 bg-zinc-50">
+    <div className="flex items-center justify-between gap-3">
+      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Report</h3>
+      <div className="flex rounded-md border border-border p-0.5 gap-0.5 bg-muted" role="group" aria-label="Report view">
         {(["executive", "analyst"] as const).map((v) => (
           <button
             key={v}
+            type="button"
             onClick={() => onChange(v)}
-            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all duration-200 ${
-              view === v
-                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm"
-                : "text-zinc-500 hover:text-zinc-800"
+            aria-pressed={view === v}
+            className={`px-2.5 py-1 text-xs font-medium rounded ${
+              view === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {v === "executive" ? "Executive" : "Analyst"}
@@ -60,11 +58,38 @@ function Header({ view, onChange }: { view: "executive" | "analyst"; onChange: (
   );
 }
 
-function SectionLabel({ icon, children }: { icon: string; children: React.ReactNode }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-      <span>{icon}</span> {children}
-    </h4>
+    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{children}</h4>
+  );
+}
+
+function Alerts({ report, detail }: { report: InsightReport; detail?: boolean }) {
+  if (report.anomaly_alerts.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <SectionLabel>{detail ? "Anomaly detail" : "Alerts"}</SectionLabel>
+      {report.anomaly_alerts.map((alert: AnomalyAlert, i: number) => (
+        <div key={i} className={`rounded-md border border-border border-l-[3px] bg-card px-3 py-2.5 space-y-1 ${SEVERITY[alert.severity]}`}>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-sm font-medium text-foreground">{alert.title}</span>
+            <span className="text-xs text-muted-foreground">{alert.severity}</span>
+          </div>
+          <p className="text-sm text-muted-foreground">{alert.description}</p>
+          {detail && (
+            <p className="text-xs text-muted-foreground">
+              Metric: <span className="text-foreground font-mono">{alert.affected_metric}</span>
+            </p>
+          )}
+          {alert.suggested_investigation && (
+            <p className="text-sm text-foreground">Next: {alert.suggested_investigation}</p>
+          )}
+        </div>
+      ))}
+      {report.additional_issues_note && (
+        <p className="text-xs text-muted-foreground">{report.additional_issues_note}</p>
+      )}
+    </div>
   );
 }
 
@@ -80,98 +105,66 @@ function ExecutiveView({ report, onFollowUp }: { report: InsightReport; onFollow
   };
 
   return (
-    <div className="space-y-4">
-      {/* Headline + paragraphs */}
+    <div className="space-y-5">
       {(ev.headline || ev.paragraphs.length > 0) && (
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-4 space-y-2">
+        <div className="space-y-2">
           {ev.headline && (
-            <p className="text-zinc-900 text-sm font-semibold leading-snug">{ev.headline}</p>
+            <p className="text-lg font-semibold leading-snug text-foreground text-balance">{ev.headline}</p>
           )}
           {ev.paragraphs.length > 0 && (
-            <p className="text-zinc-700 text-sm leading-relaxed">{ev.paragraphs.join(" ")}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground max-w-[68ch]">{ev.paragraphs.join(" ")}</p>
           )}
         </div>
       )}
 
-      {/* Plain-language findings */}
       {ev.findings.length > 0 && (
-        <div className="space-y-2">
-          <SectionLabel icon="✓">Key findings</SectionLabel>
-          <ul className="space-y-1.5">
+        <div className="space-y-1">
+          <SectionLabel>Key findings</SectionLabel>
+          <ul className="divide-y divide-border">
             {ev.findings.map((f, i) => (
-              <li key={i} className="text-sm text-zinc-800 flex gap-2.5 bg-zinc-50 rounded-xl px-3 py-2.5 border border-zinc-200">
-                <span className="text-indigo-600 mt-0.5 flex-shrink-0 font-bold">·</span>
-                <span className="leading-relaxed">{f}</span>
-              </li>
+              <li key={i} className="py-2 text-sm text-foreground leading-relaxed">{f}</li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Alerts — PROMPT-4: scannable format, max 5, severity-sorted */}
-      {report.anomaly_alerts.length > 0 && (
-        <div className="space-y-2">
-          <SectionLabel icon="⚠">Alerts</SectionLabel>
-          {report.anomaly_alerts.map((alert: AnomalyAlert, i: number) => {
-            const s = SEVERITY[alert.severity];
-            return (
-              <div key={i} className={`rounded-xl border p-3 space-y-1 ${s.bg}`}>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.dot}`} />
-                  <span className="text-sm font-semibold text-zinc-900 truncate">{alert.title}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${s.badge}`}>{alert.severity}</span>
-                </div>
-                <p className="text-xs text-zinc-700 leading-relaxed pl-4">{alert.description}</p>
-                {alert.suggested_investigation && (
-                  <p className="text-xs text-zinc-900 leading-relaxed pl-4">
-                    <span className="font-semibold text-indigo-700">→ </span>{alert.suggested_investigation}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-          {report.additional_issues_note && (
-            <p className="text-xs text-zinc-500 italic pl-1">
-              {report.additional_issues_note}
-            </p>
-          )}
-        </div>
-      )}
+      <Alerts report={report} />
 
-      {/* Action items */}
+      {/* Ordered by priority, so the numbers carry meaning. */}
       {ev.action_items.length > 0 && (
         <div className="space-y-2">
-          <SectionLabel icon="⚡">Recommended actions</SectionLabel>
-          {ev.action_items.map((item, i) => (
-            <div key={i} className="flex gap-3 text-sm bg-zinc-50 rounded-xl p-3 border border-zinc-200">
-              <span className="flex-shrink-0 w-5 h-5 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 text-white text-xs flex items-center justify-center font-bold shadow-sm">
-                {i + 1}
-              </span>
-              <div className="space-y-0.5">
-                <p className="text-zinc-900 font-medium leading-tight">{item.action}</p>
-                {item.expected_impact && (
-                  <p className="text-emerald-600 text-xs font-medium">↑ {item.expected_impact}</p>
-                )}
-              </div>
-            </div>
-          ))}
+          <SectionLabel>Recommended actions</SectionLabel>
+          <ol className="space-y-2">
+            {ev.action_items.map((item, i) => (
+              <li key={i} className="flex gap-3 text-sm">
+                <span className="flex-shrink-0 w-5 h-5 rounded bg-brand-soft text-primary text-xs flex items-center justify-center font-semibold font-mono">
+                  {i + 1}
+                </span>
+                <div className="space-y-0.5">
+                  <p className="text-foreground font-medium leading-snug">{item.action}</p>
+                  {item.expected_impact && <p className="text-muted-foreground text-xs">{item.expected_impact}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
 
-      {/* Follow-ups */}
-      {report.proactive_questions.length > 0 && (
-        <div className="space-y-1.5">
-          <SectionLabel icon="💬">Suggested follow-ups</SectionLabel>
-          {report.proactive_questions.map((q: string, i: number) => (
-            <button
-              key={i}
-              onClick={() => onFollowUp?.(q)}
-              className="block w-full text-left text-xs text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 rounded-xl px-3.5 py-2.5 transition-all duration-200 group"
-            >
-              <span className="text-indigo-500 group-hover:text-indigo-600 mr-2">→</span>
-              {q}
-            </button>
-          ))}
+      {onFollowUp && report.proactive_questions.length > 0 && (
+        <div className="space-y-2">
+          <SectionLabel>Suggested follow-ups</SectionLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {report.proactive_questions.map((q: string, i: number) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onFollowUp(q)}
+                className="text-left text-xs text-foreground bg-card hover:bg-accent border border-border rounded-full px-3 py-1.5"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -187,57 +180,26 @@ function AnalystView({ report }: { report: InsightReport }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Statistical notes */}
       {ay.statistical_notes.length > 0 && (
         <div className="space-y-2">
-          <SectionLabel icon="📐">Statistical findings</SectionLabel>
-          <ul className="space-y-2">
+          <SectionLabel>Statistical findings</SectionLabel>
+          <ul className="divide-y divide-border">
             {ay.statistical_notes.map((s: string, i: number) => (
-              <li key={i} className="text-sm text-zinc-800 flex gap-2.5 bg-zinc-50 rounded-xl px-3 py-2.5 border border-zinc-200 font-mono">
-                <span className="text-indigo-600 mt-0.5 flex-shrink-0 font-bold not-italic">▸</span>
-                <span className="leading-relaxed">{s}</span>
-              </li>
+              <li key={i} className="text-[13px] text-foreground font-mono leading-relaxed py-1.5">{s}</li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Anomaly detail */}
-      {report.anomaly_alerts.length > 0 && (
-        <div className="space-y-2">
-          <SectionLabel icon="🔍">Anomaly detail</SectionLabel>
-          {report.anomaly_alerts.map((alert: AnomalyAlert, i: number) => {
-            const s = SEVERITY[alert.severity];
-            return (
-              <div key={i} className={`rounded-xl border p-3.5 space-y-2 ${s.bg}`}>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${s.badge}`}>{alert.severity}</span>
-                  <span className="text-zinc-900 font-semibold text-sm">{alert.title}</span>
-                </div>
-                <p className="text-zinc-700 text-xs leading-relaxed">{alert.description}</p>
-                <p className="text-xs text-zinc-500">
-                  Metric: <span className="text-zinc-800 font-mono">{alert.affected_metric}</span>
-                </p>
-                <p className="text-xs text-zinc-500">
-                  Investigate: <span className="text-zinc-800">{alert.suggested_investigation}</span>
-                </p>
-              </div>
-            );
-          })}
-          {report.additional_issues_note && (
-            <p className="text-xs text-zinc-500 italic pl-1">
-              {report.additional_issues_note}
-            </p>
-          )}
-        </div>
-      )}
+      <Alerts report={report} detail />
 
       {/* Methodology */}
       {ay.methodology && (
         <div className="space-y-1.5">
-          <SectionLabel icon="🔬">Methodology</SectionLabel>
-          <p className="text-xs text-zinc-700 leading-relaxed bg-zinc-50 rounded-xl px-3.5 py-3 border border-zinc-200">
+          <SectionLabel>Methodology</SectionLabel>
+          <p className="text-sm text-foreground leading-relaxed max-w-[68ch]">
             {ay.methodology}
           </p>
         </div>
@@ -246,10 +208,10 @@ function AnalystView({ report }: { report: InsightReport }) {
       {/* Caveats */}
       {ay.caveats.length > 0 && (
         <div className="space-y-1.5">
-          <SectionLabel icon="⚠️">Caveats &amp; assumptions</SectionLabel>
-          <ul className="space-y-1">
+          <SectionLabel>Caveats &amp; assumptions</SectionLabel>
+          <ul className="list-disc pl-5 space-y-1">
             {ay.caveats.map((c: string, i: number) => (
-              <li key={i} className="text-xs text-zinc-700 leading-relaxed bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+              <li key={i} className="text-sm text-foreground leading-relaxed">
                 {c}
               </li>
             ))}
@@ -260,19 +222,19 @@ function AnalystView({ report }: { report: InsightReport }) {
       {/* Code references — dark block with comment/code split for legibility. */}
       {ay.code_references.length > 0 && (
         <div className="space-y-1.5">
-          <SectionLabel icon="〈〉">Reproducibility</SectionLabel>
+          <SectionLabel>Reproducibility</SectionLabel>
           <ul className="space-y-1.5">
             {ay.code_references.map((c: string, i: number) => (
               <li
                 key={i}
-                className="text-xs leading-relaxed bg-zinc-950 rounded-xl px-3.5 py-2.5 font-mono whitespace-pre-wrap border border-zinc-800"
+                className="text-xs leading-relaxed bg-muted rounded-md px-3 py-2 font-mono whitespace-pre-wrap overflow-x-auto"
               >
                 {c.split("\n").map((line, j) => {
                   const isComment = line.trimStart().startsWith("#");
                   return (
                     <div
                       key={j}
-                      className={isComment ? "text-zinc-500" : "text-zinc-100"}
+                      className={isComment ? "text-muted-foreground" : "text-foreground"}
                     >
                       {line || " "}
                     </div>

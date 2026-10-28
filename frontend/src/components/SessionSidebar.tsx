@@ -28,11 +28,11 @@ function relativeTime(iso: string): string {
 function statusPillClass(status: SessionSummary["status"]): string {
   switch (status) {
     case "completed":
-      return "bg-green-100 text-green-800";
+      return "text-success";
     case "failed":
-      return "bg-red-100 text-red-800";
+      return "text-destructive";
     default:
-      return "bg-amber-100 text-amber-800";
+      return "text-warning";
   }
 }
 
@@ -45,67 +45,61 @@ export function SessionSidebar({
   onNewAnalysis,
 }: Props) {
   return (
-    <div className="flex flex-col gap-2 p-3 border-t border-gray-200">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">History</h3>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between px-1">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">History</h3>
         <button
           type="button"
           onClick={onNewAnalysis}
-          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-accent"
         >
           <PlusCircle size={14} />
-          New
+          New analysis
         </button>
       </div>
 
       {loading && sessions.length === 0 && (
-        <p className="text-xs text-gray-400">Loading…</p>
+        <p className="px-1 text-xs text-muted-foreground">Loading…</p>
       )}
       {!loading && sessions.length === 0 && (
-        <p className="text-xs text-gray-400">No past analyses yet.</p>
+        <p className="px-1 text-xs text-muted-foreground">No past analyses yet.</p>
       )}
 
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-0.5">
         {sessions.map((s) => {
           const isActive = s.session_id === activeSessionId;
           return (
-            <li
-              key={s.session_id}
-              className={`group rounded-md px-2 py-1.5 cursor-pointer ${
-                isActive ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50"
-              }`}
-              onClick={() => onLoadSession(s.session_id)}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-gray-800 truncate">
+            <li key={s.session_id} className="group relative">
+              <button
+                type="button"
+                onClick={() => onLoadSession(s.session_id)}
+                aria-current={isActive ? "true" : undefined}
+                className={`w-full rounded-md px-2.5 py-2 pr-8 text-left ${
+                  isActive ? "bg-card shadow-[0_0_0_1px_var(--border)]" : "hover:bg-accent"
+                }`}
+              >
+                <span className="block truncate text-sm font-medium text-foreground">
                   {s.dataset_name ?? "Untitled dataset"}
                 </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteSession(s.session_id);
-                  }}
-                  className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Delete session"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-              <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
-                <span>{relativeTime(s.updated_at)}</span>
-                <span className={`px-1.5 py-0.5 rounded ${statusPillClass(s.status)}`}>
-                  {s.status}
+                {s.original_query && (
+                  <span className="block truncate text-xs text-muted-foreground" title={s.original_query}>
+                    {s.original_query}
+                  </span>
+                )}
+                <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span>{relativeTime(s.updated_at)}</span>
+                  {s.row_count !== null && <span>{s.row_count.toLocaleString()} rows</span>}
+                  <span className={statusPillClass(s.status)}>{s.status}</span>
                 </span>
-              </div>
-              {s.row_count !== null && (
-                <p className="text-xs text-gray-400">{s.row_count.toLocaleString()} rows</p>
-              )}
-              {s.original_query && (
-                <p className="text-xs text-gray-500 truncate" title={s.original_query}>
-                  {s.original_query}
-                </p>
-              )}
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeleteSession(s.session_id)}
+                className="absolute right-1.5 top-2 rounded p-1 text-muted-foreground opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                aria-label={`Delete ${s.dataset_name ?? "session"}`}
+              >
+                <Trash2 size={14} />
+              </button>
             </li>
           );
         })}

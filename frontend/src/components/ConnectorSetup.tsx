@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Code,
   Database,
@@ -28,9 +28,6 @@ interface ConnectorConfig {
   pagination_key?: string;
 }
 
-// PROMPT-8 + PROMPT-7: shared accent so the chat sidebar matches the landing
-// page's pipeline strip — one purple, used everywhere.
-const ACCENT = "#534AB7";
 
 const SOURCE_TABS: { key: ConnectorType; label: string; Icon: LucideIcon }[] = [
   { key: "csv",    label: "CSV / Excel",    Icon: FileSpreadsheet },
@@ -202,29 +199,20 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold text-zinc-200 mb-0.5">Connect your data</h2>
-        <p className="text-xs text-zinc-600">Choose a source type to get started</p>
-      </div>
-
-      {/* PROMPT-8 fix 1: all 4 tabs share the same surface, padding, font size,
-          and accent. Active gets a purple border + bg tint; hover lifts the
-          brightness without changing structure. */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-muted p-1 sm:grid-cols-4" role="group" aria-label="Source type">
         {SOURCE_TABS.map(({ key, label, Icon }) => {
           const active = type === key;
           return (
             <button
               key={key}
+              type="button"
+              aria-pressed={active}
               onClick={() => { setType(key); setConfig({}); setStatus(null); if (key !== "csv") setPreview(null); }}
-              className="group flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium text-left transition-all duration-200 border bg-[#27272a] hover:bg-[#303035]"
-              style={
-                active
-                  ? { borderColor: ACCENT, backgroundColor: `${ACCENT}26`, color: "#E6E3F8" }
-                  : { borderColor: "#3a3a40", color: "#a1a1aa" }
-              }
+              className={`flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium ${
+                active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" style={{ color: active ? ACCENT : "#9ca3af" }} />
+              <Icon className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">{label}</span>
             </button>
           );
@@ -239,58 +227,42 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
               metadata card (filename / size / columns / dismiss). */}
           {!preview ? (
             <label
-              className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl min-h-[140px] p-5 cursor-pointer transition-all duration-200 ${
-                uploading ? "bg-[#1f1f23]" : "bg-[#1a1a1d] hover:bg-[#1f1f23]"
+              className={`flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-[1.5px] border-dashed p-5 text-center focus-within:border-ring ${
+                uploading ? "border-primary bg-brand-soft" : "border-border hover:border-primary hover:bg-accent"
               }`}
-              style={{ borderColor: uploading ? ACCENT : "#3a3a40" }}
-              onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.borderColor = ACCENT; }}
-              onMouseLeave={(e) => { if (!uploading) e.currentTarget.style.borderColor = "#3a3a40"; }}
             >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: `${ACCENT}26`, color: "#C9C3F5" }}
-              >
-                <Upload className="w-5 h-5" />
-              </div>
-              <span className="text-sm font-medium text-zinc-300">
+              <Upload className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-foreground">
                 {uploading ? "Uploading…" : "Click to upload or drag & drop"}
               </span>
-              <span className="text-[11px] text-zinc-500">{ACCEPTED_FORMATS_LABEL}</span>
+              <span className="text-[11px] text-muted-foreground">{ACCEPTED_FORMATS_LABEL}</span>
               <input
                 type="file"
                 accept={ACCEPTED_FORMATS}
                 onChange={handleFileSelect}
                 disabled={uploading}
-                className="hidden"
+                className="sr-only"
               />
             </label>
           ) : (
-            <div
-              className="rounded-xl border bg-[#1a1a1d] p-3.5 flex items-start gap-3"
-              style={{ borderColor: status?.ok ? ACCENT : "#3a3a40" }}
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `${ACCENT}26`, color: ACCENT }}
-              >
-                <FileSpreadsheet className="w-5 h-5" />
-              </div>
+            <div className={`flex items-start gap-3 rounded-lg border bg-card p-3 ${status?.ok ? "border-success/50" : "border-border"}`}>
+              <FileSpreadsheet className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-zinc-200 truncate" title={preview.file.name}>
+                <div className="text-sm font-medium text-foreground truncate" title={preview.file.name}>
                   {preview.file.name}
                 </div>
-                <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
                   <span>{formatBytes(preview.file.size)}</span>
                   {preview.columnCount !== null && (
                     <>
-                      <span className="text-zinc-700">·</span>
+                      <span className="text-foreground">·</span>
                       <span>{preview.columnCount} column{preview.columnCount === 1 ? "" : "s"} detected</span>
                     </>
                   )}
                   {uploading && (
                     <>
-                      <span className="text-zinc-700">·</span>
-                      <span className="text-indigo-400">uploading…</span>
+                      <span className="text-foreground">·</span>
+                      <span className="text-primary">uploading…</span>
                     </>
                   )}
                 </div>
@@ -299,7 +271,7 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
                 onClick={clearPreview}
                 disabled={uploading}
                 aria-label="Remove file"
-                className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -322,12 +294,13 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
           <Field label="Spreadsheet ID" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" onChange={(v) => update("spreadsheet_id", v)} />
           <Field label="Sheet name (optional)" placeholder="Sheet1" onChange={(v) => update("sheet_name", v)} />
           <div>
-            <label className="block text-xs text-zinc-500 mb-1.5">Service account JSON</label>
+            <label htmlFor="sheets-sa-json" className="block text-xs text-muted-foreground mb-1.5">Service account JSON</label>
             <textarea
+              id="sheets-sa-json"
               rows={3}
               placeholder='{"type": "service_account", ...}'
               onChange={(e) => update("service_account_json", e.target.value)}
-              className="w-full rounded-xl bg-zinc-800/60 border border-zinc-700/50 text-zinc-200 text-xs p-2.5 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/40 focus:border-indigo-500/40"
+              className="w-full rounded-md bg-background border border-input text-foreground text-xs p-2.5 resize-none focus:outline-none focus:border-ring"
             />
           </div>
         </div>
@@ -339,10 +312,11 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
           <Field label="Endpoint URL" placeholder="https://api.example.com/data" onChange={(v) => update("url", v)} />
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-zinc-500 mb-1.5">Auth type</label>
+              <label htmlFor="api-auth-type" className="block text-xs text-muted-foreground mb-1.5">Auth type</label>
               <select
+                id="api-auth-type"
                 onChange={(e) => update("auth_type", e.target.value)}
-                className="w-full rounded-xl bg-zinc-800/60 border border-zinc-700/50 text-zinc-300 text-xs px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+                className="w-full rounded-md bg-background border border-input text-muted-foreground text-xs px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary/40"
               >
                 <option value="">None</option>
                 <option value="bearer">Bearer token</option>
@@ -360,30 +334,30 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
         <button
           onClick={handleTest}
           disabled={testing}
-          className="w-full py-2.5 rounded-xl text-white text-xs font-semibold disabled:opacity-50 transition-all"
-          style={{ backgroundColor: ACCENT, boxShadow: `0 10px 30px -10px ${ACCENT}80` }}
+          type="button"
+          className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {testing ? "Testing connection…" : "Test & Connect →"}
+          {testing ? "Testing connection…" : "Test and connect"}
         </button>
       )}
 
       {status && (
-        <div className={`rounded-xl px-3 py-2.5 text-xs font-medium ${
+        <div role="status" className={`rounded-md px-3 py-2 text-xs font-medium ${
           status.ok
-            ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-            : "bg-red-500/10 border border-red-500/20 text-red-400"
+            ? "bg-success/10 border border-success/20 text-success"
+            : "bg-destructive/10 border border-destructive/20 text-destructive"
         }`}>
           {status.message}
         </div>
       )}
 
       {pendingUpload?.existing_session && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md shadow-xl">
-            <h3 className="text-lg font-semibold mb-2">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="dedup-title" className="bg-card text-foreground rounded-lg border border-border p-6 max-w-md shadow-xl">
+            <h3 id="dedup-title" className="text-base font-semibold mb-2">
               Previously analyzed dataset
             </h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               <span className="font-medium">{pendingUpload.filename}</span> was analyzed on{" "}
               {new Date(pendingUpload.existing_session.updated_at).toLocaleDateString()}.
               Load the previous analysis or run fresh?
@@ -392,21 +366,21 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
               <button
                 type="button"
                 onClick={cancelDedup}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+                className="px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => acceptRunFresh(pendingUpload)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted"
               >
                 Run fresh
               </button>
               <button
                 type="button"
                 onClick={() => acceptLoadPrevious(pendingUpload.existing_session!)}
-                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
               >
                 Load previous
               </button>
@@ -419,14 +393,16 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
 }
 
 function Field({ label, placeholder, onChange }: { label: string; placeholder: string; onChange: (v: string) => void }) {
+  const id = useId();
   return (
     <div>
-      <label className="block text-xs text-zinc-500 mb-1.5">{label}</label>
+      <label htmlFor={id} className="block text-xs text-muted-foreground mb-1.5">{label}</label>
       <input
+        id={id}
         type="text"
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl bg-zinc-800/60 border border-zinc-700/50 text-zinc-200 text-xs px-3 py-2 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 focus:border-indigo-500/40 transition-all"
+        className="w-full rounded-md bg-background border border-input text-foreground text-xs px-3 py-2 placeholder:text-muted-foreground focus:outline-none focus:border-ring transition-all"
       />
     </div>
   );

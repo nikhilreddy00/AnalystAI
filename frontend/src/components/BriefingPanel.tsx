@@ -42,10 +42,7 @@ export default function BriefingPanel({ data }: Props) {
 
   return (
     <div className="w-full space-y-3">
-      <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider font-medium">
-        <span className="text-indigo-400">📋</span>
-        <span>Dataset briefing</span>
-      </div>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dataset briefing</h3>
 
       {head_preview && head_preview.length > 0 && (
         <DataPreviewTable rows={head_preview} dtypes={dtypes_summary || {}} />

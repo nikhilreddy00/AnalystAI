@@ -40,8 +40,8 @@ export function FilterSidebar() {
   if (total === 0) return null;
 
   return (
-    <aside className="w-60 flex-shrink-0 px-4 py-3 border-r border-zinc-200 space-y-5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+    <aside aria-label="Filters" className="w-full lg:w-60 flex-shrink-0 rounded-lg border border-border bg-card px-4 py-3 space-y-5 lg:rounded-none lg:border-0 lg:border-r lg:bg-transparent">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Filters
       </h3>
       {binary.map((col) => (
@@ -110,15 +110,15 @@ function BinaryToggle({ col, rows, filter, setFilter }: ControlProps) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-zinc-700">{col}</p>
+      <p className="text-xs font-medium text-foreground">{col}</p>
       <div className="flex flex-wrap gap-1">
         <button
           type="button"
           onClick={() => pick(null)}
           className={`text-[11px] px-2 py-0.5 rounded-full border ${
             current === null
-              ? "bg-indigo-600 border-indigo-600 text-white"
-              : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+              ? "bg-primary border-primary/30 text-primary-foreground"
+              : "border-border text-foreground hover:bg-muted"
           }`}
         >
           All
@@ -130,8 +130,8 @@ function BinaryToggle({ col, rows, filter, setFilter }: ControlProps) {
             onClick={() => pick(v)}
             className={`text-[11px] px-2 py-0.5 rounded-full border ${
               current === v
-                ? "bg-indigo-600 border-indigo-600 text-white"
-                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                ? "bg-primary border-primary/30 text-primary-foreground"
+                : "border-border text-foreground hover:bg-muted"
             }`}
           >
             {v}
@@ -173,7 +173,7 @@ function PillSelect({ col, rows, filter, setFilter }: ControlProps) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-zinc-700">{col}</p>
+      <p className="text-xs font-medium text-foreground">{col}</p>
       <div className="flex flex-wrap gap-1">
         {values.map((v) => {
           const isSel = selected.has(v);
@@ -184,8 +184,8 @@ function PillSelect({ col, rows, filter, setFilter }: ControlProps) {
               onClick={() => toggle(v)}
               className={`text-[11px] px-2 py-0.5 rounded-full border ${
                 isSel
-                  ? "bg-indigo-600 border-indigo-600 text-white"
-                  : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                  ? "bg-primary border-primary/30 text-primary-foreground"
+                  : "border-border text-foreground hover:bg-muted"
               }`}
             >
               {v}
@@ -232,11 +232,12 @@ function RangeSliderControl({ col, rows, filter, setFilter }: ControlProps) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-zinc-700">{col}</p>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-xs font-medium text-foreground">{col}</p>
+      <p className="text-[11px] text-muted-foreground">
         {current[0]} – {current[1]}
       </p>
       <Slider
+        label={col}
         min={mn}
         max={mx}
         step={(mx - mn) / 100 || 1}
@@ -286,10 +287,10 @@ function DateRangeControl({ col, rows, filter, setFilter }: ControlProps) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-zinc-700">{col}</p>
+      <p className="text-xs font-medium text-foreground">{col}</p>
       <Popover open={open} onOpenChange={(nextOpen) => setOpen(nextOpen)}>
         <PopoverTrigger
-          className="text-[11px] px-2 py-1 rounded border border-zinc-300 text-zinc-700 hover:bg-zinc-100 w-full text-left"
+          className="text-[11px] px-2 py-1 rounded border border-border text-foreground hover:bg-muted w-full text-left"
         >
           {label}
         </PopoverTrigger>
@@ -309,14 +310,14 @@ function DateRangeControl({ col, rows, filter, setFilter }: ControlProps) {
             startMonth={extent.from}
             endMonth={extent.to}
           />
-          <div className="flex justify-end p-2 border-t border-zinc-200">
+          <div className="flex justify-end p-2 border-t border-border">
             <button
               type="button"
               onClick={() => {
                 setFilter(col, null);
                 setOpen(false);
               }}
-              className="text-[11px] text-zinc-600 hover:text-zinc-900"
+              className="text-[11px] text-muted-foreground hover:text-foreground"
             >
               Clear
             </button>

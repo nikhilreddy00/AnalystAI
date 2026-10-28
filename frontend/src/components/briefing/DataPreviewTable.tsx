@@ -59,22 +59,22 @@ export default function DataPreviewTable({ rows, dtypes }: Props) {
   const middleCount = tooMany ? allCols.length - head.length - tail.length : 0;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-2 shadow-sm">
       <div className="flex items-baseline justify-between">
-        <h4 className="text-zinc-900 text-sm font-semibold">First 5 rows</h4>
-        <span className="text-zinc-500 text-xs">
+        <h4 className="text-foreground text-sm font-semibold">First 5 rows</h4>
+        <span className="text-muted-foreground text-xs">
           {rows.length} preview row{rows.length === 1 ? "" : "s"} · {allCols.length} column{allCols.length === 1 ? "" : "s"}
         </span>
       </div>
       <div className="overflow-x-auto -mx-1 px-1">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b border-zinc-200">
+            <tr className="border-b border-border">
               {head.map((c) => (
                 <HeaderCell key={c} name={c} dtype={dtypes[c]} />
               ))}
               {tooMany && middleCount > 0 && (
-                <th className="px-2 py-1.5 text-center text-zinc-400 italic whitespace-nowrap font-normal">
+                <th className="px-2 py-1.5 text-center text-muted-foreground italic whitespace-nowrap font-normal">
                   … +{middleCount} more
                 </th>
               )}
@@ -85,12 +85,12 @@ export default function DataPreviewTable({ rows, dtypes }: Props) {
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i} className={i % 2 === 1 ? "bg-zinc-50/60" : ""}>
+              <tr key={i} className={i % 2 === 1 ? "bg-muted" : ""}>
                 {head.map((c) => (
                   <BodyCell key={c} value={row[c]} dtype={dtypes[c]} />
                 ))}
                 {tooMany && middleCount > 0 && (
-                  <td className="px-2 py-1.5 text-zinc-300 text-center">·</td>
+                  <td className="px-2 py-1.5 text-muted-foreground text-center">·</td>
                 )}
                 {tail.map((c) => (
                   <BodyCell key={c} value={row[c]} dtype={dtypes[c]} />
@@ -108,9 +108,9 @@ function HeaderCell({ name, dtype }: { name: string; dtype: string | undefined }
   const align = isNumericDtype(dtype) ? "text-right" : "text-left";
   return (
     <th className={`${align} px-2 py-1.5 align-bottom whitespace-nowrap`}>
-      <div className="text-zinc-700 font-semibold">{name}</div>
+      <div className="text-foreground font-semibold">{name}</div>
       {dtype && (
-        <div className="text-[10px] text-zinc-400 font-mono font-normal mt-0.5">{dtype}</div>
+        <div className="text-[10px] text-muted-foreground font-mono font-normal mt-0.5">{dtype}</div>
       )}
     </th>
   );
@@ -121,7 +121,7 @@ function BodyCell({ value, dtype }: { value: unknown; dtype: string | undefined 
   const align = isNumericDtype(dtype) ? "text-right" : "text-left";
   return (
     <td
-      className={`${align} text-zinc-800 px-2 py-1.5 font-mono whitespace-nowrap`}
+      className={`${align} text-foreground px-2 py-1.5 font-mono whitespace-nowrap`}
       title={full && full !== display ? full : undefined}
     >
       {display}

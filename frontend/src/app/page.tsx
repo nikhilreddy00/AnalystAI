@@ -1,181 +1,129 @@
-// Hybrid landing page — light hero / dark pipeline / light footer.
-// PROMPT-7: single purple accent (#534AB7) across pipeline icons + hero
-// gradient + trust bar. Pipeline cards numbered 01-07 with chevron connectors
-// to read as a sequential flow, not a feature list.
+// Landing page (Phase 3.5, "Ledger" look): one theme-aware surface, the pipeline in
+// its real graph order (ingestion runs before intake), and a sample report row that
+// shows what "every finding has evidence" means.
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  BarChart3,
-  Brush,
-  ChevronRight,
-  Code,
-  Database,
-  FileSpreadsheet,
-  GraduationCap,
-  LayoutDashboard,
-  Lightbulb,
-  PieChart,
-  Search,
-  Sheet,
-  Sparkles,
-} from "lucide-react";
-
-// PROMPT-7 fix 1+3: every step shares the project accent so the strip reads as
-// a single pipeline rather than seven independent features.
-const ACCENT = "#534AB7";
+import { ArrowRight, BarChart3, Code, Database, FileSpreadsheet, Sheet } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const PIPELINE = [
-  { Icon: Search,         name: "Intake",        desc: "Parses your question into a structured plan" },
-  { Icon: Database,       name: "Ingest",        desc: "Loads data from CSV, SQL, Sheets, or API" },
-  { Icon: Brush,          name: "Clean",         desc: "Imputes, dedupes, coerces types — every decision audited" },
-  { Icon: BarChart3,      name: "Analyze",       desc: "Runs Python in a sandbox: stats, segments, anomalies" },
-  { Icon: PieChart,       name: "Visualize",     desc: "Builds Recharts configs from the findings deterministically" },
-  { Icon: Lightbulb,      name: "Insight",       desc: "Synthesizes an executive summary + recommended actions" },
-  { Icon: GraduationCap,  name: "Expert review", desc: "Principal-analyst critique: gaps, next investigations" },
+  { name: "Load", desc: "Reads CSV, Excel, SQL, Sheets or an API and profiles every column." },
+  { name: "Understand", desc: "Turns your question into a plan, using the real column names." },
+  { name: "Clean", desc: "Dedupes, imputes and fixes types. Every change is logged." },
+  { name: "Analyse", desc: "Writes Python, runs it in a sandbox, checks the results." },
+  { name: "Chart", desc: "Picks charts from the findings by fixed rules, no guessing." },
+  { name: "Report", desc: "Writes a summary for managers and the detail for analysts." },
+  { name: "Review", desc: "A critic checks every number against the computed results." },
 ];
 
-// PROMPT-7 fix 2: replaces the redundant three-card feature strip. One row of
-// supported sources says the same thing in a quarter of the space.
-const TRUST_SOURCES = [
-  { Icon: FileSpreadsheet, label: "CSV" },
-  { Icon: Database,        label: "SQL" },
-  { Icon: Sheet,           label: "Google Sheets" },
-  { Icon: Code,            label: "REST APIs" },
+const SOURCES = [
+  { Icon: FileSpreadsheet, label: "CSV and Excel" },
+  { Icon: Database, label: "SQL" },
+  { Icon: Sheet, label: "Google Sheets" },
+  { Icon: Code, label: "REST APIs" },
+];
+
+// Sample figures from the bundled synthetic sales dataset (evals/datagen.py).
+const SAMPLE_KPIS = [
+  ["Orders", "3,000", "25 duplicates removed"],
+  ["Avg order", "$102.72", "A leads at $121.29"],
+  ["Segment B, MoM", "−12.6%", "spend +31.2%"],
 ];
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-zinc-50">
-      {/* ── Hero (LIGHT) ─────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-white to-zinc-50">
-        <div className="absolute inset-0 -z-10 [background-image:radial-gradient(theme(colors.zinc.200)_1px,transparent_1px)] [background-size:24px_24px] opacity-60" />
-        <div className="max-w-6xl mx-auto px-6 pt-24 pb-32 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-zinc-200 shadow-sm text-xs font-medium text-zinc-700 mb-8">
-            <Sparkles className="w-3.5 h-3.5" style={{ color: ACCENT }} />
-            Multi-agent AI analyst
-          </div>
-          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-zinc-900 mb-5">
-            Your data analyst,
-            <span
-              className="block bg-clip-text text-transparent"
-              style={{
-                backgroundImage: `linear-gradient(90deg, ${ACCENT} 0%, #7C73DD 50%, ${ACCENT} 100%)`,
-              }}
-            >
-              on demand.
-            </span>
-          </h1>
-          <p className="text-lg text-zinc-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Ask a question in plain English. Seven specialized agents handle ingest, cleaning,
-            statistical analysis, visualization, and synthesis — then deliver a boardroom-ready
-            answer with charts, tables, and a senior-expert critique.
-          </p>
+    <div className="min-h-dvh bg-background text-foreground">
+      <header className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:px-6">
+        <span className="flex items-center gap-2 font-semibold">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <BarChart3 className="h-3.5 w-3.5" />
+          </span>
+          AnalystAI
+        </span>
+        <div className="flex-1" />
+        <ThemeToggle />
+        <Link href="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">
+          Sign in
+        </Link>
+      </header>
 
-          {/* PROMPT-7 fix 4: primary CTA gets extra padding + accent shadow that
-              picks up on hover. Secondary CTA gets a subtler hover. */}
-          <div className="flex flex-wrap gap-3 justify-center items-center">
-            <Link
-              href="/chat"
-              className="group inline-flex items-center gap-2 px-7 py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-xl shadow-zinc-900/20 hover:shadow-2xl hover:-translate-y-0.5"
-              style={{ boxShadow: `0 14px 40px -10px ${ACCENT}66, 0 4px 12px rgba(0,0,0,0.12)` }}
-            >
-              Start analyzing
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-zinc-50 text-zinc-800 font-medium rounded-xl transition-colors border border-zinc-200 hover:border-zinc-300 shadow-sm hover:shadow-md"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              View dashboard
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Pipeline (DARK) ──────────────────────────────────────────────── */}
-      <section className="bg-zinc-950 text-zinc-100">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="text-center mb-14">
-            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "#A89FF0" }}>
-              How it works
+      <main>
+        <section className="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-10 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:pt-16">
+          <div className="space-y-6">
+            <h1 className="text-4xl font-semibold leading-tight tracking-tight text-balance sm:text-5xl">
+              Ask your data a question. Get an answer you can check.
+            </h1>
+            <p className="max-w-[56ch] text-lg leading-relaxed text-muted-foreground">
+              AnalystAI loads, cleans and analyses your data with a team of agents, then writes a report where
+              every finding links to the code and rows behind it. Self-hosted and open source.
             </p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-              From raw data to boardroom-ready, in 7 steps
-            </h2>
-            <p className="text-zinc-400 max-w-2xl mx-auto">
-              Every stage is a specialized agent. The orchestrator routes between them based on
-              your question — overview, deep dive, or targeted answer.
-            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/chat"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Start analysing <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                View dashboard
+              </Link>
+            </div>
           </div>
 
-          {/* PROMPT-7 fix 1: every card uses one accent color; step numbers sit
-              ABOVE each card; chevron connectors only appear on the lg row so
-              the eye reads left-to-right as a sequential pipeline. */}
-          <ol className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            {PIPELINE.map((step, i) => (
-              <li key={step.name} className="relative">
-                <div className="text-[10px] font-mono mb-1.5 tracking-wider" style={{ color: "#A89FF0" }}>
-                  {String(i + 1).padStart(2, "0")}
+          {/* A slice of a real report, rendered as plain HTML. */}
+          <figure className="m-0 space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm" aria-label="Sample report">
+            <p className="text-xs text-muted-foreground">Report · sales_nov.csv</p>
+            <p className="text-base font-semibold leading-snug">Segment B is spending more to earn less.</p>
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
+              {SAMPLE_KPIS.map(([label, value, sub]) => (
+                <div key={label} className="min-w-0 bg-card px-3 py-2">
+                  <p className="truncate text-xs text-muted-foreground">{label}</p>
+                  <p className="font-mono text-lg tabular-nums">{value}</p>
+                  <p className="truncate text-xs text-muted-foreground">{sub}</p>
                 </div>
-                <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm p-5 hover:border-zinc-700 transition-colors h-full">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                    style={{ backgroundColor: `${ACCENT}26`, color: "#C9C3F5" }}
-                  >
-                    <step.Icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-white mb-1">{step.name}</h3>
-                  <p className="text-xs text-zinc-500 leading-relaxed">{step.desc}</p>
-                </div>
-                {i < PIPELINE.length - 1 && (
-                  <div
-                    aria-hidden
-                    className="hidden lg:flex absolute top-1/2 -right-2.5 translate-x-full -translate-y-1/2 items-center justify-center w-5 h-5 z-10"
-                    style={{ color: "#6B5FCB" }}
-                  >
-                    <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* ── Footer CTA (LIGHT) ───────────────────────────────────────────── */}
-      <section className="bg-white border-t border-zinc-200">
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          {/* PROMPT-7 fix 2: trust bar replaces the three duplicate feature cards. */}
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-16 pb-10 border-b border-zinc-100">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Supports</span>
-            {TRUST_SOURCES.map((src) => (
-              <span key={src.label} className="inline-flex items-center gap-2 text-sm text-zinc-700">
-                <src.Icon className="w-4 h-4" style={{ color: ACCENT }} />
-                {src.label}
+              ))}
+            </div>
+            <div className="flex items-start justify-between gap-3 border-t border-border pt-3 text-sm">
+              <span>Orders with more marketing spend bring in more revenue (r = 0.57).</span>
+              <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-border px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+                evidence
               </span>
-            ))}
-          </div>
+            </div>
+            <figcaption className="text-xs text-muted-foreground">Sample output on the bundled synthetic dataset.</figcaption>
+          </figure>
+        </section>
 
-          <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-3">
-              Ready to replace your analyst?
-            </h2>
-            <p className="text-zinc-600 mb-6 max-w-md mx-auto">
-              Self-hosted, open source, runs on your own infra. No data leaves your environment.
-            </p>
-            <Link
-              href="/chat"
-              className="group inline-flex items-center gap-2 px-7 py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white text-base font-semibold rounded-xl transition-all duration-200 hover:-translate-y-0.5"
-              style={{ boxShadow: `0 14px 40px -10px ${ACCENT}66, 0 4px 12px rgba(0,0,0,0.12)` }}
-            >
-              Get started
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+        <section className="border-y border-border bg-card" aria-labelledby="how-h">
+          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+            <h2 id="how-h" className="mb-1 text-xl font-semibold">How a question becomes a report</h2>
+            <p className="mb-8 text-sm text-muted-foreground">Seven agents, run in this order for every overview.</p>
+            <ol className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+              {PIPELINE.map((step, i) => (
+                <li key={step.name} className="space-y-1 bg-card p-4">
+                  <p className="font-mono text-xs text-muted-foreground">{i + 1}</p>
+                  <h3 className="text-sm font-semibold">{step.name}</h3>
+                  <p className="text-sm text-muted-foreground">{step.desc}</p>
+                </li>
+              ))}
+              <li className="hidden bg-card p-4 lg:block" aria-hidden />
+            </ol>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <section className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-4 py-10 sm:px-6">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Connects to</span>
+          {SOURCES.map(({ Icon, label }) => (
+            <span key={label} className="inline-flex items-center gap-2 text-sm">
+              <Icon className="h-4 w-4 text-primary" />
+              {label}
+            </span>
+          ))}
+        </section>
+      </main>
     </div>
   );
 }
