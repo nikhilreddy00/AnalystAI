@@ -2088,8 +2088,8 @@ def fence_histogram(df: pd.DataFrame, col: str, ctx: VizContext, k: float = 3.0)
     disp = _display(col, ctx.narrative)
     return ChartConfig(
         id=str(uuid.uuid4()), chart_type=ChartType.HISTOGRAM,
-        title=f"{n_out} unusual {disp.lower()} value{'s' if n_out != 1 else ''} outside "
-              f"{lo:,.2f} – {hi:,.2f}",
+        title=f"{n_out} unusual {disp.lower()} value{'s' if n_out != 1 else ''} " + (
+            f"outside {lo:,.2f} – {hi:,.2f}" if lo > float(s.min()) else f"above {hi:,.2f}"),
         data=data, x_key="bin", y_keys=["count"], colors=[], x_label=disp, y_label="Rows",
         show_legend=False, source_finding="anomaly", reference_lines=refs,
         rationale=ChartRationale(
@@ -2126,6 +2126,8 @@ def _finding_chart(kind: str, ctx: VizContext, ids: list[str], *args) -> ChartCo
     elif kind == "segment":
         x, metric, agg, split = args
         chart = group_bars(df, x, metric, agg, ctx, split)
+        if chart and agg == "count":   # rows per group describe the table, not an answer
+            chart.placement = "data"
         rule = "segment→bars"
         reason = (f"Compares {agg} {metric} across {x}" + (f", one bar per {split} inside each "
                   f"{x}, so the comparison holds within every {x}" if split else "")
@@ -2254,14 +2256,20 @@ def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
     asked = [order[t.value if hasattr(t, "value") else t] for t in (task.analysis_types if task else [])
              if (t.value if hasattr(t, "value") else t) in order]
     kinds = list(dict.fromkeys(asked + list(jobs)))
-    charts: list[ChartConfig] = []
+    # Within a kind, findings about the plan's first metric come first; across kinds, take turns,
+    # so a full overview shows its trend, comparison, relationship and outliers, not six bars.
+    rank = {m: i for i, m in enumerate(task.target_metrics if task else [])}
     for kind in kinds:
-        for args, ids in jobs[kind]:
-            if len(charts) >= _MAX_SUMMARY:
-                return charts
-            chart = _finding_chart(kind, ctx, ids, *args)
-            if chart:
-                charts.append(chart)
+        jobs[kind].sort(key=lambda job: min((rank[a] for a in job[0] if a in rank), default=len(rank)))
+    queues = [list(jobs[k]) for k in kinds]
+    charts: list[ChartConfig] = []
+    while any(queues) and len(charts) < _MAX_SUMMARY:
+        for kind, queue in zip(kinds, queues):
+            if queue and len(charts) < _MAX_SUMMARY:
+                args, ids = queue.pop(0)
+                chart = _finding_chart(kind, ctx, ids, *args)
+                if chart:
+                    charts.append(chart)
     return charts
 
 
