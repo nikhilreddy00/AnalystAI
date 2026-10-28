@@ -32,7 +32,8 @@ def plan_columns(plan: dict) -> set[str]:
     params = plan.get("targeted_params") or {}
     cols: set[str] = set()
     for f in PLAN_LIST_FIELDS:
-        cols |= {str(c) for c in (plan.get(f) if f in plan else params.get(f)) or []}
+        names = (params if f == "target_columns" else plan).get(f) or []
+        cols |= {names} if isinstance(names, str) else {str(c) for c in names}
     return cols | {str(params[f]) for f in PLAN_SCALAR_FIELDS if params.get(f)}
 
 

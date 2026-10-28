@@ -47,8 +47,8 @@ INTAKE_CARD = AgentCard(
     scope="Turns the user's message into a structured analysis plan: the intent that routes "
           "the question, and the dataset columns and parameters it needs.",
     inputs=["The user's message", "The last 6 conversation turns and the previous plan",
-            "The dataset's columns, roles and sample values (for a database, the columns of "
-            "the query that answered this question)"],
+            "The dataset's columns, their roles (metric, date, categorical) and its summary "
+            "(for a database, the columns of the query that answered this question)"],
     outputs=["An AnalysisTask: intent, target metrics, segments, intent parameters, "
              "or one clarification question"],
     limits=["Evaluated on English questions only.",
@@ -79,15 +79,15 @@ class IntakeContext(BaseModel):
     message: str
     schema_text: str     # columns and roles from the user's data: rendered delimited
     history: str         # conversation_context(): already delimited, "" on a first turn
-    existing_task: str   # the previous plan's JSON, "" when there is none
+    existing_task: str   # the previous plan's JSON (column names, past question): delimited
 
     def render(self) -> str:
         return "\n\n".join(filter(bool, [
             f"User message: {self.message}",
             f"Conversation history:\n{self.history}" if self.history else "",
             f"Dataset schema:\n{delimit_untrusted(self.schema_text)}" if self.schema_text else "",
-            f"Existing analysis task (amend if this is a follow-up):\n{self.existing_task}"
-            if self.existing_task else "",
+            "Existing analysis task (amend if this is a follow-up):\n"
+            + delimit_untrusted(self.existing_task) if self.existing_task else "",
         ]))
 
 
@@ -122,6 +122,12 @@ def _parse(text: str) -> dict:
     if not isinstance(data, dict):
         raise LLMOutputError("intake", f"reply is a {type(data).__name__}, not an object",
                              "I couldn't parse my own plan for that question. Try rephrasing.")
+    params = data.get("targeted_params") if isinstance(data.get("targeted_params"), dict) else {}
+    data["targeted_params"] = params
+    for f in PLAN_LIST_FIELDS:   # a lone name instead of a list: never iterate its characters
+        holder = params if f == "target_columns" else data
+        if isinstance(holder.get(f), str):
+            holder[f] = [holder[f]]
     return data
 
 
@@ -140,7 +146,7 @@ def _drop_unknown(data: dict, known: set[str]) -> list[str]:
     params = data.get("targeted_params") or {}
     dropped = sorted(plan_columns(data) - known)
     for f in PLAN_LIST_FIELDS:
-        holder = data if f in data else params
+        holder = params if f == "target_columns" else data
         if holder.get(f):
             holder[f] = [c for c in holder[f] if c in known]
     for f in PLAN_SCALAR_FIELDS:
@@ -159,7 +165,7 @@ def _missing_column_question(dropped: list[str], known: set[str]) -> str:
             f"{', '.join(options)}? Or tell me if the data you need isn't here.")
 
 
-def _targeted_params(raw: dict, data: dict) -> TargetedParams:
+def _targeted_params(raw: dict) -> TargetedParams:
     """Validated parameters; a field with an invalid value (e.g. an unknown chart type) is
     dropped and traced rather than failing the whole plan."""
     try:
@@ -237,12 +243,16 @@ async def run_intake_agent(
         data["analysis_types"] = [AnalysisType.EDA.value]
     data.setdefault("raw_query", user_message)
     data.setdefault("target_metrics", [])
-    data["targeted_params"] = _targeted_params(data.get("targeted_params") or {}, data)
+    data["targeted_params"] = _targeted_params(data.get("targeted_params") or {})
 
     if is_overview_request:   # the first run is always a full overview, never a question
         data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
                     clarification_question=None, resume_from=None)
-    return AnalysisTask(**data)
+    try:
+        return AnalysisTask(**data)
+    except ValidationError as exc:   # e.g. segments as a dict: typed, never raw pydantic text
+        raise LLMOutputError("intake", f"plan failed validation: {exc.error_count()} error(s)",
+                             "I couldn't parse my own plan for that question. Try rephrasing.") from exc
 
 
 async def generate_data_narrative(contract: DataContract, llm: LLMClient) -> DataNarrative:
