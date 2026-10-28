@@ -18,6 +18,8 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+
+from agents.utils import pandas_freq
 from scipy import stats
 
 from orchestrator.state import (
@@ -252,6 +254,18 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     return TargetedResponse(intent=QuestionIntent.TOP_N, answer_text=answer, chart_configs=[chart])
 
 
+def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
+    """The group the user named ("segment B"), if it is a real value of the segment column."""
+    col, val = params.segment_column, params.segment_value
+    if not col or val is None or col not in df.columns:
+        return None
+    values = {str(v) for v in df[col].dropna().unique()}
+    if str(val) in values:
+        return str(val)
+    lower = {v.lower(): v for v in values}
+    return lower.get(str(val).lower())
+
+
 def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataContract) -> TargetedResponse:
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
     date = params.date_column or (contract.date_columns[0] if contract.date_columns else None)
@@ -275,13 +289,16 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     if agg not in {"sum", "mean", "median", "count", "min", "max"}:
         agg = "sum"
 
+    group = _named_group(df, params)
+    if group is not None:
+        df = df[df[params.segment_column].astype(str) == group]
     try:
         s = df[[date, metric]].copy()
         s[date] = pd.to_datetime(s[date], errors="coerce")
         s = s.dropna(subset=[date, metric])
         if s.empty:
             raise ValueError("no valid (date, metric) rows after coercion")
-        series = s.set_index(date)[metric].resample(freq).agg(agg).dropna()
+        series = s.set_index(date)[metric].resample(pandas_freq(freq)).agg(agg).dropna()
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
@@ -300,10 +317,16 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     first, last = series.iloc[0], series.iloc[-1]
     pct = (last - first) / first * 100 if first not in (0, None) else float("nan")
     direction = "up" if last > first else ("down" if last < first else "flat")
+    scope = f" for {params.segment_column} {group}" if group is not None else ""
     answer = (
-        f"{metric} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to {series.index[-1].date()} "
-        f"(freq={freq}, agg={agg})."
+        f"{metric}{scope} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to "
+        f"{series.index[-1].date()} (freq={freq}, agg={agg})."
     )
+    if len(series) >= 2 and series.iloc[-2]:
+        # "How did X change last month?" asks about the latest step, not the whole range.
+        step = (series.iloc[-1] / series.iloc[-2] - 1) * 100
+        answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
+                   f"{step:+.1f}% ({series.iloc[-2]:,.2f} → {series.iloc[-1]:,.2f}).")
     chart = _chart(
         ChartType.LINE, f"{agg}({metric}) over time", chart_data,
         x_key="period", y_keys=[metric], x_label="Period", y_label=f"{agg}({metric})",
@@ -349,6 +372,10 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
         f"{agg}({metric}) by {segment}: '{top_seg}' leads at {top_val:,.2f}, "
         f"'{bottom_seg}' trails at {bottom_val:,.2f}."
     )
+    group = _named_group(df, params)
+    if group is not None:
+        value = df.loc[df[segment].astype(str) == group, metric].agg(agg)
+        answer = f"{agg}({metric}) for {segment} '{group}': {value:,.2f}. " + answer
     chart = _chart(
         ChartType.BAR, f"{agg}({metric}) by {segment}",
         chart_data, x_key=segment, y_keys=[metric], x_label=segment, y_label=f"{agg}({metric})",

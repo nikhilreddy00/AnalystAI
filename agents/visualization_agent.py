@@ -24,6 +24,8 @@ import uuid
 import numpy as np
 import pandas as pd
 
+from agents.utils import pandas_freq
+
 from orchestrator.state import (
     AnalysisSession,
     ChartConfig,
@@ -557,7 +559,7 @@ def _build_time_series(
         return None
     span = (sub[date_col].max() - sub[date_col].min()).days
     freq = "D" if span < 60 else ("W" if span < 730 else "Q")
-    series = sub.set_index(date_col)[metric_col].resample(freq).mean().dropna()
+    series = sub.set_index(date_col)[metric_col].resample(pandas_freq(freq)).mean().dropna()
     if series.empty:
         return None
     data = [{"period": idx.strftime("%Y-%m-%d"), metric_col: float(v)} for idx, v in series.items()]

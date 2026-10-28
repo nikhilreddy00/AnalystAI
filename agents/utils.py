@@ -43,3 +43,12 @@ def safe_column_name(col: str) -> str:
         .replace("\n", "\\n")
         .replace("\r", "\\r")
     )
+
+
+# pandas 3 rejects the old period-end aliases ("M" → "ME", "Q" → "QE", "Y"/"A" → "YE").
+_PANDAS_FREQ = {"M": "ME", "Q": "QE", "Y": "YE", "A": "YE"}
+
+
+def pandas_freq(freq: str) -> str:
+    """User-facing frequency letter → the resample alias the installed pandas accepts."""
+    return _PANDAS_FREQ.get(freq.upper(), freq.upper())

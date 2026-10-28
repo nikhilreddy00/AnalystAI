@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from evals import datagen
-from evals.run import compare, load_cases, summarize
+from evals.run import compare, estimate_usd, load_cases, summarize
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
@@ -228,3 +228,14 @@ def test_summary_and_paired_compare():
     assert diff["new_cases"] == ["new"] and diff["common_cases"] == 3
     assert diff["pass_rate_delta_pts"] == pytest.approx((5 / 9 - 1) * 100, abs=0.01)
     assert diff["mcnemar_p"] == 1.0          # one discordant pair is not significant
+
+
+def test_cost_estimate_uses_the_last_full_report(tmp_path):
+    import json
+    def rep(name, cost, only=None):
+        (tmp_path / f"{name}.json").write_text(json.dumps(
+            {"meta": {"only": only}, "summary": {"cost_per_question_usd": cost}}))
+    rep("analysis-20260101T000000Z", 0.03)
+    rep("analysis-20260102T000000Z", 0.50, only="trend")   # smoke runs don't count
+    assert estimate_usd("analysis", 100, tmp_path) == 3.0
+    assert estimate_usd("e2e", 10, tmp_path) == 0.0

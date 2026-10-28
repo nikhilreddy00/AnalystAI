@@ -7,6 +7,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile, Depends
+from connectors.csv_connector import user_upload_dir
 from api.auth import get_current_user, UserProfile
 from pydantic import BaseModel
 
@@ -78,7 +79,7 @@ async def upload_csv(
     # Use a stable absolute path anchored to the repo (not CWD) so all
     # workers/processes agree on the uploads location and the connector's
     # path-traversal guard matches the same directory.
-    upload_dir = (Path(__file__).resolve().parent.parent.parent / "uploads").resolve()
+    upload_dir = user_upload_dir(current_user.uid)
     upload_dir.mkdir(parents=True, exist_ok=True)
     save_path = str(upload_dir / f"{uuid.uuid4()}{suffix}")
     with open(save_path, "wb") as f:

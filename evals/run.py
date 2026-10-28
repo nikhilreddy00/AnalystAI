@@ -150,8 +150,22 @@ def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
             for h in hard]
 
 
-async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict:
+_budget = {"max": float("inf"), "spent": 0.0}   # --max-usd: real money, so a hard stop
+
+
+def estimate_usd(suite: str, n_runs: int, reports: Path) -> float:
+    """Cost of n_runs at the last full report's cost per question (a guess before any run)."""
+    for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
+        rep = json.loads(p.read_text())
+        if not rep["meta"].get("only"):
+            return round(rep["summary"]["cost_per_question_usd"] * n_runs, 2)
+    return 0.0
+
+
+async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | None:
     async with sem:
+        if _budget["spent"] >= _budget["max"]:
+            return None   # over budget: don't start more runs
         meter: list[dict] = []
         trace_meter.set(meter)   # each asyncio task has its own context copy
         start = time.perf_counter()
@@ -163,6 +177,7 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict:
         out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
         out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
         out["passed"] = all(c["ok"] for c in out["checks"])
+        _budget["spent"] += out["cost_usd"]
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
 
@@ -278,9 +293,18 @@ async def main() -> None:
     ap.add_argument("--compare", help="previous report JSON for the paired diff")
     ap.add_argument("--only", help="substring filter on case ids (smoke runs)")
     ap.add_argument("--out", default=str(EVALS_DIR / "reports"))
+    ap.add_argument("--max-usd", type=float, default=2.0,
+                    help="refuse to start if the estimate exceeds this; stop starting runs once "
+                         "spend reaches it (default $2 — raise it on purpose for a final k=3 run)")
     args = ap.parse_args()
 
     cases = load_cases(args.suite, args.only)
+    estimate = estimate_usd(args.suite, len(cases) * args.k, Path(args.out))
+    print(f"estimated cost ≈ ${estimate} (cap ${args.max_usd})", flush=True)
+    if estimate > args.max_usd:
+        raise SystemExit(f"estimate ${estimate} > --max-usd {args.max_usd}; narrow with --only/--k "
+                         "or raise the cap deliberately")
+    _budget["max"] = args.max_usd
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     print(f"{args.suite}: {len(cases)} cases × k={args.k}", flush=True)
@@ -290,12 +314,19 @@ async def main() -> None:
     results = await asyncio.gather(*(j for _, j in jobs))
     runs: dict[str, list[dict]] = {}
     for (cid, _), r in zip(jobs, results):
-        runs.setdefault(cid, []).append(r)
+        if r is not None:
+            runs.setdefault(cid, []).append(r)
+    skipped = sum(r is None for r in results)
+    if skipped:
+        print(f"budget cap ${args.max_usd} reached: {skipped} runs not started", flush=True)
+    if not runs:
+        raise SystemExit("no runs completed")
 
     name = f"{args.suite}-{stamp}"
     report = {
         "meta": {"suite": args.suite, "report": name, "k": args.k, "model": settings.llm_model,
-                 "git_sha": sha, "started_at": stamp, "only": args.only},
+                 "git_sha": sha, "started_at": stamp, "only": args.only,
+                 "skipped_over_budget": skipped},
         "summary": summarize(runs),
         "runs": runs,
     }

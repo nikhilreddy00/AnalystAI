@@ -152,6 +152,7 @@ export interface KPIRecipe {
   column?: string | null;
   target_column?: string | null;
   segment_column?: string | null;
+  segment_value?: string | null;
   format_kind?: "currency" | "percent" | "count" | "number" | null;
 }
 

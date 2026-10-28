@@ -270,3 +270,19 @@ def test_orchestrator_swallows_no_exceptions():
             if isinstance(node, ast.ExceptHandler) and all(isinstance(b, ast.Pass) for b in node.body):
                 offenders.append(f"{path}:{node.lineno}")
     assert offenders == []
+
+
+def test_chat_accepts_only_the_callers_own_upload(tmp_path):
+    """Audit B2: /chat trusted any path inside the shared uploads/ folder."""
+    from fastapi import HTTPException
+    from api.routes.chat import _owned_config
+    from connectors.csv_connector import user_upload_dir
+    mine = user_upload_dir("user-a") / "x.csv"
+    theirs = user_upload_dir("user-b") / "x.csv"
+    assert _owned_config({"type": "csv", "file_path": str(mine)}, "user-a").file_path == str(mine)
+    for path in (theirs, user_upload_dir("user-a") / ".." / "user-b" / "x.csv",
+                 user_upload_dir("user-a").parent / "legacy.csv"):
+        with pytest.raises(HTTPException) as exc:
+            _owned_config({"type": "csv", "file_path": str(path)}, "user-a")
+        assert exc.value.status_code == 403
+    assert user_upload_dir("../../etc").name == "______etc"   # uid can't escape uploads/

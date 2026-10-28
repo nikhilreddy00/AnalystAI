@@ -41,6 +41,8 @@ from orchestrator.state import (
 )
 
 
+_MAX_DROP_ROWS_PCT = 5.0   # drop_rows may remove at most this share of rows
+
 _SKIP_REASON = {
     "url": "URL column — not analytically useful",
     "long_text": "Long free-text column — not categorical",
@@ -176,6 +178,14 @@ async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, Cl
             strategy = strategy_info.get("strategy", "mode")
             reason = strategy_info.get("reason", "Default strategy applied.")
             rows_affected = int(null_counts[col])
+            operation = "impute"
+            # Dropping the rows of a mostly-empty column deletes the dataset (an all-but-empty
+            # `notes` column left 1 of 3,025 rows in Phase 1-3 E2E). Enforced here, not in the prompt.
+            if strategy == "drop_rows" and before_null_pct > _MAX_DROP_ROWS_PCT:
+                strategy, operation = "keep", "flag"
+                reason = (f"Left as-is: dropping its empty rows would remove "
+                          f"{before_null_pct:.0f}% of the data.")
+                rows_affected = 0
 
             if strategy == "mean" and pd.api.types.is_numeric_dtype(df[col]):
                 df[col] = df[col].fillna(df[col].mean())
@@ -202,7 +212,7 @@ async def run_cleaning_agent(session: AnalysisSession) -> tuple[pd.DataFrame, Cl
 
             decisions.append(CleaningDecision(
                 column=col,
-                operation="impute",
+                operation=operation,
                 strategy=strategy,
                 reason=reason,
                 rows_affected=rows_affected,
@@ -275,14 +285,15 @@ async def _get_imputation_strategies(
 For each column, choose the best imputation strategy.
 Return a JSON object: {{"column_name": {{"strategy": "<strategy>", "reason": "<1 sentence>"}}, ...}}
 
-Valid strategies: mean, median, mode, forward_fill, drop_rows
+Valid strategies: mean, median, mode, forward_fill, drop_rows, keep
 
 Rules:
 - Numeric, |skewness| < 1 → mean
 - Numeric, |skewness| >= 1 → median
 - Object / categorical → mode
 - Time-series ordered (is_time_series=true) → forward_fill
-- null% > 80 → drop_rows
+- null% <= 5 and the rows are unusable without the value → drop_rows
+- null% > 80 → keep (too empty to impute; dropping its rows would delete the data)
 
 Columns:
 {chr(10).join(profiles)}
