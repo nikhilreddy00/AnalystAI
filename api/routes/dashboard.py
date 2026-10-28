@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import Response
 from api.auth import get_current_user, UserProfile
 from api.rate_limit import limiter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from orchestrator.state import ChartType
 
@@ -20,8 +20,8 @@ class PinChartRequest(BaseModel):
 
 
 class ChartFeedbackRequest(BaseModel):
-    session_id: str
-    chart_id: str
+    session_id: str = Field(max_length=64)
+    chart_id: str = Field(max_length=64)
     chart_type: ChartType      # the type the user switched to
 
 
@@ -103,6 +103,7 @@ async def pin_chart(
 
 
 @router.post("/chart-feedback")
+@limiter.limit("30/minute")   # each call loads and saves a whole session
 async def chart_feedback(
     request: Request,
     body: ChartFeedbackRequest,

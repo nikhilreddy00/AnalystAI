@@ -201,7 +201,7 @@ def test_swap_options_never_offer_a_misleading_type():
     assert viz.swap_options(viz.fence_histogram(df, "revenue", ctx)) == []
 
 
-async def test_chart_feedback_persists_a_safe_switch_and_refuses_the_rest(tmp_path):
+async def test_chart_feedback_persists_a_safe_switch_and_refuses_the_rest(tmp_path, monkeypatch):
     """POST /dashboard/chart-feedback: owner only, misleading types refused (422), the switch is
     saved on the stored chart and logged with labels only."""
     from types import SimpleNamespace
@@ -219,7 +219,12 @@ async def test_chart_feedback_persists_a_safe_switch_and_refuses_the_rest(tmp_pa
     store = InMemorySessionStore()
     session = AnalysisSession(session_id="s1", user_id="owner", chart_configs=[chart])
     await store.save(session)
-    req = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(session_store=store)))
+    from starlette.requests import Request
+    from api.rate_limit import limiter
+    monkeypatch.setattr(limiter, "enabled", False)   # the limit is slowapi's job, not this test's
+    app = SimpleNamespace(state=SimpleNamespace(session_store=store, limiter=limiter))
+    req = Request({"type": "http", "method": "POST", "path": "/", "headers": [], "app": app,
+                   "client": ("127.0.0.1", 1)})
 
     def body(t):
         return ChartFeedbackRequest(session_id="s1", chart_id=chart.id, chart_type=t)
