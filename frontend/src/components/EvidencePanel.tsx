@@ -30,6 +30,7 @@ const KIND = {
   segment: "Breakdown",
   anomaly: "Anomalies",
   test: "Test",
+  query: "SQL query",
 };
 
 export default function EvidencePanel({ items }: { items: Evidence[] }) {

@@ -326,7 +326,7 @@ class Evidence(BaseModel):
     """Why one finding can be trusted (ADR-0001): built deterministically from the code that ran
     and its output, never written by the model."""
     id: str                                # stable: "corr:revenue__units", "seg:segment/revenue"
-    kind: Literal["correlation", "trend", "segment", "anomaly", "test"]
+    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query"]
     claim: str                             # one line, from the computed values
     code: str                              # the analysis body that produced it
     result_excerpt: str                    # the finding's JSON, truncated
