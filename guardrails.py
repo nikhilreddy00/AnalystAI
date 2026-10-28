@@ -228,7 +228,6 @@ def sql_uses_metric(sql: str, metric, layer, dialect: str = "postgres") -> bool:
         stmt = sqlglot.parse_one(sql, read=dialect)
     except sqlglot.errors.ParseError:
         return False
-    target = _canonical(sqlglot.parse_one(metric.expr, read=dialect), {}, dialect)
     aliases = _logical_tables(stmt, layer)
     for select in stmt.find_all(exp.Select):   # `SUM(amount)` in a one-table scope is qualified
         scope = _scope(select, aliases)
@@ -236,8 +235,45 @@ def sql_uses_metric(sql: str, metric, layer, dialect: str = "postgres") -> bool:
             if not col.table and col.find_ancestor(exp.Select) is select \
                     and (owner := _owner(col, aliases, scope, layer)):
                 col.set("table", exp.to_identifier(owner))
-    return any(_canonical(n, aliases, dialect) == target
+    want = sqlglot.parse_one(metric.expr, read=dialect)
+    return any(_same_metric(want, n, aliases, dialect)
                for n in stmt.walk() if type(n) is type(metric.parsed))
+
+
+def _conjuncts(cond: exp.Expression, aliases: dict[str, str], dialect: str) -> set[str]:
+    if isinstance(cond, exp.Paren):
+        return _conjuncts(cond.this, aliases, dialect)
+    if isinstance(cond, exp.And):
+        return _conjuncts(cond.this, aliases, dialect) | _conjuncts(cond.expression, aliases, dialect)
+    return {_canonical(cond, aliases, dialect)}
+
+
+def _same_metric(want: exp.Expression, got: exp.Expression, aliases: dict[str, str],
+                 dialect: str) -> bool:
+    """`got` computes the metric `want`: the same expression, except that a FILTER may AND extra
+    conditions onto the metric's own (a period or segment restriction is still the metric).
+    Every condition of the metric's FILTER must be there."""
+    if isinstance(want, exp.Filter):
+        return (isinstance(got, exp.Filter)
+                and _canonical(want.this, {}, dialect) == _canonical(got.this, aliases, dialect)
+                and _conjuncts(want.expression.this, {}, dialect)
+                <= _conjuncts(got.expression.this, aliases, dialect))
+    if type(want) is not type(got):
+        return False
+    if not want.find(exp.Filter):
+        return _canonical(want, {}, dialect) == _canonical(got, aliases, dialect)
+    for key, w in want.args.items():
+        g_ = got.args.get(key)
+        if isinstance(w, exp.Expression):
+            if not isinstance(g_, exp.Expression) or not _same_metric(w, g_, aliases, dialect):
+                return False
+        elif isinstance(w, list):
+            if not isinstance(g_, list) or len(w) != len(g_) \
+                    or not all(_same_metric(a, b, aliases, dialect) for a, b in zip(w, g_)):
+                return False
+        elif w != g_:
+            return False
+    return True
 
 
 # ── Generated Python ───────────────────────────────────────────────────────────

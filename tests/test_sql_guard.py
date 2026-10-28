@@ -186,3 +186,22 @@ def test_metric_with_unqualified_columns_in_a_one_table_scope_counts():
     GROUP BY a.branch"""
     assert g.sql_uses_metric(sql, layer.metric("fee_income"), layer)
     assert g.sql_fanout(sql, layer) is None
+
+
+def test_metric_filter_may_add_conditions_but_not_drop_them():
+    layer = LAYERS["banking"]
+    fees = layer.metric("fee_income")
+    base = ("SELECT a.branch, {agg} FROM bank.accounts a LEFT JOIN bank.transactions t "
+            "ON t.account_id = a.account_id GROUP BY a.branch")
+    extra = "-SUM(t.amount) FILTER (WHERE t.category = 'fees' AND t.posted_date >= DATE '2025-01-01')"
+    assert g.sql_uses_metric(base.format(agg=extra), fees, layer)   # sql-20261028T025054Z
+    dropped = "-SUM(t.amount) FILTER (WHERE t.posted_date >= DATE '2025-01-01')"
+    assert not g.sql_uses_metric(base.format(agg=dropped), fees, layer)
+    retail = LAYERS["retail"]
+    aov = retail.metric("average_order_value")   # Div of two FILTERs: both checked
+    sql = ("SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE "
+           "o.status = 'completed' AND o.channel = 'app') / COUNT(DISTINCT o.order_id) FILTER "
+           "(WHERE o.status = 'completed' AND o.channel = 'app') FROM shop.order_items oi "
+           "JOIN shop.orders o ON o.order_id = oi.order_id")
+    assert g.sql_uses_metric(sql, aov, retail)
+    assert not g.sql_uses_metric(sql.replace("o.status = 'completed' AND ", "", 1), aov, retail)
