@@ -1,0 +1,7 @@
+id: clean-04-currency
+category: types
+schema: orders
+seed: 104
+issues:
+- currency
+label_note: Revenue exported as '$1,234.50' text; it must become the number.

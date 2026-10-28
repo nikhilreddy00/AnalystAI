@@ -1,0 +1,8 @@
+id: clean-02-blank
+category: blank_rows
+schema: orders
+seed: 102
+issues:
+- blank_rows
+label_note: Trailing empty lines in a spreadsheet export become all-missing rows;
+  they carry nothing.

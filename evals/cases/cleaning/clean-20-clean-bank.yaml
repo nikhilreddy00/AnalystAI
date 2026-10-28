@@ -1,0 +1,6 @@
+id: clean-20-clean-bank
+category: clean
+schema: bank
+seed: 120
+issues: []
+label_note: 'A clean bank table with look-alike product codes: nothing else may change.'

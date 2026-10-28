@@ -1,0 +1,8 @@
+id: clean-09-variants
+category: labels
+schema: orders
+seed: 109
+issues:
+- variants
+label_note: ''' North'', ''NORTH'', ''north'' are one region; keep the user''s spelling
+  ''North''.'

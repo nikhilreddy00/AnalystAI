@@ -1,0 +1,8 @@
+id: clean-14-category-nulls
+category: missing
+schema: bank
+seed: 114
+issues:
+- category_nulls
+label_note: 'Product missing in 7%: an explicit ''Unknown'' group, not the most common
+  product.'

@@ -1,0 +1,11 @@
+id: clean-23-holdout
+category: combined
+schema: bank
+seed: 123
+issues:
+- junk_numeric
+- percent
+- id_nulls
+- variants
+- exact_dups
+label_note: Fees with junk text, rates as percentages, a few lost IDs.

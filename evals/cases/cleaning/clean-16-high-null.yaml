@@ -1,0 +1,7 @@
+id: clean-16-high-null
+category: missing
+schema: bank
+seed: 116
+issues:
+- high_null
+label_note: 'An optional memo field 60% empty: left alone and reported for the gate.'

@@ -1,0 +1,8 @@
+id: clean-01-dups
+category: duplicates
+schema: orders
+seed: 101
+issues:
+- exact_dups
+label_note: '12 exact copies of rows: an export run twice. Remove them; keep the 5
+  records that differ only by ID.'

@@ -26,15 +26,17 @@ import yaml
 from scipy.stats import binomtest
 
 from api.config import settings
-from evals import datagen
+from evals import cleangen, datagen
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
     NUMERIC_CHECKS,
     answer_text,
+    clean_cell,
     false_findings,
     hard_rule,
     result_matches,
+    score_cleaning,
     score_intake,
     score_visualization,
 )
@@ -330,6 +332,45 @@ def score_visualization_run(case: dict, output: dict | None, error: str | None) 
             "holdout": case["id"].endswith("holdout")}
 
 
+def cleaning_dataset(case: dict) -> tuple[pd.DataFrame, pd.DataFrame, list[dict], list[str]]:
+    """(received, expected, manifest, protected): the dirty table after the CSV round trip the
+    real upload goes through, and the columns that must never be filled."""
+    dirty, expected, manifest = cleangen.make(case["schema"], case["seed"], case["issues"])
+    received = pd.read_csv(io.StringIO(dirty.to_csv(index=False)), low_memory=False)
+    roles = cleangen.SCHEMAS[case["schema"]]
+    return received, expected, manifest, [roles["id"], roles["date"], roles["target"]]
+
+
+async def run_cleaning_case(case: dict) -> dict:
+    from agents.cleaning_agent import run_cleaning_agent
+    from connectors.csv_connector import CSVConnector
+
+    received = cleaning_dataset(case)[0]
+    session = AnalysisSession(session_id=str(uuid.uuid4()))
+    session.data_contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(received)
+    session.task_plan = AnalysisTask(raw_query="Give me an overview", analysis_types=["eda"],
+                                     target_metrics=[cleangen.SCHEMAS[case["schema"]]["target"]])
+    buf = io.BytesIO()
+    received.to_parquet(buf, index=False)
+    session.__dict__["_df_parquet"] = buf.getvalue()
+    output, error = None, None
+    try:
+        df, audit = await run_cleaning_agent(session)
+        output = {"index": [int(i) for i in df.index], "columns": [str(c) for c in df.columns],
+                  "rows": [[clean_cell(v) for v in row] for row in df.itertuples(index=False)],
+                  "audit": audit.model_dump(mode="json")}
+    except Exception as exc:   # a loud failure is a failed case, not a crashed run
+        error = f"{type(exc).__name__}: {exc}"
+    return {**score_cleaning_run(case, output, error), "output": output}
+
+
+def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> dict:
+    received, expected, manifest, protected = cleaning_dataset(case)
+    checks, hard = score_cleaning(output, received, expected, manifest, protected, error)
+    return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+            "holdout": case["id"].endswith("holdout")}
+
+
 _SQL: dict = {}   # engine, layers and golden rows, set up once per sql run
 
 
@@ -440,7 +481,8 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         trace_meter.set(meter)   # each asyncio task has its own context copy
         start = time.perf_counter()
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
-                  "intake": run_intake_case, "visualization": run_visualization_case}[suite]
+                  "intake": run_intake_case, "visualization": run_visualization_case,
+                  "cleaning": run_cleaning_case}[suite]
         out = await runner(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
@@ -460,6 +502,7 @@ RESCORERS = {
     "e2e": lambda c, o, e: score_e2e(c, AnalysisSession.model_validate(o), e),
     "intake": score_intake_run,
     "visualization": score_visualization_run,
+    "cleaning": score_cleaning_run,
 }
 
 
@@ -516,6 +559,7 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         **_sql_quality(runs),
         **_intake_quality(flat),
         **_viz_quality(flat),
+        **_cleaning_quality(flat),
     }
 
 
@@ -583,6 +627,34 @@ def _viz_quality(flat: list[dict]) -> dict:
                                         if h["rule"] == "chart_has_rationale" and not h["ok"]),
         "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
         "pass_rate_by_category": {k: round(sum(v) / len(v), 4) for k, v in sorted(cats.items())},
+    }
+
+
+def _cleaning_quality(flat: list[dict]) -> dict:
+    """Phase 5 cleaning metrics (docs/ROADMAP.md Cleaning row): planted-issue recall = planted
+    issues handled as the policy says; over-cleaning = traps (rows, columns and values that must
+    survive) that were changed; and the three hard counts."""
+    if not any(c["kind"] == "trap" for r in flat for c in r["checks"]):
+        return {}
+
+    def share(kind):
+        oks = [c["ok"] for r in flat for c in r["checks"] if c["kind"] == kind]
+        return oks
+
+    planted, traps = share("planted"), share("trap")
+    by_issue: dict[str, list[bool]] = {}
+    for r in flat:
+        for c in r["checks"]:
+            if c["kind"] == "planted":
+                by_issue.setdefault(c["issue"], []).append(c["ok"])
+    hold = [r["passed"] for r in flat if r["holdout"]]
+    return {
+        "planted_recall": round(sum(planted) / len(planted), 4),
+        "over_cleaning": round(1 - sum(traps) / len(traps), 4),
+        **{f"hard_{rule}": sum(not h["ok"] for r in flat for h in r["hard"] if h["rule"] == rule)
+           for rule in ("rows_logged", "changes_logged", "protected_not_filled")},
+        "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
+        "recall_by_issue": {k: round(sum(v) / len(v), 4) for k, v in sorted(by_issue.items())},
     }
 
 
@@ -695,7 +767,8 @@ async def main() -> None:
         print(f"→ {rescore(Path(sys.argv[2]))}")
         return
     ap = argparse.ArgumentParser()
-    ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake", "visualization"])
+    ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake", "visualization",
+                                          "cleaning"])
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--compare", help="previous report JSON for the paired diff")

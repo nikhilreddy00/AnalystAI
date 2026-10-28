@@ -1,0 +1,11 @@
+id: clean-22-holdout
+category: combined
+schema: bank
+seed: 122
+issues:
+- mixed_dates
+- thousands
+- sentinels
+- target_nulls
+- blank_rows
+label_note: A core-banking extract with mixed dates and placeholders.

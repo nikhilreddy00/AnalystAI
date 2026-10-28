@@ -1,0 +1,7 @@
+id: clean-17-outliers
+category: outliers
+schema: orders
+seed: 117
+issues:
+- outliers
+label_note: '4 revenue values 8x normal: flagged, never removed.'
