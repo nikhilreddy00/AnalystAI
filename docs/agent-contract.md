@@ -107,6 +107,27 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
   (the server re-checks); a free-form request is honoured with a lint note. Overrides are logged by
   rule label, so the most-overridden rule becomes the next eval case.
 
+## What the cleaning agent taught us (Phase 5, PR 3)
+- **Read the prompt before you keep the model.** The cleaning prompt was a decision table the
+  model repeated, so the LLM added cost and variance but no judgment. Rules that change the user's data
+  must be reproducible: deterministic code, a $0 eval, p95 6.4s → 0.2s.
+- **"Clean" is a policy, and the analyst's default is "don't invent".** Imputation biased every
+  descriptive number (a filled sum fabricates revenue), and a mode fill copied the planted injection
+  into every row of `notes`. Missing numbers now stay missing with n reported; only labels get an
+  explicit `Unknown`.
+- **Score from the diff, not from the agent's accounting.** The scorer compares the output frame
+  with the generator's expected frame. Hard rules like "every row change is logged" are checked
+  against what actually changed, so an agent can't pass by under-reporting.
+- **Every eval needs traps, not just planted issues.** A cleaner that fixes everything also
+  over-cleans. Codes with leading zeros, records that differ only by ID, and `A-1` vs `A1` gave the
+  old agent its 32.5% over-cleaning; recall alone would have hidden that.
+- **Fault tests find policy gaps that the planted cases miss.** Three identical outlier rows were
+  "deduplicated", which led to the rule: dedup only when an ID column defines a record. The audit found
+  that "don't drop anything" dropped, and that `NA` (North America) was read as missing.
+- **When the same author writes the generator and the agent, say so.** A first-run 100% proves
+  less than it looks. Holdouts, random-combination property tests and unit traps the generator doesn't
+  plant are the mitigation; the domain datasets in Phase 5.5 are the real test.
+
 ## Rolling it out to the next agent (Phase 5)
 Each agent gets one PR, in this order:
 1. **Agent card**, with honest, measured limits.
