@@ -73,3 +73,15 @@ def test_generator_is_deterministic():
     a, b = cleaning_dataset(CASES[-1]), cleaning_dataset(CASES[-1])
     pd.testing.assert_frame_equal(a[0], b[0])
     assert a[2] == b[2]
+
+
+def test_other_suites_never_run_cleaning():
+    """Why the analysis, visualization, intake and SQL suites need no re-run for this PR: their
+    runners never call the cleaning agent, and analysis sessions carry no cleaning audit."""
+    import inspect
+
+    from evals import run
+    for fn in (run.run_analysis_case, run.run_visualization_case, run.viz_session,
+               run.run_intake_case, run.intake_session, run.run_sql_case):
+        src = inspect.getsource(fn)
+        assert "cleaning" not in src, fn.__name__

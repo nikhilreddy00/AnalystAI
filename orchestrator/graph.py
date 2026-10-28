@@ -252,12 +252,14 @@ async def cleaning_node(state: AgentState) -> dict:
     # (the recommended "Continue") keeps them as they are.
     answer = (state.get("user_message") or "").strip().casefold() \
         if state.get("is_approval") and state.get("approval_context") == "high_null" else ""
-    if answer.startswith("cancel"):
+    # Match the option, not a word anywhere: "don't drop anything" must not drop.
+    if answer.startswith("cancel") or answer.rstrip(").") == "c":
         session.error_message = "Analysis cancelled at your request; nothing was analysed."
         return {"session": session, "df_parquet": state.get("df_parquet")}
 
     try:
-        _, audit = await run_cleaning_agent(session, drop_high_null="drop" in answer)
+        drop = answer.startswith("drop") or answer.rstrip(").") == "b"
+        _, audit = await run_cleaning_agent(session, drop_high_null=drop)
         session.cleaning_audit = audit
 
         msg = audit.summary

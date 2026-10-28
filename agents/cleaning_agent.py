@@ -82,9 +82,9 @@ CLEANING_CARD = AgentCard(
 
 HIGH_NULL_PCT = 40.0
 UNKNOWN = "Unknown"
-# Compared after strip + casefold. "unknown" is a label, not a placeholder: it merges in step 4.
-_SENTINELS = {"", "-", "--", "---", "?", "??", "n/a", "na", "n.a", "null", "none", "nan", "#n/a",
-              "missing", "nil"}
+# Compared after strip + casefold. Only tokens that are never a real label: "NA" (North
+# America), "None" (a tier) and "Unknown" are labels and stay.
+_SENTINELS = {"", "-", "--", "---", "?", "??", "n/a", "#n/a", "null", "nan", "missing", "nil"}
 _LEADING_ZERO_RE = re.compile(r"^0\d+$")
 
 _SKIP_REASON = {

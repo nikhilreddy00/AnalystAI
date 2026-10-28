@@ -87,6 +87,13 @@ def test_existing_unknown_spelling_is_reused():
     assert out["tier"].tolist() == ["gold", "UNKNOWN", "UNKNOWN", "gold", "UNKNOWN"]
 
 
+def test_ambiguous_placeholders_are_labels():
+    df = pd.DataFrame({"region": ["NA", "EU", "NA", "-", "APAC"], "tier": ["None", "Gold", "?", "None", "Gold"]})
+    out, _ = clean(_ctx(df))
+    assert out["region"].tolist() == ["NA", "EU", "NA", "Unknown", "APAC"]
+    assert out["tier"].tolist() == ["None", "Gold", "Unknown", "None", "Gold"]
+
+
 def test_variants_merge_to_the_most_common_spelling_but_codes_do_not():
     df = pd.DataFrame({"region": ["North"] * 5 + [" north", "NORTH ", "South"],
                        "product": ["A-1", "A1", "a1", "A-1", "A1", "A1", "A-1", "A1"]})
@@ -161,8 +168,9 @@ def test_gate_drop_removes_high_null_columns_with_a_decision():
     assert [d.operation for d in audit.decisions if d.column == "memo"] == ["keep", "drop_column"]
 
 
-@pytest.mark.parametrize("answer, dropped", [("Drop those columns", True), ("Continue", False),
-                                             ("Continue with imputation", False)])
+@pytest.mark.parametrize("answer, dropped", [("Drop those columns", True), ("B", True),
+                                             ("Continue", False), ("Continue with imputation", False),
+                                             ("don't drop anything", False)])
 async def test_gate_answer_reaches_cleaning(answer, dropped):
     from orchestrator.graph import cleaning_node
     df = pd.DataFrame({"memo": ["x", None, None, None, None], "amount": [1.0, 2, 3, 4, 5]})
