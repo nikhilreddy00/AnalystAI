@@ -30,8 +30,15 @@ async def get_dashboard(
     request: Request,
     current_user: UserProfile = Depends(get_current_user)
 ):
+    from agents.visualization_agent import _GENERIC_COLORS
+
     store = request.app.state.session_store
     charts = await store.get_dashboard(current_user.uid)
+    # Charts pinned before Phase 5 carry the old generic palette; the theme decides instead.
+    for c in charts:
+        if isinstance(c, dict) and c.get("colors") and all(
+                str(x).lower() in _GENERIC_COLORS for x in c["colors"]):
+            c["colors"] = []
     return {"charts": charts}
 
 

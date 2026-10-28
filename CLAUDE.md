@@ -26,7 +26,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
-| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); next: Visualization |
+| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); next: Cleaning |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -75,7 +75,7 @@ User query
 [4. Analysis Agent]    Claude  — generates Python → E2B sandbox → AnalysisFindings
   │
   ▼
-[5. Visualization Agent]       — deterministic (no LLM) → list[ChartConfig]
+[5. Visualization Agent]       — deterministic (no LLM): chart per finding + rationale, linted → list[ChartConfig]
   │
   ▼
 [6. Insight Agent]     Claude  — synthesizes all → InsightReport
@@ -117,7 +117,13 @@ agents/
   analysis_agent.py        — the agent-contract reference (docs/agent-contract.md): ANALYSIS_CARD,
                              build_context, tools (retry only), code → guard → E2B → built-in
                              standard stats → hard rules (1 guided retry) → findings + Evidence
-  visualization_agent.py   — PURE PYTHON (no LLM), returns list[ChartConfig]
+  visualization_agent.py   — contract agent, PURE PYTHON (no LLM): VIZ_CARD, build_context → VizContext,
+                             charts_for_findings (trend→monthly line, comparison→bars + 95% CI,
+                             correlation→scatter driver on x, anomaly→histogram + fences), profile
+                             charts for overviews (row counts → Data tab), finalize_charts = lint
+                             (guardrails.chart_lint) then repair/drop, or a note on the user's choice;
+                             every chart has a ChartRationale; swap_options; KPI how + kpi_mismatches.
+                             Targeted answers, chart requests and drill-down charts all go through it
   insight_agent.py         — returns InsightReport
   quality_critic.py        — LLM critic run by quality_check_node → ExpertReview
   sql_agent.py             — Phase 4: question → one read-only SQL query (SQL_CARD, prompts/sql/vN.md,
@@ -161,7 +167,8 @@ api/
   main.py                  — FastAPI app, lifespan, CORS, rate limiter
   config.py                — pydantic-settings (reads .env)
   routes/chat.py           — POST /chat → SSE stream (runs full LangGraph)
-  routes/dashboard.py      — GET/POST/DELETE pinned charts
+  routes/dashboard.py      — GET/POST/DELETE pinned charts; POST /chart-feedback (user's chart-type
+                             switch: owner only, swap_options re-checked, saved, label-only trace)
   routes/connectors.py     — POST /connectors/test, /connectors/upload
 
 frontend/src/
@@ -207,7 +214,7 @@ agent_complete    → {type: "agent_complete", agent: "<name>", message: "<resul
 approval_required → {type: "approval_required", context: "clarification"|"high_null", ...}
 suggested_questions → {type: "suggested_questions", questions: string[]}  // FEAT-01
 evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding
-charts            → {type: "charts", data: ChartConfig[]}
+charts            → {type: "charts", data: ChartConfig[]}  // Phase 5: + rationale, placement, lint_warnings, error_key, split_key, reference_lines
 export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
 insight           → {type: "insight", data: InsightReport}
 quality_retry     → {type: "quality_retry", message: "<reason>; Re-running analysis..."}  // FEAT-02
@@ -238,7 +245,7 @@ done              → {type: "done"}  // always last
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
   Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost ~$59 (2026-10-27), mostly
-  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
@@ -259,7 +266,8 @@ Optional: `SEMANTIC_LAYER_PATH` (SQL connector), `DATABASE_URL`, `QDRANT_HOST`, 
 ## Common Pitfalls
 
 1. **`_df_parquet` is NOT a Pydantic field** — it's stored via `session.__dict__["_df_parquet"]`. Don't try to serialize it.
-2. **Visualization agent has NO LLM** — it's pure Python with deterministic chart selection rules.
+2. **Visualization agent has NO LLM** — deterministic rules keyed on the finding's kind. Every chart that
+   leaves the backend must go through `finalize_charts` and carry a `ChartRationale`, or it is dropped.
 3. **The graph entry point is `ingestion`**, not `intake`. This is by design for schema-aware intake.
 4. **API keys are in `.env`** — NEVER commit real keys. The `.env` file should be gitignored.
 5. **SQL connector blocking calls are wrapped in `asyncio.to_thread`** — every sync SQLAlchemy call in `sql_connector.py` goes through `await asyncio.to_thread(...)`. Don't add raw `engine.connect()` calls inside `async def` methods.

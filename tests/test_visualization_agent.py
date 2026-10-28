@@ -279,3 +279,20 @@ def test_trend_chart_title_states_the_same_change_as_the_finding(cid):
     best = max(trends, key=lambda t: abs(t.pct_change))
     shown = float(re.search(r"(\d+\.\d)%", chart.title).group(1))
     assert shown == pytest.approx(abs(best.pct_change), abs=0.051), chart.title
+
+
+async def test_dashboard_clears_the_old_generic_palette_on_pinned_charts():
+    from types import SimpleNamespace
+
+    from api.auth import UserProfile
+    from api.routes.dashboard import get_dashboard
+    from memory.session_store import InMemorySessionStore
+
+    store = InMemorySessionStore()
+    base = {"chart_type": "BarChart", "title": "t", "data": [{"a": "x", "b": 1}], "x_key": "a",
+            "y_keys": ["b"], "source_finding": "x"}
+    await store.pin_chart("u", "s", {**base, "id": "old", "colors": ["#4E79A7", "#F28E2B"]})
+    await store.pin_chart("u", "s", {**base, "id": "meaning", "colors": ["#1D9E75", "#A32D2D"]})
+    req = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(session_store=store)))
+    charts = {c["id"]: c for c in (await get_dashboard(req, UserProfile("u")))["charts"]}
+    assert charts["old"]["colors"] == [] and charts["meaning"]["colors"] == ["#1D9E75", "#A32D2D"]

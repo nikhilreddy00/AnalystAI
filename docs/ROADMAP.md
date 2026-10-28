@@ -292,7 +292,10 @@ plan), a green CI run, and **your explicit sign-off** before the next phase star
 Order: Intake, then Visualization, then Cleaning, then Insight, then Quality check, then Ingestion.
 (Visualization moved up on 2026-10-28: it only needs Phase 3's findings and evidence.)
 Progress: **Intake ✅ 2026-10-28** (`docs/baselines/phase5_intake.md`; also closed the Phase 4
-SQL follow-up item via shared conversation memory, and added value-based date detection).
+SQL follow-up item via shared conversation memory, and added value-based date detection);
+**Visualization ✅ 2026-10-28** (`docs/baselines/phase5_visualization.md`; also fixed the high-null
+approval overwriting the user's question, and put targeted, chart-request and drill-down charts under
+the same policy).
 Each PR runs the same 7 steps:
 1. agent card;
 2. eval cases first;
