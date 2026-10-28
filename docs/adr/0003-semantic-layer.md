@@ -1,6 +1,6 @@
 # ADR-0003: A minimal, self-owned YAML semantic layer shaped like Cortex semantic views
 
-- Status: Proposed (Phase 0, 2026-10-27)
+- Status: Accepted (Phase 4, 2026-10-27) — built as `semantic_layer.py`; see the amendments below
 - Gaps addressed: G10, and partly G2 and G6
 
 ## Context
@@ -51,6 +51,18 @@ verified_queries:
 - The operator writes the YAML. A `scaffold` command that drafts it from the warehouse schema is a
   Phase 4 nice-to-have, not required.
 - Verified queries are kept separate from the eval golden set ([ADR-0002](0002-eval-method.md)).
+
+## Amendments (Phase 4)
+- Per data source, not one global file: `SEMANTIC_LAYER_PATH` names the layer for the SQL
+  connector; the eval ships two (`evals/sql/retail.yaml`, `evals/sql/banking.yaml`).
+- Added fields: `primary_key` per table (the grain), `table` + `joins` per metric (the metric's
+  grain and join path), `non_additive_dimension` for balance-like metrics (MetricFlow's name),
+  `one_to_one` cardinality, and a top-level `dialect`.
+- The fan-out guard is `guardrails.sql_fanout` (grain + cardinality); metric use is checked by
+  `guardrails.sql_uses_metric` (AST after alias resolution, not string match).
+- Layer text is operator configuration, so it goes into the prompt as trusted guidance; database
+  introspection, query results and database errors are delimited as untrusted.
+- The connection test reports tables/columns the layer names that the database lacks.
 
 ---
 Source keys ([P1], [S6], …) refer to the Sources list in `docs/research/2026-10-27-data-agents.md`.
