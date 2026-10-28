@@ -1,0 +1,607 @@
+{
+ "meta": {
+  "suite": "sql",
+  "report": "sql-20261028T145103Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "467bb7c",
+  "started_at": "20261028T145103Z",
+  "only": "followup",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 6,
+  "runs": 18,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.0142,
+  "latency_p50_s": 4.39,
+  "latency_p95_s": 7.39,
+  "execution_accuracy": 1.0,
+  "metric_adherence": 1.0,
+  "attacks_blocked": null,
+  "fanout_cases_majority_pass": "0/0",
+  "pass_rate_by_category": {
+   "followup": 1.0
+  },
+  "runs_using_tools": 18
+ },
+ "runs": {
+  "bank-followup-01": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT account_type, branch, COUNT(*) AS accounts FROM bank.accounts GROUP BY account_type, branch ORDER BY account_type, branch",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 7.42,
+    "cost_usd": 0.01752,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT account_type, branch, COUNT(*) AS accounts FROM bank.accounts GROUP BY account_type, branch ORDER BY account_type, branch",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 7.29,
+    "cost_usd": 0.01752,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT account_type, branch, COUNT(*) AS accounts FROM bank.accounts GROUP BY account_type, branch ORDER BY account_type, branch",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 7.38,
+    "cost_usd": 0.01741,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "bank-followup-02": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT branch, COUNT(*) AS accounts FROM bank.accounts\nWHERE opened_date >= DATE '2022-01-01' AND opened_date < DATE '2023-01-01'\nGROUP BY branch",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 5.46,
+    "cost_usd": 0.01469,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT branch, COUNT(*) AS accounts FROM bank.accounts\nWHERE opened_date >= DATE '2022-01-01' AND opened_date < DATE '2023-01-01'\nGROUP BY branch",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 4.34,
+    "cost_usd": 0.01469,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT branch, COUNT(*) AS accounts FROM bank.accounts\nWHERE opened_date >= DATE '2022-01-01' AND opened_date < DATE '2023-01-01'\nGROUP BY branch",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 4.34,
+    "cost_usd": 0.01469,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "retail-followup-01": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT channel, COUNT(*) AS refunded_orders FROM shop.orders WHERE status = 'refunded' GROUP BY channel",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 2.44,
+    "cost_usd": 0.01116,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT channel, COUNT(*) AS refunded_orders FROM shop.orders WHERE status = 'refunded' GROUP BY channel",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 2.36,
+    "cost_usd": 0.01116,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT channel, COUNT(*) AS refunded_orders FROM shop.orders WHERE status = 'refunded' GROUP BY channel",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 2.26,
+    "cost_usd": 0.01116,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "retail-followup-02": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT c.segment, c.region, COUNT(DISTINCT o.customer_id) AS customers\nFROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id\nGROUP BY c.segment, c.region\nORDER BY c.segment, c.region",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 7.11,
+    "cost_usd": 0.01742,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT c.segment, c.region, COUNT(DISTINCT o.customer_id) AS customers\nFROM shop.orders o\nJOIN shop.customers c ON c.customer_id = o.customer_id\nGROUP BY c.segment, c.region\nORDER BY c.segment, c.region",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 7.02,
+    "cost_usd": 0.0175,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT c.segment, c.region, COUNT(DISTINCT o.customer_id) AS customers\nFROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id\nGROUP BY c.segment, c.region\nORDER BY c.segment, c.region",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 6.99,
+    "cost_usd": 0.01742,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "retail-followup-03": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     },
+     {
+      "kind": "metric_adherence",
+      "ok": true,
+      "detail": "uses the definition"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed') AS net_revenue\nFROM shop.order_items oi\nJOIN shop.orders o ON o.order_id = oi.order_id\nWHERE o.order_date >= DATE '2024-01-01' AND o.order_date < DATE '2025-01-01'",
+    "metrics_used": [
+     "net_revenue"
+    ],
+    "tool_calls": [
+     "get_metric_definition"
+    ],
+    "latency_s": 4.44,
+    "cost_usd": 0.01266,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     },
+     {
+      "kind": "metric_adherence",
+      "ok": true,
+      "detail": "uses the definition"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed') AS net_revenue\nFROM shop.order_items oi\nJOIN shop.orders o ON o.order_id = oi.order_id\nWHERE o.order_date >= DATE '2024-01-01' AND o.order_date < DATE '2025-01-01'",
+    "metrics_used": [
+     "net_revenue"
+    ],
+    "tool_calls": [
+     "get_metric_definition"
+    ],
+    "latency_s": 4.33,
+    "cost_usd": 0.01266,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     },
+     {
+      "kind": "metric_adherence",
+      "ok": true,
+      "detail": "uses the definition"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed') AS net_revenue\nFROM shop.order_items oi\nJOIN shop.orders o ON o.order_id = oi.order_id\nWHERE o.order_date >= DATE '2024-01-01' AND o.order_date < DATE '2025-01-01'",
+    "metrics_used": [
+     "net_revenue"
+    ],
+    "tool_calls": [
+     "get_metric_definition"
+    ],
+    "latency_s": 4.91,
+    "cost_usd": 0.01266,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "retail-followup-04": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT category, AVG(unit_cost) AS avg_unit_cost FROM shop.products GROUP BY category ORDER BY avg_unit_cost DESC LIMIT 1",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.09,
+    "cost_usd": 0.01159,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT category, AVG(unit_cost) AS avg_unit_cost\nFROM shop.products\nGROUP BY category\nORDER BY avg_unit_cost DESC\nLIMIT 1",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.02,
+    "cost_usd": 0.01164,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT category, AVG(unit_cost) AS avg_unit_cost FROM shop.products GROUP BY category ORDER BY avg_unit_cost DESC LIMIT 1",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.06,
+    "cost_usd": 0.01159,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ },
+ "compare": {
+  "previous": "sql-20261028T143637Z",
+  "pass_rate_delta_pts": 66.67,
+  "common_cases": 6,
+  "new_cases": [],
+  "broke": [],
+  "fixed": [
+   "bank-followup-01",
+   "bank-followup-02",
+   "retail-followup-01",
+   "retail-followup-02"
+  ],
+  "mcnemar_p": 0.125
+ }
+}
