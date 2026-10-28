@@ -14,10 +14,11 @@ sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2]
 from evals import datagen
 from agents.visualization_agent import (
     classify_columns,
-    auto_generate_charts,
     generate_smart_kpis,
     compute_briefing_extras,
+    run_visualization_agent,
 )
+from evals.run import load_cases, viz_session
 
 OUT = sys.argv[1]
 evidence = next(
@@ -29,7 +30,12 @@ evidence = next(
 df, _ = datagen.make_sales(1)
 roles = classify_columns(df)
 q = "Give me an overview of this sales data"
-charts = [c.model_dump() for c in auto_generate_charts(df, roles, q)]
+# Phase 5: charts from the real agent on the viz-v14 fixture (trend, segments, correlation), so
+# "why this chart" and its evidence links render; the fixture's evidence replaces the SSE's.
+_case = next(c for c in load_cases("visualization", "viz-v14"))
+_session, _ = viz_session(_case, df)
+charts = [c.model_dump() for c in __import__("asyncio").run(run_visualization_agent(_session))]
+evidence = [e.model_dump() for e in _session.analysis_findings.evidence]
 kpis = [k.model_dump() for k in generate_smart_kpis(df, roles, q)]
 extras = compute_briefing_extras(df, roles, None)
 num = df.select_dtypes("number")

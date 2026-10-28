@@ -1,0 +1,28 @@
+id: viz-v05
+category: finding
+label_note: 'A relationship between two measures: a scatter with the driver (spend) on x and the outcome
+  (revenue) on y.'
+dataset:
+  name: sales
+  seed: 1
+question: Is marketing spend related to revenue?
+plan:
+  intent: overview
+  analysis_types:
+  - correlation
+  target_metrics:
+  - marketing_spend
+  - revenue
+  segments: []
+findings:
+- kind: correlation
+  a: marketing_spend
+  b: revenue
+  headline: true
+expect:
+- types:
+  - ScatterChart
+  x: marketing_spend
+  y: revenue
+  agg: none
+  finding: 0

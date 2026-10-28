@@ -14,6 +14,8 @@ interface Props {
   response: TargetedResponse;
   sessionId: string | null;
   onFollowUp: (q: string) => void;
+  /** Prefills the chat box (a chart's "Change variables…"). */
+  onDraft?: (q: string) => void;
 }
 
 const INTENT_LABEL: Record<TargetedResponse["intent"], string> = {
@@ -29,7 +31,7 @@ const INTENT_LABEL: Record<TargetedResponse["intent"], string> = {
   outlier_scan: "Outlier scan",
 };
 
-export default function TargetedResponsePanel({ response, sessionId, onFollowUp }: Props) {
+export default function TargetedResponsePanel({ response, sessionId, onFollowUp, onDraft }: Props) {
   const isUnanswerable = !!response.unanswerable_reason;
 
   if (isUnanswerable) {
@@ -71,7 +73,9 @@ export default function TargetedResponsePanel({ response, sessionId, onFollowUp 
           key={chart.id}
           config={chart}
           height={240}
-          action={sessionId && <PinButton sessionId={sessionId} chart={chart} />}
+          sessionId={sessionId}
+          onDraft={onDraft}
+          action={(current) => sessionId && <PinButton sessionId={sessionId} chart={current} />}
         />
       ))}
 

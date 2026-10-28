@@ -1,0 +1,23 @@
+id: viz-t02
+category: targeted
+label_note: 'Monthly revenue: a line of monthly totals.'
+dataset:
+  name: sales
+  seed: 1
+question: Show monthly revenue
+plan:
+  intent: time_series
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    metric_column: revenue
+    date_column: order_date
+    frequency: M
+    aggregation: sum
+expect:
+- types:
+  - LineChart
+  x: order_date
+  y: revenue
+  agg: sum

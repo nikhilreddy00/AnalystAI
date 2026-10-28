@@ -1,0 +1,25 @@
+id: viz-t04-holdout
+category: targeted
+label_note: 'Top-N of totals: ranked bars of summed revenue.'
+dataset:
+  name: sales
+  seed: 1
+question: Top 3 regions by revenue
+plan:
+  intent: top_n
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    metric_column: revenue
+    group_by: region
+    n: 3
+    aggregation: sum
+    order: desc
+expect:
+- types:
+  - HorizontalBarChart
+  - BarChart
+  x: region
+  y: revenue
+  agg: sum

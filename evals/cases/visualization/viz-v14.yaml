@@ -1,0 +1,52 @@
+id: viz-v14
+category: finding
+label_note: 'Several headline findings: each gets its own chart, as in v01, v03 and v05.'
+dataset:
+  name: sales
+  seed: 1
+question: Give me the main revenue drivers
+plan:
+  intent: overview
+  analysis_types:
+  - trend
+  - segmentation
+  - correlation
+  target_metrics:
+  - revenue
+  - marketing_spend
+  segments:
+  - segment
+findings:
+- kind: trend
+  column: revenue
+  headline: true
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+  headline: true
+- kind: correlation
+  a: marketing_spend
+  b: revenue
+  headline: true
+expect:
+- types:
+  - LineChart
+  x: order_date
+  y: revenue
+  agg: sum
+  finding: 0
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: segment
+  y: revenue
+  agg: mean
+  ci: true
+  finding: 1
+- types:
+  - ScatterChart
+  x: marketing_spend
+  y: revenue
+  agg: none
+  finding: 2

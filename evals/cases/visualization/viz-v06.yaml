@@ -1,0 +1,28 @@
+id: viz-v06
+category: finding
+label_note: Same relationship, but the finding names the outcome first (revenue__marketing_spend). The
+  outcome must still go on y.
+dataset:
+  name: sales
+  seed: 1
+question: Does revenue move with marketing spend?
+plan:
+  intent: overview
+  analysis_types:
+  - correlation
+  target_metrics:
+  - revenue
+  - marketing_spend
+  segments: []
+findings:
+- kind: correlation
+  a: revenue
+  b: marketing_spend
+  headline: true
+expect:
+- types:
+  - ScatterChart
+  x: marketing_spend
+  y: revenue
+  agg: none
+  finding: 0

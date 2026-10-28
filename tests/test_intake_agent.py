@@ -114,3 +114,33 @@ def test_conversation_memory_caps_long_turns():
     session.add_message(MessageRole.ASSISTANT, "a" * 5000)
     text = conversation_context(session)
     assert text.count("u") <= 1000 + 10 and text.count("a") <= 400 + 10
+
+
+async def test_high_null_approval_keeps_the_users_question(recorded_llm):
+    """'Continue with imputation' answers the cleaning gate: no intake call, raw_query unchanged."""
+    from orchestrator.graph import intake_node
+    from orchestrator.state import AnalysisTask
+
+    session = _session()
+    session.task_plan = AnalysisTask(raw_query="How has revenue trended?", target_metrics=["revenue"],
+                                     analysis_types=["trend"])
+    state = {"session": session, "event_queue": None, "user_message": "Continue with imputation",
+             "is_approval": True, "approval_context": "high_null"}
+    out = (await intake_node(state))["session"]
+    assert out.task_plan.raw_query == "How has revenue trended?"
+    assert recorded_llm.calls == []
+
+
+async def test_clarification_answer_is_still_classified(recorded_llm):
+    from orchestrator.graph import intake_node
+    from orchestrator.state import AnalysisTask
+
+    session = _session()
+    session.task_plan = AnalysisTask(raw_query="show me performance", target_metrics=[],
+                                     analysis_types=["eda"], clarification_needed=True)
+    session.overview_done = True   # a follow-up (the first question is always an overview)
+    recorded_llm.responses.append(_plan(metric_column="revenue", group_by="region"))
+    state = {"session": session, "event_queue": None, "user_message": "revenue by region",
+             "is_approval": True, "approval_context": "clarification"}
+    out = (await intake_node(state))["session"]
+    assert len(recorded_llm.calls) == 1 and out.task_plan.question_intent == QuestionIntent.TOP_N

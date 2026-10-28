@@ -44,10 +44,12 @@ from agents.quality_critic import run_quality_critic
 from agents.visualization_agent import (
     classify_columns,
     compute_briefing_extras,
+    VIZ_CARD,
     generate_smart_kpis,
+    kpi_mismatches,
     run_visualization_agent,
 )
-from llm.client import get_client
+from llm.client import get_client, trace_verdict
 from orchestrator.routing import (
     route_after_analysis,
     route_after_cleaning,
@@ -71,6 +73,7 @@ class AgentState(TypedDict):
     event_queue: Any                   # asyncio.Queue[dict | None]
     user_message: str
     is_approval: bool
+    approval_context: str | None       # which gate the approval answers ("high_null", …)
     session_store: Any                 # SessionStore | None
     vector_store: Any                  # VectorStore | None
 
@@ -106,6 +109,15 @@ async def _save(state: AgentState) -> None:
 async def intake_node(state: AgentState) -> dict:
     _emit(state, {"type": "agent_start", "agent": "intake", "message": "Understanding your request..."})
     session: AnalysisSession = state["session"]
+
+    # The high-null gate's answer ("Continue with imputation") approves the cleaning; it is not a
+    # new question. Keep the plan, so raw_query (read by charts, insight and memory) stays the
+    # user's. A clarification answer still goes through intake: it answers intake's question.
+    if (state.get("is_approval") and state.get("approval_context") == "high_null"
+            and session.task_plan and not session.task_plan.clarification_needed):
+        session.add_message(MessageRole.USER, state["user_message"])
+        _emit(state, {"type": "agent_complete", "agent": "intake", "message": "Analysis plan ready"})
+        return {"session": session}
 
     try:
         # Phase 3: signal first-run so intake forces a comprehensive plan.
@@ -305,6 +317,11 @@ async def analysis_node(state: AgentState) -> dict:
                 findings.kpis = generate_smart_kpis(
                     df, roles, query, narrative=session.narrative
                 )
+                # Phase 5: a tile whose number doesn't match the data or the report is dropped.
+                wrong = set(kpi_mismatches(findings.kpis, df, findings.eda_summary))
+                for _ in wrong:
+                    trace_verdict("visualization", VIZ_CARD.version, "kpi_mismatch")
+                findings.kpis = [k for k in findings.kpis if k.label not in wrong]
                 extras = compute_briefing_extras(df, roles, session.data_contract)
                 findings.unique_counts = extras.get("unique_counts", {})
                 findings.sample_values_per_col = extras.get("sample_values_per_col", {})

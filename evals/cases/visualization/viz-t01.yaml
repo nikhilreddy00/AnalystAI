@@ -1,0 +1,23 @@
+id: viz-t01
+category: targeted
+label_note: 'Asked whether two measures relate: the scatter of the pair, driver on x. A bar of r values
+  hides the data.'
+dataset:
+  name: sales
+  seed: 1
+question: Is marketing spend correlated with revenue?
+plan:
+  intent: correlation
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    target_columns:
+    - marketing_spend
+    - revenue
+expect:
+- types:
+  - ScatterChart
+  x: marketing_spend
+  y: revenue
+  agg: none

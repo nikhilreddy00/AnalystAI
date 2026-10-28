@@ -1,0 +1,24 @@
+id: viz-t06
+category: targeted
+label_note: The user explicitly asked for a pie of a rate. Honour the choice (the user always wins), average
+  not sum, and say why a pie misleads here.
+dataset:
+  name: sales
+  seed: 1
+question: Show discount by region as a pie chart
+plan:
+  intent: chart_request
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    chart_type: PieChart
+    group_by: region
+    metric_column: discount
+expect:
+- types:
+  - PieChart
+  x: region
+  y: discount
+  agg: mean
+user_choice: true

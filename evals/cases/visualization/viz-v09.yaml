@@ -1,0 +1,30 @@
+id: viz-v09
+category: finding
+label_note: 'Discount is a rate (0-1): averaged per group, never summed. Bars of the mean with CI.'
+dataset:
+  name: sales
+  seed: 1
+question: Average discount by region
+plan:
+  intent: overview
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - discount
+  segments:
+  - region
+findings:
+- kind: segment
+  segment_column: region
+  metric: discount
+  aggregation: mean
+  headline: true
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: region
+  y: discount
+  agg: mean
+  ci: true
+  finding: 0

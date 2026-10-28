@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { Evidence } from "@/types";
 
@@ -33,14 +33,27 @@ const KIND = {
   query: "SQL query",
 };
 
-export default function EvidencePanel({ items }: { items: Evidence[] }) {
+interface Props {
+  items: Evidence[];
+  /** Phase 5: a chart's "See evidence" opens this item's drawer until it is closed. */
+  openId?: string | null;
+  onClosed?: () => void;
+}
+
+export default function EvidencePanel({ items, openId, onClosed }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [open, setOpen] = useState<Evidence | null>(null);
+  const [picked, setOpen] = useState<Evidence | null>(null);
+  const open = picked ?? (openId ? items.find((e) => e.id === openId) ?? null : null);
 
   const show = (e: Evidence) => {
     setOpen(e);
     dialog.current?.showModal();
   };
+
+  const linked = !!openId && items.some((e) => e.id === openId);
+  useEffect(() => {
+    if (linked && !dialog.current?.open) dialog.current?.showModal();
+  }, [linked, openId]);
 
   return (
     <section aria-label="Evidence">
@@ -71,7 +84,10 @@ export default function EvidencePanel({ items }: { items: Evidence[] }) {
       <dialog
         ref={dialog}
         aria-labelledby="evidence-title"
-        onClose={() => setOpen(null)}
+        onClose={() => {
+          setOpen(null);
+          onClosed?.();
+        }}
         onClick={(ev) => ev.target === dialog.current && dialog.current?.close()}
         className="ml-auto mr-0 my-0 h-dvh max-h-dvh w-full max-w-xl bg-card text-foreground p-0 shadow-2xl backdrop:bg-black/40"
       >

@@ -1,0 +1,25 @@
+id: viz-t07
+category: targeted
+label_note: 'A/B on conversion with a known stratum (department): rates per department, one bar per group,
+  with CIs.'
+dataset:
+  name: simpson
+  seed: 1
+question: Is the treatment conversion rate significantly higher than control?
+plan:
+  intent: ab_significance
+  analysis_types: []
+  target_metrics: []
+  segments:
+  - department
+  targeted_params:
+    variant_column: group
+    metric_column: converted
+expect:
+- types:
+  - BarChart
+  x: department
+  y: converted
+  agg: mean
+  split: group
+  ci: true

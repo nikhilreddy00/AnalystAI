@@ -16,7 +16,7 @@ import logging
 import re
 
 from agents.utils import strip_markdown_fences
-from guardrails import UNTRUSTED_NOTE, delimit_untrusted, mask_row
+from guardrails import UNTRUSTED_NOTE, delimit_untrusted, mask_pii, mask_row
 from llm.client import get_client
 from orchestrator.state import (
     ActionItem,
@@ -334,7 +334,9 @@ async def run_insight_agent(
             )
 
     if charts:
-        context_parts.append(f"Visualizations generated: {[c.title for c in charts]}")
+        # Titles carry data values (segment names, "A highest"), so they are data: masked, delimited.
+        context_parts.append("Visualizations generated:\n" + delimit_untrusted(
+            "\n".join(str(mask_pii(c.title)) for c in charts)))
 
     if similar_past_insights:
         context_parts.append(

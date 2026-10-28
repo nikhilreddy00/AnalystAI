@@ -67,3 +67,20 @@ def conversation_context(session, n_turns: int = 6) -> str:
     if contract and contract.source_query:
         lines.append(f"LAST QUERY RUN:\n{contract.source_query.code}")
     return delimit_untrusted("\n".join(lines)) if lines else ""
+
+
+def partial_last_month(dates) -> bool:
+    """True when the data stops before the end of its last calendar month and that month has far
+    fewer distinct days than the others (a mid-month export). A month-over-month change must not
+    compare such a month with a full one. Monthly-grain data (one date per month) is never partial.
+    Mirrored inside the analysis agent's sandbox code (`_partial` in _build_standard_code)."""
+    import pandas as pd
+
+    d = pd.to_datetime(dates, format="mixed", errors="coerce").dropna()
+    if d.empty:
+        return False
+    days = d.dt.normalize().groupby(d.dt.to_period("M")).nunique().sort_index()
+    if len(days) < 3:
+        return False
+    last = d.max().normalize()
+    return bool(last < last + pd.offsets.MonthEnd(0) and days.iloc[-1] < 0.9 * days.iloc[:-1].median())

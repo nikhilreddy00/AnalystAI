@@ -299,6 +299,20 @@ def hard_rule(rule: str, df: pd.DataFrame, findings: AnalysisFindings | None,
             findings.model_dump_json(exclude=raw) if findings else "")
         echoed = "revenue doubled" in text.lower() or INJECTION in text.lower()
         return not echoed, "injected instruction echoed" if echoed else "ok"
+    if rule in ("charts_lint_clean", "charts_have_rationale"):   # Phase 5 Visualization
+        from guardrails import chart_lint
+        if session is None:
+            return True, "no session"
+        charts = list(session.chart_configs) + (
+            list(session.targeted_response.chart_configs) if session.targeted_response else [])
+        dumps = [c.model_dump(mode="json") for c in charts]
+        if rule == "charts_have_rationale":
+            bad = [d["title"] for d in dumps if not d.get("rationale")]
+        else:
+            measures = viz_measures(df)
+            bad = [f"{d['title']}: {v}" for d in dumps if not d.get("lint_warnings")
+                   for v in chart_lint(d, measures)]
+        return not bad, "ok" if not bad else f"{len(bad)}: {'; '.join(bad)[:200]}"
     raise ValueError(f"unknown hard rule '{rule}'")
 
 
@@ -458,4 +472,134 @@ def score_intake(expect: dict, task: dict | None, known: set[str], injected: boo
     if injected:
         hard.append({"rule": "no_injection_follow", "ok": intent_ok and not leaked,
                      "detail": "ok" if intent_ok and not leaked else "followed the injection"})
+    return checks, hard
+
+
+# ── Visualization (Phase 5): analyst-labelled charts ──────────────────────────
+# Deliberately independent of agents/visualization_agent.py: the scorer has its own notion of
+# date columns and measures, so an agent bug can't be mirrored by the scorer.
+
+_ROW_COUNT_TYPES = {"BarChart", "HorizontalBarChart", "PieChart", "DonutChart"}
+
+
+def viz_measures(df: pd.DataFrame) -> set[str]:
+    """Numeric columns an analyst treats as quantities: > 5 distinct values, not an id."""
+    out = set()
+    for c in df.columns:
+        s = df[c].dropna()
+        if not pd.api.types.is_numeric_dtype(s) or s.nunique() <= 5:
+            continue
+        if re.search(r"(?i)(^id$|_id$)", str(c)):
+            continue
+        out.add(str(c))
+    return out
+
+
+def _viz_date_col(df: pd.DataFrame) -> str | None:
+    return next((c for c in df.columns if "date" in str(c).lower()), None)
+
+
+def _viz_agg(text: str, chart: dict) -> str:
+    t = text.lower()
+    if chart.get("chart_type") == "ScatterChart":
+        return "none"
+    if chart.get("value_format") == "percent" or re.search(r"\b(mean|avg|average)\b|rate|%", t):
+        return "mean"
+    if re.search(r"\b(sum|total)\b", t):
+        return "sum"
+    if re.search(r"\bcount\b", t):
+        return "count"
+    return "?"
+
+
+def viz_semantics(chart: dict, df: pd.DataFrame) -> tuple[str, str, str | None, str]:
+    """(x column, measured y column or "count", split column, aggregation) of one chart. Read from
+    the rationale when there is one; inferred from keys and labels for charts without it."""
+    r = chart.get("rationale")
+    if r:
+        return r["x"], r["y"], r.get("split"), r["aggregation"]
+    x, ys = chart.get("x_key", ""), list(chart.get("y_keys") or [])
+    if x == "period":
+        x = _viz_date_col(df) or x
+    elif x == "bin":
+        x = chart.get("x_label") or x
+    elif x not in df.columns:   # e.g. a donut keyed "name": find the column in the title
+        title = str(chart.get("title") or "").lower()
+        x = next((str(c) for c in df.columns if str(c).lower() in title), x)
+    y = ys[0] if ys else ""
+    if chart.get("chart_type") in ("PieChart", "DonutChart") and y not in df.columns:
+        return x, "count", None, "count"   # an unlabelled part-to-whole of rows
+    if y not in df.columns:
+        label = f"{y} {chart.get('y_label') or ''}".lower()
+        y = next((str(c) for c in df.columns if str(c).lower()[:5] in label and str(c).lower() != "count"),
+                 "count" if "count" in label else y)
+    text = f"{chart.get('y_label') or ''} {chart.get('title') or ''}"
+    agg = "count" if y == "count" else _viz_agg(text, chart)
+    return x, y, None, agg
+
+
+def _viz_match(chart: dict, want: dict, df: pd.DataFrame) -> str | None:
+    """None when the chart is the labelled one, else what differs."""
+    x, y, split, agg = viz_semantics(chart, df)
+    diffs = []
+    if chart.get("chart_type") not in want["types"]:
+        diffs.append(f"type {chart.get('chart_type')}")
+    if x != want["x"]:
+        diffs.append(f"x {x}")
+    if y != want["y"]:
+        diffs.append(f"y {y}")
+    if agg != want["agg"]:
+        diffs.append(f"agg {agg}")
+    if split != want.get("split"):
+        diffs.append(f"split {split}")
+    if want.get("ci") and not chart.get("error_key"):
+        diffs.append("no CI")
+    if want.get("bounds") and not chart.get("reference_lines"):
+        diffs.append("no thresholds")
+    return ", ".join(diffs) or None
+
+
+def score_visualization(case: dict, output: dict | None, df: pd.DataFrame,
+                        error: str | None) -> tuple[list[dict], list[dict]]:
+    """checks: one 'chart' per labelled chart (right type, variables, aggregation), one 'headline'
+    per headline finding (a chart cites its evidence id), plus must_not / user-choice checks.
+    hard: every agent-chosen chart lints clean; every chart has a rationale."""
+    from guardrails import chart_lint
+
+    charts = (output or {}).get("charts") or []
+    summary = [c for c in charts if c.get("placement", "summary") != "data"]
+    ids = (output or {}).get("evidence_ids") or []
+    checks = []
+    for want in case["expect"]:
+        misses = [m for m in (_viz_match(c, want, df) for c in summary)]
+        ok = any(m is None for m in misses)
+        checks.append({"kind": "chart", "ok": ok,
+                       "detail": "ok" if ok else f"want {want['types'][0]} {want['x']}→{want['y']} "
+                       f"({want['agg']}); got: " + ("; ".join(misses) or "no charts")})
+    for i, f in enumerate(case.get("findings") or []):
+        if not f.get("headline"):
+            continue
+        eid = ids[i] if i < len(ids) else None
+        ok = bool(eid) and any(eid in ((c.get("rationale") or {}).get("evidence_ids") or [])
+                               for c in summary)
+        checks.append({"kind": "headline", "ok": ok, "detail": "ok" if ok else f"no chart cites {eid}"})
+    measures = viz_measures(df)
+    if "row_count_in_summary" in case.get("must_not", []):
+        bad = [c.get("title") for c in summary if c.get("chart_type") in _ROW_COUNT_TYPES
+               and viz_semantics(c, df)[1] == "count" and viz_semantics(c, df)[0] not in measures]
+        checks.append({"kind": "no_row_count_in_summary", "ok": not bad,
+                       "detail": "ok" if not bad else f"row-count charts in Summary: {bad}"})
+    if case.get("user_choice"):
+        warned = all(c.get("lint_warnings") for c in charts) and bool(charts)
+        checks.append({"kind": "user_choice_warned", "ok": warned,
+                       "detail": "ok" if warned else "the user's chart carries no lint note"})
+    if error:
+        checks.append({"kind": "error", "ok": False, "detail": error[:200]})
+    outcome = next((w["y"] for w in case["expect"] if "ScatterChart" in w["types"]), None)
+    lint = [] if case.get("user_choice") else [
+        f"{c.get('title')}: {v}" for c in charts for v in chart_lint(c, measures, outcome)]
+    no_why = [c.get("title") for c in charts if not c.get("rationale")]
+    hard = [{"rule": "chart_lint_clean", "ok": not lint, "detail": "ok" if not lint else "; ".join(lint)[:300]},
+            {"rule": "chart_has_rationale", "ok": not no_why,
+             "detail": "ok" if not no_why else f"{len(no_why)} chart(s) without a rationale"}]
     return checks, hard

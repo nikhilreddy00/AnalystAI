@@ -313,6 +313,7 @@ class KPI(BaseModel):
     value: str                            # pre-formatted display string ("62.5%", "$12,450.00")
     context: str = ""                     # one-line sublabel (range, share, comparison)
     recipe: KPIRecipe | None = None
+    how: str = ""                         # Phase 5: how it was computed, in words
 
 
 class DataNarrative(BaseModel):
@@ -371,6 +372,21 @@ class AnalysisFindings(BaseModel):
 
 # ── Agent 5 output: ChartConfig ───────────────────────────────────────────────
 
+class ChartRationale(BaseModel):
+    """Why this chart (Phase 5 Visualization): the rule that picked it and what it shows, built
+    deterministically by the chart code, never by a model. `code` recomputes the plotted numbers."""
+    rule: str                              # "trend→line", "segment→bar", "profile:time_series" …
+    reason: str                            # one plain sentence
+    x: str                                 # the column on x (the date column for a time axis)
+    y: str                                 # the measured column; "count" for row counts
+    split: str | None = None               # series column, if any
+    aggregation: str                       # sum | mean | count | none
+    n_rows: int
+    evidence_ids: list[str] = Field(default_factory=list)  # Evidence.id(s) it shows; [] = data profile
+    code: str = ""                         # pandas expression, e.g. df.groupby('segment')['revenue'].mean()
+    confidence: Literal["high", "medium", "low"] | None = None  # the finding's, never the chart's
+
+
 class ChartConfig(BaseModel):
     """Recharts-compatible config. Frontend renders this directly."""
     id: str                               # unique identifier for dashboard pinning
@@ -390,6 +406,13 @@ class ChartConfig(BaseModel):
     value_format: str = "number"          # "number" | "percent"
     # PROMPT-6: dashboard layout hint. "half_width" → 2 per row; "full_width" → spans.
     layout_hint: str = "half_width"       # "half_width" | "full_width"
+    # Phase 5 Visualization: chart trust.
+    rationale: ChartRationale | None = None
+    placement: Literal["summary", "data"] = "summary"  # "data" = row-count/profile chart (Data tab)
+    lint_warnings: list[str] = Field(default_factory=list)  # only on charts the user chose
+    error_key: str | None = None          # suffix: data[f"{y}{error_key}"] = 95% CI half-width
+    split_key: str | None = None          # series column when y_keys are the values of a split
+    reference_lines: list[dict[str, Any]] = Field(default_factory=list)  # [{value, label, axis}]
 
 
 # ── Agent 6 output: InsightReport ─────────────────────────────────────────────

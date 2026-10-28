@@ -66,7 +66,8 @@ def build_pptx(session: AnalysisSession) -> bytes:
     _add_title_slide(prs, session)
     _add_kpi_slide(prs, session)
     _add_summary_slide(prs, session)
-    for chart in session.chart_configs[:5]:
+    # Summary charts only: Data-tab charts (row counts) describe the table, not the answer.
+    for chart in [c for c in session.chart_configs if c.placement != "data"][:5]:
         _add_chart_slide(prs, chart)
     _add_actions_slide(prs, session)
     _add_closing_slide(prs)

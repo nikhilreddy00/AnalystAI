@@ -1,0 +1,36 @@
+id: viz-v02
+category: finding
+label_note: 'A per-segment trend: one line per segment so the falling segment is visible against the others;
+  totals per month.'
+dataset:
+  name: sales
+  seed: 1
+question: Which segment's revenue changed most last month?
+plan:
+  intent: overview
+  analysis_types:
+  - trend
+  - segmentation
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+findings:
+- kind: trend
+  column: revenue
+  segment: B
+  headline: true
+- kind: trend
+  column: revenue
+  segment: A
+- kind: trend
+  column: revenue
+  segment: C
+expect:
+- types:
+  - LineChart
+  x: order_date
+  y: revenue
+  agg: sum
+  split: segment
+  finding: 0

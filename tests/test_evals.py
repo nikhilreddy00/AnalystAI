@@ -361,3 +361,49 @@ def test_intake_summary_metrics():
     assert s["first_run_pass_rate"] == 1.0 and s["holdout_pass_rate"] == 0.0
     assert s["model_invented_columns"] == 1 and s["invented_columns_shipped"] == 0
     assert "execution_accuracy" not in s
+
+
+# ── Visualization suite (Phase 5) ──────────────────────────────────────────────
+
+VIZ = load_cases("visualization", None)
+
+
+def test_viz_case_mix_and_labels():
+    assert len(VIZ) == 27
+    assert sum(c["id"].endswith("holdout") for c in VIZ) == 5
+    assert {c["category"] for c in VIZ} == {"finding", "profile", "targeted"}
+    for c in VIZ:
+        assert c["expect"] and c["label_note"]
+        for e in c["expect"]:
+            assert e["agg"] in {"sum", "mean", "count", "none"}
+            if "finding" in e:
+                assert c["findings"][e["finding"]]["headline"]
+
+
+@pytest.mark.parametrize("case", [c for c in VIZ if c.get("findings")], ids=lambda c: c["id"])
+def test_viz_fixture_evidence_ids_exist(case):
+    """Every fixture finding produces the evidence item the scorer looks for."""
+    from evals.run import dataset, viz_findings
+    findings, ids = viz_findings(case, dataset(case)[0])
+    assert set(ids) <= {e.id for e in findings.evidence}
+
+
+def test_score_visualization_reads_rationale_and_flags_misses(sales):
+    from evals.scoring import score_visualization
+    case = {"expect": [{"types": ["ScatterChart"], "x": "marketing_spend", "y": "revenue",
+                        "agg": "none", "finding": 0}],
+            "findings": [{"kind": "correlation", "headline": True}]}
+    good = {"chart_type": "ScatterChart", "title": "t", "x_key": "marketing_spend",
+            "y_keys": ["revenue"], "x_label": "Spend", "y_label": "Revenue",
+            "data": [{"marketing_spend": 1.0, "revenue": 2.0}],
+            "rationale": {"x": "marketing_spend", "y": "revenue", "aggregation": "none",
+                          "evidence_ids": ["corr:x"]}}
+    df = sales[0]
+    checks, hard = score_visualization(case, {"charts": [good], "evidence_ids": ["corr:x"]}, df, None)
+    assert all(c["ok"] for c in checks) and all(h["ok"] for h in hard)
+    flipped = {**good, "x_key": "revenue", "y_keys": ["marketing_spend"],
+               "data": [{"revenue": 2.0, "marketing_spend": 1.0}],
+               "rationale": {**good["rationale"], "x": "revenue", "y": "marketing_spend"}}
+    checks, hard = score_visualization(case, {"charts": [flipped], "evidence_ids": ["corr:x"]}, df, None)
+    assert not checks[0]["ok"] and checks[1]["ok"]          # wrong chart, still cites the finding
+    assert not hard[0]["ok"] and "outcome_on_x" in hard[0]["detail"]

@@ -1,0 +1,22 @@
+id: viz-v18-holdout
+category: profile
+label_note: 'Overview of a conversion table: conversion rate by department (a rate, %), not visitor counts.'
+dataset:
+  name: simpson
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  intent: overview
+  analysis_types:
+  - eda
+  target_metrics: []
+  segments: []
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: department
+  y: converted
+  agg: mean
+must_not:
+- row_count_in_summary

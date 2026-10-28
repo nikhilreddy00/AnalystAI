@@ -1,0 +1,163 @@
+id: viz-v19
+category: finding
+label_note: 'Regression from the first real overview after the approval fix (39 findings): the Summary
+  must show one chart per kind of headline finding (Segment B''s trend, the spend relationship, the planted
+  anomalies, revenue by segment), led by the plan''s first metric, not six bar charts of averages.'
+dataset:
+  name: sales
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  intent: overview
+  analysis_types:
+  - eda
+  - segmentation
+  - correlation
+  - anomaly
+  - trend
+  - forecasting
+  target_metrics:
+  - revenue
+  - units
+  - discount
+  - marketing_spend
+  segments:
+  - segment
+  - region
+findings:
+- kind: segment
+  segment_column: segment|region
+  metric: revenue
+  aggregation: mean
+- kind: segment
+  segment_column: segment|region
+  metric: units
+  aggregation: mean
+- kind: segment
+  segment_column: segment|region
+  metric: discount
+  aggregation: mean
+- kind: segment
+  segment_column: segment|region
+  metric: marketing_spend
+  aggregation: mean
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+  headline: true
+- kind: segment
+  segment_column: segment
+  metric: units
+  aggregation: mean
+- kind: segment
+  segment_column: segment
+  metric: discount
+  aggregation: mean
+- kind: segment
+  segment_column: segment
+  metric: marketing_spend
+  aggregation: mean
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: count
+- kind: segment
+  segment_column: segment
+  metric: units
+  aggregation: count
+- kind: segment
+  segment_column: segment
+  metric: discount
+  aggregation: count
+- kind: segment
+  segment_column: segment
+  metric: marketing_spend
+  aggregation: count
+- kind: trend
+  column: revenue
+- kind: trend
+  column: revenue
+  segment: A
+- kind: trend
+  column: revenue
+  segment: B
+  headline: true
+- kind: trend
+  column: revenue
+  segment: C
+- kind: trend
+  column: units
+- kind: trend
+  column: units
+  segment: A
+- kind: trend
+  column: units
+  segment: B
+- kind: trend
+  column: units
+  segment: C
+- kind: trend
+  column: discount
+- kind: trend
+  column: discount
+  segment: A
+- kind: trend
+  column: discount
+  segment: B
+- kind: trend
+  column: discount
+  segment: C
+- kind: correlation
+  a: revenue
+  b: marketing_spend
+  headline: true
+- kind: correlation
+  a: revenue
+  b: units
+- kind: correlation
+  a: revenue
+  b: discount
+- kind: correlation
+  a: units
+  b: discount
+- kind: correlation
+  a: units
+  b: marketing_spend
+- kind: correlation
+  a: discount
+  b: marketing_spend
+- kind: anomaly
+  column: revenue
+  headline: true
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: segment
+  y: revenue
+  agg: mean
+  ci: true
+  finding: 4
+- types:
+  - LineChart
+  x: order_date
+  y: revenue
+  agg: sum
+  split: segment
+  finding: 14
+- types:
+  - ScatterChart
+  x: marketing_spend
+  y: revenue
+  agg: none
+  finding: 24
+- types:
+  - HistogramChart
+  x: revenue
+  y: count
+  agg: count
+  bounds: true
+  finding: 30
+must_not:
+- row_count_in_summary

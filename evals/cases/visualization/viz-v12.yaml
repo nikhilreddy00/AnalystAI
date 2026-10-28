@@ -1,0 +1,30 @@
+id: viz-v12
+category: finding
+label_note: 'A binary outcome by group is a rate: mean of 0/1 shown as %, never a count of converted rows.'
+dataset:
+  name: simpson
+  seed: 1
+question: What is the conversion rate by department?
+plan:
+  intent: overview
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - converted
+  segments:
+  - department
+findings:
+- kind: segment
+  segment_column: department
+  metric: converted
+  aggregation: mean
+  headline: true
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: department
+  y: converted
+  agg: mean
+  ci: true
+  finding: 0

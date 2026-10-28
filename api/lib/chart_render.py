@@ -62,11 +62,19 @@ def _dispatch(config: ChartConfig, plt) -> bytes | None:
     return handler(config, plt)
 
 
+# Phase 5: the backend sends `colors: []` for generic charts; series still need distinct colours.
+SERIES_COLORS = ["#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#B07AA1",
+                 "#FF9DA7"]
+
+
 def _resolve_colors(config: ChartConfig, n: int) -> list[str]:
-    """If config.colors is populated, cycle it to length n; else DEFAULT_COLOR repeated."""
-    if not config.colors:
+    """config.colors cycled to length n; with none, one brand colour for a single series and
+    the series palette for several."""
+    if config.colors:
+        return [config.colors[i % len(config.colors)] for i in range(n)]
+    if len(config.y_keys) <= 1 and config.chart_type not in (ChartType.PIE, ChartType.DONUT):
         return [DEFAULT_COLOR] * n
-    return [config.colors[i % len(config.colors)] for i in range(n)]
+    return [SERIES_COLORS[i % len(SERIES_COLORS)] for i in range(n)]
 
 
 def _finalize_axes(ax, value_format: str = "number") -> None:
@@ -99,29 +107,35 @@ def _safe_float(v) -> float:
 
 
 def _render_bar(config: ChartConfig, plt) -> bytes | None:
-    """Vertical bar chart with value labels on top of each bar."""
+    """Vertical bars: one group per x, one bar per series (grouped), 95% CI whiskers when the
+    chart has them, value labels for a single series."""
+    import numpy as np
+
     if not config.data or not config.y_keys:
         return None
-    x_key = config.x_key
-    y_key = config.y_keys[0]
-    labels = [str(r.get(x_key, "")) for r in config.data]
-    values = [_safe_float(r.get(y_key)) for r in config.data]
-    colors = _resolve_colors(config, len(values))
+    keys = config.y_keys
+    labels = [str(r.get(config.x_key, "")) for r in config.data]
+    many = len(keys) > 1
+    colors = _resolve_colors(config, len(keys) if many else len(labels))
+    width = 0.8 / len(keys)
 
     fig, ax = plt.subplots(figsize=(10, 5.5), dpi=150)
-    bars = ax.bar(labels, values, color=colors)
-
     fmt = "{:.1f}%" if config.value_format == "percent" else "{:g}"
-    for bar, v in zip(bars, values):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height(),
-            fmt.format(v),
-            ha="center",
-            va="bottom",
-            fontsize=10,
-            color="#333333",
-        )
+    for j, key in enumerate(keys):
+        values = [_safe_float(r.get(key)) for r in config.data]
+        err = None
+        if config.error_key:
+            err = np.array([r.get(f"{key}{config.error_key}") or [0, 0] for r in config.data]).T
+        xs = np.arange(len(labels)) + (j - (len(keys) - 1) / 2) * width
+        bars = ax.bar(xs, values, width, color=colors[j] if many else colors, yerr=err,
+                      capsize=3, ecolor="#555555", label=key if many else None)
+        if not many:
+            for bar, v in zip(bars, values):
+                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), fmt.format(v),
+                        ha="center", va="bottom", fontsize=10, color="#333333")
+    ax.set_xticks(range(len(labels)), labels)
+    if many:
+        ax.legend(frameon=False, title=config.split_key)
 
     if config.x_label:
         ax.set_xlabel(config.x_label)

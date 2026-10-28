@@ -1,0 +1,30 @@
+id: viz-v04
+category: finding
+label_note: 'Ranking totals across groups: bars of summed revenue. A total has no sampling error, so no
+  CI.'
+dataset:
+  name: sales
+  seed: 1
+question: Which region has the highest total revenue?
+plan:
+  intent: overview
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - revenue
+  segments:
+  - region
+findings:
+- kind: segment
+  segment_column: region
+  metric: revenue
+  aggregation: sum
+  headline: true
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: region
+  y: revenue
+  agg: sum
+  finding: 0

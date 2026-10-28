@@ -1,0 +1,23 @@
+id: viz-v15
+category: profile
+label_note: 'Units is a quantity (1-8), a measure: its distribution is a histogram, never a ''Units breakdown''
+  category chart.'
+dataset:
+  name: sales
+  seed: 1
+question: Show the distribution of units per order
+plan:
+  intent: overview
+  analysis_types:
+  - eda
+  target_metrics:
+  - units
+  segments: []
+expect:
+- types:
+  - HistogramChart
+  x: units
+  y: count
+  agg: count
+must_not:
+- row_count_in_summary

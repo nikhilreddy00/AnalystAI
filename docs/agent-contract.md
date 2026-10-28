@@ -89,6 +89,24 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
 - **Caching makes cheaper models cheaper only at the margin.** With the system prompt cached,
   Haiku saved 39% on an already small call, and it failed an injection case.
 
+## What the visualization agent taught us (Phase 5, PR 2)
+- **A deterministic agent still gets the whole contract, minus the prompt.** Card, context builder,
+  rationale (its evidence), guardrails and a labelled eval all apply; only the prompt file and `llm`
+  parameter drop out. Its eval costs $0, so it ran at k=3 for free.
+- **Find every producer before you fix one.** Only the overview reached the visualization agent; five
+  of six question types drew charts elsewhere (targeted handlers, chart requests, drill-down). One
+  `finalize_charts` that every chart passes through is what makes "lint violations 0" true.
+- **Keep the scorer independent of the agent.** The scorer has its own idea of dates and measures, so
+  an agent bug can't be mirrored. A baseline-only inference gap (a donut keyed "name") was a scorer
+  bug, fixed and re-scored for $0 before any agent change.
+- **Use one definition across agents.** Trend charts reuse analysis's MoM rule (totals, means for
+  0-1 values), so a chart's title states the same % as the finding; a test pins it.
+- **Data-derived display text is data.** Titles now carry segment names; they reach the insight and
+  critic prompts masked and delimited. The planted-injection test fails on the old code.
+- **The user always wins, inside a fence.** The one-click switch only offers types that can't mislead
+  (the server re-checks); a free-form request is honoured with a lint note. Overrides are logged by
+  rule label, so the most-overridden rule becomes the next eval case.
+
 ## Rolling it out to the next agent (Phase 5)
 Each agent gets one PR, in this order:
 1. **Agent card**, with honest, measured limits.

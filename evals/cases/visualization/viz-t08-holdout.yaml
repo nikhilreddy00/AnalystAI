@@ -1,0 +1,23 @@
+id: viz-t08-holdout
+category: targeted
+label_note: 'An outlier scan of one metric: its distribution with the thresholds marked, not a bar of
+  outlier counts.'
+dataset:
+  name: sales
+  seed: 1
+question: Are there any outliers in revenue?
+plan:
+  intent: outlier_scan
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    target_columns:
+    - revenue
+expect:
+- types:
+  - HistogramChart
+  x: revenue
+  y: count
+  agg: count
+  bounds: true

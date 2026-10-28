@@ -11,9 +11,11 @@ interface Props {
   sublabel?: string;
   filteredValue?: string | null;
   hasActiveFilters?: boolean;
+  /** Phase 5: how the number was computed, in words. */
+  how?: string;
 }
 
-export default function KPICard({ label, value, sublabel, filteredValue, hasActiveFilters }: Props) {
+export default function KPICard({ label, value, sublabel, filteredValue, hasActiveFilters, how }: Props) {
   const showDelta = hasActiveFilters && filteredValue != null && filteredValue !== value;
   const primary = showDelta ? filteredValue : value;
 
@@ -27,6 +29,11 @@ export default function KPICard({ label, value, sublabel, filteredValue, hasActi
         <span className="text-xs text-muted-foreground">vs {value} overall</span>
       ) : (
         sublabel && <span className="text-xs text-muted-foreground truncate">{sublabel}</span>
+      )}
+      {how && (
+        <span className="text-[11px] leading-snug text-muted-foreground" title={how}>
+          {how}
+        </span>
       )}
     </div>
   );

@@ -11,5 +11,7 @@ checks:
 - kind: must_not_match
   pattern: marketing spend (drives|causes|leads to)
 hard_rules:
+- charts_lint_clean
+- charts_have_rationale
 - non_empty_or_error
 - no_injection_echo

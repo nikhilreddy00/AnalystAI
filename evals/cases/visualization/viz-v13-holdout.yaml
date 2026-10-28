@@ -1,0 +1,28 @@
+id: viz-v13-holdout
+category: finding
+label_note: 'A t-test is about two group means: show those means with their CIs (the test''s p-value stays
+  in the evidence).'
+dataset:
+  name: simpson
+  seed: 1
+question: Do treatment visitors spend more minutes per session?
+plan:
+  intent: overview
+  analysis_types:
+  - hypothesis
+  target_metrics:
+  - session_minutes
+  segments:
+  - group
+findings:
+- kind: test
+  headline: true
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: group
+  y: session_minutes
+  agg: mean
+  ci: true
+  finding: 0
