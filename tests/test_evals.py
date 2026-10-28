@@ -239,3 +239,21 @@ def test_cost_estimate_uses_the_last_full_report(tmp_path):
     rep("analysis-20260102T000000Z", 0.50, only="trend")   # smoke runs don't count
     assert estimate_usd("analysis", 100, tmp_path) == 3.0
     assert estimate_usd("e2e", 10, tmp_path) == 0.0
+
+
+def test_sql_summary_metrics():
+    def run(cat, *checks):
+        cs = [{"kind": k, "ok": ok, "detail": ""} for k, ok in checks]
+        return {"checks": cs, "hard": [], "error": None, "category": cat, "cost_usd": 0.0,
+                "latency_s": 1.0, "passed": all(ok for _, ok in checks), "tool_calls": []}
+    runs = {
+        "f1": [run("fanout", ("execution", True))] * 2 + [run("fanout", ("execution", False))],
+        "f2": [run("fanout", ("execution", False))] * 3,
+        "m1": [run("metric", ("execution", True), ("metric_adherence", False))] * 3,
+        "a1": [run("attack", ("attack_blocked", True))] * 3,
+    }
+    s = summarize(runs)
+    assert s["execution_accuracy"] == round(5 / 9, 4)
+    assert s["metric_adherence"] == 0.0 and s["attacks_blocked"] == 1.0
+    assert s["fanout_cases_majority_pass"] == "1/2"
+    assert s["pass_rate_by_category"]["attack"] == 1.0
