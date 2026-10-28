@@ -275,8 +275,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         known = len(df) - missing
         if pct > HIGH_NULL_PCT:
             high_null.append(col)
-            log(col, "keep", "high_null", f"{pct:.0f}% missing: too empty to use with confidence; "
-                "left as missing.", 0, pct, pct)
+            log(col, "keep", "high_null", f"{missing} of {len(df)} values missing ({pct:g}%): too "
+                "empty to use with confidence; left as missing.", 0, pct, pct)
         elif (pd.api.types.is_string_dtype(df[col]) and col not in protected
               and col not in coerced):
             spelled = next((u for u in df[col].dropna().unique()
@@ -286,9 +286,10 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                 f"{missing} missing labels grouped as '{spelled}' (not guessed).", missing, pct, 0.0)
         else:
             role = ("identifier" if col in ids else "date" if col in ctx.dates
-                    else "metric of the question" if col in ctx.targets else "value")
+                    else "metric of the question" if col in ctx.targets
+                    else "number" if pd.api.types.is_numeric_dtype(df[col]) else "value")
             log(col, "keep", "left_missing",
-                f"{missing} missing ({pct:.0f}%), {role}: left as missing; totals and averages "
+                f"{missing} missing ({pct:g}%), {role}: left as missing; totals and averages "
                 f"use the {known} known rows.", 0, pct, pct)
 
     # 8. The user's choice at the high-null gate.
