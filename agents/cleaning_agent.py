@@ -275,7 +275,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         known = len(df) - missing
         if pct > HIGH_NULL_PCT:
             high_null.append(col)
-            log(col, "keep", "high_null", f"{missing} of {len(df)} values missing ({pct:g}%): too "
+            share = ">99.9%" if known and pct >= 99.9 else f"{pct:g}%"   # never "100%" with data
+            log(col, "keep", "high_null", f"{missing} of {len(df)} values missing ({share}): too "
                 "empty to use with confidence; left as missing.", 0, pct, pct)
         elif (pd.api.types.is_string_dtype(df[col]) and col not in protected
               and col not in coerced):

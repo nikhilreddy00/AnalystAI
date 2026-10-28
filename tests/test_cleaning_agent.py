@@ -145,6 +145,13 @@ def test_no_model_call(recorded_llm):
 
 # ── Gate ──────────────────────────────────────────────────────────────────────
 
+def test_an_almost_empty_column_is_never_called_100_percent_missing():
+    df = pd.DataFrame({"notes": ["one"] + [None] * 2999, "n": range(3000)})
+    _, audit = clean(_ctx(df))
+    (d,) = [d for d in audit.decisions if d.column == "notes"]
+    assert "2999 of 3000 values missing (>99.9%)" in d.reason
+
+
 def test_gate_drop_removes_high_null_columns_with_a_decision():
     df = pd.DataFrame({"memo": ["x", None, None, None, None], "amount": [1.0, 2, 3, 4, 5]})
     kept, audit = clean(_ctx(df))
