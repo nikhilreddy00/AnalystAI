@@ -1,0 +1,29 @@
+id: intake-clear-sql-02
+category: clear
+source:
+  frame:
+    columns:
+    - month
+    - revenue
+    rows:
+    - - '2025-01-01'
+      - 10200.5
+    - - '2025-02-01'
+      - 11050.0
+    - - '2025-03-01'
+      - 9800.2
+    - - '2025-04-01'
+      - 12010.7
+  source_sql: SELECT date_trunc('month', o.order_date) AS month, SUM(oi.quantity * oi.unit_price) AS revenue
+    FROM shop.orders o JOIN shop.order_items oi ON oi.order_id = o.order_id GROUP BY 1
+overview_done: true
+question: Show monthly revenue over time.
+expect:
+  ask: false
+  intent: time_series
+  columns:
+    metric_column: revenue
+    date_column: month
+  params:
+    frequency: M
+rationale: Trend over the result's month column.

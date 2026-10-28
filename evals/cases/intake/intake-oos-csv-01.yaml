@@ -1,0 +1,10 @@
+id: intake-oos-csv-01
+category: out_of_scope
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Show profit margin by region.
+expect:
+  ask: true
+rationale: No profit or cost column.

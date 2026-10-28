@@ -1,0 +1,10 @@
+id: intake-oos-csv-03
+category: out_of_scope
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: What's the weather in Paris tomorrow?
+expect:
+  ask: true
+rationale: Not a question about the data.

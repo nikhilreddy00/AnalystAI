@@ -1,0 +1,23 @@
+id: intake-oos-sql-01
+category: out_of_scope
+source:
+  frame:
+    columns:
+    - region
+    - revenue
+    rows:
+    - - North
+      - 120400.0
+    - - South
+      - 98200.5
+    - - East
+      - 87050.2
+    - - West
+      - 41020.9
+  source_sql: SELECT c.region, SUM(oi.quantity * oi.unit_price) AS revenue FROM shop.orders o JOIN shop.customers
+    c ON c.customer_id = o.customer_id JOIN shop.order_items oi ON oi.order_id = o.order_id GROUP BY c.region
+overview_done: true
+question: Show profit margin by region.
+expect:
+  ask: true
+rationale: The query returned revenue only; margin needs cost.

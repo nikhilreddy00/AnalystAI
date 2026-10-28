@@ -1,0 +1,11 @@
+id: intake-clear-csv-02
+category: clear
+source:
+  dataset: sales
+  seed: 1
+overview_done: false
+question: show me churn
+expect:
+  ask: false
+  intent: overview
+rationale: First run never asks, even when the focus word is not a column.

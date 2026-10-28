@@ -1,0 +1,13 @@
+id: bank-followup-01
+domain: banking
+category: followup
+history:
+- role: user
+  content: How many accounts are there of each account type?
+- role: assistant
+  content: Checking accounts are the most common, then savings.
+previous_sql: |
+  SELECT account_type, COUNT(*) AS accounts FROM bank.accounts GROUP BY account_type
+question: Break that down by branch too.
+golden_sql: |
+  SELECT account_type, branch, COUNT(*) AS accounts FROM bank.accounts GROUP BY account_type, branch

@@ -1,0 +1,17 @@
+id: intake-clear-csv-06
+category: clear
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Which 5 regions have the highest total revenue?
+expect:
+  ask: false
+  intent: top_n
+  columns:
+    metric_column: revenue
+    group_by: region
+  params:
+    n: 5
+    order: desc
+rationale: Ranking with explicit N and direction.

@@ -1,0 +1,17 @@
+id: retail-followup-02
+domain: retail
+category: followup
+history:
+- role: user
+  content: For each customer segment, how many distinct customers placed at least one order (any status)?
+- role: assistant
+  content: Consumer has the most ordering customers, then smb and enterprise.
+previous_sql: |
+  SELECT c.segment, COUNT(DISTINCT o.customer_id) AS customers
+  FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+  GROUP BY c.segment
+question: Now split those by region as well.
+golden_sql: |
+  SELECT c.segment, c.region, COUNT(DISTINCT o.customer_id) AS customers
+  FROM shop.orders o JOIN shop.customers c ON c.customer_id = o.customer_id
+  GROUP BY c.segment, c.region

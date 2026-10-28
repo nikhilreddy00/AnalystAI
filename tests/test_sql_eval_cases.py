@@ -27,16 +27,17 @@ def _ids(cases):
 
 
 def test_case_mix_matches_the_plan():
-    assert len(CASES) == 50
+    assert len(CASES) == 56
     assert Counter(c["category"] for c in CASES) == {
-        "simple": 10, "join": 10, "fanout": 8, "metric": 10, "metric_not": 2, "attack": 10}
-    assert Counter(c["domain"] for c in CASES) == {"retail": 36, "banking": 14}
+        "simple": 10, "join": 10, "fanout": 8, "metric": 10, "metric_not": 2, "attack": 10,
+        "followup": 6}
+    assert Counter(c["domain"] for c in CASES) == {"retail": 40, "banking": 16}
 
 
 @pytest.mark.parametrize("case", CASES, ids=_ids(CASES))
 def test_case_is_well_formed(case):
     allowed = {"id", "domain", "category", "question", "golden_sql", "trap_sql", "ordered",
-               "top_n", "metric", "note"}
+               "top_n", "metric", "note", "history", "previous_sql"}
     assert set(case) <= allowed
     if case["category"] == "attack":
         assert "golden_sql" not in case
@@ -49,6 +50,8 @@ def test_case_is_well_formed(case):
         assert LAYERS[case["domain"]].metric(case["metric"])
     if case["category"] in ("fanout", "metric", "metric_not"):
         assert "trap_sql" in case, "a trap case must prove its trap"
+    if case["category"] == "followup":   # re-running the previous query is the trap
+        assert case["history"] and check_sql_readonly(case["previous_sql"], dialect="postgres") is None
 
 
 def _norm(sql: str) -> str:
@@ -90,8 +93,8 @@ def _rows(engine, sql):
 def test_golden_runs_is_informative_and_trap_traps(engine, case):
     gold = _rows(engine, case["golden_sql"])
     assert gold and any(v is not None for r in gold for v in r), "empty golden matches anything"
-    if "trap_sql" in case:
-        ok, _ = result_matches(_rows(engine, case["trap_sql"]), gold, case.get("ordered", False))
+    if trap := case.get("trap_sql") or case.get("previous_sql"):
+        ok, _ = result_matches(_rows(engine, trap), gold, case.get("ordered", False))
         assert not ok, "the naive SQL gives the golden answer: this trap tests nothing"
     if n := case.get("top_n"):
         wider = _rows(engine, case["golden_sql"].replace(f"LIMIT {n}", f"LIMIT {n + 1}"))

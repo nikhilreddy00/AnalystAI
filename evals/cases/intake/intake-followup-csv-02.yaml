@@ -1,0 +1,27 @@
+id: intake-followup-csv-02
+category: followup
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: Monthly revenue trend
+- role: assistant
+  content: Revenue rose from November to March, then flattened.
+prior_task:
+  question_intent: time_series
+  targeted_params:
+    metric_column: revenue
+    date_column: order_date
+    frequency: M
+question: and by week instead?
+expect:
+  ask: false
+  intent: time_series
+  columns:
+    metric_column: revenue
+    date_column: order_date
+  params:
+    frequency: W
+rationale: Carry the trend; change the grain.

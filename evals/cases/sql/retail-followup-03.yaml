@@ -1,0 +1,18 @@
+id: retail-followup-03
+domain: retail
+category: followup
+history:
+- role: user
+  content: What was our revenue in calendar year 2025?
+- role: assistant
+  content: Net revenue in 2025 came from completed orders only, per the revenue definition.
+previous_sql: |
+  SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed')
+  FROM shop.order_items oi JOIN shop.orders o ON o.order_id = oi.order_id
+  WHERE o.order_date >= DATE '2025-01-01' AND o.order_date < DATE '2026-01-01'
+question: And in 2024?
+golden_sql: |
+  SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed')
+  FROM shop.order_items oi JOIN shop.orders o ON o.order_id = oi.order_id
+  WHERE o.order_date >= DATE '2024-01-01' AND o.order_date < DATE '2025-01-01'
+metric: net_revenue

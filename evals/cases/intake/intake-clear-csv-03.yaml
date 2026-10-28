@@ -1,0 +1,14 @@
+id: intake-clear-csv-03
+category: clear
+source:
+  dataset: simpson
+  seed: 1
+overview_done: false
+question: Did the treatment work?
+expect:
+  ask: false
+  intent: overview
+  columns:
+    target_metrics:
+    - converted
+rationale: 'First run on the experiment table: overview including the outcome metric.'

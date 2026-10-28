@@ -1,0 +1,27 @@
+id: intake-ambiguous-csv-07
+category: ambiguous
+source:
+  frame:
+    columns:
+    - month
+    - region
+    - revenue_gross
+    - revenue_net
+    rows:
+    - - 2025-01
+      - North
+      - 1200.0
+      - 1010.5
+    - - 2025-01
+      - South
+      - 900.0
+      - 760.2
+    - - 2025-02
+      - North
+      - 1300.0
+      - 1105.0
+overview_done: true
+question: Show revenue by region.
+expect:
+  ask: true
+rationale: '''revenue'' matches revenue_gross and revenue_net equally well.'

@@ -1,0 +1,22 @@
+id: intake-ambiguous-sql-01
+category: ambiguous
+source:
+  frame:
+    columns:
+    - region
+    - revenue_gross
+    - revenue_net
+    rows:
+    - - North
+      - 120400.0
+      - 101000.0
+    - - South
+      - 98200.5
+      - 90010.0
+  source_sql: SELECT c.region, SUM(oi.quantity * oi.unit_price) AS revenue FROM shop.orders o JOIN shop.customers
+    c ON c.customer_id = o.customer_id JOIN shop.order_items oi ON oi.order_id = o.order_id GROUP BY c.region
+overview_done: true
+question: Which region is best?
+expect:
+  ask: true
+rationale: '''best'' names no metric; two revenue measures exist.'

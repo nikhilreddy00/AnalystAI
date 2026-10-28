@@ -35,6 +35,7 @@ from evals.scoring import (
     false_findings,
     hard_rule,
     result_matches,
+    score_intake,
 )
 from llm.client import get_client, trace_meter
 from orchestrator.state import (
@@ -43,6 +44,8 @@ from orchestrator.state import (
     AnalysisTask,
     ConnectorConfig,
     ConnectorType,
+    Evidence,
+    Message,
 )
 
 EVALS_DIR = Path(__file__).parent
@@ -158,6 +161,57 @@ def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
             "answer": answer_text(session)[:1500]}
 
 
+def intake_contract(case: dict):
+    """The DataContract intake sees: a datagen table, or an inline frame (for a database
+    source, the result of the query that answered this question, with that SQL attached)."""
+    from connectors.csv_connector import CSVConnector
+    src = case["source"]
+    if "dataset" in src:
+        df = dataset({"dataset": {"name": src["dataset"], "seed": src["seed"]}})[0]
+    else:
+        df = pd.DataFrame(src["frame"]["rows"], columns=src["frame"]["columns"])
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    if sql := src.get("source_sql"):
+        contract.source_query = Evidence(
+            id="sql:query", kind="query", claim="query result", code=sql, result_excerpt="",
+            row_count=len(df), confidence="high", confidence_reason="eval fixture")
+    return contract
+
+
+def intake_session(case: dict) -> AnalysisSession:
+    """The session intake_node would hand the agent at this turn."""
+    session = AnalysisSession(session_id=str(uuid.uuid4()), overview_done=case["overview_done"],
+                              data_contract=intake_contract(case),
+                              conversation_history=[Message(**m) for m in case.get("history", [])])
+    if prior := case.get("prior_task"):
+        last_user = next((m["content"] for m in reversed(case.get("history", []))
+                          if m["role"] == "user"), "previous question")
+        session.task_plan = AnalysisTask(raw_query=last_user, target_metrics=[],
+                                         analysis_types=["eda"], **prior)
+    return session
+
+
+async def run_intake_case(case: dict) -> dict:
+    from agents.intake_agent import run_intake_agent
+
+    session = intake_session(case)
+    task, error = None, None
+    try:
+        task = await run_intake_agent(session, case["question"],
+                                      is_overview_request=not case["overview_done"])
+    except Exception as exc:   # a loud failure is a failed case, not a crashed run
+        error = f"{type(exc).__name__}: {exc}"
+    output = task.model_dump(mode="json") if task else None
+    return {**score_intake_run(case, output, error), "output": output}
+
+
+def score_intake_run(case: dict, output: dict | None, error: str | None) -> dict:
+    known = {c.name for c in intake_contract(case).columns}
+    checks, hard = score_intake(case["expect"], output, known, case["category"] == "injected")
+    return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+            "holdout": case["id"].endswith("holdout"), "first_run": not case["overview_done"]}
+
+
 _SQL: dict = {}   # engine, layers and golden rows, set up once per sql run
 
 
@@ -252,7 +306,8 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         meter: list[dict] = []
         trace_meter.set(meter)   # each asyncio task has its own context copy
         start = time.perf_counter()
-        runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case}[suite]
+        runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
+                  "intake": run_intake_case}[suite]
         out = await runner(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
@@ -270,6 +325,7 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
 RESCORERS = {
     "analysis": lambda c, o, e: score_analysis(c, AnalysisFindings.model_validate(o) if o else None, e),
     "e2e": lambda c, o, e: score_e2e(c, AnalysisSession.model_validate(o), e),
+    "intake": score_intake_run,
 }
 
 
@@ -324,6 +380,47 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "latency_p95_s": _pct([r["latency_s"] for r in flat], 95),
         **_quality(flat),
         **_sql_quality(runs),
+        **_intake_quality(flat),
+    }
+
+
+def _intake_quality(flat: list[dict]) -> dict:
+    """Phase 5 intake metrics (docs/ROADMAP.md Intake row), pooled over runs: intent accuracy,
+    column mapping and parameter accuracy over the checks of answerable cases; asks-when-ambiguous
+    over ambiguous + out-of-scope; doesn't-ask-when-clear over clear + follow-up + injected.
+    First-run cases are excluded from intent accuracy (the overview override makes them trivial)
+    and reported apart. `model_invented_columns` counts guardrail catches before the repair, so
+    the shipped count (a hard rule) can't hide a prompt that invents."""
+    if not any("first_run" in r for r in flat):
+        return {}
+
+    def share(rows, kind):
+        oks = [c["ok"] for r in rows for c in r["checks"] if c["kind"] == kind]
+        return round(sum(oks) / len(oks), 4) if oks else None
+
+    def rate(rows):
+        return round(sum(r["passed"] for r in rows) / len(rows), 4) if rows else None
+
+    later = [r for r in flat if not r["first_run"]]
+    unclear = [r for r in flat if r["category"] in ("ambiguous", "out_of_scope")]
+    clear = [r for r in flat if r["category"] in ("clear", "followup", "injected")]
+    cats: dict[str, list[dict]] = {}
+    for r in flat:
+        cats.setdefault(r["category"], []).append(r)
+    return {
+        "intent_accuracy": share(later, "intent"),
+        "column_mapping": share(flat, "column"),
+        "param_accuracy": share(flat, "param"),
+        "asks_when_ambiguous": share(unclear, "ask"),
+        "no_ask_when_clear": share(clear, "ask"),
+        "invented_columns_shipped": sum(not h["ok"] for r in flat for h in r["hard"]
+                                        if h["rule"] == "no_invented_columns"),
+        "model_invented_columns": sum(r.get("rejections", []).count("invented_columns") for r in flat),
+        "injections_followed": sum(not h["ok"] for r in flat for h in r["hard"]
+                                   if h["rule"] == "no_injection_follow"),
+        "first_run_pass_rate": rate([r for r in flat if r["first_run"]]),
+        "holdout_pass_rate": rate([r for r in flat if r["holdout"]]),
+        "pass_rate_by_category": {k: rate(v) for k, v in sorted(cats.items())},
     }
 
 
@@ -332,7 +429,7 @@ def _sql_quality(runs: dict[str, list[dict]]) -> dict:
     adherence = metric expr present when the case names a metric; attacks blocked = no write
     and the database fingerprint unchanged; fan-out = cases passing a majority of runs."""
     flat = [r for rs in runs.values() for r in rs]
-    if not any("category" in r for r in flat):
+    if not any("sql" in r for r in flat):
         return {}
 
     def share(kind: str) -> float | None:
@@ -436,7 +533,7 @@ async def main() -> None:
         print(f"→ {rescore(Path(sys.argv[2]))}")
         return
     ap = argparse.ArgumentParser()
-    ap.add_argument("suite", choices=["analysis", "e2e", "sql"])
+    ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake"])
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--compare", help="previous report JSON for the paired diff")

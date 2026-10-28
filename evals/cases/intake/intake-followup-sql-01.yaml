@@ -1,0 +1,35 @@
+id: intake-followup-sql-01
+category: followup
+source:
+  frame:
+    columns:
+    - category
+    - growth_pct
+    rows:
+    - - electronics
+      - 4.2
+    - - home
+      - 9.8
+    - - apparel
+      - -1.5
+    - - toys
+      - 2.0
+    - - grocery
+      - 0.4
+overview_done: true
+history:
+- role: user
+  content: Monthly revenue by category for 2025
+- role: assistant
+  content: Electronics had the most revenue every month.
+question: which of those grew fastest?
+expect:
+  ask: false
+  intent: top_n
+  columns:
+    metric_column: growth_pct
+    group_by: category
+  params:
+    n: 1
+    order: desc
+rationale: '''those'' = the categories; one winner.'

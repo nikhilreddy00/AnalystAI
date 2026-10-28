@@ -1,0 +1,10 @@
+id: intake-ambiguous-csv-05
+category: ambiguous
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: What should I focus on?
+expect:
+  ask: true
+rationale: No metric or goal named.

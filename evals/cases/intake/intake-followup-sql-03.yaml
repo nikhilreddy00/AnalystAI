@@ -1,0 +1,40 @@
+id: intake-followup-sql-03
+category: followup
+source:
+  frame:
+    columns:
+    - account_id
+    - account_type
+    - balance
+    rows:
+    - - 1001
+      - checking
+      - 2500.0
+    - - 1002
+      - savings
+      - 10400.5
+    - - 1003
+      - checking
+      - 800.2
+overview_done: true
+history:
+- role: user
+  content: Average balance by account type
+- role: assistant
+  content: Savings accounts hold the highest average balance.
+prior_task:
+  question_intent: segment_compare
+  targeted_params:
+    metric_column: balance
+    segment_column: account_type
+    aggregation: mean
+question: and the median instead?
+expect:
+  ask: false
+  intent: segment_compare
+  columns:
+    metric_column: balance
+    segment_column: account_type
+  params:
+    aggregation: median
+rationale: Carry the comparison; change the aggregation.

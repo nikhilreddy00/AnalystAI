@@ -1,0 +1,10 @@
+id: intake-ambiguous-csv-04-holdout
+category: ambiguous
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Is this good?
+expect:
+  ask: true
+rationale: No referent and no metric.

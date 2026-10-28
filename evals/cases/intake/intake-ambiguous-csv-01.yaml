@@ -1,0 +1,10 @@
+id: intake-ambiguous-csv-01
+category: ambiguous
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: How are we doing?
+expect:
+  ask: true
+rationale: 'No metric, no dimension: zero signal.'
