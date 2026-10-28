@@ -1,0 +1,16 @@
+id: retail-switch-01
+domain: retail
+category: topic_switch
+history:
+- role: user
+  content: How many refunded orders came through each sales channel?
+- role: assistant
+  content: Web had the most refunded orders, then mobile.
+previous_sql: |
+  SELECT channel, COUNT(*) AS orders FROM shop.orders WHERE status = 'refunded' GROUP BY channel
+question: What is the average shipping fee per order for each sales channel?
+golden_sql: |
+  SELECT channel, AVG(shipping_fee) AS avg_fee FROM shop.orders GROUP BY channel
+trap_sql: |
+  SELECT channel, AVG(shipping_fee) AS avg_fee FROM shop.orders WHERE status = 'refunded' GROUP BY channel
+note: A new, standalone question after a filtered thread; carrying the refunded filter over is the trap.

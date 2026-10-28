@@ -1,0 +1,285 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261028T151538Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7deeeab",
+  "started_at": "20261028T151538Z",
+  "only": "followup-sql-02",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.0139,
+  "latency_p50_s": 3.81,
+  "latency_p95_s": 4.13,
+  "intent_accuracy": 1.0,
+  "column_mapping": 1.0,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "followup": 1.0
+  }
+ },
+ "runs": {
+  "intake-followup-sql-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got orders, want orders"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "date_column: got month, want month"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "frequency: got M, want M"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "how did those change month to month?",
+     "target_metrics": [
+      "orders"
+     ],
+     "timeframe": null,
+     "segments": [
+      "channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "orders",
+      "date_column": "month",
+      "segment_column": "channel",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null
+     }
+    },
+    "latency_s": 4.16,
+    "cost_usd": 0.01391,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got orders, want orders"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "date_column: got month, want month"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "frequency: got M, want M"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "how did those change month to month?",
+     "target_metrics": [
+      "orders"
+     ],
+     "timeframe": null,
+     "segments": [
+      "channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "orders",
+      "date_column": "month",
+      "segment_column": "channel",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null
+     }
+    },
+    "latency_s": 3.81,
+    "cost_usd": 0.01391,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got orders, want orders"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "date_column: got month, want month"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "frequency: got M, want M"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "how did those change month to month?",
+     "target_metrics": [
+      "orders"
+     ],
+     "timeframe": null,
+     "segments": [
+      "channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "orders",
+      "date_column": "month",
+      "segment_column": "channel",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null
+     }
+    },
+    "latency_s": 3.8,
+    "cost_usd": 0.01391,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

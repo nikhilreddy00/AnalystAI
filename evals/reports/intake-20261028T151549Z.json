@@ -1,0 +1,219 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261028T151549Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7deeeab",
+  "started_at": "20261028T151549Z",
+  "only": "ambiguous-sql-02",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.005,
+  "latency_p50_s": 4.11,
+  "latency_p95_s": 4.38,
+  "intent_accuracy": null,
+  "column_mapping": null,
+  "param_accuracy": null,
+  "asks_when_ambiguous": 1.0,
+  "no_ask_when_clear": null,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "ambiguous": 1.0
+  }
+ },
+ "runs": {
+  "intake-ambiguous-sql-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "ambiguous",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How's growth?",
+     "target_metrics": [
+      "signups",
+      "active_users"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Which metric would you like to see growth for \u2014 **signups**, **active_users**, or both?",
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "month",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null
+     }
+    },
+    "latency_s": 4.41,
+    "cost_usd": 0.00501,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "ambiguous",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How's growth?",
+     "target_metrics": [
+      "signups",
+      "active_users"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Which metric would you like to track growth for \u2014 **signups**, **active_users**, or both?",
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "month",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null
+     }
+    },
+    "latency_s": 4.11,
+    "cost_usd": 0.00501,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "ambiguous",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How's growth?",
+     "target_metrics": [
+      "signups",
+      "active_users"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Which metric would you like to track growth for \u2014 **signups**, **active_users**, or both?",
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "month",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null
+     }
+    },
+    "latency_s": 4.11,
+    "cost_usd": 0.00501,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

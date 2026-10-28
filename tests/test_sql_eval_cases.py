@@ -27,11 +27,11 @@ def _ids(cases):
 
 
 def test_case_mix_matches_the_plan():
-    assert len(CASES) == 56
+    assert len(CASES) == 58
     assert Counter(c["category"] for c in CASES) == {
         "simple": 10, "join": 10, "fanout": 8, "metric": 10, "metric_not": 2, "attack": 10,
-        "followup": 6}
-    assert Counter(c["domain"] for c in CASES) == {"retail": 40, "banking": 16}
+        "followup": 6, "topic_switch": 2}
+    assert Counter(c["domain"] for c in CASES) == {"retail": 41, "banking": 17}
 
 
 @pytest.mark.parametrize("case", CASES, ids=_ids(CASES))
@@ -52,6 +52,8 @@ def test_case_is_well_formed(case):
         assert "trap_sql" in case, "a trap case must prove its trap"
     if case["category"] == "followup":   # re-running the previous query is the trap
         assert case["history"] and check_sql_readonly(case["previous_sql"], dialect="postgres") is None
+    if case["category"] == "topic_switch":   # carrying the thread's filter over is the trap
+        assert case["history"] and case["previous_sql"] and "trap_sql" in case
 
 
 def _norm(sql: str) -> str:
