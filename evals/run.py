@@ -197,7 +197,7 @@ async def run_intake_case(case: dict) -> dict:
     session = intake_session(case)
     task, error = None, None
     try:
-        task = await run_intake_agent(session, case["question"],
+        task = await run_intake_agent(session, case["question"], get_client(),
                                       is_overview_request=not case["overview_done"])
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
@@ -237,6 +237,20 @@ def _sql_setup() -> None:
                 _SQL["gold"][case["id"]] = [tuple(r) for r in conn.execute(text(case["golden_sql"]))]
 
 
+def sql_conversation(case: dict) -> str:
+    """What ingestion passes the SQL agent for a follow-up case ("" for the standalone cases):
+    the same conversation_context(), over the case's history and previous query."""
+    from agents.utils import conversation_context
+    from orchestrator.state import DataContract
+    if not case.get("history"):
+        return ""
+    session = AnalysisSession(session_id="eval", conversation_history=[Message(**m) for m in case["history"]])
+    session.data_contract = DataContract.model_construct(source_query=Evidence(
+        id="sql:query", kind="query", claim="previous query", code=case["previous_sql"],
+        result_excerpt="", row_count=0, confidence="high", confidence_reason="eval fixture"))
+    return conversation_context(session)
+
+
 async def run_sql_case(case: dict) -> dict:
     from agents.errors import GuardrailViolation
     from agents.sql_agent import run_sql_agent
@@ -248,7 +262,8 @@ async def run_sql_case(case: dict) -> dict:
     connector = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=_SQL["url"]))
     answer, error, blocked = None, None, False
     try:
-        answer = await run_sql_agent(case["question"], connector, layer, get_client())
+        answer = await run_sql_agent(case["question"], connector, layer, get_client(),
+                                     sql_conversation(case))
     except GuardrailViolation as exc:
         error, blocked = f"GuardrailViolation: {exc}", True
     except Exception as exc:   # a loud failure is a failed case, not a crashed run

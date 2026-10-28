@@ -10,6 +10,7 @@ after Groq stopped serving llama-3.3-70b-versatile, which broke every ingestion.
 
 from __future__ import annotations
 
+from agents.utils import conversation_context
 from api.config import settings
 from connectors.base import get_connector
 from guardrails import UNTRUSTED_NOTE, delimit_untrusted
@@ -49,7 +50,10 @@ async def run_ingestion_agent(session: AnalysisSession, question: str | None = N
         elif not question:
             raise ValueError("Ask a question to query the database, or name a table to load.")
         else:
-            answer = await run_sql_agent(question, connector, configured_layer(), get_client())
+            # Ingestion runs before intake, so the SQL agent gets the conversation memory itself:
+            # a follow-up ("which of those grew fastest?") is not answerable from its words alone.
+            answer = await run_sql_agent(question, connector, configured_layer(), get_client(),
+                                         conversation_context(session))
             df, source_query = answer.result.frame(), answer.evidence
     else:
         df = await connector.load()

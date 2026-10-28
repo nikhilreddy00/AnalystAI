@@ -83,6 +83,7 @@ class SQLContext(BaseModel):
     metric_catalog: list[str]
     matched_metrics: list[str]   # full definitions of metrics the question names
     examples: list[str]          # verified queries that share words with the question
+    conversation: str = ""       # conversation_context(): earlier turns + last query, delimited
 
     def render(self) -> str:
         schema = delimit_untrusted(self.schema_text) if self.introspected else self.schema_text
@@ -93,6 +94,8 @@ class SQLContext(BaseModel):
             parts += ["# Metrics the question appears to name", *self.matched_metrics]
         if self.examples:
             parts += ["# Verified example queries", *self.examples]
+        if self.conversation:   # a follow-up's "those" / "same breakdown" refers back to these
+            parts += ["# Conversation so far", self.conversation]
         return "\n".join(parts + ["# Question", self.question])
 
 
@@ -133,10 +136,12 @@ def _layer_text(layer) -> str:
     return "\n".join(lines)
 
 
-def build_context(question: str, layer, dialect: str, introspected_schema: str = "") -> SQLContext:
+def build_context(question: str, layer, dialect: str, introspected_schema: str = "",
+                  conversation: str = "") -> SQLContext:
     if layer is None:
         return SQLContext(question=question, dialect=dialect, schema_text=introspected_schema,
-                          introspected=True, metric_catalog=[], matched_metrics=[], examples=[])
+                          introspected=True, metric_catalog=[], matched_metrics=[], examples=[],
+                          conversation=conversation)
     qwords = _words(question)
     matched = [m for m in layer.metrics if any(_mentions(question, t) for t in m.terms())]
     examples = [f"-- {q.question}\n{q.sql.strip()}" for q in layer.verified_queries
@@ -145,7 +150,8 @@ def build_context(question: str, layer, dialect: str, introspected_schema: str =
         question=question, dialect=dialect, schema_text=_layer_text(layer), introspected=False,
         metric_catalog=[f"- {m.name} (synonyms: {', '.join(m.synonyms) or 'none'}): "
                         f"{m.description}" for m in layer.metrics],
-        matched_metrics=[_metric_text(m) for m in matched], examples=examples)
+        matched_metrics=[_metric_text(m) for m in matched], examples=examples,
+        conversation=conversation)
 
 
 # ── Tools ──────────────────────────────────────────────────────────────────────
@@ -245,14 +251,16 @@ def _evidence(sql: str, metrics: list[str], res: QueryResult, layer) -> Evidence
         confidence=confidence, confidence_reason=why, assumptions=assumptions)
 
 
-async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMClient) -> SQLAnswer:
+async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMClient,
+                        conversation: str = "") -> SQLAnswer:
     """Question -> guarded SQL -> result. A write request or write SQL raises GuardrailViolation
-    (no retry); fan-out, metric and database errors get one shared guided retry."""
+    (no retry); fan-out, metric and database errors get one shared guided retry. `conversation`
+    (agents.utils.conversation_context) lets a follow-up refer to earlier turns."""
     engine = connector._engine()
     dialect = sql_dialect(engine) or "postgres"
     introspected = "" if layer else await asyncio.to_thread(connector.schema_context, engine)
     messages: list[dict] = [{"role": "user", "content": build_context(
-        question, layer, dialect, introspected).render()}]
+        question, layer, dialect, introspected, conversation).render()}]
     used_tools: list[str] = []
 
     for attempt in range(2):

@@ -63,7 +63,7 @@ async def test_analysis_llm_stop_reasons_raise_typed(recorded_llm, sandbox, resp
 async def test_malformed_json_is_typed(recorded_llm):
     recorded_llm.responses.append("Sure! Here's the plan: {not json")
     with pytest.raises(LLMOutputError):
-        await run_intake_agent(_session(), "how is revenue doing?")
+        await run_intake_agent(_session(), "how is revenue doing?", recorded_llm)
 
 
 async def test_api_timeout_is_typed():
@@ -102,7 +102,7 @@ async def test_intake_drops_invented_columns(recorded_llm):
         "raw_query": "q", "target_metrics": ["revenue", "ghost"], "segments": ["segment", "nope"],
         "analysis_types": ["eda"], "question_intent": "overview",
     }))
-    task = await run_intake_agent(_session(), "q", is_overview_request=True)
+    task = await run_intake_agent(_session(), "q", recorded_llm, is_overview_request=True)
     assert task.target_metrics == ["revenue"] and task.segments == ["segment"]
 
 
@@ -181,7 +181,7 @@ async def test_injected_cell_is_delimited_and_pii_never_reaches_the_model(record
     recorded_llm.responses += ['{"column_display_names": {}, "entity_singular": "order", '
                                '"entity_plural": "orders"}', "A sales table."]
 
-    await generate_data_narrative(contract)
+    await generate_data_narrative(contract, recorded_llm)
     await _enrich_schema_with_llm(contract, None)
 
     for call in recorded_llm.calls:
@@ -201,7 +201,7 @@ async def test_column_names_are_delimited_in_analysis_and_intake_prompts(recorde
         "raw_query": "q", "target_metrics": ["revenue"], "analysis_types": ["eda"]})]
 
     await analysis_agent.run_analysis_agent(session, recorded_llm)
-    await run_intake_agent(session, "q")
+    await run_intake_agent(session, "q", recorded_llm)
 
     for call in recorded_llm.calls:
         prompt = json.dumps(call["messages"])

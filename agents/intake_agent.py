@@ -1,20 +1,22 @@
 """
-Stakeholder Intake Agent — translates natural language into a structured AnalysisTask.
+Stakeholder Intake Agent: turns the user's message into a structured AnalysisTask.
 
-Claude Sonnet 4.6 handles:
-- Disambiguation of vague requests (asks ONE clarifying question)
-- Multi-turn amendment (amends existing task, sets resume_from to skip re-ingestion)
-- Compound request decomposition ("show revenue AND churn" → ordered analysis_types)
+Contract (docs/agent-contract.md): INTAKE_CARD, prompts/intake/v<N>.md (+ overview_v<N>.md for
+the first run on a dataset), build_context with the conversation memory it shares with the SQL
+agent (agents.utils.conversation_context), and `llm` as a parameter.
 """
 from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
+
+from pydantic import BaseModel
 
 from agents.errors import LLMOutputError
-from agents.utils import strip_markdown_fences
+from agents.utils import conversation_context, strip_markdown_fences
 from guardrails import UNTRUSTED_NOTE, delimit_untrusted
-from llm.client import get_client
+from llm.client import LLMClient
 from orchestrator.state import (
     AgentCard,
     AnalysisSession,
@@ -28,7 +30,7 @@ from orchestrator.state import (
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "v0"
+PROMPT_VERSION = "v1"
 
 # The refusal rules are also the labelling policy of the intake eval (evals/cases/intake/).
 INTAKE_CARD = AgentCard(
@@ -54,214 +56,69 @@ INTAKE_CARD = AgentCard(
                    "Never ask on the first question about a new dataset."],
 )
 
+_PROMPTS = Path(__file__).parent.parent / "prompts" / "intake"
+_SYSTEM = (INTAKE_CARD.render() + "\n\n" + (_PROMPTS / f"{PROMPT_VERSION}.md").read_text()
+           + UNTRUSTED_NOTE)
+# Appended on the first run on a freshly connected dataset: a full overview, whatever the wording.
+_OVERVIEW_OVERRIDE = (_PROMPTS / f"overview_{PROMPT_VERSION}.md").read_text()
 
-_SYSTEM = """\
-You are a senior data analyst's intake specialist. Translate user requests into structured analysis plans.
+_MAX_COLUMNS = 60
 
-Return ONLY a JSON object with these exact fields:
-{
-  "raw_query": "<user's exact request>",
-  "target_metrics": ["<column_name>", ...],
-  "timeframe": "<e.g. last 90 days>" or null,
-  "segments": ["<column_name>", ...],
-  "analysis_types": ["eda", "trend", "segmentation", "anomaly", "correlation", "hypothesis", "forecasting"],
-  "output_format": "both",
-  "resume_from": null,
-  "clarification_needed": false,
-  "clarification_question": null,
-  "question_intent": "overview|drill_down|chart_request|export_request|meta_question|correlation|distribution|top_n|time_series|segment_compare|hypothesis_test|ab_significance|outlier_scan",
-  "targeted_params": {
-    "target_columns": [],
-    "metric_column": null,
-    "date_column": null,
-    "segment_column": null,
-    "segment_value": null,
-    "group_by": null,
-    "variant_column": null,
-    "n": null,
-    "order": null,
-    "frequency": null,
-    "test_type": null,
-    "aggregation": null,
-    "chart_type": null
-  }
-}
 
-Selection rules for analysis_types (EDA is always included first):
-- "compare", "vs", "by", "breakdown" → add segmentation
-- "trend", "over time", "monthly", "weekly", "growth" → add trend
-- "spike", "unusual", "anomaly", "outlier", "weird" → add anomaly
-- "correlat", "relationship between", "affect" → add correlation
-- "significant", "test", "hypothesis", "p-value" → add hypothesis
-- "forecast", "predict", "next month", "future" → add forecasting
+# ── Context ────────────────────────────────────────────────────────────────────
 
-Question-intent classifier (pick exactly one, drives routing):
-- overview         → broad first-pass survey: "give me an overview", "what's in this data", "explore", "summarize"
-- drill_down       → any follow-up that builds on, re-explains, or reframes a
-  prior analysis/finding. Requires that the user has already received an analysis
-  in this session. This is the DEFAULT bucket for follow-up questions about the
-  RESULTS (not the data structure). Examples:
-  "tell me more about why revenue dropped"
-  "what's driving the spike in churn"
-  "break down the anomaly you found in March"
-  "explain the findings"  /  "explain this to me"
-  "summarize all the findings for non-technical stakeholders"
-  "how do I explain this to a non-technical audience?"
-  "what does this mean for the business?"
-  "why is X happening"
-  Use correlation when the user wants a NEW numeric correlation computed; use
-  drill_down whenever the user is asking WHY a result happened OR to explain,
-  summarize, simplify, or reframe an analysis they already received.
-- chart_request    → user wants a specific chart, not a full analysis. Examples:
-  "show me a bar chart of revenue by region"
-  "plot price vs square footage"
-  "scatter plot of age and income"
-  Populate TargetedParams.chart_type with one of: BarChart, LineChart,
-  ScatterChart, PieChart, DonutChart, HistogramChart, HorizontalBarChart,
-  HeatmapChart, ComposedChart. Also fill target_columns / metric_column /
-  group_by from the column references in the user's request.
-- export_request   → user wants to download the analysis. Examples:
-  "download as pptx", "export the report", "save this analysis",
-  "give me a powerpoint", "send me the report"
-  No additional parameter extraction needed.
-- meta_question    → STRICTLY questions about the data's STRUCTURE — shape, schema,
-  column names, data types, or a raw preview. NOTHING about the analysis results,
-  meaning, or business implications. Examples (these are the ONLY kind that qualify):
-  "how many columns", "how many rows", "what's the schema", "what columns exist",
-  "what are the column names", "what data types are these", "show me a preview"
-  Leave TargetedParams empty unless the user names specific columns.
-  These are NOT meta_question (do NOT classify them here):
-  - "explain the findings" / "explain this to me"        → drill_down
-  - "summarize for stakeholders" / "summarize the results" → drill_down
-  - "why is X happening" / "what's driving X"            → drill_down
-  - any request about what the analysis MEANS or implies   → drill_down
-  When uncertain whether a follow-up is about structure vs. results, prefer
-  drill_down — only use meta_question when the user is unambiguously asking about
-  the schema/shape of the table.
-- correlation      → "correlat", "related to", "relationship between A and B", "what affects", "associated with"
-- distribution     → "distribution of X", "histogram", "how is X spread", "range of X"
-- top_n            → "top/bottom N", "best/worst", "highest/lowest", "rank", "leaderboard"
-- time_series      → "over time", "trend of", "month/week/day/year over year", "growth in X"
-- segment_compare  → "compare X by Y", "X vs Y", "X across regions/categories", "breakdown of X by Z"
-- hypothesis_test  → "is X significantly different", "test if A > B", "p-value of"
-- ab_significance  → "A/B test", "control vs treatment", "variant", "lift", "experiment"
-- outlier_scan     → "outliers", "anomalies", "unusual values", "weird rows"
+class IntakeContext(BaseModel):
+    message: str
+    schema_text: str     # columns and roles from the user's data: rendered delimited
+    history: str         # conversation_context(): already delimited, "" on a first turn
+    existing_task: str   # the previous plan's JSON, "" when there is none
 
-Greetings / chit-chat ("hi", "hello", "hey", "thanks", "ok", "what can you do?"):
-classify as "overview". These are NOT meta_question — never answer a greeting with
-schema facts. On an already-analyzed dataset the router will offer the user fresh
-starting points rather than re-dumping the table shape.
+    def render(self) -> str:
+        return "\n\n".join(filter(bool, [
+            f"User message: {self.message}",
+            f"Conversation history:\n{self.history}" if self.history else "",
+            f"Dataset schema:\n{delimit_untrusted(self.schema_text)}" if self.schema_text else "",
+            f"Existing analysis task (amend if this is a follow-up):\n{self.existing_task}"
+            if self.existing_task else "",
+        ]))
 
-Default to "overview" when ambiguous or genuinely broad. NEVER fall back to
-meta_question when uncertain — meta_question is only for explicit structure/schema
-questions.
 
-targeted_params extraction (fill ONLY what the chosen intent needs, leave others as null/[]):
-- correlation      → target_columns=[<2 or more numeric cols>] (empty = full numeric matrix)
-- distribution     → target_columns=[<single col>]
-- top_n            → metric_column, group_by, n (default 10 if unspecified), order ("desc" unless asked "bottom"), aggregation (default "sum")
-- time_series      → metric_column, date_column, frequency ("D"|"W"|"M"|"Q"|"Y", default "M");
-                     segment_column + segment_value when the user names one group ("segment B")
-- segment_compare  → metric_column, segment_column, aggregation (default "mean");
-                     segment_value = the group the user names, if any (e.g. "B" for "segment B")
-- hypothesis_test  → target_columns=[<cols involved>], test_type ("ttest"|"chi2"|"anova")
-- ab_significance  → variant_column, metric_column
-- outlier_scan     → target_columns=[<cols to scan>] (empty = all numeric)
-- chart_request    → chart_type, target_columns, metric_column, group_by
-- overview/drill_down/export_request/meta_question → leave all targeted_params fields empty
+def build_context(session: AnalysisSession, message: str) -> IntakeContext:
+    schema_text = ""
+    if dc := session.data_contract:
+        # ponytail: a column cap, not a token budget; revisit when evals include wide tables
+        cols = dc.columns[:_MAX_COLUMNS]
+        categorical = [c.name for c in cols if not c.is_metric and not c.is_id and not c.is_date]
+        names = {c.name for c in cols}
+        schema_text = (
+            f"Dataset: {dc.row_count} rows, {dc.column_count} columns"
+            + (f" (first {_MAX_COLUMNS} shown)" if len(dc.columns) > _MAX_COLUMNS else "") + "\n"
+            f"Metric columns: {[c for c in dc.metric_columns if c in names]}\n"
+            f"Date columns: {[c for c in dc.date_columns if c in names]}\n"
+            f"Categorical columns: {categorical}\n"
+            f"Schema: {dc.schema_summary}"
+        )
+    return IntakeContext(
+        message=message, schema_text=schema_text, history=conversation_context(session),
+        existing_task=session.task_plan.model_dump_json() if session.task_plan else "")
 
-Context awareness for follow-ups:
-- If the user message is a short follow-up ("what about Q4?", "and by region?", "show me bottom 5 instead"),
-  CARRY FORWARD metric_column/date_column/segment_column from the prior task_plan or recent assistant turn.
-- Example: prior was "top 10 products by revenue", current is "what about bottom 5?" →
-  intent=top_n, metric_column="revenue", group_by="product", n=5, order="asc".
 
-Multi-turn rules:
-- If data_contract is already present and user is drilling deeper → set resume_from="analysis"
-- If user is only changing the segment/filter → set resume_from="analysis"
-- Never set resume_from if user mentions a completely different dataset or metric
-
-Clarification rules:
-- Set clarification_needed=true ONLY if the query gives zero signal about what to measure
-- One clarifying question max — make it multiple-choice if possible
-- Examples of vague: "how are we doing?", "check the data", "any insights?"
-
-Return ONLY the JSON — no explanation, no markdown fences.
-""" + UNTRUSTED_NOTE
-
-# Phase 3: appended to the system prompt when this is the FIRST run on a freshly
-# connected dataset. Overrides the user's specific wording to guarantee a full
-# end-to-end senior-analyst pass regardless of what they asked.
-_OVERVIEW_OVERRIDE = """\
-
-OVERRIDE — FIRST-RUN COMPREHENSIVE OVERVIEW MODE:
-This is the user's first analysis on a freshly connected dataset. Regardless of
-their specific wording, produce a COMPREHENSIVE overview plan:
-- analysis_types MUST include at least: ["eda", "segmentation", "correlation", "anomaly"].
-  Add "forecasting" only if date columns exist. Add "trend" if date columns exist.
-- target_metrics: set to ALL metric/numeric columns from the schema (not just one).
-- segments: set to the top 3 categorical columns from the schema.
-- clarification_needed: MUST be false — do not gate the first run on clarification.
-- resume_from: MUST be null — run the full pipeline.
-- raw_query: prepend "[Dataset overview] " to the user's actual message.
-- question_intent: MUST be "overview" (downstream router uses this to run the full pipeline).
-- targeted_params: leave all fields null/[] — not used in overview mode.
-If the user's wording suggests a specific focus (e.g. "show me churn"), you may
-bias target_metrics toward those columns, but never DROP coverage below the
-comprehensive baseline above.\
-"""
-
+# ── Agent ──────────────────────────────────────────────────────────────────────
 
 async def run_intake_agent(
     session: AnalysisSession,
     user_message: str,
+    llm: LLMClient,
     is_overview_request: bool = False,
 ) -> AnalysisTask:
-    """
-    Parse natural language into a structured AnalysisTask.
-    Handles both first-turn queries and multi-turn follow-ups.
-
-    Phase 3: when `is_overview_request` is True, the agent is forced to plan a
-    comprehensive end-to-end pass regardless of the user's specific wording.
-    """
-    history_text = ""
-    if session.conversation_history:
-        recent = session.conversation_history[-6:]
-        history_text = "\n".join(f"{m.role.value.upper()}: {m.content}" for m in recent)
-
-    schema_text = ""
-    if session.data_contract:
-        dc = session.data_contract
-        categorical_cols = [
-            c.name for c in dc.columns
-            if not c.is_metric and not c.is_id and not c.is_date
-        ]
-        schema_text = (
-            f"Dataset: {dc.row_count} rows, {dc.column_count} columns\n"
-            f"Metric columns: {dc.metric_columns}\n"
-            f"Date columns: {dc.date_columns}\n"
-            f"Categorical columns: {categorical_cols}\n"
-            f"Schema: {dc.schema_summary}"
-        )
-
-    existing_task = ""
-    if session.task_plan:
-        existing_task = f"Existing analysis task (amend if this is a follow-up):\n{session.task_plan.model_dump_json()}"
-
-    user_content = "\n\n".join(filter(bool, [
-        f"User message: {user_message}",
-        f"Conversation history:\n{history_text}" if history_text else "",
-        f"Dataset schema:\n{delimit_untrusted(schema_text)}" if schema_text else "",
-        existing_task,
-    ]))
-
+    """Parse natural language into a structured AnalysisTask, for first turns and follow-ups.
+    `is_overview_request` (the first run on a dataset) forces a comprehensive overview plan."""
     system_prompt = _SYSTEM + _OVERVIEW_OVERRIDE if is_overview_request else _SYSTEM
-
-    response = await get_client().complete(
-        agent="intake", prompt_version="v0",
+    response = await llm.complete(
+        agent="intake", prompt_version=PROMPT_VERSION,
         max_tokens=1024,
         system=system_prompt,
-        messages=[{"role": "user", "content": user_content}],
+        messages=[{"role": "user", "content": build_context(session, user_message).render()}],
     )
 
     raw = response.text.strip()
@@ -301,7 +158,7 @@ async def run_intake_agent(
     return AnalysisTask(**data)
 
 
-async def generate_data_narrative(contract: DataContract) -> DataNarrative:
+async def generate_data_narrative(contract: DataContract, llm: LLMClient) -> DataNarrative:
     """
     PROMPT-2 follow-up: build once-per-dataset rendering hints (column display
     names + entity noun). Downstream agents (KPI, chart titles, alerts) read
@@ -346,7 +203,7 @@ Rules:
 """
 
     try:
-        response = await get_client().complete(
+        response = await llm.complete(
             agent="intake", prompt_version="v0",
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
@@ -378,7 +235,7 @@ Rules:
     )
 
 
-async def generate_proactive_questions(contract: DataContract) -> list[str]:
+async def generate_proactive_questions(contract: DataContract, llm: LLMClient) -> list[str]:
     """
     FEAT-01: Generate contextual suggested questions based on the dataset schema.
     Called after data ingestion so the user sees relevant starting prompts.
@@ -391,15 +248,19 @@ async def generate_proactive_questions(contract: DataContract) -> list[str]:
         if not c.is_metric and not c.is_id and not c.is_date
     ]
 
+    # Column names and the schema summary come from the user's file: delimited (a column can be
+    # named like an instruction).
+    schema = delimit_untrusted(
+        f"Dataset: {contract.row_count:,} rows × {contract.column_count} columns\n"
+        f"Metric columns: {metric_cols}\nDate columns: {date_cols}\n"
+        f"Categorical columns: {categorical_cols}\nAll columns: {col_names}\n"
+        f"Schema: {contract.schema_summary}")
     prompt = f"""You are a senior data analyst who just received a new dataset.
 Generate exactly 5 natural-language questions a business stakeholder would want answered.
 
-Dataset: {contract.row_count:,} rows × {contract.column_count} columns
-Metric columns: {metric_cols}
-Date columns: {date_cols}
-Categorical columns: {categorical_cols}
-All columns: {col_names}
-Schema: {contract.schema_summary}
+{UNTRUSTED_NOTE}
+
+{schema}
 
 Rules:
 - Make questions specific to THIS dataset's columns (use actual column names)
@@ -408,7 +269,7 @@ Rules:
 - Return a JSON array of 5 strings — no explanation, no markdown fences."""
 
     try:
-        response = await get_client().complete(
+        response = await llm.complete(
             agent="intake", prompt_version="v0",
             max_tokens=512,
             messages=[{"role": "user", "content": prompt}],

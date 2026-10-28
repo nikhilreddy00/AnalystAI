@@ -110,7 +110,8 @@ async def intake_node(state: AgentState) -> dict:
     try:
         # Phase 3: signal first-run so intake forces a comprehensive plan.
         is_overview = not session.overview_done
-        task = await run_intake_agent(session, state["user_message"], is_overview_request=is_overview)
+        task = await run_intake_agent(session, state["user_message"], get_client(),
+                                      is_overview_request=is_overview)
         session.task_plan = task
         logger.info(
             "Intent classified as: %s for query: %s",
@@ -198,7 +199,7 @@ async def ingestion_node(state: AgentState) -> dict:
 
                 # FEAT-01: Auto-suggest questions after data connect
                 try:
-                    questions = await generate_proactive_questions(contract)
+                    questions = await generate_proactive_questions(contract, get_client())
                     if questions:
                         _emit(state, {
                             "type": "suggested_questions",
@@ -210,7 +211,7 @@ async def ingestion_node(state: AgentState) -> dict:
                 # PROMPT-2 follow-up: build display-name + entity narrative once per dataset.
                 if session.narrative is None:
                     try:
-                        session.narrative = await generate_data_narrative(contract)
+                        session.narrative = await generate_data_narrative(contract, get_client())
                     except Exception:
                         logger.warning("data narrative skipped", exc_info=True)
             # On resume without cache: data_contract already set from prior session; df_parquet just restored.
