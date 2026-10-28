@@ -26,6 +26,24 @@ export interface ChartConfig {
   source_finding: string;
   value_format?: "number" | "percent";  // PROMPT-2: y-axis tick/tooltip formatter
   layout_hint?: "half_width" | "full_width";  // PROMPT-6: dashboard grid hint
+  // Phase 5 Visualization: chart trust
+  rationale?: ChartRationale | null;
+  placement?: "summary" | "data";
+  lint_warnings?: string[];
+  error_key?: string | null;   // suffix: data[`${y}${error_key}`] is the 95% CI half-width
+  split_key?: string | null;
+  reference_lines?: { value: string | number; label: string; axis?: "x" | "y" }[];
+}
+
+export interface ChartRationale {
+  rule: string;
+  reason: string;
+  columns: string[];
+  aggregation: string;
+  n_rows: number;
+  evidence_ids: string[];
+  code: string;
+  confidence?: "high" | "medium" | "low" | null;
 }
 
 export interface RecommendedAction {

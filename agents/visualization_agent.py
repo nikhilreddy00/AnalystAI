@@ -27,6 +27,7 @@ import pandas as pd
 from agents.utils import pandas_freq
 
 from orchestrator.state import (
+    AgentCard,
     AnalysisSession,
     ChartConfig,
     ChartType,
@@ -35,6 +36,35 @@ from orchestrator.state import (
     KPI,
     KPIRecipe,
     TargetedParams,
+)
+
+
+# ── Agent card (ADR-0001) ────────────────────────────────────────────────────
+# Deterministic: no prompt, no `llm` parameter. Picking a chart has one right answer once the
+# finding's kind and its variables' types are known; the analysis agent made the judgment call.
+
+VIZ_CARD = AgentCard(
+    name="visualization",
+    version="rules-v2",
+    scope="Shows each finding with the chart an analyst would draw for it (trend → line, "
+          "comparison → bar of the metric, relationship → scatter, unusual values → histogram), "
+          "and says why. Every chart is linted before it leaves the backend.",
+    inputs=["The analysis findings and their evidence", "The question and its plan",
+            "The cleaned data frame and its column roles"],
+    outputs=["Up to 6 summary charts and the data-profile charts, each with a rationale "
+             "(rule, columns, aggregation, rows, evidence ids, pandas code)"],
+    limits=["Rule-based: only the finding kinds in the table above get a dedicated chart; a "
+            "statistical test is charted only as its group means.",
+            "Totals per month for additive measures, means for values within 0-1 (rates, flags), "
+            "the same rule as the analysis agent's month-over-month.",
+            "Scatter shows Pearson-style relationships on up to 500 sampled rows.",
+            "At most 8 series per chart; no dual axes; bars always start at zero.",
+            "The outcome of a relationship is the planned metric with an outcome-like name, then "
+            "the detected target; otherwise the chart says no outcome was marked."],
+    refusal_rules=["Never chart a column that is not in the data.",
+                   "Never ship a chart that fails the lint; repair it or drop it.",
+                   "Never claim a confidence of its own: show the finding's confidence only.",
+                   "A chart the user chose is drawn as asked, with a note if the lint objects."],
 )
 
 
