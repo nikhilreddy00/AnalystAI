@@ -289,7 +289,8 @@ plan), a green CI run, and **your explicit sign-off** before the next phase star
   - fan-out trap cases pass.
 
 ### Phase 5: Roll out the contract, one agent per PR
-Order: Intake, then Cleaning, then Insight, then Quality check, then Ingestion, then Visualization.
+Order: Intake, then Visualization, then Cleaning, then Insight, then Quality check, then Ingestion.
+(Visualization moved up on 2026-10-28: it only needs Phase 3's findings and evidence.)
 Each PR runs the same 7 steps:
 1. agent card;
 2. eval cases first;
@@ -300,6 +301,29 @@ Each PR runs the same 7 steps:
 7. PR with the eval diff report.
 
 Each PR is done when its row in the table below is met and E2E is not below its previous value.
+
+#### Visualization: chart trust (added 2026-10-28 at the user's request)
+- **Why:** at the Phase 3.5 sign-off the user asked how an analyst can trust the charts. Today
+  `auto_generate_charts` picks charts from column types only, never from the question or the
+  findings. On the sales overview the headline ("Segment B revenue falls while spend rises") had
+  no chart behind it, 3 of 6 charts were row counts, the scatter put the outcome (revenue) on x,
+  and `units` was charted as a category.
+- **Work:**
+  1. **Chart per finding.** Each headline finding gets the chart that shows it, chosen from the
+     finding's kind: trend → line split by the relevant segment; segment comparison → bars of the
+     metric (not a row count) with uncertainty; correlation → scatter with the driver on x;
+     anomaly → distribution with the flagged points marked. Row-count charts move to the Data tab.
+  2. **"Why this chart" on every chart:** the rule that picked it, the columns, the aggregation
+     (mean/sum/count), n rows, and a link to its evidence item (`Evidence.id`).
+  3. **Chart lint** that blocks known anti-patterns: category axis for numeric data, pie > 5
+     slices, dual y-axes, truncated bar baselines, > 8 series, outcome variable on x.
+  4. **Analyst-labelled chart eval set:** ~20 dataset/question cases, each with the expected chart
+     type, variables and aggregation. Deterministic, so no API spend.
+  5. **User override:** swap chart type or variables in the UI; overrides are logged as feedback.
+  6. **KPI tiles** get the same treatment: each says how it was computed, and a check confirms its
+     numbers match the report's.
+  7. The backend sends `colors: []` for generic charts (the frontend currently filters the Tableau
+     cycle); keep the PPTX export working.
 
 ### Phase 6: End-to-end hardening and open-source release (v0.1)
 - **Work:**
@@ -324,7 +348,7 @@ Each PR is done when its row in the table below is met and E2E is not below its 
 | **Cleaning** | Allowed strategies only; never impute ID or target columns; every row change audited | Profile and task | `sample_rows` (masked) | 25 dirty tables: dups, nulls, bad types, outliers | planted-issue recall ≥ 95%; over-cleaning ≤ 5%; **hard:** row-count changes 100% logged |
 | **Analysis** | AST/import allowlist; columns exist; numeric grounding; no empty output without an error | Task, contract, audit, past insights | `get_schema`, `get_metric_definition`, `sample_rows`, `search_past_insights` | 100+ cases: aggregation, trend, segment, correlation, Simpson's paradox, null effect | numeric ≥ 85%; insight recall ≥ 80%; false findings ≤ 5%; **hard** rules 100% |
 | **SQL (in Ingestion/Intake)** | Parsed read-only single statement; LIMIT; timeout | Semantic layer and schema | `run_sql`, `get_metric_definition` | 50 questions plus an attack suite | execution accuracy ≥ 85%; metric-definition use ≥ 95%; **hard:** 0 writes |
-| **Visualization** | Deterministic: no empty-data charts, labeled axes | Findings | n/a | Property and snapshot tests | rule tests 100% |
+| **Visualization** | Deterministic; chart lint (no empty-data charts, labeled axes, no anti-patterns); every chart cites a finding/evidence ID | Findings, evidence, question | n/a | ~20 analyst-labelled chart cases plus property/snapshot tests | right chart (type + variables + aggregation) ≥ 90%; headline findings with a supporting chart ≥ 95%; **hard:** lint violations 0, charts without a rationale 0 |
 | **Insight** | Every number grounded in the evidence; jargon sanitizer; every claim links to evidence IDs | Findings, audit, past insights | `search_past_insights` | 40 findings bundles, including contradictory ones | grounding 100% (**hard**); calibrated-judge faithfulness ≥ 90%; executive view has no jargon (100%) |
 | **Quality check (+critic)** | Deterministic checks plus an LLM critic | Report and evidence | n/a | 40 reports, half with seeded defects | defect recall ≥ 90%; false alarms ≤ 10% |
 | **End-to-end** | All of the above | — | — | 20 questions, growing to 50 | answer correctness ≥ 80%; cost and p95 latency within budget |

@@ -63,4 +63,4 @@ The user asked how chart choice can be trusted. Today the visualization agent pi
 from column types only, not from the question or findings (e.g. the Segment B headline had no
 chart behind it). Proposed scope for Phase 5 visualization: chart per finding, a "why this
 chart" line linked to evidence, a chart linter, an analyst-labelled chart eval set, and user
-overrides. Waiting for the user's go-ahead to write it into ROADMAP.md.
+overrides. Added to docs/ROADMAP.md Phase 5 (Visualization: chart trust) on 2026-10-28.
