@@ -41,9 +41,23 @@ def code_column_refs(code: str) -> set[str]:
 # ── SQL ────────────────────────────────────────────────────────────────────────
 
 
+# Functions with side effects, or that read the server's files / reach other servers. The read-only
+# transaction stops writes; these also leak data, sleep, lock or kill sessions, so the parse rejects
+# them first. Prefix entries end with "_" or are listed in _SQL_DENY_PREFIXES.
+_SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_xml_and_xmlschema",
+                   "cursor_to_xml", "pg_notify", "txid_current", "pg_current_xact_id"}
+_SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
+                      "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
+                      "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
+                      "pg_promote", "pg_switch", "pg_backup", "pg_import")
+
+
 def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
     """Exactly one statement, and it is a read (SELECT / UNION / CTE-select). Parsed, not
-    prefix-matched, so `WITH x AS (DELETE ...)` and `SELECT 1; DROP ...` are both caught."""
+    prefix-matched, so `WITH x AS (DELETE ...)` and `SELECT 1; DROP ...` are both caught, as are
+    `SELECT ... INTO new_table`, `FOR UPDATE` locks and side-effect functions (`nextval`,
+    `pg_read_file`, `dblink`...). Defense in depth: the executor also runs a READ ONLY
+    transaction (connectors/sql_connector.py)."""
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
@@ -55,8 +69,136 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
         return f"only read queries are allowed, got {stmt.key.upper()}"
     writes = (exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create, exp.Alter, exp.Merge,
               exp.Command)
-    bad = next((n for n in stmt.walk() if isinstance(n, writes)), None)
-    return f"write/DDL inside query: {bad.key.upper()}" if bad else None
+    for node in stmt.walk():
+        if isinstance(node, writes):
+            return f"write/DDL inside query: {node.key.upper()}"
+        if isinstance(node, exp.Select) and node.args.get("into"):
+            return "SELECT ... INTO creates a table"
+        if isinstance(node, exp.Select) and node.args.get("locks"):
+            return "row locks (FOR UPDATE/SHARE) are not allowed"
+        if isinstance(node, exp.Anonymous):
+            name = node.name.lower()
+            if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES):
+                return f"function not allowed: {name}"
+    return None
+
+
+# Fan-out and metric checks read a semantic layer (semantic_layer.SemanticLayer); typed loosely to
+# keep this module free of imports from the layer, which imports it.
+
+def _logical_tables(stmt: exp.Expression, layer) -> dict[str, str]:
+    """alias (or bare table name) -> the layer's logical table name, over the whole statement.
+    ponytail: one map for all scopes; an alias reused across CTEs resolves to the last one."""
+    by_source = {}
+    for t in layer.tables:
+        by_source[t.source.lower()] = t.name
+        by_source[t.name.lower()] = t.name
+    out = {}
+    for tbl in stmt.find_all(exp.Table):
+        full = ".".join(p for p in (tbl.db, tbl.name) if p).lower()
+        logical = by_source.get(full) or by_source.get(tbl.name.lower())
+        if logical:
+            out[(tbl.alias_or_name).lower()] = logical
+    return out
+
+
+def _owner(col: exp.Column, aliases: dict[str, str], scope_aliases: list[str], layer) -> str | None:
+    """The alias a column belongs to: its qualifier, else the only in-scope table that has it."""
+    if col.table:
+        return col.table.lower() if col.table.lower() in aliases else None
+    owners = [a for a in scope_aliases if (t := layer.table(aliases[a])) and t.column(col.name)]
+    return owners[0] if len(owners) == 1 else None
+
+
+def _additive_terms(node: exp.Expression) -> list[exp.Expression]:
+    """`a*b + c - d` -> [a*b, c, d]: each term has the grain of its finest table, so
+    `qty * product.cost` is line-grain but `line_value + order.shipping_fee` repeats the fee."""
+    if isinstance(node, exp.Paren):
+        return _additive_terms(node.this)
+    if isinstance(node, (exp.Add, exp.Sub)):
+        return _additive_terms(node.this) + _additive_terms(node.expression)
+    return [node]
+
+
+def sql_fanout(sql: str, layer, dialect: str = "postgres") -> str | None:
+    """A SUM/AVG/COUNT whose rows were multiplied by a join (the fan-out / chasm trap): every
+    table inside an additive term of the aggregate reaches, through the query's joins, a table on the 'many' side
+    of a relationship it is the 'one' side of. Joins the layer doesn't declare are ignored
+    (ponytail: unknown cardinality is assumed safe). COUNT(DISTINCT ...), MIN and MAX are safe."""
+    try:
+        stmt = sqlglot.parse_one(sql, read=dialect)
+    except sqlglot.errors.ParseError:
+        return None   # check_sql_readonly reports parse errors
+    aliases = _logical_tables(stmt, layer)
+    rels = {}
+    for r in layer.relationships:
+        (ft, fc), (tt, tc) = r.from_.split("."), r.to.split(".")
+        rels[(ft, fc, tt, tc)] = r.cardinality
+    for select in stmt.find_all(exp.Select):
+        scope = [t.alias_or_name.lower() for t in select.find_all(exp.Table)
+                 if t.find_ancestor(exp.Select) is select and t.alias_or_name.lower() in aliases]
+        edges = []   # (one_alias, many_alias)
+        for eq in select.find_all(exp.EQ):
+            if eq.find_ancestor(exp.Select) is not select:
+                continue
+            left, right = eq.this, eq.expression
+            if not (isinstance(left, exp.Column) and isinstance(right, exp.Column)):
+                continue
+            a, b = (_owner(c, aliases, scope, layer) for c in (left, right))
+            if not a or not b or a == b:
+                continue
+            key = (aliases[a], left.name, aliases[b], right.name)
+            rev = (aliases[b], right.name, aliases[a], left.name)
+            if rels.get(key) == "many_to_one":
+                edges.append((b, a))
+            elif rels.get(rev) == "many_to_one":
+                edges.append((a, b))
+            elif key in rels or rev in rels:
+                edges.append(None)
+        edges = [e for e in edges if e]
+
+        def multiplied(start: str) -> bool:
+            seen, todo = {start}, [start]
+            while todo:
+                u = todo.pop()
+                for one, many in edges:
+                    if u == one and many not in seen:
+                        return True
+                    if u == many and one not in seen:
+                        seen.add(one)
+                        todo.append(one)
+            return False
+
+        for agg in select.find_all(exp.Sum, exp.Avg, exp.Count):
+            if agg.find_ancestor(exp.Select) is not select or isinstance(agg.this, exp.Distinct):
+                continue
+            for term in _additive_terms(agg.this):
+                owners = {_owner(c, aliases, scope, layer) for c in term.find_all(exp.Column)}
+                if owners and None not in owners and all(multiplied(o) for o in owners):
+                    tables = sorted(aliases[o] for o in owners)
+                    return (f"fan-out: {agg.sql(dialect=dialect)} sums rows of {tables} that a "
+                            "join to a finer-grained table repeats; aggregate in a subquery first")
+    return None
+
+
+def _canonical(node: exp.Expression, aliases: dict[str, str], dialect: str) -> str:
+    def to_logical(n):
+        if isinstance(n, exp.Column) and n.table and n.table.lower() in aliases:
+            return exp.column(n.name, table=aliases[n.table.lower()])
+        return n
+    return re.sub(r"\s+", "", node.copy().transform(to_logical).sql(dialect=dialect).lower())
+
+
+def sql_uses_metric(sql: str, metric, layer, dialect: str = "postgres") -> bool:
+    """Does the query contain the metric's expression, up to table aliases and whitespace?"""
+    try:
+        stmt = sqlglot.parse_one(sql, read=dialect)
+    except sqlglot.errors.ParseError:
+        return False
+    target = _canonical(sqlglot.parse_one(metric.expr, read=dialect), {}, dialect)
+    aliases = _logical_tables(stmt, layer)
+    return any(_canonical(n, aliases, dialect) == target
+               for n in stmt.walk() if type(n) is type(metric.parsed))
 
 
 # ── Generated Python ───────────────────────────────────────────────────────────

@@ -165,11 +165,10 @@ async def test_grounded_interpretation_passes(recorded_llm, sandbox):
 
 # ── SQL ────────────────────────────────────────────────────────────────────────
 
-async def test_write_sql_from_the_model_is_blocked(recorded_llm):
-    recorded_llm.responses.append("DELETE FROM orders")
+async def test_write_sql_is_blocked_before_execution():
     conn = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string="sqlite://"))
     with pytest.raises(GuardrailViolation, match="DELETE"):
-        await conn.query_nl("remove all orders")
+        await conn.query("DELETE FROM orders")
 
 
 # ── Hostile data: injected cell + PII ──────────────────────────────────────────
