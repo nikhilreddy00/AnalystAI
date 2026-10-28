@@ -71,6 +71,24 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
 - **The evidence UI found bugs the eval couldn't.** One real run in the drawer showed `discount` (a rate) being summed for MoM and per-segment trends claiming all 3,025 rows. The evals don't score evidence, so read some by hand.
 - **Security review on every commit pays off.** It caught four masking and delimiting gaps in shared guardrails: a fail-open PII name list, camelCase names, integer and float PII, and close-tag spellings. Fix those in the shared function, not at the caller.
 
+## What the intake agent taught us (Phase 5, PR 1)
+- **Read the old prompt for contradictions before tuning it.** v1 said "ask on zero signal" and
+  "default to overview when ambiguous"; the model took the second every time. Removing the
+  contradiction fixed 7 cases; no new instruction was needed.
+- **Never copy eval cases into prompt examples, and hold some cases out.** A first draft of v2 used
+  three phrasings from the eval; they were swapped for unseen ones. 12 holdout cases ran only in the
+  final k=3.
+- **A soft rule can still be enforced in code.** Invented columns get a guided retry, then the
+  column is dropped and the user is asked. The hard rule holds by construction, and the user gets a
+  question, not an error.
+- **Shared memory belongs to one helper, not to each agent.** `conversation_context` feeds both
+  Intake and the SQL agent. It is omitted when empty, so older prompts stay byte-identical and
+  older suites need no re-run.
+- **Delimit everything derived from data, including your own earlier outputs.** The audit found the
+  previous plan (column names and the past question) sent undelimited.
+- **Caching makes cheaper models cheaper only at the margin.** With the system prompt cached,
+  Haiku saved 39% on an already small call, and it failed an injection case.
+
 ## Rolling it out to the next agent (Phase 5)
 Each agent gets one PR, in this order:
 1. **Agent card**, with honest, measured limits.
