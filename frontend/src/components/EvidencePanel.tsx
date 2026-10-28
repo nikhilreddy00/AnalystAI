@@ -1,17 +1,28 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { X } from "lucide-react";
 import type { Evidence } from "@/types";
 
 // Phase 3: every analysis finding carries its evidence (ADR-0001). The list shows each claim
 // with its confidence; a row opens a drawer with the rows behind it, the assumptions, the
 // result the code produced and the code itself. Native <dialog>: Esc, focus trap, backdrop.
 
+// Confidence reads as a dot plus its word, never colour alone.
 const CONFIDENCE = {
-  high: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  medium: "bg-amber-50 text-amber-800 border-amber-200",
-  low: "bg-zinc-100 text-zinc-600 border-zinc-200",
+  high: "bg-success",
+  medium: "bg-warning",
+  low: "bg-muted-foreground/60",
 };
+
+function Confidence({ level }: { level: Evidence["confidence"] }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
+      <span className={`h-1.5 w-1.5 rounded-full ${CONFIDENCE[level]}`} aria-hidden />
+      {level}
+    </span>
+  );
+}
 
 const KIND = {
   correlation: "Correlation",
@@ -31,28 +42,26 @@ export default function EvidencePanel({ items }: { items: Evidence[] }) {
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 max-w-2xl shadow-sm">
-      <div className="flex items-baseline justify-between mb-3">
-        <h3 className="text-sm font-semibold text-zinc-900">Evidence</h3>
-        <span className="text-xs text-zinc-500">
-          {items.length} finding{items.length === 1 ? "" : "s"} · click one to see how it was computed
+    <section aria-label="Evidence">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Evidence</h3>
+        <span className="text-xs text-muted-foreground">
+          {items.length} check{items.length === 1 ? "" : "s"} · open one to see the code and rows behind it
         </span>
       </div>
-      <ul className="divide-y divide-zinc-100">
+      <ul className="divide-y divide-border rounded-md border border-border bg-card">
         {items.map((e) => (
           <li key={e.id}>
             <button
               type="button"
               onClick={() => show(e)}
-              className="w-full flex items-center gap-3 py-2 text-left hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-500 rounded-md px-2 -mx-2"
+              className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-accent"
             >
-              <span className="text-[11px] uppercase tracking-wide text-zinc-400 w-20 shrink-0">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground w-20 shrink-0">
                 {KIND[e.kind]}
               </span>
-              <span className="text-sm text-zinc-800 flex-1 min-w-0 truncate">{e.claim}</span>
-              <span className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${CONFIDENCE[e.confidence]}`}>
-                {e.confidence}
-              </span>
+              <span className="text-sm text-foreground flex-1 min-w-0 truncate">{e.claim}</span>
+              <span className="shrink-0"><Confidence level={e.confidence} /></span>
             </button>
           </li>
         ))}
@@ -63,14 +72,14 @@ export default function EvidencePanel({ items }: { items: Evidence[] }) {
         aria-labelledby="evidence-title"
         onClose={() => setOpen(null)}
         onClick={(ev) => ev.target === dialog.current && dialog.current?.close()}
-        className="ml-auto mr-0 my-0 h-dvh max-h-dvh w-full max-w-xl bg-white p-0 shadow-2xl backdrop:bg-zinc-900/30"
+        className="ml-auto mr-0 my-0 h-dvh max-h-dvh w-full max-w-xl bg-card text-foreground p-0 shadow-2xl backdrop:bg-black/40"
       >
         {open && (
           <div className="flex h-full flex-col">
-            <div className="flex items-start justify-between gap-4 border-b border-zinc-200 p-5">
+            <div className="flex items-start justify-between gap-4 border-b border-border p-5">
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-wide text-zinc-400">{KIND[open.kind]}</p>
-                <h2 id="evidence-title" className="text-base font-semibold text-zinc-900 break-words">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{KIND[open.kind]}</p>
+                <h2 id="evidence-title" className="text-base font-semibold text-foreground break-words">
                   {open.claim}
                 </h2>
               </div>
@@ -78,42 +87,40 @@ export default function EvidencePanel({ items }: { items: Evidence[] }) {
                 type="button"
                 onClick={() => dialog.current?.close()}
                 aria-label="Close evidence"
-                className="rounded-md px-2 py-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                className="rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5 text-sm">
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
-                <dt className="text-zinc-500">Confidence</dt>
+                <dt className="text-muted-foreground">Confidence</dt>
                 <dd>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${CONFIDENCE[open.confidence]}`}>
-                    {open.confidence}
-                  </span>{" "}
-                  <span className="text-zinc-700">{open.confidence_reason}</span>
+                  <Confidence level={open.confidence} />{" "}
+                  <span className="text-foreground">{open.confidence_reason}</span>
                 </dd>
-                <dt className="text-zinc-500">Rows used</dt>
-                <dd className="text-zinc-800 tabular-nums">{open.row_count.toLocaleString()}</dd>
+                <dt className="text-muted-foreground">Rows used</dt>
+                <dd className="text-foreground tabular-nums">{open.row_count.toLocaleString()}</dd>
               </dl>
               {open.assumptions.length > 0 && (
                 <section>
-                  <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Assumptions</h4>
-                  <ul className="list-disc pl-5 space-y-1 text-zinc-700">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Assumptions</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-foreground">
                     {open.assumptions.map((a, i) => <li key={i}>{a}</li>)}
                   </ul>
                 </section>
               )}
               <section>
-                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Result</h4>
-                <pre className="whitespace-pre-wrap break-all rounded-lg bg-zinc-50 border border-zinc-200 p-3 text-xs text-zinc-800">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Result</h4>
+                <pre className="whitespace-pre-wrap break-all rounded-lg bg-muted border border-border p-3 text-xs text-foreground">
                   {open.result_excerpt}
                 </pre>
               </section>
               <details className="group">
-                <summary className="cursor-pointer text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                <summary className="cursor-pointer text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Code that produced it
                 </summary>
-                <pre className="mt-2 overflow-x-auto rounded-lg bg-zinc-900 p-3 text-xs text-zinc-100">
+                <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
                   {open.code}
                 </pre>
               </details>
@@ -121,6 +128,6 @@ export default function EvidencePanel({ items }: { items: Evidence[] }) {
           </div>
         )}
       </dialog>
-    </div>
+    </section>
   );
 }

@@ -1,43 +1,31 @@
 "use client";
 
-// C3: per-stage Lucide icons + Tableau 10 tinting + targeted-mode awareness.
-// The strip auto-switches between the full 7-agent pipeline and the 3-step
-// targeted shortcut so the user sees the actual run, not a phantom skeleton.
+// Vertical checklist of pipeline stages (Phase 3.5: fits the narrow chat column).
+// Auto-switches between the full 7-agent pipeline and the 3-step targeted
+// shortcut so the user sees the actual run, not a phantom skeleton.
 
-import type { ComponentType } from "react";
-import {
-  BarChart3,
-  Brush,
-  Database,
-  GraduationCap,
-  Lightbulb,
-  PieChart,
-  Search,
-  Target,
-} from "lucide-react";
+import { Check } from "lucide-react";
 import type { AgentEvent } from "@/types";
 
 interface AgentMeta {
   key: string;
   label: string;
-  Icon: ComponentType<{ className?: string }>;
-  tint: string;     // Tableau 10 — matches landing page pipeline colors
 }
 
 const FULL_PIPELINE: AgentMeta[] = [
-  { key: "ingestion",     label: "Load",      Icon: Database,       tint: "#F28E2B" },
-  { key: "intake",        label: "Understand", Icon: Search,        tint: "#4E79A7" },
-  { key: "cleaning",      label: "Clean",     Icon: Brush,          tint: "#E15759" },
-  { key: "analysis",      label: "Analyze",   Icon: BarChart3,      tint: "#76B7B2" },
-  { key: "visualization", label: "Visualize", Icon: PieChart,       tint: "#59A14F" },
-  { key: "insight",       label: "Insight",   Icon: Lightbulb,      tint: "#EDC948" },
-  { key: "quality_check", label: "Review",    Icon: GraduationCap,  tint: "#B07AA1" },
+  { key: "ingestion", label: "Load data" },
+  { key: "intake", label: "Understand question" },
+  { key: "cleaning", label: "Clean" },
+  { key: "analysis", label: "Analyze" },
+  { key: "visualization", label: "Build charts" },
+  { key: "insight", label: "Write report" },
+  { key: "quality_check", label: "Review" },
 ];
 
 const TARGETED_PIPELINE: AgentMeta[] = [
-  { key: "ingestion",          label: "Load",       Icon: Database, tint: "#F28E2B" },
-  { key: "intake",             label: "Understand", Icon: Search,   tint: "#4E79A7" },
-  { key: "targeted_analysis",  label: "Answer",     Icon: Target,   tint: "#76B7B2" },
+  { key: "ingestion", label: "Load data" },
+  { key: "intake", label: "Understand question" },
+  { key: "targeted_analysis", label: "Answer question" },
 ];
 
 interface Props {
@@ -74,55 +62,47 @@ export default function AgentProgressStream({ events, isLoading }: Props) {
       : undefined;
 
   return (
-    <div className="rounded-2xl border border-zinc-700/40 bg-zinc-900/60 backdrop-blur-sm p-4 space-y-3 shadow-lg max-w-2xl">
-      {/* Step indicators */}
-      <div className="flex items-center gap-1 flex-wrap">
-        {agents.map(({ key, label, Icon, tint }, idx) => {
+    <div
+      className="rounded-lg border border-border bg-card p-3 space-y-2.5"
+      role="status"
+      aria-live="polite"
+    >
+      <ol className="space-y-1.5 text-sm">
+        {agents.map(({ key, label }) => {
           const done = completedAgents.has(key);
-          const active = activeAgent === key;
+          const active = !done && activeAgent === key;
           return (
-            <div key={key} className="flex items-center gap-1">
-              <div
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border ${
+            <li
+              key={key}
+              className={`flex items-center gap-2.5 ${done || active ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              <span
+                className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-[1.5px] ${
                   done
-                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    ? "border-success bg-success text-card"
                     : active
-                    ? "border-transparent shadow-sm"
-                    : "bg-zinc-800/60 text-zinc-500 border-zinc-700/30"
+                    ? "border-primary border-t-transparent animate-spin"
+                    : "border-border"
                 }`}
-                style={
-                  active
-                    ? { backgroundColor: `${tint}20`, color: tint, borderColor: `${tint}40` }
-                    : undefined
-                }
+                aria-hidden
               >
-                <Icon className={`w-3.5 h-3.5 ${active ? "animate-pulse" : ""}`} />
-                <span>{label}</span>
-                {done && <span className="text-emerald-400">✓</span>}
-                {active && <span className="w-1 h-1 rounded-full bg-current animate-ping" />}
-              </div>
-              {idx < agents.length - 1 && (
-                <span className={`text-xs ${done ? "text-emerald-600" : "text-zinc-700"}`}>›</span>
-              )}
-            </div>
+                {done && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+              </span>
+              <span>{label}</span>
+              <span className="sr-only">{done ? "done" : active ? "running" : "waiting"}</span>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
-      {/* Active message */}
       {activeMessage && (
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
-          <span>{activeMessage}</span>
-        </div>
+        <p className="text-xs text-muted-foreground border-t border-border pt-2">{activeMessage}</p>
       )}
 
-      {/* Quality-check retry banner */}
       {retryMessage && (
-        <div className="flex items-start gap-2 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
-          <span className="text-amber-400 flex-shrink-0">↻</span>
-          <span>{retryMessage}</span>
-        </div>
+        <p className="text-xs text-foreground bg-warning/15 border border-warning/40 rounded-md px-2.5 py-1.5">
+          {retryMessage}
+        </p>
       )}
     </div>
   );

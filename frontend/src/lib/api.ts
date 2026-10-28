@@ -50,11 +50,12 @@ export async function getDashboard(userId = "default"): Promise<ChartConfig[]> {
 }
 
 export async function pinChart(sessionId: string, chart: object, userId = "default") {
-  await fetch(`${API_URL}/dashboard/pin`, {
+  const res = await fetch(`${API_URL}/dashboard/pin`, {
     method: "POST",
     headers: await getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ session_id: sessionId, user_id: userId, chart }),
   });
+  if (!res.ok) throw new Error(`Pin failed: ${res.status}`);
 }
 
 export async function unpinChart(chartId: string, userId = "default") {

@@ -1,108 +1,91 @@
 "use client";
 
+// Phase 3.5 "Workbench" layout: the chat column (left) drives a report canvas (right).
+// Below lg the two halves become Chat / Report tabs. Pipeline logic stays in useAnalysis.
+
 import { useEffect, useRef, useState } from "react";
+import { AlertCircle, ArrowUp, Database, History, X } from "lucide-react";
 import { useAnalysis } from "@/hooks/useAnalysis";
 import { useSessions } from "@/hooks/useSessions";
-import { useAuth } from "@/context/AuthContext";
 import AgentProgressStream from "./AgentProgressStream";
+import AppHeader from "./AppHeader";
 import ApprovalModal from "./ApprovalModal";
-import BriefingPanel from "./BriefingPanel";
-import ChartRenderer from "./ChartRenderer";
 import ConnectorSetup from "./ConnectorSetup";
-import ExpertReviewPanel from "./ExpertReviewPanel";
+import ReportCanvas, { hasReport } from "./ReportCanvas";
 import { SessionSidebar } from "@/components/SessionSidebar";
-import InsightPanel from "./InsightPanel";
-import EvidencePanel from "./EvidencePanel";
-import TargetedResponsePanel from "./TargetedResponsePanel";
-import { pinChart, getSessionResults } from "@/lib/api";
+import { getSessionResults } from "@/lib/api";
 import type { ChatMessage } from "@/types";
 
-function MessageBubble({
+const QUICK_PROMPTS = [
+  "Give me a complete overview of this dataset",
+  "Show me key trends and patterns",
+  "Find anomalies and outliers",
+  "What are the top correlations?",
+];
+
+// useAnalysis writes failures into the message text with this prefix.
+const ERROR_PREFIX = "Error: ";
+
+function Bubble({
   message,
-  sessionId,
-  onFollowUp,
+  selected,
+  onView,
+  onRetry,
 }: {
   message: ChatMessage;
-  sessionId: string | null;
-  onFollowUp: (q: string) => void;
+  selected: boolean;
+  onView?: () => void;
+  onRetry?: () => void;
 }) {
-  const isUser = message.role === "user";
-
-  return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} gap-3 group`}>
-      {!isUser && (
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white mt-1 shadow-lg shadow-indigo-500/20">
-          AI
-        </div>
-      )}
-      <div className={`max-w-2xl space-y-3 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
-        <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-lg ${
-            isUser
-              ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-br-sm shadow-indigo-500/20"
-              : "bg-zinc-800/80 backdrop-blur-sm text-zinc-100 rounded-bl-sm border border-zinc-700/50"
-          }`}
-        >
-          {message.content || (message.isStreaming ? (
-            <span className="inline-flex gap-1.5 items-center">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "300ms" }} />
-            </span>
-          ) : "...")}
-        </div>
-
-        {message.briefing && !message.isStreaming && (
-          <BriefingPanel data={message.briefing} />
-        )}
-
-        {message.charts && message.charts.length > 0 && (
-          <div className="w-full space-y-3">
-            {message.charts.map((chart) => (
-              <div key={chart.id} className="relative group/chart">
-                <ChartRenderer config={chart} />
-                {sessionId && (
-                  <button
-                    onClick={() => pinChart(sessionId, chart as unknown as object)}
-                    className="absolute top-3 right-3 opacity-0 group-hover/chart:opacity-100 transition-all duration-200 text-xs bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-3 py-1.5 rounded-lg shadow-lg shadow-indigo-500/30 font-medium"
-                  >
-                    📌 Pin to Dashboard
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {message.insight && !message.isStreaming && (
-          <InsightPanel report={message.insight} onFollowUp={onFollowUp} />
-        )}
-
-        {message.evidence && !message.isStreaming && <EvidencePanel items={message.evidence} />}
-
-        {message.expertReview && !message.isStreaming && (
-          <ExpertReviewPanel review={message.expertReview} />
-        )}
-
-        {message.targetedResponse && !message.isStreaming && (
-          <TargetedResponsePanel
-            response={message.targetedResponse}
-            sessionId={sessionId}
-            onFollowUp={onFollowUp}
-          />
+  if (message.role === "user") {
+    return (
+      <div className="ml-auto max-w-[85%] rounded-lg rounded-br-sm border border-border bg-muted px-3 py-2 text-sm text-foreground">
+        {message.content}
+      </div>
+    );
+  }
+  if (message.content.startsWith(ERROR_PREFIX)) {
+    return (
+      <div role="alert" className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm">
+        <p className="flex items-center gap-1.5 font-medium text-destructive">
+          <AlertCircle className="h-4 w-4" /> The analysis stopped
+        </p>
+        <p className="text-foreground">{message.content.slice(ERROR_PREFIX.length)}</p>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Try again
+          </button>
         )}
       </div>
-      {isUser && (
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-zinc-600 to-zinc-700 flex-shrink-0 flex items-center justify-center text-xs font-bold text-zinc-300 mt-1">
-          U
-        </div>
+    );
+  }
+  if (!message.content && message.isStreaming) return null; // progress shows instead
+  return (
+    <div className="space-y-2 text-sm text-foreground">
+      <p className="line-clamp-[8] leading-relaxed whitespace-pre-line">{message.content || "Done."}</p>
+      {onView && (
+        <button
+          type="button"
+          onClick={onView}
+          aria-pressed={selected}
+          className={`rounded-md border px-2.5 py-1 text-xs ${
+            selected
+              ? "border-primary/40 bg-brand-soft text-primary"
+              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+          }`}
+        >
+          {selected ? "Showing in report" : "View report"}
+        </button>
       )}
     </div>
   );
 }
 
 export default function ChatInterface() {
-  const { user, logout } = useAuth();
   const {
     messages,
     sessionId,
@@ -116,19 +99,70 @@ export default function ChatInterface() {
     hydrateFromSnapshot,
     resetWorkspace,
   } = useAnalysis();
-
   const { sessions, loading: sessionsLoading, refresh: refreshSessions, deleteSession } = useSessions();
 
+  const [input, setInput] = useState("");
+  const [connected, setConnected] = useState(false);
+  const [datasetName, setDatasetName] = useState<string | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [pane, setPane] = useState<"chat" | "report">("report");
+  // A past session opened from History shows its report without a live connection.
+  const [viewingHistory, setViewingHistory] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, agentEvents]);
+
+  useEffect(() => {
+    if (!isLoading && sessionId) void refreshSessions();
+  }, [isLoading, sessionId, refreshSessions]);
+
+  // The canvas shows the chosen report, else the newest one.
+  let latestReport = -1;
+  messages.forEach((m, i) => {
+    if (m.role === "assistant" && hasReport(m)) latestReport = i;
+  });
+  const reportIdx = selectedIdx !== null && messages[selectedIdx] && hasReport(messages[selectedIdx]) ? selectedIdx : latestReport;
+  const report = reportIdx >= 0 ? messages[reportIdx] : null;
+  const questionFor = (i: number) => [...messages.slice(0, i)].reverse().find((m) => m.role === "user")?.content ?? "";
+  const followUps = report?.insight?.proactive_questions ?? [];
+
+  function ask(text: string) {
+    const q = text.trim();
+    if (!q || isLoading || !connected) return;
+    setSelectedIdx(null);
+    setPane("chat");
+    void sendMessage(q);
+  }
+
+  function handleSend() {
+    if (!input.trim()) return;
+    ask(input);
+    setInput("");
+  }
+
   const handleLoadSession = async (id: string) => {
+    historyRef.current?.close();
     const snapshot = await getSessionResults(id);
     if (snapshot) {
+      setSelectedIdx(null);
+      setViewingHistory(true);
+      setPane("report");
+      setDatasetName(sessions.find((s) => s.session_id === id)?.dataset_name ?? null);
       hydrateFromSnapshot(snapshot);
     }
   };
 
   const handleNewAnalysis = () => {
+    historyRef.current?.close();
     resetWorkspace();
     setConnected(false);
+    setDatasetName(null);
+    setSelectedIdx(null);
+    setViewingHistory(false);
+    setPane("report");
   };
 
   const handleConnectorReady = (payload: {
@@ -138,10 +172,11 @@ export default function ChatInterface() {
   }) => {
     setConnectorConfig(payload.connector_config);
     setUploadMeta(payload.file_hash, payload.dataset_name);
+    setDatasetName(payload.dataset_name);
     setConnected(true);
+    setViewingHistory(false);
+    setPane("chat");
   };
-
-  const handleLoadExistingSession = (id: string) => handleLoadSession(id);
 
   const handleDeleteSession = async (id: string) => {
     const ok = await deleteSession(id);
@@ -160,246 +195,248 @@ export default function ChatInterface() {
   };
 
   const handleRunFresh = () => {
-    const lastUserMessage =
-      [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
     setPendingApproval(null);
     if (!lastUserMessage) return;
     void sendMessage(lastUserMessage, true, "rerun_overview");
   };
-
-  const handleCancelApproval = () => {
-    setPendingApproval(null);
-  };
-
-  const [input, setInput] = useState("");
-  const [connected, setConnected] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, agentEvents]);
-
-  useEffect(() => {
-    if (!isLoading && sessionId) {
-      void refreshSessions();
-    }
-  }, [isLoading, sessionId, refreshSessions]);
-
-  function handleSend() {
-    const text = input.trim();
-    if (!text || isLoading) return;
-    setInput("");
-    sendMessage(text);
-  }
 
   function handleApproval(response: string) {
     setPendingApproval(null);
     sendMessage(response, true);
   }
 
-  const QUICK_PROMPTS = [
-    "Give me a complete overview of this dataset",
-    "What are the column names and row count?",
-    "Show me key trends and patterns",
-    "Find anomalies and outliers",
-    "What are the top correlations?",
-  ];
+  const paneTab = (id: "chat" | "report", label: string) => (
+    <button
+      type="button"
+      onClick={() => setPane(id)}
+      aria-pressed={pane === id}
+      className={`flex-1 border-b-2 py-2 text-sm ${
+        pane === id ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden">
-      {/* C2: Sidebar — LIGHT (outputs/navigation lives in light surfaces) */}
-      <aside className="w-72 flex-shrink-0 border-r border-zinc-200 flex flex-col bg-white text-zinc-900">
-        {/* Logo */}
-        <div className="p-5 border-b border-zinc-200">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-lg shadow-lg shadow-indigo-500/30">
-              📊
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-zinc-900">AnalystAI</h1>
-              <p className="text-xs text-zinc-500">Your AI data analyst</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Connector / Status */}
-        <div className="p-4 overflow-y-auto">
-          {!connected ? (
-            <ConnectorSetup
-              onConnectorReady={handleConnectorReady}
-              onLoadExistingSession={handleLoadExistingSession}
-            />
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse" />
-                <span className="text-sm font-medium text-emerald-700">Data source connected</span>
-              </div>
-              <button
-                onClick={() => setConnected(false)}
-                className="text-xs text-zinc-500 hover:text-zinc-800 transition-colors underline underline-offset-2"
-              >
-                Change data source
-              </button>
-              {sessionId && (
-                <div className="text-xs text-zinc-500 font-mono bg-zinc-50 rounded-lg px-2.5 py-2 border border-zinc-200">
-                  Session: {sessionId.slice(0, 8)}…
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <SessionSidebar
-          sessions={sessions}
-          activeSessionId={sessionId}
-          loading={sessionsLoading}
-          onLoadSession={handleLoadSession}
-          onDeleteSession={handleDeleteSession}
-          onNewAnalysis={handleNewAnalysis}
-        />
-
-        {/* Nav links */}
-        <div className="p-4 border-t border-zinc-200 space-y-3">
-          <a
-            href="/dashboard"
-            className="flex items-center gap-2.5 text-sm text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl px-3 py-2.5 transition-all"
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+      <AppHeader
+        start={
+          <button
+            type="button"
+            onClick={() => historyRef.current?.showModal()}
+            aria-label="Open history"
+            title="History"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            <span>📈</span>
-            <span>Dashboard</span>
-          </a>
+            <History className="h-4 w-4" />
+          </button>
+        }
+      >
+        {connected && datasetName && (
+          <span className="hidden max-w-[220px] items-center gap-1.5 truncate rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground md:inline-flex">
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success" aria-hidden />
+            <span className="truncate">{datasetName}</span>
+          </span>
+        )}
+      </AppHeader>
 
-          {user && (
-            <div className="pt-2 border-t border-zinc-200 flex flex-col gap-3">
-              <div className="flex items-center gap-2.5 px-1">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">
-                  {user.displayName?.slice(0, 2) || "US"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-zinc-800 truncate">{user.displayName || "Active User"}</p>
-                  <p className="text-[10px] text-zinc-500 truncate">{user.email || "user@example.com"}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => logout()}
-                className="w-full flex items-center justify-center gap-2 py-2 bg-zinc-50 hover:bg-red-50 hover:text-red-600 border border-zinc-200 hover:border-red-200 rounded-xl text-xs font-semibold text-zinc-600 transition-all active:scale-95"
-              >
-                🚪 Sign Out
-              </button>
-            </div>
-          )}
-        </div>
-      </aside>
+      <div className="flex border-b border-border bg-card px-3 lg:hidden">
+        {paneTab("chat", "Chat")}
+        {paneTab("report", report ? "Report" : connected ? "Report" : "Data")}
+      </div>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-zinc-950 to-zinc-950">
-        {/* Header */}
-        <div className="border-b border-zinc-800/60 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-200">Analysis Chat</h2>
-            <p className="text-xs text-zinc-500">
-              {connected ? "Ask anything about your data" : "Connect a data source to begin"}
-            </p>
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(320px,380px)_1fr]">
+        {/* Chat column */}
+        <section
+          aria-label="Chat"
+          className={`min-h-0 flex-col border-border bg-card lg:flex lg:border-r ${pane === "chat" ? "flex" : "hidden"}`}
+        >
+          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Database className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{connected ? datasetName ?? "Data connected" : "No data connected"}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setConnected(false);
+                setViewingHistory(false);
+                setPane("report");
+              }}
+              className="flex-shrink-0 rounded px-1.5 py-0.5 text-primary hover:bg-accent"
+            >
+              {connected ? "Change" : "Connect"}
+            </button>
           </div>
-          {isLoading && (
-            <div className="flex items-center gap-2 text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              Analyzing…
-            </div>
-          )}
-        </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {messages.length === 0 && !isLoading && (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-600/20 border border-indigo-500/20 flex items-center justify-center text-4xl shadow-2xl shadow-indigo-500/10">
-                  📊
-                </div>
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs shadow-lg">
-                  ✦
-                </div>
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-zinc-100 mb-2">
-                  {connected ? "What would you like to analyze?" : "Start with your data"}
-                </h2>
-                <p className="text-zinc-500 text-sm max-w-md">
-                  {connected
-                    ? "I'll run statistical analysis, find patterns, detect anomalies, and generate visualizations automatically."
-                    : "Connect a CSV, SQL database, Google Sheets, or REST API using the panel on the left."}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
+            {messages.length === 0 && !isLoading && (
+              <div className="space-y-3 pt-6 text-sm">
+                <p className="font-medium text-foreground">
+                  {connected ? "What would you like to know?" : "Connect your data to start"}
                 </p>
+                <p className="text-muted-foreground">
+                  {connected
+                    ? "Ask in plain English. The report builds on the right with charts, evidence and a reviewer's notes."
+                    : "Upload a file or connect SQL, Google Sheets or an API. Your report appears on the right."}
+                </p>
+                {connected && (
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    {QUICK_PROMPTS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => ask(p)}
+                        className="rounded-md border border-border px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              {connected && (
-                <div className="grid grid-cols-1 gap-2 w-full max-w-lg">
-                  {QUICK_PROMPTS.map((prompt) => (
-                    <button
-                      key={prompt}
-                      onClick={() => sendMessage(prompt)}
-                      className="text-left text-sm bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 hover:border-indigo-500/40 text-zinc-300 hover:text-white px-4 py-3 rounded-xl transition-all duration-200 group"
-                    >
-                      <span className="text-indigo-400 group-hover:text-indigo-300 mr-2">→</span>
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            )}
 
-          {messages.map((msg, i) => (
-            <MessageBubble
-              key={i}
-              message={msg}
-              sessionId={sessionId}
-              onFollowUp={(q) => sendMessage(q)}
-            />
-          ))}
+            {messages.map((m, i) => (
+              <Bubble
+                key={i}
+                message={m}
+                selected={i === reportIdx}
+                onView={
+                  m.role === "assistant" && hasReport(m)
+                    ? () => {
+                        setSelectedIdx(i);
+                        setPane("report");
+                      }
+                    : undefined
+                }
+                onRetry={connected && !isLoading ? () => ask(questionFor(i)) : undefined}
+              />
+            ))}
 
-          {isLoading && (
-            <div className="flex justify-start">
-              <AgentProgressStream events={agentEvents} isLoading={isLoading} />
-            </div>
-          )}
+            {isLoading && <AgentProgressStream events={agentEvents} isLoading={isLoading} />}
+            <div ref={bottomRef} />
+          </div>
 
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input */}
-        <div className="border-t border-zinc-800/60 p-4 bg-zinc-950/80 backdrop-blur-sm">
-          <div className="flex gap-3 max-w-4xl mx-auto">
-            <div className="flex-1 relative">
+          <div className="space-y-2 border-t border-border p-3">
+            {connected && !isLoading && followUps.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {followUps.slice(0, 3).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => ask(q)}
+                    className="rounded-full border border-border px-2.5 py-1 text-left text-xs text-foreground hover:bg-accent"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+            <form
+              className="flex items-center gap-2 rounded-lg border border-input bg-background py-1 pl-3 pr-1 focus-within:border-ring"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSend();
+              }}
+            >
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-                placeholder={
-                  connected
-                    ? "Ask a question about your data…"
-                    : "Connect a data source first…"
-                }
+                aria-label="Ask a question about your data"
+                placeholder={connected ? "Ask a question about your data…" : "Connect a data source first"}
                 disabled={isLoading || !connected}
-                className="w-full bg-zinc-800/80 border border-zinc-700/60 hover:border-zinc-600 focus:border-indigo-500/60 rounded-xl px-4 py-3.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-40 transition-all"
+                className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-60"
               />
+              <button
+                type="submit"
+                disabled={isLoading || !connected || !input.trim()}
+                aria-label="Send"
+                className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
+        </section>
+
+        {/* Report canvas */}
+        <section
+          aria-label="Report"
+          className={`min-h-0 overflow-y-auto p-4 sm:p-6 lg:block ${pane === "report" ? "block" : "hidden"}`}
+        >
+          {!connected && !viewingHistory ? (
+            <div className="mx-auto max-w-xl space-y-4 pt-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Connect your data</h2>
+                <p className="text-sm text-muted-foreground">
+                  CSV, Excel, Parquet, a SQL database, Google Sheets or a REST API.
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4">
+                <ConnectorSetup
+                  onConnectorReady={handleConnectorReady}
+                  onLoadExistingSession={(id) => void handleLoadSession(id)}
+                />
+              </div>
             </div>
+          ) : report ? (
+            <ReportCanvas
+              key={reportIdx}
+              message={report}
+              question={questionFor(reportIdx)}
+              sessionId={sessionId}
+              isLatest={reportIdx === latestReport}
+              onFollowUp={ask}
+            />
+          ) : (
+            <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-2 text-center">
+              <p className="text-sm font-medium text-foreground">
+                {isLoading ? "Working on your report" : "Your report appears here"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {isLoading
+                  ? "Progress is in the chat. Charts, findings and evidence land here when the run finishes."
+                  : "Ask a question in the chat to get a summary, charts, the evidence behind each finding and a reviewer's notes."}
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <dialog
+        ref={historyRef}
+        aria-label="History"
+        onClick={(e) => e.target === historyRef.current && historyRef.current?.close()}
+        className="m-0 h-dvh max-h-dvh w-full max-w-sm bg-sidebar p-0 text-foreground shadow-2xl backdrop:bg-black/40"
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold">History</h2>
             <button
-              onClick={handleSend}
-              disabled={isLoading || !connected || !input.trim()}
-              className="px-5 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-95"
+              type="button"
+              onClick={() => historyRef.current?.close()}
+              aria-label="Close history"
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-1 h-1 rounded-full bg-white animate-bounce" />
-                  <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "100ms" }} />
-                  <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "200ms" }} />
-                </span>
-              ) : "Send"}
+              <X className="h-4 w-4" />
             </button>
           </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            <SessionSidebar
+              sessions={sessions}
+              activeSessionId={sessionId}
+              loading={sessionsLoading}
+              onLoadSession={handleLoadSession}
+              onDeleteSession={handleDeleteSession}
+              onNewAnalysis={handleNewAnalysis}
+            />
+          </div>
         </div>
-      </main>
+      </dialog>
 
       {pendingApproval && (
         <ApprovalModal
@@ -408,7 +445,7 @@ export default function ChatInterface() {
           onDismiss={() => setPendingApproval(null)}
           onLoadPrevious={handleLoadPrevious}
           onRunFresh={handleRunFresh}
-          onCancel={handleCancelApproval}
+          onCancel={() => setPendingApproval(null)}
         />
       )}
     </div>

@@ -14,7 +14,8 @@ export async function downloadElementAsPng(
   filename: string,
   options?: { backgroundColor?: string; footer?: string | null },
 ): Promise<void> {
-  const backgroundColor = options?.backgroundColor ?? "#ffffff";
+  // Default to the page background so a dark-mode export isn't dark cards on white.
+  const backgroundColor = options?.backgroundColor ?? getComputedStyle(document.body).backgroundColor;
   const footer = options?.footer ?? null;
 
   // Dynamic import keeps the library out of the initial bundle — only loaded
@@ -68,7 +69,8 @@ async function paintFooter(
   ctx.drawImage(img, 0, 0);
 
   ctx.font = `${12 * PIXEL_RATIO}px ui-sans-serif, system-ui, sans-serif`;
-  ctx.fillStyle = "#9ca3af"; // zinc-400
+  ctx.fillStyle = getComputedStyle(document.body).color;
+  ctx.globalAlpha = 0.6;
   ctx.textBaseline = "middle";
   ctx.fillText(footer, 20 * PIXEL_RATIO, img.naturalHeight + (FOOTER_H * PIXEL_RATIO) / 2);
 

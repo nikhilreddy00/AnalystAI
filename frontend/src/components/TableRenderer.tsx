@@ -30,21 +30,21 @@ export default function TableRenderer({ title, caption, rows, columns, maxRows =
   // C2: light report-card treatment — used in chat (over dark canvas) and the
   // upcoming light dashboard (D1). Works in both contexts.
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2 shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-2 shadow-sm overflow-hidden">
       {title && (
         <div className="flex items-baseline justify-between">
-          <h4 className="text-zinc-900 text-sm font-semibold">{title}</h4>
-          {caption && <span className="text-zinc-500 text-xs">{caption}</span>}
+          <h4 className="text-foreground text-sm font-semibold">{title}</h4>
+          {caption && <span className="text-muted-foreground text-xs">{caption}</span>}
         </div>
       )}
       <div className="overflow-x-auto -mx-1 px-1">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b border-zinc-200">
+            <tr className="border-b border-border">
               {cols.map((c) => (
                 <th
                   key={c}
-                  className="text-left font-medium text-zinc-500 px-2 py-1.5 whitespace-nowrap"
+                  className="text-left font-medium text-muted-foreground px-2 py-1.5 whitespace-nowrap"
                 >
                   {c}
                 </th>
@@ -55,12 +55,12 @@ export default function TableRenderer({ title, caption, rows, columns, maxRows =
             {visible.map((row, i) => (
               <tr
                 key={i}
-                className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors"
+                className="border-b border-border hover:bg-muted transition-colors"
               >
                 {cols.map((c) => (
                   <td
                     key={c}
-                    className="text-zinc-800 px-2 py-1.5 font-mono whitespace-nowrap"
+                    className="text-foreground px-2 py-1.5 font-mono whitespace-nowrap"
                   >
                     {formatCell(row[c])}
                   </td>
@@ -71,7 +71,7 @@ export default function TableRenderer({ title, caption, rows, columns, maxRows =
         </table>
       </div>
       {hidden > 0 && (
-        <p className="text-xs text-zinc-500 italic">+ {hidden} more rows hidden</p>
+        <p className="text-xs text-muted-foreground italic">+ {hidden} more rows hidden</p>
       )}
     </div>
   );

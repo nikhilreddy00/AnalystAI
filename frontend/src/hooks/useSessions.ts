@@ -6,7 +6,7 @@ import type { SessionSummary } from "@/types";
 
 export function useSessions() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -28,9 +28,16 @@ export function useSessions() {
     [],
   );
 
+  // Initial load: state is set only in the promise callbacks, never synchronously.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let live = true;
+    listSessions()
+      .then((s) => live && setSessions(s))
+      .finally(() => live && setLoading(false));
+    return () => {
+      live = false;
+    };
+  }, []);
 
   return { sessions, loading, refresh, deleteSession };
 }

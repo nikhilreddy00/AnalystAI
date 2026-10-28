@@ -38,7 +38,7 @@ function getStat(stats: Stats | Record<string, unknown>, key: string): number | 
 }
 
 function corrCellClass(r: number): string {
-  return Math.abs(r) > 0.3 ? "text-emerald-700 font-semibold" : "text-zinc-500";
+  return Math.abs(r) > 0.3 ? "text-success font-semibold" : "text-muted-foreground";
 }
 
 export default function DescriptiveStatsTable({
@@ -61,15 +61,15 @@ export default function DescriptiveStatsTable({
   if (cols.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-2 shadow-sm">
       <div className="flex items-baseline justify-between">
-        <h4 className="text-zinc-900 text-sm font-semibold">Descriptive statistics</h4>
-        <span className="text-zinc-500 text-xs">{cols.length} continuous column{cols.length === 1 ? "" : "s"}</span>
+        <h4 className="text-foreground text-sm font-semibold">Descriptive statistics</h4>
+        <span className="text-muted-foreground text-xs">{cols.length} continuous column{cols.length === 1 ? "" : "s"}</span>
       </div>
       <div className="overflow-x-auto -mx-1 px-1">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b border-zinc-200 text-zinc-500">
+            <tr className="border-b border-border text-muted-foreground">
               <th className="text-left px-2 py-1.5 font-medium">Column</th>
               <th className="text-right px-2 py-1.5 font-medium">Mean</th>
               <th className="text-right px-2 py-1.5 font-medium">Median</th>
@@ -94,28 +94,28 @@ export default function DescriptiveStatsTable({
               const constantBadge = std === 0;
               const corr = targetCorrelations[c];
               return (
-                <tr key={c} className={i % 2 === 1 ? "bg-zinc-50/60" : ""}>
-                  <td className="px-2 py-1.5 text-zinc-800 font-mono whitespace-nowrap">
+                <tr key={c} className={i % 2 === 1 ? "bg-muted" : ""}>
+                  <td className="px-2 py-1.5 text-foreground font-mono whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
                       {c}
                       {constantBadge && (
-                        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">constant</span>
+                        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">constant</span>
                       )}
                       {skewedBadge && (
-                        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200">skewed</span>
+                        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning border border-warning/30">skewed</span>
                       )}
                     </span>
                   </td>
-                  <td className="px-2 py-1.5 text-right text-zinc-800 font-mono">{fmt(getStat(stats, "mean"), currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-zinc-800 font-mono">{fmt(getStat(stats, "median"), currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-zinc-800 font-mono">{fmt(std, currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-zinc-800 font-mono">{fmt(getStat(stats, "min"), currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-zinc-800 font-mono">{fmt(getStat(stats, "max"), currency)}</td>
-                  <td className={`px-2 py-1.5 text-right font-mono ${skewedBadge ? "text-orange-700" : "text-zinc-800"}`}>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "mean"), currency)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "median"), currency)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(std, currency)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "min"), currency)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "max"), currency)}</td>
+                  <td className={`px-2 py-1.5 text-right font-mono ${skewedBadge ? "text-warning" : "text-foreground"}`}>
                     {typeof sk === "number" ? sk.toFixed(2) : "—"}
                   </td>
                   {targetCol && (
-                    <td className={`px-2 py-1.5 text-right font-mono ${typeof corr === "number" ? corrCellClass(corr) : "text-zinc-400"}`}>
+                    <td className={`px-2 py-1.5 text-right font-mono ${typeof corr === "number" ? corrCellClass(corr) : "text-muted-foreground"}`}>
                       {typeof corr === "number" ? corr.toFixed(2) : "—"}
                     </td>
                   )}

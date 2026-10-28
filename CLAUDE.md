@@ -24,8 +24,8 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 1 | Shared LLM client, traces, synthetic data generator, eval harness, CI, **baseline** | ✅ done (2026-10-27) — `docs/baselines/phase1.md` |
 | 2 | Typed errors, guardrails module, PII masking, cut CrewAI / fold senior_expert / resolve drill-down | ✅ done (2026-10-27) — `docs/baselines/phase2.md` (analysis 87.5%, e2e 45.0%) |
 | 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
-| 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ⏭ next |
-| 4 | SQL path + YAML semantic layer | pending |
+| 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
+| 4 | SQL path + YAML semantic layer | ⏭ next |
 | 5 | Roll the contract out: Intake → Cleaning → Insight → Quality check → Ingestion → Visualization | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -155,15 +155,19 @@ api/
 frontend/src/
   app/page.tsx             — Landing page
   app/chat/page.tsx        — Chat view (wraps ChatInterface)
-  app/dashboard/page.tsx   — Dashboard view (wraps DashboardCanvas)
+  app/dashboard/page.tsx   — Dashboard view (AppHeader + AutoDashboard)
   components/
-    ChatInterface.tsx      — Main chat UI with sidebar, messages, input
+    ChatInterface.tsx      — /chat "Workbench": chat column (left) drives ReportCanvas (right);
+                             Chat/Report tabs below lg; history in a <dialog> drawer
+    ReportCanvas.tsx       — one answer as a report: Summary / Evidence / Data / Review tabs
+    AppHeader.tsx          — header shared by /chat and /dashboard (nav, theme toggle, sign out)
+    ThemeToggle.tsx        — flips the `dark` class set pre-paint in layout.tsx (localStorage "theme")
     AgentProgressStream.tsx — Step-by-step agent progress indicator
-    ChartRenderer.tsx      — Recharts chart-type router (Line/Bar/Pie/Scatter/Composed)
+    ChartRenderer.tsx      — Recharts chart-type router; colours from --chart-1..8 tokens
     InsightPanel.tsx       — Executive/Analyst toggle view
     ConnectorSetup.tsx     — Data source configuration panel
     ApprovalModal.tsx      — Human approval gate modal
-    DashboardCanvas.tsx    — Pinned chart grid
+    AutoDashboard.tsx      — dashboard: KPI strip, filters, cross-filtered chart grid, edit mode
     EvidencePanel.tsx      — Evidence list + <dialog> drawer (code, rows, confidence, assumptions)
   hooks/useAnalysis.ts     — SSE stream consumer, state management
   types/index.ts           — TypeScript mirrors of Python Pydantic models
@@ -209,6 +213,9 @@ done              → {type: "done"}  // always last
 - **LLM responses**: always strip markdown fences (```` ```json ... ``` ````) before JSON parsing
 - **Error handling**: every agent wraps its core logic in try/except, sets `session.error_message`
 - **Frontend**: TypeScript strict, Tailwind v4 with `@import "tailwindcss"`, `"use client"` on all interactive components
+- **Frontend colours**: theme tokens only (`bg-card`, `text-muted-foreground`, `bg-primary`, `text-success`, `--chart-N` …,
+  defined for light + dark in `globals.css`). Raw palette classes / hex fail `tests/test_frontend_tokens.py`.
+  UI checks without keys: `scripts/ui_check/README.md`
 - **Untrusted data**: dataset text in a prompt goes through `delimit_untrusted()` with `UNTRUSTED_NOTE` in the system prompt; PII is masked once in `build_data_contract` (mask anything else you send, e.g. `mask_row`)
 - **LLM calls**: through `llm/client.py` — never a new `AsyncAnthropic`. Contract agents (analysis so far) take `llm: LLMClient` as a parameter; the rest still call `get_client()` until Phase 5. Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl` (metadata, tool names and guardrail rule labels only)
 - **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)

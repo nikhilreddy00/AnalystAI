@@ -10,18 +10,18 @@ import { AlertTriangle } from "lucide-react";
 
 // Role → badge visual config.
 const ROLE_BADGE: Record<string, { label: string; cls: string }> = {
-  id:            { label: "id",           cls: "bg-zinc-100 text-zinc-500 border-zinc-200" },
-  binary:        { label: "binary",       cls: "bg-sky-50 text-sky-600 border-sky-200" },
-  continuous:    { label: "continuous",   cls: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-  datetime:      { label: "datetime",     cls: "bg-violet-50 text-violet-600 border-violet-200" },
-  low_card_cat:  { label: "low-card cat", cls: "bg-amber-50 text-amber-600 border-amber-200" },
-  high_card_cat: { label: "high-card cat",cls: "bg-orange-50 text-orange-600 border-orange-200" },
-  ordinal_cols:  { label: "ordinal",      cls: "bg-teal-50 text-teal-600 border-teal-200" },
-  ordinal:       { label: "ordinal",      cls: "bg-teal-50 text-teal-600 border-teal-200" },
-  id_cols:       { label: "id",           cls: "bg-zinc-100 text-zinc-500 border-zinc-200" },
-  datetime_cols: { label: "datetime",     cls: "bg-violet-50 text-violet-600 border-violet-200" },
-  skip_cols:     { label: "skipped",      cls: "bg-zinc-100 text-zinc-500 border-zinc-200" },
-  skipped:       { label: "skipped",      cls: "bg-zinc-100 text-zinc-500 border-zinc-200" },
+  id:            { label: "id",           cls: "bg-muted text-muted-foreground border-border" },
+  binary:        { label: "binary",       cls: "bg-brand-soft text-primary border-primary/30" },
+  continuous:    { label: "continuous",   cls: "bg-brand-soft text-primary border-primary/30" },
+  datetime:      { label: "datetime",     cls: "bg-brand-soft text-primary border-primary/30" },
+  low_card_cat:  { label: "low-card cat", cls: "bg-warning/10 text-warning border-warning/30" },
+  high_card_cat: { label: "high-card cat",cls: "bg-warning/10 text-warning border-warning/30" },
+  ordinal_cols:  { label: "ordinal",      cls: "bg-brand-soft text-primary border-primary/30" },
+  ordinal:       { label: "ordinal",      cls: "bg-brand-soft text-primary border-primary/30" },
+  id_cols:       { label: "id",           cls: "bg-muted text-muted-foreground border-border" },
+  datetime_cols: { label: "datetime",     cls: "bg-brand-soft text-primary border-primary/30" },
+  skip_cols:     { label: "skipped",      cls: "bg-muted text-muted-foreground border-border" },
+  skipped:       { label: "skipped",      cls: "bg-muted text-muted-foreground border-border" },
 };
 
 interface Props {
@@ -37,10 +37,10 @@ interface Props {
 type SortKey = "missing-desc" | "alpha" | "original";
 
 function missingTint(pct: number): { bg: string; text: string; icon: boolean } {
-  if (pct === 0)       return { bg: "bg-emerald-50",  text: "text-emerald-700", icon: false };
-  if (pct <= 10)       return { bg: "bg-yellow-50",   text: "text-yellow-800",  icon: false };
-  if (pct <= 40)       return { bg: "bg-orange-50",   text: "text-orange-800",  icon: false };
-  return                      { bg: "bg-red-100",     text: "text-red-800",     icon: true };
+  if (pct === 0)       return { bg: "bg-success/10",  text: "text-success", icon: false };
+  if (pct <= 10)       return { bg: "bg-warning/10",   text: "text-warning",  icon: false };
+  if (pct <= 40)       return { bg: "bg-warning/10",   text: "text-warning",  icon: false };
+  return                      { bg: "bg-destructive/10",     text: "text-destructive",     icon: true };
 }
 
 function previewValue(v: unknown): string {
@@ -93,17 +93,17 @@ export default function SchemaQualityTable({
   if (rows.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-2 shadow-sm">
       <div className="flex items-baseline justify-between gap-3">
-        <h4 className="text-zinc-900 text-sm font-semibold">Schema &amp; data quality</h4>
+        <h4 className="text-foreground text-sm font-semibold">Schema &amp; data quality</h4>
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-zinc-500">{rows.length} column{rows.length === 1 ? "" : "s"}</span>
-          <span className="text-zinc-300">·</span>
-          <label className="text-zinc-500">Sort:</label>
+          <span className="text-muted-foreground">{rows.length} column{rows.length === 1 ? "" : "s"}</span>
+          <span className="text-muted-foreground">·</span>
+          <label className="text-muted-foreground">Sort:</label>
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="text-xs bg-zinc-50 border border-zinc-200 rounded-md px-1.5 py-0.5 text-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            className="text-xs bg-muted border border-border rounded-md px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           >
             <option value="missing-desc">Missing % ↓</option>
             <option value="alpha">A–Z</option>
@@ -115,7 +115,7 @@ export default function SchemaQualityTable({
       <div className="overflow-x-auto -mx-1 px-1">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b border-zinc-200 text-left text-zinc-500">
+            <tr className="border-b border-border text-left text-muted-foreground">
               <th className="px-2 py-1.5 font-medium">Column</th>
               <th className="px-2 py-1.5 font-medium">Dtype</th>
               {totalRows != null && <th className="px-2 py-1.5 font-medium text-right">Missing #</th>}
@@ -130,8 +130,8 @@ export default function SchemaQualityTable({
             {rows.map((r, i) => {
               const tint = missingTint(r.missingPct);
               return (
-                <tr key={r.column} className={i % 2 === 1 ? "bg-zinc-50/60" : ""}>
-                  <td className="px-2 py-1.5 text-zinc-800 font-mono whitespace-nowrap">
+                <tr key={r.column} className={i % 2 === 1 ? "bg-muted" : ""}>
+                  <td className="px-2 py-1.5 text-foreground font-mono whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
                       {r.column}
                       {(() => {
@@ -146,9 +146,9 @@ export default function SchemaQualityTable({
                       })()}
                     </span>
                   </td>
-                  <td className="px-2 py-1.5 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{r.dtype}</td>
+                  <td className="px-2 py-1.5 text-muted-foreground font-mono text-[11px] whitespace-nowrap">{r.dtype}</td>
                   {totalRows != null && (
-                    <td className="px-2 py-1.5 text-right text-zinc-800 font-mono whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right text-foreground font-mono whitespace-nowrap">
                       {r.missingCount != null ? r.missingCount.toLocaleString() : "—"}
                     </td>
                   )}
@@ -157,8 +157,8 @@ export default function SchemaQualityTable({
                       {tint.icon && <AlertTriangle className="w-3 h-3" />}
                       {hasPreCleaning && r.preMissingPct !== undefined && r.preMissingPct !== r.missingPct ? (
                         <>
-                          <span className="text-zinc-500">{r.preMissingPct.toFixed(1)}%</span>
-                          <span className="text-zinc-400">→</span>
+                          <span className="text-muted-foreground">{r.preMissingPct.toFixed(1)}%</span>
+                          <span className="text-muted-foreground">→</span>
                           <span>{r.missingPct.toFixed(1)}%</span>
                         </>
                       ) : (
@@ -166,13 +166,13 @@ export default function SchemaQualityTable({
                       )}
                     </span>
                   </td>
-                  <td className="px-2 py-1.5 text-right text-zinc-800 font-mono whitespace-nowrap">
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono whitespace-nowrap">
                     {r.unique != null ? r.unique.toLocaleString() : "—"}
                   </td>
-                  <td className="px-2 py-1.5 text-zinc-600 whitespace-nowrap max-w-[28ch] overflow-hidden text-ellipsis">
+                  <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap max-w-[28ch] overflow-hidden text-ellipsis">
                     {r.samples.length > 0
                       ? r.samples.map(previewValue).join(", ")
-                      : <span className="text-zinc-400">—</span>}
+                      : <span className="text-muted-foreground">—</span>}
                   </td>
                 </tr>
               );

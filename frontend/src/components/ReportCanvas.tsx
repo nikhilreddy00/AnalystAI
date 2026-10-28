@@ -1,0 +1,153 @@
+"use client";
+
+// Phase 3.5 (direction "Workbench"): the right half of /chat. Shows one assistant
+// message's deliverables as a report — Summary, Evidence, Data, Review — while the
+// chat column on the left drives it.
+
+import { useId, useRef, useState } from "react";
+import { Download } from "lucide-react";
+import BriefingPanel from "./BriefingPanel";
+import ChartRenderer from "./ChartRenderer";
+import EvidencePanel from "./EvidencePanel";
+import ExpertReviewPanel from "./ExpertReviewPanel";
+import InsightPanel from "./InsightPanel";
+import KPICard, { KPIStrip } from "./KPICard";
+import PinButton from "./PinButton";
+import TargetedResponsePanel from "./TargetedResponsePanel";
+import { downloadLatestReportPptx } from "@/lib/api";
+import type { ChatMessage } from "@/types";
+
+type Tab = "summary" | "evidence" | "data" | "review";
+
+interface Props {
+  message: ChatMessage;
+  question: string;
+  sessionId: string | null;
+  /** Only the newest report has a server-side PowerPoint. */
+  isLatest: boolean;
+  onFollowUp: (q: string) => void;
+}
+
+export function hasReport(m: ChatMessage) {
+  return !m.isStreaming && !!(m.insight || m.charts?.length || m.targetedResponse || m.briefing || m.evidence?.length);
+}
+
+export default function ReportCanvas({ message, question, sessionId, isLatest, onFollowUp }: Props) {
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "summary" as const, label: "Summary" },
+    ...(message.evidence?.length ? [{ id: "evidence" as const, label: `Evidence · ${message.evidence.length}` }] : []),
+    ...(message.briefing ? [{ id: "data" as const, label: "Data" }] : []),
+    ...(message.expertReview ? [{ id: "review" as const, label: "Review" }] : []),
+  ];
+  const [tab, setTab] = useState<Tab>("summary");
+  const [exportError, setExportError] = useState(false);
+  const active = tabs.some((t) => t.id === tab) ? tab : "summary";
+  const ids = useId();
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  function onTabKey(e: React.KeyboardEvent) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const i = tabs.findIndex((t) => t.id === active);
+    const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+    setTab(next.id);
+    tabRefs.current[next.id]?.focus();
+  }
+
+  async function exportPptx() {
+    setExportError(false);
+    try {
+      await downloadLatestReportPptx();
+    } catch {
+      setExportError(true);
+    }
+  }
+
+  const kpis = message.briefing?.kpis ?? [];
+
+  return (
+    <article className="mx-auto w-full max-w-5xl space-y-4">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs text-muted-foreground">Report</p>
+          <h2 className="text-lg font-semibold leading-snug text-foreground text-balance">{question || "Analysis"}</h2>
+        </div>
+        {isLatest && message.insight && (
+          <div className="flex items-center gap-2">
+            {exportError && <span className="text-xs text-destructive">Export failed. Try again.</span>}
+            <button
+              type="button"
+              onClick={exportPptx}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground hover:bg-accent"
+            >
+              <Download className="h-3.5 w-3.5" />
+              PowerPoint
+            </button>
+          </div>
+        )}
+      </header>
+
+      {tabs.length > 1 && (
+        <div role="tablist" aria-label="Report sections" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border [scrollbar-width:none]" onKeyDown={onTabKey}>
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              ref={(el) => {
+                tabRefs.current[t.id] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`${ids}-${t.id}`}
+              aria-selected={active === t.id}
+              aria-controls={`${ids}-panel`}
+              tabIndex={active === t.id ? 0 : -1}
+              onClick={() => setTab(t.id)}
+              className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm ${
+                active === t.id
+                  ? "border-primary font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div role="tabpanel" id={`${ids}-panel`} aria-labelledby={`${ids}-${active}`} className="space-y-4">
+        {active === "summary" && (
+          <>
+            {kpis.length > 0 && (
+              <KPIStrip count={kpis.length}>
+                {kpis.map((k, i) => (
+                  <KPICard key={`${k.label}-${i}`} label={k.label} value={k.value} sublabel={k.context || undefined} />
+                ))}
+              </KPIStrip>
+            )}
+            {message.targetedResponse && (
+              <TargetedResponsePanel response={message.targetedResponse} sessionId={sessionId} onFollowUp={onFollowUp} />
+            )}
+            {message.insight && (
+              <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
+                <InsightPanel report={message.insight} />
+              </div>
+            )}
+            {!!message.charts?.length && (
+              <div className="grid gap-3 xl:grid-cols-2">
+                {message.charts.map((chart) => (
+                  <ChartRenderer
+                    key={chart.id}
+                    config={chart}
+                    action={sessionId && <PinButton sessionId={sessionId} chart={chart} />}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {active === "evidence" && message.evidence && <EvidencePanel items={message.evidence} />}
+        {active === "data" && message.briefing && <BriefingPanel data={message.briefing} />}
+        {active === "review" && message.expertReview && <ExpertReviewPanel review={message.expertReview} />}
+      </div>
+    </article>
+  );
+}
