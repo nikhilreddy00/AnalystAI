@@ -38,7 +38,7 @@ from orchestrator.state import (
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 
 # The refusal rules are also the labelling policy of the intake eval (evals/cases/intake/).
 INTAKE_CARD = AgentCard(
