@@ -107,3 +107,40 @@ def test_grounding_reads_scientific_notation():
     assert g.ungrounded_numbers("t=13.529, p=5.7e-40, q=1.23e-05", ev) == []
     assert g.ungrounded_numbers("p=6.1e-40", ev) == ["6.1e-40"]
     assert g.ungrounded_numbers("total 1,234.5 and 2.9e-120,", {"a": 1234.5, "b": 2.9e-120}) == []
+
+
+# ── Chart lint (Phase 5 Visualization) ─────────────────────────────────────────
+
+def _chart(**kw):
+    base = {"chart_type": "BarChart", "x_key": "segment", "y_keys": ["revenue"],
+            "x_label": "Segment", "y_label": "Mean revenue",
+            "data": [{"segment": "A", "revenue": 1.0}, {"segment": "B", "revenue": 2.0}]}
+    return {**base, **kw}
+
+
+@pytest.mark.parametrize("chart,label", [
+    (_chart(data=[]), "empty_chart"),
+    (_chart(data=[{"segment": "A", "revenue": None}]), "empty_chart"),
+    (_chart(y_label=None), "missing_axis_label"),
+    (_chart(x_key="units", data=[{"units": 1, "revenue": 3.0}]), "measure_on_category_axis"),
+    (_chart(chart_type="PieChart", data=[{"segment": str(i), "revenue": 1.0} for i in range(6)]),
+     "pie_too_many_slices"),
+    (_chart(chart_type="DonutChart", rationale={"aggregation": "mean"}), "pie_non_additive"),
+    (_chart(chart_type="ComposedChart", y_keys=["revenue", "units"]), "dual_axis"),
+    (_chart(y_keys=[f"s{i}" for i in range(9)],
+            data=[{"segment": "A", **{f"s{i}": 1.0 for i in range(9)}}]), "too_many_series"),
+    (_chart(chart_type="ScatterChart", x_key="revenue", y_keys=["spend"],
+            data=[{"revenue": 1.0, "spend": 2.0}]), "outcome_on_x"),
+    (_chart(chart_type="LineChart"), "line_over_unordered"),
+])
+def test_chart_lint_flags_each_anti_pattern(chart, label):
+    from guardrails import chart_lint
+    assert label in chart_lint(chart, measures={"units", "revenue"}, outcome="revenue")
+
+
+def test_chart_lint_passes_a_clean_chart_and_a_dated_line():
+    from guardrails import chart_lint
+    assert chart_lint(_chart(), measures={"revenue"}, outcome="revenue") == []
+    line = _chart(chart_type="LineChart", x_key="period",
+                  data=[{"period": "2026-01-01", "revenue": 1.0}, {"period": "2026-02", "revenue": 2.0}])
+    assert chart_lint(line) == []

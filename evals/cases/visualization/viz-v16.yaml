@@ -1,0 +1,22 @@
+id: viz-v16
+category: profile
+label_note: 'Overview with no findings: the main metric over months (total) leads; row-count charts belong
+  in the Data tab.'
+dataset:
+  name: sales
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  intent: overview
+  analysis_types:
+  - eda
+  target_metrics: []
+  segments: []
+expect:
+- types:
+  - LineChart
+  x: order_date
+  y: revenue
+  agg: sum
+must_not:
+- row_count_in_summary

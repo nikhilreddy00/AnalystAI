@@ -1,0 +1,21 @@
+id: viz-t05
+category: targeted
+label_note: 'Distribution of a measure: a histogram.'
+dataset:
+  name: sales
+  seed: 1
+question: Show the distribution of revenue
+plan:
+  intent: distribution
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    target_columns:
+    - revenue
+expect:
+- types:
+  - HistogramChart
+  x: revenue
+  y: count
+  agg: count

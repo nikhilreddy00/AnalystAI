@@ -1,0 +1,25 @@
+id: viz-t03
+category: targeted
+label_note: 'Average for one segment, in context: bars of the mean per segment with CIs.'
+dataset:
+  name: sales
+  seed: 1
+question: What is the average revenue for segment B?
+plan:
+  intent: segment_compare
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    metric_column: revenue
+    segment_column: segment
+    segment_value: B
+    aggregation: mean
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: segment
+  y: revenue
+  agg: mean
+  ci: true

@@ -1,0 +1,27 @@
+id: viz-v08
+category: finding
+label_note: 'Unusual values: the distribution of the metric with the outlier thresholds marked, so the
+  flagged values are visible as a tail.'
+dataset:
+  name: sales
+  seed: 1
+question: Find unusual revenue values
+plan:
+  intent: overview
+  analysis_types:
+  - anomaly
+  target_metrics:
+  - revenue
+  segments: []
+findings:
+- kind: anomaly
+  column: revenue
+  headline: true
+expect:
+- types:
+  - HistogramChart
+  x: revenue
+  y: count
+  agg: count
+  bounds: true
+  finding: 0

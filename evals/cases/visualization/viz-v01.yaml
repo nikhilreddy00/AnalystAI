@@ -1,0 +1,26 @@
+id: viz-v01
+category: finding
+label_note: 'A trend is change over time: a line over calendar months. Revenue is additive, so monthly
+  totals (the analysis agent''s MoM definition).'
+dataset:
+  name: sales
+  seed: 1
+question: How has revenue trended month over month?
+plan:
+  intent: overview
+  analysis_types:
+  - trend
+  target_metrics:
+  - revenue
+  segments: []
+findings:
+- kind: trend
+  column: revenue
+  headline: true
+expect:
+- types:
+  - LineChart
+  x: order_date
+  y: revenue
+  agg: sum
+  finding: 0

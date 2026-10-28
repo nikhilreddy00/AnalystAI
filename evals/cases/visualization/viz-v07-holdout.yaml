@@ -1,0 +1,28 @@
+id: viz-v07-holdout
+category: finding
+label_note: A null relationship is still shown as a scatter (the flat cloud is the finding); driver discount
+  on x.
+dataset:
+  name: sales
+  seed: 1
+question: Does discount affect revenue?
+plan:
+  intent: overview
+  analysis_types:
+  - correlation
+  target_metrics:
+  - discount
+  - revenue
+  segments: []
+findings:
+- kind: correlation
+  a: discount
+  b: revenue
+  headline: true
+expect:
+- types:
+  - ScatterChart
+  x: discount
+  y: revenue
+  agg: none
+  finding: 0

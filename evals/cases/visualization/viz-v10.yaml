@@ -1,0 +1,25 @@
+id: viz-v10
+category: finding
+label_note: 'A rate over time: monthly mean, not monthly total (summing discount rates is meaningless).'
+dataset:
+  name: sales
+  seed: 1
+question: How has the average discount changed month to month?
+plan:
+  intent: overview
+  analysis_types:
+  - trend
+  target_metrics:
+  - discount
+  segments: []
+findings:
+- kind: trend
+  column: discount
+  headline: true
+expect:
+- types:
+  - LineChart
+  x: order_date
+  y: discount
+  agg: mean
+  finding: 0

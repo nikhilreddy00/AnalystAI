@@ -1,0 +1,21 @@
+id: viz-v17
+category: profile
+label_note: Same as v16 on mixed date formats and 10% missing units.
+dataset:
+  name: mixed_dates
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  intent: overview
+  analysis_types:
+  - eda
+  target_metrics: []
+  segments: []
+expect:
+- types:
+  - LineChart
+  x: order_date
+  y: revenue
+  agg: sum
+must_not:
+- row_count_in_summary

@@ -36,6 +36,7 @@ from evals.scoring import (
     hard_rule,
     result_matches,
     score_intake,
+    score_visualization,
 )
 from llm.client import get_client, trace_meter
 from orchestrator.state import (
@@ -212,6 +213,122 @@ def score_intake_run(case: dict, output: dict | None, error: str | None) -> dict
             "holdout": case["id"].endswith("holdout"), "first_run": not case["overview_done"]}
 
 
+# ── Visualization (Phase 5): deterministic, $0 ──────────────────────────────────────────────
+
+def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[str]]:
+    """AnalysisFindings for a case's `findings:` fixture, valued from the frame (as the analysis
+    agent would report them), with evidence from the real build_evidence. Returns the evidence id
+    of each fixture entry, in order."""
+    from scipy import stats
+
+    from agents.analysis_agent import build_evidence
+    from orchestrator.state import AnomalyRecord, SegmentResult, StatisticalResult, TrendResult
+
+    plan = case["plan"]
+    date = _viz_date(df)
+    month = pd.to_datetime(df[date], format="mixed", errors="coerce").dt.to_period("M") if date else None
+    corr, trends, raw_trends, segs, anoms, tests, ids = {}, [], [], [], [], [], []
+    for f in case.get("findings") or []:
+        if f["kind"] == "trend":
+            col, seg = f["column"], f.get("segment")
+            frame = df[df[plan["segments"][0]].astype(str) == seg] if seg else df
+            agg = "mean" if df[col].dropna().between(0, 1).all() else "sum"   # analysis MoM rule
+            tot = frame.groupby(month.loc[frame.index])[col].agg(agg).sort_index()
+            pct = round(float((tot.iloc[-1] / tot.iloc[-2] - 1) * 100), 2)
+            trends.append(TrendResult(column=col, period="MoM", pct_change=pct, segment=seg,
+                                      direction="up" if pct > 0 else "down" if pct < 0 else "flat"))
+            raw_trends.append({"column": col, "period": "MoM", "segment": seg, "n": int(len(frame))})
+            ids.append(f"trend:{col}" + (f" ({seg})" if seg else "") + ":MoM")
+        elif f["kind"] == "segment":
+            cols = f["segment_column"].split("|")
+            g = df.groupby(cols)[f["metric"]].agg(f["aggregation"])
+            segs.append(SegmentResult(
+                segment_column=f["segment_column"], metric_column=f["metric"],
+                aggregation=f["aggregation"],
+                results=[{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
+                          "value": round(float(v), 4)} for k, v in g.items()]))
+            ids.append(f"seg:{f['segment_column']}/{f['metric']}")
+        elif f["kind"] == "correlation":
+            key = f"{f['a']}__{f['b']}"
+            corr[key] = round(float(df[f["a"]].corr(df[f["b"]])), 4)
+            ids.append(f"corr:{key}")
+        elif f["kind"] == "anomaly":
+            s = df[f["column"]].dropna()
+            q1, q3 = s.quantile(0.25), s.quantile(0.75)
+            hi = q3 + 3 * (q3 - q1)
+            for i, v in s[s > hi].head(5).items():
+                anoms.append(AnomalyRecord(column=f["column"], row_index=int(i), value=float(v),
+                                           expected_range=f"<= {hi:.2f}", severity="high",
+                                           explanation=""))
+            ids.append(f"anom:{f['column']}")
+        elif f["kind"] == "test":
+            metric, group = plan["target_metrics"][0], plan["segments"][0]
+            a, b = (g[metric].dropna() for _, g in df.groupby(group))
+            t, p = stats.ttest_ind(a, b, equal_var=False)
+            tests.append(StatisticalResult(test_name="Welch's t-test", statistic=float(t),
+                                           p_value=float(p), interpretation=f"{metric} by {group}"))
+            ids.append(f"test:{len(tests) - 1}")
+    findings = AnalysisFindings(eda_summary={}, correlations=corr, trends=trends, segments=segs,
+                                anomalies=anoms, statistical_tests=tests, code_executed="")
+    raw = {"n_rows": len(df), "non_null": {str(c): int(n) for c, n in df.notna().sum().items()},
+           "trends": raw_trends}
+    findings.evidence = build_evidence(findings, raw, "# eval fixture", "# eval fixture", None)
+    return findings, ids
+
+
+def _viz_date(df: pd.DataFrame) -> str | None:
+    return next((c for c in df.columns if "date" in str(c).lower()), None)
+
+
+def viz_session(case: dict, df: pd.DataFrame) -> tuple[AnalysisSession, list[str]]:
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import QuestionIntent, TargetedParams
+
+    plan = case["plan"]
+    findings, ids = viz_findings(case, df) if case.get("findings") else (None, [])
+    session = AnalysisSession(
+        session_id=str(uuid.uuid4()),
+        data_contract=CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df),
+        task_plan=AnalysisTask(
+            raw_query=case["question"], target_metrics=plan["target_metrics"],
+            segments=plan["segments"], analysis_types=plan["analysis_types"] or ["eda"],
+            question_intent=QuestionIntent(plan["intent"]),
+            targeted_params=TargetedParams(**plan.get("targeted_params", {}))),
+        analysis_findings=findings)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    session.__dict__["_df_parquet"] = buf.getvalue()
+    return session, ids
+
+
+async def run_visualization_case(case: dict) -> dict:
+    from agents.intent_handlers import handle_chart_request
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from agents.visualization_agent import run_visualization_agent
+
+    df = dataset(case)[0]
+    session, ids = viz_session(case, df)
+    charts, error = [], None
+    try:
+        intent = case["plan"]["intent"]
+        if intent == "overview":
+            charts = await run_visualization_agent(session)
+        elif intent == "chart_request":
+            charts = handle_chart_request(session, df).chart_configs
+        else:
+            charts = run_targeted_analysis(session).chart_configs
+    except Exception as exc:   # a loud failure is a failed case, not a crashed run
+        error = f"{type(exc).__name__}: {exc}"
+    output = {"charts": [c.model_dump(mode="json") for c in charts], "evidence_ids": ids}
+    return {**score_visualization_run(case, output, error), "output": output}
+
+
+def score_visualization_run(case: dict, output: dict | None, error: str | None) -> dict:
+    checks, hard = score_visualization(case, output, dataset(case)[0], error)
+    return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+            "holdout": case["id"].endswith("holdout")}
+
+
 _SQL: dict = {}   # engine, layers and golden rows, set up once per sql run
 
 
@@ -322,7 +439,7 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         trace_meter.set(meter)   # each asyncio task has its own context copy
         start = time.perf_counter()
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
-                  "intake": run_intake_case}[suite]
+                  "intake": run_intake_case, "visualization": run_visualization_case}[suite]
         out = await runner(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
@@ -341,6 +458,7 @@ RESCORERS = {
     "analysis": lambda c, o, e: score_analysis(c, AnalysisFindings.model_validate(o) if o else None, e),
     "e2e": lambda c, o, e: score_e2e(c, AnalysisSession.model_validate(o), e),
     "intake": score_intake_run,
+    "visualization": score_visualization_run,
 }
 
 
@@ -396,6 +514,7 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         **_quality(flat),
         **_sql_quality(runs),
         **_intake_quality(flat),
+        **_viz_quality(flat),
     }
 
 
@@ -436,6 +555,33 @@ def _intake_quality(flat: list[dict]) -> dict:
         "first_run_pass_rate": rate([r for r in flat if r["first_run"]]),
         "holdout_pass_rate": rate([r for r in flat if r["holdout"]]),
         "pass_rate_by_category": {k: rate(v) for k, v in sorted(cats.items())},
+    }
+
+
+def _viz_quality(flat: list[dict]) -> dict:
+    """Phase 5 visualization metrics (docs/ROADMAP.md Visualization row): right chart = labelled
+    charts matched on type, x, y, aggregation, split (and CI/thresholds where labelled); headline
+    coverage = headline findings whose evidence id a Summary chart cites; the two hard counts."""
+    if not any(c["kind"] == "chart" for r in flat for c in r["checks"]):
+        return {}
+
+    def share(kind):
+        oks = [c["ok"] for r in flat for c in r["checks"] if c["kind"] == kind]
+        return round(sum(oks) / len(oks), 4) if oks else None
+
+    cats: dict[str, list[bool]] = {}
+    for r in flat:
+        cats.setdefault(r["category"], []).append(r["passed"])
+    hold = [r["passed"] for r in flat if r["holdout"]]
+    return {
+        "right_chart": share("chart"),
+        "headline_coverage": share("headline"),
+        "lint_violations": sum(len(h["detail"].split("; ")) for r in flat for h in r["hard"]
+                               if h["rule"] == "chart_lint_clean" and not h["ok"]),
+        "charts_without_rationale": sum(int(h["detail"].split()[0]) for r in flat for h in r["hard"]
+                                        if h["rule"] == "chart_has_rationale" and not h["ok"]),
+        "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
+        "pass_rate_by_category": {k: round(sum(v) / len(v), 4) for k, v in sorted(cats.items())},
     }
 
 
@@ -548,7 +694,7 @@ async def main() -> None:
         print(f"→ {rescore(Path(sys.argv[2]))}")
         return
     ap = argparse.ArgumentParser()
-    ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake"])
+    ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake", "visualization"])
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--compare", help="previous report JSON for the paired diff")

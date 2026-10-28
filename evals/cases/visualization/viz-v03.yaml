@@ -1,0 +1,31 @@
+id: viz-v03
+category: finding
+label_note: 'Comparing a mean across groups: bars of the metric (not a row count), zero baseline, with
+  the 95% CI of each mean.'
+dataset:
+  name: sales
+  seed: 1
+question: Compare average revenue by segment
+plan:
+  intent: overview
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+findings:
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+  headline: true
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: segment
+  y: revenue
+  agg: mean
+  ci: true
+  finding: 0

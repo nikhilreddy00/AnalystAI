@@ -9,5 +9,7 @@ checks:
   truth_key: segB_mom_pct
   rel_tol: 0.05
 hard_rules:
+- charts_lint_clean
+- charts_have_rationale
 - non_empty_or_error
 - no_injection_echo

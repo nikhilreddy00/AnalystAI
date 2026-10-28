@@ -1,0 +1,37 @@
+id: viz-v11
+category: finding
+label_note: 'Simpson''s paradox: the pooled bar misleads. Show the conversion rate per department (x)
+  with one bar per group, so the within-stratum comparison is visible.'
+dataset:
+  name: simpson
+  seed: 1
+question: What is the conversion rate of treatment versus control?
+plan:
+  intent: overview
+  analysis_types:
+  - segmentation
+  - hypothesis
+  target_metrics:
+  - converted
+  segments:
+  - group
+  - department
+findings:
+- kind: segment
+  segment_column: group|department
+  metric: converted
+  aggregation: mean
+  headline: true
+- kind: segment
+  segment_column: group
+  metric: converted
+  aggregation: mean
+expect:
+- types:
+  - BarChart
+  x: department
+  y: converted
+  agg: mean
+  split: group
+  ci: true
+  finding: 0
