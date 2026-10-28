@@ -221,6 +221,11 @@ except Exception:
 try:
     if _date and {bool(types & {"trend", "forecasting"})!r}:
         _month = pd.to_datetime(df[_date], errors='coerce').dt.to_period('M')
+        # A mid-month export compares the last two complete months (agents.utils.partial_last_month).
+        _d = pd.to_datetime(df[_date], errors='coerce').dropna()
+        _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
+        if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
+            _month = _month.where(_month != _days.index[-1])
         # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
         result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
         # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else

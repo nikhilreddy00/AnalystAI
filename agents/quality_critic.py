@@ -25,7 +25,7 @@ import logging
 import re
 
 from agents.utils import strip_markdown_fences
-from guardrails import delimit_untrusted, mask_pii
+from guardrails import UNTRUSTED_NOTE, delimit_untrusted, mask_pii
 from llm.client import get_client
 from orchestrator.state import AnalysisSession, ExpertReview
 
@@ -74,8 +74,9 @@ PROMPT-9 RULES — apply to every bullet:
 - next_investigations must be concretely runnable, naming the column(s) and
   method (e.g. "Run a chi-square test on Pclass × Survived...").
 - Don't repeat what the insight report already says.
-- Return ONLY the JSON — no markdown fences, no preamble.\
-"""
+- Return ONLY the JSON — no markdown fences, no preamble.
+
+""" + UNTRUSTED_NOTE
 
 
 async def run_quality_critic(
@@ -93,11 +94,14 @@ async def run_quality_critic(
 
     if session.data_contract:
         dc = session.data_contract
+        # Everything derived from the user's file (names, values, and the junior's prose that
+        # quotes them) is data: delimited, PII masked (ADR-0001, contract lesson "delimit data
+        # wherever it surfaces").
         context_parts.append(
-            f"Dataset: {dc.row_count:,} rows × {dc.column_count} columns.\n"
-            f"All columns: {[c.name for c in dc.columns]}\n"
-            f"Metric columns: {dc.metric_columns}\n"
-            f"Date columns: {dc.date_columns}"
+            f"Dataset: {dc.row_count:,} rows × {dc.column_count} columns.\n" + delimit_untrusted(
+                f"All columns: {[c.name for c in dc.columns]}\n"
+                f"Metric columns: {dc.metric_columns}\n"
+                f"Date columns: {dc.date_columns}")
         )
 
     findings = session.analysis_findings
@@ -111,13 +115,12 @@ async def run_quality_critic(
                         f"min={stats.get('min')}, max={stats.get('max')}"
                     )
             if eda_lines:
-                context_parts.append("EDA results:\n" + "\n".join(eda_lines))
+                context_parts.append("EDA results:\n" + delimit_untrusted("\n".join(eda_lines)))
 
         if findings.correlations:
             strong = sorted(findings.correlations.items(), key=lambda kv: abs(kv[1]), reverse=True)[:5]
-            context_parts.append(
-                "Top correlations: " + ", ".join(f"{k}={v:.2f}" for k, v in strong)
-            )
+            context_parts.append("Top correlations:\n" + delimit_untrusted(
+                ", ".join(f"{k}={v:.2f}" for k, v in strong)))
 
         if findings.segments:
             seg_lines = []
@@ -125,14 +128,14 @@ async def run_quality_critic(
                 top = sorted(seg.results, key=lambda r: r.get("value", 0), reverse=True)[:3]
                 seg_lines.append(
                     f"  {seg.metric_column} by {seg.segment_column}: "
-                    + ", ".join(f"{r.get('name')}={r.get('value')}" for r in top)
+                    + ", ".join(f"{mask_pii(r.get('name'))}={r.get('value')}" for r in top)
                 )
-            context_parts.append("Segmentations done:\n" + "\n".join(seg_lines))
+            context_parts.append("Segmentations done:\n" + delimit_untrusted("\n".join(seg_lines)))
 
         if findings.anomalies:
             context_parts.append(
-                f"Anomalies detected: {len(findings.anomalies)} flagged "
-                f"(top: {findings.anomalies[0].column}={findings.anomalies[0].value})"
+                f"Anomalies detected: {len(findings.anomalies)} flagged\n" + delimit_untrusted(
+                    f"top: {findings.anomalies[0].column}={mask_pii(findings.anomalies[0].value)}")
             )
 
         if findings.statistical_tests:
@@ -140,27 +143,27 @@ async def run_quality_critic(
                 f"  {t.test_name}: stat={t.statistic:.3f}, p={t.p_value}, {t.interpretation}"
                 for t in findings.statistical_tests
             ]
-            context_parts.append("Statistical tests:\n" + "\n".join(test_lines))
+            context_parts.append("Statistical tests:\n" + delimit_untrusted("\n".join(test_lines)))
 
     if session.chart_configs:
-        # Chart titles carry data values (Phase 5), so they are delimited like data. The critic's
-        # other sections are delimited in the Quality-check contract PR.
+        # Chart titles carry data values (Phase 5), so they are delimited like data.
         context_parts.append("Visualizations:\n" + delimit_untrusted(
             "\n".join(str(mask_pii(c.title)) for c in session.chart_configs)))
 
     if session.insight_report:
         r = session.insight_report
-        context_parts.append(
-            f"Junior's executive summary: {r.executive_summary}\n"
-            f"Junior's technical findings: {r.technical_findings}\n"
-            f"Junior's recommended actions: "
+        context_parts.append("Junior's report:\n" + delimit_untrusted(
+            f"Executive summary: {r.executive_summary}\n"
+            f"Technical findings: {r.technical_findings}\n"
+            f"Recommended actions: "
             + "; ".join(f"({a.priority}) {a.action}" for a in r.recommended_actions[:4])
-        )
+        ))
 
     if ungrounded:
         context_parts.append(
             "Deterministic grounding check: these numbers in the junior's report do not appear "
-            f"in the computed findings: {ungrounded}. If they are factual claims, raise them as "
+            f"in the computed findings: {delimit_untrusted(str(ungrounded))}. If they are factual "
+            "claims, raise them as "
             "methodology concerns (unsupported numbers)."
         )
 

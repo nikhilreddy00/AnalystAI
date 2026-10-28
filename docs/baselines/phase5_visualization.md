@@ -136,5 +136,13 @@ segment B's revenue down 12.6% month over month, average revenue by segment, and
   - the SSE note in CLAUDE.md is updated;
   - traces hold labels only (`dropped:<rule>`, `no_rationale`, `kpi_mismatch`, and `chart_override`
     with before/after types).
-- **Still open (for a later PR):** the quality critic delimits only chart titles, not its other
-  sections. It belongs to the Quality-check contract PR, which owns the critic's prompt and context.
+- **Second audit (before merge), each with a test:**
+  - one malformed finding (e.g. `amt__amt`) crashed the whole report; now it costs only its chart;
+  - a mid-month export compared a partial last month with a full one. Analysis MoM, trend charts
+    and targeted time series now compare complete months and say so. The eval tables end on month-ends,
+    so no number moved (pinned by a test);
+  - the quality critic now delimits and masks every data-derived section (closing the open item).
+    E2E never scores the critic, so no paid re-run was needed (pinned by a test);
+  - a duplicated reason on scatters, and a donut rationale naming its key ("name") instead of its column;
+  - targeted-answer charts now persist type switches and support "Change variables…".
+- **Still open:** none.

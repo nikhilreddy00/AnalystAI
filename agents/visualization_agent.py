@@ -15,6 +15,7 @@ Every chart carries a ChartRationale (rule, columns, aggregation, rows, evidence
 from __future__ import annotations
 
 import io
+import logging
 import math
 import re
 import uuid
@@ -24,7 +25,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as scipy_stats
 
-from agents.utils import pandas_freq
+from agents.utils import pandas_freq, partial_last_month
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -43,6 +44,8 @@ from orchestrator.state import (
     KPIRecipe,
     TargetedParams,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ── Agent card (ADR-0001) ────────────────────────────────────────────────────
@@ -1663,11 +1666,15 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
     go to the Data tab: they describe the table, not an answer."""
     target = ctx.roles.get("target_col")
     src, x0 = ch.source_finding, ch.x_label or ch.x_key
+    title = ch.title.lower()
     col = next((c for c in ctx.df.columns if c == ch.x_key or c == x0 or
-                _display(c, ctx.narrative) == x0), ch.x_key)
+                _display(c, ctx.narrative) == x0), None) or next(   # a donut is keyed "name"
+        (c for c in ctx.df.columns if title.startswith((str(c).lower(),
+                                                         _display(c, ctx.narrative).lower()))),
+        ch.x_key)
     if src == "time_series" and ch.rationale:
         _why(ch, ctx, "profile:trend", "The main measure over time, totalled per month for an "
-             "additive measure and averaged for a rate.", ch.rationale.x, ch.rationale.y,
+             f"additive measure and averaged for a rate. {ch.rationale.reason}".strip(), ch.rationale.x, ch.rationale.y,
              ch.rationale.aggregation, ch.rationale.n_rows, code=ch.rationale.code)
     elif src == "target_rate_by_cat" and target:
         for row in ch.data:   # Wilson CI from each bar's rate and n
@@ -2031,6 +2038,12 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     agg = month_agg(df[metric])
     if monthly is None:   # a month-over-month finding always gets months
         monthly = (sub[date].max() - sub[date].min()).days >= 90
+    note = ""
+    if monthly and partial_last_month(sub[date]):   # never compare a partial month with a full one
+        cut = sub[date].dt.to_period("M").max()
+        note = (f"{cut.strftime('%b %Y')} is left out: the data ends "
+                f"{sub[date].max():%d %b %Y}, so that month is incomplete.")
+        sub = sub[sub[date].dt.to_period("M") < cut]
     period = sub[date].dt.to_period("M" if monthly else "D").astype(str)
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
@@ -2060,7 +2073,7 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         show_legend=bool(split), source_finding="time_series", split_key=split,
         value_format="percent" if rate else "number", layout_hint="full_width",
         rationale=ChartRationale(
-            rule="", reason="", x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
+            rule="", reason=note, x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
             code=f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
                  f"df.groupby({groupby})[{metric!r}].{agg}()"),
     )
@@ -2101,9 +2114,11 @@ def fence_histogram(df: pd.DataFrame, col: str, ctx: VizContext, k: float = 3.0)
 
 def oriented_scatter(df: pd.DataFrame, a: str, b: str, ctx: VizContext) -> ChartConfig | None:
     """Scatter of a relationship with the driver on x and the outcome on y."""
+    if a == b or any(c not in df.columns or not pd.api.types.is_numeric_dtype(df[c]) for c in (a, b)):
+        return None   # a relationship needs two different numeric columns
     outcome, why = pick_outcome([a, b], ctx)
     x, y = (b, a) if outcome == a else (a, b)
-    chart = _build_scatter(df, x, y) if x in df.columns and y in df.columns else None
+    chart = _build_scatter(df, x, y)
     if chart is None:
         return None
     chart.colors = []
@@ -2142,8 +2157,8 @@ def _finding_chart(kind: str, ctx: VizContext, ids: list[str], *args) -> ChartCo
         a, b = args
         chart = oriented_scatter(df, a, b, ctx)
         rule = "correlation→scatter"
-        reason = (f"A relationship between two measures is a scatter; {chart.rationale.reason}."
-                  if chart and chart.rationale else "")
+        # The outcome's why (chart.rationale.reason) is appended below.
+        reason = "A relationship between two measures is a scatter, with the driver on x;"
     else:   # anomaly
         (col,) = args
         chart = fence_histogram(df, col, ctx)
@@ -2153,6 +2168,7 @@ def _finding_chart(kind: str, ctx: VizContext, ids: list[str], *args) -> ChartCo
         return None
     r = chart.rationale
     chart.title = _finding_title(kind, chart, ctx, args) or chart.title
+    reason = f"{reason} {r.reason}".strip()   # e.g. a partial last month left out
     return _why(chart, ctx, rule, reason, r.x, r.y, r.aggregation, r.n_rows, ids, r.code, r.split)
 
 
@@ -2267,7 +2283,12 @@ def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
         for kind, queue in zip(kinds, queues):
             if queue and len(charts) < _MAX_SUMMARY:
                 args, ids = queue.pop(0)
-                chart = _finding_chart(kind, ctx, ids, *args)
+                try:
+                    chart = _finding_chart(kind, ctx, ids, *args)
+                except Exception:   # one malformed finding costs its chart, never the report
+                    logger.warning("chart for %s finding skipped", kind, exc_info=True)
+                    trace_verdict("visualization", VIZ_CARD.version, f"chart_error:{kind}")
+                    chart = None
                 if chart:
                     charts.append(chart)
     return charts

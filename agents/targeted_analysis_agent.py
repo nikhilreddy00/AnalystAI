@@ -19,7 +19,7 @@ from uuid import uuid4
 import numpy as np
 import pandas as pd
 
-from agents.utils import pandas_freq
+from agents.utils import pandas_freq, partial_last_month
 from agents.visualization_agent import (
     VizContext,
     _why,
@@ -339,6 +339,12 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
             ["Try a coarser frequency (Q or Y)", "Pick a different metric"],
         )
 
+    partial = ""
+    if freq == "M" and len(series) >= 3 and partial_last_month(s[date]):
+        # ponytail: monthly only; Q/Y exports cut mid-period have the same trap.
+        partial = (f" {series.index[-1]:%b %Y} is left out: the data ends {s[date].max():%d %b %Y}, "
+                   "so that month is incomplete.")
+        series = series.iloc[:-1]
     chart_data = [{"period": idx.strftime("%Y-%m-%d"), metric: float(v)} for idx, v in series.items()]
     first, last = series.iloc[0], series.iloc[-1]
     pct = (last - first) / first * 100 if first not in (0, None) else float("nan")
@@ -353,6 +359,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         step = (series.iloc[-1] / series.iloc[-2] - 1) * 100
         answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
                    f"{step:+.1f}% ({series.iloc[-2]:,.2f} → {series.iloc[-1]:,.2f}).")
+    answer += partial
     chart = _chart(
         ChartType.LINE, f"{agg}({metric}) over time", chart_data,
         x_key="period", y_keys=[metric], x_label="Period", y_label=f"{agg}({metric})",

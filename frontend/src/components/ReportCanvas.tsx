@@ -147,7 +147,7 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
               </KPIStrip>
             )}
             {message.targetedResponse && (
-              <TargetedResponsePanel response={message.targetedResponse} sessionId={sessionId} onFollowUp={onFollowUp} />
+              <TargetedResponsePanel response={message.targetedResponse} sessionId={sessionId} onFollowUp={onFollowUp} onDraft={onDraft} />
             )}
             {message.insight && (
               <div className="rounded-lg border border-border bg-card p-4 sm:p-5">

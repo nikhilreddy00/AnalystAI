@@ -296,3 +296,98 @@ async def test_dashboard_clears_the_old_generic_palette_on_pinned_charts():
     req = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(session_store=store)))
     charts = {c["id"]: c for c in (await get_dashboard(req, UserProfile("u")))["charts"]}
     assert charts["old"]["colors"] == [] and charts["meaning"]["colors"] == ["#1D9E75", "#A32D2D"]
+
+
+async def test_critic_sees_every_data_derived_section_delimited(monkeypatch):
+    """Closes the Phase 5 open item: the critic's prompt carries data (column and group names,
+    the junior's prose) only inside <untrusted_data>, and its system prompt says what that means."""
+    import re
+
+    from agents import quality_critic
+    from guardrails import UNTRUSTED_NOTE
+    from orchestrator.state import AnalysisFindings, SegmentResult
+
+    seen = {}
+
+    async def capture(prompt):
+        seen["prompt"] = prompt
+        raise ValueError("stop")
+
+    monkeypatch.setattr(quality_critic, "_call_and_parse", capture)
+    df = pd.DataFrame({INJECTION: [1.0, 2.0]})
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    findings = AnalysisFindings(
+        eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[], code_executed="",
+        segments=[SegmentResult(segment_column="segment", metric_column="revenue", aggregation="mean",
+                                results=[{"name": INJECTION, "value": 1.0}])])
+    session = AnalysisSession(session_id="c", data_contract=contract, analysis_findings=findings,
+                              insight_report=InsightReport(
+                                  executive_summary=INJECTION, technical_findings=[INJECTION],
+                                  recommended_actions=[], anomaly_alerts=[], proactive_questions=[],
+                                  methodology_notes=""))
+    try:
+        await quality_critic.run_quality_critic(session)
+    except Exception:
+        pass
+    outside = re.sub(r"<untrusted_data>.*?</untrusted_data>", "", seen["prompt"], flags=re.S)
+    assert INJECTION in seen["prompt"] and INJECTION not in outside
+    assert quality_critic._SYSTEM.endswith(UNTRUSTED_NOTE)
+
+
+def test_e2e_answer_ignores_the_critic_so_critic_changes_need_no_regate():
+    """Pins why the critic fix needed no paid E2E re-run: E2E scores answer_text, which never
+    includes the expert review (and the critic runs after the report is final)."""
+    from evals.scoring import answer_text
+    from orchestrator.state import ExpertReview
+    s = AnalysisSession(session_id="x", expert_review=ExpertReview(
+        review_summary="CRITIC-ONLY", strengths=[], gaps=[], next_investigations=[],
+        methodology_concerns=[]))
+    assert "CRITIC-ONLY" not in answer_text(s)
+
+
+def _mid_month_sales():
+    """Daily orders Jan 1 – Jul 19: July is a partial month."""
+    rng = np.random.default_rng(3)
+    days = pd.date_range("2025-01-01", "2025-07-19", freq="D")
+    return pd.DataFrame({"order_date": days.strftime("%Y-%m-%d"), "segment": rng.choice(list("AB"), len(days)),
+                         "revenue": rng.normal(100, 5, len(days))})
+
+
+def test_analysis_mom_skips_a_partial_last_month():
+    """The sandbox's built-in MoM compares the last two complete months (Jun vs May), not a
+    19-day July against a full June; on full months nothing changes."""
+    from agents.analysis_agent import _build_standard_code
+    from orchestrator.state import AnalysisTask
+
+    df = _mid_month_sales()
+    contract = viz_session(_case("viz-v16"), df)[0].data_contract
+    task = AnalysisTask(raw_query="q", target_metrics=["revenue"], analysis_types=["trend"])
+    code = _build_standard_code(contract, task)
+    for frame, months in [(df, ("2025-06", "2025-05")),
+                          (df[df.order_date <= "2025-06-30"], ("2025-06", "2025-05"))]:
+        result = {"trends": [], "correlations": {}, "segments": []}
+        exec(code, {"pd": pd, "np": np, "df": frame.copy(), "result": result})
+        m = frame.assign(m=pd.to_datetime(frame.order_date).dt.to_period("M").astype(str)) \
+            .groupby("m").revenue.sum()
+        want = round(float((m[months[0]] / m[months[1]] - 1) * 100), 2)
+        assert result["trends"][0]["pct_change"] == want
+
+
+def test_trend_chart_and_targeted_series_leave_out_a_partial_month():
+    df = _mid_month_sales()
+    ctx = viz.build_context(df)
+    chart = viz.month_line(df, "order_date", "revenue", ctx, monthly=True)
+    assert chart.data[-1]["period"] == "2025-06" and "Jul 2025 is left out" in chart.rationale.reason
+    from agents.targeted_analysis_agent import handle_time_series
+    r = handle_time_series(df, TargetedParams(metric_column="revenue", date_column="order_date",
+                                              frequency="M", aggregation="sum"), None, ctx=ctx)
+    assert "Jul 2025 is left out" in r.answer_text and r.chart_configs[0].data[-1]["period"] == "2025-06-30"
+
+
+@pytest.mark.parametrize("name", ["sales", "mixed_dates"])
+def test_eval_datasets_end_on_a_month_end_so_the_partial_rule_moves_no_number(name):
+    """Pins why the partial-month fix needed no paid re-run: every dated eval table is complete."""
+    from agents.utils import partial_last_month
+    assert not partial_last_month(datagen.make(name, 1)[0]["order_date"])
