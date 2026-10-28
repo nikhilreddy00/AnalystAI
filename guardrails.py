@@ -41,11 +41,11 @@ def code_column_refs(code: str) -> set[str]:
 # ── SQL ────────────────────────────────────────────────────────────────────────
 
 
-def check_sql_readonly(sql: str) -> str | None:
+def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
     """Exactly one statement, and it is a read (SELECT / UNION / CTE-select). Parsed, not
     prefix-matched, so `WITH x AS (DELETE ...)` and `SELECT 1; DROP ...` are both caught."""
     try:
-        statements = [s for s in sqlglot.parse(sql) if s is not None]
+        statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
         return f"SQL does not parse: {str(exc).splitlines()[0]}"
     if len(statements) != 1:
