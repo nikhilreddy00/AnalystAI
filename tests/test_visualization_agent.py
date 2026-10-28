@@ -1,0 +1,175 @@
+"""Visualization agent (Phase 5): fault tests (contract step 5), determinism, CI arithmetic and a
+seeded property test. Every chart that leaves the backend lints clean and carries a rationale."""
+import io
+import json
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from agents import visualization_agent as viz
+from evals import datagen
+from evals.datagen import INJECTION
+from evals.run import dataset, load_cases, viz_session
+from guardrails import chart_lint
+from orchestrator.state import (
+    AnalysisSession,
+    ChartConfig,
+    ChartType,
+    InsightReport,
+    TargetedParams,
+)
+
+
+def _clean(charts, ctx):
+    for c in charts:
+        assert c.rationale is not None, c.title
+        outcome = viz.pick_outcome([c.x_key, *c.y_keys], ctx)[0] \
+            if c.chart_type == ChartType.SCATTER else None
+        assert chart_lint(c.model_dump(mode="json"), ctx.measures, outcome) == [], c.title
+
+
+def _case(cid):
+    return next(c for c in load_cases("visualization", cid))
+
+
+async def test_two_runs_are_identical_apart_from_ids():
+    case = _case("viz-v14")
+    df = dataset(case)[0]
+    runs = []
+    for _ in range(2):
+        session, _ = viz_session(case, df)
+        runs.append([{**c.model_dump(mode="json"), "id": None}
+                     for c in await viz.run_visualization_agent(session)])
+    assert runs[0] == runs[1] and runs[0]
+
+
+async def test_no_frame_falls_back_to_a_labelled_contract_chart():
+    case = _case("viz-v16")
+    session, _ = viz_session(case, dataset(case)[0])
+    session.__dict__.pop("_df_parquet")
+    charts = await viz.run_visualization_agent(session)
+    assert charts and all(c.rationale and c.placement == "data" for c in charts)
+
+
+def test_all_null_metric_gives_no_chart_and_no_crash():
+    df = pd.DataFrame({"segment": list("ABAB"), "revenue": [None] * 4})
+    ctx = viz.build_context(df)
+    assert viz.group_bars(df, "segment", "revenue", "mean", ctx) is None
+
+
+def test_agent_pie_with_too_many_slices_is_repaired_to_bars(tmp_path):
+    df = pd.DataFrame({"cat": [f"c{i}" for i in range(7)] * 3})
+    ctx = viz.build_context(df)
+    pie = ChartConfig(id="p", chart_type=ChartType.DONUT, title="t", x_key="name", y_keys=["value"],
+                      data=[{"name": f"c{i}", "value": 3} for i in range(7)], source_finding="x")
+    viz._why(pie, ctx, "profile:row_count", "r", "cat", "count", "count", 21)
+    out = viz.finalize_charts([pie], ctx)
+    assert out[0].chart_type == ChartType.HORIZONTAL_BAR and out[0].x_label and out[0].y_label
+    _clean(out, ctx)
+
+
+def test_user_pie_is_honoured_with_a_note():
+    df, _ = datagen.make_sales(1)
+    chart = viz.build_single_chart(df, TargetedParams(chart_type=ChartType.PIE, group_by="region",
+                                                      metric_column="discount"))
+    assert chart.chart_type == ChartType.PIE
+    assert chart.rationale.aggregation == "mean"            # a rate is averaged, never summed
+    assert any("parts of a whole" in w for w in chart.lint_warnings)
+
+
+def test_fifteen_series_are_capped_at_eight():
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame({"d": pd.date_range("2025-01-01", periods=600, freq="D").astype(str),
+                       "g": rng.choice([f"g{i}" for i in range(15)], 600),
+                       "v": rng.normal(10, 1, 600)})
+    ctx = viz.build_context(df)
+    chart = viz.month_line(df, "d", "v", ctx, split="g")
+    assert len(chart.y_keys) == 8
+    chart.y_keys = [f"g{i}" for i in range(15)]                 # force it past the cap
+    viz._why(chart, ctx, "trend→line", "r", "d", "v", "sum", 600)
+    out = viz.finalize_charts([chart], ctx)
+    assert len(out[0].y_keys) == 8
+
+
+def test_outcome_first_correlation_still_puts_the_driver_on_x():
+    case = _case("viz-v06")
+    df = dataset(case)[0]
+    session, _ = viz_session(case, df)
+    ctx = viz.build_context(df, session.task_plan, session.analysis_findings)
+    chart = viz.charts_for_findings(ctx)[0]
+    assert (chart.x_key, chart.y_keys) == ("marketing_spend", ["revenue"])
+    assert chart.rationale.evidence_ids == ["corr:revenue__marketing_spend"]
+
+
+def test_agent_chart_without_rationale_is_dropped_and_traced(tmp_path):
+    df = pd.DataFrame({"a": [1.0, 2.0, 3.0]})
+    ctx = viz.build_context(df)
+    bare = ChartConfig(id="b", chart_type=ChartType.BAR, title="t", x_key="a", y_keys=["a"],
+                       data=[{"a": 1.0}], source_finding="x")
+    assert viz.finalize_charts([bare], ctx) == []
+    lines = [json.loads(x) for f in (tmp_path / "traces").glob("*.jsonl") for x in f.read_text().splitlines()]
+    assert any(r.get("guardrail") == "no_rationale" for r in lines)
+
+
+def test_injection_in_a_category_is_plotted_as_data_only():
+    df = pd.DataFrame({"segment": ["A", INJECTION] * 20, "revenue": np.arange(40.0)})
+    ctx = viz.build_context(df)
+    chart = viz.group_bars(df, "segment", "revenue", "mean", ctx)
+    assert {r["segment"] for r in chart.data} == {"A", INJECTION}
+    assert INJECTION not in chart.title and INJECTION not in (chart.rationale.code or "")
+
+
+async def test_drill_down_chart_on_a_fake_column_is_skipped_and_a_measure_bar_is_repaired(recorded_llm):
+    df, _ = datagen.make_sales(1)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    session = viz_session(_case("viz-v16"), df)[0]
+    session.insight_report = InsightReport(executive_summary="s", technical_findings=[],
+                                           recommended_actions=[], anomaly_alerts=[],
+                                           proactive_questions=[], methodology_notes="")
+    from agents.drill_down_agent import run_drill_down_agent
+
+    def reply(x, y):
+        return json.dumps({"answer_text": "a", "chart_spec": {"chart_type": "BarChart",
+                                                              "x_column": x, "y_column": y}})
+    recorded_llm.responses += [reply("nope", "revenue"), reply("units", "revenue")]
+    assert (await run_drill_down_agent(session, buf.getvalue())).chart_configs == []
+    charts = (await run_drill_down_agent(session, buf.getvalue())).chart_configs
+    assert charts and charts[0].chart_type == ChartType.HISTOGRAM   # units is a measure
+    assert charts[0].rationale and charts[0].rationale.rule == "distribution→histogram"
+
+
+def test_confidence_intervals():
+    flags = pd.Series([1] * 50 + [0] * 50)
+    minus, plus = viz._ci(flags, "mean")                   # Wilson, in % points
+    assert minus == pytest.approx(9.65, abs=0.05) and plus == pytest.approx(9.65, abs=0.05)
+    assert viz._ci(flags, "sum") is None                    # a total has no sampling error
+    m, p = viz._ci(pd.Series([1.0, 2.0, 3.0, 4.0]), "mean")
+    assert m == p == pytest.approx(2.054, abs=0.001)        # t(0.975, 3) · s / √n
+
+
+@pytest.mark.parametrize("seed", range(200))
+def test_property_every_chart_is_linted_and_explained(seed):
+    """Random frames (dates, measures, small integer measures, categories, flags): whatever the
+    profile path and a user's request produce leaves finalize clean and explained."""
+    rng = np.random.default_rng(seed)
+    n = int(rng.integers(5, 400))
+    df = pd.DataFrame({
+        "when": pd.date_range("2025-01-01", periods=n, freq=f"{int(rng.integers(1, 4))}D").astype(str),
+        "amount": rng.lognormal(3, 1, n).round(2),
+        "qty": rng.integers(1, int(rng.integers(3, 12)), n),
+        "kind": rng.choice([f"k{i}" for i in range(int(rng.integers(2, 16)))], n),
+        "flag": rng.integers(0, 2, n),
+        "rate": rng.uniform(0, 1, n),
+    })
+    if rng.random() < 0.3:
+        df.loc[rng.choice(n, n // 3), "amount"] = np.nan
+    session = AnalysisSession(session_id="p")
+    ctx = viz.build_context(df)
+    charts = viz.finalize_charts(viz.generate_dashboard_charts(df, ctx.roles, ctx=ctx), ctx)
+    _clean(charts, ctx)
+    kind = [ChartType.BAR, ChartType.PIE, ChartType.LINE, ChartType.SCATTER][seed % 4]
+    user = viz.build_single_chart(df, TargetedParams(chart_type=kind, group_by="kind",
+                                                     metric_column="amount"))
+    assert user.rationale is not None and session.session_id == "p"

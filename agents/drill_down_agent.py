@@ -14,6 +14,7 @@ import pandas as pd
 
 from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
+from agents.visualization_agent import _why, build_context, finalize_charts
 from llm.client import get_client
 from orchestrator.state import (
     AnalysisSession,
@@ -167,11 +168,25 @@ Answer in JSON as specified.
                 data=data,
                 x_key=x,
                 y_keys=[y],
-                colors=["#6366f1"],
-                show_legend=True,
+                colors=[],
+                x_label=x,
+                y_label=y,
+                show_legend=False,
                 show_grid=True,
                 source_finding="drill_down",
             ))
+            # The model suggested this chart: it gets the same lint as any agent chart (repaired
+            # or dropped), and its rationale says a model picked it.
+            frame = pd.read_parquet(io.BytesIO(df_parquet))
+            agg = "none" if chart_type == ChartType.SCATTER else (
+                "mean" if pd.api.types.is_numeric_dtype(frame[y]) and x != y else "count")
+            ctx = build_context(frame, session.task_plan, narrative=session.narrative)
+            _why(chart_configs[-1], ctx, "drill_down:model_suggested",
+                 f"Suggested by the drill-down model for this follow-up; {agg} {y} per {x}"
+                 if agg != "none" else "Suggested by the drill-down model: raw points.",
+                 x, y if agg != "count" else "count", agg, len(frame),
+                 code=f"df.groupby({x!r})[{y!r}].{agg}()" if agg not in ("none", "count") else "")
+            chart_configs = finalize_charts(chart_configs, ctx)
 
     return TargetedResponse(
         intent=QuestionIntent.DRILL_DOWN,
