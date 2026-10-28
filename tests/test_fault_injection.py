@@ -7,7 +7,6 @@ import asyncio
 import json
 import re
 from pathlib import Path
-from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import httpx
@@ -124,6 +123,17 @@ async def test_sandbox_failure_is_typed_not_empty(recorded_llm, sandbox, result)
 
 # ── Post-execution hard rules: empty, invented columns, ungrounded numbers ─────────────────
 
+def _trace_text() -> str:
+    """Every trace line minus its timestamp: "…:37.5…" in a ts made data checks flaky."""
+    lines = []
+    for f in Path(settings.trace_dir).glob("*.jsonl"):   # any day: a run can cross midnight
+        for line in f.read_text().splitlines():
+            rec = json.loads(line)
+            rec.pop("ts", None)
+            lines.append(json.dumps(rec))
+    return "\n".join(lines)
+
+
 _TEST = {"test_name": "t-test revenue by segment", "statistic": 2.5, "p_value": 0.012}
 
 
@@ -137,7 +147,7 @@ async def test_bad_findings_get_one_retry_then_raise(recorded_llm, sandbox, outp
     with pytest.raises(GuardrailViolation, match=reason):
         await analysis_agent.run_analysis_agent(_session(), recorded_llm)
     assert len(sandbox.calls) == 2                               # retried once, then loud
-    trace = (Path(settings.trace_dir) / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl").read_text()
+    trace = _trace_text()
     assert '"guardrail": ' in trace                           # the label, never the data:
     assert "profit" not in trace and "37.5" not in trace
     assert reason in recorded_llm.calls[1]["messages"][-1]["content"]   # the model was told why
@@ -153,7 +163,7 @@ async def test_ungrounded_prose_is_rewritten_not_retried(recorded_llm, sandbox):
     text = findings.statistical_tests[0].interpretation
     assert "37.5" not in text and text == "statistic=2.5, p=0.012: significant at 0.05"
     assert any("rewritten" in a for a in findings.evidence[0].assumptions)
-    trace = (Path(settings.trace_dir) / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl").read_text()
+    trace = _trace_text()
     assert '"guardrail": "grounding_rewritten"' in trace and "37.5" not in trace
 
 
