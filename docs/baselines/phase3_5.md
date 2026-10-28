@@ -1,6 +1,6 @@
 # Phase 3.5 — UI and layout (review note)
 
-Status: built on branch `phase-3.5-ui`, **waiting for the user's screenshot sign-off**.
+Status: **done** (2026-10-28). Signed off by the user on the before/after screenshots.
 No API credits spent; evals unchanged (no backend or prompt changes).
 
 ## Direction
@@ -32,13 +32,13 @@ https://claude.ai/artifact/SCvoS8yLHzQ1uPK2Ykwbma).
 
 | Criterion | Result |
 |---|---|
-| User signs off on screenshots | **pending** |
+| User signs off on screenshots | yes (2026-10-28) |
 | Light and dark both work | yes: chat, report, dashboard, landing checked in both |
 | Every page works at phone width | yes: `scrollWidth` = 390 on a 390px viewport for landing, auth, chat (both tabs), dashboard (was 454 on dashboard) |
 | Keyboard + screen-reader basics | no unnamed controls on chat or dashboard (scripted check); visible focus ring; Esc closes modal and drawers; focus moves into the modal; report tabs use `role=tab` with arrow keys; progress is `aria-live` |
 | Contrast | text tokens ≥ 5.3:1 on every surface in both themes (lowest: destructive on card, light) |
 | tsc / lint / tests | tsc clean; eslint 0 problems (was 6 on main); pytest 158 passed; ruff clean |
-| CI green | not yet: branch not pushed |
+| CI green | yes: run 40618000163 (backend, frontend incl. lint) |
 
 ## Deviations
 
@@ -56,3 +56,11 @@ https://claude.ai/artifact/SCvoS8yLHzQ1uPK2Ykwbma).
 ## Screenshots
 
 Before: `before-*.jpg`. After: `after-*.jpg` in [`phase3_5/`](phase3_5/).
+
+## Follow-up raised at sign-off
+
+The user asked how chart choice can be trusted. Today the visualization agent picks charts
+from column types only, not from the question or findings (e.g. the Segment B headline had no
+chart behind it). Proposed scope for Phase 5 visualization: chart per finding, a "why this
+chart" line linked to evidence, a chart linter, an analyst-labelled chart eval set, and user
+overrides. Waiting for the user's go-ahead to write it into ROADMAP.md.
