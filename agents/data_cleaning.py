@@ -117,9 +117,10 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
     if cleaned.dropna().str.contains(_CURRENCY_RE, regex=True).any():
         cleaned = cleaned.str.replace(_CURRENCY_RE, "", regex=True)
         transformations.append("currency symbol")
-    if cleaned.dropna().str.contains(_PCT_TAIL_RE, regex=True).any():
+    pct = cleaned.str.contains(_PCT_TAIL_RE, regex=True).fillna(False).astype(bool)
+    if pct.any():
         cleaned = cleaned.str.replace(_PCT_TAIL_RE, "", regex=True)
-        transformations.append("% suffix")
+        transformations.append("% suffix (12.5% → 0.125)")
     if cleaned.dropna().str.contains(_RATING_RE, regex=True).any():
         cleaned = cleaned.str.replace(_RATING_RE, "", regex=True)
         transformations.append("rating scale suffix")
@@ -132,6 +133,8 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
 
     cleaned = cleaned.str.strip()
     numeric = pd.to_numeric(cleaned, errors="coerce")
+    # "12.5%" is the rate 0.125: kept as 12.5 it reads as an amount and gets summed.
+    numeric = numeric.where(~pct, numeric / 100)
     if int(numeric.notna().sum()) / original_non_null >= 0.8:
         return numeric, transformations or ["parsed as numeric"]
     return None

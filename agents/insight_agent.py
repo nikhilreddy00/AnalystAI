@@ -235,7 +235,8 @@ async def run_insight_agent(
         )
 
     if audit:
-        context_parts.append(f"Data quality: {audit.summary}")
+        # The summary names columns, and a column name is data: delimit it like the rows.
+        context_parts.append(f"Data quality: {delimit_untrusted(audit.summary)}")
         # PROMPT-5: feed the structured anomaly report into the prompt so the
         # LLM builds alerts off boundary values + 3·IQR detection, not its own
         # noisy IQR pass on raw data.
@@ -256,7 +257,8 @@ async def run_insight_agent(
             if report.methodology_note:
                 anomaly_lines.append(f"  methodology: {report.methodology_note}")
             if anomaly_lines:
-                context_parts.append("Anomaly detector (use these for alerts):\n" + "\n".join(anomaly_lines))
+                context_parts.append("Anomaly detector (use these for alerts):\n"
+                                     + delimit_untrusted("\n".join(anomaly_lines)))
 
     # Phase 2: feed the briefing payload into the prompt so the LLM can refer
     # to specific rows / dtypes / missing columns in its narrative.

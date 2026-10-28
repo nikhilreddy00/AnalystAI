@@ -547,8 +547,12 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     builtin = set(raw.get("builtin") or []) if isinstance(raw.get("builtin"), list) else set()
     non_null = raw.get("non_null") if isinstance(raw.get("non_null"), dict) else {}
     n_rows = int(raw.get("n_rows") or 0)
-    imputed = {d.column: d.before_null_pct for d in (audit.decisions if audit else [])
-               if d.operation == "impute"}
+    decisions = audit.decisions if audit else []
+    # Labels grouped as "Unknown" are filled values: they lower confidence like imputation did.
+    imputed = {d.column: d.before_null_pct for d in decisions
+               if d.operation in ("impute", "fill_unknown")}
+    missing = {d.column: d.before_null_pct for d in decisions
+               if d.operation == "keep" and d.before_null_pct > 0}
     model_notes = [str(a) for a in raw.get("assumptions", []) if isinstance(a, str)][:5] \
         if isinstance(raw.get("assumptions"), list) else []
     audit_notes = [f"{audit.duplicates_removed} duplicate rows were removed first"] \
@@ -561,6 +565,8 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         imp = max((imputed.get(c, 0.0) for c in cols), default=0.0)
         level, why = confidence(n, p, r, imp)
         notes = [f"{c}: {imputed[c]:.0f}% nulls were imputed" for c in cols if c in imputed]
+        notes += [f"{c}: {missing[c]:.0f}% missing, left out of this result" for c in cols
+                  if c in missing]
         # The model's notes are global; keep the ones about this finding's columns.
         relevant = [m for m in model_notes if not cols or any(c in m for c in cols)]
         return Evidence(id=id_, kind=kind, claim=claim,

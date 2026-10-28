@@ -13,7 +13,7 @@ interface Props {
 }
 
 const HIGH_NULL_OPTIONS = [
-  { label: "Continue with imputation", sub: "Fill missing values using statistical methods (recommended)", value: "Continue with imputation" },
+  { label: "Continue", sub: "Missing values stay missing; results use the known rows (recommended)", value: "Continue" },
   { label: "Drop high-null columns", sub: "Remove columns with too many missing values", value: "Drop those columns" },
   { label: "Cancel analysis", sub: "Stop and return without analyzing", value: "Cancel" },
 ];
@@ -88,7 +88,7 @@ export default function ApprovalModal({ event, onSubmit, onDismiss, onLoadPrevio
                 key={opt.value}
                 type="button"
                 autoFocus={i === 0}
-                onClick={() => onSubmit(opt.value)}
+                onClick={() => (opt.value === "Cancel" ? onDismiss() : onSubmit(opt.value))}
                 className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:border-primary/50 hover:bg-accent"
               >
                 <p className="text-sm font-medium text-foreground">{opt.label}</p>

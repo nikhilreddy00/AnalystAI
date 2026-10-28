@@ -187,12 +187,15 @@ class DataContract(BaseModel):
 
 class CleaningDecision(BaseModel):
     column: str
-    operation: str                         # impute | drop | coerce | normalize | flag
-    strategy: str                          # median | mean | mode | forward_fill | drop_rows
+    operation: str                         # skip | sentinel_null | type_coerce | normalize |
+                                           # drop_duplicates | drop_rows | fill_unknown | keep |
+                                           # drop_column (agents/cleaning_agent.py)
+    strategy: str
     reason: str                            # human-readable justification
     rows_affected: int
     before_null_pct: float
     after_null_pct: float
+    rows_removed: int = 0                  # rows this decision deleted (audit reconciles on it)
 
 
 class AnomalyFlag(BaseModel):
