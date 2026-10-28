@@ -7,16 +7,24 @@ agent (agents.utils.conversation_context), and `llm` as a parameter.
 """
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
-from guardrails import UNTRUSTED_NOTE, delimit_untrusted
-from llm.client import LLMClient
+from guardrails import (
+    PLAN_LIST_FIELDS,
+    PLAN_SCALAR_FIELDS,
+    UNTRUSTED_NOTE,
+    check_columns,
+    delimit_untrusted,
+    plan_columns,
+)
+from llm.client import LLMClient, trace_verdict
 from orchestrator.state import (
     AgentCard,
     AnalysisSession,
@@ -105,6 +113,64 @@ def build_context(session: AnalysisSession, message: str) -> IntakeContext:
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
+def _parse(text: str) -> dict:
+    try:
+        data = json.loads(strip_markdown_fences(text.strip()))
+    except json.JSONDecodeError as exc:
+        raise LLMOutputError("intake", f"malformed JSON: {exc}",
+                             "I couldn't parse my own plan for that question. Try rephrasing.") from exc
+    if not isinstance(data, dict):
+        raise LLMOutputError("intake", f"reply is a {type(data).__name__}, not an object",
+                             "I couldn't parse my own plan for that question. Try rephrasing.")
+    return data
+
+
+def _review(data: dict, known: set[str] | None, is_overview: bool) -> tuple[str, str] | None:
+    """(rule, reason) for the first hard rule the plan breaks, else None."""
+    if not is_overview and data.get("question_intent") not in {i.value for i in QuestionIntent}:
+        return "bad_intent", (f"question_intent {data.get('question_intent')!r} is not one of "
+                              f"{[i.value for i in QuestionIntent]}")
+    if known is not None and (reason := check_columns(plan_columns(data), known)):
+        return "invented_columns", reason
+    return None
+
+
+def _drop_unknown(data: dict, known: set[str]) -> list[str]:
+    """Remove every column the dataset doesn't have, from every field; return what was dropped."""
+    params = data.get("targeted_params") or {}
+    dropped = sorted(plan_columns(data) - known)
+    for f in PLAN_LIST_FIELDS:
+        holder = data if f in data else params
+        if holder.get(f):
+            holder[f] = [c for c in holder[f] if c in known]
+    for f in PLAN_SCALAR_FIELDS:
+        if params.get(f) and params[f] not in known:
+            params[f] = None
+    return dropped
+
+
+def _missing_column_question(dropped: list[str], known: set[str]) -> str:
+    """A templated question (no model text but the dropped names, cut short) offering the
+    closest real columns."""
+    names = ", ".join(repr(d[:40]) for d in dropped[:3])
+    close = sorted({m for d in dropped for m in difflib.get_close_matches(d, known, n=3, cutoff=0.5)})
+    options = close or sorted(known)[:8]
+    return (f"I couldn't find {names} in this dataset. Which of these columns should I use: "
+            f"{', '.join(options)}? Or tell me if the data you need isn't here.")
+
+
+def _targeted_params(raw: dict, data: dict) -> TargetedParams:
+    """Validated parameters; a field with an invalid value (e.g. an unknown chart type) is
+    dropped and traced rather than failing the whole plan."""
+    try:
+        return TargetedParams(**raw)
+    except ValidationError as exc:
+        bad = {e["loc"][0] for e in exc.errors() if e["loc"]}
+        trace_verdict("intake", PROMPT_VERSION, "bad_params")
+        logger.warning("intake: dropped invalid targeted_params %s", sorted(bad))
+        return TargetedParams(**{k: v for k, v in raw.items() if k not in bad})
+
+
 async def run_intake_agent(
     session: AnalysisSession,
     user_message: str,
@@ -112,49 +178,70 @@ async def run_intake_agent(
     is_overview_request: bool = False,
 ) -> AnalysisTask:
     """Parse natural language into a structured AnalysisTask, for first turns and follow-ups.
-    `is_overview_request` (the first run on a dataset) forces a comprehensive overview plan."""
+    `is_overview_request` (the first run on a dataset) forces a comprehensive overview plan.
+
+    Hard rules: valid JSON, a known intent, and only columns the dataset has (in every field).
+    A break gets one guided retry. If columns are still invented they are dropped and the user
+    is asked which column they meant (never on a first run), so no plan ships an invented column.
+    """
     system_prompt = _SYSTEM + _OVERVIEW_OVERRIDE if is_overview_request else _SYSTEM
-    response = await llm.complete(
-        agent="intake", prompt_version=PROMPT_VERSION,
-        max_tokens=1024,
-        system=system_prompt,
-        messages=[{"role": "user", "content": build_context(session, user_message).render()}],
-    )
+    known = {c.name for c in session.data_contract.columns} if session.data_contract else None
+    messages: list[dict] = [{"role": "user",
+                             "content": build_context(session, user_message).render()}]
+    problem = None
+    for attempt in range(2):
+        response = await llm.complete(
+            agent="intake", prompt_version=PROMPT_VERSION,
+            max_tokens=1024,
+            system=system_prompt,
+            messages=messages,
+        )
+        try:
+            data = _parse(response.text)
+        except LLMOutputError:
+            if attempt:
+                raise
+            trace_verdict("intake", PROMPT_VERSION, "format")
+            messages = messages + [{"role": "assistant", "content": response.text or "(empty)"},
+                                   {"role": "user", "content": "Your reply was not the JSON object "
+                                                               "asked for. Reply with the JSON only."}]
+            continue
+        problem = _review(data, known, is_overview_request)
+        if problem is None:
+            break
+        trace_verdict("intake", PROMPT_VERSION, problem[0])
+        if attempt:
+            break
+        columns = delimit_untrusted(", ".join(sorted(known or [])))
+        messages = messages + [
+            {"role": "assistant", "content": response.text},
+            {"role": "user", "content": f"Your plan was rejected: {problem[1]}\n"
+                                        f"The dataset's columns are:\n{columns}\n"
+                                        "Use only these names. If the question needs data that is "
+                                        "not here, set clarification_needed and say what is "
+                                        "missing. Reply with the JSON only."}]
 
-    raw = response.text.strip()
-    raw = strip_markdown_fences(raw)
-
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise LLMOutputError("intake", f"malformed JSON: {exc}",
-                             "I couldn't parse my own plan for that question. Try rephrasing.") from exc
-
-    # Hard rule: the plan never names a column the dataset doesn't have.
-    if session.data_contract:
-        known = {c.name for c in session.data_contract.columns}
-        for key in ("target_metrics", "segments"):
-            cols = data.get(key) or []
-            invented = [c for c in cols if c not in known]
-            if invented:
-                logger.warning("intake: dropped invented %s %s", key, invented)
-                data[key] = [c for c in cols if c in known]
+    if problem and problem[0] == "bad_intent":
+        raise LLMOutputError("intake", problem[1],
+                             "I couldn't work out what kind of answer you want. Try rephrasing.")
+    if problem:   # invented columns survived the retry: repair, never ship them
+        dropped = _drop_unknown(data, known)
+        logger.warning("intake: dropped invented columns %s", dropped)
+        if not is_overview_request:
+            data["clarification_needed"] = True
+            data["clarification_question"] = _missing_column_question(dropped, known)
 
     valid_types = {t.value for t in AnalysisType}
     data["analysis_types"] = [t for t in data.get("analysis_types", ["eda"]) if t in valid_types]
     if not data["analysis_types"]:
         data["analysis_types"] = [AnalysisType.EDA.value]
+    data.setdefault("raw_query", user_message)
+    data.setdefault("target_metrics", [])
+    data["targeted_params"] = _targeted_params(data.get("targeted_params") or {}, data)
 
-    valid_intents = {i.value for i in QuestionIntent}
-    intent_raw = data.get("question_intent")
-    if is_overview_request or intent_raw not in valid_intents:
-        data["question_intent"] = QuestionIntent.OVERVIEW.value
-
-    try:
-        data["targeted_params"] = TargetedParams(**(data.get("targeted_params") or {}))
-    except Exception:
-        data["targeted_params"] = TargetedParams()
-
+    if is_overview_request:   # the first run is always a full overview, never a question
+        data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
+                    clarification_question=None, resume_from=None)
     return AnalysisTask(**data)
 
 

@@ -408,7 +408,8 @@ def _intake_field(task: dict, field: str) -> Any:
 
 
 def intake_columns(task: dict) -> set[str]:
-    """Every column name a plan refers to (lists and scalar parameter fields)."""
+    """Every column name a plan refers to (lists and scalar parameter fields). Independent of
+    guardrails.plan_columns on purpose: a bug in the agent's guard must not hide in the score."""
     cols = set()
     for f in INTAKE_LIST_FIELDS:
         cols |= set(_intake_field(task, f) or [])

@@ -22,6 +22,20 @@ def check_columns(names: Iterable[str], known: Iterable[str]) -> str | None:
     return f"unknown column(s): {missing}" if missing else None
 
 
+# Every field of an intake plan (AnalysisTask as a dict) that names a column.
+PLAN_LIST_FIELDS = ("target_metrics", "segments", "target_columns")
+PLAN_SCALAR_FIELDS = ("metric_column", "date_column", "segment_column", "group_by", "variant_column")
+
+
+def plan_columns(plan: dict) -> set[str]:
+    """Column names an intake plan refers to, in the top-level lists and in targeted_params."""
+    params = plan.get("targeted_params") or {}
+    cols: set[str] = set()
+    for f in PLAN_LIST_FIELDS:
+        cols |= {str(c) for c in (plan.get(f) if f in plan else params.get(f)) or []}
+    return cols | {str(params[f]) for f in PLAN_SCALAR_FIELDS if params.get(f)}
+
+
 def code_column_refs(code: str) -> set[str]:
     """Columns read as `df[...]` / `df[[...]]` string literals, minus columns the code itself
     creates (`df['new'] = ...`)."""
