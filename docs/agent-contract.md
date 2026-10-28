@@ -102,6 +102,21 @@ Each agent gets one PR, in this order:
    - read the failure reason before you change anything.
 7. **Run the full suite** (k=3, `--compare` against the previous report) and E2E, then open the PR with the eval diff.
 
+**Eval cost playbook (every PR; Phase 5 Intake ran on it for $4.39, Phase 4 cost $15.44 without it):**
+- Announce the $ estimate before every paid run. If a run costs >30% over its estimate, stop and say so.
+- Spend in this order: offline pytest ($0) → `--only <case> --k 1` → category k=1 (`--exclude holdout`) →
+  **one** full k=3 per suite per PR, at the end.
+- A scorer or checker bug never buys a re-run: fix it, then `python -m evals.run rescore <report.json>` ($0).
+- Prove a suite is unaffected instead of re-running it, then pin the proof in a test. Phase 5 used a
+  byte-identical prompt for the 50 SQL cases and identical column roles for the E2E datasets.
+- Measure a risk before fixing it. The topic-switch cases passed 6/6 on the existing code, so they
+  stay as a guard and nothing was changed.
+- **E2E gate:** k=1, then k=3 only on a failing case. A failure needs a diagnosis from its stored
+  output; a pass on retry is not one. Re-run the gate on the final commit only if the PR changed
+  the CSV/E2E path after the last gate.
+- A cheaper model ships only if it matches every target on the same cases. Prompt caching is on by
+  default: keep system prompts constant.
+
 **Checklist before the PR:**
 - `grep -rn "get_client()"` in the agent finds nothing;
 - every new field is in `frontend/src/types/index.ts`;

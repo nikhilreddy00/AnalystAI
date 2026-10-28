@@ -58,9 +58,10 @@ def pandas_freq(freq: str) -> str:
 
 def conversation_context(session, n_turns: int = 6) -> str:
     """The conversation memory Intake and the SQL agent share: the last `n_turns` messages
-    (assistant turns cut to 400 chars) and the last query run against a database, delimited
-    because assistant turns quote data. "" when there is nothing yet."""
-    lines = [f"{m.role.value.upper()}: {m.content if m.role.value == 'user' else m.content[:400]}"
+    (user turns cut to 1,000 chars, assistant turns to 400: a pasted wall of text must not ride
+    along on every later call) and the last query run against a database, delimited because
+    assistant turns quote data. "" when there is nothing yet."""
+    lines = [f"{m.role.value.upper()}: {m.content[:1000 if m.role.value == 'user' else 400]}"
              for m in session.conversation_history[-n_turns:]]
     contract = session.data_contract
     if contract and contract.source_query:

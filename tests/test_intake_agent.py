@@ -105,3 +105,12 @@ async def test_a_malformed_plan_field_is_a_typed_error(recorded_llm):
         "analysis_types": ["eda"], "question_intent": "overview", "timeframe": {"from": 1}}))
     with pytest.raises(LLMOutputError):
         await run_intake_agent(_session(), "q", recorded_llm)
+
+
+def test_conversation_memory_caps_long_turns():
+    from agents.utils import conversation_context
+    session = _session()
+    session.add_message(MessageRole.USER, "u" * 5000)
+    session.add_message(MessageRole.ASSISTANT, "a" * 5000)
+    text = conversation_context(session)
+    assert text.count("u") <= 1000 + 10 and text.count("a") <= 400 + 10

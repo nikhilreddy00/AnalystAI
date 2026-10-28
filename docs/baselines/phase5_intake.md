@@ -31,7 +31,7 @@ Model `claude-sonnet-4-6`, temperature 0, prompt `intake/v2`, 2026-10-28, branch
 | **E2E** pass rate (must stay ≥ 100%) | 100% | | **100%** (20/20, 0 broke) | **100%** (20/20) |
 | E2E cost per question / p95 | | $0.0554 / 155s (last gate) | $0.0353 / 116s | $0.0349 / 112s |
 
-**The one regression is `followup-sql-02`** ("how did those change month to month?" over a result
+**The one regression was `followup-sql-02`. It is fixed; see the addendum.** ("how did those change month to month?" over a result
 with a `month` column). `connectors/base.py` detects dates by column name only, so `month` is marked
 categorical. Intake is then told "Date columns: []" and plans a by-month comparison instead of a time
 series (3 of 3 runs). The baseline had guessed a time series even though nothing in its input marked a
@@ -122,9 +122,6 @@ model probed the data with tools. This was flagged at the time.
   `sql` runs, since intake runs also carry a `category`.
 
 ## Known limits (carried forward)
-- **Date detection is name-only** (`followup-sql-02`). For the Ingestion PR.
-- **The SQL agent now sees the conversation for every question.** A brand-new question after a
-  filtered thread could inherit a stale filter. No eval case covers a topic switch yet.
 - **`n` is not set to 1 for singular superlatives** ("which grew fastest?"). The ranked list still
   puts the answer first.
 - **English only, ≤ 60 columns, the last 6 turns.** The datasets are the sales/experiment tables plus
@@ -145,3 +142,24 @@ model probed the data with tools. This was flagged at the time.
   - `AnalysisTask`, the SSE protocol and `frontend/src/types` are unchanged, so persisted sessions
     still load;
   - traces carry rule labels only (test).
+
+## Addendum: open items closed before sign-off (2026-10-28, at the user's request)
+- **Date detection by value** (`connectors/base.py::_looks_like_dates`). A text or object column whose
+  first 20 non-null values are all dates is now a date column. That covers date objects (SQL `DATE`
+  via psycopg) and ISO, US and "Jan 31, 2025" strings.
+  - Before/after snapshot: the column roles of every E2E and analysis dataset are identical, and a
+    test pins them. So those suites needed no re-run.
+  - Re-measured the 4 intake cases it changes, at k=3: `followup-sql-02` now passes **3/3** (was
+    0/3). `clear-sql-02`, `ambiguous-sql-02` and `ambiguous-csv-07` pass 3/3, and the ambiguous
+    ones still ask (`intake-20261028T1515{38,43,49,55}Z`).
+  - The Ingestion PR's type-inference eval decides whether it needs more than a shape check.
+- **Topic switch for the SQL agent.** Two new cases (`retail-switch-01`, `bank-switch-01`) ask a
+  standalone question after a filtered thread; a stale filter is the trap, proven on Postgres.
+  - The existing code passes **6/6 runs** (`sql-20261028T151522Z`), so the risk did not
+    materialize, and the SQL prompt is unchanged.
+  - The cases stay as a regression guard.
+- **Audit, second pass, fixed:** user turns in the shared memory are now capped at 1,000 chars,
+  so a pasted wall of text no longer rides along on every later call (test).
+  - The eval histories are all shorter, so no re-run was needed.
+  - E2E reports are about 0.7 MB at k=1 because runs store the session for `rescore`; accepted.
+- **PR spend after the addendum: ≈ $4.39.**
