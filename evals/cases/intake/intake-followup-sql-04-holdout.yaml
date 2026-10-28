@@ -1,0 +1,39 @@
+id: intake-followup-sql-04-holdout
+category: followup
+source:
+  frame:
+    columns:
+    - customer_id
+    - revenue
+    rows:
+    - - 17
+      - 5400.2
+    - - 3
+      - 5120.0
+    - - 88
+      - 4980.5
+    - - 41
+      - 4700.1
+overview_done: true
+history:
+- role: user
+  content: Top customers by revenue
+- role: assistant
+  content: Customer 17 leads, followed by 3 and 88.
+prior_task:
+  question_intent: top_n
+  targeted_params:
+    metric_column: revenue
+    group_by: customer_id
+    n: 10
+    order: desc
+question: show me just the top 3
+expect:
+  ask: false
+  intent: top_n
+  columns:
+    metric_column: revenue
+    group_by: customer_id
+  params:
+    n: 3
+rationale: Narrow the previous ranking.

@@ -1,0 +1,216 @@
+{
+ "meta": {
+  "suite": "sql",
+  "report": "sql-20261028T151522Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7deeeab",
+  "started_at": "20261028T151522Z",
+  "only": "switch",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 6,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.0158,
+  "latency_p50_s": 3.83,
+  "latency_p95_s": 4.04,
+  "execution_accuracy": 1.0,
+  "metric_adherence": null,
+  "attacks_blocked": null,
+  "fanout_cases_majority_pass": "0/0",
+  "pass_rate_by_category": {
+   "topic_switch": 1.0
+  },
+  "runs_using_tools": 6
+ },
+ "runs": {
+  "bank-switch-01": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "topic_switch",
+    "sql": "SELECT currency, COUNT(*) AS accounts FROM bank.accounts GROUP BY currency ORDER BY currency",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.67,
+    "cost_usd": 0.01348,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "topic_switch",
+    "sql": "SELECT currency, COUNT(*) AS accounts FROM bank.accounts GROUP BY currency ORDER BY currency",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.3,
+    "cost_usd": 0.01348,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "topic_switch",
+    "sql": "SELECT currency, COUNT(*) AS accounts FROM bank.accounts GROUP BY currency ORDER BY currency",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.28,
+    "cost_usd": 0.01348,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "retail-switch-01": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "topic_switch",
+    "sql": "SELECT\n    channel,\n    AVG(shipping_fee) AS avg_shipping_fee\nFROM shop.orders\nGROUP BY channel\nORDER BY channel",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 4.06,
+    "cost_usd": 0.01802,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "topic_switch",
+    "sql": "SELECT\n    channel,\n    AVG(shipping_fee) AS avg_shipping_fee\nFROM shop.orders\nGROUP BY channel\nORDER BY channel",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.99,
+    "cost_usd": 0.01802,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "topic_switch",
+    "sql": "SELECT\n    channel,\n    AVG(shipping_fee) AS avg_shipping_fee\nFROM shop.orders\nGROUP BY channel\nORDER BY channel",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 3.99,
+    "cost_usd": 0.01802,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

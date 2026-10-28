@@ -1,0 +1,25 @@
+id: intake-followup-csv-03-holdout
+category: followup
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: Compare revenue across segments
+- role: assistant
+  content: Segment A has the highest average revenue.
+prior_task:
+  question_intent: segment_compare
+  targeted_params:
+    metric_column: revenue
+    segment_column: segment
+    aggregation: mean
+question: and by region?
+expect:
+  ask: false
+  intent: segment_compare
+  columns:
+    metric_column: revenue
+    segment_column: region
+rationale: Carry the metric; swap the dimension.

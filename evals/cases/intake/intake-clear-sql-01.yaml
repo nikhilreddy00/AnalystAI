@@ -1,0 +1,24 @@
+id: intake-clear-sql-01
+category: clear
+source:
+  frame:
+    columns:
+    - channel
+    - orders
+    rows:
+    - - web
+      - 2103
+    - - mobile
+      - 1500
+    - - store
+      - 897
+  source_sql: SELECT channel, COUNT(*) AS orders FROM shop.orders GROUP BY channel
+overview_done: true
+question: Rank the sales channels by number of orders.
+expect:
+  ask: false
+  intent: top_n
+  columns:
+    metric_column: orders
+    group_by: channel
+rationale: Ranking over the query result's columns.

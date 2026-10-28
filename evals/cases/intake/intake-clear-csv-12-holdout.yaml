@@ -1,0 +1,16 @@
+id: intake-clear-csv-12-holdout
+category: clear
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Plot a bar chart of total units by region.
+expect:
+  ask: false
+  intent: chart_request
+  columns:
+    metric_column: units
+    group_by: region
+  params:
+    chart_type: BarChart
+rationale: Named chart type, metric and grouping.

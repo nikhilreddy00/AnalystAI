@@ -1,0 +1,26 @@
+id: intake-clear-sql-06
+category: clear
+source:
+  frame:
+    columns:
+    - category
+    - revenue
+    rows:
+    - - electronics
+      - 181230.5
+    - - home
+      - 60210.2
+    - - apparel
+      - 40110.9
+    - - toys
+      - 22050.1
+    - - grocery
+      - 9800.4
+  source_sql: SELECT p.category, SUM(oi.quantity * oi.unit_price) AS revenue FROM shop.order_items oi
+    JOIN shop.products p ON p.product_id = oi.product_id GROUP BY p.category
+overview_done: true
+question: Export this as a PowerPoint.
+expect:
+  ask: false
+  intent: export_request
+rationale: Export wording.

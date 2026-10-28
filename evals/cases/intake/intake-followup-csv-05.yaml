@@ -1,0 +1,20 @@
+id: intake-followup-csv-05
+category: followup
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: Give me an overview of this dataset.
+- role: assistant
+  content: Revenue is stable overall, but segment B revenue fell 12% from June to October while its marketing
+    spend rose 18%. North is the largest region.
+prior_task:
+  question_intent: overview
+  targeted_params: {}
+question: Explain this to my boss in plain English.
+expect:
+  ask: false
+  intent: drill_down
+rationale: Reframe a delivered analysis.

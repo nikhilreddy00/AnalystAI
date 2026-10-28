@@ -1,0 +1,29 @@
+id: intake-followup-csv-01
+category: followup
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: Top 10 regions by revenue
+- role: assistant
+  content: North leads with the highest total revenue, then South.
+prior_task:
+  question_intent: top_n
+  targeted_params:
+    metric_column: revenue
+    group_by: region
+    n: 10
+    order: desc
+question: what about the bottom 5?
+expect:
+  ask: false
+  intent: top_n
+  columns:
+    metric_column: revenue
+    group_by: region
+  params:
+    n: 5
+    order: asc
+rationale: Carry metric and grouping; flip order, new N.

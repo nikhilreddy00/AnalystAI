@@ -1,0 +1,34 @@
+id: intake-followup-sql-05
+category: followup
+source:
+  frame:
+    columns:
+    - region
+    - revenue
+    rows:
+    - - North
+      - 120400.0
+    - - South
+      - 98200.5
+    - - East
+      - 87050.2
+    - - West
+      - 41020.9
+  source_sql: SELECT c.region, SUM(oi.quantity * oi.unit_price) AS revenue FROM shop.orders o JOIN shop.customers
+    c ON c.customer_id = o.customer_id JOIN shop.order_items oi ON oi.order_id = o.order_id GROUP BY c.region
+overview_done: true
+history:
+- role: user
+  content: Revenue by region
+- role: assistant
+  content: North leads; West has about a third of North's revenue.
+prior_task:
+  question_intent: segment_compare
+  targeted_params:
+    metric_column: revenue
+    segment_column: region
+question: why is the West so low?
+expect:
+  ask: false
+  intent: drill_down
+rationale: Why-question about a delivered result.

@@ -1,0 +1,10 @@
+id: intake-ambiguous-csv-06
+category: ambiguous
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Show me the numbers.
+expect:
+  ask: true
+rationale: No metric named; every column is 'the numbers'.

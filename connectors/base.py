@@ -6,6 +6,7 @@ Adding a new source (Notion, Airtable, etc.) = add one subclass, zero agent chan
 
 from __future__ import annotations
 
+import datetime
 import re
 from abc import ABC, abstractmethod
 
@@ -13,6 +14,24 @@ import pandas as pd
 
 from guardrails import MASK, is_pii_column, mask_pii, mask_row
 from orchestrator.state import ConnectorConfig, DataContract, ColumnInfo, ConnectorType
+
+
+# Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00), US (1/31/2025), "Jan 31, 2025".
+_DATE_TEXT_RE = re.compile(
+    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+)?|\d{1,2}/\d{1,2}/\d{2,4}|[A-Za-z]{3,9} \d{1,2}, \d{4})$")
+
+
+def _looks_like_dates(s: pd.Series) -> bool:
+    """A text/object column whose values are all dates, whatever its name: a SQL `DATE` column
+    arrives as Python date objects, a query's `month` as '2025-01-01'. Checks the first 20
+    non-null values. ponytail: shape-only check; the Ingestion PR's type-inference eval decides
+    whether it needs more (e.g. parse-ratio over the whole column)."""
+    if pd.api.types.is_numeric_dtype(s) or pd.api.types.is_bool_dtype(s):
+        return False
+    vals = s.dropna().head(20).tolist()
+    return bool(vals) and all(
+        isinstance(v, (datetime.date, pd.Timestamp))
+        or (isinstance(v, str) and _DATE_TEXT_RE.match(v.strip())) for v in vals)
 
 
 class DataConnector(ABC):
@@ -48,7 +67,7 @@ class DataConnector(ABC):
             # BUG-34: Use endswith('_at') for 'at' to avoid false positives like 'category'
             is_date = "datetime" in dtype_str or any(
                 kw in col.lower() for kw in ("date", "time", "created", "updated")
-            ) or col.lower().endswith("_at") or col.lower() == "at"
+            ) or col.lower().endswith("_at") or col.lower() == "at" or _looks_like_dates(df[col])
             # BUG-33: Use word-boundary pattern to avoid matching 'video', 'Florida', etc.
             is_id = bool(re.search(r'(?:^|_)(?:id|uuid|key|code)(?:$|_)', col.lower()))
             is_metric = dtype_str in ("int64", "float64") and not is_id

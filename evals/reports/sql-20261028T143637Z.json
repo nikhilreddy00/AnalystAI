@@ -1,0 +1,266 @@
+{
+ "meta": {
+  "suite": "sql",
+  "report": "sql-20261028T143637Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5f676f6",
+  "started_at": "20261028T143637Z",
+  "only": "followup",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 6,
+  "runs": 6,
+  "pass_rate": 0.3333,
+  "case_majority_pass_rate": 0.3333,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 3,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.037,
+  "latency_p50_s": 16.57,
+  "latency_p95_s": 24.16,
+  "execution_accuracy": 0.3333,
+  "metric_adherence": 1.0,
+  "attacks_blocked": null,
+  "fanout_cases_majority_pass": "0/0",
+  "pass_rate_by_category": {
+   "followup": 0.3333
+  },
+  "runs_using_tools": 6
+ },
+ "runs": {
+  "bank-followup-01": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": false,
+      "detail": "4 rows, expected 12"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "4 rows, expected 12"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "WITH last_balance AS (\n    SELECT\n        db.account_id,\n        db.balance\n    FROM bank.daily_balances db\n    INNER JOIN (\n        SELECT account_id, MAX(balance_date) AS last_date\n        FROM bank.daily_balances\n        GROUP BY account_id\n    ) lb ON db.account_id = lb.account_id AND db.balance_date = lb.last_date\n),\nspend_fees AS (\n    SELECT\n        a.branch,\n        -SUM(t.amount) FILTER (WHERE t.amount < 0 AND t.category NOT IN ('transfer', 'fees')) AS total_spend,\n        -SUM(t.amount) FILTER (WHERE t.category = 'fees')                                    AS fee_income\n    FROM bank.transactions t\n    JOIN bank.accounts a ON t.account_id = a.account_id\n    GROUP BY a.branch\n),\nbalances AS (\n    SELECT\n        a.branch,\n        SUM(daily_balances.balance) AS ending_balance\n    FROM last_balance daily_balances\n    JOIN bank.accounts a ON daily_balances.account_id = a.account_id\n    GROUP BY a.branch\n)\nSELECT\n    sf.branch,\n    sf.total_spend,\n    sf.fee_income,\n    b.ending_balance\nFROM spend_fees sf\nFULL JOIN balances b ON sf.branch = b.branch\nORDER BY sf.branch",
+    "metrics_used": [
+     "total_spend",
+     "fee_income",
+     "ending_balance"
+    ],
+    "tool_calls": [
+     "get_metric_definition",
+     "get_metric_definition",
+     "get_metric_definition"
+    ],
+    "latency_s": 21.03,
+    "cost_usd": 0.03922,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "metric"
+    ],
+    "passed": false
+   }
+  ],
+  "bank-followup-02": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": false,
+      "detail": "1 rows, expected 4"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "1 rows, expected 4"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "WITH spend_fees AS (\n    SELECT\n        -SUM(t.amount) FILTER (WHERE t.amount < 0 AND t.category NOT IN ('transfer', 'fees')) AS total_spend,\n        -SUM(t.amount) FILTER (WHERE t.category = 'fees')                                     AS fee_income\n    FROM bank.transactions t\n    WHERE t.posted_date >= DATE '2022-01-01'\n      AND t.posted_date <  DATE '2023-01-01'\n),\nlast_day AS (\n    SELECT MAX(balance_date) AS last_date\n    FROM bank.daily_balances\n    WHERE balance_date >= DATE '2022-01-01'\n      AND balance_date <  DATE '2023-01-01'\n),\nending AS (\n    SELECT SUM(db.balance) AS ending_balance\n    FROM bank.daily_balances db\n    JOIN last_day ld ON db.balance_date = ld.last_date\n)\nSELECT\n    sf.total_spend,\n    sf.fee_income,\n    e.ending_balance\nFROM spend_fees sf\nCROSS JOIN ending e",
+    "metrics_used": [
+     "total_spend",
+     "fee_income",
+     "ending_balance"
+    ],
+    "tool_calls": [
+     "get_metric_definition",
+     "get_metric_definition",
+     "get_metric_definition",
+     "run_sql"
+    ],
+    "latency_s": 14.51,
+    "cost_usd": 0.03284,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "retail-followup-01": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": false,
+      "detail": "14 rows, expected 3"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "14 rows, expected 3"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT\n    c.region,\n    c.segment,\n    COUNT(DISTINCT o.order_id)                                AS refunded_orders,\n    COUNT(DISTINCT o.customer_id)                             AS refunded_customers,\n    SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) AS refunded_revenue\nFROM shop.orders o\nJOIN shop.customers   c  ON c.customer_id = o.customer_id\nJOIN shop.order_items oi ON oi.order_id   = o.order_id\nWHERE o.status = 'refunded'\nGROUP BY c.region, c.segment\nORDER BY c.region, c.segment",
+    "metrics_used": [],
+    "tool_calls": [
+     "get_metric_definition",
+     "get_metric_definition",
+     "run_sql"
+    ],
+    "latency_s": 25.21,
+    "cost_usd": 0.0439,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "retail-followup-02": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": false,
+      "detail": "no predicted column matches golden column(s) [2]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "no predicted column matches golden column(s) [2]"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT\n    c.segment,\n    c.region,\n    SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct))\n        FILTER (WHERE o.status = 'completed')                                                          AS net_revenue,\n    SUM(oi.quantity * (oi.unit_price * (1 - oi.discount_pct) - p.unit_cost))\n        FILTER (WHERE o.status = 'completed')                                                          AS gross_margin,\n    SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed') / COUNT(DISTINCT o.order_id) FILTER (WHERE o.status = 'completed')  AS average_order_value,\n    COUNT(DISTINCT o.customer_id)\n        FILTER (WHERE o.status = 'completed' AND NOT c.is_internal)                                   AS active_customers\nFROM shop.order_items  oi\nJOIN shop.orders       o  ON o.order_id    = oi.order_id\nJOIN shop.customers    c  ON c.customer_id = o.customer_id\nJOIN shop.products     p  ON p.product_id  = oi.product_id\nGROUP BY\n    c.segment,\n    c.region\nORDER BY\n    c.segment,\n    c.region",
+    "metrics_used": [
+     "net_revenue",
+     "gross_margin",
+     "average_order_value",
+     "active_customers"
+    ],
+    "tool_calls": [
+     "get_metric_definition",
+     "get_metric_definition",
+     "get_metric_definition",
+     "get_metric_definition"
+    ],
+    "latency_s": 14.88,
+    "cost_usd": 0.03946,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "metric"
+    ],
+    "passed": false
+   }
+  ],
+  "retail-followup-03": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     },
+     {
+      "kind": "metric_adherence",
+      "ok": true,
+      "detail": "uses the definition"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT\n    SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct))\n        FILTER (WHERE o.status = 'completed')                                                        AS net_revenue,\n    SUM(oi.quantity * (oi.unit_price * (1 - oi.discount_pct) - p.unit_cost))\n        FILTER (WHERE o.status = 'completed')                                                        AS gross_margin,\n    SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)) FILTER (WHERE o.status = 'completed')\n    / COUNT(DISTINCT o.order_id) FILTER (WHERE o.status = 'completed')                               AS average_order_value,\n    COUNT(DISTINCT o.customer_id)\n        FILTER (WHERE o.status = 'completed' AND NOT c.is_internal)                                  AS active_customers\nFROM shop.order_items  oi\nJOIN shop.orders       o  ON o.order_id    = oi.order_id\nJOIN shop.products     p  ON p.product_id  = oi.product_id\nJOIN shop.customers    c  ON c.customer_id = o.customer_id\nWHERE o.order_date >= DATE '2024-01-01'\n  AND o.order_date <  DATE '2025-01-01'",
+    "metrics_used": [
+     "net_revenue",
+     "gross_margin",
+     "average_order_value",
+     "active_customers"
+    ],
+    "tool_calls": [
+     "get_metric_definition",
+     "get_metric_definition",
+     "get_metric_definition",
+     "get_metric_definition"
+    ],
+    "latency_s": 18.26,
+    "cost_usd": 0.04833,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "metric"
+    ],
+    "passed": true
+   }
+  ],
+  "retail-followup-04": [
+   {
+    "checks": [
+     {
+      "kind": "execution",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_write",
+      "ok": true,
+      "detail": "match"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "sql": "SELECT category, AVG(unit_cost) AS avg_unit_cost\nFROM shop.products\nGROUP BY category\nORDER BY avg_unit_cost DESC\nLIMIT 1",
+    "metrics_used": [],
+    "tool_calls": [
+     "run_sql"
+    ],
+    "latency_s": 6.96,
+    "cost_usd": 0.01848,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

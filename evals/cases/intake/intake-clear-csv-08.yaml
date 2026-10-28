@@ -1,0 +1,16 @@
+id: intake-clear-csv-08
+category: clear
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Compare average discount across segments.
+expect:
+  ask: false
+  intent: segment_compare
+  columns:
+    metric_column: discount
+    segment_column: segment
+  params:
+    aggregation: mean
+rationale: Comparison of a metric across a named categorical.

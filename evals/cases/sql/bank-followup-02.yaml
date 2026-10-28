@@ -1,0 +1,17 @@
+id: bank-followup-02
+domain: banking
+category: followup
+history:
+- role: user
+  content: How many accounts were opened at each branch in 2023?
+- role: assistant
+  content: Downtown opened the most accounts in 2023.
+previous_sql: |
+  SELECT branch, COUNT(*) AS accounts FROM bank.accounts
+  WHERE opened_date >= DATE '2023-01-01' AND opened_date < DATE '2024-01-01'
+  GROUP BY branch
+question: What about 2022?
+golden_sql: |
+  SELECT branch, COUNT(*) AS accounts FROM bank.accounts
+  WHERE opened_date >= DATE '2022-01-01' AND opened_date < DATE '2023-01-01'
+  GROUP BY branch

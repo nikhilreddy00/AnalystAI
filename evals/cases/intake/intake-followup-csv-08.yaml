@@ -1,0 +1,28 @@
+id: intake-followup-csv-08
+category: followup
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: Top 10 regions by revenue
+- role: assistant
+  content: North leads with the highest total revenue, then South.
+prior_task:
+  question_intent: top_n
+  targeted_params:
+    metric_column: revenue
+    group_by: region
+    n: 10
+    order: desc
+question: show that as a bar chart
+expect:
+  ask: false
+  intent: chart_request
+  columns:
+    metric_column: revenue
+    group_by: region
+  params:
+    chart_type: BarChart
+rationale: '''that'' is the previous ranking.'

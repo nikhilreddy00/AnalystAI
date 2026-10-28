@@ -1,0 +1,10 @@
+id: intake-ambiguous-csv-02
+category: ambiguous
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Check the data.
+expect:
+  ask: true
+rationale: No signal about what to measure.

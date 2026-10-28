@@ -1,0 +1,10 @@
+id: intake-oos-csv-02
+category: out_of_scope
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: What's our customer churn rate by plan?
+expect:
+  ask: true
+rationale: No churn or plan column.

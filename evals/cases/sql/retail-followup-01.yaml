@@ -1,0 +1,13 @@
+id: retail-followup-01
+domain: retail
+category: followup
+history:
+- role: user
+  content: How many orders were placed through each sales channel? Count every order whatever its status.
+- role: assistant
+  content: Web had the most orders, then mobile, then marketplace and store.
+previous_sql: |
+  SELECT channel, COUNT(*) AS orders FROM shop.orders GROUP BY channel
+question: Same breakdown, but only the refunded ones.
+golden_sql: |
+  SELECT channel, COUNT(*) AS orders FROM shop.orders WHERE status = 'refunded' GROUP BY channel

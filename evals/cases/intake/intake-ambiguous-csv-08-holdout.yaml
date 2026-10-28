@@ -1,0 +1,23 @@
+id: intake-ambiguous-csv-08-holdout
+category: ambiguous
+source:
+  frame:
+    columns:
+    - product
+    - price_usd
+    - price_eur
+    rows:
+    - - widget
+      - 10.0
+      - 9.2
+    - - gadget
+      - 25.0
+      - 23.0
+    - - gizmo
+      - 7.5
+      - 6.9
+overview_done: true
+question: What's the average price by product?
+expect:
+  ask: true
+rationale: '''price'' matches two currency columns.'

@@ -1,0 +1,13 @@
+id: retail-followup-04
+domain: retail
+category: followup
+history:
+- role: user
+  content: How many products are in each category?
+- role: assistant
+  content: Each of the five categories has eight products.
+previous_sql: |
+  SELECT category, COUNT(*) AS products FROM shop.products GROUP BY category
+question: Which of those has the highest average unit cost? Just the one category.
+golden_sql: |
+  SELECT category FROM shop.products GROUP BY category ORDER BY AVG(unit_cost) DESC LIMIT 1

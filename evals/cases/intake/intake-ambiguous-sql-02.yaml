@@ -1,0 +1,20 @@
+id: intake-ambiguous-sql-02
+category: ambiguous
+source:
+  frame:
+    columns:
+    - month
+    - signups
+    - active_users
+    rows:
+    - - '2025-01-01'
+      - 120
+      - 3400
+    - - '2025-02-01'
+      - 150
+      - 3550
+overview_done: true
+question: How's growth?
+expect:
+  ask: true
+rationale: '''growth'' fits signups and active_users.'

@@ -1,0 +1,10 @@
+id: intake-oos-csv-04-holdout
+category: out_of_scope
+source:
+  dataset: simpson
+  seed: 1
+overview_done: true
+question: What's the average order revenue?
+expect:
+  ask: true
+rationale: The experiment table has no revenue.

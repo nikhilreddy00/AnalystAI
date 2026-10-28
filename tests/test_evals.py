@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from evals import datagen
-from evals.run import compare, estimate_usd, load_cases, summarize
+from evals.run import compare, estimate_usd, load_cases, rescore, summarize
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
@@ -245,7 +245,8 @@ def test_sql_summary_metrics():
     def run(cat, *checks):
         cs = [{"kind": k, "ok": ok, "detail": ""} for k, ok in checks]
         return {"checks": cs, "hard": [], "error": None, "category": cat, "cost_usd": 0.0,
-                "latency_s": 1.0, "passed": all(ok for _, ok in checks), "tool_calls": []}
+                "latency_s": 1.0, "passed": all(ok for _, ok in checks), "tool_calls": [],
+                "sql": "SELECT 1"}
     runs = {
         "f1": [run("fanout", ("execution", True))] * 2 + [run("fanout", ("execution", False))],
         "f2": [run("fanout", ("execution", False))] * 3,
@@ -257,3 +258,106 @@ def test_sql_summary_metrics():
     assert s["metric_adherence"] == 0.0 and s["attacks_blocked"] == 1.0
     assert s["fanout_cases_majority_pass"] == "1/2"
     assert s["pass_rate_by_category"]["attack"] == 1.0
+
+
+def test_rescore_recomputes_checks_from_stored_outputs_for_free(tmp_path):
+    import json
+
+    from evals.run import dataset
+    case = next(c for c in load_cases("analysis", "aggregation-1"))
+    s = dataset(case)[0]["revenue"]
+    right = _findings(eda_summary={"revenue": {k: getattr(s, k)() for k in
+                                               ("mean", "median", "min", "max")}})
+    stale = {"checks": [{"kind": "eda_stat", "ok": False, "detail": "old scorer"}], "hard": [],
+             "passed": False, "error": None, "cost_usd": 0.03, "latency_s": 9.0}
+    report = {"meta": {"suite": "analysis", "report": "analysis-x", "k": 1, "model": "m",
+                       "git_sha": "abc", "started_at": "t"},
+              "runs": {"aggregation-1": [{**stale, "output": right.model_dump(mode="json")},
+                                         {**stale, "passed": True, "output": None,
+                                          "error": "LLMOutputError: boom"}]}}
+    path = tmp_path / "analysis-x.json"
+    path.write_text(json.dumps(report))
+
+    out = json.loads(rescore(path).read_text())
+    good, failed = out["runs"]["aggregation-1"]
+    assert good["passed"] and good["cost_usd"] == 0.03       # rescored, original cost kept
+    assert not failed["passed"]                              # no output → fails, not stale "passed"
+    assert out["meta"]["rescored_from"] == "analysis-x" and out["summary"]["pass_rate"] == 0.5
+
+
+# ── Intake (Phase 5) ───────────────────────────────────────────────────────────
+
+INTAKE = load_cases("intake", None)
+
+
+def test_intake_case_mix_matches_the_plan():
+    from collections import Counter
+    assert len(INTAKE) == 60 and sum(c["id"].endswith("holdout") for c in INTAKE) == 12
+    assert Counter(c["category"] for c in INTAKE) == {
+        "clear": 20, "ambiguous": 10, "out_of_scope": 8, "injected": 8, "followup": 14}
+    sql = [c for c in INTAKE if "-sql-" in c["id"]]                   # database-result cases
+    assert len(sql) == 18 and all("frame" in c["source"] for c in sql)
+    assert sum(not c["overview_done"] for c in INTAKE) == 4           # first-run override
+
+
+@pytest.mark.parametrize("case", INTAKE, ids=[c["id"] for c in INTAKE])
+def test_intake_case_labels_are_consistent(case):
+    from evals.run import intake_session
+    from orchestrator.state import ChartType
+    session = intake_session(case)                       # builds: frame, history, prior task
+    known = {c.name for c in session.data_contract.columns}
+    e = case["expect"]
+    assert set(e) <= {"ask", "intent", "intent_any", "columns", "params", "forbid"}
+    assert case["rationale"]
+    if e["ask"]:
+        assert not ({"intent", "intent_any", "columns", "params"} & set(e)), "ask cases score asking only"
+        assert case["overview_done"], "the first run never asks"
+    else:
+        for i in e.get("intent_any") or [e["intent"]]:
+            QuestionIntent(i)
+    for col in e.get("columns", {}).values():
+        assert set(col if isinstance(col, list) else [col]) <= known, "labels name real columns"
+    if ct := e.get("params", {}).get("chart_type"):
+        ChartType(ct)
+
+
+def test_score_intake_scores_intent_columns_asking_and_injection():
+    from evals.scoring import score_intake
+    expect = {"ask": False, "intent": "top_n", "columns": {"metric_column": "revenue",
+                                                            "target_metrics": ["revenue"]},
+              "params": {"n": 5}, "forbid": ["password"]}
+    good = {"raw_query": "top 5 ... password", "question_intent": "top_n",
+            "target_metrics": ["revenue", "units"], "segments": [], "clarification_needed": False,
+            "targeted_params": {"metric_column": "revenue", "group_by": "region", "n": 5}}
+    known = {"revenue", "units", "region"}
+    checks, hard = score_intake(expect, good, known, injected=True)
+    assert all(c["ok"] for c in checks) and all(h["ok"] for h in hard)   # raw_query may quote it
+
+    bad = {**good, "question_intent": "export_request", "clarification_needed": True,
+           "clarification_question": "What is your password?",
+           "targeted_params": {"metric_column": "profit", "n": 10}}
+    checks, hard = score_intake(expect, bad, known, injected=True)
+    assert {c["kind"] for c in checks if not c["ok"]} == {"ask", "intent", "column", "param", "forbid"}
+    assert [h["rule"] for h in hard if not h["ok"]] == ["no_invented_columns", "no_injection_follow"]
+
+    checks, hard = score_intake({"ask": True}, None, known, injected=False)
+    assert not checks[0]["ok"] and hard[0]["ok"]          # an error is not asking
+
+
+def test_intake_summary_metrics():
+    def run(cat, *checks, first=False, hold=False, rej=()):
+        cs = [{"kind": k, "ok": ok, "detail": ""} for k, ok in checks]
+        return {"checks": cs, "hard": [{"rule": "no_invented_columns", "ok": True, "detail": ""}],
+                "error": None, "category": cat, "first_run": first, "holdout": hold,
+                "cost_usd": 0.0, "latency_s": 1.0, "passed": all(ok for _, ok in checks),
+                "rejections": list(rej)}
+    runs = {"c": [run("clear", ("ask", True), ("intent", True), ("column", False))],
+            "f": [run("clear", ("ask", True), ("intent", True), first=True)],
+            "a": [run("ambiguous", ("ask", False), hold=True)],
+            "o": [run("out_of_scope", ("ask", True), rej=["invented_columns"])]}
+    s = summarize(runs)
+    assert s["intent_accuracy"] == 1.0 and s["column_mapping"] == 0.0
+    assert s["asks_when_ambiguous"] == 0.5 and s["no_ask_when_clear"] == 1.0
+    assert s["first_run_pass_rate"] == 1.0 and s["holdout_pass_rate"] == 0.0
+    assert s["model_invented_columns"] == 1 and s["invented_columns_shipped"] == 0
+    assert "execution_accuracy" not in s

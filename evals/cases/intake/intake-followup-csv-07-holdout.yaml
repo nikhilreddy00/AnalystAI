@@ -1,0 +1,26 @@
+id: intake-followup-csv-07-holdout
+category: followup
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: Is marketing spend correlated with revenue?
+- role: assistant
+  content: Yes, a moderate positive correlation.
+prior_task:
+  question_intent: correlation
+  targeted_params:
+    target_columns:
+    - marketing_spend
+    - revenue
+question: Is discount related to revenue too?
+expect:
+  ask: false
+  intent: correlation
+  columns:
+    target_columns:
+    - discount
+    - revenue
+rationale: New correlation pair after a correlation answer.

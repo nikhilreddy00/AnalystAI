@@ -1,0 +1,10 @@
+id: intake-ambiguous-csv-03
+category: ambiguous
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Any insights?
+expect:
+  ask: true
+rationale: Zero signal after an overview already ran.

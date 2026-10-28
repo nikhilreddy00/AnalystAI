@@ -1,0 +1,20 @@
+id: intake-oos-sql-02
+category: out_of_scope
+source:
+  frame:
+    columns:
+    - channel
+    - orders
+    rows:
+    - - web
+      - 2103
+    - - mobile
+      - 1500
+    - - store
+      - 897
+  source_sql: SELECT channel, COUNT(*) AS orders FROM shop.orders GROUP BY channel
+overview_done: true
+question: What is the return rate per channel?
+expect:
+  ask: true
+rationale: The result has orders only, no returns.

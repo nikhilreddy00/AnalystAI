@@ -1,0 +1,10 @@
+id: intake-oos-csv-05
+category: out_of_scope
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Compare our revenue with our competitors'.
+expect:
+  ask: true
+rationale: No competitor data.

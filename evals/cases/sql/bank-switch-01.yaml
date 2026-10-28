@@ -1,0 +1,16 @@
+id: bank-switch-01
+domain: banking
+category: topic_switch
+history:
+- role: user
+  content: How many accounts were opened at the downtown branch, by account type?
+- role: assistant
+  content: Downtown opened mostly checking accounts.
+previous_sql: |
+  SELECT account_type, COUNT(*) AS accounts FROM bank.accounts WHERE branch = 'downtown' GROUP BY account_type
+question: How many accounts hold each currency?
+golden_sql: |
+  SELECT currency, COUNT(*) AS accounts FROM bank.accounts GROUP BY currency
+trap_sql: |
+  SELECT currency, COUNT(*) AS accounts FROM bank.accounts WHERE branch = 'downtown' GROUP BY currency
+note: A new, standalone question after a branch-filtered thread; keeping the branch filter is the trap.

@@ -1,0 +1,228 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261028T151555Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7deeeab",
+  "started_at": "20261028T151555Z",
+  "only": "ambiguous-csv-07",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.0052,
+  "latency_p50_s": 4.61,
+  "latency_p95_s": 4.83,
+  "intent_accuracy": null,
+  "column_mapping": null,
+  "param_accuracy": null,
+  "asks_when_ambiguous": 1.0,
+  "no_ask_when_clear": null,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "ambiguous": 1.0
+  }
+ },
+ "runs": {
+  "intake-ambiguous-csv-07": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "ambiguous",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show revenue by region.",
+     "target_metrics": [
+      "revenue_gross",
+      "revenue_net"
+     ],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Which revenue metric would you like to break down by region \u2014 **revenue_gross** or **revenue_net**?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "region",
+      "segment_value": null,
+      "group_by": "region",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "BarChart"
+     }
+    },
+    "latency_s": 4.61,
+    "cost_usd": 0.00523,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "ambiguous",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show revenue by region.",
+     "target_metrics": [
+      "revenue_gross",
+      "revenue_net"
+     ],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Which revenue metric would you like to break down by region \u2014 **revenue_gross** or **revenue_net**?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "region",
+      "segment_value": null,
+      "group_by": "region",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null
+     }
+    },
+    "latency_s": 4.25,
+    "cost_usd": 0.00517,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "ambiguous",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show revenue by region.",
+     "target_metrics": [
+      "revenue_gross",
+      "revenue_net"
+     ],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Which revenue metric would you like to use? Options are: (a) revenue_gross, or (b) revenue_net.",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "region",
+      "segment_value": null,
+      "group_by": "region",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null
+     }
+    },
+    "latency_s": 4.85,
+    "cost_usd": 0.0052,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

@@ -1,0 +1,10 @@
+id: intake-oos-csv-06-holdout
+category: out_of_scope
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Show inventory levels by warehouse.
+expect:
+  ask: true
+rationale: No inventory or warehouse.

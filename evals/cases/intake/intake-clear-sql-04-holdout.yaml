@@ -1,0 +1,29 @@
+id: intake-clear-sql-04-holdout
+category: clear
+source:
+  frame:
+    columns:
+    - order_id
+    - order_value
+    rows:
+    - - 1
+      - 120.5
+    - - 2
+      - 33.0
+    - - 3
+      - 410.2
+    - - 4
+      - 75.9
+    - - 5
+      - 58.1
+  source_sql: SELECT o.order_id, SUM(oi.quantity * oi.unit_price) AS order_value FROM shop.orders o JOIN
+    shop.order_items oi ON oi.order_id = o.order_id GROUP BY o.order_id
+overview_done: true
+question: What does the distribution of order value look like?
+expect:
+  ask: false
+  intent: distribution
+  columns:
+    target_columns:
+    - order_value
+rationale: Distribution of the result's one metric.

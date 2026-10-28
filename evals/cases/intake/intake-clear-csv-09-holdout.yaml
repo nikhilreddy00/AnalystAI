@@ -1,0 +1,15 @@
+id: intake-clear-csv-09-holdout
+category: clear
+source:
+  dataset: sales
+  seed: 1
+overview_done: true
+question: Is the revenue difference between the North and South regions statistically significant?
+expect:
+  ask: false
+  intent: hypothesis_test
+  columns:
+    target_columns:
+    - revenue
+    - region
+rationale: Explicit significance test between two groups.

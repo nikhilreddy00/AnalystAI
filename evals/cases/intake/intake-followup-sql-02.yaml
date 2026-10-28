@@ -1,0 +1,37 @@
+id: intake-followup-sql-02
+category: followup
+source:
+  frame:
+    columns:
+    - month
+    - channel
+    - orders
+    rows:
+    - - '2025-01-01'
+      - web
+      - 180
+    - - '2025-01-01'
+      - mobile
+      - 120
+    - - '2025-02-01'
+      - web
+      - 175
+    - - '2025-02-01'
+      - mobile
+      - 131
+overview_done: true
+history:
+- role: user
+  content: How many orders came through each channel?
+- role: assistant
+  content: Web had the most orders, then mobile.
+question: how did those change month to month?
+expect:
+  ask: false
+  intent: time_series
+  columns:
+    metric_column: orders
+    date_column: month
+  params:
+    frequency: M
+rationale: '''those'' = orders per channel; now over time.'
