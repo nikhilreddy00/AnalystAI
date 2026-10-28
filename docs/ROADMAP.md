@@ -258,6 +258,23 @@ plan), a green CI run, and **your explicit sign-off** before the next phase star
   - the manual UI checklist passes;
   - "the agent contract" guide is written from this experience.
 
+### Phase 3.5: UI and layout (added 2026-10-28 at the user's request)
+- **Why:** the user finds the current UI and layout unappealing, and no other phase covers it.
+  It is the first thing an open-source user sees (Phase 6 goal).
+- **Work, in this order:**
+  1. Audit every screen (landing, auth, chat, dashboard) with Playwright screenshots, using the
+     mocked-auth method in memory.
+  2. Agree on one design direction with the user before writing code.
+  3. Rebuild layout and navigation, the chat flow, the insight/evidence panels and the charts.
+     Use the installed frontend-design, shadcn and dataviz skills.
+- **Done when:**
+  - the user signs off on the screenshots;
+  - light and dark themes both work;
+  - every page works at phone width;
+  - keyboard and screen-reader basics pass;
+  - tsc and lint are clean, and CI is green.
+- **Costs no API credits:** no evals change.
+
 ### Phase 4: SQL path and semantic layer
 - **Work:**
   - YAML semantic layer and its loader.
