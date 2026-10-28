@@ -212,6 +212,10 @@ done              → {type: "done"}  // always last
 - **LLM calls**: through `llm/client.py` — never a new `AsyncAnthropic`. Contract agents (analysis so far) take `llm: LLMClient` as a parameter; the rest still call `get_client()` until Phase 5. Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl` (metadata, tool names and guardrail rule labels only)
 - **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
+- **Eval budget (real money, the user's prepaid credits)**: iterate with `--only <case> --k 1`; one full k=3
+  run per suite per phase, at the end; E2E at k=1 except at the phase gate. `--max-usd` (default $2)
+  refuses over-budget runs — raise it deliberately, say the estimate to the user first. Phases 0–3 cost
+  ~$59 (2026-10-27), mostly repeated full k=3 rounds.
 - **Evals**: `uv run python -m evals.run {analysis|e2e} --k 3 [--compare <prev.json>]` — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
 
 ---

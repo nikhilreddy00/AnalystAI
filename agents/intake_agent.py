@@ -48,6 +48,7 @@ Return ONLY a JSON object with these exact fields:
     "metric_column": null,
     "date_column": null,
     "segment_column": null,
+    "segment_value": null,
     "group_by": null,
     "variant_column": null,
     "n": null,
