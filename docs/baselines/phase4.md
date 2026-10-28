@@ -93,3 +93,12 @@ and the questions were written to be unambiguous (see deviations). Real warehous
 - A user-supplied `sqlite:///path` connection string can read any SQLite file on the server (true
   before Phase 4 for table loads) — for the Phase 6 security pass.
 - Domains: retail and banking only. Phase 5.5 covers the rest.
+
+## Post-phase audit (2026-10-27)
+- **Fixed:** every `SQLConnector._engine()` call built a pooled engine, so each question left idle
+  connections open on the user's database (measured 4 after 5 queries). Engines now use `NullPool`;
+  a PG test counts `pg_stat_activity` and fails on the old code.
+- **Open, for Phase 5 Intake:** ingestion runs before intake, so a SQL follow-up ("which of those grew
+  fastest?") is queried from that sentence alone, without the conversation. Needs the intake/memory
+  context work, not a patch here.
+- **Open:** MySQL's read-only mode is untested (no driver installed); the card says not evaluated.

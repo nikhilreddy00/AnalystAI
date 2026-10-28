@@ -235,7 +235,8 @@ done              → {type: "done"}  // always last
   ~$59 (2026-10-27), mostly repeated full k=3 rounds.
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
-  PG tests skip without `TEST_PG_URL`; CI always sets it. Cases: `evals/cases/sql/` (golden SQL never goes
+  PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
+  `pg_ctl -D <dir> -o "-p 54329 -c unix_socket_directories='' -c listen_addresses=localhost" start`, `createdb -h localhost -p 54329 -U postgres analystai_eval`. Cases: `evals/cases/sql/` (golden SQL never goes
   in a layer's `verified_queries` or a prompt — a test checks)
 - **Evals**: `uv run python -m evals.run {analysis|e2e|sql} --k 3 [--compare <prev.json>]` — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
 

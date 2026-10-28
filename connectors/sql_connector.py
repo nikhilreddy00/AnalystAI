@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.pool import NullPool
 
 from agents.errors import GuardrailViolation
 from connectors.base import DataConnector
@@ -82,7 +83,9 @@ class SQLConnector(DataConnector):
         url = conn_str.replace("+asyncpg", "+psycopg").replace("+aiosqlite", "")
         if url.startswith(("postgresql://", "postgres://")):
             url = "postgresql+psycopg://" + url.split("://", 1)[1]
-        return create_engine(url)
+        # NullPool: a connector lives for one request and builds an engine per call, so a pool
+        # would leave idle connections open on the user's database (measured: 4 after 5 queries).
+        return create_engine(url, poolclass=NullPool)
 
     def schema_context(self, engine) -> str:
         """Introspected tables and columns, for when no semantic layer is configured."""

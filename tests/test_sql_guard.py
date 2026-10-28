@@ -205,3 +205,20 @@ def test_metric_filter_may_add_conditions_but_not_drop_them():
            "JOIN shop.orders o ON o.order_id = oi.order_id")
     assert g.sql_uses_metric(sql, aov, retail)
     assert not g.sql_uses_metric(sql.replace("o.status = 'completed' AND ", "", 1), aov, retail)
+
+
+@pg
+async def test_queries_leave_no_idle_connections_on_the_users_database(engine):
+    from connectors.sql_connector import SQLConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    conn = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=PG_URL))
+
+    def idle():
+        with engine.connect() as c:
+            return c.execute(text("SELECT count(*) FROM pg_stat_activity WHERE "
+                                  "datname = current_database() AND state = 'idle' "
+                                  "AND pid <> pg_backend_pid()")).scalar()
+    before = idle()
+    for _ in range(5):
+        await conn.query("SELECT 1")
+    assert idle() <= before
