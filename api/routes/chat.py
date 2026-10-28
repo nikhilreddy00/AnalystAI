@@ -28,7 +28,8 @@ from api.rate_limit import ip_limit, limiter
 from pydantic import BaseModel, Field
 
 from orchestrator.graph import AgentState, build_graph
-from orchestrator.state import AnalysisSession, ConnectorConfig
+from connectors.csv_connector import check_upload_owner
+from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
 
 router = APIRouter()
 
@@ -45,6 +46,14 @@ class ChatRequest(BaseModel):
     file_hash: str | None = Field(default=None, max_length=128)
     dataset_name: str | None = Field(default=None, max_length=256)
     approval_context: str | None = Field(default=None, max_length=64)
+
+
+def _owned_config(raw: dict, uid: str) -> ConnectorConfig:
+    """A CSV config may only point at the caller's own upload (audit B2)."""
+    config = ConnectorConfig(**raw)
+    if config.type == ConnectorType.CSV and (reason := check_upload_owner(config.file_path, uid)):
+        raise HTTPException(status_code=403, detail=reason)
+    return config
 
 
 @router.post("")
@@ -89,12 +98,12 @@ async def chat(
             session.dataset_name = body.dataset_name
 
         if body.connector_config:
-            session.connector_config = ConnectorConfig(**body.connector_config)
+            session.connector_config = _owned_config(body.connector_config, current_user.uid)
     elif body.connector_config:
         # Existing session + incoming connector_config: if it points at a different
         # dataset, update the config AND reset Phase-3 overview_done so the next
         # run produces a fresh end-to-end briefing for the new data.
-        incoming = ConnectorConfig(**body.connector_config)
+        incoming = _owned_config(body.connector_config, current_user.uid)
         if session.connector_config != incoming:
             session.connector_config = incoming
             session.overview_done = False

@@ -48,6 +48,7 @@ Return ONLY a JSON object with these exact fields:
     "metric_column": null,
     "date_column": null,
     "segment_column": null,
+    "segment_value": null,
     "group_by": null,
     "variant_column": null,
     "n": null,
@@ -132,8 +133,10 @@ targeted_params extraction (fill ONLY what the chosen intent needs, leave others
 - correlation      → target_columns=[<2 or more numeric cols>] (empty = full numeric matrix)
 - distribution     → target_columns=[<single col>]
 - top_n            → metric_column, group_by, n (default 10 if unspecified), order ("desc" unless asked "bottom"), aggregation (default "sum")
-- time_series      → metric_column, date_column, frequency ("D"|"W"|"M"|"Q"|"Y", default "M")
-- segment_compare  → metric_column, segment_column, aggregation (default "mean")
+- time_series      → metric_column, date_column, frequency ("D"|"W"|"M"|"Q"|"Y", default "M");
+                     segment_column + segment_value when the user names one group ("segment B")
+- segment_compare  → metric_column, segment_column, aggregation (default "mean");
+                     segment_value = the group the user names, if any (e.g. "B" for "segment B")
 - hypothesis_test  → target_columns=[<cols involved>], test_type ("ttest"|"chi2"|"anova")
 - ab_significance  → variant_column, metric_column
 - outlier_scan     → target_columns=[<cols to scan>] (empty = all numeric)

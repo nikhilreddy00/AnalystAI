@@ -6,6 +6,7 @@ Handles encoding detection, large files (chunked read), and both .csv/.xlsx/.xls
 from __future__ import annotations
 
 import io
+import re
 from pathlib import Path
 
 import chardet
@@ -16,6 +17,23 @@ from connectors.base import DataConnector
 # Path traversal guard: only files inside <repo>/uploads/ may be loaded.
 # Resolved once at import time so symlink games can't bypass the check at request time.
 _UPLOADS_DIR = (Path(__file__).resolve().parent.parent / "uploads").resolve()
+
+
+def user_upload_dir(uid: str) -> Path:
+    """Each user's uploads live in uploads/<uid>/ (audit B2: the folder used to be shared)."""
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", str(uid)) or "_"
+    return _UPLOADS_DIR / safe
+
+
+def check_upload_owner(raw_path: str | None, uid: str) -> str | None:
+    """None if `raw_path` is inside the caller's upload folder, else the reason it isn't."""
+    if not raw_path:
+        return "no file_path"
+    try:
+        Path(raw_path).resolve().relative_to(user_upload_dir(uid).resolve())
+    except ValueError:
+        return "file is not one of your uploads"
+    return None
 
 
 def _validate_upload_path(raw_path: str) -> Path:

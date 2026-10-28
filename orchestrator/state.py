@@ -127,6 +127,7 @@ class TargetedParams(BaseModel):
     metric_column: str | None = None        # TOP_N, TIME_SERIES, SEGMENT_COMPARE, AB
     date_column: str | None = None          # TIME_SERIES
     segment_column: str | None = None       # SEGMENT_COMPARE
+    segment_value: str | None = None        # SEGMENT_COMPARE / TIME_SERIES: the group the user named ("B")
     group_by: str | None = None             # TOP_N grouping dimension
     variant_column: str | None = None       # AB_SIGNIFICANCE (e.g., "variant" / "group")
     n: int | None = None                    # TOP_N

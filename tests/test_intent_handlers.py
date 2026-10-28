@@ -131,3 +131,30 @@ def test_chart_request_with_valid_params_returns_one_chart():
     resp = handle_chart_request(s, df)
     assert len(resp.chart_configs) == 1
     assert resp.chart_configs[0].chart_type == ChartType.BAR
+
+
+def test_targeted_answers_name_the_group_the_user_asked_about():
+    """E2E regression (e2e-06..08, 12..14): "segment B" was answered with the top and bottom
+    segments, because TargetedParams had nowhere to put "B"."""
+    from agents.targeted_analysis_agent import handle_segment_compare, handle_time_series
+    from connectors.csv_connector import CSVConnector
+    from evals import datagen
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    df, truth = datagen.make_sales(1)
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+
+    seg = handle_segment_compare(df, TargetedParams(metric_column="revenue", segment_column="segment",
+                                                    segment_value="b"), contract)
+    assert f"{truth['mean_revenue_by_segment']['B']:,.2f}" in seg.answer_text
+
+    ts = handle_time_series(df, TargetedParams(metric_column="revenue", date_column="order_date",
+                                               segment_column="segment", segment_value="B"), contract)
+    assert f"{truth['segB_mom_pct']:+.1f}%" in ts.answer_text      # -12.0%
+
+
+def test_long_time_series_chart_builds_on_pandas_3():
+    """'Q'/'M' resample aliases raise on pandas 3; the 2-year+ chart used to vanish."""
+    from agents.visualization_agent import _build_time_series
+    df = pd.DataFrame({"d": pd.date_range("2022-01-01", periods=1000, freq="D"), "v": range(1000)})
+    chart = _build_time_series(df, "d", "v")
+    assert chart is not None and len(chart.data) >= 10

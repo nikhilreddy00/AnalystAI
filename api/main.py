@@ -45,9 +45,13 @@ async def lifespan(app: FastAPI):
         await session_store.init()
         app.state.session_store = session_store
     except Exception as exc:
+        # Audit B4: in production an in-memory store loses every session on restart, silently.
+        if settings.app_env == "production":
+            raise RuntimeError(f"PostgreSQL unavailable in production: {exc}") from exc
         import warnings
         from memory.session_store import InMemorySessionStore
-        warnings.warn(f"PostgreSQL unavailable ({exc}). Using in-memory session store.")
+        warnings.warn(f"PostgreSQL unavailable ({exc}). Using in-memory session store "
+                      "(development only — sessions are lost on restart).")
         app.state.session_store = InMemorySessionStore()
 
     # Vector store — gracefully degrade if Qdrant/Ollama is unavailable
