@@ -134,6 +134,12 @@ class SQLConnector(DataConnector):
                     conn.execute(text("SELECT 1"))
 
             await asyncio.to_thread(_probe)
+            from semantic_layer import check_against_db, configured_layer
+            layer = configured_layer()
+            stale = await asyncio.to_thread(check_against_db, layer, engine) if layer else []
+            if stale:   # connected, but questions would be answered against a stale layer
+                return True, ("Connection successful, but the semantic layer does not match this "
+                              "database: " + "; ".join(stale[:5]))
             return True, "Connection successful"
         except Exception as e:
             return False, str(e)

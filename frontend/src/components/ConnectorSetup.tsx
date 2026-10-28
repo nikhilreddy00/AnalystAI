@@ -187,7 +187,7 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
       if (data.success) onConnectorReady({
         connector_config: body as unknown as Record<string, unknown>,
         file_hash: "",
-        dataset_name: body.table_name || body.spreadsheet_id || body.url || "",
+        dataset_name: body.table_name || body.spreadsheet_id || body.url || (body.type === "sql" ? "Database" : ""),
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Connection test failed";
@@ -284,7 +284,7 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
       {type === "sql" && (
         <div className="space-y-2.5">
           <Field label="Connection string" placeholder="postgresql://user:pass@host:5432/db" onChange={(v) => update("connection_string", v)} />
-          <Field label="Table name" placeholder="orders" onChange={(v) => update("table_name", v)} />
+          <Field label="Table name (optional)" placeholder="Leave blank to ask questions across the whole database" onChange={(v) => update("table_name", v)} />
         </div>
       )}
 

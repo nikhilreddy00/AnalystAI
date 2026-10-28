@@ -140,3 +140,38 @@ async def test_without_a_layer_the_introspected_schema_is_delimited(recorded_llm
     prompt = recorded_llm.calls[0]["messages"][0]["content"]
     assert "<untrusted_data>" in prompt and "orders" in prompt
     assert ans.evidence.confidence == "medium"
+
+
+# ── Ingestion wiring: a SQL source without a table is queried with the question ────────────────
+
+async def test_ingestion_queries_a_sql_source_and_records_the_query(recorded_llm, connector):
+    from agents.ingestion_agent import run_ingestion_agent
+    from orchestrator.state import AnalysisSession
+    session = AnalysisSession(session_id="s", connector_config=connector.config)
+    recorded_llm.responses += [_answer("SELECT order_id, fee FROM orders"), "Orders and fees."]
+    contract = await run_ingestion_agent(session, "fees per order")
+    assert contract.row_count == 2 and contract.source_query.code.startswith("SELECT order_id")
+    assert [c["agent"] for c in recorded_llm.calls] == ["sql", "ingestion"]
+
+    # An approval answer re-runs the same query: no new SQL from the model, same rows.
+    recorded_llm.responses.append("Orders and fees.")
+    again = await run_ingestion_agent(session, "Continue with imputation", contract.source_query)
+    assert again.row_count == 2 and again.source_query == contract.source_query
+    assert [c["agent"] for c in recorded_llm.calls[2:]] == ["ingestion"]
+
+
+async def test_ingestion_needs_a_question_or_a_table(connector):
+    from agents.ingestion_agent import run_ingestion_agent
+    from orchestrator.state import AnalysisSession
+    session = AnalysisSession(session_id="s", connector_config=connector.config)
+    with pytest.raises(ValueError, match="Ask a question"):
+        await run_ingestion_agent(session, None)
+
+
+async def test_connection_test_reports_a_stale_semantic_layer(connector, monkeypatch):
+    import semantic_layer
+    monkeypatch.setattr(semantic_layer, "configured_layer", lambda: SemanticLayer.model_validate({
+        "dialect": "sqlite", "tables": [{"name": "gone", "source": "gone", "primary_key": "id",
+                                         "columns": [{"name": "id", "type": "id"}]}]}))
+    ok, message = await connector.test_connection()
+    assert ok and "gone: table gone not found" in message

@@ -14,7 +14,7 @@ from api.config import settings
 from connectors.base import get_connector
 from guardrails import UNTRUSTED_NOTE, delimit_untrusted
 from llm.client import get_client
-from orchestrator.state import AnalysisSession, DataContract
+from orchestrator.state import AnalysisSession, ConnectorType, DataContract, Evidence
 
 # The former CrewAI agent's role/goal/backstory, kept as the system prompt.
 _SYSTEM = (
@@ -25,10 +25,14 @@ _SYSTEM = (
 )
 
 
-async def run_ingestion_agent(session: AnalysisSession) -> DataContract:
+async def run_ingestion_agent(session: AnalysisSession, question: str | None = None,
+                              reuse_query: Evidence | None = None) -> DataContract:
     """
     Load data from the configured connector and return an enriched DataContract.
     This is called by the LangGraph orchestrator at the 'ingestion' node.
+    A SQL connector without a table answers `question` with one read-only query (Phase 4);
+    `reuse_query` re-runs an earlier answer's query instead (approval answers, follow-ups), so
+    the same question never silently gets different rows.
     """
     config = session.connector_config
     if not config:
@@ -36,11 +40,23 @@ async def run_ingestion_agent(session: AnalysisSession) -> DataContract:
 
     connector = get_connector(config)
 
-    # Load the raw DataFrame
-    df = await connector.load()
+    source_query = None
+    if config.type == ConnectorType.SQL and not config.table_name:
+        from agents.sql_agent import run_sql_agent
+        from semantic_layer import configured_layer
+        if reuse_query:
+            df, source_query = (await connector.query(reuse_query.code)).frame(), reuse_query
+        elif not question:
+            raise ValueError("Ask a question to query the database, or name a table to load.")
+        else:
+            answer = await run_sql_agent(question, connector, configured_layer(), get_client())
+            df, source_query = answer.result.frame(), answer.evidence
+    else:
+        df = await connector.load()
 
     # Build the base DataContract from structural analysis
     contract = connector.build_data_contract(df)
+    contract.source_query = source_query
 
     # Enrich with an LLM summary: business context for the downstream agents
     enriched_summary = await _enrich_schema_with_llm(contract, session.task_plan)

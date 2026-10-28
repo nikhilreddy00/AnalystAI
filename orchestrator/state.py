@@ -178,6 +178,9 @@ class DataContract(BaseModel):
     id_columns: list[str]
     metric_columns: list[str]
     schema_summary: str                    # human-readable description for LLM prompts
+    # Phase 4: the SQL query that produced this data (SQL connector without a table), so the
+    # answer's evidence starts with where the rows came from.
+    source_query: "Evidence | None" = None
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────
