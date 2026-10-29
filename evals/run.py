@@ -494,26 +494,20 @@ QUALITY_CHECKS_ONLY = {"on": False}   # --checks-only: the deterministic half, a
 
 
 async def run_quality_case(case: dict) -> dict:
-    from agents.quality_agent import run_quality_critic
-    from guardrails import ungrounded_numbers
+    from agents.quality_agent import report_claims, run_quality_check
     from orchestrator.state import InsightReport
     report, _ = quality_report(case)
     session, _, bundle = await insight_bundle(_insight_case(case["insight_case"]))
     session.insight_report = InsightReport.model_validate(report)
-    # Baseline (pre-contract) quality check: the graph's grounding call, then the old critic.
-    findings = session.analysis_findings
-    evidence = findings.model_dump(exclude={"code_executed", "figures_base64"})
-    evidence["row_count"] = session.data_contract.row_count
-    r = session.insight_report
-    ungrounded = ungrounded_numbers(" ".join([r.executive_summary, *r.technical_findings]), evidence)
-    review, error = {"flags": [], "gaps": [], "methodology_concerns": [], "next_investigations": [],
-                     "strengths": []}, None
-    if not QUALITY_CHECKS_ONLY["on"]:
-        try:
-            review = (await run_quality_critic(session, get_client(), ungrounded)).model_dump(mode="json")
-        except Exception as exc:
-            error = f"{type(exc).__name__}: {exc}"
-    review["ungrounded"] = ungrounded
+    # The production claim order must be the scorer's, or every flag would land on the wrong claim.
+    assert [c["text"] for c in report_claims(session.insight_report)] == \
+        [c["text"] for c in insight_claims(report)], case["id"]
+    review, error = None, None
+    try:
+        review = (await run_quality_check(session, get_client(), critic=not QUALITY_CHECKS_ONLY["on"])
+                  ).model_dump(mode="json")
+    except Exception as exc:   # a loud failure is a failed case, not a crashed run
+        error = f"{type(exc).__name__}: {exc}"
     output = {"review": review, "claims": insight_claims(report), "bundle": bundle,
               "stored_evidence_ids": _SOURCES[case["source"]["report"]]["runs"][case["insight_case"]][
                   case["source"]["run"]]["output"]["bundle"]["evidence_ids"]}

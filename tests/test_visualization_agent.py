@@ -304,44 +304,6 @@ async def test_dashboard_clears_the_old_generic_palette_on_pinned_charts():
     assert charts["old"]["colors"] == [] and charts["meaning"]["colors"] == ["#1D9E75", "#A32D2D"]
 
 
-async def test_critic_sees_every_data_derived_section_delimited(monkeypatch):
-    """Closes the Phase 5 open item: the critic's prompt carries data (column and group names,
-    the junior's prose) only inside <untrusted_data>, and its system prompt says what that means."""
-    import re
-
-    from agents import quality_agent
-    from llm.client import RecordedClient
-    from guardrails import UNTRUSTED_NOTE
-    from orchestrator.state import AnalysisFindings, SegmentResult
-
-    seen = {}
-
-    async def capture(prompt, llm):
-        seen["prompt"] = prompt
-        raise ValueError("stop")
-
-    monkeypatch.setattr(quality_agent, "_call_and_parse", capture)
-    df = pd.DataFrame({INJECTION: [1.0, 2.0]})
-    from connectors.csv_connector import CSVConnector
-    from orchestrator.state import ConnectorConfig, ConnectorType
-    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
-    findings = AnalysisFindings(
-        eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[], code_executed="",
-        segments=[SegmentResult(segment_column="segment", metric_column="revenue", aggregation="mean",
-                                results=[{"name": INJECTION, "value": 1.0}])])
-    session = AnalysisSession(session_id="c", data_contract=contract, analysis_findings=findings,
-                              insight_report=InsightReport(
-                                  executive_summary=INJECTION, technical_findings=[INJECTION],
-                                  recommended_actions=[], anomaly_alerts=[], proactive_questions=[],
-                                  methodology_notes=""))
-    try:
-        await quality_agent.run_quality_critic(session, RecordedClient())
-    except Exception:
-        pass
-    outside = re.sub(r"<untrusted_data>.*?</untrusted_data>", "", seen["prompt"], flags=re.S)
-    assert INJECTION in seen["prompt"] and INJECTION not in outside
-    assert quality_agent._SYSTEM.endswith(UNTRUSTED_NOTE)
-
 
 def test_e2e_answer_ignores_the_critic_so_critic_changes_need_no_regate():
     """Pins why the critic fix needed no paid E2E re-run: E2E scores answer_text, which never

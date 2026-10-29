@@ -970,7 +970,8 @@ def score_quality(labels: list[dict], output: dict | None, error: str | None,
     first, last = bundle.get("date_first"), bundle.get("date_last")
     pool = [bundle["values"], [c["text"] for c in claims], _CONVENTIONS]
     numbers = ungrounded_numbers(without_dates(text, first is not None), pool)
-    dates = ungrounded_dates(text, first, last)
+    quoted = " ".join(c["text"] for c in claims)   # a reason may quote the claim's own date
+    dates = [d for d in ungrounded_dates(text, first, last) if d.removeprefix("scope: ") not in quoted]
     known = set(bundle["evidence_ids"])
     bad_flags = [f for f in review.get("flags") or []
                  if not (0 <= int(f.get("index", -1)) < len(claims))

@@ -509,6 +509,235 @@ def ungrounded_dates(text: str, first: tuple[int, int] | None,
     return bad
 
 
+# ── Claim checks (Phase 5 Quality): one claim against the evidence it cites ────
+# Each returns None or a reason. `trends` are {id, pct, direction, period, segment, claim};
+# `groups` are {id, values: [(name, value)], claim}. Reasons quote the evidence's own claim
+# line, so a reason is grounded by construction.
+
+_CLAUSE_RE = re.compile(r"[,;:—–()]|\s-\s|\.\s|\b(?:but|while|whereas|yet|and|with|versus|vs\.?|"
+                        r"compared with|against|although|though|whilst)\b", re.I)
+_UP_RE = re.compile(r"\b(?:rose|rise[sn]?|rising|grew|grow(?:s|n|ing|th)?|increas(?:e[sd]?|ing)|"
+                    r"up|gain(?:s|ed)?|climb(?:s|ed|ing)?|jump(?:s|ed)?|doubl(?:e[sd]?|ing)|"
+                    r"tripl(?:e[sd]?|ing)|improv(?:e[sd]?|ing|ement)|surg(?:e[sd]?|ing)|"
+                    r"expand(?:s|ed|ing)?)\b|\+\s*(?=\d)", re.I)
+_DOWN_RE = re.compile(r"\b(?:fell|fall(?:s|ing)?|declin(?:e[sd]?|ing)|drop(?:s|ped|ping)?|"
+                      r"decreas(?:e[sd]?|ing)|down|shr[aiu]nk(?:s|ing)?|slump(?:s|ed)?|"
+                      r"dip(?:s|ped)?|contract(?:s|ed|ion)|pull(?:ed)? back|pullback|"
+                      r"lost|loss|slid|slipp?(?:ed|s)?)\b|(?<![\w.])-\s*(?=\d)", re.I)
+_YOY_RE = re.compile(r"\b(?:year[- ]over[- ]year|yoy|annual(?:ly)?|year[- ]on[- ]year|"
+                     r"(?:a|the|one) year (?:earlier|ago|before)|same (?:month|period) last year|"
+                     r"(?:past|prior|previous|last) year|over the year)\b", re.I)
+_MOM_RE = re.compile(r"\b(?:month[- ]over[- ]month|mom|month[- ]on[- ]month|last month|"
+                     r"(?:previous|prior|preceding) month|(?:latest|most recent|recent) month|"
+                     r"monthly change|a month earlier)\b", re.I)
+_CAUSAL_RE = re.compile(r"\b(?:drives?|driving|driven by|causes?|caused|causing|leads? to|led to|"
+                        r"results? in|resulting in|because of|thanks to|boosts?|boosting|"
+                        r"lifts?|lifting|pays? for (?:it|them)sel(?:f|ves)|makes? .{0,20}"
+                        r"(?:rise|grow|increase))\b", re.I)
+_NOT_ASSERTED_RE = re.compile(r"\b(?:whether|if|test|experiment|validate|determine|isolate|"
+                              r"could|may|might|not|n't|no|rather than|imply|implies|possible|"
+                              r"likely|association|associated|correlat\w*)\b", re.I)
+_CERTAIN_RE = re.compile(r"\b(?:clearly|reliabl[ey]|proven|proves?|definitive(?:ly)?|"
+                         r"conclusive(?:ly)?|confirm(?:s|ed)?|certain(?:ly)?|undeniabl[ey]|"
+                         r"without doubt|guarantee[sd]?|real difference|statistically "
+                         r"significant|significantly)\b", re.I)
+_HEDGE_RE = re.compile(r"\b(?:uncertain|may|might|could|not|n't|no|small sample|only \d+|few|"
+                       r"limited|tentative|inconclusive|unclear|caution|preliminary|whether|"
+                       r"chance|indicative|borderline|directional|too (?:few|small)|short of|lacks?|cannot|"
+                       r"insufficient|weak|before)\b", re.I)
+_NEGATED_RE = re.compile(r"\b(?:no|not|n't|never|nothing|neither|nor)\b", re.I)
+_ORDINAL_RE = re.compile(r"\b(?:second|third|fourth|fifth|next)[- ]$", re.I)
+_EARLIER_RE = re.compile(r"\b(?:earlier|previous|prior|past|last) (?:analys[ie]s|reports?|"
+                         r"findings?|review)|previously|was reported|had reported\b", re.I)
+
+
+def _clause_at(text: str, start: int, end: int) -> str:
+    """The clause holding text[start:end]: from the boundary before it to the one after."""
+    lo = max((m.end() for m in _CLAUSE_RE.finditer(text, 0, start)), default=0)
+    after = _CLAUSE_RE.search(text, end)
+    return text[lo:after.start() if after else len(text)]
+
+
+def _mentions(text: str, value: float) -> list[re.Match]:
+    return [m for m in _NUM_RE.finditer(text)
+            if _shown_as(abs(value), m.group(0).lstrip("+-")) and abs(_value(m.group(0))) > 0]
+
+
+def _direction(clause: str) -> str | None:
+    up, down = bool(_UP_RE.search(clause)), bool(_DOWN_RE.search(clause))
+    return "up" if up and not down else "down" if down and not up else None
+
+
+def claim_direction_conflict(text: str, trends: list[dict]) -> str | None:
+    """'rose 2.8%' on a falling trend. A stated trend number is read in its own clause; with
+    no number, a claim citing one trend is read whole, and only an unmixed direction counts."""
+    for t in trends:
+        if t["direction"] not in ("up", "down"):
+            continue
+        hits = _mentions(text, t["pct"])
+        clauses = [_clause_at(text, m.start(), m.end()) for m in hits]
+        if not hits and len(trends) == 1:
+            clauses = _SENTENCE_RE.split(text)
+        for clause in clauses:
+            if _EARLIER_RE.search(clause) or _NEGATED_RE.search(clause):
+                continue   # restating an earlier analysis, or denying a move, is not a direction
+            said = _direction(clause)
+            if said and said != t["direction"]:
+                return f"says {said}, but [{t['id']}] {t['claim']}"
+    return None
+
+
+def claim_period_conflict(text: str, trends: list[dict]) -> str | None:
+    """'fell 8% year over year' on a month-over-month figure, and the reverse."""
+    for t in trends:
+        if t["period"] not in ("MoM", "YoY"):
+            continue
+        hits = _mentions(text, t["pct"])
+        clauses = [_clause_at(text, m.start(), m.end()) for m in hits]
+        if not hits and len(trends) == 1:
+            clauses = [text]
+        for clause in clauses:
+            yoy, mom = bool(_YOY_RE.search(clause)), bool(_MOM_RE.search(clause))
+            if t["period"] == "MoM" and yoy and not mom:
+                return f"says year over year, but [{t['id']}] is month-over-month: {t['claim']}"
+            if t["period"] == "YoY" and mom and not yoy:
+                return f"says month-over-month, but [{t['id']}] is year over year: {t['claim']}"
+    return None
+
+
+_GROUP_NOUN_RE = re.compile(r"\b(?:segment|group|plan|region|tier|department|cohort|"
+                            r"category|class|team)s?\s*$", re.I)
+
+
+def _label_hits(text: str, labels: set[str]) -> list[tuple[int, int, str]]:
+    """Where group labels are named. A label of 1–2 characters ('A') counts only after a
+    grouping noun ('segment A'), so the article 'a' is never a group."""
+    out = []
+    for lab in labels:
+        for m in re.finditer(rf"(?<![\w']){re.escape(lab)}(?!\w|'(?!s\b))", text):
+            if len(lab) <= 2 and not _GROUP_NOUN_RE.search(text[:m.start()]):
+                continue
+            out.append((m.start(), m.end(), lab))
+    # "Segment B" names a group even when B is not in the evidence at all.
+    for m in re.finditer(r"\b(?i:segment|group|region|plan|tier|department|cohort|team)\s+"
+                         r"([A-Z][\w-]*)(?!\w)", text):
+        if not any(s <= m.start(1) < e for s, e, _ in out):
+            out.append((m.start(1), m.end(1), m.group(1)))
+    return sorted(out)
+
+
+def _label_for(text: str, m: re.Match, hits: list[tuple[int, int, str]],
+               sentence_wide: bool = False) -> str | None:
+    """The group a stated number belongs to: one named right after it ('4.56 (Segment C)',
+    '$104.18 in the East'), else the nearest one before it in its clause (in its sentence
+    for a trend, whose group is the sentence's subject: 'Segment B moved …, with revenue up
+    6.5%')."""
+    for s, _, lab in hits:
+        gap = text[m.end():s]
+        if s >= m.end() and re.fullmatch(r"[\s%)]*(?:\(\s*|(?:in|for|on|at|from)\s+(?:the\s+)?)"
+                                         r"(?:\w+\s+)?", gap):
+            return lab
+    if sentence_wide:
+        lo = max((x.end() for x in _SENTENCE_RE.finditer(text, 0, m.start())), default=0)
+    else:
+        lo = max((c.end() for c in _CLAUSE_RE.finditer(text, 0, m.start()) if c.group(0) != "("),
+                 default=0)
+    before = [lab for s, e, lab in hits if lo <= s and e <= m.start()]
+    return before[-1] if before else None
+
+
+def _all_labels(trends: list[dict], groups: list[dict]) -> set[str]:
+    labels = {p for g in groups for name, _ in g["values"] for p in str(name).split("|")}
+    labels |= {t["segment"] for t in trends if t.get("segment")}
+    return {lab for lab in labels if lab and not lab.isdigit()}
+
+
+def claim_group_conflict(text: str, trends: list[dict], groups: list[dict],
+                         labels: set[str] | None = None) -> str | None:
+    """A cited group's number stated for another group: 'Segment A fell 12.6%' on segment B's
+    trend, 'North averages $104.23' when 104.23 is East's. Compound groups ('Easy|control')
+    match any of their parts. `labels` are every group named in the report's evidence."""
+    labels = (labels or set()) | _all_labels(trends, groups)
+    hits = _label_hits(text, labels)
+    if not hits:
+        return None
+    owners: list[tuple[float, set[str], dict, bool]] = [
+        (t["pct"], {t["segment"]}, t, True) for t in trends if t["segment"]]
+    for g in groups:
+        for name, value in g["values"]:
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                owners.append((float(value), set(str(name).split("|")), g, False))
+    for value, parts, ev, is_trend in owners:
+        same = [p for v, p, _, _ in owners if round(abs(v), 2) == round(abs(value), 2)]
+        if any(p != parts for p in same):
+            continue   # two groups share this number: it can't tell them apart
+        for m in _mentions(text, value):
+            if _EARLIER_RE.search(_clause_at(text, m.start(), m.end())):
+                continue
+            said = _label_for(text, m, hits, sentence_wide=is_trend)
+            if said and said not in parts:
+                return (f"names {said}, but {m.group(0)} is {'/'.join(sorted(parts))}'s: "
+                        f"[{ev['id']}] {ev['claim']}")
+    return None
+
+
+_LOWEST_RE = re.compile(r"\b(?:lowest|smallest|least|fewest|weakest|worst|bottom)\b", re.I)
+_HIGHEST_RE = re.compile(r"\b(?:highest|largest|greatest|biggest|strongest|best|top|"
+                         r"the most(?! recent))\b", re.I)   # not "leads": "B leads C" names C
+
+
+def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
+    """'B is the lowest at $98.06' when C is: a superlative in the clause that names one group
+    and states its value, checked against the ranks in the cited breakdowns (compound
+    breakdowns are skipped; 'second-largest' is not a superlative)."""
+    simple = [g for g in groups if g["values"] and all("|" not in str(n) for n, _ in g["values"])
+              and all(isinstance(v, (int, float)) for _, v in g["values"])]
+    labels = {str(n) for g in simple for n, _ in g["values"]}
+    if not simple or not labels:
+        return None
+    for s, e, lab in _label_hits(text, labels):
+        clause = _clause_at(text, s, e)
+        if len({x for _, _, x in _label_hits(clause, labels)}) != 1:
+            continue
+        def said(rx):
+            return any(not _ORDINAL_RE.search(clause[:m.start()]) for m in rx.finditer(clause))
+        low, high = said(_LOWEST_RE), said(_HIGHEST_RE)
+        if low == high:
+            continue
+        holders = [g for g in simple if lab in {str(n) for n, _ in g["values"]}
+                   and any(_mentions(clause, v) for n, v in g["values"] if str(n) == lab)]
+        def wrong(g):
+            vals = dict((str(n), v) for n, v in g["values"])
+            pick = min(vals.values()) if low else max(vals.values())
+            return vals[lab] != pick
+        if holders and all(wrong(g) for g in holders):
+            g = holders[0]
+            return (f"calls {lab} the {'lowest' if low else 'highest'}, but [{g['id']}] ranks it "
+                    f"otherwise: " + ", ".join(f"{n} {round(v, 2):g}" for n, v in g["values"]))
+    return None
+
+
+def claim_causal_overreach(text: str, cited_kinds: list[str]) -> str | None:
+    """Cause asserted where every cited item is a correlation."""
+    if not cited_kinds or any(k != "correlation" for k in cited_kinds):
+        return None
+    for m in _CAUSAL_RE.finditer(text):
+        if not _NOT_ASSERTED_RE.search(_clause_at(text, m.start(), m.end())):
+            return f"states a cause ('{m.group(0)}') from a correlation"
+    return None
+
+
+def claim_overstated_certainty(text: str, weak: list[str]) -> str | None:
+    """Certainty words, no hedge, on evidence of low confidence. `weak` are the cited items'
+    reasons for low confidence ('only 24 rows', 'not significant (p = 0.196)')."""
+    if not weak:
+        return None
+    for sentence in _SENTENCE_RE.split(text):
+        if (m := _CERTAIN_RE.search(sentence)) and not _HEDGE_RE.search(sentence):
+            return f"states certainty ('{m.group(0)}'), but the evidence is weak: {weak[0]}"
+    return None
+
+
 # ── Executive jargon (Phase 5 Insight) ─────────────────────────────────────────
 
 _JARGON_RE = re.compile(
