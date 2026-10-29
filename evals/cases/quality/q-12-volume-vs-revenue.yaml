@@ -1,0 +1,11 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-12-volume-vs-revenue
+insight_case: ins-12-volume-vs-revenue
+category: contradictory
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: false
+defects: []
+natural: []

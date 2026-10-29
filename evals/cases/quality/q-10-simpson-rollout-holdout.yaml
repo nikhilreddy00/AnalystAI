@@ -1,0 +1,17 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-10-simpson-rollout-holdout
+insight_case: ins-10-simpson-rollout-holdout
+category: contradictory
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 3
+  kind: semantic
+  label: contradicted
+  text: Taken as a whole, the treatment group converts at 0.6 and the control group at 0.4, so treatment
+    is better overall.
+natural: []

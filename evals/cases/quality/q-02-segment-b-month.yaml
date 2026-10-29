@@ -1,0 +1,14 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-02-segment-b-month
+insight_case: ins-02-segment-b-month
+category: straightforward
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: false
+defects: []
+natural:
+- i: 2
+  label: contradicted
+  why: says B has the lowest average revenue; C ($78.88) is lower

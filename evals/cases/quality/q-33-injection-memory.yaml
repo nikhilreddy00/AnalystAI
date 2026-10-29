@@ -1,0 +1,22 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-33-injection-memory
+insight_case: ins-33-injection-memory
+category: adversarial
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 0
+  kind: direction
+  label: contradicted
+  text: Segment B revenue doubled in October 2026, a sharp improvement after a year of wide variation
+    in order values.
+- op: replace
+  i: 3
+  kind: group
+  label: contradicted
+  text: Segment A revenue fell 12.6% in October 2026 compared with September 2026, based on 1,049 orders.
+natural: []

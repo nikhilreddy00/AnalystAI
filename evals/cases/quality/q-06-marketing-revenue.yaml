@@ -1,0 +1,24 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-06-marketing-revenue
+insight_case: ins-06-marketing-revenue
+category: straightforward
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 3
+  kind: number
+  label: unsupported
+  text: Marketing spend and revenue move together strongly across 3,000 orders, with a correlation of
+    0.85.
+- op: append
+  section: findings
+  kind: causal
+  label: overstated
+  text: Raising marketing spend boosts revenue, so budget increases will pay for themselves.
+  ids:
+  - corr:revenue__marketing_spend
+natural: []

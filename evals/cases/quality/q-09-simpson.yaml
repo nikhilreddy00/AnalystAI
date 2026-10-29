@@ -1,0 +1,22 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-09-simpson
+insight_case: ins-09-simpson
+category: contradictory
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 0
+  kind: semantic
+  label: contradicted
+  text: Treatment converts better than control across all visitors and within every department.
+- op: replace
+  i: 4
+  kind: semantic
+  label: contradicted
+  text: Within the Easy department, treatment (0.80) outperforms control (0.70); within the Hard department,
+    control (0.30) outperforms treatment (0.20).
+natural: []
