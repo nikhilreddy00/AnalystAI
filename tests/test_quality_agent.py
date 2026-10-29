@@ -40,6 +40,9 @@ def test_direction():
     assert not claim_direction_conflict("No evidence supports a revenue doubling.", [DOWN_B])
     assert not claim_direction_conflict(
         "An earlier analysis showed segment B growing strongly, but the evidence disagrees.", [DOWN_B])
+    # Without a number only the leading sentence is read ("…its reversal offsets gains elsewhere").
+    assert not claim_direction_conflict("Investigate Segment B's revenue decline. Its reversal "
+                                        "offsets gains elsewhere.", [DOWN_B])
     # Two trends in one sentence are read clause by clause.
     assert not claim_direction_conflict(
         "MRR is up +6.5% year-over-year, yet it dropped -8.0% in October.",
@@ -63,6 +66,14 @@ def test_group():
                                     [], [REGIONS])
     assert not claim_group_conflict("Averages range from 101.99 (North) to 104.18 (East).", [], [REGIONS])
     assert not claim_group_conflict("Segment B's revenue fell 12.6% while segment A held.", [DOWN_B], [])
+    # Pinned from real E2E overviews: a pronoun, and a respectively-list.
+    up_a = {**DOWN_B, "id": "trend:revenue (A):MoM", "pct": 20.3, "direction": "up", "segment": "A"}
+    up_c = {**up_a, "id": "trend:revenue (C):MoM", "pct": 20.1, "segment": "C"}
+    a_119 = {**up_a, "pct": 11.9}
+    assert not claim_group_conflict("Segment A averages $121.97, well above Segment C at $80.42, "
+                                    "and it posted a +20.3% gain.", [up_a], [])
+    assert not claim_group_conflict("Segment B fell while Segments A and C rose +11.9% and +20.1% "
+                                    "respectively.", [a_119, up_c], [])
     # Lowercase words after a grouping noun are not groups.
     assert not claim_group_conflict("The East region has the highest revenue at $104.18.", [], [REGIONS])
 

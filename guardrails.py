@@ -577,7 +577,7 @@ def claim_direction_conflict(text: str, trends: list[dict]) -> str | None:
         hits = _mentions(text, t["pct"])
         clauses = [_clause_at(text, m.start(), m.end()) for m in hits]
         if not hits and len(trends) == 1:
-            clauses = _SENTENCE_RE.split(text)
+            clauses = _SENTENCE_RE.split(text)[:1]   # the claim leads; later sentences add context
         for clause in clauses:
             if _EARLIER_RE.search(clause) or _NEGATED_RE.search(clause):
                 continue   # restating an earlier analysis, or denying a move, is not a direction
@@ -637,13 +637,17 @@ def _label_for(text: str, m: re.Match, hits: list[tuple[int, int, str]],
         if s >= m.end() and re.fullmatch(r"[\s%)]*(?:\(\s*|(?:in|for|on|at|from)\s+(?:the\s+)?)"
                                          r"(?:\w+\s+)?", gap):
             return lab
-    if sentence_wide:
-        lo = max((x.end() for x in _SENTENCE_RE.finditer(text, 0, m.start())), default=0)
-    else:
-        lo = max((c.end() for c in _CLAUSE_RE.finditer(text, 0, m.start()) if c.group(0) != "("),
-                 default=0)
+    lo = max((c.end() for c in _CLAUSE_RE.finditer(text, 0, m.start()) if c.group(0) != "("),
+             default=0)
     before = [lab for s, e, lab in hits if lo <= s and e <= m.start()]
-    return before[-1] if before else None
+    if before or not sentence_wide:
+        return before[-1] if before else None
+    # A trend's group can be the sentence's subject, but only when the sentence names one
+    # group: in "C at $80, and it rose 20%" the "it" may be another group.
+    lo = max((x.end() for x in _SENTENCE_RE.finditer(text, 0, m.start())), default=0)
+    hi = next((x.start() for x in _SENTENCE_RE.finditer(text, m.end())), len(text))
+    named = {lab for s, e, lab in hits if lo <= s and e <= hi}
+    return next(iter(named)) if len(named) == 1 else None
 
 
 def _all_labels(trends: list[dict], groups: list[dict]) -> set[str]:
@@ -672,8 +676,12 @@ def claim_group_conflict(text: str, trends: list[dict], groups: list[dict],
         if any(p != parts for p in same):
             continue   # two groups share this number: it can't tell them apart
         for m in _mentions(text, value):
-            if _EARLIER_RE.search(_clause_at(text, m.start(), m.end())):
-                continue
+            sentence_lo = max((x.end() for x in _SENTENCE_RE.finditer(text, 0, m.start())), default=0)
+            sentence = text[sentence_lo:next((x.start() for x in _SENTENCE_RE.finditer(text, m.end())),
+                                             len(text))]
+            if _EARLIER_RE.search(_clause_at(text, m.start(), m.end())) or \
+                    re.search(r"\brespectively\b", sentence, re.I):
+                continue   # "A and C rose 12% and 20% respectively" pairs by order, not nearness
             said = _label_for(text, m, hits, sentence_wide=is_trend)
             if said and said not in parts:
                 return (f"names {said}, but {m.group(0)} is {'/'.join(sorted(parts))}'s: "
