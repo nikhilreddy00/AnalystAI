@@ -50,7 +50,7 @@ def test_a_faithful_report_passes_through():
     ev = report.executive_view
     assert ev.headline == "Segment B revenue fell 12.6% last month."
     assert ev.findings[0].evidence_ids == [B] and ev.action_items[0].evidence_ids == [B]
-    assert len(llm.calls) == 1 and llm.calls[0]["system"].startswith("# Agent card: insight (v3)")
+    assert len(llm.calls) == 1 and llm.calls[0]["system"].startswith("# Agent card: insight (v4)")
 
 
 def test_an_ungrounded_number_removes_its_sentence_only():
@@ -219,3 +219,9 @@ def test_memory_is_scoped_to_the_dataset_and_never_keyed_by_credentials():
     asyncio.run(vs.retrieve_similar("q", "user-1", a))
     must = {(c.key, c.match.value) for c in seen["query_filter"].must}
     assert must == {("user_id", "user-1"), ("dataset_key", a)}
+
+
+def test_methodology_names_only_the_methods_that_ran():
+    session, _, _ = _bundle("ins-30")   # no date column, no trend evidence
+    report, _ = _run(_good(), session=session)
+    assert "month" not in report.analyst_view.methodology.lower()

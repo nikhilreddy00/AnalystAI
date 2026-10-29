@@ -900,8 +900,9 @@ def score_insight(case: dict, output: dict | None, error: str | None) -> tuple[l
         checks.append({"kind": "contradiction", "ok": not missing,
                        "detail": f"missing {missing}" if missing else "both signals named"})
     if about := expect.get("hedge"):
-        bold = [c["text"][:80] for c in insight_claims(report)
-                if re.search(about, c["text"], re.I) and not _HEDGE.search(c["text"])]
+        # Actions recommend what to do (often the test that would settle it); they assert nothing.
+        bold = [c["text"][:80] for c in insight_claims(report) if c["section"] != "action"
+                and re.search(about, c["text"], re.I) and not _HEDGE.search(c["text"])]
         checks.append({"kind": "hedge", "ok": not bold,
                        "detail": f"stated without a qualifier: {bold[:2]}" if bold else "hedged"})
     overreach = [s[:80] for c in insight_claims(report) if _corr_backed(c, bundle.get("corr_pairs", []))

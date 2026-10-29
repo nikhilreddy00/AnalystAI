@@ -56,7 +56,7 @@ from orchestrator.state import (
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v4"
 
 # The refusal rules are also the labelling policy of the insight eval (evals/cases/insight/).
 INSIGHT_CARD = AgentCard(
@@ -390,6 +390,15 @@ def _plain(e: Evidence, findings, narrative: DataNarrative | None) -> str:
     return text
 
 
+# Only the methods that ran (a method sentence for a kind with no evidence would be false).
+_METHOD = {
+    "correlation": "Correlations are Pearson r: linear association only, never cause.",
+    "trend": "Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+    "test": "Two-group differences are tested with Welch's t-test.",
+    "eda": "Descriptive statistics use the non-missing values of each column.",
+}
+
+
 def _analyst_view(session: AnalysisSession, model_caveats: list[str]) -> AnalystDetail:
     audit, findings = session.cleaning_audit, session.analysis_findings
     evidence = findings.evidence
@@ -399,7 +408,7 @@ def _analyst_view(session: AnalysisSession, model_caveats: list[str]) -> Analyst
         f"Cleaning ({CLEANING_CARD.name} {CLEANING_CARD.version}): {audit.summary}" if audit else "",
         f"Analysis ({ANALYSIS_CARD.name} {ANALYSIS_CARD.version}) computed: {', '.join(kinds)}."
         if kinds else "",
-        *ANALYSIS_CARD.limits[:2], note]))
+        *(_METHOD[k] for k in kinds if k in _METHOD), note]))
     notes = [f"{e.claim} (n = {e.row_count:,}; {e.confidence} confidence: {e.confidence_reason})"
              for e in evidence if e.kind != "cleaning"]
     low = [f"{e.claim}: low confidence ({e.confidence_reason})" for e in evidence
