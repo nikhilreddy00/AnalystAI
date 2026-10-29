@@ -412,8 +412,9 @@ def _analyst_view(session: AnalysisSession, model_caveats: list[str]) -> Analyst
 
 
 def _pct(p: float) -> str:
-    """'99.97%' rather than a rounded '100.0%' for a column that still has a value."""
-    return f"{p:.2f}%" if 99.95 <= p < 100 else f"{p:.1f}%"
+    """The audit rounds to 0.1, so 2999 of 3000 missing is stored as 100.0. An alerted column
+    still has values (an empty one is skipped at triage): '>99.9%', as the cleaning agent says."""
+    return ">99.9%" if p >= 99.9 else f"{p:.1f}%"
 
 
 def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
