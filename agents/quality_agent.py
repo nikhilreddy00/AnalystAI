@@ -17,6 +17,7 @@ Flags are shown next to their claims; the report itself is never changed here.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -51,7 +52,7 @@ from orchestrator.state import (
     ReviewFlag,
 )
 
-PROMPT_VERSION = "v2"   # v1 = the old inline critic prompt, verbatim
+PROMPT_VERSION = "v3"   # v1 = the old inline critic prompt, verbatim; v2 → v3: precision rules
 
 # Limits are the measured ones (evals/cases/quality/, docs/baselines/phase5_quality.md).
 QUALITY_CARD = AgentCard(
@@ -85,6 +86,8 @@ QUALITY_CARD = AgentCard(
 _PROMPTS = Path(__file__).parent.parent / "prompts" / "quality"
 _SYSTEM = (QUALITY_CARD.render() + "\n\n" + (_PROMPTS / f"{PROMPT_VERSION}.md").read_text()
            + "\n" + UNTRUSTED_NOTE)
+_VERIFY_VERSION = "verify_v2"   # v2: the critic's definition of contradicted
+_VERIFY_SYSTEM = (_PROMPTS / f"{_VERIFY_VERSION}.md").read_text() + "\n" + UNTRUSTED_NOTE
 _LABELS = ("unsupported", "contradicted", "overstated")
 _MAX_BULLETS = 3
 
@@ -197,6 +200,7 @@ def check_claims(session: AnalysisSession, report: InsightReport,
 class QualityContext(BaseModel):
     evidence: str     # the insight agent's rendered context (already delimited)
     columns: str      # the dataset's columns (names come from the file)
+    values: str       # every breakdown and trend value in full (the evidence lines cut at 300)
     claims: str       # numbered claims with their cited ids (report prose quotes data)
     checked: str      # the claims the code checks flagged, with their reasons
 
@@ -204,6 +208,8 @@ class QualityContext(BaseModel):
         return "\n\n".join(filter(bool, [
             "What the report's author was shown:\n" + self.evidence,
             "Dataset columns:\n" + delimit_untrusted(self.columns),
+            "All computed values of the breakdowns and trends:\n" + delimit_untrusted(self.values)
+            if self.values else "",
             "Report claims to review:\n" + delimit_untrusted(self.claims),
             "Already flagged by the automatic checks (do not repeat):\n"
             + delimit_untrusted(self.checked) if self.checked else "",
@@ -214,8 +220,18 @@ def build_context(session: AnalysisSession, report: InsightReport,
                   flags: list[ReviewFlag], ctx: InsightContext) -> QualityContext:
     claims = report_claims(report)
     contract = session.data_contract
+    values = []
+    for e in session.analysis_findings.evidence if session.analysis_findings else []:
+        if insight_agent._by_person(e, session):
+            continue   # people's names: kept out of every prompt, as in the insight context
+        if g := _groups(e):
+            values.append(f"[{e.id}] " + ", ".join(f"{n} = {v:.4g}" if isinstance(v, (int, float))
+                                                    else f"{n} = {v}" for n, v in g["values"]))
+        elif t := _trend(e):
+            values.append(f"[{e.id}] {t['direction']} {t['pct']:+.2f}% ({t['period']})")
     return QualityContext(
         evidence=ctx.render(),
+        values="\n".join(values),
         columns=", ".join(c.name for c in contract.columns) if contract else "",
         claims="\n".join(
             f"{i}. ({'action' if c['section'] == 'action' else 'statement'}, {c['section']}) "
@@ -258,6 +274,10 @@ def _critic_flags(data: dict, claims: list[dict], taken: set[int], known: set[st
                 or claims[i]["section"] == "action":
             continue
         ids = [x for x in f.get("evidence") or [] if isinstance(x, str) and x in known]
+        says = str(f.get("evidence_says") or "").strip()
+        if says and not grounded(says):   # it quotes a value the evidence doesn't hold: a misreading
+            trace_verdict("quality", PROMPT_VERSION, "misread_dropped")
+            continue
         reason = str(f.get("reason") or "").strip()
         if not reason or not grounded(reason):
             trace_verdict("quality", PROMPT_VERSION, "reason_rewritten")
@@ -270,11 +290,50 @@ def _critic_flags(data: dict, claims: list[dict], taken: set[int], known: set[st
     return out
 
 
-def _bullets(items, grounded, columns: set[str] | None = None) -> list[str]:
+async def _verify(flags: list[ReviewFlag], qctx: QualityContext, ctx: InsightContext,
+                  llm: LLMClient) -> list[ReviewFlag]:
+    """Each critic flag re-judged alone against its claim and cited evidence: in the eval the
+    critic's single pass flagged ~7% of correct claims. A failed or unparseable verification
+    keeps the flags (the critic's view is still shown)."""
+    if not flags:
+        return flags
+    lines, values = _evidence_lines(ctx), qctx.values.splitlines()
+    parts = []
+    for n, f in enumerate(flags):
+        cited = [lines.get(i, "") for i in f.evidence_ids] + [
+            v for v in values if any(v.startswith(f"[{i}]") for i in f.evidence_ids)]
+        parts.append(f"Objection {n}:\nClaim: {mask_pii(f.claim)}\nEvidence:\n"
+                     + "\n".join(c for c in cited if c) + f"\nObjection ({f.label}): {f.reason}")
+    msg = ("Data facts:\n" + delimit_untrusted(ctx.facts) + "\n\nData quality:\n"
+           + delimit_untrusted(ctx.quality) + "\n\n" + delimit_untrusted("\n\n".join(parts)))
+    try:
+        result = await llm.complete(agent="quality_verify", prompt_version=_VERIFY_VERSION,
+                                    model=settings.llm_fast_model, max_tokens=800,
+                                    system=_VERIFY_SYSTEM,
+                                    messages=[{"role": "user", "content": msg}])
+        rows = json.loads(strip_markdown_fences(result.text.strip()))["verdicts"]
+        holds = {int(r["i"]): r.get("holds") is not False for r in rows}
+    except (AgentError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        trace_verdict("quality", PROMPT_VERSION, "verify_failed")
+        return flags
+    kept = [f for n, f in enumerate(flags) if holds.get(n, True)]
+    if len(kept) < len(flags):
+        trace_verdict("quality", PROMPT_VERSION, "flag_not_verified")
+    return kept
+
+
+def _bullets(items, grounded, columns: set[str] | None = None,
+             display: dict[str, str] | None = None) -> list[str]:
+    """Grounded bullets, with raw column names (also spelled with spaces) shown by their
+    display names, as the report shows them."""
     out = []
     for item in items if isinstance(items, list) else []:
         text, cols = (item.get("text"), item.get("columns")) if isinstance(item, dict) else (item, None)
         text = " ".join(str(text or "").split())
+        for raw, shown in sorted((display or {}).items(), key=lambda kv: -len(kv[0])):
+            if raw != shown and len(raw) > 3:
+                for form in {raw, raw.replace("_", " ")}:
+                    text = re.sub(rf"(?<!\w){re.escape(form)}(?!\w)", shown, text, flags=re.I)
         if not text or not grounded(text):
             continue
         if columns is not None and (not isinstance(cols, list) or not cols
@@ -294,13 +353,14 @@ def _summary(n_claims: int, flags: list[ReviewFlag], critic_note: str) -> str:
     return f"{n_claims} claims checked against the evidence; {verdict}" + critic_note
 
 
-async def run_quality_check(session: AnalysisSession, llm: LLMClient,
-                            critic: bool = True) -> ExpertReview:
-    """The review of session.insight_report. `critic=False` runs the code checks only."""
+async def run_quality_check(session: AnalysisSession, llm: LLMClient, critic: bool = True,
+                            past: list[str] | None = None) -> ExpertReview:
+    """The review of session.insight_report. `critic=False` runs the code checks only; `past`
+    are the earlier analyses the insight agent was shown, so the critic sees them too."""
     report = session.insight_report
     if report is None:
         raise ValueError("An InsightReport must be present before the quality check.")
-    ctx = insight_agent.build_context(session)
+    ctx = insight_agent.build_context(session, past)
     claims = report_claims(report)
     flags = check_claims(session, report, ctx)
     gaps: list[str] = []
@@ -308,7 +368,8 @@ async def run_quality_check(session: AnalysisSession, llm: LLMClient,
     investigations: list[str] = []
     note = ""
     if critic:
-        pool = ctx.pool() + [[c["text"] for c in claims]]
+        qctx = build_context(session, report, flags, ctx)
+        pool = ctx.pool() + [[c["text"] for c in claims], qctx.values]
         has_dates = ctx.first is not None
 
         claim_text = " ".join(c["text"] for c in claims)
@@ -319,7 +380,7 @@ async def run_quality_check(session: AnalysisSession, llm: LLMClient,
                             if d.removeprefix("scope: ") not in claim_text])
         data = None
         try:
-            data = await _ask(build_context(session, report, flags, ctx), llm)
+            data = await _ask(qctx, llm)
         except AgentError:   # refusal, truncation, outage: the checks still stand
             trace_verdict("quality", PROMPT_VERSION, "critic_failed")
         if data is None:
@@ -329,12 +390,14 @@ async def run_quality_check(session: AnalysisSession, llm: LLMClient,
         else:
             known = {e.id for e in session.analysis_findings.evidence} \
                 if session.analysis_findings else set()
-            flags += _critic_flags(data, claims, {f.index for f in flags}, known, grounded)
+            flags += await _verify(_critic_flags(data, claims, {f.index for f in flags}, known,
+                                                 grounded), qctx, ctx, llm)
             flags.sort(key=lambda f: f.index)
             cols = {c.name for c in session.data_contract.columns} if session.data_contract else set()
-            gaps = _bullets(data.get("gaps"), grounded)
-            concerns = _bullets(data.get("methodology_concerns"), grounded)
-            investigations = _bullets(data.get("next_investigations"), grounded, cols)
+            names = session.narrative.column_display_names if session.narrative else {}
+            gaps = _bullets(data.get("gaps"), grounded, display=names)
+            concerns = _bullets(data.get("methodology_concerns"), grounded, display=names)
+            investigations = _bullets(data.get("next_investigations"), grounded, cols, names)
     return ExpertReview(review_summary=_summary(len(claims), flags, note), strengths=[],
                         gaps=gaps, next_investigations=investigations,
                         methodology_concerns=concerns, flags=flags)

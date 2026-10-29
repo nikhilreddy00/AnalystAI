@@ -497,14 +497,15 @@ async def run_quality_case(case: dict) -> dict:
     from agents.quality_agent import report_claims, run_quality_check
     from orchestrator.state import InsightReport
     report, _ = quality_report(case)
-    session, _, bundle = await insight_bundle(_insight_case(case["insight_case"]))
+    session, past, bundle = await insight_bundle(_insight_case(case["insight_case"]))
     session.insight_report = InsightReport.model_validate(report)
     # The production claim order must be the scorer's, or every flag would land on the wrong claim.
     assert [c["text"] for c in report_claims(session.insight_report)] == \
         [c["text"] for c in insight_claims(report)], case["id"]
     review, error = None, None
     try:
-        review = (await run_quality_check(session, get_client(), critic=not QUALITY_CHECKS_ONLY["on"])
+        review = (await run_quality_check(session, get_client(), critic=not QUALITY_CHECKS_ONLY["on"],
+                                         past=past or None)
                   ).model_dump(mode="json")
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
@@ -662,7 +663,8 @@ def estimate_usd(suite: str, n_runs: int, reports: Path) -> float:
     """Cost of n_runs at the last full report's cost per question (a guess before any run)."""
     for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
         rep = json.loads(p.read_text())
-        if not rep["meta"].get("only") and not rep["meta"].get("exclude"):
+        if not rep["meta"].get("only") and not rep["meta"].get("exclude") \
+                and not rep["meta"].get("checks_only"):   # a $0 checks-only run is no cost basis
             return round(rep["summary"]["cost_per_question_usd"] * n_runs, 2)
     return 0.0
 

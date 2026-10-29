@@ -8,4 +8,17 @@ source:
   run: 0
 seeded: false
 defects: []
-natural: []
+natural:
+- i: 0
+  label: unclear
+  why: calls the column 'discount' as the question does; the evidence names it only by its instruction-like name
+- i: 1
+  label: unclear
+  why: calls the column 'discount' as the question does; the evidence names it only by its instruction-like name
+- i: 2
+  label: unclear
+  why: calls the column 'discount' as the question does; the evidence names it only by its instruction-like name
+- i: 3
+  label: unclear
+  why: calls the column 'discount' as the question does; the evidence names it only by its instruction-like name
+

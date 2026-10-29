@@ -1,0 +1,526 @@
+{
+ "meta": {
+  "suite": "quality",
+  "report": "quality-20261029T222155Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "24418a4",
+  "started_at": "20261029T222155Z",
+  "only": "q-09-",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.0047,
+  "latency_p50_s": 6.27,
+  "latency_p95_s": 6.27,
+  "defect_recall": 1.0,
+  "false_alarm_rate": 0.1429,
+  "seeded_defects": 2,
+  "supported_claims": 7,
+  "recall_by_kind": {
+   "semantic": 1.0
+  },
+  "recall_by_source": {
+   "check": 0.5,
+   "critic": 0.5
+  },
+  "label_agreement_on_caught": 1.0,
+  "natural_recall": null,
+  "false_alarms_on_actions": 0.0,
+  "clean_reports_with_false_alarm": null,
+  "hard_review_grounded": 1.0,
+  "hard_flags_valid": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "hard_bundle_reproduced": 1.0,
+  "holdout_pass_rate": null
+ },
+ "runs": {
+  "q-09-simpson": [
+   {
+    "checks": [
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "semantic",
+      "sources": [
+       "critic"
+      ],
+      "label_match": true,
+      "detail": "[semantic] caught by ['critic']Treatment converts better than control across all visitors and within "
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "critic"
+      ],
+      "section": "paragraph",
+      "detail": "flagged ['critic'] (The claim says control shows higher conversion overall (corr): Across all visitors, control shows a higher conversion rate "
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "semantic",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[semantic] caught by ['check']Within the Easy department, treatment (0.80) outperforms control (0.70"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "9 claims checked against the evidence; 3 flagged (3 contradicted).",
+      "strengths": [],
+      "gaps": [
+       "The evidence does not show the distribution of visitors across departments by group (e.g., what fraction of control vs treatment visitors are in Easy vs Hard), which is needed to explain the Simpson's paradox mechanism.",
+       "No statistical significance test is provided for the conversion differences within or across departments, so the practical importance of the observed differences is unclear."
+      ],
+      "next_investigations": [
+       "Cross-tabulate group and department to show the visitor count and proportion in each cell; this will reveal whether department mix differs between treatment and control.",
+       "Check whether session_minutes outliers (flagged in data quality) cluster by group or department, to assess whether they could bias the conversion comparison."
+      ],
+      "methodology_concerns": [
+       "The data has no date column, so temporal trends or seasonality cannot be ruled out as confounders in the group comparison."
+      ],
+      "flags": [
+       {
+        "index": 0,
+        "section": "headline",
+        "claim": "Treatment converts better than control across all visitors and within every department.",
+        "label": "contradicted",
+        "kind": "critic",
+        "reason": "The headline states treatment converts better than control, but the evidence shows control at 0.60 and treatment at 0.40 across all visitors.",
+        "evidence_ids": [
+         "seg:group/converted"
+        ],
+        "source": "critic"
+       },
+       {
+        "index": 1,
+        "section": "paragraph",
+        "claim": "Across all visitors, control shows a higher conversion rate than treatment, yet when visitors are split by department, treatment outperforms control in both groups.",
+        "label": "contradicted",
+        "kind": "critic",
+        "reason": "The claim says control shows higher conversion overall (correct: 0.60 vs 0.40), but then states treatment outperforms control in both departments. The evidence shows treatment outperforms only in Easy (0.80 vs 0.70); in Hard, control wins (0.30 vs 0.20).",
+        "evidence_ids": [
+         "seg:group/converted",
+         "seg:department|group/converted"
+        ],
+        "source": "critic"
+       },
+       {
+        "index": 4,
+        "section": "finding",
+        "claim": "Within the Easy department, treatment (0.80) outperforms control (0.70); within the Hard department, control (0.30) outperforms treatment (0.20).",
+        "label": "contradicted",
+        "kind": "group",
+        "reason": "names treatment, but 0.20 is Hard/control's: [seg:department|group/converted] mean converted by department|group (4 groups)",
+        "evidence_ids": [
+         "seg:department|group/converted"
+        ],
+        "source": "check"
+       }
+      ],
+      "generated_at": "2026-10-29T22:22:01.709404Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Treatment converts better than control across all visitors and within every department.",
+       "ids": [
+        "seg:group/converted",
+        "seg:department|group/converted"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Across all visitors, control shows a higher conversion rate than treatment, yet when visitors are split by department, treatment outperforms control in both groups.",
+       "ids": [
+        "seg:group/converted",
+        "seg:department|group/converted"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "These two results point in opposite directions and should not be read together without understanding how visitors are distributed across departments.",
+       "ids": [
+        "seg:group/converted",
+        "seg:department|group/converted"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Overall, control averages 0.60 conversion and treatment averages 0.40 \u2014 suggesting control wins at the aggregate level.",
+       "ids": [
+        "seg:group/converted"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Within the Easy department, treatment (0.80) outperforms control (0.70); within the Hard department, control (0.30) outperforms treatment (0.20).",
+       "ids": [
+        "seg:department|group/converted"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The reversal between the overall and department-level results is a known statistical paradox: the department mix likely differs between treatment and control, making the aggregate comparison misleading.",
+       "ids": [
+        "seg:group/converted",
+        "seg:department|group/converted"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:group/converted",
+        "seg:department|group/converted"
+       ],
+       "text": "Use the department-level conversion rates as the primary decision metric rather than the overall aggregate The aggregate result is distorted by department mix and would lead to the wrong conclusion"
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:department|group/converted"
+       ],
+       "text": "Audit how visitors were assigned to treatment and control within each department to confirm randomisation was balanced Imbalanced assignment across departments is the most likely cause of the conflicting signals"
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Investigate session minutes outliers to confirm they do not cluster in one group or department Outlier sessions could distort conversion patterns if unevenly distributed"
+      }
+     ],
+     "bundle": {
+      "question": "Does the treatment convert better than control?",
+      "columns": [
+       "visitor_id",
+       "department",
+       "group",
+       "converted",
+       "session_minutes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:group/converted",
+       "seg:department|group/converted",
+       "eda:converted"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 2000 \u2192 2000 rows, 0 logged changes",
+        "result_excerpt": "{\"rows_before\": 2000, \"rows_after\": 2000, \"decisions\": []}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": []
+       },
+       {
+        "id": "seg:group/converted",
+        "kind": "segment",
+        "claim": "mean converted by group (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"control\", \"value\": 0.6}, {\"name\": \"treatment\", \"value\": 0.4}]}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "2000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:department|group/converted",
+        "kind": "segment",
+        "claim": "mean converted by department|group (4 groups)",
+        "result_excerpt": "{\"segment_column\": \"department|group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Easy|control\", \"value\": 0.7}, {\"name\": \"Easy|treatment\", \"value\": 0.8}, {\"name\": \"Hard|control\", \"value\": 0.2}, {\"name\": \"Hard|treatment\", \"value\": 0.3}]}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "2000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:converted",
+        "kind": "eda",
+        "claim": "converted: median 0.5, mean 0.5, range 0 to 1.00",
+        "result_excerpt": "{\"mean\": 0.5, \"std\": 0.5001, \"min\": 0.0, \"max\": 1.0, \"median\": 0.5, \"count\": 2000.0}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "2000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": null,
+      "date_last": null,
+      "n_months": 0,
+      "audit_summary": "Outliers flagged (kept) in: session_minutes. Final dataset: 2000 rows (started with 2000).",
+      "chart_titles": [
+       "Conversion Rate by group and department",
+       "Conversion Rate by group: control highest (60.0%), treatment lowest (40.0%)",
+       "Conversion Rate by department \u2014 Easy Highest at 72.0%",
+       "session minutes distribution by converted",
+       "session minutes distribution"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "converted": {
+          "mean": 0.5,
+          "std": 0.5001,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.5,
+          "count": 2000.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "group",
+          "metric_column": "converted",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "control",
+            "value": 0.6
+           },
+           {
+            "name": "treatment",
+            "value": 0.4
+           }
+          ]
+         },
+         {
+          "segment_column": "department|group",
+          "metric_column": "converted",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Easy|control",
+            "value": 0.7
+           },
+           {
+            "name": "Easy|treatment",
+            "value": 0.8
+           },
+           {
+            "name": "Hard|control",
+            "value": 0.2
+           },
+           {
+            "name": "Hard|treatment",
+            "value": 0.3
+           }
+          ]
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "visitor_id": 0.0,
+         "department": 0.0,
+         "group": 0.0,
+         "converted": 0.0,
+         "session_minutes": 0.0
+        },
+        "kpis": [],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 2000 \u2192 2000 rows, 0 logged changes",
+         "result_excerpt": "{\"rows_before\": 2000, \"rows_after\": 2000, \"decisions\": []}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "mean converted by group (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"control\", \"value\": 0.6}, {\"name\": \"treatment\", \"value\": 0.4}]}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "2000 rows"
+        },
+        {
+         "claim": "mean converted by department|group (4 groups)",
+         "result_excerpt": "{\"segment_column\": \"department|group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Easy|control\", \"value\": 0.7}, {\"name\": \"Easy|treatment\", \"value\": 0.8}, {\"name\": \"Hard|control\", \"value\": 0.2}, {\"name\": \"Hard|treatment\", \"value\": 0.3}]}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "2000 rows"
+        },
+        {
+         "claim": "converted: median 0.5, mean 0.5, range 0 to 1.00",
+         "result_excerpt": "{\"mean\": 0.5, \"std\": 0.5001, \"min\": 0.0, \"max\": 1.0, \"median\": 0.5, \"count\": 2000.0}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "2000 rows"
+        }
+       ],
+       {
+        "decisions": [],
+        "rows_before": 2000,
+        "rows_after": 2000,
+        "columns_coerced": [],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "7 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+        ],
+        "high_null_columns": [],
+        "summary": "Outliers flagged (kept) in: session_minutes. Final dataset: 2000 rows (started with 2000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "session_minutes",
+           "extreme_count": 7,
+           "mild_count": 62,
+           "extreme_pct": 0.35000000000000003,
+           "lower_bound": -24.799999999999997,
+           "upper_bound": 46.599999999999994,
+           "mild_lower_bound": -9.5,
+           "mild_upper_bound": 31.299999999999997,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "7 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "session_minutes"
+         ],
+         "skipped_columns": {
+          "visitor_id": "id column",
+          "department": "binary column (only 2 values)",
+          "group": "binary column (only 2 values)",
+          "converted": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {}
+       },
+       [
+        "Conversion Rate by group and department",
+        "Conversion Rate by group: control highest (60.0%), treatment lowest (40.0%)",
+        "Conversion Rate by department \u2014 Easy Highest at 72.0%",
+        "session minutes distribution by converted",
+        "session minutes distribution"
+       ],
+       [
+        2000,
+        5,
+        0
+       ],
+       []
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "seg:group/converted",
+      "seg:department|group/converted",
+      "eda:converted"
+     ]
+    },
+    "latency_s": 6.27,
+    "cost_usd": 0.0047,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ]
+ }
+}

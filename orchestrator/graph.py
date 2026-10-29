@@ -77,6 +77,7 @@ class AgentState(TypedDict):
     approval_context: str | None       # which gate the approval answers ("high_null", …)
     session_store: Any                 # SessionStore | None
     vector_store: Any                  # VectorStore | None
+    similar_insights: list[str]        # earlier analyses insight was shown (the critic reads them)
 
 
 # ── SSE helper ─────────────────────────────────────────────────────────────────
@@ -459,7 +460,7 @@ async def insight_node(state: AgentState) -> dict:
     # Commit side-effects (add_message, iteration++, vector_store, done)
     # live in quality_check_node so that a retry doesn't corrupt history,
     # double-increment iteration, persist a bad embedding, or emit done early.
-    return {"session": session}
+    return {"session": session, "similar_insights": similar_insights}
 
 
 async def quality_check_node(state: AgentState) -> dict:
@@ -528,7 +529,8 @@ async def quality_check_node(state: AgentState) -> dict:
         _emit(state, {"type": "agent_start", "agent": "quality_check",
                       "message": "Reviewing the analysis..."})
         try:
-            review = await run_quality_check(session, get_client(), critic=first_run)
+            review = await run_quality_check(session, get_client(), critic=first_run,
+                                             past=state.get("similar_insights") or None)
             session.expert_review = review
             _emit(state, {"type": "expert_review", "data": review.model_dump(mode="json")})
             _emit(state, {"type": "agent_complete", "agent": "quality_check",
