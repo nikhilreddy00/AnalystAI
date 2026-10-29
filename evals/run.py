@@ -60,7 +60,9 @@ UPLOADS = EVALS_DIR.parent / "uploads" / "evals"   # the CSV connector only read
 
 def load_cases(suite: str, only: str | None, exclude: str | None = None) -> list[dict]:
     cases = [yaml.safe_load(p.read_text()) for p in sorted((EVALS_DIR / "cases" / suite).glob("*.yaml"))]
-    return [c for c in cases if (not only or only in c["id"]) and not (exclude and exclude in c["id"])]
+    keep = only.split(",") if only else []   # comma-separated: any of these substrings
+    return [c for c in cases if (not keep or any(k in c["id"] for k in keep))
+            and not (exclude and exclude in c["id"])]
 
 
 def dataset(case: dict) -> tuple[pd.DataFrame, dict, str]:
