@@ -1,0 +1,365 @@
+{
+ "prompt_version": "v1",
+ "model": "claude-haiku-4-5",
+ "claims": 40,
+ "agreement": 0.9,
+ "exact_label_agreement": 0.7,
+ "seeded_defect_recall": 1.0,
+ "cost_usd": 0.0313,
+ "disagreements": [
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Marketing spend is meaningfully linked to revenue \u2014 orders with higher marketing investment tend to generate more revenue, suggesting current spend is productive.",
+   "want": "overstated",
+   "got": "supported",
+   "why": "Correlation r=0.569 (high confidence, 3000 rows) shows meaningful positive link between marketing spend and revenue.",
+   "source": "real"
+  },
+  {
+   "case": "ins-11-total-vs-segment",
+   "text": "Segment B experienced a 12.6% revenue drop in October versus September, standing out as the primary drag on overall performance while Segment A held its position as the largest contributor at 40% of revenue.",
+   "want": "contradicted",
+   "got": "supported",
+   "why": "Segment B fell 12.6% Oct vs Sep; Segment A at 40% confirmed in evidence.",
+   "source": "real"
+  },
+  {
+   "case": "ins-14-mean-vs-median",
+   "text": "A typical order is worth around $175\u2013$265, but a small cluster of very large orders is pulling the average up to $302.",
+   "want": "contradicted",
+   "got": "supported",
+   "why": "Median $100.86 is typical; mean $301.79 inflated by outliers; 35 unusual values above $265.18 confirmed.",
+   "source": "real"
+  },
+  {
+   "case": "ins-30-no-dates",
+   "text": "Session length was similar across both departments (roughly 12 minutes on average), suggesting time spent is not the primary driver of the conversion gap \u2014 the nature of the experience likely is.",
+   "want": "unsupported",
+   "got": "supported",
+   "why": "Easy dept 12.16 min, Hard dept 11.78 min; difference ~0.4 min is small relative to means.",
+   "source": "real"
+  }
+ ],
+ "rows": [
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Sales dataset of 3,000 orders shows declining revenue and a clear performance gap across customer segments.",
+   "want": "supported",
+   "got": "supported",
+   "why": "3000 orders confirmed; revenue down 2.8% MoM; segments A/B/C show revenue gap (121.29 vs 78.88).",
+   "source": "real"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Five orders have revenue values far above the typical range \u2014 the highest reaching $964.19 \u2014 which could skew averages and reporting if not verified.",
+   "want": "supported",
+   "got": "supported",
+   "why": "Evidence lists 5 anomalies in revenue above 260.65; max value 964.19 confirmed in EDA.",
+   "source": "real"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Marketing spend is meaningfully linked to revenue \u2014 orders with higher marketing investment tend to generate more revenue, suggesting current spend is productive.",
+   "want": "overstated",
+   "got": "supported",
+   "why": "Correlation r=0.569 (high confidence, 3000 rows) shows meaningful positive link between marketing spend and revenue.",
+   "source": "real"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Segment B revenue rose 12.6% last month.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows segment B revenue fell 12.6%, not rose. Claim reverses the direction.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Segment A revenue fell 12.6% last month.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence cites segment B trend (-12.6%), not segment A. Wrong segment assigned.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Marketing spend drives revenue: every extra dollar of spend brings in more sales.",
+   "want": "overstated",
+   "got": "overstated",
+   "why": "Correlation (r=0.569) shown; causal language 'drives' overstates correlation as causation.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Revenue fell 18.4% last month.",
+   "want": "unsupported",
+   "got": "contradicted",
+   "why": "Evidence shows revenue fell 2.8% MoM, not 18.4%. Wrong percentage stated.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "The data covers only November 2025.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Date range is 2025-11 to 2026-10 (12 months), not November 2025 alone.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-01-sales-overview",
+   "text": "Bigger discounts strongly lift revenue per order.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Correlation r=-0.019 (weak, near zero); bigger discounts do not lift revenue. Direction and strength both wrong.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-09-simpson",
+   "text": "Control group converts at 60%, treatment at 40% \u2014 control wins by 20 percentage points across all visitors.",
+   "want": "supported",
+   "got": "supported",
+   "why": "Evidence shows control 60%, treatment 40%, difference of 20 percentage points.",
+   "source": "real"
+  },
+  {
+   "case": "ins-09-simpson",
+   "text": "In the Easy department, treatment converts at 80% versus control's 70%, meaning treatment is beneficial for that specific audience.",
+   "want": "supported",
+   "got": "supported",
+   "why": "Evidence shows Easy|treatment 80%, Easy|control 70%. Treatment higher in Easy department.",
+   "source": "real"
+  },
+  {
+   "case": "ins-09-simpson",
+   "text": "Treatment converts better than control across all visitors.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows treatment 40% vs control 60% overall. Treatment converts worse, not better.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-09-simpson",
+   "text": "In the Hard department, control converts better than treatment.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows Hard|control 20%, Hard|treatment 30%. Treatment converts better in Hard department.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-11-total-vs-segment",
+   "text": "Revenue declined 2.8% month-over-month in October 2026, but when adjusted for composition, the underlying trend is actually up 6.5%, suggesting the overall dip is driven by mix or volume shifts rather than broad weakness.",
+   "want": "contradicted",
+   "got": "overstated",
+   "why": "Evidence shows segment C up 6.5%, not overall adjusted trend. Causal claim unsupported.",
+   "source": "real"
+  },
+  {
+   "case": "ins-11-total-vs-segment",
+   "text": "Segment B experienced a 12.6% revenue drop in October versus September, standing out as the primary drag on overall performance while Segment A held its position as the largest contributor at 40% of revenue.",
+   "want": "contradicted",
+   "got": "supported",
+   "why": "Segment B fell 12.6% Oct vs Sep; Segment A at 40% confirmed in evidence.",
+   "source": "real"
+  },
+  {
+   "case": "ins-13-mom-vs-yoy",
+   "text": "Recurring revenue is growing year-over-year but showing a sharp short-term pullback that demands immediate attention.",
+   "want": "supported",
+   "got": "supported",
+   "why": "YoY +6.5% growth and MoM -8.0% decline both in evidence.",
+   "source": "real"
+  },
+  {
+   "case": "ins-13-mom-vs-yoy",
+   "text": "Monthly recurring revenue grew 6.5% over the past year, confirming a positive long-term trajectory.",
+   "want": "supported",
+   "got": "supported",
+   "why": "YoY growth of 6.5% is directly from evidence (trend:mrr:YoY).",
+   "source": "real"
+  },
+  {
+   "case": "ins-13-mom-vs-yoy",
+   "text": "A single-month drop of 8.0% in October 2026 is the sharpest recent decline and may reflect seasonal effects, a billing anomaly, or an acceleration in churn.",
+   "want": "unsupported",
+   "got": "overstated",
+   "why": "MoM decline is -8.0%, not sharpest; evidence shows only one month, cannot assess relative sharpness.",
+   "source": "real"
+  },
+  {
+   "case": "ins-13-mom-vs-yoy",
+   "text": "Monthly recurring revenue fell 6.5% year over year.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows YoY +6.5%, not -6.5%; wrong direction.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-13-mom-vs-yoy",
+   "text": "Monthly recurring revenue grew 8% last month.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows MoM -8.0%, not +8%; wrong direction and magnitude.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-15-gap-not-significant",
+   "text": "The North region clearly and reliably out-earns the South; the gap is proven.",
+   "want": "overstated",
+   "got": "overstated",
+   "why": "North mean revenue higher ($113.32 vs $94.03), but t-test p=0.065 (not significant at 0.05); low confidence with only 24 rows.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-17-low-n-correlation",
+   "text": "Yes \u2014 marketing spend is strongly linked to revenue, explaining most of the variation across orders.",
+   "want": "overstated",
+   "got": "overstated",
+   "why": "r=0.854 shows strong correlation but low confidence (18 rows); 'explaining most variation' overstates predictive power.",
+   "source": "real"
+  },
+  {
+   "case": "ins-17-low-n-correlation",
+   "text": "Marketing spend and revenue are closely aligned \u2014 orders with higher marketing spend almost always generate higher revenue, and this pattern holds across the full dataset.",
+   "want": "overstated",
+   "got": "overstated",
+   "why": "Correlation supported but 'almost always' and 'holds across full dataset' overstate with only 18 rows and low confidence.",
+   "source": "real"
+  },
+  {
+   "case": "ins-17-low-n-correlation",
+   "text": "Marketing spend reliably predicts revenue across the business.",
+   "want": "overstated",
+   "got": "overstated",
+   "why": "Correlation exists but 'reliably predicts' implies causal/predictive certainty; evidence shows only correlation with low confidence.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-18-stale-memory",
+   "text": "Segment B is underperforming: revenue dropped 12.6% last month and trails Segment A by a significant margin.",
+   "want": "supported",
+   "got": "supported",
+   "why": "Revenue fell 12.6% MoM; trails A (98.06 vs 121.29). Both facts in evidence.",
+   "source": "real"
+  },
+  {
+   "case": "ins-18-stale-memory",
+   "text": "Segment B's average order revenue of $98.06 places it in the middle of the three segments, roughly 19% below Segment A and 24% above Segment C.",
+   "want": "supported",
+   "got": "supported",
+   "why": "Mean revenue B=$98.06; A=$121.29 (19.3% below); C=$78.88 (24.2% above). All computed.",
+   "source": "real"
+  },
+  {
+   "case": "ins-18-stale-memory",
+   "text": "Segment B revenue grew 15% month over month and it is the fastest-growing segment.",
+   "want": "unsupported",
+   "got": "contradicted",
+   "why": "Evidence shows -12.6% MoM decline, not +15% growth. Contradicts trend evidence.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-27-twelve-months-bad-summary",
+   "text": "November 2025 sales data shows Segment B declining and revenue strongly tied to marketing investment, with notes data entirely missing.",
+   "want": "contradicted",
+   "got": "unsupported",
+   "why": "Date range is Nov 2025\u2013Oct 2026, not November 2025 alone. Notes missing confirmed.",
+   "source": "real"
+  },
+  {
+   "case": "ins-27-twelve-months-bad-summary",
+   "text": "Segment A generates the highest average revenue per order at $121.29, while Segment C averages the lowest at $78.88 \u2014 a $42 gap that may reflect differences in customer value or product mix.",
+   "want": "supported",
+   "got": "supported",
+   "why": "Segment A mean $121.29, C mean $78.88 confirmed. Gap calculation and interpretation supported.",
+   "source": "real"
+  },
+  {
+   "case": "ins-27-twelve-months-bad-summary",
+   "text": "Segment B, which accounts for a meaningful share of orders, saw revenue fall 12.6% \u2014 the only segment showing a notable decline.",
+   "want": "unsupported",
+   "got": "overstated",
+   "why": "12.6% decline for B confirmed, but only Oct 2026 vs Sep 2026 shown; no evidence other segments declined.",
+   "source": "real"
+  },
+  {
+   "case": "ins-27-twelve-months-bad-summary",
+   "text": "The business has two customer segments, A and B.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows three segments: A, B, and C. Not two.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-14-mean-vs-median",
+   "text": "A typical order is worth around $175\u2013$265, but a small cluster of very large orders is pulling the average up to $302.",
+   "want": "contradicted",
+   "got": "supported",
+   "why": "Median $100.86 is typical; mean $301.79 inflated by outliers; 35 unusual values above $265.18 confirmed.",
+   "source": "real"
+  },
+  {
+   "case": "ins-14-mean-vs-median",
+   "text": "Roughly 35 orders \u2014 just over 1% of the dataset \u2014 have unusually high revenue, with some recorded at $20,000, which is far outside the normal range.",
+   "want": "supported",
+   "got": "supported",
+   "why": "Evidence shows 35 unusual revenue values above $265.18; 5 confirmed at $20,000; ~1.2% of 3000 rows.",
+   "source": "real"
+  },
+  {
+   "case": "ins-14-mean-vs-median",
+   "text": "The typical order is worth about $302.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Mean $301.79 is skewed by outliers; median $100.86 better represents typical order value.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-30-no-dates",
+   "text": "Session length was similar across both departments (roughly 12 minutes on average), suggesting time spent is not the primary driver of the conversion gap \u2014 the nature of the experience likely is.",
+   "want": "unsupported",
+   "got": "supported",
+   "why": "Easy dept 12.16 min, Hard dept 11.78 min; difference ~0.4 min is small relative to means.",
+   "source": "real"
+  },
+  {
+   "case": "ins-30-no-dates",
+   "text": "Conversion fell sharply last quarter.",
+   "want": "unsupported",
+   "got": "contradicted",
+   "why": "Data has no date column; cannot assess conversion trends over time or quarters.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-21-high-null-metric",
+   "text": "Every order recorded its units; no values are missing.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows 1505 of 3011 units values missing (50%), not complete.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-23-duplicates",
+   "text": "There are 3,025 unique orders in the data.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Data contains 3000 rows after cleaning, not 3025 original rows.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-37-discount-null",
+   "text": "Higher discounts lead to higher revenue per order.",
+   "want": "overstated",
+   "got": "contradicted",
+   "why": "Evidence shows r = -0.019 (negative correlation), not positive; causal language unsupported.",
+   "source": "seeded"
+  },
+  {
+   "case": "ins-20-false-premise",
+   "text": "Revenue doubled last month.",
+   "want": "contradicted",
+   "got": "contradicted",
+   "why": "Evidence shows revenue fell 2.8% MoM, not doubled.",
+   "source": "seeded"
+  }
+ ]
+}

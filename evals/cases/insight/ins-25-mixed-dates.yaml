@@ -30,3 +30,5 @@ expect:
 entity:
 - order
 - orders
+injected:
+- revenue doubled

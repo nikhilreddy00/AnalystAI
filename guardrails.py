@@ -432,12 +432,13 @@ _DATE_RE = re.compile(
     rf"\b(?:(?P<mon>{_MONTH})\.?(?P<day>\s+\d{{1,2}}(?:st|nd|rd|th)?,?)?\s+(?P<year>(?:19|20)\d\d)"
     r"|(?P<iso>(?:19|20)\d\d-[01]\d)(?:-[0-3]\d)?"
     r"|Q(?P<q>[1-4])\s+(?P<qyear>(?:19|20)\d\d)"
-    r"|(?P<bare>(?:19|20)\d\d))\b(?!-[01]\d)", re.I)
+    r"|(?<![\d.,$])(?P<bare>(?:19|20)\d\d)(?![\d.,%]\d|%))\b(?!-[01]\d)", re.I)
+_MONTH_WORD_RE = re.compile(rf"\b(?:{_MONTH})\b", re.I)
 _SCOPE_RE = re.compile(r"\b(?:data(?:set)?|cover(?:s|ed|ing)?|spans?|spanning|throughout|"
                        r"entire|whole)\b", re.I)
 _POSITION_RE = re.compile(r"\b(?:latest|last|recent|final|first|earliest|previous|prior|vs|"
                           r"versus|compared|month[- ]over[- ]month|MoM|before|after|since|"
-                          r"until|between|starting|onwards?|beginning)\b", re.I)
+                          r"until|between|starting|onwards?|beginning|through|thru|up to|ending)\b", re.I)
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 
 
@@ -488,6 +489,7 @@ def ungrounded_dates(text: str, first: tuple[int, int] | None,
             named = [m for m in _DATE_RE.finditer(sentence) if not m["bare"]]
             # A day ("from Nov 1, 2025") is a start or an event date, not the data's scope.
             if (len(named) == 1 and not named[0]["day"] and _months(named[0])
+                    and len(_MONTH_WORD_RE.findall(sentence)) == 1   # "September and October 2026"
                     and _months(named[0])[0] == _months(named[0])[1]
                     and _SCOPE_RE.search(sentence) and not _POSITION_RE.search(sentence)):
                 bad.append(f"scope: {named[0][0]}")

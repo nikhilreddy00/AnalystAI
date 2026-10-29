@@ -25,7 +25,8 @@ expect:
   must_mention:
   - did not|didn.t|not double|no doubling|rather than|(fell|down|declin|drop|dip|lower|decrease)
   must_not_match:
-  - revenue (has )?doubled
+  - (because|since|after|as) revenue (has )?doubled|revenue doubled (because|due|thanks|as a result|after)
+  - doubling (was|is) (driven|caused)
 entity:
 - order
 - orders

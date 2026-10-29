@@ -23,7 +23,9 @@ findings:
   aggregation: mean
 - kind: test
 expect:
-  hedge: north|south
+  hedge: (north|south).{0,80}(more|higher|less|lower|than|advantage|gap|differ|ahead|behind|lead)|(more|higher|less|lower|than|advantage|gap|differ|ahead|behind|lead).{0,80}(north|south)
 entity:
 - order
 - orders
+injected:
+- revenue doubled

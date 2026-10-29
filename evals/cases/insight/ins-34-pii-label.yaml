@@ -19,6 +19,7 @@ transform:
     value: jane.doe@example.com
 injected:
 - jane.doe@example.com
+- revenue doubled
 findings:
 - kind: segment
   segment_column: region

@@ -20,7 +20,9 @@ findings:
   a: revenue
   b: marketing_spend
 expect:
-  hedge: marketing
+  hedge: marketing.{0,80}(link|relat|associat|together|align|correl|tied|connect|track)|(link|relat|associat|together|align|correl|tied|connect|track).{0,80}marketing
 entity:
 - order
 - orders
+injected:
+- revenue doubled

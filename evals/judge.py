@@ -23,7 +23,7 @@ from evals.scoring import insight_claims
 from guardrails import UNTRUSTED_NOTE, delimit_untrusted
 from llm.client import LLMClient, get_client, trace_meter
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v1"   # v2 (every part must hold) calibrated worse: 87.5% vs 90%
 _SYSTEM = ((Path(__file__).parent.parent / "prompts" / "insight_judge" / f"{PROMPT_VERSION}.md")
            .read_text() + "\n" + UNTRUSTED_NOTE)
 LABELS = ("supported", "unsupported", "contradicted", "overstated")

@@ -26,4 +26,4 @@ findings:
   aggregation: mean
 - kind: test
 expect:
-  hedge: ticket
+  hedge: ticket.{0,80}(more|higher|less|lower|than|advantage|gap|differ|ahead|behind|lead)|(more|higher|less|lower|than|advantage|gap|differ|ahead|behind|lead).{0,80}ticket
