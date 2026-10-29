@@ -50,7 +50,7 @@ def test_a_faithful_report_passes_through():
     ev = report.executive_view
     assert ev.headline == "Segment B revenue fell 12.6% last month."
     assert ev.findings[0].evidence_ids == [B] and ev.action_items[0].evidence_ids == [B]
-    assert len(llm.calls) == 1 and llm.calls[0]["system"].startswith("# Agent card: insight (v2)")
+    assert len(llm.calls) == 1 and llm.calls[0]["system"].startswith("# Agent card: insight (v3)")
 
 
 def test_an_ungrounded_number_removes_its_sentence_only():
@@ -68,8 +68,8 @@ def test_a_claim_left_empty_is_rewritten_from_its_evidence():
 
 def test_dates_outside_the_range_and_one_month_scope_are_removed():
     report, _ = _run(_good(summary=[
-        {"text": "November 2025 sales data is clean.", "evidence": []},
-        {"text": "Revenue will recover in December 2026.", "evidence": []},
+        {"text": "November 2025 sales data is clean. Revenue will recover in December 2026.",
+         "evidence": []},
         {"text": "Total revenue fell 2.8% in Oct 2026 vs Sep 2026.", "evidence": []}]))
     assert [c.text for c in report.executive_view.paragraphs] == [
         "Total revenue fell 2.8% in Oct 2026 vs Sep 2026."]

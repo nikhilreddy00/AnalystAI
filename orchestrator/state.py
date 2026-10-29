@@ -459,7 +459,7 @@ class ExecutiveSummary(BaseModel):
     is checked against the evidence (agents/insight_agent.py)."""
     headline: str = ""                                   # 1-line top-of-page TL;DR
     headline_evidence_ids: list[str] = Field(default_factory=list)
-    paragraphs: list[Claim] = Field(default_factory=list)  # max 3 sentences
+    paragraphs: list[Claim] = Field(default_factory=list)  # max 2 sentences
     findings: list[Claim] = Field(default_factory=list)    # plain-language bullets
     action_items: list[ActionItem] = Field(default_factory=list)
 

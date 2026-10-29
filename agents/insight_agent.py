@@ -56,7 +56,7 @@ from orchestrator.state import (
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v3"
 
 # The refusal rules are also the labelling policy of the insight eval (evals/cases/insight/).
 INSIGHT_CARD = AgentCard(
@@ -264,11 +264,11 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     head = data.get("headline")
     head_ids = cited(head)
     headline = fix(head.get("text") if isinstance(head, dict) else head)
-    summary = [Claim(text=t, evidence_ids=cited(s)) for s in items("summary")[:3]
+    summary = [Claim(text=t, evidence_ids=cited(s)) for s in items("summary")[:2]
                if (t := fix(s.get("text") if isinstance(s, dict) else s))]
 
     claims: list[Claim] = []
-    for f in items("findings")[:5]:
+    for f in items("findings")[:4]:
         ids = cited(f)
         if not ids:
             removed["uncited"] += 1

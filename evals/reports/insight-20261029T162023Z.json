@@ -1,0 +1,1214 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261029T162023Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "99b11d9",
+  "started_at": "20261029T162023Z",
+  "only": "ins-01-,ins-09-",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "cost_per_question_usd": 0.0251,
+  "latency_p50_s": 23.16,
+  "latency_p95_s": 24.64,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": 1.0,
+  "must_not": null,
+  "contradictions_named": 1.0,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "contradictory": 1.0,
+   "straightforward": 1.0
+  }
+ },
+ "runs": {
+  "ins-01-sales-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/segment b/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/12(\\.\\d)?%/ found"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This dataset covers 3,000 orders across 12 months (Nov 2025 \u2013 Oct 2026), with revenue averaging $102.72 per order, three distinct customer segments, and a late-period dip worth watching. The cleaned dataset contains 3,000 orders across 11 columns, with revenue ranging from $21.47 to $964.19 and a median of $100.33. Segment A leads on average revenue ($121.29), followed by Segment B ($98.06) and Segment C ($78.88), while overall revenue slipped in the most recent month. Data quality is largely sound after removing 25 duplicate rows, though the notes column is too empty to use and five revenue values fall far outside the usual range.",
+      "technical_findings": [
+       "revenue and marketing_spend: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+       "revenue and discount: r = -0.019 (n = 3,000; medium confidence: weak association (|r| = 0.02))",
+       "revenue MoM: -2.8% (n = 3,000; high confidence: 3000 rows)",
+       "revenue (B) MoM: -12.6% (n = 1,049; high confidence: 1049 rows)",
+       "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+       "5 unusual values in revenue (n = 3,000; high confidence: 3000 rows)",
+       "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+       "units: median 4.00, mean 4.43, range 1.00 to 8.00 (n = 3,000; high confidence: 3000 rows)",
+       "discount: median 0.1465, mean 0.1477, range 0 to 0.3 (n = 3,000; high confidence: 3000 rows)",
+       "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the Segment B revenue decline in Oct 2026 to determine whether it reflects a real trend or a data issue before the next reporting cycle.",
+        "reasoning": "Segment B's drop (-12.6% month-over-month) is more than four times the overall rate and could signal a segment-specific problem requiring a response.",
+        "metric_impact": "Segment B's drop (-12.6% month-over-month) is more than four times the overall rate and could signal a segment-specific problem requiring a response."
+       },
+       {
+        "priority": 2,
+        "action": "Review and verify the five flagged revenue outliers (values above $260.65) with the source system before including them in any summary reporting.",
+        "reasoning": "Extreme values \u2014 including one at $964.19 \u2014 can distort averages and totals if they are errors rather than legitimate orders.",
+        "metric_impact": "Extreme values \u2014 including one at $964.19 \u2014 can distort averages and totals if they are errors rather than legitimate orders."
+       },
+       {
+        "priority": 3,
+        "action": "Assess whether marketing spend can be tested experimentally to clarify its relationship with revenue, given the association observed across 3,000 orders.",
+        "reasoning": "A controlled test would determine whether adjusting marketing spend reliably moves revenue, enabling more confident budget decisions.",
+        "metric_impact": "A controlled test would determine whether adjusting marketing spend reliably moves revenue, enabling more confident budget decisions."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Notes: >99.9% missing",
+        "severity": "critical",
+        "description": ">99.9% of notes values are missing. They are left out of every result, not filled in.",
+        "affected_metric": "notes",
+        "suggested_investigation": "Check why notes is often blank at the source."
+       },
+       {
+        "title": "Revenue: 4 extreme values",
+        "severity": "medium",
+        "description": "4 revenue values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "revenue",
+        "suggested_investigation": "Verify the largest revenue values against the source records."
+       },
+       {
+        "title": "Duplicates: 25 rows removed",
+        "severity": "low",
+        "description": "25 duplicate records (the same ID twice) were removed before the analysis.",
+        "affected_metric": "",
+        "suggested_investigation": "Find where duplicate records enter the export."
+       }
+      ],
+      "proactive_questions": [
+       "What happened in Segment B during October 2026 \u2014 is the revenue decline concentrated in specific products, regions, or customers?",
+       "Are the five high-revenue outliers (above $260.65) legitimate large orders, or do they reflect data-entry or system errors?",
+       "Does the relationship between marketing spend and revenue hold consistently within each segment, or is it driven primarily by one group?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v7) computed: anomaly, correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never causation. Trends need a date column; month-over-month compares calendar-month totals (month means for rates and flags, i.e. values within 0-1).",
+      "executive_view": {
+       "headline": "This dataset covers 3,000 orders across 12 months (Nov 2025 \u2013 Oct 2026), with revenue averaging $102.72 per order, three distinct customer segments, and a late-period dip worth watching.",
+       "headline_evidence_ids": [
+        "eda:revenue",
+        "seg:segment/revenue",
+        "trend:revenue:MoM"
+       ],
+       "paragraphs": [
+        {
+         "text": "The cleaned dataset contains 3,000 orders across 11 columns, with revenue ranging from $21.47 to $964.19 and a median of $100.33.",
+         "evidence_ids": [
+          "eda:revenue",
+          "clean:audit"
+         ]
+        },
+        {
+         "text": "Segment A leads on average revenue ($121.29), followed by Segment B ($98.06) and Segment C ($78.88), while overall revenue slipped in the most recent month.",
+         "evidence_ids": [
+          "seg:segment/revenue",
+          "trend:revenue:MoM"
+         ]
+        },
+        {
+         "text": "Data quality is largely sound after removing 25 duplicate rows, though the notes column is too empty to use and five revenue values fall far outside the usual range.",
+         "evidence_ids": [
+          "clean:audit",
+          "anom:revenue"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Revenue varies meaningfully across the three segments: Segment A averages $121.29, Segment B $98.06, and Segment C $78.88 per order.",
+         "evidence_ids": [
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "Overall revenue fell in Oct 2026 vs Sep 2026, and the decline was sharper for Segment B (-12.6%) than for the dataset as a whole (-2.8%) \u2014 these two signals point in the same direction but differ in magnitude.",
+         "evidence_ids": [
+          "trend:revenue:MoM",
+          "trend:revenue (B):MoM"
+         ]
+        },
+        {
+         "text": "Marketing spend and revenue move together across orders, suggesting the relationship is worth exploring further, though association does not confirm cause.",
+         "evidence_ids": [
+          "corr:revenue__marketing_spend"
+         ]
+        },
+        {
+         "text": "Discount and revenue show almost no association, so discount level alone does not appear to track with order revenue in this dataset \u2014 though this result is weak and uncertain.",
+         "evidence_ids": [
+          "corr:revenue__discount"
+         ]
+        },
+        {
+         "text": "Five revenue values fall far outside the usual range (above $260.65, with one reaching $964.19); they have been flagged but kept, and should be verified before any revenue totals are reported.",
+         "evidence_ids": [
+          "anom:revenue",
+          "eda:revenue"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the Segment B revenue decline in Oct 2026 to determine whether it reflects a real trend or a data issue before the next reporting cycle.",
+         "expected_impact": "Segment B's drop (-12.6% month-over-month) is more than four times the overall rate and could signal a segment-specific problem requiring a response.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM",
+          "trend:revenue:MoM"
+         ]
+        },
+        {
+         "action": "Review and verify the five flagged revenue outliers (values above $260.65) with the source system before including them in any summary reporting.",
+         "expected_impact": "Extreme values \u2014 including one at $964.19 \u2014 can distort averages and totals if they are errors rather than legitimate orders.",
+         "evidence_ids": [
+          "anom:revenue",
+          "eda:revenue"
+         ]
+        },
+        {
+         "action": "Assess whether marketing spend can be tested experimentally to clarify its relationship with revenue, given the association observed across 3,000 orders.",
+         "expected_impact": "A controlled test would determine whether adjusting marketing spend reliably moves revenue, enabling more confident budget decisions.",
+         "evidence_ids": [
+          "corr:revenue__marketing_spend"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v7) computed: anomaly, correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never causation. Trends need a date column; month-over-month compares calendar-month totals (month means for rates and flags, i.e. values within 0-1).",
+       "statistical_notes": [
+        "revenue and marketing_spend: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+        "revenue and discount: r = -0.019 (n = 3,000; medium confidence: weak association (|r| = 0.02))",
+        "revenue MoM: -2.8% (n = 3,000; high confidence: 3000 rows)",
+        "revenue (B) MoM: -12.6% (n = 1,049; high confidence: 1049 rows)",
+        "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+        "5 unusual values in revenue (n = 3,000; high confidence: 3000 rows)",
+        "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+        "units: median 4.00, mean 4.43, range 1.00 to 8.00 (n = 3,000; high confidence: 3000 rows)",
+        "discount: median 0.1465, mean 0.1477, range 0 to 0.3 (n = 3,000; high confidence: 3000 rows)",
+        "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+       ],
+       "caveats": [
+        "The notes column has more than 99.9% missing values and cannot be used reliably; any analysis that would have drawn on order notes is unsupported by this dataset.",
+        "The five flagged revenue outliers have been kept in the data; if any are data-entry errors, summary statistics such as the mean ($102.72) and the maximum ($964.19) will be affected.",
+        "Month-over-month figures compare only Oct 2026 with Sep 2026; a two-month window is too short to confirm a sustained trend.",
+        "order_date: Parsed as dates.",
+        "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+        "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+       ],
+       "code_references": [
+        "_period = pd.to_datetime(df['order_date'], format='mixed').dt.to_period('M'); df.groupby([_period, 'segment'])['revenue'].sum()",
+        "df[['marketing_spend', 'revenue']].dropna().sample(min(n, 500), random_state=42)",
+        "df.groupby('segment')['revenue'].mean()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-10-29T16:20:47.818098Z"
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "corr:revenue__marketing_spend",
+       "corr:revenue__discount",
+       "trend:revenue:MoM",
+       "trend:revenue (B):MoM",
+       "seg:segment/revenue",
+       "anom:revenue",
+       "eda:revenue",
+       "eda:units",
+       "eda:discount",
+       "eda:marketing_spend"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 3000,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+         "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "corr:revenue__marketing_spend",
+        "kind": "correlation",
+        "claim": "revenue and marketing_spend: r = 0.569",
+        "result_excerpt": "{\"revenue__marketing_spend\": 0.5685}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "corr:revenue__discount",
+        "kind": "correlation",
+        "claim": "revenue and discount: r = -0.019",
+        "result_excerpt": "{\"revenue__discount\": -0.019}",
+        "row_count": 3000,
+        "confidence": "medium",
+        "confidence_reason": "weak association (|r| = 0.02)",
+        "assumptions": []
+       },
+       {
+        "id": "trend:revenue:MoM",
+        "kind": "trend",
+        "claim": "revenue MoM: -2.8%",
+        "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -2.8, \"segment\": null}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "trend:revenue (B):MoM",
+        "kind": "trend",
+        "claim": "revenue (B) MoM: -12.6%",
+        "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+        "row_count": 1049,
+        "confidence": "high",
+        "confidence_reason": "1049 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:segment/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by segment (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "anom:revenue",
+        "kind": "anomaly",
+        "claim": "5 unusual values in revenue",
+        "result_excerpt": "[{\"column\": \"revenue\", \"row_index\": 219, \"value\": 300.59, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 294, \"value\": 519.27, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 1059, \"value\": 911.2, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"rev",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+        "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:units",
+        "kind": "eda",
+        "claim": "units: median 4.00, mean 4.43, range 1.00 to 8.00",
+        "result_excerpt": "{\"mean\": 4.4327, \"std\": 2.2901, \"min\": 1.0, \"max\": 8.0, \"median\": 4.0, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:discount",
+        "kind": "eda",
+        "claim": "discount: median 0.1465, mean 0.1477, range 0 to 0.3",
+        "result_excerpt": "{\"mean\": 0.1477, \"std\": 0.0872, \"min\": 0.0, \"max\": 0.3, \"median\": 0.1465, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:marketing_spend",
+        "kind": "eda",
+        "claim": "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32",
+        "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 12,
+      "audit_summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+      "chart_titles": [
+       "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+       "revenue vs marketing spend (r = 0.57)",
+       "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+       "5 unusual revenue values above 260.65",
+       "revenue fell 2.8% in Oct 2026 vs Sep 2026",
+       "revenue vs discount (r = -0.02)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "revenue",
+        "marketing spend"
+       ],
+       [
+        "revenue",
+        "discount"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 102.7191,
+          "std": 42.2058,
+          "min": 21.47,
+          "max": 964.19,
+          "median": 100.325,
+          "count": 3000.0
+         },
+         "units": {
+          "mean": 4.4327,
+          "std": 2.2901,
+          "min": 1.0,
+          "max": 8.0,
+          "median": 4.0,
+          "count": 3000.0
+         },
+         "discount": {
+          "mean": 0.1477,
+          "std": 0.0872,
+          "min": 0.0,
+          "max": 0.3,
+          "median": 0.1465,
+          "count": 3000.0
+         },
+         "marketing_spend": {
+          "mean": 49.5736,
+          "std": 18.5277,
+          "min": 12.62,
+          "max": 90.32,
+          "median": 48.96,
+          "count": 3000.0
+         }
+        },
+        "correlations": {
+         "revenue__marketing_spend": 0.5685,
+         "revenue__discount": -0.019
+        },
+        "trends": [
+         {
+          "column": "revenue",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -2.8,
+          "segment": null
+         },
+         {
+          "column": "revenue",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -12.64,
+          "segment": "B"
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "segment",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "A",
+            "value": 121.2872
+           },
+           {
+            "name": "B",
+            "value": 98.0581
+           },
+           {
+            "name": "C",
+            "value": 78.8824
+           }
+          ]
+         }
+        ],
+        "anomalies": [
+         {
+          "column": "revenue",
+          "row_index": 219,
+          "value": 300.59,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 294,
+          "value": 519.27,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 1059,
+          "value": 911.2,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 1167,
+          "value": 959.82,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 1491,
+          "value": 964.19,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         }
+        ],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 99.97
+        },
+        "kpis": [],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 3000,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+          "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "revenue and marketing_spend: r = 0.569",
+         "result_excerpt": "{\"revenue__marketing_spend\": 0.5685}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue and discount: r = -0.019",
+         "result_excerpt": "{\"revenue__discount\": -0.019}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "weak association (|r| = 0.02)"
+        },
+        {
+         "claim": "revenue MoM: -2.8%",
+         "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -2.8, \"segment\": null}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue (B) MoM: -12.6%",
+         "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+         "row_count": 1049,
+         "assumptions": [],
+         "confidence_reason": "1049 rows"
+        },
+        {
+         "claim": "mean revenue by segment (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "5 unusual values in revenue",
+         "result_excerpt": "[{\"column\": \"revenue\", \"row_index\": 219, \"value\": 300.59, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 294, \"value\": 519.27, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 1059, \"value\": 911.2, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 1167, \"value\": 959.82, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"expla",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+         "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "units: median 4.00, mean 4.43, range 1.00 to 8.00",
+         "result_excerpt": "{\"mean\": 4.4327, \"std\": 2.2901, \"min\": 1.0, \"max\": 8.0, \"median\": 4.0, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "discount: median 0.1465, mean 0.1477, range 0 to 0.3",
+         "result_excerpt": "{\"mean\": 0.1477, \"std\": 0.0872, \"min\": 0.0, \"max\": 0.3, \"median\": 0.1465, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32",
+         "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 3025,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 25 exact duplicate rows (same order_id and every other value).",
+          "rows_affected": 25,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 25
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 3025,
+        "rows_after": 3000,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 25,
+        "outliers_flagged": [
+         "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+        ],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "revenue",
+           "extreme_count": 4,
+           "mild_count": 59,
+           "extreme_pct": 0.13333333333333333,
+           "lower_bound": 19.790547238449893,
+           "upper_bound": 481.90715343646866,
+           "mild_lower_bound": 39.79244319922602,
+           "mild_upper_bound": 245.12166366874456,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "non-numeric",
+          "customer_email": "constant or unsupported",
+          "customer_name": "constant or unsupported",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-01",
+          "2026-10-31",
+          12
+         ]
+        }
+       },
+       [
+        "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+        "revenue vs marketing spend (r = 0.57)",
+        "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+        "5 unusual revenue values above 260.65",
+        "revenue fell 2.8% in Oct 2026 vs Sep 2026",
+        "revenue vs discount (r = -0.02)"
+       ],
+       [
+        3025,
+        11,
+        12
+       ]
+      ]
+     }
+    },
+    "latency_s": 24.8,
+    "cost_usd": 0.02724,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "ins-09-simpson": [
+   {
+    "checks": [
+     {
+      "kind": "contradiction",
+      "ok": true,
+      "detail": "both signals named"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Overall, control converts better than treatment (60.0% vs. 40.0%), but this reverses within every department \u2014 a classic case of conflicting signals. Taken as a whole, control shows a mean conversion rate of 0.6 and treatment shows 0.4, suggesting control wins. However, when visitors are split by department, treatment outperforms control in both Easy (0.8 vs. 0.7) and Hard (0.3 vs. 0.2), meaning the overall result contradicts every within-department result. These two signals disagree and cannot both be taken at face value; the department mix assigned to each group is the most likely explanation and must be investigated before drawing a conclusion.",
+      "technical_findings": [
+       "mean converted by group (2 groups) (n = 2,000; high confidence: 2000 rows)",
+       "mean converted by department|group (4 groups) (n = 2,000; high confidence: 2000 rows)",
+       "converted: median 0.5, mean 0.5, range 0 to 1.00 (n = 2,000; high confidence: 2000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Audit the randomisation process to verify that treatment and control groups were assigned equal proportions of Easy and Hard department visitors before reporting a winner.",
+        "reasoning": "If the groups are imbalanced by department, the overall conversion comparison is invalid and any business decision based on it would be wrong.",
+        "metric_impact": "If the groups are imbalanced by department, the overall conversion comparison is invalid and any business decision based on it would be wrong."
+       },
+       {
+        "priority": 2,
+        "action": "Report conversion results separately for Easy and Hard departments rather than as a single pooled figure.",
+        "reasoning": "The department-level results consistently favour treatment and give a more reliable picture of the treatment effect.",
+        "metric_impact": "The department-level results consistently favour treatment and give a more reliable picture of the treatment effect."
+       },
+       {
+        "priority": 3,
+        "action": "Investigate whether session minutes differ systematically between groups or departments, as flagged outliers in that column may indicate unusual visitor behaviour worth controlling for.",
+        "reasoning": "Undetected differences in session behaviour could confound the conversion comparison further.",
+        "metric_impact": "Undetected differences in session behaviour could confound the conversion comparison further."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Session minutes: 7 extreme values",
+        "severity": "medium",
+        "description": "7 session minutes values (0.4% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "session_minutes",
+        "suggested_investigation": "Verify the largest session minutes values against the source records."
+       }
+      ],
+      "proactive_questions": [
+       "What share of visitors in each group (control vs. treatment) came from the Easy department versus the Hard department \u2014 is the imbalance large enough to fully explain the reversed overall result?",
+       "Are there additional visitor attributes (such as device type, traffic source, or prior visits) that also differ between groups and could further confound the conversion comparison?",
+       "Does the distribution of session minutes differ between converted and non-converted visitors, and does that pattern hold consistently across both groups and both departments?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Outliers flagged (kept) in: session_minutes. Final dataset: 2000 rows (started with 2000). Analysis (analysis v7) computed: eda, segment. Correlations are Pearson r: linear association only, never causation. Trends need a date column; month-over-month compares calendar-month totals (month means for rates and flags, i.e. values within 0-1).",
+      "executive_view": {
+       "headline": "Overall, control converts better than treatment (60.0% vs. 40.0%), but this reverses within every department \u2014 a classic case of conflicting signals.",
+       "headline_evidence_ids": [
+        "seg:group/converted",
+        "seg:department|group/converted"
+       ],
+       "paragraphs": [
+        {
+         "text": "Taken as a whole, control shows a mean conversion rate of 0.6 and treatment shows 0.4, suggesting control wins.",
+         "evidence_ids": [
+          "seg:group/converted"
+         ]
+        },
+        {
+         "text": "However, when visitors are split by department, treatment outperforms control in both Easy (0.8 vs. 0.7) and Hard (0.3 vs. 0.2), meaning the overall result contradicts every within-department result.",
+         "evidence_ids": [
+          "seg:department|group/converted"
+         ]
+        },
+        {
+         "text": "These two signals disagree and cannot both be taken at face value; the department mix assigned to each group is the most likely explanation and must be investigated before drawing a conclusion.",
+         "evidence_ids": [
+          "seg:group/converted",
+          "seg:department|group/converted"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "The overall conversion rate is 0.6 for control and 0.4 for treatment \u2014 but this overall comparison is misleading because the two groups appear to have different mixes of Easy and Hard department visitors.",
+         "evidence_ids": [
+          "seg:group/converted",
+          "seg:department|group/converted"
+         ]
+        },
+        {
+         "text": "Within the Easy department, treatment converts at 0.8 versus control at 0.7; within the Hard department, treatment converts at 0.3 versus control at 0.2 \u2014 treatment is ahead in both subgroups.",
+         "evidence_ids": [
+          "seg:department|group/converted"
+         ]
+        },
+        {
+         "text": "The Hard department has a much lower conversion rate (control 0.2, treatment 0.3) than the Easy department (control 0.7, treatment 0.8), so whichever group received more Hard visitors will look worse overall regardless of the treatment effect.",
+         "evidence_ids": [
+          "seg:department|group/converted"
+         ]
+        },
+        {
+         "text": "The overall mean conversion across all 2,000 visitors is 0.5, consistent with a roughly even split between converted and not-converted visitors.",
+         "evidence_ids": [
+          "eda:converted"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Audit the randomisation process to verify that treatment and control groups were assigned equal proportions of Easy and Hard department visitors before reporting a winner.",
+         "expected_impact": "If the groups are imbalanced by department, the overall conversion comparison is invalid and any business decision based on it would be wrong.",
+         "evidence_ids": [
+          "seg:group/converted",
+          "seg:department|group/converted"
+         ]
+        },
+        {
+         "action": "Report conversion results separately for Easy and Hard departments rather than as a single pooled figure.",
+         "expected_impact": "The department-level results consistently favour treatment and give a more reliable picture of the treatment effect.",
+         "evidence_ids": [
+          "seg:department|group/converted"
+         ]
+        },
+        {
+         "action": "Investigate whether session minutes differ systematically between groups or departments, as flagged outliers in that column may indicate unusual visitor behaviour worth controlling for.",
+         "expected_impact": "Undetected differences in session behaviour could confound the conversion comparison further.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Outliers flagged (kept) in: session_minutes. Final dataset: 2000 rows (started with 2000). Analysis (analysis v7) computed: eda, segment. Correlations are Pearson r: linear association only, never causation. Trends need a date column; month-over-month compares calendar-month totals (month means for rates and flags, i.e. values within 0-1).",
+       "statistical_notes": [
+        "mean converted by group (2 groups) (n = 2,000; high confidence: 2000 rows)",
+        "mean converted by department|group (4 groups) (n = 2,000; high confidence: 2000 rows)",
+        "converted: median 0.5, mean 0.5, range 0 to 1.00 (n = 2,000; high confidence: 2000 rows)"
+       ],
+       "caveats": [
+        "The overall and per-department results point in opposite directions (Simpson's Paradox): no single headline number answers the question without first resolving the department imbalance between groups.",
+        "Outliers were flagged in session minutes and kept in the dataset; if these belong disproportionately to one group, they may affect any session-related analysis run alongside this conversion comparison.",
+        "There is no date column, so it is not possible to assess whether the experiment ran long enough to reach stable conversion rates or whether results shifted over time."
+       ],
+       "code_references": [
+        "df.groupby(['group', 'department'])['converted'].mean()",
+        "df.groupby('group')['converted'].mean()",
+        "df.groupby('department')['converted'].mean() * 100"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-10-29T16:20:45.246286Z"
+     },
+     "bundle": {
+      "question": "Does the treatment convert better than control?",
+      "columns": [
+       "visitor_id",
+       "department",
+       "group",
+       "converted",
+       "session_minutes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:group/converted",
+       "seg:department|group/converted",
+       "eda:converted"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 2000 \u2192 2000 rows, 0 logged changes",
+        "result_excerpt": "{\"rows_before\": 2000, \"rows_after\": 2000, \"decisions\": []}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": []
+       },
+       {
+        "id": "seg:group/converted",
+        "kind": "segment",
+        "claim": "mean converted by group (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"control\", \"value\": 0.6}, {\"name\": \"treatment\", \"value\": 0.4}]}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "2000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:department|group/converted",
+        "kind": "segment",
+        "claim": "mean converted by department|group (4 groups)",
+        "result_excerpt": "{\"segment_column\": \"department|group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Easy|control\", \"value\": 0.7}, {\"name\": \"Easy|treatment\", \"value\": 0.8}, {\"name\": \"Hard|control\", \"value\": 0.2}, {\"name\": \"Hard|treatment\", \"value\": 0.3}]}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "2000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:converted",
+        "kind": "eda",
+        "claim": "converted: median 0.5, mean 0.5, range 0 to 1.00",
+        "result_excerpt": "{\"mean\": 0.5, \"std\": 0.5001, \"min\": 0.0, \"max\": 1.0, \"median\": 0.5, \"count\": 2000.0}",
+        "row_count": 2000,
+        "confidence": "high",
+        "confidence_reason": "2000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": null,
+      "date_last": null,
+      "n_months": 0,
+      "audit_summary": "Outliers flagged (kept) in: session_minutes. Final dataset: 2000 rows (started with 2000).",
+      "chart_titles": [
+       "Conversion Rate by group and department",
+       "Conversion Rate by group: control highest (60.0%), treatment lowest (40.0%)",
+       "Conversion Rate by department \u2014 Easy Highest at 72.0%",
+       "session minutes distribution by converted",
+       "session minutes distribution"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "converted": {
+          "mean": 0.5,
+          "std": 0.5001,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.5,
+          "count": 2000.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "group",
+          "metric_column": "converted",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "control",
+            "value": 0.6
+           },
+           {
+            "name": "treatment",
+            "value": 0.4
+           }
+          ]
+         },
+         {
+          "segment_column": "department|group",
+          "metric_column": "converted",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Easy|control",
+            "value": 0.7
+           },
+           {
+            "name": "Easy|treatment",
+            "value": 0.8
+           },
+           {
+            "name": "Hard|control",
+            "value": 0.2
+           },
+           {
+            "name": "Hard|treatment",
+            "value": 0.3
+           }
+          ]
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "visitor_id": 0.0,
+         "department": 0.0,
+         "group": 0.0,
+         "converted": 0.0,
+         "session_minutes": 0.0
+        },
+        "kpis": [],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 2000 \u2192 2000 rows, 0 logged changes",
+         "result_excerpt": "{\"rows_before\": 2000, \"rows_after\": 2000, \"decisions\": []}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "mean converted by group (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"control\", \"value\": 0.6}, {\"name\": \"treatment\", \"value\": 0.4}]}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "2000 rows"
+        },
+        {
+         "claim": "mean converted by department|group (4 groups)",
+         "result_excerpt": "{\"segment_column\": \"department|group\", \"metric_column\": \"converted\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Easy|control\", \"value\": 0.7}, {\"name\": \"Easy|treatment\", \"value\": 0.8}, {\"name\": \"Hard|control\", \"value\": 0.2}, {\"name\": \"Hard|treatment\", \"value\": 0.3}]}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "2000 rows"
+        },
+        {
+         "claim": "converted: median 0.5, mean 0.5, range 0 to 1.00",
+         "result_excerpt": "{\"mean\": 0.5, \"std\": 0.5001, \"min\": 0.0, \"max\": 1.0, \"median\": 0.5, \"count\": 2000.0}",
+         "row_count": 2000,
+         "assumptions": [],
+         "confidence_reason": "2000 rows"
+        }
+       ],
+       {
+        "decisions": [],
+        "rows_before": 2000,
+        "rows_after": 2000,
+        "columns_coerced": [],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "7 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+        ],
+        "high_null_columns": [],
+        "summary": "Outliers flagged (kept) in: session_minutes. Final dataset: 2000 rows (started with 2000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "session_minutes",
+           "extreme_count": 7,
+           "mild_count": 62,
+           "extreme_pct": 0.35000000000000003,
+           "lower_bound": -24.799999999999997,
+           "upper_bound": 46.599999999999994,
+           "mild_lower_bound": -9.5,
+           "mild_upper_bound": 31.299999999999997,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "7 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "session_minutes"
+         ],
+         "skipped_columns": {
+          "visitor_id": "id column",
+          "department": "binary column (only 2 values)",
+          "group": "binary column (only 2 values)",
+          "converted": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {}
+       },
+       [
+        "Conversion Rate by group and department",
+        "Conversion Rate by group: control highest (60.0%), treatment lowest (40.0%)",
+        "Conversion Rate by department \u2014 Easy Highest at 72.0%",
+        "session minutes distribution by converted",
+        "session minutes distribution"
+       ],
+       [
+        2000,
+        5,
+        0
+       ]
+      ]
+     }
+    },
+    "latency_s": 21.51,
+    "cost_usd": 0.02302,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

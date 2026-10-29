@@ -633,21 +633,23 @@ def rescore(path: Path) -> Path:
     return out
 
 
-async def judge(path: Path, max_usd: float) -> Path:
-    """Label every stored insight report's claims with the faithfulness judge (evals/judge.py),
-    at ≈ $0.004 per report; runs already judged by the same judge version are kept."""
+async def judge(path: Path, max_usd: float, first_only: bool = False) -> Path:
+    """Label stored insight reports' claims with the faithfulness judge (evals/judge.py), at
+    ≈ $0.009 per report; runs already judged by the same judge version are kept. `first_only`
+    judges run 1 of each case: at temperature 0 the k runs barely differ, so judging all of them
+    multiplies cost, not information."""
     from evals.judge import PROMPT_VERSION, judge_report
     report = json.loads(path.read_text())
     cases = {c["id"]: c for c in load_cases(report["meta"]["suite"], None)}
     todo = []
     for cid, rs in report["runs"].items():
-        for r in rs:
+        for r in rs[:1] if first_only else rs:
             out = r.get("output") or {}
             has_report = out.get("report") or out.get("insight_report")
             if has_report and (r.get("judge") or {}).get("prompt_version") != PROMPT_VERSION:
                 r["case_id"] = cid
                 todo.append(r)
-    print(f"judging {len(todo)} runs ≈ ${round(0.004 * len(todo), 2)} (cap ${max_usd})", flush=True)
+    print(f"judging {len(todo)} runs ≈ ${round(0.009 * len(todo), 2)} (cap ${max_usd})", flush=True)
     sem, spent = asyncio.Semaphore(6), [0.0]
 
     async def one(r: dict) -> None:
@@ -967,8 +969,8 @@ async def main() -> None:
     if sys.argv[1:2] == ["rescore"]:
         print(f"→ {rescore(Path(sys.argv[2]))}")
         return
-    if sys.argv[1:2] == ["judge"]:   # paid (Haiku): python -m evals.run judge <report> [max_usd]
-        print(f"→ {await judge(Path(sys.argv[2]), float(sys.argv[3]) if len(sys.argv) > 3 else 1.0)}")
+    if sys.argv[1:2] == ["judge"]:   # paid (Haiku): evals.run judge <report> [max_usd] [first]
+        print(f"→ {await judge(Path(sys.argv[2]), float(sys.argv[3]) if len(sys.argv) > 3 else 1.0, sys.argv[4:5] == ['first'])}")
         return
     ap = argparse.ArgumentParser()
     ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake", "visualization",
