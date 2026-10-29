@@ -84,8 +84,8 @@ def test_numeric_strips_percent_suffix():
     res = try_numeric_conversion(s)
     assert res is not None
     out, transformations = res
-    assert list(out) == [48.0, 12.0, 100.0]
-    assert "% suffix" in transformations
+    assert list(out) == [0.48, 0.12, 1.0]   # a rate, not an amount
+    assert any(t.startswith("% suffix") for t in transformations)
 
 
 def test_numeric_strips_rating_scale():
@@ -203,9 +203,9 @@ def test_dates_all_null():
 
 async def test_drop_rows_never_deletes_most_of_the_data(recorded_llm):
     """E2E regression (Phases 1-3): the model chose drop_rows for an all-but-empty `notes`
-    column, which left 1 row of 3,025 and made every overview number wrong."""
+    column, which left 1 row of 3,025 and made every overview number wrong. Cleaning is now
+    rule-based: no recorded response, so any model call would fail the test."""
     import io
-    import json
     from agents.cleaning_agent import run_cleaning_agent
     from connectors.csv_connector import CSVConnector
     from evals import datagen
@@ -218,10 +218,8 @@ async def test_drop_rows_never_deletes_most_of_the_data(recorded_llm):
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
     s.__dict__["_df_parquet"] = buf.getvalue()
-    recorded_llm.responses.append(json.dumps({"notes": {"strategy": "drop_rows", "reason": "r"}}))
-
     cleaned, audit = await run_cleaning_agent(s)
 
     assert len(cleaned) > 0.9 * len(df.drop_duplicates())
     (d,) = [d for d in audit.decisions if d.column == "notes"]
-    assert (d.operation, d.strategy, d.rows_affected) == ("flag", "keep", 0)
+    assert (d.operation, d.strategy, d.rows_affected, d.rows_removed) == ("keep", "high_null", 0, 0)

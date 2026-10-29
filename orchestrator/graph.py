@@ -24,6 +24,7 @@ from typing import Any, TypedDict
 from langgraph.graph import END, StateGraph
 
 from agents.analysis_agent import run_analysis_agent
+from agents.cleaning_agent import build_evidence as build_cleaning_evidence
 from agents.cleaning_agent import run_cleaning_agent
 from agents.ingestion_agent import run_ingestion_agent
 from agents.insight_agent import run_insight_agent
@@ -247,8 +248,18 @@ async def cleaning_node(state: AgentState) -> dict:
     if state.get("df_parquet"):
         session.__dict__["_df_parquet"] = state["df_parquet"]
 
+    # The high-null gate's answer: "Drop those columns" drops them, "Cancel" stops; anything else
+    # (the recommended "Continue") keeps them as they are.
+    answer = (state.get("user_message") or "").strip().casefold() \
+        if state.get("is_approval") and state.get("approval_context") == "high_null" else ""
+    # Match the option, not a word anywhere: "don't drop anything" must not drop.
+    if answer.startswith("cancel") or answer.rstrip(").") == "c":
+        session.error_message = "Analysis cancelled at your request; nothing was analysed."
+        return {"session": session, "df_parquet": state.get("df_parquet")}
+
     try:
-        _, audit = await run_cleaning_agent(session)
+        drop = answer.startswith("drop") or answer.rstrip(").") == "b"
+        _, audit = await run_cleaning_agent(session, drop_high_null=drop)
         session.cleaning_audit = audit
 
         msg = audit.summary
@@ -263,7 +274,7 @@ async def cleaning_node(state: AgentState) -> dict:
                 "question": (
                     f"Columns {audit.high_null_columns} have >40% missing values. "
                     "How should I proceed?\n"
-                    "A) Continue with imputation (recommended)\n"
+                    "A) Continue; missing values stay missing (recommended)\n"
                     "B) Drop these columns entirely\n"
                     "C) Cancel analysis"
                 ),
@@ -294,6 +305,8 @@ async def analysis_node(state: AgentState) -> dict:
 
     try:
         findings = await run_analysis_agent(session, get_client())
+        if session.cleaning_audit:
+            findings.evidence.insert(0, build_cleaning_evidence(session.cleaning_audit))
         if session.data_contract and session.data_contract.source_query:
             findings.evidence.insert(0, session.data_contract.source_query)   # where rows came from
         session.analysis_findings = findings

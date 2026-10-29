@@ -1,0 +1,8 @@
+id: clean-11-junk-numeric
+category: types
+schema: orders
+seed: 111
+issues:
+- junk_numeric
+label_note: 'A few ''TBD'' / ''pending'' in units: the column is numeric; those cells
+  become missing and are counted.'

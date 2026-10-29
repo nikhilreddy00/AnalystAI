@@ -295,7 +295,9 @@ Progress: **Intake ✅ 2026-10-28** (`docs/baselines/phase5_intake.md`; also clo
 SQL follow-up item via shared conversation memory, and added value-based date detection);
 **Visualization ✅ 2026-10-28** (`docs/baselines/phase5_visualization.md`; also fixed the high-null
 approval overwriting the user's question, and put targeted, chart-request and drill-down charts under
-the same policy).
+the same policy);
+**Cleaning ✅ 2026-10-28** (`docs/baselines/phase5_cleaning.md`; deterministic, nothing imputed; also
+made the high-null gate honour Drop/Cancel and delimited the audit in the insight prompt).
 Each PR runs the same 7 steps:
 1. agent card;
 2. eval cases first;

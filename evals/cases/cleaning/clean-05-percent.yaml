@@ -1,0 +1,7 @@
+id: clean-05-percent
+category: types
+schema: orders
+seed: 105
+issues:
+- percent
+label_note: '''12.5%'' means 0.125. Kept as 12.5 it would be summed as an amount.'

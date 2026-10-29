@@ -1,0 +1,15 @@
+id: clean-25-holdout
+category: combined
+schema: bank
+seed: 125
+issues:
+- exact_dups
+- blank_rows
+- currency
+- mixed_dates
+- sentinels
+- variants
+- category_nulls
+- target_nulls
+- outliers
+label_note: Everything at once.

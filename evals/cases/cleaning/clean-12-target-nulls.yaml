@@ -1,0 +1,8 @@
+id: clean-12-target-nulls
+category: missing
+schema: orders
+seed: 112
+issues:
+- target_nulls
+label_note: 'Revenue (the question''s metric) missing in 8%: never filled; totals
+  use the known rows.'

@@ -603,3 +603,128 @@ def score_visualization(case: dict, output: dict | None, df: pd.DataFrame,
             {"rule": "chart_has_rationale", "ok": not no_why,
              "detail": "ok" if not no_why else f"{len(no_why)} chart(s) without a rationale"}]
     return checks, hard
+
+
+# ── Cleaning (Phase 5): diff the cleaned frame against the generator's expected frame ─────────
+
+def clean_cell(v: Any) -> Any:
+    """One comparable form per cell: None for missing, float for numbers, ISO text for dates."""
+    if v is None or (not isinstance(v, str) and pd.isna(v)):
+        return None
+    if isinstance(v, (pd.Timestamp, datetime.datetime, datetime.date)):
+        return pd.Timestamp(v).isoformat()
+    if isinstance(v, numbers.Number) and not isinstance(v, bool):
+        return float(v)
+    return str(v)
+
+
+def _same_cell(a: Any, b: Any) -> bool:
+    if isinstance(a, float) and isinstance(b, float):
+        return math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-9)
+    return a == b
+
+
+def _col(frame: dict, column: str) -> dict[int, Any]:
+    if column not in frame["columns"]:
+        return {}
+    j = frame["columns"].index(column)
+    return {label: row[j] for label, row in zip(frame["index"], frame["rows"])}
+
+
+def score_cleaning(output: dict | None, received: pd.DataFrame, expected: pd.DataFrame,
+                   manifest: list[dict], protected: list[str], error: str | None
+                   ) -> tuple[list[dict], list[dict]]:
+    """(checks, hard). `received` is the frame the agent was given; `output` holds the cleaned
+    frame (`index`, `columns`, `rows` of clean_cell values) and the audit.
+
+    Checks: one `planted` per manifest issue (handled as the policy says, and logged where the
+    issue is a missing-value one), and `trap` checks for over-cleaning: rows and columns that
+    must survive, and every column without a planted cell issue left as expected.
+    Hard rules come from the diff, not from the agent's own accounting."""
+    if output is None:
+        fail = [{"kind": "planted", "issue": m["issue"], "ok": False, "detail": error or "no output"}
+                for m in manifest]
+        hard = [{"rule": r, "ok": False, "detail": error or "no output"}
+                for r in ("rows_logged", "changes_logged", "protected_not_filled")]
+        return fail, hard
+
+    audit = output["audit"]
+    labels = set(output["index"])
+    logged = {d["column"] for d in audit["decisions"]}
+    flagged = {f["column"] for f in (audit.get("anomaly_report") or {}).get("flags", [])}
+    checks: list[dict] = []
+
+    def cells_ok(column: str, rows: list[int]) -> tuple[bool, str]:
+        got = _col(output, column)
+        if not got:
+            return False, f"{column} missing from output"
+        bad = [r for r in rows if r not in got
+               or not _same_cell(got[r], clean_cell(expected.at[r, column]))]
+        if bad:
+            r = bad[0]
+            seen = "row removed" if r not in got else f"got {got[r]!r}"
+            return False, (f"{len(bad)}/{len(rows)} cells wrong in {column}, e.g. row {r}: "
+                           f"{seen}, want {clean_cell(expected.at[r, column])!r}")
+        return True, "ok"
+
+    for m in manifest:
+        issue, col, rows = m["issue"], m["column"], m["rows"]
+        if issue == "near_duplicates":
+            gone = [r for r in rows if r not in labels]
+            ok, detail = not gone, f"removed distinct records {gone[:5]}" if gone else "ok"
+            checks.append({"kind": "trap", "issue": issue, "ok": ok, "detail": detail})
+            continue
+        if col == "*":
+            left = [r for r in rows if r in labels]
+            ok, detail = not left, f"{len(left)} {issue} rows left" if left else "ok"
+        else:
+            ok, detail = cells_ok(col, rows)
+            if ok and issue in ("target_nulls", "metric_nulls", "id_nulls", "date_nulls",
+                                "category_nulls", "sentinels", "junk_numeric") and col not in logged:
+                ok, detail = False, f"{col}: handled but no decision logs it"
+            if ok and issue == "outliers" and col not in flagged:
+                ok, detail = False, f"{col}: outliers kept but not flagged"
+            if ok and issue == "high_null" and col not in audit["high_null_columns"]:
+                ok, detail = False, f"{col}: not reported as high-null"
+        checks.append({"kind": "planted", "issue": issue, "ok": ok, "detail": detail})
+
+    # Traps: nothing outside the planted issues changes.
+    base = list(expected.index)
+    gone = [r for r in base if r not in labels]
+    checks.append({"kind": "trap", "issue": "base_rows_kept", "ok": not gone,
+                   "detail": f"{len(gone)} clean rows removed" if gone else "ok"})
+    cols_ok = output["columns"] == list(received.columns)
+    checks.append({"kind": "trap", "issue": "columns_kept", "ok": cols_ok,
+                   "detail": "ok" if cols_ok else f"columns now {output['columns']}"})
+    touched = {m["column"] for m in manifest}
+    for col in expected.columns:
+        if col not in touched:
+            ok, detail = cells_ok(col, [r for r in base if r in labels])
+            checks.append({"kind": "trap", "issue": f"unchanged:{col}", "ok": ok, "detail": detail})
+
+    # Hard rules.
+    removed = len(received) - len(output["index"])
+    logged_removed = sum(int(d.get("rows_removed") or 0) for d in audit["decisions"])
+    rows_ok = (removed == logged_removed and audit["rows_before"] == len(received)
+               and audit["rows_after"] == len(output["index"]))
+    changed = []
+    for col in received.columns:
+        got = _col(output, col)
+        if any(not _same_cell(got.get(r), clean_cell(received.at[r, col])) for r in got):
+            changed.append(col)
+    unlogged = [c for c in changed if c not in logged]
+    filled = []
+    for col in protected:
+        got = _col(output, col)
+        if any(got.get(r) is not None for r in got if clean_cell(received.at[r, col]) is None):
+            filled.append(col)
+    hard = [
+        {"rule": "rows_logged", "ok": rows_ok,
+         "detail": "ok" if rows_ok else f"{removed} rows removed, {logged_removed} logged "
+                                        f"(audit {audit['rows_before']}→{audit['rows_after']})"},
+        {"rule": "changes_logged", "ok": not unlogged,
+         "detail": f"changed without a decision: {unlogged}" if unlogged else "ok"},
+        {"rule": "protected_not_filled", "ok": not filled,
+         "detail": f"filled: {filled}" if filled else "ok"},
+    ]
+    return checks, hard

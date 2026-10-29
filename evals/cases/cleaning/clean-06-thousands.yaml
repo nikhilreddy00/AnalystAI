@@ -1,0 +1,7 @@
+id: clean-06-thousands
+category: types
+schema: bank
+seed: 106
+issues:
+- thousands
+label_note: Balances with thousands separators.

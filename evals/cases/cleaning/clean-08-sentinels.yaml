@@ -1,0 +1,8 @@
+id: clean-08-sentinels
+category: missing
+schema: orders
+seed: 108
+issues:
+- sentinels
+label_note: '''-'', ''?'', ''--'' and ''N/A'' mean missing; a label column shows them
+  as ''Unknown''.'

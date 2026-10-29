@@ -26,7 +26,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
-| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); next: Cleaning |
+| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); next: Insight |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -69,7 +69,7 @@ User query
 [2. Ingestion Agent]   Haiku   — connector.load() → DataFrame + DataContract
   │
   ▼
-[3. Cleaning Agent]    Claude  — impute/dedup/coerce → CleaningAudit
+[3. Cleaning Agent]            — deterministic (no LLM): parse/merge/dedup, nothing imputed → CleaningAudit
   │
   ▼
 [4. Analysis Agent]    Claude  — generates Python → E2B sandbox → AnalysisFindings
@@ -101,7 +101,8 @@ When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps
 
 ### Human Approval Gates
 - **Clarification**: intake detects ambiguous query → `human_approval` node → SSE `approval_required` event
-- **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend
+- **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend;
+  the answer reaches `cleaning_node` (Continue = keep as missing, Drop = `drop_column`, Cancel = stop)
 
 ---
 
@@ -113,7 +114,12 @@ agents/
                              conversation_context memory + previous plan, all delimited), hard rules
                              (plan_columns, intent, JSON: 1 guided retry, then drop + ask), returns AnalysisTask
   ingestion_agent.py       — shared LLM client (Haiku), returns DataContract
-  cleaning_agent.py        — returns (DataFrame, CleaningAudit)
+  cleaning_agent.py        — contract agent, PURE PYTHON (no LLM): CLEANING_CARD, build_context →
+                             CleanContext, clean() = 9 allowed operations, one CleaningDecision each
+                             (nothing imputed: missing numbers/IDs/dates/targets stay missing, labels →
+                             "Unknown"; key-collision label merge; dedup only with an ID column);
+                             guardrails re-check rows/changes/protected; build_evidence → Evidence
+                             kind "cleaning"; returns (DataFrame, CleaningAudit)
   analysis_agent.py        — the agent-contract reference (docs/agent-contract.md): ANALYSIS_CARD,
                              build_context, tools (retry only), code → guard → E2B → built-in
                              standard stats → hard rules (1 guided retry) → findings + Evidence
@@ -213,7 +219,7 @@ agent_start       → {type: "agent_start", agent: "<name>", message: "<status>"
 agent_complete    → {type: "agent_complete", agent: "<name>", message: "<result>"}
 approval_required → {type: "approval_required", context: "clarification"|"high_null", ...}
 suggested_questions → {type: "suggested_questions", questions: string[]}  // FEAT-01
-evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding
+evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding (+ one "cleaning", + "query" for SQL)
 charts            → {type: "charts", data: ChartConfig[]}  // Phase 5: + rationale, placement, lint_warnings, error_key, split_key, reference_lines
 export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
 insight           → {type: "insight", data: InsightReport}
@@ -245,7 +251,7 @@ done              → {type: "done"}  // always last
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
   Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost ~$59 (2026-10-27), mostly
-  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,

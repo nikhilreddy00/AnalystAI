@@ -1,0 +1,6 @@
+id: clean-19-clean-orders
+category: clean
+schema: orders
+seed: 119
+issues: []
+label_note: 'A clean table: the only change allowed is parsing the ISO dates.'

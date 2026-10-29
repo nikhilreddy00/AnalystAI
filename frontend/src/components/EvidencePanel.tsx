@@ -31,6 +31,7 @@ const KIND = {
   anomaly: "Anomalies",
   test: "Test",
   query: "SQL query",
+  cleaning: "Cleaning",
 };
 
 interface Props {

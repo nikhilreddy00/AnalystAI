@@ -1,0 +1,10 @@
+id: clean-24-holdout
+category: combined
+schema: orders
+seed: 124
+issues:
+- high_null
+- metric_nulls
+- mixed_dates
+- sentinels
+label_note: Sparse promo field plus missing units and placeholders.

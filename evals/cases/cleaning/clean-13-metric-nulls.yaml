@@ -1,0 +1,8 @@
+id: clean-13-metric-nulls
+category: missing
+schema: orders
+seed: 113
+issues:
+- metric_nulls
+label_note: 'Units missing in 8%: left missing, logged. A filled count would invent
+  sales.'

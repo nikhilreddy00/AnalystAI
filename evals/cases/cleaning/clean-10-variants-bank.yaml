@@ -1,0 +1,8 @@
+id: clean-10-variants-bank
+category: labels
+schema: bank
+seed: 110
+issues:
+- variants
+label_note: Branch names with case and spacing variants. 'A-1' and 'A1' are different
+  products and must not merge.

@@ -38,6 +38,7 @@ _UNIT_RE = re.compile(
     r"(?i)\s*(?:kg|g|mg|ml|l|cm|mm|m|km|lb|oz|ft|in|sq\.?\s*ft|hrs?|mins?|secs?|pcs?|units?)\s*$"
 )
 _COMMA_NUM_RE = re.compile(r"\d,\d")
+_HAS_YEAR_RE = re.compile(r"\d{4}|\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2}\b")
 
 
 def triage_columns(df: pd.DataFrame) -> dict[str, list[str]]:
@@ -117,9 +118,10 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
     if cleaned.dropna().str.contains(_CURRENCY_RE, regex=True).any():
         cleaned = cleaned.str.replace(_CURRENCY_RE, "", regex=True)
         transformations.append("currency symbol")
-    if cleaned.dropna().str.contains(_PCT_TAIL_RE, regex=True).any():
+    pct = cleaned.str.contains(_PCT_TAIL_RE, regex=True).fillna(False).astype(bool)
+    if pct.any():
         cleaned = cleaned.str.replace(_PCT_TAIL_RE, "", regex=True)
-        transformations.append("% suffix")
+        transformations.append("% suffix (12.5% → 0.125)")
     if cleaned.dropna().str.contains(_RATING_RE, regex=True).any():
         cleaned = cleaned.str.replace(_RATING_RE, "", regex=True)
         transformations.append("rating scale suffix")
@@ -132,6 +134,8 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
 
     cleaned = cleaned.str.strip()
     numeric = pd.to_numeric(cleaned, errors="coerce")
+    # "12.5%" is the rate 0.125: kept as 12.5 it reads as an amount and gets summed.
+    numeric = numeric.where(~pct, numeric / 100)
     if int(numeric.notna().sum()) / original_non_null >= 0.8:
         return numeric, transformations or ["parsed as numeric"]
     return None
@@ -166,6 +170,9 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
         return None
 
     sample = s.astype(str).str.strip()
+    # A date needs a year: "Jan", "Monday" or "12:30" would parse with an invented year or today.
+    if sample.head(200).str.contains(_HAS_YEAR_RE, regex=True).mean() < 0.8:
+        return None
     for dayfirst in (False, True):
         try:
             parsed_sample = pd.to_datetime(

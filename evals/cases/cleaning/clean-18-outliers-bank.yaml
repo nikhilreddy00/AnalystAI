@@ -1,0 +1,7 @@
+id: clean-18-outliers-bank
+category: outliers
+schema: bank
+seed: 118
+issues:
+- outliers
+label_note: '4 extreme amounts: flagged, kept.'

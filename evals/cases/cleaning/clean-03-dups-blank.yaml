@@ -1,0 +1,8 @@
+id: clean-03-dups-blank
+category: duplicates
+schema: bank
+seed: 103
+issues:
+- exact_dups
+- blank_rows
+label_note: Both row problems at once; the audit must count each removal.

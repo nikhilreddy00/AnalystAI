@@ -1,0 +1,11 @@
+id: clean-21-holdout
+category: combined
+schema: orders
+seed: 121
+issues:
+- exact_dups
+- currency
+- variants
+- category_nulls
+- outliers
+label_note: 'A messy sales export: every issue type that a CRM export carries.'

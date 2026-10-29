@@ -1,0 +1,8 @@
+id: clean-15-id-date-nulls
+category: missing
+schema: orders
+seed: 115
+issues:
+- id_nulls
+- date_nulls
+label_note: Missing IDs and dates are never invented; the rows stay.
