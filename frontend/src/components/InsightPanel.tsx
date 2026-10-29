@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ExecutiveSummary, AnalystDetail, InsightReport, RecommendedAction, AnomalyAlert } from "@/types";
+import type { ExecutiveSummary, AnalystDetail, InsightReport, RecommendedAction, AnomalyAlert, Claim } from "@/types";
 
 // PROMPT-3: tab toggle now renders two strictly-separated content blocks.
 // Executive: plain English, business framing, no stats notation.
@@ -18,16 +18,18 @@ const SEVERITY = {
 interface Props {
   report: InsightReport;
   onFollowUp?: (question: string) => void;
+  /** Phase 5: a finding's evidence chip opens that Evidence item. */
+  onEvidence?: (id: string) => void;
 }
 
-export default function InsightPanel({ report, onFollowUp }: Props) {
+export default function InsightPanel({ report, onFollowUp, onEvidence }: Props) {
   const [view, setView] = useState<"executive" | "analyst">("executive");
 
   return (
     <section className="space-y-4" aria-label="Analysis report">
       <Header view={view} onChange={setView} />
       {view === "executive" ? (
-        <ExecutiveView report={report} onFollowUp={onFollowUp} />
+        <ExecutiveView report={report} onFollowUp={onFollowUp} onEvidence={onEvidence} />
       ) : (
         <AnalystView report={report} />
       )}
@@ -93,10 +95,45 @@ function Alerts({ report, detail }: { report: InsightReport; detail?: boolean })
   );
 }
 
-function ExecutiveView({ report, onFollowUp }: { report: InsightReport; onFollowUp?: (q: string) => void }) {
+// The label a reader understands, from the evidence id's prefix (agents/analysis_agent.py ids).
+const SOURCE: Record<string, string> = {
+  corr: "Correlation",
+  trend: "Trend",
+  seg: "Breakdown",
+  anom: "Anomalies",
+  test: "Test",
+  eda: "Summary stats",
+  clean: "Cleaning",
+  query: "SQL query",
+};
+
+function EvidenceChips({ ids, onEvidence }: { ids?: string[]; onEvidence?: (id: string) => void }) {
+  if (!onEvidence || !ids?.length) return null;
+  return (
+    <span className="ml-1.5 inline-flex flex-wrap gap-1 align-middle">
+      {ids.map((id) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onEvidence(id)}
+          aria-label={`Open evidence ${id}`}
+          className="rounded border border-border px-1.5 py-px text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          {SOURCE[id.split(":")[0]] ?? "Evidence"}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+// Sessions stored before Phase 5 hold plain strings.
+const text = (c: Claim | string) => (typeof c === "string" ? c : c.text);
+const ids = (c: Claim | string) => (typeof c === "string" ? [] : c.evidence_ids);
+
+function ExecutiveView({ report, onFollowUp, onEvidence }: { report: InsightReport; onFollowUp?: (q: string) => void; onEvidence?: (id: string) => void }) {
   const ev: ExecutiveSummary = report.executive_view ?? {
     headline: "",
-    paragraphs: report.executive_summary ? [report.executive_summary] : [],
+    paragraphs: report.executive_summary ? [{ text: report.executive_summary, evidence_ids: [] }] : [],
     findings: [],
     action_items: report.recommended_actions.map((a: RecommendedAction) => ({
       action: a.action,
@@ -112,7 +149,7 @@ function ExecutiveView({ report, onFollowUp }: { report: InsightReport; onFollow
             <p className="text-lg font-semibold leading-snug text-foreground text-balance">{ev.headline}</p>
           )}
           {ev.paragraphs.length > 0 && (
-            <p className="text-sm leading-relaxed text-muted-foreground max-w-[68ch]">{ev.paragraphs.join(" ")}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground max-w-[68ch]">{ev.paragraphs.map(text).join(" ")}</p>
           )}
         </div>
       )}
@@ -122,7 +159,10 @@ function ExecutiveView({ report, onFollowUp }: { report: InsightReport; onFollow
           <SectionLabel>Key findings</SectionLabel>
           <ul className="divide-y divide-border">
             {ev.findings.map((f, i) => (
-              <li key={i} className="py-2 text-sm text-foreground leading-relaxed">{f}</li>
+              <li key={i} className="py-2 text-sm text-foreground leading-relaxed">
+                {text(f)}
+                <EvidenceChips ids={ids(f)} onEvidence={onEvidence} />
+              </li>
             ))}
           </ul>
         </div>
@@ -141,7 +181,10 @@ function ExecutiveView({ report, onFollowUp }: { report: InsightReport; onFollow
                   {i + 1}
                 </span>
                 <div className="space-y-0.5">
-                  <p className="text-foreground font-medium leading-snug">{item.action}</p>
+                  <p className="text-foreground font-medium leading-snug">
+                    {item.action}
+                    <EvidenceChips ids={item.evidence_ids} onEvidence={onEvidence} />
+                  </p>
                   {item.expected_impact && <p className="text-muted-foreground text-xs">{item.expected_impact}</p>}
                 </div>
               </li>

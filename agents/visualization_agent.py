@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as scipy_stats
 
+from agents.analysis_agent import segment_id
 from agents.utils import pandas_freq, partial_last_month
 from guardrails import chart_lint
 from llm.client import trace_verdict
@@ -2244,7 +2245,7 @@ def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
         x, sp = (parts[1], parts[0]) if len(parts) >= 2 else (parts[0], None)
         seen.add((parts[0], s.metric_column))
         jobs["segment"].append(((x, s.metric_column, s.aggregation or "mean", sp),
-                                [f"seg:{s.segment_column}/{s.metric_column}"]))
+                                [segment_id(s.segment_column, s.metric_column, s.aggregation)]))
     for i, t in enumerate(f.statistical_tests):
         if not task or not task.target_metrics or not task.segments:
             continue

@@ -223,13 +223,14 @@ def score_intake_run(case: dict, output: dict | None, error: str | None) -> dict
 
 # ── Visualization (Phase 5): deterministic, $0 ──────────────────────────────────────────────
 
-def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[str]]:
+def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = ()
+                 ) -> tuple[AnalysisFindings, list[str]]:
     """AnalysisFindings for a case's `findings:` fixture, valued from the frame (as the analysis
     agent would report them), with evidence from the real build_evidence. Returns the evidence id
     of each fixture entry, in order."""
     from scipy import stats
 
-    from agents.analysis_agent import build_evidence
+    from agents.analysis_agent import build_evidence, segment_id
     from orchestrator.state import AnomalyRecord, SegmentResult, StatisticalResult, TrendResult
 
     plan = case["plan"]
@@ -262,7 +263,7 @@ def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[s
                 aggregation=f["aggregation"],
                 results=[{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                           "value": round(float(v), 4)} for k, v in g.items()]))
-            ids.append(f"seg:{f['segment_column']}/{f['metric']}")
+            ids.append(segment_id(f["segment_column"], f["metric"], f["aggregation"]))
         elif f["kind"] == "correlation":
             key = f"{f['a']}__{f['b']}"
             corr[key] = round(float(df[f["a"]].corr(df[f["b"]])), 4)
@@ -271,7 +272,7 @@ def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[s
             s = df[f["column"]].dropna()
             q1, q3 = s.quantile(0.25), s.quantile(0.75)
             hi = q3 + 3 * (q3 - q1)
-            for i, v in s[s > hi].head(5).items():
+            for i, v in s[s > hi].head(25).items():
                 anoms.append(AnomalyRecord(column=f["column"], row_index=int(i), value=float(v),
                                            expected_range=f"<= {hi:.2f}", severity="high",
                                            explanation=""))
@@ -283,7 +284,13 @@ def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[s
             tests.append(StatisticalResult(test_name="Welch's t-test", statistic=float(t),
                                            p_value=float(p), interpretation=f"{metric} by {group}"))
             ids.append(f"test:{len(tests) - 1}")
-    findings = AnalysisFindings(eda_summary={}, correlations=corr, trends=trends, segments=segs,
+    eda = {}
+    for col in eda_columns:   # the analysis agent's built-in describe block
+        s = pd.to_numeric(df[col], errors="coerce").dropna()
+        eda[col] = {k: round(float(v), 4) for k, v in {
+            "mean": s.mean(), "std": s.std(), "min": s.min(), "max": s.max(),
+            "median": s.median(), "count": len(s)}.items()}
+    findings = AnalysisFindings(eda_summary=eda, correlations=corr, trends=trends, segments=segs,
                                 anomalies=anoms, statistical_tests=tests, code_executed="")
     raw = {"n_rows": len(df), "non_null": {str(c): int(n) for c, n in df.notna().sum().items()},
            "trends": raw_trends}
@@ -399,12 +406,7 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     clean_df, audit = await run_cleaning_agent(session)
     session.cleaning_audit = audit
 
-    findings, _ = viz_findings(case, clean_df)
-    for col in plan["target_metrics"]:
-        s = pd.to_numeric(clean_df[col], errors="coerce").dropna()
-        findings.eda_summary[col] = {k: round(float(v), 4) for k, v in {
-            "count": len(s), "mean": s.mean(), "median": s.median(), "std": s.std(),
-            "min": s.min(), "max": s.max()}.items()}
+    findings, _ = viz_findings(case, clean_df, plan["target_metrics"])
     findings.missing_pct = {str(c): round(float(clean_df[c].isna().mean() * 100), 2)
                             for c in clean_df.columns}
     findings.evidence.insert(0, cleaning_evidence(audit))
@@ -422,7 +424,7 @@ async def run_insight_case(case: dict) -> dict:
     session, past, bundle = await insight_bundle(case)
     report, error = None, None
     try:
-        report = (await run_insight_agent(session, past or None)).model_dump(mode="json")
+        report = (await run_insight_agent(session, get_client(), past or None)).model_dump(mode="json")
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
     output = {"report": report, "bundle": bundle}

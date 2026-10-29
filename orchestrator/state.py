@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────────
@@ -237,6 +237,8 @@ class CleaningAudit(BaseModel):
     summary: str                           # paragraph for the UI
     anomaly_report: AnomalyDetectionReport | None = None  # PROMPT-5: structured detector output
     skipped_columns: list[str] = Field(default_factory=list)
+    # Phase 5 Insight: per parsed date column, [first "YYYY-MM-DD", last, months spanned]
+    date_ranges: dict[str, list] = Field(default_factory=dict)
 
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────
@@ -333,7 +335,7 @@ class Evidence(BaseModel):
     """Why one finding can be trusted (ADR-0001): built deterministically from the code that ran
     and its output, never written by the model."""
     id: str                                # stable: "corr:revenue__units", "seg:segment/revenue"
-    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query", "cleaning"]
+    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query", "cleaning", "eda"]
     claim: str                             # one line, from the computed values
     code: str                              # the analysis body that produced it
     result_excerpt: str                    # the finding's JSON, truncated
@@ -435,22 +437,36 @@ class AnomalyAlert(BaseModel):
     suggested_investigation: str
 
 
+class Claim(BaseModel):
+    """Phase 5 Insight: one executive sentence and the Evidence ids it rests on."""
+    text: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
 class ActionItem(BaseModel):
     """PROMPT-3: executive-tab action item. Verb-led sentence with expected
     business impact. Separate from the legacy RecommendedAction (analyst view).
     """
     action: str                          # "Review all March transactions over $10,000"
     expected_impact: str = ""            # "12 flagged entries may indicate processing errors"
+    evidence_ids: list[str] = Field(default_factory=list)
 
 
 class ExecutiveSummary(BaseModel):
     """PROMPT-3: plain-English deliverable for non-technical stakeholders.
     No statistical notation, no raw column names, no method jargon — those go in
-    AnalystDetail. Backend enforces this via the insight prompt + a sanitizer."""
+    AnalystDetail. Phase 5: every finding and action cites Evidence ids; every number and date
+    is checked against the evidence (agents/insight_agent.py)."""
     headline: str = ""                                   # 1-line top-of-page TL;DR
-    paragraphs: list[str] = Field(default_factory=list)  # max 4 sentences combined
-    findings: list[str] = Field(default_factory=list)    # plain-language bullets
+    headline_evidence_ids: list[str] = Field(default_factory=list)
+    paragraphs: list[Claim] = Field(default_factory=list)  # max 3 sentences
+    findings: list[Claim] = Field(default_factory=list)    # plain-language bullets
     action_items: list[ActionItem] = Field(default_factory=list)
+
+    @field_validator("paragraphs", "findings", mode="before")
+    @classmethod
+    def _old_strings(cls, v: Any) -> Any:   # sessions stored before Phase 5 hold plain strings
+        return [{"text": x} if isinstance(x, str) else x for x in v] if isinstance(v, list) else v
 
 
 class AnalystDetail(BaseModel):

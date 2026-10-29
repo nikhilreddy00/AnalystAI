@@ -221,7 +221,7 @@ def test_injection_in_labels_and_names_is_delimited_downstream(recorded_llm):
                                            anomalies=[], statistical_tests=[], code_executed="")
     recorded_llm.responses.append("{}")
     try:
-        asyncio.run(run_insight_agent(s, []))
+        asyncio.run(run_insight_agent(s, recorded_llm, []))
     except Exception:
         pass   # only the prompt matters here
     prompt = json.dumps(recorded_llm.calls[0]["messages"])

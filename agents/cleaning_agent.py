@@ -341,8 +341,25 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                anomaly_report.methodology_note),
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
+        date_ranges=_date_ranges(df),
     )
     return df, audit
+
+
+def _date_ranges(df: pd.DataFrame) -> dict[str, list]:
+    """[first, last, months spanned] per parsed date column: the data's period, computed, so the
+    report never has to guess it from a few sample rows."""
+    out: dict[str, list] = {}
+    for col in df.columns:
+        if not pd.api.types.is_datetime64_any_dtype(df[col]):
+            continue
+        s = df[col].dropna()
+        if s.empty:
+            continue
+        lo, hi = s.min(), s.max()
+        out[str(col)] = [lo.strftime("%Y-%m-%d"), hi.strftime("%Y-%m-%d"),
+                         (hi.year - lo.year) * 12 + hi.month - lo.month + 1]
+    return out
 
 
 def _build_summary(decisions: list[CleaningDecision], outliers: list[str], high_null: list[str],

@@ -151,7 +151,7 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
             )}
             {message.insight && (
               <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
-                <InsightPanel report={message.insight} />
+                <InsightPanel report={message.insight} onEvidence={hasEvidence ? openEvidence : undefined} />
               </div>
             )}
             {summaryCharts.length > 0 && (

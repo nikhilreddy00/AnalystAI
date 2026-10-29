@@ -252,11 +252,11 @@ async def test_injection_in_a_chart_title_reaches_the_insight_prompt_delimited(m
 
     seen = {}
 
-    async def capture(prompt):
-        seen["prompt"] = prompt
+    async def capture(ctx, llm):
+        seen["prompt"] = ctx.render()
         raise RuntimeError("stop after the prompt")
 
-    monkeypatch.setattr(insight_agent, "_call_and_parse", capture)
+    monkeypatch.setattr(insight_agent, "_ask", capture)
     df = pd.DataFrame({"segment": ["A", INJECTION] * 20, "revenue": np.arange(40.0)})
     chart = viz.group_bars(df, "segment", "revenue", "mean", viz.build_context(df))
     chart.title = f"Average revenue by segment: {INJECTION} highest"
@@ -264,7 +264,7 @@ async def test_injection_in_a_chart_title_reaches_the_insight_prompt_delimited(m
         eda_summary={}, correlations={}, trends=[], segments=[], anomalies=[], statistical_tests=[],
         code_executed=""))
     try:
-        await insight_agent.run_insight_agent(session)
+        await insight_agent.run_insight_agent(session, None)
     except Exception:
         pass
     outside = re.sub(r"<untrusted_data>.*?</untrusted_data>", "", seen["prompt"], flags=re.S)

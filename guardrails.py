@@ -496,6 +496,20 @@ def ungrounded_dates(text: str, first: tuple[int, int] | None,
     return bad
 
 
+# ── Executive jargon (Phase 5 Insight) ─────────────────────────────────────────
+
+_JARGON_RE = re.compile(
+    r"\bp\s*[<=>≤]|p-values?|\br\s*=|\bstd\b|standard deviations?|σ|μ|z[- ]?scores?|\biqr\b|"
+    r"interquartile|correlation coefficients?|pearson|spearman|confidence intervals?|\bci\b|"
+    r"chi[- ]squared?|t-tests?|anova|regression|imput(?:ation|ed|e)|log[- ]transform|kurtosis|"
+    r"heteroscedast", re.I)
+
+
+def executive_jargon(text: str) -> list[str]:
+    """Statistical notation and method names a business reader shouldn't see."""
+    return [m.group(0) for m in _JARGON_RE.finditer(text)]
+
+
 # ── PII ────────────────────────────────────────────────────────────────────────
 
 _PII_COL_RE = re.compile(

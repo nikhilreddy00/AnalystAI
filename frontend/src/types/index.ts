@@ -65,15 +65,23 @@ export interface AnomalyAlert {
 
 // PROMPT-3: structured executive-tab content. Plain English, no stats notation,
 // no raw column names — backend enforces via prompt + sanitizer.
+// Phase 5 Insight: one executive sentence and the Evidence ids it rests on.
+export interface Claim {
+  text: string;
+  evidence_ids: string[];
+}
+
 export interface ActionItem {
   action: string;            // verb-led, specific
   expected_impact: string;   // business impact in one line
+  evidence_ids?: string[];
 }
 
 export interface ExecutiveSummary {
   headline: string;
-  paragraphs: string[];      // max 4 sentences combined
-  findings: string[];        // plain-language bullets
+  headline_evidence_ids?: string[];
+  paragraphs: Claim[];       // max 3 sentences
+  findings: Claim[];         // plain-language bullets, each citing evidence
   action_items: ActionItem[];
 }
 
@@ -210,7 +218,7 @@ export interface BriefingEvent {
 // Phase 3 (ADR-0001): why a finding can be trusted. Mirrors orchestrator/state.py Evidence.
 export interface Evidence {
   id: string;
-  kind: "correlation" | "trend" | "segment" | "anomaly" | "test" | "query" | "cleaning";
+  kind: "correlation" | "trend" | "segment" | "anomaly" | "test" | "query" | "cleaning" | "eda";
   claim: string;
   code: string;
   result_excerpt: string;
