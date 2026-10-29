@@ -639,7 +639,7 @@ async def judge(path: Path, max_usd: float, first_only: bool = False) -> Path:
     ≈ $0.009 per report; runs already judged by the same judge version are kept. `first_only`
     judges run 1 of each case: at temperature 0 the k runs barely differ, so judging all of them
     multiplies cost, not information."""
-    from evals.judge import PROMPT_VERSION, judge_report
+    from evals.judge import INPUT_VERSION, PROMPT_VERSION, judge_report
     report = json.loads(path.read_text())
     cases = {c["id"]: c for c in load_cases(report["meta"]["suite"], None)}
     todo = []
@@ -647,7 +647,9 @@ async def judge(path: Path, max_usd: float, first_only: bool = False) -> Path:
         for r in rs[:1] if first_only else rs:
             out = r.get("output") or {}
             has_report = out.get("report") or out.get("insight_report")
-            if has_report and (r.get("judge") or {}).get("prompt_version") != PROMPT_VERSION:
+            done = r.get("judge") or {}
+            if has_report and (done.get("prompt_version"), done.get("input_version", 1)) != (
+                    PROMPT_VERSION, INPUT_VERSION):
                 r["case_id"] = cid
                 todo.append(r)
     print(f"judging {len(todo)} runs ≈ ${round(0.009 * len(todo), 2)} (cap ${max_usd})", flush=True)
@@ -685,7 +687,7 @@ def _pct(values: list[float], q: float) -> float:
     return round(statistics.quantiles(values, n=100, method="inclusive")[q - 1], 2)
 
 
-_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly"}
+_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped"}
 
 
 def summarize(runs: dict[str, list[dict]]) -> dict:

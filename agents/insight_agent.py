@@ -33,6 +33,7 @@ from guardrails import (
     UNTRUSTED_NOTE,
     delimit_untrusted,
     executive_jargon,
+    is_pii_column,
     mask_pii,
     ungrounded_dates,
     ungrounded_numbers,
@@ -137,10 +138,24 @@ def _date_span(session: AnalysisSession) -> tuple[str, list] | None:
     return (order[0], ranges[order[0]]) if order else None
 
 
+def _by_person(e: Evidence, session: AnalysisSession) -> bool:
+    """A breakdown over a person-name/email column carries the people in its claim, id and
+    values; mask_pii can't spot a name, so the item stays out of the prompt (and the report)."""
+    if e.kind == "segment":
+        cols = e.id.removeprefix("seg:").split("/")[0].split("|")
+    elif e.kind == "trend" and " (" in e.id:   # per-group trends split by the plan's segment
+        cols = (session.task_plan.segments if session.task_plan else [])[:1]
+    else:
+        return False
+    return any(is_pii_column(c) for c in cols)
+
+
 def build_context(session: AnalysisSession, past: list[str] | None = None) -> InsightContext:
     findings, audit, contract = session.analysis_findings, session.cleaning_audit, session.data_contract
     narrative = session.narrative
-    evidence = list(findings.evidence if findings else [])[:_MAX_EVIDENCE]
+    evidence = [e for e in (findings.evidence if findings else [])
+                if not _by_person(e, session)][:_MAX_EVIDENCE]
+    hidden = {e.id for e in (findings.evidence if findings else [])} - {e.id for e in evidence}
 
     facts: list[str] = []
     if audit:
@@ -169,7 +184,7 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
     chart_lines = []
     for c in session.chart_configs:
         ids = c.rationale.evidence_ids if c.rationale else []
-        if c.placement != "summary" or not ids:   # a data-profile chart is not evidence
+        if c.placement != "summary" or not ids or set(ids) & hidden:   # profile charts aren't evidence
             continue
         for i in ids:
             chart_of.setdefault(i, c.title)
@@ -373,8 +388,9 @@ def _plain(e: Evidence, findings, narrative: DataNarrative | None) -> str:
         n = sum(a.column == col for a in findings.anomalies)
         text = f"{n} unusual {_name(col, narrative)} values were flagged and kept."
     elif e.kind == "test":
-        t = findings.statistical_tests[int(e.id.removeprefix("test:"))] \
-            if e.id.removeprefix("test:").isdigit() else None
+        i = e.id.removeprefix("test:")
+        t = findings.statistical_tests[int(i)] \
+            if i.isdigit() and int(i) < len(findings.statistical_tests) else None
         if t and t.p_value is not None:
             text = ("The difference could be chance." if t.p_value >= 0.05
                     else "The difference is unlikely to be chance.")

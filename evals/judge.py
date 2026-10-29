@@ -24,6 +24,10 @@ from guardrails import UNTRUSTED_NOTE, delimit_untrusted
 from llm.client import LLMClient, get_client, trace_meter
 
 PROMPT_VERSION = "v1"   # v2 (every part must hold) calibrated worse: 87.5% vs 90%
+# The evidence the judge sees: v2 lifts a 12k-character cut that hid half of a real overview's
+# 47 evidence items (bundles and the calibration set stay far below either cap).
+INPUT_VERSION = 2
+_MAX_EVIDENCE_CHARS = 40_000
 _SYSTEM = ((Path(__file__).parent.parent / "prompts" / "insight_judge" / f"{PROMPT_VERSION}.md")
            .read_text() + "\n" + UNTRUSTED_NOTE)
 LABELS = ("supported", "unsupported", "contradicted", "overstated")
@@ -43,7 +47,7 @@ def render(bundle: dict, claims: list[dict]) -> str:
              "cleaning": bundle["audit_summary"], "charts": bundle["chart_titles"]}
     past = bundle.get("past_insights") or []
     lines = [f"Question: {bundle['question']}",
-             "Evidence:\n" + delimit_untrusted(json.dumps(facts, default=str)[:12000])]
+             "Evidence:\n" + delimit_untrusted(json.dumps(facts, default=str)[:_MAX_EVIDENCE_CHARS])]
     if past:
         lines.append("Earlier analyses (not evidence):\n" + delimit_untrusted("\n".join(past)))
     lines.append("Claims:\n" + delimit_untrusted("\n".join(
@@ -54,7 +58,7 @@ def render(bundle: dict, claims: list[dict]) -> str:
 
 async def judge_claims(bundle: dict, claims: list[dict], llm: LLMClient) -> dict:
     if not claims:
-        return {"labels": [], "why": [], "prompt_version": PROMPT_VERSION}
+        return {"labels": [], "why": [], "prompt_version": PROMPT_VERSION, "input_version": INPUT_VERSION}
     result = await llm.complete(agent="insight_judge", prompt_version=PROMPT_VERSION,
                                 model=settings.llm_fast_model, max_tokens=1500, system=_SYSTEM,
                                 messages=[{"role": "user", "content": render(bundle, claims)}])
@@ -66,7 +70,8 @@ async def judge_claims(bundle: dict, claims: list[dict], llm: LLMClient) -> dict
         why = [str(by_i.get(i, {}).get("why", "")) for i in range(len(claims))]
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
         labels, why = ["unparsed"] * len(claims), [""] * len(claims)
-    return {"labels": labels, "why": why, "prompt_version": PROMPT_VERSION}
+    return {"labels": labels, "why": why, "prompt_version": PROMPT_VERSION,
+            "input_version": INPUT_VERSION}
 
 
 async def judge_report(output: dict, llm: LLMClient) -> dict:
