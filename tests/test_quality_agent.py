@@ -227,3 +227,18 @@ def test_bullets_show_display_names_and_the_critic_sees_earlier_analyses():
     review = asyncio.run(run_quality_check(s, llm, past=["Q: B grew 15% last month."]))
     assert review.gaps == ["No breakdown of marketing spend level by segment."]
     assert "B grew 15% last month" in llm.calls[0]["messages"][0]["content"]
+
+
+def test_values_come_from_the_findings_not_the_truncated_excerpt():
+    """E2E: Evidence.result_excerpt is stored truncated, so a 12-cell breakdown lost cells and
+    the critic disputed a correct 'across all four regions'. The full results are read from
+    the findings by Evidence id."""
+    from agents.quality_agent import build_context as quality_context
+    s = _session([GOOD])
+    for e in s.analysis_findings.evidence:
+        if e.id == "seg:segment/revenue":
+            e.result_excerpt = e.result_excerpt[:60]          # cut mid-JSON
+    from agents import insight_agent
+    q = quality_context(s, s.insight_report, [], insight_agent.build_context(s))
+    line = next(v for v in q.values.splitlines() if v.startswith("[seg:segment/revenue]"))
+    assert all(f"{g} = " in line for g in ("A", "B", "C"))

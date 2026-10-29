@@ -22,6 +22,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from agents.analysis_agent import segment_id
 from agents.errors import AgentError
 from agents import insight_agent
 from agents.insight_agent import InsightContext
@@ -113,20 +114,39 @@ def _excerpt(e: Evidence):
     try:
         return json.loads(e.result_excerpt)
     except (json.JSONDecodeError, TypeError):
-        return None   # truncated (long anomaly lists): no structured check needs it
+        return None   # the excerpt is stored truncated: long results don't parse
 
 
-def _trend(e: Evidence) -> dict | None:
-    v = _excerpt(e)
-    if e.kind != "trend" or not isinstance(v, dict) or "pct_change" not in v:
+def _findings_by_id(session: AnalysisSession) -> dict[str, object]:
+    """Trend and segment findings by their Evidence id (the ids analysis and visualization
+    use), so checks read the full results, not the truncated excerpt."""
+    f = session.analysis_findings
+    if f is None:
+        return {}
+    out: dict[str, object] = {segment_id(s.segment_column, s.metric_column, s.aggregation): s
+                              for s in f.segments}
+    out |= {f"trend:{t.column}" + (f" ({t.segment})" if t.segment else "") + f":{t.period}": t
+            for t in f.trends}
+    return out
+
+
+def _trend(e: Evidence, found: dict) -> dict | None:
+    if e.kind != "trend":
+        return None
+    t = found.get(e.id)
+    v = t.model_dump() if t is not None else _excerpt(e)
+    if not isinstance(v, dict) or "pct_change" not in v:
         return None
     return {"id": e.id, "pct": float(v["pct_change"]), "direction": v.get("direction", ""),
             "period": v.get("period", ""), "segment": v.get("segment"), "claim": e.claim}
 
 
-def _groups(e: Evidence) -> dict | None:
-    v = _excerpt(e)
-    if e.kind != "segment" or not isinstance(v, dict):
+def _groups(e: Evidence, found: dict) -> dict | None:
+    if e.kind != "segment":
+        return None
+    seg = found.get(e.id)
+    v = seg.model_dump() if seg is not None else _excerpt(e)
+    if not isinstance(v, dict):
         return None
     vals = [(str(mask_pii(r.get("name"))), r.get("value")) for r in v.get("results", [])]
     return {"id": e.id, "values": vals, "claim": e.claim}
@@ -150,16 +170,17 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     evidence = {e.id: e for e in (session.analysis_findings.evidence
                                   if session.analysis_findings else [])}
     lines, pool, has_dates = _evidence_lines(ctx), ctx.pool(), ctx.first is not None
-    every = list(evidence.values())
-    labels = {p for e in every if (g := _groups(e)) for n, _ in g["values"] for p in n.split("|")}
-    labels |= {t["segment"] for e in every if (t := _trend(e)) and t["segment"]}
+    every, by_id = list(evidence.values()), _findings_by_id(session)
+    labels = {p for e in every if (g := _groups(e, by_id)) for n, _ in g["values"]
+              for p in n.split("|")}
+    labels |= {t["segment"] for e in every if (t := _trend(e, by_id)) and t["segment"]}
     base = [ctx.facts, ctx.quality, pool[-2], pool[-1]]   # facts, quality, conventions, years
     flags: list[ReviewFlag] = []
     for i, c in enumerate(report_claims(report)):
         text, ids = c["text"], [x for x in c["ids"] if x in evidence]
         cited = [evidence[x] for x in ids]
-        trends = [t for e in cited if (t := _trend(e))]
-        groups = [g for e in cited if (g := _groups(e))]
+        trends = [t for e in cited if (t := _trend(e, by_id))]
+        groups = [g for e in cited if (g := _groups(e, by_id))]
         nums = ungrounded_numbers(without_dates(text, has_dates), base + [lines.get(x, "") for x in ids])
         anywhere = ungrounded_numbers(without_dates(text, has_dates), pool) if nums else []
         unknown = [x for x in c["ids"] if x not in evidence]
@@ -220,14 +241,14 @@ def build_context(session: AnalysisSession, report: InsightReport,
                   flags: list[ReviewFlag], ctx: InsightContext) -> QualityContext:
     claims = report_claims(report)
     contract = session.data_contract
-    values = []
+    values, found = [], _findings_by_id(session)
     for e in session.analysis_findings.evidence if session.analysis_findings else []:
         if insight_agent._by_person(e, session):
             continue   # people's names: kept out of every prompt, as in the insight context
-        if g := _groups(e):
+        if g := _groups(e, found):
             values.append(f"[{e.id}] " + ", ".join(f"{n} = {v:.4g}" if isinstance(v, (int, float))
                                                     else f"{n} = {v}" for n, v in g["values"]))
-        elif t := _trend(e):
+        elif t := _trend(e, found):
             values.append(f"[{e.id}] {t['direction']} {t['pct']:+.2f}% ({t['period']})")
     return QualityContext(
         evidence=ctx.render(),
