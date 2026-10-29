@@ -353,7 +353,23 @@ def check_code(code: str) -> str | None:
 
 # ── Numeric grounding ──────────────────────────────────────────────────────────
 
-_NUM_RE = re.compile(r"(?<![\w.])[-+]?\d[\d,]*(?:\.\d+)?(?:[eE][-+]?\d+)?%?")
+_NUM_RE = re.compile(r"(?<![\w.])[-+]?\d[\d,]*(?:\.\d+)?(?:[eE][-+]?\d+)?"
+                     r"(?:%|[KMB]\b|bn\b|\s(?:thousand|million|billion)\b)?")
+_SCALES = (("thousand", 1e3), ("million", 1e6), ("billion", 1e9), ("bn", 1e9),
+           ("K", 1e3), ("M", 1e6), ("B", 1e9))
+
+
+def _split(token: str) -> tuple[str, float]:
+    """'$1.2M' is how the executive prompt asks for 1,234,567: ('1.2', 1e6)."""
+    for suffix, scale in _SCALES:
+        if token.endswith(suffix):
+            return token[: -len(suffix)].strip(), scale
+    return token, 1.0
+
+
+def _value(token: str) -> float:
+    num, scale = _split(token)
+    return float(num.rstrip("%").replace(",", "")) * scale
 
 
 def _numbers_in(obj: Any) -> list[float]:
@@ -364,7 +380,7 @@ def _numbers_in(obj: Any) -> list[float]:
         if math.isfinite(obj):
             out.append(float(obj))
     elif isinstance(obj, str):
-        out += [float(m.rstrip("%").replace(",", "")) for m in _NUM_RE.findall(obj)]
+        out += [_value(m) for m in _NUM_RE.findall(obj)]
     elif isinstance(obj, dict):
         for k, v in obj.items():
             out += _numbers_in(k) + _numbers_in(v)
@@ -381,10 +397,12 @@ def _decimals(token: str) -> int:
 
 def _shown_as(e: float, token: str) -> bool:
     """Does evidence value `e` print as `token` at the token's precision? `5.7e-40` is
-    compared in scientific notation, `12.30` at 2 decimals."""
-    val = abs(float(token.rstrip("%").replace(",", "")))
-    d = _decimals(token)
-    if "e" in token.lower():
+    compared in scientific notation, `12.30` at 2 decimals, `1.2M` as millions."""
+    num, scale = _split(token)
+    val = abs(float(num.rstrip("%").replace(",", "")))
+    e = e / scale
+    d = _decimals(num)
+    if "e" in num.lower():
         return f"{e:.{d}e}" == f"{val:.{d}e}"
     return round(e, d) == val
 
@@ -392,18 +410,117 @@ def _shown_as(e: float, token: str) -> bool:
 def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list[str]:
     """Numbers in `text` that don't appear in `evidence`. A number is grounded if some evidence
     value is within `rel_tol`, or rounds to it at the text's displayed precision — also as a
-    percentage (0.123 → "12.3%"). Small integers (≤ 10) are skipped: counts and ordinals
-    ("top 3") are prose, not claims."""
+    percentage (0.123 → "12.3%") or in K/M/B ("$1.2M"). Small integers (≤ 10) are skipped:
+    counts and ordinals ("top 3") are prose, not claims."""
     pool = [abs(v) for v in _numbers_in(evidence)]   # "down 12%" is grounded by -12.0
     pool += [v * 100 for v in pool]
     bad = []
     for token in _NUM_RE.findall(text):
-        val = abs(float(token.rstrip("%").replace(",", "")))
+        val = abs(_value(token))
         if val.is_integer() and abs(val) <= 10:
             continue
         if not any(math.isclose(val, e, rel_tol=rel_tol) or _shown_as(e, token) for e in pool):
             bad.append(token)
     return bad
+
+
+# ── Dates (Phase 5 Insight) ────────────────────────────────────────────────────
+
+_MONTH = (r"Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|"
+          r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?")
+_DATE_RE = re.compile(
+    rf"\b(?:(?P<mon>{_MONTH})\.?(?P<day>\s+\d{{1,2}}(?:st|nd|rd|th)?,?)?\s+(?P<year>(?:19|20)\d\d)"
+    r"|(?P<iso>(?:19|20)\d\d-[01]\d)(?:-[0-3]\d)?"
+    r"|Q(?P<q>[1-4])\s+(?P<qyear>(?:19|20)\d\d)"
+    r"|(?<![\d.,$])(?P<bare>(?:19|20)\d\d)(?![\d.,%]\d|%))\b(?!-[01]\d)", re.I)
+_MONTH_WORD_RE = re.compile(rf"\b(?:{_MONTH})\b", re.I)
+_SCOPE_RE = re.compile(r"\b(?:data(?:set)?|cover(?:s|ed|ing)?|spans?|spanning|throughout|"
+                       r"entire|whole)\b", re.I)
+_POSITION_RE = re.compile(r"\b(?:latest|last|recent|final|first|earliest|previous|prior|vs|"
+                          r"versus|compared|month[- ]over[- ]month|MoM|before|after|since|"
+                          r"until|between|starting|onwards?|beginning|through|thru|up to|ending)\b", re.I)
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _month_no(name: str) -> int:
+    return ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov",
+            "dec"].index(name[:3].lower()) + 1
+
+
+def _months(m: re.Match) -> tuple[int, int] | None:
+    """(first, last) month index (year*12 + month) a date mention refers to."""
+    if m["mon"]:
+        i = int(m["year"]) * 12 + _month_no(m["mon"])
+        return i, i
+    if m["iso"]:
+        y, mo = m["iso"].split("-")
+        i = int(y) * 12 + int(mo)
+        return (i, i) if 1 <= int(mo) <= 12 else None
+    if m["q"]:
+        first = int(m["qyear"]) * 12 + 3 * int(m["q"]) - 2
+        return first, first + 2
+    y = int(m["bare"])
+    return y * 12 + 1, y * 12 + 12
+
+
+# A bare 4-digit number is a year only after a date cue ("in 2025", "since 2024", "2024–2026");
+# otherwise it is a count ("2000 orders") and number grounding checks it.
+_YEAR_CUE_RE = re.compile(r"(?:\b(?:in|since|during|from|through|until|by|of|before|after|for|"
+                          r"year|fiscal|fy|between|and|to)\s+|[–-]\s*)$", re.I)
+
+
+def _is_date(text: str, m: re.Match) -> bool:
+    return not m["bare"] or bool(_YEAR_CUE_RE.search(text[:m.start()]))
+
+
+def without_dates(text: str, has_dates: bool) -> str:
+    """The text with its date mentions removed, so number grounding doesn't read a day or a
+    year as a claim. Bare years stay when the data has no dates (then they're just numbers)."""
+    return _DATE_RE.sub(
+        lambda m: m[0] if m["bare"] and (not has_dates or not _is_date(text, m)) else " ", text)
+
+
+def ungrounded_dates(text: str, first: tuple[int, int] | None,
+                     last: tuple[int, int] | None) -> list[str]:
+    """Date mentions in `text` outside the data's range [(year, month) first, last]: a month,
+    quarter or year with no overlap, any month when the data has no dates, and a scope claim
+    that names one month ("the data covers November 2025") when the range is longer."""
+    bad: list[str] = []
+    lo = first[0] * 12 + first[1] if first else None
+    hi = last[0] * 12 + last[1] if last else None
+    for m in _DATE_RE.finditer(text):
+        if not _is_date(text, m):
+            continue
+        span = _months(m)
+        if lo is None:
+            if not m["bare"]:
+                bad.append(m[0])
+        elif span is None or span[1] < lo or span[0] > hi:
+            bad.append(m[0])
+    if lo is not None and hi > lo:
+        for sentence in _SENTENCE_RE.split(text):
+            named = [m for m in _DATE_RE.finditer(sentence) if not m["bare"]]
+            # A day ("from Nov 1, 2025") is a start or an event date, not the data's scope.
+            if (len(named) == 1 and not named[0]["day"] and _months(named[0])
+                    and len(_MONTH_WORD_RE.findall(sentence)) == 1   # "September and October 2026"
+                    and _months(named[0])[0] == _months(named[0])[1]
+                    and _SCOPE_RE.search(sentence) and not _POSITION_RE.search(sentence)):
+                bad.append(f"scope: {named[0][0]}")
+    return bad
+
+
+# ── Executive jargon (Phase 5 Insight) ─────────────────────────────────────────
+
+_JARGON_RE = re.compile(
+    r"\bp\s*[<=>≤]|p-values?|\br\s*=|\bstd\b|standard deviations?|σ|μ|z[- ]?scores?|\biqr\b|"
+    r"interquartile|correlation coefficients?|pearson|spearman|confidence intervals?|\bci\b|"
+    r"chi[- ]squared?|t-tests?|anova|regression|imput(?:ation|ed|e)|log[- ]transform|kurtosis|"
+    r"heteroscedast", re.I)
+
+
+def executive_jargon(text: str) -> list[str]:
+    """Statistical notation and method names a business reader shouldn't see."""
+    return [m.group(0) for m in _JARGON_RE.finditer(text)]
 
 
 # ── PII ────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,30 @@
+id: ins-26-high-null-target-holdout
+category: data_quality
+label_note: '45% of revenue missing: an average on 1,655 rows must say so.'
+dataset:
+  name: sales
+  seed: 1
+question: What is average revenue by region?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - region
+  analysis_types:
+  - segmentation
+transform:
+  blank:
+    revenue: 0.45
+findings:
+- kind: segment
+  segment_column: region
+  metric: revenue
+  aggregation: mean
+expect:
+  must_mention:
+  - missing|incomplete|only|gaps|not recorded|blank
+entity:
+- order
+- orders
+injected:
+- revenue doubled

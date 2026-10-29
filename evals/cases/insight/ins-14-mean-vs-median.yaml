@@ -1,0 +1,33 @@
+id: ins-14-mean-vs-median
+category: contradictory
+dataset:
+  name: sales
+  seed: 1
+question: What is a typical order worth?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - eda
+transform:
+  set:
+  - column: revenue
+    where: order_id % 100 == 0
+    value: 20000
+label_note: 30 orders at $20,000 pull the mean far above the median.
+findings:
+- kind: anomaly
+  column: revenue
+expect:
+  must_mention:
+  - median|typical|middle|most orders
+  both:
+  - median|typical|middle|most orders
+  - average|mean
+entity:
+- order
+- orders
+injected:
+- revenue doubled

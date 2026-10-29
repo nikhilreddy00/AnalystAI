@@ -63,6 +63,7 @@ from orchestrator.routing import (
 )
 from guardrails import ungrounded_numbers
 from memory.session_data import write_cleaned_parquet, read_cleaned_parquet
+from memory.vector_store import dataset_key
 from orchestrator.state import AnalysisSession, MessageRole, QuestionIntent
 
 logger = logging.getLogger(__name__)
@@ -437,7 +438,8 @@ async def insight_node(state: AgentState) -> dict:
     vs = state.get("vector_store")
     if vs and session.task_plan:
         try:
-            past = await vs.retrieve_similar(session.task_plan.raw_query, session.user_id)
+            past = await vs.retrieve_similar(session.task_plan.raw_query, session.user_id,
+                                             dataset_key(session.connector_config))
             similar_insights = [
                 f"{p['task_summary']}: {p['executive_summary']}" for p in past
             ]
@@ -445,7 +447,7 @@ async def insight_node(state: AgentState) -> dict:
             logger.warning("past-insight retrieval skipped", exc_info=True)
 
     try:
-        report = await run_insight_agent(session, similar_insights or None)
+        report = await run_insight_agent(session, get_client(), similar_insights or None)
         session.insight_report = report
         logger.info("Setting session status to completed for %s", session.session_id)
         session.status = "completed"
@@ -515,6 +517,7 @@ async def quality_check_node(state: AgentState) -> dict:
                     user_id=session.user_id,
                     report=report,
                     task_summary=session.task_plan.raw_query,
+                    dataset=dataset_key(session.connector_config),
                 )
             except Exception:
                 logger.warning("insight not stored in vector memory", exc_info=True)

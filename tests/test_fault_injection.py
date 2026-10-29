@@ -244,9 +244,12 @@ async def test_injected_group_names_reach_insight_only_delimited(recorded_llm):
         segments=[SegmentResult(segment_column="segment|notes", metric_column="revenue",
                                 aggregation="mean",
                                 results=[{"name": f"A|{datagen.INJECTION}", "value": 1.0}])])
+    # Phase 5: findings reach the insight prompt as Evidence (claims, ids and values)
+    session.analysis_findings.evidence = analysis_agent.build_evidence(
+        session.analysis_findings, {}, "", "", None)
     recorded_llm.responses.append("{}")
     try:
-        await run_insight_agent(session)
+        await run_insight_agent(session, recorded_llm)
     except Exception:   # only the prompt matters here
         pass
     prompt = recorded_llm.calls[0]["messages"][0]["content"]

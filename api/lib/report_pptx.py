@@ -265,7 +265,7 @@ def _exec_summary_bullets(session: AnalysisSession) -> list[str]:
         return []
     ev = session.insight_report.executive_view
     if ev and ev.findings:
-        return [s for s in ev.findings if s.strip()][:5]
+        return [c.text for c in ev.findings if c.text.strip()][:5]
     summary = session.insight_report.executive_summary or ""
     if not summary:
         return []

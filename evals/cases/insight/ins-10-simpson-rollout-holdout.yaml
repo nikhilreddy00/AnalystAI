@@ -1,0 +1,30 @@
+id: ins-10-simpson-rollout-holdout
+category: contradictory
+label_note: 'Simpson''s paradox asked as a decision: the answer must name the per-department result.'
+dataset:
+  name: simpson
+  seed: 1
+entity:
+- visitor
+- visitors
+question: Should we roll out the treatment to everyone?
+plan:
+  target_metrics:
+  - converted
+  segments:
+  - group
+  analysis_types:
+  - segmentation
+findings:
+- kind: segment
+  segment_column: department|group
+  metric: converted
+  aggregation: mean
+- kind: segment
+  segment_column: group
+  metric: converted
+  aggregation: mean
+expect:
+  both:
+  - (overall|pooled|combined|in total|across all)
+  - (each|every|both|within|inside|either) (department|group)

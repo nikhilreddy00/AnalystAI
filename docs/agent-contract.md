@@ -128,6 +128,27 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
   less than it looks. Holdouts, random-combination property tests and unit traps the generator doesn't
   plant are the mitigation; the domain datasets in Phase 5.5 are the real test.
 
+## What the insight agent taught us (Phase 5, PR 4)
+- **Don't feed one model's prose to another as fact.** The "November 2025" in every overview was
+  the ingestion model's summary of 5 rows, passed on by insight. Compute the facts a narrative
+  needs (row counts, the date range, which months a MoM compares) and give the model those.
+- **Let the model write only what needs judgment.** The analyst tab and the alerts were
+  paraphrases of the evidence, and that is where the invented methods were. Built by code, they
+  can't drift, and the call fell from 2.8k to ~0.9k output tokens (p95 49 s → 18 s).
+- **"Grounded" means "in what the model was shown".** The repair pool is the rendered context,
+  not the session. That made the rule exact: derived numbers ("54% higher") and invented
+  thresholds ("above $900") fail, so the model learns to state both values.
+- **A judge counts only where it was calibrated.** The calibration set held statements only, so
+  its labels on actions were unmeasured. Adding 10 labelled actions showed 80% (< 85%), so actions
+  are reported, not counted. Check the judge's input too: a 12k-character cut hid half of a real
+  overview's evidence and cost 30 points of apparent faithfulness.
+- **Read every failure before you change the agent.** Eight of the eleven fixes this PR were in
+  the scorer or the case patterns, among them a decimal read as a year, a correct refutation read
+  as an echo, and a correct "no month-over-month comparison exists" read as a claim. Each was
+  rescored for $0.
+- **Measure the carry-over instead of arguing it.** Replaying stored targeted plans on raw vs
+  cleaned frames turned "targeted skips cleaning" into "10 of 15 answers change", at $0.
+
 ## Rolling it out to the next agent (Phase 5)
 Each agent gets one PR, in this order:
 1. **Agent card**, with honest, measured limits.

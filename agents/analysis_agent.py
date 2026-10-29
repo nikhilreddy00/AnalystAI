@@ -542,6 +542,18 @@ def confidence(n: int, p: float | None = None, r: float | None = None,
     return "high", f"{n} rows" + (f", p = {p:.3g}" if p is not None else "")
 
 
+def segment_id(segment_column: str, metric: str, aggregation: str = "mean") -> str:
+    """The Evidence id of a segment finding (visualization cites it too). A count or sum of the
+    same pair is a different finding, so only the mean keeps the bare id."""
+    base = f"seg:{segment_column}/{metric}"
+    return base if (aggregation or "mean") == "mean" else f"{base}:{aggregation}"
+
+
+def _num(v: Any) -> str:
+    v = float(v)
+    return f"{v:,.2f}" if abs(v) >= 1 else f"{v:.4g}"
+
+
 def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                    audit: CleaningAudit | None) -> list[Evidence]:
     builtin = set(raw.get("builtin") or []) if isinstance(raw.get("builtin"), list) else set()
@@ -590,7 +602,7 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                         t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
-        out.append(item("segment", f"seg:{s.segment_column}/{s.metric_column}",
+        out.append(item("segment", segment_id(s.segment_column, s.metric_column, s.aggregation),
                         f"{s.aggregation} {s.metric_column} by {s.segment_column} "
                         f"({len(s.results)} groups)", cols, s.model_dump()))
     by_col: dict[str, list] = {}
@@ -602,6 +614,16 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     for i, t in enumerate(f.statistical_tests):
         out.append(item("test", f"test:{i}", f"{t.test_name}: {t.interpretation}"[:200], [],
                         t.model_dump(), p=t.p_value))
+    # Phase 5 Insight: the descriptive stats, so a claim about a typical value has a source.
+    for col, st in f.eda_summary.items():
+        if not isinstance(st, dict) or not all(isinstance(st.get(k), (int, float))
+                                               for k in ("mean", "min", "max")):
+            continue
+        med = f"median {_num(st['median'])}, " if isinstance(st.get("median"), (int, float)) else ""
+        count = st.get("count")
+        out.append(item("eda", f"eda:{col}", f"{col}: {med}mean {_num(st['mean'])}, range "
+                        f"{_num(st['min'])} to {_num(st['max'])}", [col], st,
+                        n=int(count) if isinstance(count, (int, float)) else None))
     return out
 
 

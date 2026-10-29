@@ -144,3 +144,55 @@ def test_chart_lint_passes_a_clean_chart_and_a_dated_line():
     line = _chart(chart_type="LineChart", x_key="period",
                   data=[{"period": "2026-01-01", "revenue": 1.0}, {"period": "2026-02", "revenue": 2.0}])
     assert chart_lint(line) == []
+
+
+# ── Insight grounding (Phase 5 Insight) ────────────────────────────────────────
+
+def test_grounding_reads_business_formats():
+    ev = {"total": 1_234_567.0, "orders": 45_312, "big": 2.1e9}
+    assert g.ungrounded_numbers("Revenue $1.2M from 45.3K orders, $2.1B overall", ev) == []
+    assert g.ungrounded_numbers("Revenue $1.5M", ev) == ["1.5M"]
+    assert g.ungrounded_numbers("about 1.2 million", ev) == []
+    assert g.ungrounded_numbers("Segment B grew", ev) == []   # a label, not a suffix
+
+
+def test_dates_outside_the_range_and_one_month_scope():
+    first, last = (2025, 11), (2026, 10)
+    assert g.ungrounded_dates("B fell 12.6% in Oct 2026 vs Sep 2026.", first, last) == []
+    assert g.ungrounded_dates("Revenue in December 2026 will recover.", first, last) == ["December 2026"]
+    assert g.ungrounded_dates("In Q1 2025 sales were flat.", first, last) == ["Q1 2025"]
+    # the e2e-01 carry-over: 12 months of data described as one month
+    assert g.ungrounded_dates("November 2025 sales data is clean.", first, last) == ["scope: November 2025"]
+    assert g.ungrounded_dates("The dataset covers orders placed throughout November 2025.",
+                              first, last) == ["scope: November 2025"]
+    assert g.ungrounded_dates("The data's latest month, October 2026, shows a drop.", first, last) == []
+    assert g.ungrounded_dates("The data covers Nov 2025 to Oct 2026.", first, last) == []
+    # precision (stored E2E outputs): a start date is not a one-month scope claim
+    assert g.ungrounded_dates("3,000 orders recorded daily from Nov 1, 2025.", first, last) == []
+    assert g.ungrounded_dates("The data covers orders from November 2025 onward.", first, last) == []
+    # precision (insight baseline): a decimal is not a year; an end date or two months is not a scope
+    assert g.ungrounded_dates("mean=301.79, std=1980.52 and 42.2058", first, last) == []
+    assert g.ungrounded_dates("This dataset tracks revenue through October 2026.", first, last) == []
+    assert g.ungrounded_dates("Pull the data for September and October 2026.", first, last) == []
+    assert g.ungrounded_dates("Revenue grew 2025% and cost $2024.", first, last) == []
+    # no date column: any month is invented; a bare year is just a number
+    assert g.ungrounded_dates("Sales in March 2026 rose.", None, None) == ["March 2026"]
+    assert g.ungrounded_dates("2025 orders were placed.", None, None) == []
+    assert g.ungrounded_dates("Since 2024-05 MRR rose.", (2024, 5), (2026, 10)) == []
+
+
+def test_without_dates_hides_days_and_years_from_number_grounding():
+    text = "On Jan 15, 2026 revenue was 120.5; 2025-11-03 too."
+    assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 120.5}) == []
+    assert g.without_dates("2025 orders", has_dates=False) == "2025 orders"
+
+
+def test_a_bare_count_is_not_a_year():
+    """Audit: '2000 orders' in a dated dataset was read as the year 2000 and its sentence dropped."""
+    first, last = (2025, 11), (2026, 10)
+    assert g.ungrounded_dates("There are 2000 orders in total.", first, last) == []
+    assert "2000" in g.without_dates("There are 2000 orders.", True)
+    # a year still reads as one after a date cue, or in a range
+    assert g.ungrounded_dates("Sales in 2019 were higher.", first, last) == ["2019"]
+    assert g.ungrounded_dates("Revenue since 2025 grew.", first, last) == []
+    assert g.ungrounded_dates("From 2019–2020 it fell.", first, last) == ["2019", "2020"]

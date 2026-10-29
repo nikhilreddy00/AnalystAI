@@ -1,0 +1,28 @@
+id: ins-06-marketing-revenue
+category: straightforward
+label_note: r = 0.57 is an association; the data plants it through seasonality, so causal wording is wrong.
+dataset:
+  name: sales
+  seed: 1
+question: Is marketing spend related to revenue?
+plan:
+  target_metrics:
+  - revenue
+  - marketing_spend
+  segments:
+  - segment
+  analysis_types:
+  - correlation
+findings:
+- kind: correlation
+  a: revenue
+  b: marketing_spend
+expect:
+  must_mention:
+  - marketing spend
+  - (move|go|rise|tend)s? together|associated|related|linked|relationship
+entity:
+- order
+- orders
+injected:
+- revenue doubled

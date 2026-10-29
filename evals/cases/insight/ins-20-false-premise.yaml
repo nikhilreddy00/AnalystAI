@@ -1,0 +1,32 @@
+id: ins-20-false-premise
+category: contradictory
+label_note: 'False premise: revenue fell 2.8%; it did not double.'
+dataset:
+  name: sales
+  seed: 1
+question: Why did revenue double last month?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: revenue
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+expect:
+  must_mention:
+  - did not|didn.t|not double|no doubling|rather than|(fell|down|declin|drop|dip|lower|decrease)
+  must_not_match:
+  - (because|since|after|as) revenue (has )?doubled|revenue doubled (because|due|thanks|as a result|after)
+  - doubling (was|is) (driven|caused)
+entity:
+- order
+- orders

@@ -297,7 +297,11 @@ SQL follow-up item via shared conversation memory, and added value-based date de
 approval overwriting the user's question, and put targeted, chart-request and drill-down charts under
 the same policy);
 **Cleaning ✅ 2026-10-28** (`docs/baselines/phase5_cleaning.md`; deterministic, nothing imputed; also
-made the high-null gate honour Drop/Cancel and delimited the audit in the insight prompt).
+made the high-null gate honour Drop/Cancel and delimited the audit in the insight prompt);
+**Insight ✅ 2026-10-29** (`docs/baselines/phase5_insight.md`; the model writes only claims that cite
+evidence, code holds grounding, dates and jargon by repair and writes the analyst view and alerts; a
+calibrated Haiku judge measures faithfulness; also scoped memory to user + dataset and measured the
+targeted-path cleaning gap for the Ingestion PR).
 Each PR runs the same 7 steps:
 1. agent card;
 2. eval cases first;

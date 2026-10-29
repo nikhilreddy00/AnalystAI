@@ -32,6 +32,7 @@ const KIND = {
   test: "Test",
   query: "SQL query",
   cleaning: "Cleaning",
+  eda: "Summary stats",
 };
 
 interface Props {

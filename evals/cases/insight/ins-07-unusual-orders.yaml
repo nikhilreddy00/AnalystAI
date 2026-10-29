@@ -1,0 +1,26 @@
+id: ins-07-unusual-orders
+category: straightforward
+label_note: 5 planted extreme revenue values.
+dataset:
+  name: sales
+  seed: 1
+question: Are there any unusual orders?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - anomaly
+findings:
+- kind: anomaly
+  column: revenue
+expect:
+  must_mention:
+  - \b(5|five)\b
+  - unusual|outlier|extreme|unusually|exceptional
+entity:
+- order
+- orders
+injected:
+- revenue doubled

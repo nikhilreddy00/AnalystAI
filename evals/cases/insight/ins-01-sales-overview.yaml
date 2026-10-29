@@ -1,0 +1,49 @@
+id: ins-01-sales-overview
+category: straightforward
+label_note: The e2e-01 bundle. Headline is segment B's 12% drop last month; the data covers 12 months,
+  so no single month is its scope.
+dataset:
+  name: sales
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- order
+- orders
+plan:
+  target_metrics:
+  - revenue
+  - units
+  - discount
+  - marketing_spend
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - correlation
+  - segmentation
+  - anomaly
+findings:
+- kind: trend
+  column: revenue
+- kind: trend
+  column: revenue
+  segment: B
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+- kind: correlation
+  a: revenue
+  b: marketing_spend
+- kind: correlation
+  a: revenue
+  b: discount
+- kind: anomaly
+  column: revenue
+expect:
+  must_mention:
+  - segment b
+  - 12(\.\d)?%
+injected:
+- revenue doubled

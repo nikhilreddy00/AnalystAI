@@ -1,0 +1,28 @@
+id: ins-17-low-n-correlation
+category: contradictory
+label_note: 'r = 0.85 on 18 rows: low confidence, must be hedged.'
+dataset:
+  name: sales
+  seed: 1
+question: Is marketing spend related to revenue?
+plan:
+  target_metrics:
+  - revenue
+  - marketing_spend
+  segments:
+  - segment
+  analysis_types:
+  - correlation
+transform:
+  sample: 18
+findings:
+- kind: correlation
+  a: revenue
+  b: marketing_spend
+expect:
+  hedge: marketing.{0,80}(link|relat|associat|together|align|correl|tied|connect|track)|(link|relat|associat|together|align|correl|tied|connect|track).{0,80}marketing
+entity:
+- order
+- orders
+injected:
+- revenue doubled

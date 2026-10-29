@@ -1,0 +1,33 @@
+id: ins-12-volume-vs-revenue
+category: contradictory
+label_note: Segment B units rose 41.5% while its revenue fell 12.6%.
+dataset:
+  name: sales
+  seed: 1
+question: What happened to segment B last month?
+plan:
+  target_metrics:
+  - revenue
+  - units
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: revenue
+  segment: B
+- kind: trend
+  column: units
+  segment: B
+expect:
+  both:
+  - (units|volume).{0,80}(up|rose|grew|grow|increas|gain|jump|climb|higher)|(up|rose|grew|grow|increas|gain|jump|climb|higher).{0,40}(units|volume)
+  - revenue.{0,80}(fell|down|declin|drop|dip|lower|decrease)|(fell|down|declin|drop|dip|lower|decrease).{0,40}revenue
+entity:
+- order
+- orders
+injected:
+- revenue doubled

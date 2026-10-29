@@ -1,0 +1,29 @@
+id: ins-16-tickets-not-significant-holdout
+category: contradictory
+label_note: 'Tickets by plan on 20 rows: tiny gap, low confidence: must be hedged.'
+dataset:
+  name: subscriptions
+  seed: 1
+entity:
+- account-month
+- account-months
+question: Do Pro accounts file more support tickets than Basic ones?
+plan:
+  target_metrics:
+  - support_tickets
+  segments:
+  - plan
+  analysis_types:
+  - segmentation
+  - hypothesis
+transform:
+  filter: plan in ['Basic', 'Pro']
+  sample: 20
+findings:
+- kind: segment
+  segment_column: plan
+  metric: support_tickets
+  aggregation: mean
+- kind: test
+expect:
+  hedge: ticket.{0,80}(more|higher|less|lower|than|advantage|gap|differ|ahead|behind|lead)|(more|higher|less|lower|than|advantage|gap|differ|ahead|behind|lead).{0,80}ticket

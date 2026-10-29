@@ -1,0 +1,31 @@
+id: ins-09-simpson
+category: contradictory
+dataset:
+  name: simpson
+  seed: 1
+entity:
+- visitor
+- visitors
+question: Does the treatment convert better than control?
+plan:
+  target_metrics:
+  - converted
+  segments:
+  - group
+  analysis_types:
+  - segmentation
+label_note: 'Simpson''s paradox: control wins pooled, treatment wins inside both departments.'
+findings:
+- kind: segment
+  segment_column: group
+  metric: converted
+  aggregation: mean
+- kind: segment
+  segment_column: department|group
+  metric: converted
+  aggregation: mean
+expect:
+  both:
+  - (overall|pooled|combined|in total|across all).{0,120}(control|treatment)|(control|treatment).{0,120}(overall|pooled|combined|in
+    total)
+  - (each|every|both|within|inside|either) (department|group)

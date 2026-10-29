@@ -1,0 +1,28 @@
+id: ins-38-tickets-null
+category: null_result
+label_note: 'r = -0.04: no relationship.'
+dataset:
+  name: subscriptions
+  seed: 1
+entity:
+- account-month
+- account-months
+question: Do support tickets relate to recurring revenue?
+plan:
+  target_metrics:
+  - mrr
+  - support_tickets
+  segments:
+  - plan
+  analysis_types:
+  - correlation
+display:
+  mrr: monthly recurring revenue
+findings:
+- kind: correlation
+  a: mrr
+  b: support_tickets
+expect:
+  must_mention:
+  - (no|little|weak|negligible) (clear |meaningful |real |strong |measurable )?(relationship|link|effect|connection|association|correlation)|not
+    (related|linked|connected)|unrelated|doesn.t|does not|no sign

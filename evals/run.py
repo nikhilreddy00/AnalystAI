@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import io
 import json
+import re
 import statistics
 import subprocess
 import time
@@ -37,6 +38,9 @@ from evals.scoring import (
     hard_rule,
     result_matches,
     score_cleaning,
+    bundle_facts,
+    insight_claims,
+    score_insight,
     score_intake,
     score_visualization,
 )
@@ -57,7 +61,9 @@ UPLOADS = EVALS_DIR.parent / "uploads" / "evals"   # the CSV connector only read
 
 def load_cases(suite: str, only: str | None, exclude: str | None = None) -> list[dict]:
     cases = [yaml.safe_load(p.read_text()) for p in sorted((EVALS_DIR / "cases" / suite).glob("*.yaml"))]
-    return [c for c in cases if (not only or only in c["id"]) and not (exclude and exclude in c["id"])]
+    keep = only.split(",") if only else []   # comma-separated: any of these substrings
+    return [c for c in cases if (not keep or any(k in c["id"] for k in keep))
+            and not (exclude and exclude in c["id"])]
 
 
 def dataset(case: dict) -> tuple[pd.DataFrame, dict, str]:
@@ -218,13 +224,14 @@ def score_intake_run(case: dict, output: dict | None, error: str | None) -> dict
 
 # ── Visualization (Phase 5): deterministic, $0 ──────────────────────────────────────────────
 
-def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[str]]:
+def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = ()
+                 ) -> tuple[AnalysisFindings, list[str]]:
     """AnalysisFindings for a case's `findings:` fixture, valued from the frame (as the analysis
     agent would report them), with evidence from the real build_evidence. Returns the evidence id
     of each fixture entry, in order."""
     from scipy import stats
 
-    from agents.analysis_agent import build_evidence
+    from agents.analysis_agent import build_evidence, segment_id
     from orchestrator.state import AnomalyRecord, SegmentResult, StatisticalResult, TrendResult
 
     plan = case["plan"]
@@ -237,11 +244,18 @@ def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[s
             frame = df[df[plan["segments"][0]].astype(str) == seg] if seg else df
             agg = "mean" if df[col].dropna().between(0, 1).all() else "sum"   # analysis MoM rule
             tot = frame.groupby(month.loc[frame.index])[col].agg(agg).sort_index()
-            pct = round(float((tot.iloc[-1] / tot.iloc[-2] - 1) * 100), 2)
-            trends.append(TrendResult(column=col, period="MoM", pct_change=pct, segment=seg,
+            # MoM: last month vs the one before. YoY: vs the same month a year earlier.
+            # YoY_calendar: calendar-year totals, the partial-year shape the analysis model wrote.
+            kind = f.get("period", "MoM")
+            if kind == "YoY_calendar":
+                tot = tot.groupby(tot.index.year).sum()
+            base = tot.iloc[-13] if kind == "YoY" else tot.iloc[-2]
+            pct = round(float((tot.iloc[-1] / base - 1) * 100), 2)
+            period = "MoM" if kind == "MoM" else "YoY"
+            trends.append(TrendResult(column=col, period=period, pct_change=pct, segment=seg,
                                       direction="up" if pct > 0 else "down" if pct < 0 else "flat"))
-            raw_trends.append({"column": col, "period": "MoM", "segment": seg, "n": int(len(frame))})
-            ids.append(f"trend:{col}" + (f" ({seg})" if seg else "") + ":MoM")
+            raw_trends.append({"column": col, "period": period, "segment": seg, "n": int(len(frame))})
+            ids.append(f"trend:{col}" + (f" ({seg})" if seg else "") + f":{period}")
         elif f["kind"] == "segment":
             cols = f["segment_column"].split("|")
             g = df.groupby(cols)[f["metric"]].agg(f["aggregation"])
@@ -250,7 +264,7 @@ def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[s
                 aggregation=f["aggregation"],
                 results=[{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                           "value": round(float(v), 4)} for k, v in g.items()]))
-            ids.append(f"seg:{f['segment_column']}/{f['metric']}")
+            ids.append(segment_id(f["segment_column"], f["metric"], f["aggregation"]))
         elif f["kind"] == "correlation":
             key = f"{f['a']}__{f['b']}"
             corr[key] = round(float(df[f["a"]].corr(df[f["b"]])), 4)
@@ -259,7 +273,7 @@ def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[s
             s = df[f["column"]].dropna()
             q1, q3 = s.quantile(0.25), s.quantile(0.75)
             hi = q3 + 3 * (q3 - q1)
-            for i, v in s[s > hi].head(5).items():
+            for i, v in s[s > hi].head(25).items():
                 anoms.append(AnomalyRecord(column=f["column"], row_index=int(i), value=float(v),
                                            expected_range=f"<= {hi:.2f}", severity="high",
                                            explanation=""))
@@ -271,7 +285,13 @@ def viz_findings(case: dict, df: pd.DataFrame) -> tuple[AnalysisFindings, list[s
             tests.append(StatisticalResult(test_name="Welch's t-test", statistic=float(t),
                                            p_value=float(p), interpretation=f"{metric} by {group}"))
             ids.append(f"test:{len(tests) - 1}")
-    findings = AnalysisFindings(eda_summary={}, correlations=corr, trends=trends, segments=segs,
+    eda = {}
+    for col in eda_columns:   # the analysis agent's built-in describe block
+        s = pd.to_numeric(df[col], errors="coerce").dropna()
+        eda[col] = {k: round(float(v), 4) for k, v in {
+            "mean": s.mean(), "std": s.std(), "min": s.min(), "max": s.max(),
+            "median": s.median(), "count": len(s)}.items()}
+    findings = AnalysisFindings(eda_summary=eda, correlations=corr, trends=trends, segments=segs,
                                 anomalies=anoms, statistical_tests=tests, code_executed="")
     raw = {"n_rows": len(df), "non_null": {str(c): int(n) for c, n in df.notna().sum().items()},
            "trends": raw_trends}
@@ -328,6 +348,92 @@ async def run_visualization_case(case: dict) -> dict:
 
 def score_visualization_run(case: dict, output: dict | None, error: str | None) -> dict:
     checks, hard = score_visualization(case, output, dataset(case)[0], error)
+    return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+            "holdout": case["id"].endswith("holdout")}
+
+
+def insight_frame(case: dict) -> pd.DataFrame:
+    """The case's table after its transforms, round-tripped through CSV like an upload:
+    filter rows, plant values, sample, drop or rename columns, blank a share of a column."""
+    df = dataset(case)[0]
+    t = case.get("transform") or {}
+    if t.get("filter"):
+        df = df.query(t["filter"])
+    for spec in t.get("set", []):
+        rows = df.query(spec["where"]).index if spec.get("where") else df.index
+        df[spec["column"]] = df[spec["column"]].astype(object)
+        df.loc[rows, spec["column"]] = spec["value"]
+    if t.get("sample"):
+        df = df.sample(t["sample"], random_state=case["dataset"]["seed"])
+    df = df.drop(columns=t.get("drop_columns", [])).rename(columns=t.get("rename", {}))
+    for col, frac in (t.get("blank") or {}).items():
+        df.loc[df.sample(frac=frac, random_state=1).index, col] = None
+    return pd.read_csv(io.StringIO(df.to_csv(index=False)), low_memory=False)
+
+
+def _display(col: str) -> str:
+    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", str(col)).replace("_", " ").strip().lower()
+
+
+async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
+    """What the insight agent receives on the overview path, built at $0 by the real agents:
+    the frame → cleaning agent → findings fixture valued from the cleaned frame → build_evidence
+    (+ the cleaning evidence first, as analysis_node does) → visualization agent. Also returns
+    the bundle facts the scorer and the judge read (captured here, not from the agent)."""
+    from agents.cleaning_agent import build_evidence as cleaning_evidence
+    from agents.cleaning_agent import run_cleaning_agent
+    from agents.visualization_agent import run_visualization_agent
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import DataNarrative, QuestionIntent
+
+    plan = case["plan"]
+    df = insight_frame(case)
+    session = AnalysisSession(
+        session_id=str(uuid.uuid4()),
+        data_contract=CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df),
+        task_plan=AnalysisTask(raw_query=case["question"], target_metrics=plan["target_metrics"],
+                               segments=plan.get("segments", []),
+                               analysis_types=plan.get("analysis_types") or ["eda"],
+                               question_intent=QuestionIntent.OVERVIEW),
+        narrative=DataNarrative(column_display_names={c: case.get("display", {}).get(c, _display(c))
+                                                      for c in df.columns},
+                                entity_singular=case.get("entity", ["record", "records"])[0],
+                                entity_plural=case.get("entity", ["record", "records"])[1]))
+    if case.get("schema_summary"):   # what an upstream model wrote about the data
+        session.data_contract.schema_summary = case["schema_summary"]
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    session.__dict__["_df_parquet"] = buf.getvalue()
+    clean_df, audit = await run_cleaning_agent(session)
+    session.cleaning_audit = audit
+
+    findings, _ = viz_findings(case, clean_df, plan["target_metrics"])
+    findings.missing_pct = {str(c): round(float(clean_df[c].isna().mean() * 100), 2)
+                            for c in clean_df.columns}
+    findings.evidence.insert(0, cleaning_evidence(audit))
+    session.analysis_findings = findings
+    session.chart_configs = await run_visualization_agent(session)
+    session.__dict__.pop("_df_parquet", None)
+
+    bundle = bundle_facts(session, clean_df, case.get("past_insights", []))
+    return session, case.get("past_insights", []), bundle
+
+
+async def run_insight_case(case: dict) -> dict:
+    from agents.insight_agent import run_insight_agent
+
+    session, past, bundle = await insight_bundle(case)
+    report, error = None, None
+    try:
+        report = (await run_insight_agent(session, get_client(), past or None)).model_dump(mode="json")
+    except Exception as exc:   # a loud failure is a failed case, not a crashed run
+        error = f"{type(exc).__name__}: {exc}"
+    output = {"report": report, "bundle": bundle}
+    return {**score_insight_run(case, output, error), "output": output}
+
+
+def score_insight_run(case: dict, output: dict | None, error: str | None) -> dict:
+    checks, hard = score_insight(case, output, error)
     return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
             "holdout": case["id"].endswith("holdout")}
 
@@ -482,7 +588,7 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         start = time.perf_counter()
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
                   "intake": run_intake_case, "visualization": run_visualization_case,
-                  "cleaning": run_cleaning_case}[suite]
+                  "cleaning": run_cleaning_case, "insight": run_insight_case}[suite]
         out = await runner(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
@@ -503,6 +609,7 @@ RESCORERS = {
     "intake": score_intake_run,
     "visualization": score_visualization_run,
     "cleaning": score_cleaning_run,
+    "insight": score_insight_run,
 }
 
 
@@ -527,13 +634,60 @@ def rescore(path: Path) -> Path:
     return out
 
 
+async def judge(path: Path, max_usd: float, first_only: bool = False) -> Path:
+    """Label stored insight reports' claims with the faithfulness judge (evals/judge.py), at
+    ≈ $0.009 per report; runs already judged by the same judge version are kept. `first_only`
+    judges run 1 of each case: at temperature 0 the k runs barely differ, so judging all of them
+    multiplies cost, not information."""
+    from evals.judge import INPUT_VERSION, PROMPT_VERSION, judge_report
+    report = json.loads(path.read_text())
+    cases = {c["id"]: c for c in load_cases(report["meta"]["suite"], None)}
+    todo = []
+    for cid, rs in report["runs"].items():
+        for r in rs[:1] if first_only else rs:
+            out = r.get("output") or {}
+            has_report = out.get("report") or out.get("insight_report")
+            done = r.get("judge") or {}
+            if has_report and (done.get("prompt_version"), done.get("input_version", 1)) != (
+                    PROMPT_VERSION, INPUT_VERSION):
+                r["case_id"] = cid
+                todo.append(r)
+    print(f"judging {len(todo)} runs ≈ ${round(0.009 * len(todo), 2)} (cap ${max_usd})", flush=True)
+    sem, spent = asyncio.Semaphore(6), [0.0]
+
+    async def one(r: dict) -> None:
+        async with sem:
+            if spent[0] >= max_usd:
+                return
+            meter: list[dict] = []
+            trace_meter.set(meter)
+            out = r["output"]
+            if report["meta"]["suite"] == "e2e":   # a stored session: rebuild what insight saw
+                session = AnalysisSession.model_validate(out)
+                out = {"report": out.get("insight_report"),
+                       "bundle": bundle_facts(session, dataset(cases[r["case_id"]])[0])}
+            r["judge"] = await judge_report(out, get_client())
+            r["judge"]["cost_usd"] = round(sum(m.get("cost_usd", 0) for m in meter), 5)
+            spent[0] += r["judge"]["cost_usd"]
+    await asyncio.gather(*(one(r) for r in todo))
+    report["summary"] = summarize(report["runs"])
+    report["meta"]["judged"] = {"prompt_version": PROMPT_VERSION, "cost_usd": round(spent[0], 4)}
+    name = report["meta"]["report"] + ("" if report["meta"]["report"].endswith("-judged") else "-judged")
+    report["meta"]["report"] = name
+    out = path.parent / f"{name}.json"
+    out.write_text(json.dumps(report, indent=1, default=str))
+    (path.parent / f"{name}.md").write_text(to_markdown(report))
+    print(json.dumps({k: v for k, v in report["summary"].items() if "judge" in k}, indent=1))
+    return out
+
+
 def _pct(values: list[float], q: float) -> float:
     if len(values) < 2:
         return (values or [0])[0]
     return round(statistics.quantiles(values, n=100, method="inclusive")[q - 1], 2)
 
 
-_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly"}
+_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped"}
 
 
 def summarize(runs: dict[str, list[dict]]) -> dict:
@@ -560,6 +714,8 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         **_intake_quality(flat),
         **_viz_quality(flat),
         **_cleaning_quality(flat),
+        **_insight_quality(flat),
+        **_judge_quality(flat),
     }
 
 
@@ -655,6 +811,72 @@ def _cleaning_quality(flat: list[dict]) -> dict:
            for rule in ("rows_logged", "changes_logged", "protected_not_filled")},
         "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
         "recall_by_issue": {k: round(sum(v) / len(v), 4) for k, v in sorted(by_issue.items())},
+    }
+
+
+def _judge_quality(flat: list[dict]) -> dict:
+    """Judge faithfulness = supported claims / all claims, over the runs the judge labelled
+    (`python -m evals.run judge <report>`); per-run means are reported too."""
+    judged = [r for r in flat if r.get("judge")]
+    if not judged:
+        return {}
+    statements, actions, per_run = [], [], []
+    for r in judged:
+        out = r.get("output") or {}
+        report = out.get("report") or out.get("insight_report") or {}
+        sections = [c["section"] for c in insight_claims(report)]
+        labels = r["judge"]["labels"]
+        if len(sections) != len(labels):   # judged by an older claim splitter
+            sections = ["?"] * len(labels)
+        st = [lab for lab, sec in zip(labels, sections) if sec != "action"]
+        statements += st
+        actions += [lab for lab, sec in zip(labels, sections) if sec == "action"]
+        if st:
+            per_run.append(sum(lab == "supported" for lab in st) / len(st))
+
+    def rate(labels):
+        return round(sum(lab == "supported" for lab in labels) / len(labels), 4) if labels else None
+    return {
+        # The target: the judge agrees with labels on statements (95%), not on actions (80% <
+        # the 85% gate), so action labels are reported but don't count (ADR-0002 §4).
+        "judge_faithfulness": rate(statements),
+        "judge_faithfulness_mean_per_run": round(statistics.mean(per_run), 4) if per_run else None,
+        "judge_actions_supported_uncalibrated": rate(actions),
+        "judged_runs": len(judged), "judged_statements": len(statements),
+        "judged_actions": len(actions),
+        "judge_label_counts": {k: statements.count(k) for k in sorted(set(statements))},
+        "judge_cost_usd": round(sum(r["judge"].get("cost_usd", 0) for r in judged), 4),
+    }
+
+
+def _insight_quality(flat: list[dict]) -> dict:
+    """Phase 5 insight metrics (docs/ROADMAP.md Insight row), pooled over runs: the hard-rule
+    pass rates (grounding, dates, jargon, citations, injection), the soft checks, and
+    judge faithfulness is in _judge_quality."""
+    if not any(c["kind"] == "causal" for r in flat for c in r["checks"]):
+        return {}
+
+    def hard_ok(rule):
+        oks = [h["ok"] for r in flat for h in r["hard"] if h["rule"] == rule]
+        return round(sum(oks) / len(oks), 4) if oks else None
+
+    def share(kind):
+        oks = [c["ok"] for r in flat for c in r["checks"] if c["kind"] == kind]
+        return round(sum(oks) / len(oks), 4) if oks else None
+
+    cats: dict[str, list[bool]] = {}
+    for r in flat:
+        cats.setdefault(r["category"], []).append(r["passed"])
+    hold = [r["passed"] for r in flat if r["holdout"]]
+    return {
+        **{f"hard_{rule}": hard_ok(rule) for rule in (
+            "insight_grounded", "insight_dates_in_range", "executive_no_jargon",
+            "claims_cite_evidence", "no_injection_echo")},
+        "recall": share("recall"), "must_not": share("must_not"),
+        "contradictions_named": share("contradiction"), "hedged": share("hedge"),
+        "no_causal_overreach": share("causal"),
+        "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
+        "pass_rate_by_category": {k: round(sum(v) / len(v), 4) for k, v in sorted(cats.items())},
     }
 
 
@@ -766,9 +988,12 @@ async def main() -> None:
     if sys.argv[1:2] == ["rescore"]:
         print(f"→ {rescore(Path(sys.argv[2]))}")
         return
+    if sys.argv[1:2] == ["judge"]:   # paid (Haiku): evals.run judge <report> [max_usd] [first]
+        print(f"→ {await judge(Path(sys.argv[2]), float(sys.argv[3]) if len(sys.argv) > 3 else 1.0, sys.argv[4:5] == ['first'])}")
+        return
     ap = argparse.ArgumentParser()
     ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake", "visualization",
-                                          "cleaning"])
+                                          "cleaning", "insight"])
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--compare", help="previous report JSON for the paired diff")

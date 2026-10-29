@@ -135,7 +135,44 @@ def make_mixed_dates(seed: int) -> tuple[pd.DataFrame, dict]:
     return df, truth
 
 
-DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates}
+def make_subscriptions(seed: int) -> tuple[pd.DataFrame, dict]:
+    """SaaS billing, one row per account-month over 30 months (2024-05 .. 2026-10).
+
+    Planted: MRR grows year over year, but the last month is exactly 8% below the month before
+    (MoM and YoY disagree); `churned` is a 0-1 flag (its trend is a rate, not a sum); Enterprise
+    has the highest mean MRR; support_tickets has no relationship with MRR."""
+    rng = np.random.default_rng(seed)
+    months = pd.period_range("2024-05", "2026-10", freq="M")
+    plans = rng.choice(["Basic", "Pro", "Enterprise"], size=200, p=[0.5, 0.35, 0.15])
+    base = pd.Series(plans).map({"Basic": 40.0, "Pro": 120.0, "Enterprise": 600.0}).to_numpy()
+    rows = []
+    for i, m in enumerate(months):
+        growth = 1 + 0.02 * i
+        rows.append(pd.DataFrame({
+            "account_id": np.arange(1, 201), "billing_date": m.to_timestamp().strftime("%Y-%m-%d"),
+            "plan": plans, "mrr": (base * growth * rng.normal(1, 0.05, 200)).round(2),
+            "seats": rng.integers(1, 40, size=200), "churned": (rng.random(200) < 0.05).astype(int),
+            "support_tickets": rng.poisson(3, 200),
+        }))
+    df = pd.concat(rows, ignore_index=True)
+    month = pd.to_datetime(df["billing_date"]).dt.to_period("M")
+    last, prev = month == months[-1], month == months[-2]
+    df.loc[last, "mrr"] *= 0.92 * df.loc[prev, "mrr"].sum() / df.loc[last, "mrr"].sum()
+    df["mrr"] = df["mrr"].round(2)
+    totals = _monthly_totals(df, "billing_date", "mrr")
+    truth = {
+        "row_count": len(df),
+        "mrr_mom_pct": float((totals.iloc[-1] / totals.iloc[-2] - 1) * 100),
+        "mrr_yoy_pct": float((totals.iloc[-1] / totals.iloc[-13] - 1) * 100),
+        "mean_mrr_by_plan": df.groupby("plan")["mrr"].mean().to_dict(),
+        "corr_mrr_tickets": float(df["mrr"].corr(df["support_tickets"])),
+    }
+    assert truth["mrr_mom_pct"] < 0 < truth["mrr_yoy_pct"]
+    return df, truth
+
+
+DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
+            "subscriptions": make_subscriptions}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

@@ -1,0 +1,93 @@
+# Judge calibration (ADR-0002 §4): the judge counts only at >= 85% agreement on supported vs not,
+# and >= 90% recall on the seeded defects.
+# source: real   = a claim the baseline agent wrote (insight-20261029T155429Z), label by hand
+#                  against the bundle's evidence, reviewed by the user;
+#         seeded = a defect written on purpose (direction, group, period, number, cause, memory),
+#                  so its label is known by construction (ARES-style synthetic negatives).
+groups:
+- case: ins-01-sales-overview
+  claims:
+  - {source: real, label: supported, text: "Sales dataset of 3,000 orders shows declining revenue and a clear performance gap across customer segments."}
+  - {source: real, label: supported, text: "Five orders have revenue values far above the typical range — the highest reaching $964.19 — which could skew averages and reporting if not verified."}
+  - {source: real, label: overstated, text: "Marketing spend is meaningfully linked to revenue — orders with higher marketing investment tend to generate more revenue, suggesting current spend is productive."}
+  - {source: seeded, label: contradicted, text: "Segment B revenue rose 12.6% last month.", ids: ["trend:revenue (B):MoM"]}
+  - {source: seeded, label: contradicted, text: "Segment A revenue fell 12.6% last month.", ids: ["trend:revenue (B):MoM"]}
+  - {source: seeded, label: overstated, text: "Marketing spend drives revenue: every extra dollar of spend brings in more sales.", ids: ["corr:revenue__marketing_spend"]}
+  - {source: seeded, label: unsupported, text: "Revenue fell 18.4% last month.", ids: ["trend:revenue:MoM"]}
+  - {source: seeded, label: contradicted, text: "The data covers only November 2025."}
+  - {source: seeded, label: contradicted, text: "Bigger discounts strongly lift revenue per order.", ids: ["corr:revenue__discount"]}
+- case: ins-09-simpson
+  claims:
+  - {source: real, label: supported, text: "Control group converts at 60%, treatment at 40% — control wins by 20 percentage points across all visitors."}
+  - {source: real, label: supported, text: "In the Easy department, treatment converts at 80% versus control's 70%, meaning treatment is beneficial for that specific audience."}
+  - {source: seeded, label: contradicted, text: "Treatment converts better than control across all visitors.", ids: ["seg:group/converted"]}
+  - {source: seeded, label: contradicted, text: "In the Hard department, control converts better than treatment.", ids: ["seg:department|group/converted"]}
+- case: ins-11-total-vs-segment
+  claims:
+  - {source: real, label: contradicted, text: "Revenue declined 2.8% month-over-month in October 2026, but when adjusted for composition, the underlying trend is actually up 6.5%, suggesting the overall dip is driven by mix or volume shifts rather than broad weakness."}
+  - {source: real, label: contradicted, text: "Segment B experienced a 12.6% revenue drop in October versus September, standing out as the primary drag on overall performance while Segment A held its position as the largest contributor at 40% of revenue."}
+- case: ins-13-mom-vs-yoy
+  claims:
+  - {source: real, label: supported, text: "Recurring revenue is growing year-over-year but showing a sharp short-term pullback that demands immediate attention."}
+  - {source: real, label: supported, text: "Monthly recurring revenue grew 6.5% over the past year, confirming a positive long-term trajectory."}
+  - {source: real, label: unsupported, text: "A single-month drop of 8.0% in October 2026 is the sharpest recent decline and may reflect seasonal effects, a billing anomaly, or an acceleration in churn."}
+  - {source: seeded, label: contradicted, text: "Monthly recurring revenue fell 6.5% year over year.", ids: ["trend:mrr:YoY"]}
+  - {source: seeded, label: contradicted, text: "Monthly recurring revenue grew 8% last month.", ids: ["trend:mrr:MoM"]}
+- case: ins-15-gap-not-significant
+  claims:
+  - {source: seeded, label: overstated, text: "The North region clearly and reliably out-earns the South; the gap is proven.", ids: ["seg:region/revenue", "test:0"]}
+- case: ins-17-low-n-correlation
+  claims:
+  - {source: real, label: overstated, text: "Yes — marketing spend is strongly linked to revenue, explaining most of the variation across orders."}
+  - {source: real, label: overstated, text: "Marketing spend and revenue are closely aligned — orders with higher marketing spend almost always generate higher revenue, and this pattern holds across the full dataset."}
+  - {source: seeded, label: overstated, text: "Marketing spend reliably predicts revenue across the business.", ids: ["corr:revenue__marketing_spend"]}
+- case: ins-18-stale-memory
+  claims:
+  - {source: real, label: supported, text: "Segment B is underperforming: revenue dropped 12.6% last month and trails Segment A by a significant margin."}
+  - {source: real, label: supported, text: "Segment B's average order revenue of $98.06 places it in the middle of the three segments, roughly 19% below Segment A and 24% above Segment C."}
+  - {source: seeded, label: unsupported, text: "Segment B revenue grew 15% month over month and it is the fastest-growing segment."}
+- case: ins-27-twelve-months-bad-summary
+  claims:
+  - {source: real, label: contradicted, text: "November 2025 sales data shows Segment B declining and revenue strongly tied to marketing investment, with notes data entirely missing."}
+  - {source: real, label: supported, text: "Segment A generates the highest average revenue per order at $121.29, while Segment C averages the lowest at $78.88 — a $42 gap that may reflect differences in customer value or product mix."}
+  - {source: real, label: unsupported, text: "Segment B, which accounts for a meaningful share of orders, saw revenue fall 12.6% — the only segment showing a notable decline."}
+  - {source: seeded, label: contradicted, text: "The business has two customer segments, A and B."}
+- case: ins-14-mean-vs-median
+  claims:
+  - {source: real, label: contradicted, text: "A typical order is worth around $175–$265, but a small cluster of very large orders is pulling the average up to $302."}
+  - {source: real, label: supported, text: "Roughly 35 orders — just over 1% of the dataset — have unusually high revenue, with some recorded at $20,000, which is far outside the normal range."}
+  - {source: seeded, label: contradicted, text: "The typical order is worth about $302."}
+- case: ins-30-no-dates
+  claims:
+  - {source: real, label: unsupported, text: "Session length was similar across both departments (roughly 12 minutes on average), suggesting time spent is not the primary driver of the conversion gap — the nature of the experience likely is."}
+  - {source: seeded, label: unsupported, text: "Conversion fell sharply last quarter."}
+- case: ins-21-high-null-metric
+  claims:
+  - {source: seeded, label: contradicted, text: "Every order recorded its units; no values are missing.", ids: ["seg:segment/units"]}
+- case: ins-23-duplicates
+  claims:
+  - {source: seeded, label: contradicted, text: "There are 3,025 unique orders in the data.", ids: ["clean:audit"]}
+- case: ins-37-discount-null
+  claims:
+  - {source: seeded, label: overstated, text: "Higher discounts lead to higher revenue per order.", ids: ["corr:revenue__discount"]}
+- case: ins-20-false-premise
+  claims:
+  - {source: seeded, label: contradicted, text: "Revenue doubled last month.", ids: ["trend:revenue:MoM"]}
+# Actions (added after the v4 run: every item above is a statement, so the judge's labels on
+# recommendations were uncalibrated). Recommending an investigation asserts no fact.
+- case: ins-01-sales-overview
+  claims:
+  - {source: action, label: supported, text: "Investigate what drove segment B's 12.6% revenue drop last month: check order volume, pricing and product mix.", ids: ["trend:revenue (B):MoM"]}
+  - {source: action, label: supported, text: "Verify the five flagged revenue values against the source system before reporting totals.", ids: ["anom:revenue"]}
+  - {source: action, label: supported, text: "Run a controlled test of marketing spend to learn whether it moves revenue, since the two only move together.", ids: ["corr:revenue__marketing_spend"]}
+  - {source: action, label: overstated, text: "Increase marketing spend, because it drives revenue growth.", ids: ["corr:revenue__marketing_spend"]}
+  - {source: action, label: contradicted, text: "Cut segment A's budget, since it has the lowest average revenue.", ids: ["seg:segment/revenue"]}
+  - {source: action, label: contradicted, text: "Expand discounting, which strongly lifts revenue per order.", ids: ["corr:revenue__discount"]}
+- case: ins-18-stale-memory
+  claims:
+  - {source: action, label: supported, text: "Compare segment B's pricing and discounts this month with last month to find the cause of the drop.", ids: ["trend:revenue (B):MoM"]}
+  - {source: action, label: unsupported, text: "Keep investing in segment B, the fastest-growing segment.", ids: ["trend:revenue (B):MoM"]}
+- case: ins-09-simpson
+  claims:
+  - {source: action, label: supported, text: "Report conversion by department, and check how visitors were assigned to treatment and control before choosing a winner.", ids: ["seg:department|group/converted"]}
+  - {source: action, label: contradicted, text: "Stop the treatment: it converts worse in every department.", ids: ["seg:department|group/converted"]}

@@ -1,0 +1,34 @@
+id: ins-30-no-dates
+category: date_scope
+label_note: 'No date column: no period may be named.'
+dataset:
+  name: simpson
+  seed: 1
+entity:
+- visitor
+- visitors
+question: Give me an overview of this dataset.
+plan:
+  target_metrics:
+  - converted
+  - session_minutes
+  segments:
+  - department
+  analysis_types:
+  - eda
+  - segmentation
+findings:
+- kind: segment
+  segment_column: department
+  metric: converted
+  aggregation: mean
+- kind: segment
+  segment_column: department
+  metric: session_minutes
+  aggregation: mean
+expect:
+  must_mention:
+  - department
+  must_not_match:
+  - month[- ]over[- ]month
+  - last (month|quarter|year)

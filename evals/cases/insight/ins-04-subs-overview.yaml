@@ -1,0 +1,36 @@
+id: ins-04-subs-overview
+category: straightforward
+label_note: 'SaaS overview: Enterprise has the highest MRR; MRR fell 8% last month; tickets have no link.'
+dataset:
+  name: subscriptions
+  seed: 1
+entity:
+- account-month
+- account-months
+question: Give me an overview of this dataset.
+plan:
+  target_metrics:
+  - mrr
+  segments:
+  - plan
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+  - correlation
+display:
+  mrr: monthly recurring revenue
+findings:
+- kind: segment
+  segment_column: plan
+  metric: mrr
+  aggregation: mean
+- kind: trend
+  column: mrr
+- kind: correlation
+  a: mrr
+  b: support_tickets
+expect:
+  must_mention:
+  - enterprise
+  - 8(\.0)?%
