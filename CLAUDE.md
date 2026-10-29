@@ -26,7 +26,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
-| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); next: Insight |
+| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); next: Quality check |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -130,7 +130,11 @@ agents/
                              (guardrails.chart_lint) then repair/drop, or a note on the user's choice;
                              every chart has a ChartRationale; swap_options; KPI how + kpi_mismatches.
                              Targeted answers, chart requests and drill-down charts all go through it
-  insight_agent.py         — returns InsightReport
+  insight_agent.py         — contract agent: INSIGHT_CARD, prompts/insight/vN.md, build_context (computed facts +
+                             date range from CleaningAudit.date_ranges, evidence lines, evidence charts, scoped
+                             memory; no schema_summary / raw rows), model writes only claims citing Evidence ids;
+                             repair: ungrounded number/date or jargon sentence removed, uncited claim removed;
+                             analyst view + alerts built from Evidence and audit; returns InsightReport
   quality_critic.py        — LLM critic run by quality_check_node → ExpertReview
   sql_agent.py             — Phase 4: question → one read-only SQL query (SQL_CARD, prompts/sql/vN.md,
                              tools get_metric_definition/run_sql, fan-out + metric hard rules,
@@ -140,7 +144,8 @@ agents/
   errors.py                — AgentError hierarchy (LLMRefusal/Truncated/Unavailable/OutputError, GuardrailViolation, SandboxError)
 
 prompts/<agent>/v<N>.md    — versioned system prompts (analysis: v3 = old v2 verbatim … v7 current;
-                             intake: v1 = old inline prompt verbatim, v2 current, overview_vN = first-run override)
+                             intake: v1 = old inline prompt verbatim, v2 current, overview_vN = first-run override;
+                             insight: v1 = old prompt verbatim, v4 current; insight_judge: v1 = the eval's judge)
 
 semantic_layer.py          — YAML semantic layer (ADR-0003): tables + grain, metrics, relationships;
                              strict loader, check_against_db; SEMANTIC_LAYER_PATH (invalid = no boot)
@@ -219,10 +224,10 @@ agent_start       → {type: "agent_start", agent: "<name>", message: "<status>"
 agent_complete    → {type: "agent_complete", agent: "<name>", message: "<result>"}
 approval_required → {type: "approval_required", context: "clarification"|"high_null", ...}
 suggested_questions → {type: "suggested_questions", questions: string[]}  // FEAT-01
-evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding (+ one "cleaning", + "query" for SQL)
+evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding (+ one "cleaning", + "query" for SQL, + "eda" per described column)
 charts            → {type: "charts", data: ChartConfig[]}  // Phase 5: + rationale, placement, lint_warnings, error_key, split_key, reference_lines
 export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
-insight           → {type: "insight", data: InsightReport}
+insight           → {type: "insight", data: InsightReport}  // Phase 5: findings/paragraphs are Claim{text, evidence_ids}; actions carry evidence_ids
 quality_retry     → {type: "quality_retry", message: "<reason>; Re-running analysis..."}  // FEAT-02
 expert_review     → {type: "expert_review", data: ExpertReview}  // quality critic, first run only
 error             → {type: "error", message: "<user-readable>"}
@@ -251,13 +256,13 @@ done              → {type: "done"}  // always last
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
   Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost ~$59 (2026-10-27), mostly
-  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
   `pg_ctl -D <dir> -o "-p 54329 -c unix_socket_directories='' -c listen_addresses=localhost" start`, `createdb -h localhost -p 54329 -U postgres analystai_eval`. Cases: `evals/cases/sql/` (golden SQL never goes
   in a layer's `verified_queries` or a prompt — a test checks)
-- **Evals**: `uv run python -m evals.run {analysis|e2e|sql|intake} --k 3 [--compare <prev.json>] [--exclude holdout]`; a scorer fix is re-scored for $0 with `python -m evals.run rescore <report.json>` (never re-run for it) — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
+- **Evals**: `uv run python -m evals.run {analysis|e2e|sql|intake|visualization|cleaning|insight} --k 3 [--compare <prev.json>] [--exclude holdout]`; a scorer fix is re-scored for $0 with `python -m evals.run rescore <report.json>` (never re-run for it) — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
 
 ---
 
