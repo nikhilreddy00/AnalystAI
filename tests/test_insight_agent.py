@@ -285,3 +285,15 @@ def test_odd_bundles_build_a_context():
     assert "There is no date column" in prompt and "Evidence (cite these ids)" in prompt
     report, _ = _run({}, session=bare)
     assert report.executive_view.findings   # the evidence, said plainly
+
+
+def test_a_year_inside_a_multi_year_range_survives_without_a_cue():
+    session, _, bundle = _bundle("ins-04")   # 2024-05 .. 2026-10
+    finding = {"text": "2025 was a strong year; monthly recurring revenue fell 8.0% month over month.",
+               "evidence": ["trend:mrr:MoM"]}
+    report, _ = _run(_good(findings=[finding], headline={"text": "MRR fell.", "evidence": ["trend:mrr:MoM"]}),
+                     session=session)
+    assert report.executive_view.findings[0].text.startswith("2025 was a strong year")
+    _, hard = score_insight(_case("ins-04"), {"report": report.model_dump(mode="json"),
+                                              "bundle": bundle}, None)
+    assert all(h["ok"] for h in hard if h["rule"] in ("insight_grounded", "insight_dates_in_range"))

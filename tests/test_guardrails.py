@@ -185,3 +185,14 @@ def test_without_dates_hides_days_and_years_from_number_grounding():
     text = "On Jan 15, 2026 revenue was 120.5; 2025-11-03 too."
     assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 120.5}) == []
     assert g.without_dates("2025 orders", has_dates=False) == "2025 orders"
+
+
+def test_a_bare_count_is_not_a_year():
+    """Audit: '2000 orders' in a dated dataset was read as the year 2000 and its sentence dropped."""
+    first, last = (2025, 11), (2026, 10)
+    assert g.ungrounded_dates("There are 2000 orders in total.", first, last) == []
+    assert "2000" in g.without_dates("There are 2000 orders.", True)
+    # a year still reads as one after a date cue, or in a range
+    assert g.ungrounded_dates("Sales in 2019 were higher.", first, last) == ["2019"]
+    assert g.ungrounded_dates("Revenue since 2025 grew.", first, last) == []
+    assert g.ungrounded_dates("From 2019–2020 it fell.", first, last) == ["2019", "2020"]

@@ -463,10 +463,21 @@ def _months(m: re.Match) -> tuple[int, int] | None:
     return y * 12 + 1, y * 12 + 12
 
 
+# A bare 4-digit number is a year only after a date cue ("in 2025", "since 2024", "2024–2026");
+# otherwise it is a count ("2000 orders") and number grounding checks it.
+_YEAR_CUE_RE = re.compile(r"(?:\b(?:in|since|during|from|through|until|by|of|before|after|for|"
+                          r"year|fiscal|fy|between|and|to)\s+|[–-]\s*)$", re.I)
+
+
+def _is_date(text: str, m: re.Match) -> bool:
+    return not m["bare"] or bool(_YEAR_CUE_RE.search(text[:m.start()]))
+
+
 def without_dates(text: str, has_dates: bool) -> str:
     """The text with its date mentions removed, so number grounding doesn't read a day or a
     year as a claim. Bare years stay when the data has no dates (then they're just numbers)."""
-    return _DATE_RE.sub(lambda m: m[0] if m["bare"] and not has_dates else " ", text)
+    return _DATE_RE.sub(
+        lambda m: m[0] if m["bare"] and (not has_dates or not _is_date(text, m)) else " ", text)
 
 
 def ungrounded_dates(text: str, first: tuple[int, int] | None,
@@ -478,6 +489,8 @@ def ungrounded_dates(text: str, first: tuple[int, int] | None,
     lo = first[0] * 12 + first[1] if first else None
     hi = last[0] * 12 + last[1] if last else None
     for m in _DATE_RE.finditer(text):
+        if not _is_date(text, m):
+            continue
         span = _months(m)
         if lo is None:
             if not m["bare"]:

@@ -124,7 +124,8 @@ class InsightContext(BaseModel):
     def pool(self) -> list:
         """Where a number in the report may come from: what the model was shown, minus the
         question and the earlier analyses."""
-        return [self.facts, self.evidence, self.quality, self.charts, _CONVENTIONS]
+        years = list(range(self.first[0], self.last[0] + 1)) if self.first and self.last else []
+        return [self.facts, self.evidence, self.quality, self.charts, _CONVENTIONS, years]
 
 
 def _month(ym: tuple[int, int]) -> str:

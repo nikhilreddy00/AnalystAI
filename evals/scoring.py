@@ -800,7 +800,8 @@ def bundle_facts(session: AnalysisSession, df: pd.DataFrame, past: list[str] = (
                      ("claim", "result_excerpt", "row_count", "assumptions", "confidence_reason")}
                     for e in evidence],
                    audit.model_dump(mode="json") if audit else {}, titles,
-                   [contract.row_count, contract.column_count, n_months] if contract else [n_months]],
+                   [contract.row_count, contract.column_count, n_months] if contract else [n_months],
+                   list(range(first[0], last[0] + 1)) if first else []],   # years in the range
     }
 
 
