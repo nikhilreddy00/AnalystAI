@@ -326,14 +326,16 @@ def _bullets(items, grounded, columns: set[str] | None = None,
              display: dict[str, str] | None = None) -> list[str]:
     """Grounded bullets, with raw column names (also spelled with spaces) shown by their
     display names, as the report shows them."""
+    names = {form.lower(): shown for raw, shown in (display or {}).items()
+             if raw != shown and len(raw) > 3 for form in (raw, raw.replace("_", " "))}
+    names_re = re.compile("|".join(rf"(?<!\w){re.escape(f)}(?!\w)"
+                                   for f in sorted(names, key=len, reverse=True)), re.I)
     out = []
     for item in items if isinstance(items, list) else []:
         text, cols = (item.get("text"), item.get("columns")) if isinstance(item, dict) else (item, None)
         text = " ".join(str(text or "").split())
-        for raw, shown in sorted((display or {}).items(), key=lambda kv: -len(kv[0])):
-            if raw != shown and len(raw) > 3:
-                for form in {raw, raw.replace("_", " ")}:
-                    text = re.sub(rf"(?<!\w){re.escape(form)}(?!\w)", shown, text, flags=re.I)
+        if names:   # one pass: a display name that contains its raw name isn't replaced again
+            text = names_re.sub(lambda m: names[m.group(0).lower()], text)
         if not text or not grounded(text):
             continue
         if columns is not None and (not isinstance(cols, list) or not cols

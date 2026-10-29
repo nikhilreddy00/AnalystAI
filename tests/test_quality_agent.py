@@ -192,3 +192,38 @@ def test_node_reviews_every_full_run_and_calls_the_critic_once(recorded_llm):
         assert out.insight_report.model_dump_json() == before
         assert len(recorded_llm.calls) == 1   # the follow-up made no model call
         s.quality_check_attempts = 0
+
+
+def _verify_reply(*holds):
+    return json.dumps({"verdicts": [{"i": i, "holds": h, "why": "x"} for i, h in enumerate(holds)]})
+
+
+def test_verification_drops_unverified_flags_and_fails_open():
+    flag = {"claim": 1, "label": "contradicted", "evidence": ["trend:revenue (B):MoM"],
+            "evidence_says": "revenue (B) MoM: -12.6%", "reason": "The claim misstates the trend."}
+    for verdict, kept in ((_verify_reply(False), []), (_verify_reply(True), [1]), ("garbage", [1])):
+        s = _session([GOOD, ("Segment B revenue was the main story.", ["trend:revenue (B):MoM"])])
+        llm = RecordedClient([_critic(flags=[{**flag, "claim": 2}]), verdict])
+        review = asyncio.run(run_quality_check(s, llm))
+        assert [f.index for f in review.flags] == [2 * k for k in kept], verdict
+        assert llm.calls[1]["agent"] == "quality_verify"
+        # The verifier sees only the flagged claim and its cited evidence, delimited.
+        assert "main story" in llm.calls[1]["messages"][0]["content"]
+
+
+def test_misquoted_evidence_drops_the_flag():
+    s = _session([GOOD])
+    llm = RecordedClient([_critic(flags=[{"claim": 1, "label": "contradicted", "evidence": [],
+                                          "evidence_says": "revenue (B) MoM: -31.7%",
+                                          "reason": "misread"}])])
+    review = asyncio.run(run_quality_check(s, llm))
+    assert review.flags == [] and len(llm.calls) == 1   # nothing left to verify
+
+
+def test_bullets_show_display_names_and_the_critic_sees_earlier_analyses():
+    s = _session([GOOD])
+    s.narrative.column_display_names["marketing_spend"] = "marketing spend level"
+    llm = RecordedClient([_critic(gaps=["No breakdown of marketing_spend by segment."])])
+    review = asyncio.run(run_quality_check(s, llm, past=["Q: B grew 15% last month."]))
+    assert review.gaps == ["No breakdown of marketing spend level by segment."]
+    assert "B grew 15% last month" in llm.calls[0]["messages"][0]["content"]

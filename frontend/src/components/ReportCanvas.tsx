@@ -39,11 +39,14 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
   const summaryCharts = (message.charts ?? []).filter((c) => c.placement !== "data");
   const dataCharts = (message.charts ?? []).filter((c) => c.placement === "data");
   const [evidenceId, setEvidenceId] = useState<string | null>(null);
+  const flagCount = message.expertReview?.flags?.length ?? 0;
   const tabs: { id: Tab; label: string }[] = [
     { id: "summary" as const, label: "Summary" },
     ...(message.evidence?.length ? [{ id: "evidence" as const, label: `Evidence · ${message.evidence.length}` }] : []),
     ...(message.briefing || dataCharts.length ? [{ id: "data" as const, label: "Data" }] : []),
-    ...(message.expertReview ? [{ id: "review" as const, label: "Review" }] : []),
+    ...(message.expertReview
+      ? [{ id: "review" as const, label: `Review${flagCount ? ` · ${flagCount} flagged` : ""}` }]
+      : []),
   ];
   const [tab, setTab] = useState<Tab>("summary");
   const [exportError, setExportError] = useState(false);
@@ -151,7 +154,12 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
             )}
             {message.insight && (
               <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
-                <InsightPanel report={message.insight} onEvidence={hasEvidence ? openEvidence : undefined} />
+                <InsightPanel
+                  report={message.insight}
+                  onEvidence={hasEvidence ? openEvidence : undefined}
+                  flags={message.expertReview?.flags}
+                  onFlag={() => setTab("review")}
+                />
               </div>
             )}
             {summaryCharts.length > 0 && (
@@ -173,7 +181,9 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
             )}
           </>
         )}
-        {active === "review" && message.expertReview && <ExpertReviewPanel review={message.expertReview} />}
+        {active === "review" && message.expertReview && (
+          <ExpertReviewPanel review={message.expertReview} onEvidence={hasEvidence ? openEvidence : undefined} />
+        )}
       </div>
     </article>
   );

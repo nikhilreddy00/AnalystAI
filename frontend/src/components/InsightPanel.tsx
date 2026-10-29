@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ExecutiveSummary, AnalystDetail, InsightReport, RecommendedAction, AnomalyAlert, Claim } from "@/types";
+import type { ExecutiveSummary, AnalystDetail, InsightReport, RecommendedAction, AnomalyAlert, Claim, ReviewFlag } from "@/types";
 
 // PROMPT-3: tab toggle now renders two strictly-separated content blocks.
 // Executive: plain English, business framing, no stats notation.
@@ -20,16 +20,19 @@ interface Props {
   onFollowUp?: (question: string) => void;
   /** Phase 5: a finding's evidence chip opens that Evidence item. */
   onEvidence?: (id: string) => void;
+  /** Phase 5 Quality: claims the review disputes get a marker that opens the Review tab. */
+  flags?: ReviewFlag[];
+  onFlag?: () => void;
 }
 
-export default function InsightPanel({ report, onFollowUp, onEvidence }: Props) {
+export default function InsightPanel({ report, onFollowUp, onEvidence, flags, onFlag }: Props) {
   const [view, setView] = useState<"executive" | "analyst">("executive");
 
   return (
     <section className="space-y-4" aria-label="Analysis report">
       <Header view={view} onChange={setView} />
       {view === "executive" ? (
-        <ExecutiveView report={report} onFollowUp={onFollowUp} onEvidence={onEvidence} />
+        <ExecutiveView report={report} onFollowUp={onFollowUp} onEvidence={onEvidence} flags={flags} onFlag={onFlag} />
       ) : (
         <AnalystView report={report} />
       )}
@@ -107,7 +110,7 @@ const SOURCE: Record<string, string> = {
   query: "SQL query",
 };
 
-function EvidenceChips({ ids, onEvidence }: { ids?: string[]; onEvidence?: (id: string) => void }) {
+export function EvidenceChips({ ids, onEvidence }: { ids?: string[]; onEvidence?: (id: string) => void }) {
   if (!onEvidence || !ids?.length) return null;
   return (
     <span className="ml-1.5 inline-flex flex-wrap gap-1 align-middle">
@@ -132,11 +135,36 @@ function EvidenceChips({ ids, onEvidence }: { ids?: string[]; onEvidence?: (id: 
   );
 }
 
+const LABEL = { unsupported: "Not supported", contradicted: "Contradicted", overstated: "Overstated" };
+
+// A flagged claim says so where it is read; the reason is one click away (the Review tab).
+function FlagMark({ flag, onFlag }: { flag?: ReviewFlag; onFlag?: () => void }) {
+  if (!flag) return null;
+  return (
+    <button
+      type="button"
+      onClick={onFlag}
+      disabled={!onFlag}
+      aria-label={`Flagged in review: ${LABEL[flag.label]}. Open the review.`}
+      className="ml-1.5 inline-flex items-center rounded border border-warning px-1.5 py-px align-middle text-[11px] font-medium text-warning hover:bg-accent"
+    >
+      Review: {LABEL[flag.label].toLowerCase()}
+    </button>
+  );
+}
+
 // Sessions stored before Phase 5 hold plain strings.
 const text = (c: Claim | string) => (typeof c === "string" ? c : c.text);
 const ids = (c: Claim | string) => (typeof c === "string" ? [] : c.evidence_ids);
 
-function ExecutiveView({ report, onFollowUp, onEvidence }: { report: InsightReport; onFollowUp?: (q: string) => void; onEvidence?: (id: string) => void }) {
+function ExecutiveView({ report, onFollowUp, onEvidence, flags, onFlag }: {
+  report: InsightReport;
+  onFollowUp?: (q: string) => void;
+  onEvidence?: (id: string) => void;
+  flags?: ReviewFlag[];
+  onFlag?: () => void;
+}) {
+  const flagOf = (claim: string) => flags?.find((f) => f.claim === claim.trim());
   const ev: ExecutiveSummary = report.executive_view ?? {
     headline: "",
     paragraphs: report.executive_summary ? [{ text: report.executive_summary, evidence_ids: [] }] : [],
@@ -152,10 +180,16 @@ function ExecutiveView({ report, onFollowUp, onEvidence }: { report: InsightRepo
       {(ev.headline || ev.paragraphs.length > 0) && (
         <div className="space-y-2">
           {ev.headline && (
-            <p className="text-lg font-semibold leading-snug text-foreground text-balance">{ev.headline}</p>
+            <p className="text-lg font-semibold leading-snug text-foreground text-balance">
+              {ev.headline}
+              <FlagMark flag={flagOf(ev.headline)} onFlag={onFlag} />
+            </p>
           )}
           {ev.paragraphs.length > 0 && (
-            <p className="text-sm leading-relaxed text-muted-foreground max-w-[68ch]">{ev.paragraphs.map(text).join(" ")}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground max-w-[68ch]">
+              {ev.paragraphs.map(text).join(" ")}
+              <FlagMark flag={ev.paragraphs.map((p) => flagOf(text(p))).find(Boolean)} onFlag={onFlag} />
+            </p>
           )}
         </div>
       )}
@@ -168,6 +202,7 @@ function ExecutiveView({ report, onFollowUp, onEvidence }: { report: InsightRepo
               <li key={i} className="py-2 text-sm text-foreground leading-relaxed">
                 {text(f)}
                 <EvidenceChips ids={ids(f)} onEvidence={onEvidence} />
+                <FlagMark flag={flagOf(text(f))} onFlag={onFlag} />
               </li>
             ))}
           </ul>
@@ -190,6 +225,7 @@ function ExecutiveView({ report, onFollowUp, onEvidence }: { report: InsightRepo
                   <p className="text-foreground font-medium leading-snug">
                     {item.action}
                     <EvidenceChips ids={item.evidence_ids} onEvidence={onEvidence} />
+                    <FlagMark flag={flagOf(`${item.action} ${item.expected_impact ?? ""}`)} onFlag={onFlag} />
                   </p>
                   {item.expected_impact && <p className="text-muted-foreground text-xs">{item.expected_impact}</p>}
                 </div>
