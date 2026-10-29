@@ -1,0 +1,30 @@
+id: ins-39-region-null
+category: null_result
+label_note: 'p = 0.196: no real difference between North and East.'
+dataset:
+  name: sales
+  seed: 1
+question: Does the North region earn more per order than the East?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - region
+  analysis_types:
+  - segmentation
+  - hypothesis
+transform:
+  filter: region in ['North', 'East']
+findings:
+- kind: segment
+  segment_column: region
+  metric: revenue
+  aggregation: mean
+- kind: test
+expect:
+  must_mention:
+  - no (meaningful |significant |real |clear )?difference|similar|about the same|comparable|roughly equal|not
+    (meaningfully|significantly|clearly) different|too (few|small)
+entity:
+- order
+- orders

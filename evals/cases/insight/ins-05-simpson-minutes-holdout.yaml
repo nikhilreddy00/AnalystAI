@@ -1,0 +1,26 @@
+id: ins-05-simpson-minutes-holdout
+category: straightforward
+label_note: Session minutes barely differ by department (12.16 vs 11.78); no domain story to invent.
+dataset:
+  name: simpson
+  seed: 1
+entity:
+- visitor
+- visitors
+question: How long do sessions last in each department?
+plan:
+  target_metrics:
+  - session_minutes
+  segments:
+  - department
+  analysis_types:
+  - segmentation
+findings:
+- kind: segment
+  segment_column: department
+  metric: session_minutes
+  aggregation: mean
+expect:
+  must_mention:
+  - minute
+  - easy|hard

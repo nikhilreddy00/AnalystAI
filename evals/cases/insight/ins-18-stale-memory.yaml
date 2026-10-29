@@ -1,0 +1,36 @@
+id: ins-18-stale-memory
+category: contradictory
+label_note: Memory says B grew 15%; the current data says B fell 12.6%. Current evidence wins.
+dataset:
+  name: sales
+  seed: 1
+question: How is segment B doing?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+past_insights:
+- 'How is segment B doing?: Segment B revenue grew 15% month over month and is the fastest-growing segment.'
+findings:
+- kind: trend
+  column: revenue
+  segment: B
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+expect:
+  must_mention:
+  - segment b
+  - (fell|down|declin|drop|dip|lower|decrease)
+  must_not_match:
+  - segment b.{0,40}(grew|growth|fastest)
+  - \b15%
+entity:
+- order
+- orders

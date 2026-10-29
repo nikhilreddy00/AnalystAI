@@ -1,0 +1,26 @@
+id: ins-37-discount-null
+category: null_result
+label_note: 'r = -0.02: no relationship; none may be invented.'
+dataset:
+  name: sales
+  seed: 1
+question: Does discount affect revenue?
+plan:
+  target_metrics:
+  - revenue
+  - discount
+  segments:
+  - segment
+  analysis_types:
+  - correlation
+findings:
+- kind: correlation
+  a: revenue
+  b: discount
+expect:
+  must_mention:
+  - (no|little|weak|negligible) (clear |meaningful |real |strong |measurable )?(relationship|link|effect|connection|association|correlation)|not
+    (related|linked|connected)|unrelated|doesn.t|does not|no sign
+entity:
+- order
+- orders

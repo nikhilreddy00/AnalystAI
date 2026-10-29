@@ -1,0 +1,31 @@
+id: ins-11-total-vs-segment
+category: contradictory
+label_note: 'Total revenue fell 2.8% while segment C rose 6.5%: both must be named.'
+dataset:
+  name: sales
+  seed: 1
+question: How did revenue change last month?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: revenue
+- kind: trend
+  column: revenue
+  segment: C
+expect:
+  both:
+  - (overall|total|all segments).{0,80}(fell|down|declin|drop|dip|lower|decrease)|(fell|down|declin|drop|dip|lower|decrease).{0,40}(overall|in
+    total)
+  - segment c.{0,100}(up|rose|grew|grow|increas|gain|jump|climb|higher)|(up|rose|grew|grow|increas|gain|jump|climb|higher).{0,60}segment
+    c
+entity:
+- order
+- orders

@@ -1,0 +1,27 @@
+id: ins-08-plan-revenue
+category: straightforward
+label_note: 'Total MRR by plan: Enterprise leads.'
+dataset:
+  name: subscriptions
+  seed: 1
+entity:
+- account-month
+- account-months
+question: Which plan brings in the most revenue?
+plan:
+  target_metrics:
+  - mrr
+  segments:
+  - plan
+  analysis_types:
+  - segmentation
+display:
+  mrr: monthly recurring revenue
+findings:
+- kind: segment
+  segment_column: plan
+  metric: mrr
+  aggregation: sum
+expect:
+  must_mention:
+  - enterprise

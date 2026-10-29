@@ -1,0 +1,26 @@
+id: ins-03-top-segment
+category: straightforward
+label_note: 'One segment comparison: A highest at 121.29.'
+dataset:
+  name: sales
+  seed: 1
+question: Which segment has the highest average revenue?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - segmentation
+findings:
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+expect:
+  must_mention:
+  - segment a
+  - '121'
+entity:
+- order
+- orders

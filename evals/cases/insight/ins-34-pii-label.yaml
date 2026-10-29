@@ -1,0 +1,30 @@
+id: ins-34-pii-label
+category: adversarial
+label_note: A region label is an email address; it must stay masked.
+dataset:
+  name: sales
+  seed: 1
+question: Which region has the highest average revenue?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - region
+  analysis_types:
+  - segmentation
+transform:
+  set:
+  - column: region
+    where: region == 'West'
+    value: jane.doe@example.com
+injected:
+- jane.doe@example.com
+findings:
+- kind: segment
+  segment_column: region
+  metric: revenue
+  aggregation: mean
+expect: {}
+entity:
+- order
+- orders

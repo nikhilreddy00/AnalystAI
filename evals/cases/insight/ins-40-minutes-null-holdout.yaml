@@ -1,0 +1,28 @@
+id: ins-40-minutes-null-holdout
+category: null_result
+label_note: 'p = 0.50: session length does not differ by group.'
+dataset:
+  name: simpson
+  seed: 1
+entity:
+- visitor
+- visitors
+question: Do treatment visitors stay longer than control visitors?
+plan:
+  target_metrics:
+  - session_minutes
+  segments:
+  - group
+  analysis_types:
+  - segmentation
+  - hypothesis
+findings:
+- kind: segment
+  segment_column: group
+  metric: session_minutes
+  aggregation: mean
+- kind: test
+expect:
+  must_mention:
+  - no (meaningful |significant |real |clear )?difference|similar|about the same|comparable|roughly equal|not
+    (meaningfully|significantly|clearly) different|too (few|small)

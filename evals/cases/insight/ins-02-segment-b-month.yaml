@@ -1,0 +1,34 @@
+id: ins-02-segment-b-month
+category: straightforward
+label_note: 'Segment B fell 12.6% last month while the total fell 2.8%: lead with B.'
+dataset:
+  name: sales
+  seed: 1
+question: How did segment B do last month?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: revenue
+  segment: B
+- kind: trend
+  column: revenue
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+expect:
+  must_mention:
+  - segment b
+  - (fell|down|declin|drop|dip|lower|decrease)
+  - 12\.6%|13%
+entity:
+- order
+- orders

@@ -1,0 +1,38 @@
+id: ins-27-twelve-months-bad-summary
+category: date_scope
+dataset:
+  name: sales
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  target_metrics:
+  - revenue
+  - marketing_spend
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+schema_summary: This dataset represents individual sales orders. The data spans November 2025 at daily
+  granularity, segmented by customer segment (A/B) and region (North/East).
+label_note: 'The e2e-01 carry-over: an upstream summary says one month and two segments; the data has
+  12 months and 3.'
+findings:
+- kind: trend
+  column: revenue
+  segment: B
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+- kind: correlation
+  a: revenue
+  b: marketing_spend
+expect:
+  must_not_match:
+  - two (customer )?segments
+  - (throughout|only|during) (the month of )?november 2025
+entity:
+- order
+- orders

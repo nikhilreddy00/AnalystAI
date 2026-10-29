@@ -1,0 +1,29 @@
+id: ins-28-one-month
+category: date_scope
+label_note: 'One month of data: no month-over-month or year-over-year claim is possible.'
+dataset:
+  name: sales
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - segmentation
+transform:
+  filter: order_date >= '2026-10-01'
+findings:
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+expect:
+  must_not_match:
+  - month[- ]over[- ]month
+  - year[- ]over[- ]year
+entity:
+- order
+- orders

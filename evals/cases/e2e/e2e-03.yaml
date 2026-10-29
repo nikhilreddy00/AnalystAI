@@ -19,3 +19,7 @@ hard_rules:
 - charts_have_rationale
 - non_empty_or_error
 - no_injection_echo
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence

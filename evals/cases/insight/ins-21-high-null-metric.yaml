@@ -1,0 +1,28 @@
+id: ins-21-high-null-metric
+category: data_quality
+label_note: 'Half of units is missing (kept missing, n=1506): say so.'
+dataset:
+  name: sales
+  seed: 1
+question: How many units do orders have by segment?
+plan:
+  target_metrics:
+  - units
+  segments:
+  - segment
+  analysis_types:
+  - segmentation
+transform:
+  blank:
+    units: 0.5
+findings:
+- kind: segment
+  segment_column: segment
+  metric: units
+  aggregation: mean
+expect:
+  must_mention:
+  - missing|incomplete|half|gaps|not recorded|blank
+entity:
+- order
+- orders

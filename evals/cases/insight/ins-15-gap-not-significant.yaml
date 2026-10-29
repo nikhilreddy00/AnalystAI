@@ -1,0 +1,29 @@
+id: ins-15-gap-not-significant
+category: contradictory
+label_note: 'A 20% gap on 24 rows; the test is low confidence: must be hedged.'
+dataset:
+  name: sales
+  seed: 1
+question: Does the North region earn more than the South?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - region
+  analysis_types:
+  - segmentation
+  - hypothesis
+transform:
+  filter: region in ['North', 'South']
+  sample: 24
+findings:
+- kind: segment
+  segment_column: region
+  metric: revenue
+  aggregation: mean
+- kind: test
+expect:
+  hedge: north|south
+entity:
+- order
+- orders

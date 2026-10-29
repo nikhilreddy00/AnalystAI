@@ -1,0 +1,36 @@
+id: ins-19-stale-memory-holdout
+category: contradictory
+label_note: Memory says MRR fell 20% YoY; current says +6.5% YoY. The stale numbers must not appear.
+dataset:
+  name: subscriptions
+  seed: 1
+entity:
+- account-month
+- account-months
+question: Give me an overview of recurring revenue.
+plan:
+  target_metrics:
+  - mrr
+  segments:
+  - plan
+  analysis_types:
+  - trend
+  - segmentation
+display:
+  mrr: monthly recurring revenue
+past_insights:
+- 'Overview: MRR fell 20% year over year and churn is above 30%.'
+findings:
+- kind: trend
+  column: mrr
+  period: YoY
+- kind: trend
+  column: mrr
+- kind: segment
+  segment_column: plan
+  metric: mrr
+  aggregation: mean
+expect:
+  must_not_match:
+  - \b20%
+  - \b30%

@@ -1,0 +1,30 @@
+id: ins-22-unreadable
+category: data_quality
+label_note: '~14% of revenue is unreadable text (TBD), left out: say so.'
+dataset:
+  name: sales
+  seed: 1
+question: What is average revenue by region?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - region
+  analysis_types:
+  - segmentation
+transform:
+  set:
+  - column: revenue
+    where: order_id % 7 == 0
+    value: TBD
+findings:
+- kind: segment
+  segment_column: region
+  metric: revenue
+  aggregation: mean
+expect:
+  must_mention:
+  - missing|could not|unreadable|blank|incomplete|not (a )?number|left out|excluded
+entity:
+- order
+- orders

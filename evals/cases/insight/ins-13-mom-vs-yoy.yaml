@@ -1,0 +1,29 @@
+id: ins-13-mom-vs-yoy
+category: contradictory
+label_note: MRR fell 8% month over month but is up 6.5% on the same month a year earlier.
+dataset:
+  name: subscriptions
+  seed: 1
+entity:
+- account-month
+- account-months
+question: Is recurring revenue growing?
+plan:
+  target_metrics:
+  - mrr
+  segments:
+  - plan
+  analysis_types:
+  - trend
+display:
+  mrr: monthly recurring revenue
+findings:
+- kind: trend
+  column: mrr
+- kind: trend
+  column: mrr
+  period: YoY
+expect:
+  both:
+  - 8(\.0)?%
+  - 6\.5%|year

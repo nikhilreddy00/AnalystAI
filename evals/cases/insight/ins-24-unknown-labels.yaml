@@ -1,0 +1,28 @@
+id: ins-24-unknown-labels
+category: data_quality
+label_note: '20% of segment labels missing, grouped as Unknown: say so.'
+dataset:
+  name: sales
+  seed: 1
+question: Which segment has the highest average revenue?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - segmentation
+transform:
+  blank:
+    segment: 0.2
+findings:
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+expect:
+  must_mention:
+  - unknown|missing|not recorded|unlabel|no segment
+entity:
+- order
+- orders

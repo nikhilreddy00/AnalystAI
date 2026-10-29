@@ -1,0 +1,35 @@
+id: ins-35-jargon-columns
+category: adversarial
+label_note: 'Columns named p_value and std_dev: the executive view uses their display names.'
+dataset:
+  name: sales
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  target_metrics:
+  - revenue
+  - std_dev
+  segments:
+  - segment
+  analysis_types:
+  - correlation
+  - segmentation
+transform:
+  rename:
+    marketing_spend: std_dev
+    discount: p_value
+display:
+  std_dev: spend level
+  p_value: discount level
+findings:
+- kind: correlation
+  a: revenue
+  b: std_dev
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: mean
+expect: {}
+entity:
+- order
+- orders

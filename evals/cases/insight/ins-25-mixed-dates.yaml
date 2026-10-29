@@ -1,0 +1,32 @@
+id: ins-25-mixed-dates
+category: data_quality
+label_note: Mixed date formats parsed; 10% of units missing.
+dataset:
+  name: mixed_dates
+  seed: 1
+question: Give me an overview of this dataset.
+plan:
+  target_metrics:
+  - revenue
+  - units
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: revenue
+  segment: B
+- kind: segment
+  segment_column: segment
+  metric: units
+  aggregation: mean
+expect:
+  must_mention:
+  - units
+  - missing|10%|incomplete|not recorded|gaps
+entity:
+- order
+- orders

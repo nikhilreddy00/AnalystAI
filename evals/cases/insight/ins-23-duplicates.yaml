@@ -1,0 +1,26 @@
+id: ins-23-duplicates
+category: data_quality
+label_note: '25 duplicates removed by order_id: 3,000 orders, not 3,025.'
+dataset:
+  name: sales
+  seed: 1
+question: How many orders are there in each segment?
+plan:
+  target_metrics:
+  - revenue
+  segments:
+  - segment
+  analysis_types:
+  - segmentation
+findings:
+- kind: segment
+  segment_column: segment
+  metric: revenue
+  aggregation: count
+expect:
+  must_mention:
+  - 3,000|3000
+  - duplicate
+entity:
+- order
+- orders
