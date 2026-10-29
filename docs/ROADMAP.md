@@ -336,6 +336,114 @@ Each PR is done when its row in the table below is met and E2E is not below its 
   7. The backend sends `colors: []` for generic charts (the frontend currently filters the Tableau
      cycle); keep the PPTX export working.
 
+### Phase 5.6: Durable runs and the analysis workspace (added 2026-10-29 at the user's request)
+**Execution order:** after Phase 5's last PR (Ingestion), before Phase 5.5. Ingestion makes a
+dataset a stable, hashed reference that a resumed run can reload, and every Phase 5.5 domain
+dataset should land in a workspace users can come back to. Expected size: 2 sessions
+(5.6a durable runs, 5.6b workspace).
+
+- **Why:**
+  - Audit B3 is still open: `api/routes/chat.py` runs the whole graph inside the HTTP request.
+    A refresh, a proxy timeout or a redeploy loses the run, and a user who closes the tab loses
+    the answer they waited two minutes for.
+  - Audit B4 is still open: without Postgres the API keeps going on an in-memory store with
+    only a log warning, so a company can lose every analysis on restart without knowing.
+  - The user asked for a ChatGPT/Claude-style history: every dataset a person or team uploaded,
+    and every analysis they ran on it, listed on the left and reopenable at any time.
+  - What exists today:
+    - sessions are saved encrypted in Postgres, with `/sessions` list, results, conversation and
+      delete endpoints;
+    - an identical re-upload is detected by its content hash;
+    - the history is a hidden drawer, and runs are not durable.
+
+- **Work, part A: durable runs (5.6a).**
+  1. **A run is a record, not a request.** `POST /chat` stores a run (`queued → running →
+     waiting_approval → completed | failed | cancelled`) and returns its id at once. A separate
+     worker process (`python -m worker`, its own service in Docker Compose) executes it.
+     - The queue is Postgres itself (`SELECT … FOR UPDATE SKIP LOCKED`), with no Redis or Celery:
+       a self-hosted install keeps one database. This is the pattern of Oban, graphile-worker
+       and procrastinate.
+     - A client request id makes a double submit start one run, not two.
+  2. **Checkpoints.** LangGraph's Postgres checkpointer saves state after every node
+     (thread id = session id), so a worker crash or redeploy resumes at the last finished node
+     instead of starting over.
+     - The two human gates (clarification, high-null) become persisted `interrupt()`s. A user
+       can answer hours later, after restarts.
+     - The DataFrame is still never stored: the worker reloads it from the dataset reference.
+  3. **Replayable progress.** Every SSE event is written to `run_events (run_id, seq, type,
+     payload)`. `GET /runs/{id}/events` streams with `Last-Event-ID` replay (the server-sent
+     events standard), so a refreshed tab, a dropped connection or a second device picks up
+     exactly where it left off, with no duplicates.
+  4. **Control.**
+     - Cancel (`POST /runs/{id}/cancel`).
+     - A lease and heartbeat per running job; a reaper fails a stuck run with a reason (never
+       silently).
+     - "Retry from where it failed" resumes from the checkpoint.
+     - The user sees status everywhere: running, waiting for you, failed (why), done.
+  5. **Fail loud (B4).** With `APP_ENV=production` the API and worker refuse to start without
+     Postgres. In development the in-memory store stays, behind a visible "not saved" banner.
+
+- **Work, part B: the analysis workspace (5.6b).**
+  1. **A persistent left sidebar.** It is collapsible on desktop and a drawer on phones, and it
+     lists every analysis thread:
+     - grouped by date (Today, Previous 7 days, Older), with the dataset's name on each;
+     - a status dot (running, waiting, failed);
+     - search over titles, questions and dataset names;
+     - rename, pin, archive and delete (with confirmation).
+     - Titles come from the dataset name and the first question, by code (no LLM call), and can
+       be edited.
+  2. **Datasets are first-class.** A "Datasets" view lists every upload or connection: name,
+     rows, columns, version (content hash), date, and how many analyses use it.
+     - "New analysis on this dataset" needs no re-upload.
+     - A re-upload of the same content links to the existing dataset; changed content becomes a
+       new version of it.
+     - Analysts work dataset-first ("everything we know about orders.csv"), so the dataset page
+       also shows its analyses and pinned charts.
+  3. **A delivered report never changes.** Each answer is stored as a snapshot: summary,
+     evidence, charts, data tab, review, and the provenance it ran under:
+     - the dataset version;
+     - the agent card and prompt versions;
+     - the model;
+     - the cost.
+     - Reopening a thread shows exactly what was delivered.
+     - Asking again, or "re-run on current data", makes a new run beside it and never overwrites
+       it.
+     - When the dataset has a newer version, the old report says "the data has changed since
+       this report". A number shown in a board meeting must be recoverable as it was shown
+       (reproducibility and audit trail).
+  4. **Memory that follows the dataset.**
+     - Conversation memory stays per thread (Intake).
+     - Institutional memory stays scoped to user + dataset (Insight PR). The report says when
+       an earlier analysis was consulted.
+  5. **Deletion and retention.**
+     - Deleting a thread removes its runs, events, checkpoints, snapshots and vector-memory
+       points.
+     - Deleting a dataset removes its file and cascades to its threads (right to erasure,
+       GDPR Art. 17).
+     - An operator setting controls retention (keep forever by default).
+  6. **Export.** A thread exports as PPTX (exists) or Markdown with its evidence.
+
+- **Not in v0.1 (Phase 7 candidates):**
+  - team workspaces shared inside one company's deployment, with roles;
+  - read-only share links;
+  - scheduled re-runs ("refresh this weekly and alert me when segment B drops"). This is what
+    companies use most once trust exists, but it needs the run model above first.
+
+- **Done when:**
+  - **Kill test.** The worker is killed at every node boundary of the overview graph: each run
+    resumes and finishes with a report identical to an uninterrupted run, 0 runs lost. These
+    tests are offline on recorded LLM responses, $0.
+  - **Reconnect test** (Playwright, mocked backend): close the tab mid-run, reopen it, and every
+    event is replayed in order, once.
+  - An approval gate answered after a worker restart continues the run.
+  - Reopening any thread renders the stored snapshot byte-identical to the delivered report
+    (a hash check).
+  - Deleting a thread or dataset leaves 0 rows, files and vector points (a test enumerates every
+    store).
+  - Production config without Postgres refuses to boot (a test).
+  - The sidebar lists 200 threads with p95 < 300 ms and works at 390 px.
+  - E2E stays at 100%, after one paid gate at the end.
+
 ### Phase 5.5: Domain coverage (added 2026-10-27 at the user's request)
 - **Why:** the goal is an analyst any company can use, in any domain. At Phase 4 the evals cover
   sales-style data only (53 of 66 analysis/E2E cases use one `sales` table; the SQL eval adds
@@ -354,7 +462,11 @@ Each PR is done when its row in the table below is met and E2E is not below its 
   ≥ 95% on the healthcare set, and the README lists exactly the domains that passed.
 
 ### Phase 6: End-to-end hardening and open-source release (v0.1)
+Order of the remaining work (2026-10-29): Phase 5 Quality check → Phase 5 Ingestion → Phase 5.6
+(durable runs, workspace) → Phase 5.5 (domains) → Phase 6.
 - **Work:**
+  - Run the E2E suite through the API and worker, not only the graph, so durable runs are part
+    of the release gate.
   - Raise the E2E eval to 50 questions.
   - Public eval scoreboard page in the app.
   - README quickstart, CONTRIBUTING (including how to add an agent and an eval case),
@@ -379,6 +491,7 @@ Each PR is done when its row in the table below is met and E2E is not below its 
 | **Visualization** | Deterministic; chart lint (no empty-data charts, labeled axes, no anti-patterns); every chart cites a finding/evidence ID | Findings, evidence, question | n/a | ~20 analyst-labelled chart cases plus property/snapshot tests | right chart (type + variables + aggregation) ≥ 90%; headline findings with a supporting chart ≥ 95%; **hard:** lint violations 0, charts without a rationale 0 |
 | **Insight** | Every number grounded in the evidence; jargon sanitizer; every claim links to evidence IDs | Findings, audit, past insights | `search_past_insights` | 40 findings bundles, including contradictory ones | grounding 100% (**hard**); calibrated-judge faithfulness ≥ 90%; executive view has no jargon (100%) |
 | **Quality check (+critic)** | Deterministic checks plus an LLM critic | Report and evidence | n/a | 40 reports, half with seeded defects | defect recall ≥ 90%; false alarms ≤ 10% |
+| **Platform (Phase 5.6)** | Runs survive crashes, restarts and refreshes; production refuses to boot without Postgres | Runs, events, checkpoints, report snapshots with provenance | n/a | Kill test at every node boundary, reconnect test, deletion test | 0 lost runs; replayed events exact; reopened reports byte-identical; **hard:** 0 orphaned data after delete |
 | **End-to-end** | All of the above | — | — | 20 questions, growing to 50 | answer correctness ≥ 80%; cost and p95 latency within budget |
 
 **Critical files** (current, may move): `agents/analysis_agent.py`, `agents/*_agent.py` (module-level `_client`), `orchestrator/state.py` (schemas: Evidence), `orchestrator/graph.py` (swallowed exceptions, quality check at ~L401), `connectors/sql_connector.py` (`query_nl`, `_assert_single_select`), `memory/vector_store.py`, `sandbox/executor.py`, `tests/`, `frontend/src/components/InsightPanel.tsx`.
@@ -389,6 +502,8 @@ Each PR is done when its row in the table below is met and E2E is not below its 
 without a committed eval report or test run that shows the number.
 
 ## Audit facts (2026-10-27, basis for the gaps above)
+- Status 2026-10-29: B1 (auth) and B2 (upload ownership) are fixed. B3 (run inside the HTTP
+  request) and B4 (silent in-memory session store) are open and scheduled in Phase 5.6.
 - All LLM agents make single-shot JSON calls via raw AsyncAnthropic. Ingestion uses Groq via CrewAI. There is no tool_use, and prompts are inline f-strings.
 - No schema validation beyond enum coercion. LLM-named columns are never checked.
 - Analysis: no AST/import guard; a parse failure gives silent empty findings.
