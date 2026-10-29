@@ -1,0 +1,14 @@
+# Hand score of the old critic (quality_critic v0, Sonnet) on the 10 seeded baseline reports:
+# does any gap / methodology bullet name the seeded defect? The old review has no located
+# flags, so the automatic recall in quality-20261029T183812Z counts only its grounding numbers.
+# Result: 6 of 19 seeded defects named (31.6%).
+q-01-sales-overview: {direction: missed, causal: missed}
+q-04-subs-overview: {period: missed, citation: missed}   # also disputes "30 months", which is correct
+q-09-simpson: {headline_reversal: caught, hard_flip: missed}   # blames a "missing Hard|control cell" it was never shown (top-3 cut)
+q-13-mom-vs-yoy: {direction: missed, citation: missed}
+q-14-mean-vs-median: {typical_is_mean: missed, number: caught}
+q-21-high-null-metric: {units_all_recorded: caught}
+q-27-twelve-months-bad-summary: {date: caught, group: missed}
+q-33-injection-memory: {direction: caught, group: missed}
+q-37-discount-null: {causal: caught, citation: missed}
+q-39-region-null: {flip: missed, certainty: missed}
