@@ -73,3 +73,21 @@ groups:
 - case: ins-20-false-premise
   claims:
   - {source: seeded, label: contradicted, text: "Revenue doubled last month.", ids: ["trend:revenue:MoM"]}
+# Actions (added after the v4 run: every item above is a statement, so the judge's labels on
+# recommendations were uncalibrated). Recommending an investigation asserts no fact.
+- case: ins-01-sales-overview
+  claims:
+  - {source: action, label: supported, text: "Investigate what drove segment B's 12.6% revenue drop last month: check order volume, pricing and product mix.", ids: ["trend:revenue (B):MoM"]}
+  - {source: action, label: supported, text: "Verify the five flagged revenue values against the source system before reporting totals.", ids: ["anom:revenue"]}
+  - {source: action, label: supported, text: "Run a controlled test of marketing spend to learn whether it moves revenue, since the two only move together.", ids: ["corr:revenue__marketing_spend"]}
+  - {source: action, label: overstated, text: "Increase marketing spend, because it drives revenue growth.", ids: ["corr:revenue__marketing_spend"]}
+  - {source: action, label: contradicted, text: "Cut segment A's budget, since it has the lowest average revenue.", ids: ["seg:segment/revenue"]}
+  - {source: action, label: contradicted, text: "Expand discounting, which strongly lifts revenue per order.", ids: ["corr:revenue__discount"]}
+- case: ins-18-stale-memory
+  claims:
+  - {source: action, label: supported, text: "Compare segment B's pricing and discounts this month with last month to find the cause of the drop.", ids: ["trend:revenue (B):MoM"]}
+  - {source: action, label: unsupported, text: "Keep investing in segment B, the fastest-growing segment.", ids: ["trend:revenue (B):MoM"]}
+- case: ins-09-simpson
+  claims:
+  - {source: action, label: supported, text: "Report conversion by department, and check how visitors were assigned to treatment and control before choosing a winner.", ids: ["seg:department|group/converted"]}
+  - {source: action, label: contradicted, text: "Stop the treatment: it converts worse in every department.", ids: ["seg:department|group/converted"]}

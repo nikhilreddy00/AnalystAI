@@ -39,6 +39,7 @@ from evals.scoring import (
     result_matches,
     score_cleaning,
     bundle_facts,
+    insight_claims,
     score_insight,
     score_intake,
     score_visualization,
@@ -814,19 +815,35 @@ def _cleaning_quality(flat: list[dict]) -> dict:
 def _judge_quality(flat: list[dict]) -> dict:
     """Judge faithfulness = supported claims / all claims, over the runs the judge labelled
     (`python -m evals.run judge <report>`); per-run means are reported too."""
-    judged = [r["judge"] for r in flat if r.get("judge")]
+    judged = [r for r in flat if r.get("judge")]
     if not judged:
         return {}
-    labels = [lab for j in judged for lab in j["labels"]]
-    per_run = [sum(lab == "supported" for lab in j["labels"]) / len(j["labels"])
-               for j in judged if j["labels"]]
+    statements, actions, per_run = [], [], []
+    for r in judged:
+        out = r.get("output") or {}
+        report = out.get("report") or out.get("insight_report") or {}
+        sections = [c["section"] for c in insight_claims(report)]
+        labels = r["judge"]["labels"]
+        if len(sections) != len(labels):   # judged by an older claim splitter
+            sections = ["?"] * len(labels)
+        st = [lab for lab, sec in zip(labels, sections) if sec != "action"]
+        statements += st
+        actions += [lab for lab, sec in zip(labels, sections) if sec == "action"]
+        if st:
+            per_run.append(sum(lab == "supported" for lab in st) / len(st))
+
+    def rate(labels):
+        return round(sum(lab == "supported" for lab in labels) / len(labels), 4) if labels else None
     return {
-        "judge_faithfulness": round(sum(lab == "supported" for lab in labels) / len(labels), 4)
-        if labels else None,
+        # The target: the judge agrees with labels on statements (95%), not on actions (80% <
+        # the 85% gate), so action labels are reported but don't count (ADR-0002 §4).
+        "judge_faithfulness": rate(statements),
         "judge_faithfulness_mean_per_run": round(statistics.mean(per_run), 4) if per_run else None,
-        "judged_runs": len(judged), "judged_claims": len(labels),
-        "judge_label_counts": {k: labels.count(k) for k in sorted(set(labels))},
-        "judge_cost_usd": round(sum(j.get("cost_usd", 0) for j in judged), 4),
+        "judge_actions_supported_uncalibrated": rate(actions),
+        "judged_runs": len(judged), "judged_statements": len(statements),
+        "judged_actions": len(actions),
+        "judge_label_counts": {k: statements.count(k) for k in sorted(set(statements))},
+        "judge_cost_usd": round(sum(r["judge"].get("cost_usd", 0) for r in judged), 4),
     }
 
 

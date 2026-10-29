@@ -260,6 +260,7 @@ async def test_injection_in_a_chart_title_reaches_the_insight_prompt_delimited(m
     df = pd.DataFrame({"segment": ["A", INJECTION] * 20, "revenue": np.arange(40.0)})
     chart = viz.group_bars(df, "segment", "revenue", "mean", viz.build_context(df))
     chart.title = f"Average revenue by segment: {INJECTION} highest"
+    chart.rationale.evidence_ids = ["seg:segment/revenue"]   # only evidence charts reach insight
     session = AnalysisSession(session_id="i", chart_configs=[chart], analysis_findings=AnalysisFindings(
         eda_summary={}, correlations={}, trends=[], segments=[], anomalies=[], statistical_tests=[],
         code_executed=""))

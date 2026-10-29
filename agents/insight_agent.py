@@ -168,12 +168,12 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
     chart_of: dict[str, str] = {}
     chart_lines = []
     for c in session.chart_configs:
-        if c.placement != "summary":
-            continue
         ids = c.rationale.evidence_ids if c.rationale else []
+        if c.placement != "summary" or not ids:   # a data-profile chart is not evidence
+            continue
         for i in ids:
             chart_of.setdefault(i, c.title)
-        chart_lines.append(f"- {mask_pii(c.title)}" + (f" (shows {', '.join(ids)})" if ids else ""))
+        chart_lines.append(f"- {mask_pii(c.title)} (shows {', '.join(ids)})")
 
     lines = []
     for e in evidence:

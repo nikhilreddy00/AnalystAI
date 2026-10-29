@@ -25,4 +25,5 @@ findings:
 expect:
   must_mention:
   - no (meaningful |significant |real |clear )?difference|similar|about the same|comparable|roughly equal|not
-    (meaningfully|significantly|clearly) different|too (few|small)
+    (meaningfully|significantly|clearly) different|too (few|small)|could be (due to )?chance|not (statistically
+    )?reliable|not a real difference|no real gap

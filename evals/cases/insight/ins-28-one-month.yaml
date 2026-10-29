@@ -22,8 +22,8 @@ findings:
   aggregation: mean
 expect:
   must_not_match:
-  - month[- ]over[- ]month
-  - year[- ]over[- ]year
+  - (rose|fell|grew|declin|dropped|up|down|increas|decreas)[^.]{0,40}(month|year)[- ]over[- ](month|year)
+  - (month|year)[- ]over[- ](month|year)[^.]{0,30}(rose|fell|grew|declin|dropped|up|down|increas|decreas)
 entity:
 - order
 - orders

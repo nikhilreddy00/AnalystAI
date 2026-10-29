@@ -93,8 +93,15 @@ async def calibrate(path: Path) -> dict:
     agree = sum((r["want"] == "supported") == (r["got"] == "supported") for r in rows)
     seeded = [r for r in rows if r["source"] == "seeded"]
     caught = sum(r["got"] != "supported" for r in seeded)
+    acts = [r for r in rows if r["source"] == "action"]
+    rows_st = [r for r in rows if r["source"] != "action"]
+
+    def agreement(rs):
+        return round(sum((r["want"] == "supported") == (r["got"] == "supported") for r in rs)
+                     / len(rs), 4) if rs else None
     out = {"prompt_version": PROMPT_VERSION, "model": settings.llm_fast_model,
            "claims": len(rows), "agreement": round(agree / len(rows), 4),
+           "statement_agreement": agreement(rows_st), "action_agreement": agreement(acts),
            "exact_label_agreement": round(sum(r["want"] == r["got"] for r in rows) / len(rows), 4),
            "seeded_defect_recall": round(caught / len(seeded), 4) if seeded else None,
            "cost_usd": round(sum(m.get("cost_usd", 0) for m in meter), 4),
