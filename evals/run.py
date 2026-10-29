@@ -494,7 +494,7 @@ QUALITY_CHECKS_ONLY = {"on": False}   # --checks-only: the deterministic half, a
 
 
 async def run_quality_case(case: dict) -> dict:
-    from agents.quality_critic import run_quality_critic
+    from agents.quality_agent import run_quality_critic
     from guardrails import ungrounded_numbers
     from orchestrator.state import InsightReport
     report, _ = quality_report(case)
@@ -510,7 +510,7 @@ async def run_quality_case(case: dict) -> dict:
                      "strengths": []}, None
     if not QUALITY_CHECKS_ONLY["on"]:
         try:
-            review = (await run_quality_critic(session, ungrounded)).model_dump(mode="json")
+            review = (await run_quality_critic(session, get_client(), ungrounded)).model_dump(mode="json")
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
     review["ungrounded"] = ungrounded

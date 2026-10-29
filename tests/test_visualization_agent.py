@@ -309,17 +309,18 @@ async def test_critic_sees_every_data_derived_section_delimited(monkeypatch):
     the junior's prose) only inside <untrusted_data>, and its system prompt says what that means."""
     import re
 
-    from agents import quality_critic
+    from agents import quality_agent
+    from llm.client import RecordedClient
     from guardrails import UNTRUSTED_NOTE
     from orchestrator.state import AnalysisFindings, SegmentResult
 
     seen = {}
 
-    async def capture(prompt):
+    async def capture(prompt, llm):
         seen["prompt"] = prompt
         raise ValueError("stop")
 
-    monkeypatch.setattr(quality_critic, "_call_and_parse", capture)
+    monkeypatch.setattr(quality_agent, "_call_and_parse", capture)
     df = pd.DataFrame({INJECTION: [1.0, 2.0]})
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import ConnectorConfig, ConnectorType
@@ -334,12 +335,12 @@ async def test_critic_sees_every_data_derived_section_delimited(monkeypatch):
                                   recommended_actions=[], anomaly_alerts=[], proactive_questions=[],
                                   methodology_notes=""))
     try:
-        await quality_critic.run_quality_critic(session)
+        await quality_agent.run_quality_critic(session, RecordedClient())
     except Exception:
         pass
     outside = re.sub(r"<untrusted_data>.*?</untrusted_data>", "", seen["prompt"], flags=re.S)
     assert INJECTION in seen["prompt"] and INJECTION not in outside
-    assert quality_critic._SYSTEM.endswith(UNTRUSTED_NOTE)
+    assert quality_agent._SYSTEM.endswith(UNTRUSTED_NOTE)
 
 
 def test_e2e_answer_ignores_the_critic_so_critic_changes_need_no_regate():

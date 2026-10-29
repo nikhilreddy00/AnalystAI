@@ -23,15 +23,16 @@ from __future__ import annotations
 import json
 import logging
 import re
+from pathlib import Path
 
 from agents.utils import strip_markdown_fences
 from guardrails import UNTRUSTED_NOTE, delimit_untrusted, mask_pii
-from llm.client import get_client
+from llm.client import LLMClient
 from orchestrator.state import AgentCard, AnalysisSession, ExpertReview
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "v0"
+PROMPT_VERSION = "v1"   # v1 = the old inline prompt, verbatim
 
 # Limits are the measured ones (evals/cases/quality/, docs/baselines/phase5_quality.md).
 QUALITY_CARD = AgentCard(
@@ -74,44 +75,12 @@ def _cap_sentences(text: str, max_n: int = 2) -> str:
     return " ".join(parts[:max_n]).strip()
 
 
-_SYSTEM = """\
-You are a Principal Data Analyst at a mature data team reviewing the output of
-a junior analyst's first-pass analysis. You are constructive but rigorous —
-your goal is to push the analysis to the next level of depth and to surface
-investigations the junior missed.
-
-Return ONLY a JSON object with these exact fields:
-{
-  "review_summary": "<EXACTLY 3 sentences, following this pattern verbatim — fill the bracketed values from the actual session: 'The analysis correctly addressed [N of M] requested tasks and identified [key finding in plain English]. However, [N] methodology gaps and [N] areas warrant further investigation before stakeholder delivery.'>",
-  "strengths": ["<bullet>", "<bullet>", ...],
-  "gaps": ["<bullet>", ...],
-  "next_investigations": ["<bullet>", ...],
-  "methodology_concerns": ["<bullet>", ...]
-}
-
-PROMPT-9 RULES — apply to every bullet:
-- Each bullet is MAX 2 sentences.
-  Sentence 1: what you observed.
-  Sentence 2: why it matters or what to do.
-- Each bullet MUST reference specific columns, values, percentages, or methods
-  from THIS dataset. Forbidden generic phrases: "consider more analysis",
-  "could be improved", "explore further", "additional context would help".
-- methodology_concerns bullets MUST cite which method was used AND name the
-  alternative. Example pattern: "IQR×1.5 was used on Fare which is log-normal;
-  switch to log-IQR or a Mahalanobis distance to avoid flagging the natural
-  right tail." If no real concern exists, return an empty list.
-- 0-5 items per list. Empty lists are FINE when the situation truly warrants —
-  the absence of methodology concerns is itself useful information.
-- next_investigations must be concretely runnable, naming the column(s) and
-  method (e.g. "Run a chi-square test on Pclass × Survived...").
-- Don't repeat what the insight report already says.
-- Return ONLY the JSON — no markdown fences, no preamble.
-
-""" + UNTRUSTED_NOTE
+_PROMPTS = Path(__file__).parent.parent / "prompts" / "quality"
+_SYSTEM = (_PROMPTS / f"{PROMPT_VERSION}.md").read_text() + UNTRUSTED_NOTE
 
 
 async def run_quality_critic(
-    session: AnalysisSession, ungrounded: list[str] | None = None,
+    session: AnalysisSession, llm: LLMClient, ungrounded: list[str] | None = None,
 ) -> ExpertReview:
     """
     Critique the session's analysis. `ungrounded` are numbers in the report that the
@@ -201,7 +170,7 @@ async def run_quality_critic(
     prompt = "\n\n".join(context_parts)
 
     try:
-        data = await _call_and_parse(prompt)
+        data = await _call_and_parse(prompt, llm)
     except (json.JSONDecodeError, ValueError, IndexError):
         retry_prompt = (
             prompt
@@ -209,7 +178,7 @@ async def run_quality_critic(
             "Return ONLY a valid JSON object matching the schema."
         )
         try:
-            data = await _call_and_parse(retry_prompt)
+            data = await _call_and_parse(retry_prompt, llm)
         except (json.JSONDecodeError, ValueError, IndexError) as exc:
             logger.warning("quality critic: unparseable twice, using fallback review: %s", exc)
             return _fallback_review(session, ungrounded)
@@ -232,9 +201,9 @@ async def run_quality_critic(
     )
 
 
-async def _call_and_parse(prompt: str) -> dict:
-    response = await get_client().complete(
-        agent="quality_critic", prompt_version="v0",
+async def _call_and_parse(prompt: str, llm: LLMClient) -> dict:
+    response = await llm.complete(
+        agent="quality_critic", prompt_version=PROMPT_VERSION,
         max_tokens=2000,
         system=_SYSTEM,
         messages=[{"role": "user", "content": prompt}],

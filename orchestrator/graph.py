@@ -41,7 +41,7 @@ from agents.intent_handlers import (
 from agents.targeted_analysis_agent import run_targeted_analysis
 from agents.drill_down_agent import run_drill_down_agent
 from agents.errors import AgentError
-from agents.quality_critic import run_quality_critic
+from agents.quality_agent import run_quality_critic
 from agents.visualization_agent import (
     classify_columns,
     compute_briefing_extras,
@@ -536,7 +536,7 @@ async def quality_check_node(state: AgentState) -> dict:
         if ungrounded:
             logger.info("quality check: ungrounded numbers %s", ungrounded)
         try:
-            review = await run_quality_critic(session, ungrounded)
+            review = await run_quality_critic(session, get_client(), ungrounded)
             session.expert_review = review
             _emit(state, {"type": "expert_review", "data": review.model_dump()})
             _emit(state, {"type": "agent_complete", "agent": "quality_check",
