@@ -111,17 +111,23 @@ function EvidenceChips({ ids, onEvidence }: { ids?: string[]; onEvidence?: (id: 
   if (!onEvidence || !ids?.length) return null;
   return (
     <span className="ml-1.5 inline-flex flex-wrap gap-1 align-middle">
-      {ids.map((id) => (
-        <button
-          key={id}
-          type="button"
-          onClick={() => onEvidence(id)}
-          aria-label={`Open evidence ${id}`}
-          className="rounded border border-border px-1.5 py-px text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          {SOURCE[id.split(":")[0]] ?? "Evidence"}
-        </button>
-      ))}
+      {ids.map((id, i) => {
+        const kind = id.split(":")[0];
+        // Number repeated kinds ("Trend 1", "Trend 2") so the chips can be told apart.
+        const same = ids.filter((x) => x.split(":")[0] === kind);
+        const label = SOURCE[kind] ?? "Evidence";
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onEvidence(id)}
+            aria-label={`Open evidence ${id}`}
+            className="rounded border border-border px-1.5 py-px text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            {same.length > 1 ? `${label} ${ids.slice(0, i + 1).filter((x) => x.split(":")[0] === kind).length}` : label}
+          </button>
+        );
+      })}
     </span>
   );
 }

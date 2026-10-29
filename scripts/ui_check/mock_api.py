@@ -4,7 +4,8 @@
     python3 scripts/ui_check/mock_api.py scripts/ui_check/fixtures 54321   # Supabase
 
 /chat streams fixtures/<scenario>.sse, where fixtures/scenario holds one of
-full | error | approval | slow (slow = full, paused after the analysis step).
+full | error | approval | slow | insight (slow = full, paused after the analysis step; insight =
+the Phase 5 e2e-01 gate output: claims with evidence chips).
 """
 
 import json
