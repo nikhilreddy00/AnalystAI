@@ -29,7 +29,7 @@ expect:
   - segment b
   - (fell|down|declin|drop|dip|lower|decrease)
   must_not_match:
-  - segment b.{0,40}(grew|growth|fastest)
+  - segment b('s revenue)? (is|has been|remains|continues to be|keeps|was) [^.]{0,30}(grow|fastest)
   - \b15%
 entity:
 - order
