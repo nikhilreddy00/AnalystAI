@@ -24,6 +24,7 @@ from guardrails import (
     check_sql_readonly,
     delimit_untrusted,
     mask_row,
+    pii_kind,
     sql_fanout,
     sql_uses_metric,
 )
@@ -156,8 +157,16 @@ def build_context(question: str, layer, dialect: str, introspected_schema: str =
 
 # ── Tools ──────────────────────────────────────────────────────────────────────
 
+def _pii_columns(res: QueryResult) -> set[str]:
+    """Result columns holding personal data, by name or by value (`sales_rep` holding names): the
+    query runs before ingestion has registered the run's PII values with the client guard."""
+    return {c for i, c in enumerate(res.columns)
+            if pii_kind(c, [r[i] for r in res.rows[:200]])}
+
+
 def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:
-    rows = [mask_row(dict(zip(res.columns, r))) for r in res.rows[:n]]
+    pii = _pii_columns(res)
+    rows = [mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:n]]
     head = f"columns: {res.columns}\nrows returned: {len(res.rows)}"
     if res.truncated:
         head += f" (capped at {MAX_ROWS:,})"
@@ -242,7 +251,9 @@ def _evidence(sql: str, metrics: list[str], res: QueryResult, layer) -> Evidence
     assumptions = [f"{m.name}: {m.description}" for m in defs if m]
     if res.truncated:
         assumptions.append(f"Only the first {MAX_ROWS:,} rows were returned.")
-    excerpt = json.dumps([mask_row(dict(zip(res.columns, r))) for r in res.rows[:5]], default=str)
+    pii = _pii_columns(res)
+    excerpt = json.dumps([mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:5]],
+                         default=str)
     return Evidence(
         id="sql:query", kind="query",
         claim=f"{len(res.rows):,} row(s) from one read-only query"

@@ -57,34 +57,82 @@ def _walk(obj, fn):
     return obj
 
 
+# A value whose run had more distinct PII values than ingestion could register: requests are then
+# also pattern-masked (emails, phones, SSNs, cards, IPs), so the overflow fails closed for those kinds.
+OVERFLOW = "\x00pii-overflow"
+_WORD_RE = re.compile(r"\w+")
+
+
 @lru_cache(maxsize=8)
-def _pattern(values: frozenset[str]) -> re.Pattern:
-    """Keyed on the values themselves (never object identity: a new run's set could reuse a dead
-    set's id and get its pattern, leaving its own values unmasked). Several runs can be live."""
-    alts = "|".join(re.escape(v) for v in sorted(values, key=len, reverse=True))
-    return re.compile(rf"(?<![\w@.])(?:{alts})(?![\w@])")
+def _index(values: frozenset[str]) -> dict[str, list[tuple[int, str]]]:
+    """First word (lowercased) → [(its offset in the value, value)], longest value first. Keyed on
+    the values themselves, never object identity: a new run's set could reuse a dead set's id and
+    get its index, leaving its own values unmasked. Several runs can be live."""
+    out: dict[str, list[tuple[int, str]]] = {}
+    for v in values:
+        if (m := _WORD_RE.search(v)) and v != OVERFLOW:
+            out.setdefault(m.group().lower(), []).append((m.start(), v))
+    for cands in out.values():
+        cands.sort(key=lambda c: -len(c[1]))
+    return out
+
+
+def _edge(ch: str) -> bool:
+    return ch.isalnum() or ch in "_@"
 
 
 def pseudonymize(obj, values: set[str] | None = None):
     """(obj with every known PII value replaced by its token, {token: value} for what was
-    replaced). `values` defaults to the current run's set; no set → unchanged."""
+    replaced). Case-insensitive, whole values only. One pass over the text with a dict lookup per
+    word, so the cost doesn't grow with the number of values. `values` defaults to the current
+    run's set; no set → unchanged."""
     values = pii_values.get() if values is None else values
     if not values:
         return obj, {}
-    pattern = _pattern(frozenset(values))   # ponytail: O(n) key per call; fine ≤ ~20k values
+    index, overflow = _index(frozenset(values)), OVERFLOW in values
     mapping: dict[str, str] = {}
 
-    def sub(m: re.Match) -> str:
-        token = pii_token(m.group())
-        mapping[token] = m.group()
-        return token
-    return _walk(obj, lambda t: pattern.sub(sub, t)), mapping
+    def sub(text: str) -> str:
+        out, pos = [], 0
+        low = text.lower()
+        for m in _WORD_RE.finditer(text):
+            if m.start() < pos:
+                continue
+            for off, v in index.get(m.group().lower(), ()):
+                a, b = m.start() - off, m.start() - off + len(v)
+                if a >= pos and low[a:b] == v.lower() and not (a and _edge(text[a - 1])) \
+                        and not (b < len(text) and _edge(text[b])):
+                    token = pii_token(text[a:b])
+                    mapping[token] = text[a:b]
+                    out += [text[pos:a], token]
+                    pos = b
+                    break
+        out.append(text[pos:])
+        result = "".join(out)
+        if overflow:
+            from guardrails import mask_pii
+            result = mask_pii(result)
+        return result
+    return _walk(obj, sub), mapping
 
 
 def restore(obj, mapping: dict[str, str]):
+    """Tokens back to the values. A token the model put inside double quotes (a JSON string) gets
+    the value JSON-escaped, so a name with a quote or backslash can't break the output."""
     if not mapping:
         return obj
-    return _walk(obj, lambda t: _TOKEN_RE.sub(lambda m: mapping.get(m.group(), m.group()), t))
+
+    def back(m: re.Match) -> str:
+        value = mapping.get(m.group("tok"))
+        if value is None:
+            return m.group()
+        if m.group("q"):
+            return f'"{json.dumps(value, ensure_ascii=False)[1:-1]}"'
+        return value
+    return _walk(obj, lambda t: _QUOTED_TOKEN_RE.sub(back, t))
+
+
+_QUOTED_TOKEN_RE = re.compile(r'(?P<q>")?(?P<tok>\[PII_[0-9a-f]{8}\])(?(q)")')
 
 
 def _restore_result(result: "LLMResult", mapping: dict[str, str]) -> "LLMResult":

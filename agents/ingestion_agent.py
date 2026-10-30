@@ -27,7 +27,7 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from guardrails import CALENDAR_WORDS, MASK, mask_pii, mask_row, pii_kind, pii_strings
-from llm.client import LLMClient, pii_values
+from llm.client import OVERFLOW, LLMClient, pii_values
 from orchestrator.state import (
     AgentCard,
     AnalysisSession,
@@ -64,7 +64,7 @@ INGESTION_CARD = AgentCard(
 )
 
 _SAMPLE = 200              # values profiled per column (ponytail: a head sample, not random)
-_PII_CAP = 20_000          # values given to the client guard (ponytail: cap, then the rest unguarded)
+_PII_CAP = 200_000         # values given to the client guard; beyond it the guard also pattern-masks
 _STRONG_ID = re.compile(r"(?:^|_)(?:id|uuid|guid|key|pk)$")
 _WEAK_ID = re.compile(r"(?:^|_)(?:no|nr|num|number|code|ref|sku)$")
 _ZIP = re.compile(r"(?:^|_)(?:zip|zipcode|postal|postcode)(?:_code)?$")
@@ -148,6 +148,15 @@ def infer_role(s: pd.Series, name: str) -> tuple[str, str]:
 
 
 # ── Contract ───────────────────────────────────────────────────────────────────
+
+def _profiled(s: pd.Series) -> pd.Series:
+    """The column as profiled: nested JSON cells (lists, dicts) as their JSON text, so counting
+    and pattern checks work; the data itself is left as loaded (Cleaning skips nested columns)."""
+    if s.dtype == object and s.map(lambda v: isinstance(v, (list, dict, set, tuple))).any():
+        return s.map(lambda v: json.dumps(v, default=str)
+                     if isinstance(v, (list, dict, set, tuple)) else v)
+    return s
+
 
 def fingerprint(df: pd.DataFrame) -> str:
     """Content hash of the loaded table (names, types, values): same file → same contract."""
@@ -258,7 +267,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     info = info or {}
     cols: list[ColumnInfo] = []
     for name in df.columns:
-        s = df[name]
+        s = _profiled(df[name])
         role, why = infer_role(s, str(name))
         sample = s.dropna().head(_SAMPLE).tolist()
         found = pii_kind(str(name), sample)
@@ -295,7 +304,7 @@ def known_pii_values(df: pd.DataFrame, contract: DataContract) -> set[str]:
     for col in contract.pii_columns:
         if col not in df.columns:
             continue
-        for v in df[col].dropna().unique()[:_PII_CAP]:
+        for v in _profiled(df[col]).dropna().unique():
             if isinstance(v, pd.Timestamp):
                 found.update({f"{v:%Y-%m-%d}", str(v)})
                 continue
@@ -303,8 +312,9 @@ def known_pii_values(df: pd.DataFrame, contract: DataContract) -> set[str]:
             found.update({t, *pii_strings(t)})   # the cell, and an email inside a longer note
     for col in df.columns:
         found.update(pii_strings(col))   # a pivoted export's headers can be emails
-        if col not in contract.pii_columns and pd.api.types.is_string_dtype(df[col]):
-            for v in df[col].dropna().astype(str).head(_PII_CAP):
+        s = _profiled(df[col])
+        if col not in contract.pii_columns and pd.api.types.is_string_dtype(s):
+            for v in s.dropna().astype(str).head(_PII_CAP):   # ponytail: a head scan
                 found.update(pii_strings(v))
     return {v for v in found if len(v) >= 4 and v not in CALENDAR_WORDS}
 
@@ -313,7 +323,21 @@ def remember_pii(df: pd.DataFrame, contract: DataContract) -> None:
     """Give this run's PII values to the client guard (a no-op outside a guarded run)."""
     guard = pii_values.get()
     if guard is not None:
-        guard.update(sorted(known_pii_values(df, contract))[:_PII_CAP])
+        found = known_pii_values(df, contract)
+        # Fail closed: past the cap, every request is also pattern-masked (emails, phones, SSNs,
+        # cards, IPs). Names past the cap are a stated limit.
+        guard.update(sorted(found)[:_PII_CAP] if len(found) <= _PII_CAP else
+                     [*sorted(found)[:_PII_CAP], OVERFLOW])
+
+
+def _seed_guard_from_last_turn(session: AnalysisSession) -> None:
+    """A follow-up on a database is answered by the SQL agent before this turn's rows exist, and
+    its memory quotes the last answer: register the last turn's PII values first."""
+    if pii_values.get() is None or not (session.data_contract and session.cleaned_data_path):
+        return
+    from memory.session_data import read_cleaned_parquet
+    if (cached := read_cleaned_parquet(session.session_id)) is not None:
+        remember_pii(pd.read_parquet(io.BytesIO(cached)), session.data_contract)
 
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
@@ -339,6 +363,7 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
     A SQL connector without a table answers `question` with one read-only query (Phase 4);
     `reuse_query` re-runs an earlier answer's query instead (approval answers, follow-ups), so
     the same question never silently gets different rows."""
+    _seed_guard_from_last_turn(session)   # before the memory is built: it quotes earlier answers
     ctx = build_context(session, question, reuse_query)
     connector = get_connector(ctx.config)
 

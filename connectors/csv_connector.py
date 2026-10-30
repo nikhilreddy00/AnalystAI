@@ -54,7 +54,9 @@ def _validate_upload_path(raw_path: str) -> Path:
 
 
 _DELIMITERS = (",", ";", "\t", "|")
-_EU_NUMBER_RE = re.compile(r"^-?\d{1,3}(?:\.\d{3})+,\d+$|^-?\d+,\d+$")
+# Unambiguous comma-decimals only: "1,234" is a US thousand, so 3 digits after a lone comma
+# don't count.
+_EU_NUMBER_RE = re.compile(r"^-?\d{1,3}(?:\.\d{3})+,\d+$|^-?\d+,\d{1,2}$")
 _US_DECIMAL_RE = re.compile(r"^-?\d+\.\d+$")
 _FOOTER_RE = re.compile(r"^\s*(?:grand\s+)?totals?\b", re.I)
 _SAMPLE_LINES = 200
@@ -89,28 +91,41 @@ _NOT_A_TABLE = ("This file can't be read as a table. Upload a CSV, TSV, Excel (.
 
 
 def _layout(text: str) -> tuple[str, int, str]:
-    """(delimiter, header line index, decimal mark) from the first lines. The delimiter is the
-    one that splits most lines into the same number of fields; the header is the first line with
-    that many (report titles above it have one); a decimal comma is assumed when the delimiter
-    isn't a comma and comma-decimals outnumber dot-decimals."""
-    lines = text.splitlines()[:_SAMPLE_LINES]
+    """(delimiter, header line index, decimal mark) from the first lines, parsed as CSV (quoted
+    fields may span lines). The delimiter splits most rows into the same number of fields. The
+    header is the first row unless it is narrower than 3/4 of the table: then report titles sit
+    above it ("Acme, Inc." splits into 2 fields of 8). A decimal comma is assumed when the delimiter isn't a
+    comma and unambiguous comma-decimals ("129,90", "1.249,00") outnumber dot-decimals."""
+    sample = "\n".join(text.splitlines()[:_SAMPLE_LINES])
     best: tuple = (False, 0.0, 0)
     sep, rows = ",", []
     for d in _DELIMITERS:
-        split = [next(csv.reader([ln], delimiter=d)) if ln.strip() else [] for ln in lines]
-        counts = [len(r) for r in split if r]
+        reader = csv.reader(io.StringIO(sample), delimiter=d)
+        parsed = []
+        try:
+            for r in reader:
+                parsed.append((reader.line_num, r))   # physical lines read so far
+        except csv.Error:
+            continue
+        counts = [len(r) for _, r in parsed if r]
         if not counts:
             continue
         width = Counter(counts).most_common(1)[0][0]
         score = (width > 1, round(sum(c == width for c in counts) / len(counts), 2), width)
         if score > best:
-            best, sep, rows = score, d, split
+            best, sep, rows = score, d, parsed
     width = best[2]
-    header = next((i for i, r in enumerate(rows) if len(r) == width), 0)
-    cells = [c.strip() for r in rows[header + 1:] for c in r]
+    filled = [(end, sum(bool(c.strip()) for c in r), r) for end, r in rows]
+    first = next((i for i, (_, n, _) in enumerate(filled) if n), 0)
+    header = first
+    if filled and filled[first][1] < 0.75 * width:   # narrower than the table: a report title
+        header = next((i for i, (_, n, _) in enumerate(filled) if n >= 0.75 * width), first)
+    # Lines to skip: those read before the header row (a quoted row may span several).
+    line = filled[header - 1][0] if header else 0
+    cells = [c.strip() for _, _, r in filled[header + 1:] for c in r]
     eu = sum(bool(_EU_NUMBER_RE.match(c)) for c in cells)
     us = sum(bool(_US_DECIMAL_RE.match(c)) for c in cells)
-    return sep, header, "," if sep != "," and eu > us else "."
+    return sep, line, "," if sep != "," and eu > us else "."
 
 
 def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
@@ -121,8 +136,9 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     if suffix == ".tsv" and sep != "\t" and "\t" in text[:4096]:
         sep = "\t"
     try:
+        # index_col=False: a trailing delimiter must not turn the first column into the index.
         df = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, decimal=decimal,
-                         low_memory=False)
+                         index_col=False, low_memory=False)
     except pd.errors.ParserError as exc:
         raise IngestionError(f"parse error: {exc}",
                              "The file's rows don't line up into columns. Check that it is a plain "
@@ -143,7 +159,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                                         .str.replace(",", ".", regex=False))
     if len(df) and isinstance(df.iloc[-1, 0], str) and _FOOTER_RE.match(df.iloc[-1, 0]) \
             and df.iloc[-1, 1:].isna().mean() >= 0.5:
-        df = df.iloc[:-1]
+        df = df.iloc[:-1].copy()
+        for col in df.select_dtypes("float").columns:   # the total's blanks made ints float
+            if df[col].notna().all() and (df[col] % 1 == 0).all():
+                df[col] = df[col].astype("int64")
         info["notes"].append("Dropped the last row: a report total, not a record.")
     return df, info
 
@@ -169,12 +188,20 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                                  "ignored.")
         df = sheets[name]
     elif suffix == ".parquet":
-        df, info = pd.read_parquet(io.BytesIO(content)), {"format": "parquet", "notes": []}
+        try:
+            df = pd.read_parquet(io.BytesIO(content))
+        except Exception as exc:   # pyarrow raises its own types for a corrupt file
+            raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
+        info = {"format": "parquet", "notes": []}
     elif suffix == ".json":
         try:
             df = pd.read_json(io.BytesIO(content))
         except ValueError:
-            df = pd.read_json(io.BytesIO(content), lines=True)
+            try:
+                df = pd.read_json(io.BytesIO(content), lines=True)
+            except ValueError as exc:
+                raise IngestionError("json", "The JSON isn't a list of records (one object per "
+                                     "row, or one per line).") from exc
         info = {"format": "json", "notes": []}
     else:
         df, info = _read_text_table(content, suffix)

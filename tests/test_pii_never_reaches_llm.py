@@ -145,3 +145,25 @@ def test_guard_pattern_follows_the_values_not_the_set_object():
     a.add("Omar Haddad")             # same object, same size, new contents
     out, _ = pseudonymize("Omar Haddad and Jane Doe", a)
     assert "Omar Haddad" not in out and "Jane Doe" in out
+
+
+def test_guard_is_case_insensitive_and_scales_with_the_text_not_the_values():
+    """Review: model code can upper-case a name; 200k values must not slow every request."""
+    import time
+    from llm.client import pseudonymize
+    vals = {f"user{i}@example.com" for i in range(100_000)} | {f"First{i} Last{i}" for i in range(100_000)}
+    vals.add("Jane Doe")
+    pseudonymize("warm", vals)
+    start = time.perf_counter()
+    out, mapping = pseudonymize("JANE DOE, x.Jane Doe, Jane Doering " + "word " * 6000, vals)
+    assert time.perf_counter() - start < 0.5
+    assert "JANE DOE" not in out and "x.Jane Doe" not in out and "Jane Doering" in out
+
+
+def test_restored_values_cannot_break_json_and_overflow_fails_closed():
+    from llm.client import OVERFLOW, pii_token, pseudonymize, restore
+    tok = pii_token('Liam "Lee" O\'Brien')
+    assert json.loads(restore('{"name": "%s"}' % tok, {tok: 'Liam "Lee" O\'Brien'}))["name"] \
+        == 'Liam "Lee" O\'Brien'
+    out, _ = pseudonymize("mail a.b@example.org", {OVERFLOW, "Somebody Else"})
+    assert "a.b@example.org" not in out

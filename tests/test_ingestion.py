@@ -155,3 +155,77 @@ def test_the_high_null_gate_is_asked_once_per_session():
     assert _routed(QuestionIntent.TOP_N, ["notes"])[1] == "human_approval"
     assert _routed(QuestionIntent.TOP_N, ["notes"], answer="continue")[1] == "targeted_analysis"
     assert _routed(QuestionIntent.OVERVIEW, ["notes"], answer="drop")[1] == "analysis"
+
+
+# ── Review findings (independent review of this PR) ────────────────────────────────────────────
+
+@pytest.mark.parametrize("text,columns,first", [
+    ("id,amount\n1,5,\n2,6,\n", ["id", "amount"], [1, 5]),                    # trailing delimiter
+    ('id,note,amount\n1,"line one\nline two",5\n2,ok,6\n', ["id", "note", "amount"], None),
+    ("id,amount,notes\n1,5\n2,6\n3,7\n4,8,late\n", ["id", "amount", "notes"], None),
+    ("Acme, Inc.\nSales\n\nDate,Customer,Qty,Amount\n01/02/2025,Jane Doe,2,90.00\n"
+     "01/03/2025,Omar,1,45.00\n", ["Date", "Customer", "Qty", "Amount"], None),
+])
+def test_the_header_is_the_first_row_unless_titles_sit_above_it(text, columns, first):
+    df, _ = _read_bytes(text.encode(), ".csv")
+    assert list(df.columns) == columns
+    if first:
+        assert df.iloc[0].tolist() == first
+
+
+def test_a_us_thousand_in_a_semicolon_file_is_not_a_decimal_comma():
+    df, info = _read_bytes(b"region;revenue\nNorth;1,234\nSouth;2,500\n", ".csv")
+    assert info["decimal"] == "." and df["revenue"].tolist() == ["1,234", "2,500"]   # cleaning parses
+
+
+def test_corrupt_parquet_and_json_get_the_typed_error():
+    for content, suffix in ((b"PAR1 broken", ".parquet"), (b"{not json", ".json")):
+        with pytest.raises(IngestionError):
+            _read_bytes(content, suffix)
+
+
+def test_nested_json_cells_are_profiled_not_crashed_on():
+    df = pd.DataFrame({"tags": [["a", "b"], ["c"]] * 5, "email": ["a@x.com", "b@y.com"] * 5})
+    contract = build_contract(df, ConnectorType.CSV)
+    assert contract.pii_columns == ["email"] and known_pii_values(df, contract) >= {"a@x.com"}
+
+
+def test_iso_timestamps_with_a_zone_are_dates():
+    assert _role(["2025-01-31T10:00:00Z", "2025-02-01T11:00:00+00:00"] * 5, "created_at") == "date"
+
+
+@pytest.mark.parametrize("text,masked", [
+    ("delta: +1234567.89", False), ("rev +12.5%", False), ("up +12 345", False),
+    ("+44 20 7946 0958", True), ("+49 30 5550123", True), ("+33 1 55 50 01 23", True),
+])
+def test_international_phones_without_eating_numbers(text, masked):
+    from guardrails import MASK, mask_pii
+    assert (MASK in mask_pii(text)) is masked
+
+
+def test_sql_results_mask_people_under_role_names():
+    """The SQL agent queries before ingestion registers the run's PII values with the guard."""
+    from agents.sql_agent import _preview
+    from connectors.sql_connector import QueryResult
+    res = QueryResult(columns=["sales_rep", "total"],
+                      rows=[["Jane Doe", 10], ["Omar Haddad", 9], ["Priya Patel", 8]],
+                      truncated=False)
+    assert "Jane Doe" not in _preview(res)
+
+
+async def test_a_follow_up_registers_the_last_turns_pii_before_the_memory(monkeypatch):
+    from agents import ingestion_agent
+    from llm.client import pii_values
+    from memory import session_data
+    df = pd.DataFrame({"sales_rep": ["Jane Doe", "Omar Haddad"] * 3, "amount": [1.0] * 6})
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    monkeypatch.setattr(session_data, "read_cleaned_parquet", lambda sid: buf.getvalue())
+    session = AnalysisSession(session_id="s", cleaned_data_path="x",
+                              data_contract=build_contract(df, ConnectorType.CSV))
+    token = pii_values.set(set())
+    try:
+        ingestion_agent._seed_guard_from_last_turn(session)
+        assert {"Jane Doe", "Omar Haddad"} <= pii_values.get()
+    finally:
+        pii_values.reset(token)

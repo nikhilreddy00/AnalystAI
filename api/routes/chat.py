@@ -108,11 +108,15 @@ async def chat(
         if session.connector_config != incoming:
             session.connector_config = incoming
             session.overview_done = False
+            # Answers and caches about the old data don't carry over.
+            session.high_null_answer = None
+            session.cleaned_data_path = None
 
     if session is not None and body.is_approval and body.approval_context == "rerun_overview":
         # User chose "Run fresh" on the rerun-overview modal. Reset the
         # session so the graph runs a clean OVERVIEW from intake forward.
         session.overview_done = False
+        session.high_null_answer = None   # a fresh run asks the high-null question again
         session.status = "in_progress"
         session.task_plan = None
 

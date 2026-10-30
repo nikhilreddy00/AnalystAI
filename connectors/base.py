@@ -18,7 +18,7 @@ from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
 # Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00), US (1/31/2025), European
 # (31.01.2025), "Jan 31, 2025".
 _DATE_TEXT_RE = re.compile(
-    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+)?|\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4}"
+    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+(Z|[+-]\d{2}:?\d{2})?)?|\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4}"
     r"|[A-Za-z]{3,9} \d{1,2}, \d{4})$")
 _FIRST_PART_RE = re.compile(r"^(\d{1,2})[/.]\d{1,2}[/.]\d{2,4}")
 

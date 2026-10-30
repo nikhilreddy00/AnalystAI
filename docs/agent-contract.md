@@ -168,6 +168,27 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
 - **Estimate from the runs you're about to repeat.** An E2E re-gate on 5 overviews cost 2.8× the
   suite's per-question average; the estimate used the average and ran 132% over.
 
+## What the ingestion agent taught us (Phase 5, PR 6)
+- **Ask what a model call uniquely contributes before you contract it.** The summary call fed
+  one agent, that agent's eval never saw it, and its one measured effect was invented dates.
+  Removing it raised Intake to 100% and made ingestion reproducible.
+- **A "never" rule needs one choke point.** The audit found 5 of 6 prompt builders leaking names
+  that column names don't announce. Masking at each source fixes today's builders; tokenizing at
+  the client every call goes through holds the rule for tomorrow's. Reversible tokens keep the
+  user's own questions working. A guard hit is then a bug report, not the plan.
+- **Key a security cache on content, never on identity.** The guard's pattern was first cached by
+  `id(set)`; a dead run's id could serve a new run a stale pattern. The commit review caught it.
+- **Loading is part of correctness.** The old loader silently turned `lifetime_value` into 1970
+  timestamps, read European CSVs as one column and counted a TOTAL row as a sale. Load lossless,
+  clean with an audit; a file that isn't a table gets a plain message.
+- **Prove a suite unaffected by its inputs.** A snapshot of what each paid agent receives showed
+  0/46 analysis and 0/40 insight contexts changed, so neither was re-run. A test pins it.
+- **When a fix changes the right answer, the truth must follow.** E2E targeted truth was computed
+  on a table with planted duplicate orders. The agent's new numbers matched the deduplicated
+  values exactly. Diagnose before re-running, then relabel and say so.
+- **Keep holdouts out of iteration.** Running them once while iterating spent one of them; a fresh
+  holdout, labelled before its first run, restored the unseen check.
+
 ## Rolling it out to the next agent (Phase 5)
 Each agent gets one PR, in this order:
 1. **Agent card**, with honest, measured limits.
