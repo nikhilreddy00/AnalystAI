@@ -6,7 +6,7 @@ question: Which region has the highest total revenue, and how much is it?
 overview_done: true
 checks:
 - kind: number_in_answer
-  truth_key: top_region_total_revenue
+  truth_key: after_dedup.top_region_total_revenue  # every answer reads cleaned data: one order exported twice counts once
   rel_tol: 0.02
 hard_rules:
 - charts_lint_clean

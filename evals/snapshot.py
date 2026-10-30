@@ -27,30 +27,30 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
-async def snapshot() -> dict:
+async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "e2e")) -> dict:
     from agents import analysis_agent, insight_agent, intake_agent
     from connectors.csv_connector import CSVConnector
 
     build = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract
-    out: dict[str, dict] = {"analysis": {}, "intake": {}, "insight": {}, "e2e": {}}
-    for case in harness.load_cases("analysis", None):
+    out: dict[str, dict] = {s: {} for s in suites}
+    for case in harness.load_cases("analysis", None) if "analysis" in suites else []:
         df = harness.dataset(case)[0]
         session = AnalysisSession(session_id="snap", data_contract=build(df),
                                   task_plan=AnalysisTask(raw_query=case["question"], **case["task"]))
         out["analysis"][case["id"]] = {"roles": _roles(session.data_contract),
                                        "context": _sha(analysis_agent.build_context(session).render())}
-    for case in harness.load_cases("intake", None):
+    for case in harness.load_cases("intake", None) if "intake" in suites else []:
         session = harness.intake_session(case)
         out["intake"][case["id"]] = {
             "roles": _roles(session.data_contract),
             "context": _sha(intake_agent.build_context(session, case["question"]).render())}
-    for case in harness.load_cases("insight", None):
+    for case in harness.load_cases("insight", None) if "insight" in suites else []:
         session, _, _ = await harness.insight_bundle(case)
         out["insight"][case["id"]] = {"roles": _roles(session.data_contract),
                                       "context": _sha(insight_agent.build_context(session).render())}
     # E2E loads through the connector (file → load → contract), not read_csv.
     harness.UPLOADS.mkdir(parents=True, exist_ok=True)
-    for case in harness.load_cases("e2e", None):
+    for case in harness.load_cases("e2e", None) if "e2e" in suites else []:
         _, _, csv = harness.dataset(case)
         path = harness.UPLOADS / f"{case['dataset']['name']}-{case['dataset']['seed']}.csv"
         if not path.exists() or path.read_text() != csv:

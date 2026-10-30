@@ -72,12 +72,24 @@ def make_sales(seed: int) -> tuple[pd.DataFrame, dict]:
 
     df["order_date"] = df["order_date"].dt.strftime("%Y-%m-%d")
 
-    totals = _monthly_totals(df, "order_date", "revenue")
-    b_totals = _monthly_totals(df[df["segment"] == "B"], "order_date", "revenue")
     truth = {
         "row_count": len(df),
         "duplicate_rows": int(df.duplicated().sum()),
         "anomaly_rows": anomaly_rows,
+        **_sales_stats(df),
+        "null_pairs": [["revenue", "discount"]],   # a "significant" test here is a false finding
+        # The same numbers once the exact duplicates (one order exported twice) are removed: what
+        # the full pipeline reports, since every answer now reads cleaned data (Phase 5 Ingestion).
+        # The analysis suite feeds the raw frame, so it keeps the keys above.
+        "after_dedup": _sales_stats(df.drop_duplicates()),
+    }
+    return df, truth
+
+
+def _sales_stats(df: pd.DataFrame) -> dict:
+    totals = _monthly_totals(df, "order_date", "revenue")
+    b_totals = _monthly_totals(df[df["segment"] == "B"], "order_date", "revenue")
+    return {
         "total_revenue": float(df["revenue"].sum()),
         "total_mom_pct": float((totals.iloc[-1] / totals.iloc[-2] - 1) * 100),
         "segB_mom_pct": float((b_totals.iloc[-1] / b_totals.iloc[-2] - 1) * 100),
@@ -86,9 +98,7 @@ def make_sales(seed: int) -> tuple[pd.DataFrame, dict]:
         "mean_revenue_by_segment": df.groupby("segment")["revenue"].mean().to_dict(),
         "total_revenue_by_region": df.groupby("region")["revenue"].sum().to_dict(),
         "top_region_total_revenue": float(df.groupby("region")["revenue"].sum().max()),
-        "null_pairs": [["revenue", "discount"]],   # a "significant" test here is a false finding
     }
-    return df, truth
 
 
 def make_simpson(seed: int) -> tuple[pd.DataFrame, dict]:
