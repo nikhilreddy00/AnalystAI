@@ -169,7 +169,7 @@ async def test_kill_at_every_node_boundary_resumes_to_the_same_report(
     assert boundaries > 10
 
     path, pii = replay
-    for k in range(1, boundaries):
+    for k in range(1, boundaries + 1):   # + the final checkpoint: dead before the run row ends
         recorded_llm.responses[:] = [LLMResult(**r) for r in FIXTURE["replies"]]
         recorded_llm.calls.clear()
         monkeypatch.setattr(analysis_agent, "run_code", _sandbox())
@@ -268,7 +268,7 @@ async def test_postgres_kill_at_every_boundary_with_a_new_process_each_time(
         want_events = _stable([e for _, e in await deps.run_store.events_after(run_id, 0)])
         boundaries = await _pg_count(deps, run_id)
 
-        for k in range(1, boundaries):
+        for k in range(1, boundaries + 1):   # + the final checkpoint: dead before the run row ends
             recorded_llm.responses[:] = [LLMResult(**r) for r in FIXTURE["replies"]]
             recorded_llm.calls.clear()
             monkeypatch.setattr(analysis_agent, "run_code", _sandbox())
@@ -324,3 +324,31 @@ async def _pg_count(deps: Deps, run_id: str) -> int:
     async with deps.run_store._engine.connect() as conn:
         return (await conn.execute(text("SELECT count(*) FROM checkpoints WHERE thread_id = :t"),
                                    {"t": run_id})).scalar_one()
+
+
+async def test_a_database_blip_does_not_kill_the_worker(replay, recorded_llm):
+    """Audit: claim()/reap() raising used to end work() (the API's embedded worker silently)."""
+    import asyncio
+
+    from orchestrator.runner import work
+    path, _ = replay
+    deps = _deps(KillingSaver())
+    run_id = await _start(deps, path)
+    claim, calls = deps.run_store.claim, []
+
+    async def flaky_claim(*a, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise ConnectionError("db restarting")
+        return await claim(*a, **kw)
+
+    deps.run_store.claim = flaky_claim
+    stop = asyncio.Event()
+    task = asyncio.create_task(work(deps, stop, poll_s=0.01, heartbeat_s=0.2))
+    for _ in range(500):   # the run reaches its high-null gate
+        if (await deps.run_store.get(run_id)).status == "waiting_approval":
+            break
+        await asyncio.sleep(0.02)
+    stop.set()
+    await task
+    assert len(calls) > 1 and (await deps.run_store.get(run_id)).status == "waiting_approval"

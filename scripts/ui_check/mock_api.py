@@ -8,7 +8,8 @@ with SSE ids, honouring Last-Event-ID. fixtures/scenario holds one of
 full | error | approval | slow | insight (slow = full, paused after the analysis step; insight =
 the Phase 5 e2e-01 gate output: claims with evidence chips), or for the reconnect test
 (frontend/e2e/reconnect.spec.ts): drop = full, the first connection cut after 8 events;
-trickle = full, one event every 0.4 s. GET /__served lists every seq sent, per connection.
+trickle = full, one event every 0.4 s. GET /__served lists every seq sent, per connection;
+GET /__posts counts POST /chat calls since the mock started.
 """
 
 import json
@@ -22,7 +23,7 @@ PORT = int(sys.argv[2])
 SCEN = D + "/scenario"  # file holding full|error|approval|slow|insight|drop|trickle
 QUESTION = "Give me an overview of this sales data"
 lock = threading.Lock()
-state = {"connections": [], "served": set()}   # seqs sent, per connection
+state = {"connections": [], "served": set(), "posts": 0}   # seqs sent, per connection
 
 
 def scenario() -> str:
@@ -84,6 +85,9 @@ class H(BaseHTTPRequestHandler):
         if p == "/__served":
             with lock:
                 return self._json(state["connections"])
+        if p == "/__posts":
+            with lock:
+                return self._json(state["posts"])
         if p == "/runs/run-1":
             return self._json({"run_id": "run-1", "session_id": "ui-check",
                                "status": run_status(), "error": None})
@@ -130,6 +134,7 @@ class H(BaseHTTPRequestHandler):
             )
         if p == "/chat":
             with lock:
+                state["posts"] += 1
                 state["connections"].clear()
                 state["served"].clear()
             return self._json({"run_id": "run-1", "session_id": "ui-check", "status": "queued",

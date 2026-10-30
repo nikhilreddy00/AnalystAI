@@ -90,6 +90,7 @@ export function useAnalysis() {
   const datasetNameRef = useRef<string | null>(null);
   const run = useRef<{ id: string | null; seq: number }>({ id: null, seq: 0 });
   const acc = useRef<Artifacts>(noArtifacts());
+  const sending = useRef(false);   // a double click must not post twice
 
   const patchLast = (patch: (m: ChatMessage) => ChatMessage) =>
     setMessages((prev) => prev.map((m, i) => (i === prev.length - 1 ? patch(m) : m)));
@@ -249,12 +250,15 @@ export function useAnalysis() {
     }
   }, [handle]);
 
-  // A refreshed or reopened tab picks up its run where the server has it.
+  // A refreshed or reopened tab picks up its run where the server has it. `live` stops a
+  // second mount (React dev mounts twice) from starting a second replay of the same run.
   useEffect(() => {
     const runId = recalled();
     if (!runId) return;
+    let live = true;
     void (async () => {
       const r = await getRun(runId);
+      if (!live) return;
       if (!r) {
         remember(null);
         return;
@@ -264,10 +268,15 @@ export function useAnalysis() {
       setIsLoading(r.status === "queued" || r.status === "running");
       await attach(runId, 0, true);
     })();
+    return () => {
+      live = false;
+    };
   }, [attach]);
 
   const sendMessage = useCallback(
     async (content: string, isApproval = false, approvalContext: string | null = null) => {
+      if (sending.current) return;
+      sending.current = true;
       setIsLoading(true);
       setPendingApproval(null);
       // A gate's answer continues the waiting run; its bubble opens on approval_answered.
@@ -299,11 +308,14 @@ export function useAnalysis() {
         }
         const r: Run = await res.json();
         setSessionId(r.session_id);
+        sending.current = false;   // posted: the run exists, the next question may follow it
         const sameRun = gateAnswer && run.current.id === r.run_id;
         await attach(r.run_id, sameRun ? run.current.seq : 0, false);
       } catch (err) {
         fail(`Error: ${err instanceof Error ? err.message : err}`);
         setIsLoading(false);
+      } finally {
+        sending.current = false;
       }
     },
     [sessionId, attach]

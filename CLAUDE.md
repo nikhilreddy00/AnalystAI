@@ -27,7 +27,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
 | 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | ✅ done (2026-10-30) — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); **Quality check ✅ (2026-10-29)** `docs/baselines/phase5_quality.md` (defect recall 97.1%, false alarms 0.67%, hard 0; 40 reports k=3, 102 seeded defects; e2e 100%; $4.05); **Ingestion ✅ (2026-10-30)** `docs/baselines/phase5_ingestion.md` (type inference 100%, PII recall 100%, load fidelity 100%, PII canary 0, no LLM; 31 cases k=3 at $0; intake 100%, e2e 100%; $2.09) |
-| 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | **5.6a durable runs ✅ (2026-10-30)** `docs/baselines/phase5_6a.md` (kill at all 10 boundaries → identical report, memory + Postgres; reconnect replay exact; approval after restart; prod refuses without PG; e2e 100%; $0.90; ADR-0006); 5.6b workspace pending |
+| 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | **5.6a durable runs ✅ (2026-10-30)** `docs/baselines/phase5_6a.md` (kill at all 11 checkpoints → identical report, memory + Postgres; post-phase audit fixed 9 bugs; reconnect replay exact; approval after restart; prod refuses without PG; e2e 100%; $0.90; ADR-0006); 5.6b workspace pending |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -105,8 +105,9 @@ When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps
 LOCKED`) and returns `{run_id, session_id, status}`. A worker (`python -m worker`; development
 also runs one inside the API) executes it with `orchestrator/runner.py`. The graph is
 checkpointed after every node (`durability="sync"`, thread id = **run id**, encrypted on
-Postgres), so a crash resumes at the last finished node. Lease/heartbeat are fenced by `attempt`;
-the reaper re-queues up to 3 times, then fails the run with a reason. Cancel and "retry from
+Postgres), so a crash resumes at the last finished node. Lease/heartbeat are fenced by `attempt`
+(only goes up); `crashes` is the reaper's budget (3). One active run per session (the store
+enforces it); only the latest run of a session can be retried. Cancel and "retry from
 where it failed" are `POST /runs/{id}/cancel|retry`.
 - **State holds no queue, stores or DataFrame**: those live in `graph.RunEnv` (a ContextVar; tests
   get one from the `run_env` fixture). The state names the frame by `frame_ref`; a resume reloads

@@ -17,8 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from api.auth import UserProfile, get_current_user
-from memory.run_store import Run
-from orchestrator.runner import cancel_events
+from memory.run_store import Run, cancel_events
 
 router = APIRouter()
 
@@ -94,6 +93,12 @@ async def retry_run(run_id: str, request: Request,
     if other and other.id != run.id:
         raise HTTPException(status_code=409, detail="Another analysis is running in this "
                             "conversation. Wait for it to finish, or stop it.")
+    # A retry continues from the session as this run saw it; after a newer question that would
+    # overwrite the newer turn. Only the conversation's latest run can be retried.
+    latest = await store.latest_for_session(run.session_id, run.user_id)
+    if latest and latest.id != run.id:
+        raise HTTPException(status_code=409, detail="A newer question has been asked since. "
+                            "Ask this one again instead.")
     if not await store.resume(run.id, {"retry": True}, from_status=("failed", "cancelled"),
                               events=[{"type": "run_resumed",
                                        "message": "Retrying from where it stopped..."}]):

@@ -29,7 +29,8 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.types import Command
 
 from llm.client import get_client, pii_values
-from memory.run_store import HEARTBEAT_S, InMemoryRunStore, Run, RunStore
+from memory.run_store import (CANCELLED, HEARTBEAT_S, InMemoryRunStore, Run, RunStore,
+                              cancel_events)
 from memory.session_data import read_cleaned_parquet
 from orchestrator.graph import RunEnv, build_graph, run_env
 from orchestrator.state import AnalysisSession
@@ -79,6 +80,9 @@ class LeaseLost(Exception):
 
 class DataChanged(Exception):
     pass
+
+
+_FINISHED = object()   # the graph already ran to its end: only the status is left to record
 
 
 @dataclass
@@ -196,13 +200,18 @@ async def execute(run: Run, deps: Deps) -> str:
         resume = run.resume or {}
         # The answer stays on the run until it finishes, so a crash before LangGraph has saved
         # it can't lose it; it is applied only while the gate is still waiting.
+        # A checkpoint with nothing left to run is a finished graph (the worker died before
+        # recording it): record it, never start over. Only a failed one forks for a retry.
+        finished = bool(snap.values) and not snap.next
         if "answer" in resume and snap.interrupts:
             inp: Any = Command(resume=resume["answer"])
-        elif resume.get("retry") and not snap.next:
-            config, inp = await _retry_point(graph, config), None
-            snap = await graph.aget_state(config)
         elif snap.next:
             inp = None   # a crash: carry on from the last finished node
+        elif finished and resume.get("retry") and snap.values["session"].status == "failed":
+            config, inp = await _retry_point(graph, config), None
+            snap = await graph.aget_state(config)
+        elif finished:
+            inp = _FINISHED
         else:
             session = await deps.session_store.load(run.session_id)
             if session is None:
@@ -211,16 +220,17 @@ async def execute(run: Run, deps: Deps) -> str:
                    "is_approval": run.input.get("is_approval", False),
                    "approval_context": run.input.get("approval_context"),
                    "similar_insights": [], "frame_ref": None, "gate": None, "answered": None}
-        session = inp["session"] if isinstance(inp, dict) else snap.values["session"]
-        # This run's PII guard: ingestion (or the reload below) fills it, and every LLM request
-        # is pseudonymized against it. Set in this task, so it belongs to this run only.
-        pii_values.set(set(session.prior_pii))
-        if not isinstance(inp, dict):
-            await _restore_frame(env, session, snap.values.get("frame_ref"))
-        # "sync": each checkpoint is written before the next node starts, so a crash never
-        # re-runs a node that finished (or repeats its model calls).
-        await graph.ainvoke(inp, config, durability="sync")
-        await flush()
+        if inp is not _FINISHED:
+            session = inp["session"] if isinstance(inp, dict) else snap.values["session"]
+            # This run's PII guard: ingestion (or the reload below) fills it, and every LLM
+            # request is pseudonymized against it. Set in this task: it belongs to this run only.
+            pii_values.set(set(session.prior_pii))
+            if not isinstance(inp, dict):
+                await _restore_frame(env, session, snap.values.get("frame_ref"))
+            # "sync": each checkpoint is written before the next node starts, so a crash never
+            # re-runs a node that finished (or repeats its model calls).
+            await graph.ainvoke(inp, config, durability="sync")
+            await flush()
     except LeaseLost:
         logger.warning("run %s: lease lost, another worker has it", run.id)
         return "lost"
@@ -250,12 +260,6 @@ async def _fail(store, run: Run, message: str, retryable: bool = True) -> str:
                                {"type": "done"}])
     return "failed"
 
-
-CANCELLED = "Cancelled at your request."
-
-
-def cancel_events() -> list[dict]:
-    return [{"type": "error", "message": CANCELLED, "retryable": True}, {"type": "done"}]
 
 
 async def supervise(run: Run, deps: Deps, heartbeat_s: float = HEARTBEAT_S) -> str:
@@ -298,15 +302,19 @@ async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
     last_reap = 0.0
     try:
         while not stop.is_set():
-            if time.monotonic() - last_reap > heartbeat_s:
-                for run_id, status in await deps.run_store.reap():
-                    logger.warning("reaped run %s → %s", run_id, status)
-                last_reap = time.monotonic()
-            if len(tasks) < concurrency and (run := await deps.run_store.claim()):
-                task = asyncio.create_task(supervise(run, deps, heartbeat_s))
-                tasks.add(task)
-                task.add_done_callback(tasks.discard)
-                continue
+            try:
+                if time.monotonic() - last_reap > heartbeat_s:
+                    for run_id, status in await deps.run_store.reap():
+                        logger.warning("reaped run %s → %s", run_id, status)
+                    last_reap = time.monotonic()
+                if len(tasks) < concurrency and (run := await deps.run_store.claim()):
+                    task = asyncio.create_task(supervise(run, deps, heartbeat_s))
+                    tasks.add(task)
+                    task.add_done_callback(tasks.discard)
+                    continue
+            except Exception:
+                # A database blip must not end the worker (in the API it would die unseen).
+                logger.error("worker: queue unavailable, retrying", exc_info=True)
             try:
                 await asyncio.wait_for(stop.wait(), poll_s)
             except TimeoutError:

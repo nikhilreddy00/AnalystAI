@@ -73,3 +73,24 @@ test("a tab closed mid-run and reopened replays the whole run once", async ({ co
   const conns = await served(reopened);
   expect(conns[conns.length - 1]).toEqual(all);         // the reopened tab: every event, in order, once
 });
+
+test("a double submit posts the question once", async ({ page }) => {
+  writeFileSync(SCENARIO, "trickle\n");
+  await signIn(page);
+  await page.goto("/chat");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
+  });
+  const input = page.getByLabel("Ask a question about your data");
+  await expect(input).toBeEnabled();
+  await input.fill(QUESTION);
+  const before = await (await page.request.get(`${API}/__posts`)).json();
+  await page.evaluate(() => {   // two submits in one tick, faster than any re-render
+    const form = document.querySelector("form")!;
+    form.requestSubmit();
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+  expect(await (await page.request.get(`${API}/__posts`)).json()).toBe(before + 1);
+  await expect(page.locator("div.ml-auto.rounded-lg", { hasText: QUESTION })).toHaveCount(1);
+});

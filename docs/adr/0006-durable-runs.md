@@ -12,9 +12,12 @@ timeout or a redeploy lost the run. Audit B4: without Postgres the app kept runn
   No Redis or Celery: a self-hosted install keeps one database (the procrastinate / Oban pattern).
   `(user_id, client_request_id)` is unique, so a double submit makes one run.
 - **Workers.** `python -m worker` (its own Compose service); development also runs one in the API
-  process. Lease 120 s, heartbeat 5 s, both fenced by `attempt`. A worker whose lease expired
-  writes nothing more, and cancels itself at its next heartbeat. The reaper re-queues an expired
-  run up to 3 times, then fails it with a reason. SIGTERM hands runs back without using an attempt.
+  process. Lease 120 s, heartbeat 5 s, both fenced by `attempt`, which only ever goes up. A
+  worker whose lease expired writes nothing more, and cancels itself at its next heartbeat.
+  `crashes` (reset when the user answers or retries) is the separate budget: the reaper
+  re-queues an expired run until 3 crashes, then fails it with a reason (a pending cancel wins).
+  SIGTERM hands runs back without counting a crash. One active run per session (a partial
+  unique index); only a session's latest run can be retried.
 - **Checkpoints.** LangGraph `AsyncPostgresSaver`, written with `durability="sync"`: each
   checkpoint is saved before the next node starts. Nothing finished re-runs, and no model call
   repeats. Checkpoints are Fernet-encrypted (`ENCRYPTION_KEY`), because they hold the whole

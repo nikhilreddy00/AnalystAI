@@ -6,7 +6,7 @@ import os
 import pytest
 from sqlalchemy import text
 
-from memory.run_store import MAX_ATTEMPTS, InMemoryRunStore, RunStore
+from memory.run_store import MAX_CRASHES, InMemoryRunStore, RunConflict, RunStore
 
 PG = os.environ.get("TEST_PG_URL")
 
@@ -19,10 +19,12 @@ async def store(request):
     if not PG:
         pytest.skip("TEST_PG_URL not set")
     s = RunStore(PG)
+    async with s._engine.begin() as conn:   # a clean schema: init() makes it, index included
+        await conn.execute(text("DROP TABLE IF EXISTS runs, run_events"))
     await s.init()
-    async with s._engine.begin() as conn:
-        await conn.execute(text("TRUNCATE runs, run_events"))
     yield s
+    async with s._engine.begin() as conn:   # leave no active runs behind for other tests
+        await conn.execute(text("TRUNCATE runs, run_events"))
     await s._engine.dispose()
 
 
@@ -39,7 +41,7 @@ async def test_a_double_submit_starts_one_run(store):
 
 
 async def test_concurrent_claimers_never_share_a_run(store):
-    ids = {(await _new(store))[0].id for _ in range(3)}
+    ids = {(await _new(store, sid=f"s{i}"))[0].id for i in range(3)}
     got = await asyncio.gather(*(store.claim() for _ in range(5)))
     claimed = [r.id for r in got if r]
     assert sorted(claimed) == sorted(ids) and all(r.attempt == 1 for r in got if r)
@@ -62,7 +64,7 @@ async def test_a_worker_that_lost_its_lease_is_fenced(store):
 
 async def test_the_reaper_fails_a_run_that_keeps_dying_with_a_reason(store):
     run, _ = await _new(store)
-    for _ in range(MAX_ATTEMPTS):
+    for _ in range(MAX_CRASHES):
         await store.claim(lease_s=0)
         await asyncio.sleep(0.05)
         await store.reap()
@@ -98,11 +100,50 @@ async def test_cancel_and_resume(store):
     await store.finish(running.id, "failed", attempt=again.attempt, error="boom")
     assert (await store.get(running.id)).resume is None   # an answer is used by one run only
     assert await store.resume(running.id, {"retry": True}, from_status=("failed",))
-    assert (await store.claim()).attempt == 1             # a retry gets a fresh crash budget
+    retried = await store.claim()
+    assert retried.crashes == 0 and retried.attempt == 3   # fresh crash budget; the fence grows
 
 
-async def test_shutdown_hands_a_run_back_without_spending_an_attempt(store):
+async def test_shutdown_hands_a_run_back_without_counting_a_crash(store):
     run, _ = await _new(store)
     claimed = await store.claim()
     await store.requeue(run.id, claimed.attempt)
-    assert (await store.claim()).attempt == 1
+    again = await store.claim()
+    assert again.crashes == 0 and again.attempt == 2   # the old claim is still fenced off
+    assert not await store.append(run.id, [{"type": "x"}], attempt=claimed.attempt)
+
+
+async def test_answered_gates_do_not_use_up_the_crash_budget(store):
+    """Review R1: claims counted as crashes, so a run answered at two gates failed on its first
+    real crash instead of resuming."""
+    run, _ = await _new(store)
+    for _ in range(2):   # two gates, each answered
+        claimed = await store.claim()
+        await store.finish(run.id, "waiting_approval", attempt=claimed.attempt)
+        await store.resume(run.id, {"answer": "yes"})
+    await store.claim(lease_s=0)
+    await asyncio.sleep(0.05)
+    assert await store.reap() == [(run.id, "queued")]   # one crash: resumed, not failed
+
+
+async def test_one_active_run_per_session_even_under_a_race(store):
+    """Audit: two POSTs with different request ids both passed the route's check."""
+    results = await asyncio.gather(_new(store, "a"), _new(store, "b"), return_exceptions=True)
+    made = [r for r in results if not isinstance(r, Exception)]
+    assert len(made) == 1 and isinstance(next(r for r in results if r not in made), RunConflict)
+    run = made[0][0]
+    claimed = await store.claim()
+    await store.finish(run.id, "failed", attempt=claimed.attempt, error="x")
+    other, _ = await _new(store, "c")                      # a failed run doesn't block
+    assert not await store.resume(run.id, {"retry": True}, from_status=("failed",))
+    assert (await store.get(other.id)).status == "queued"
+
+
+async def test_the_reaper_honours_a_cancel_instead_of_requeueing(store):
+    run, _ = await _new(store)
+    await store.claim(lease_s=0)
+    await store.request_cancel(run.id, [])
+    await asyncio.sleep(0.05)
+    assert await store.reap() == [(run.id, "cancelled")]
+    events = [e for _, e in await store.events_after(run.id, 0)]
+    assert events[-1] == {"type": "done"} and (await store.claim()) is None

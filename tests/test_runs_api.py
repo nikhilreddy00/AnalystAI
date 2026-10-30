@@ -150,3 +150,51 @@ async def test_another_users_session_id_reaches_none_of_their_runs(api):
     deps.session_store.load = broken
     r = await client.post("/chat", json={"message": "q", "session_id": "anything"})
     assert r.status_code == 503
+
+
+async def test_a_cancelled_queued_run_retries_as_a_fresh_start(api):
+    """Review R2: a run cancelled before any worker claimed it has no checkpoint."""
+    client, deps, cfg = api
+    run = (await client.post("/chat", json={"message": "Give me an overview of this dataset.",
+                                            "connector_config": cfg})).json()
+    await client.post(f"/runs/{run['run_id']}/cancel")
+    await client.post(f"/runs/{run['run_id']}/retry")
+    stop, task = await _worker(deps)
+    try:
+        events = [e for _, e in await _events(client, run["run_id"])]
+    finally:
+        stop.set()
+        await task
+    assert events[-1]["type"] == "approval_required"   # it ran: ingestion → … → the gate
+    assert "stopped unexpectedly" not in json.dumps(events)
+
+
+async def test_only_the_latest_run_can_be_retried(api):
+    """Review R5: retrying an older run would write its stale session over the newer turn."""
+    client, deps, cfg = api
+    old = (await client.post("/chat", json={"message": "q1", "connector_config": cfg})).json()
+    await client.post(f"/runs/{old['run_id']}/cancel")
+    new = (await client.post("/chat", json={"message": "q2",
+                                            "session_id": old["session_id"]})).json()
+    await client.post(f"/runs/{new['run_id']}/cancel")
+    assert (await client.post(f"/runs/{old['run_id']}/retry")).status_code == 409
+    assert (await client.post(f"/runs/{new['run_id']}/retry")).status_code == 200
+
+
+async def test_an_answer_sent_just_before_the_run_is_marked_waiting_is_kept(api):
+    """Review R6: the gate's event is stored before status flips to waiting_approval."""
+    client, deps, cfg = api
+    run = (await client.post("/chat", json={"message": "q", "connector_config": cfg})).json()
+    claimed = await deps.run_store.claim()
+
+    async def worker_reaches_the_gate():
+        await asyncio.sleep(0.3)
+        await deps.run_store.finish(run["run_id"], "waiting_approval", attempt=claimed.attempt)
+
+    flip = asyncio.create_task(worker_reaches_the_gate())
+    r = await client.post("/chat", json={"message": "Continue", "is_approval": True,
+                                         "approval_context": "high_null",
+                                         "session_id": run["session_id"]})
+    await flip
+    got = await deps.run_store.get(run["run_id"])
+    assert r.status_code == 200 and got.status == "queued" and got.resume == {"answer": "Continue"}

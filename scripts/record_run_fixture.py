@@ -1,7 +1,7 @@
 """Record one E2E case's model replies and sandbox outputs as a replay fixture, so the durable-run
 tests (tests/test_durable_runs.py) replay a real overview run offline at $0.
 
-    uv run python scripts/record_run_fixture.py e2e-01 tests/fixtures/runs/e2e-01.json
+    PYTHONPATH=. uv run python scripts/record_run_fixture.py e2e-01 tests/fixtures/runs/e2e-01.json
 
 Real API + E2B spend (about $0.11 for e2e-01). The data is synthetic (evals/datagen.py).
 """

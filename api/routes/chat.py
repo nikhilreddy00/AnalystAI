@@ -12,6 +12,7 @@ Approval answers: is_approval=True resumes the run waiting at that gate.
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request, Depends
@@ -20,11 +21,14 @@ from api.rate_limit import ip_limit, limiter
 from pydantic import BaseModel, Field
 
 from connectors.csv_connector import check_upload_owner
+from memory.run_store import RunConflict
 from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
 
 router = APIRouter()
 
 GATES = ("clarification", "high_null")   # the gates a run waits at (interrupt())
+GATE_WAIT_POLLS = 30   # × 0.1 s
+BUSY = "An analysis is already running in this conversation. Wait for it to finish, or stop it."
 
 
 class ChatRequest(BaseModel):
@@ -135,7 +139,14 @@ async def chat(
 
     active = await runs.active_for_session(session.session_id, current_user.uid)
     if body.is_approval and body.approval_context in GATES:
-        if active and active.status in ("queued", "running"):   # this answer was already sent
+        # The gate's event is stored a moment before the run is marked waiting: an answer sent in
+        # that window waits for it. Still running after that = this answer was already sent.
+        for _ in range(GATE_WAIT_POLLS):
+            if not (active and active.status == "running"):
+                break
+            await asyncio.sleep(0.1)
+            active = await runs.get(active.id)
+        if active and active.status in ("queued", "running"):
             return active.public()
         if not (active and active.status == "waiting_approval" and await runs.resume(
                 active.id, {"answer": body.message},
@@ -145,18 +156,20 @@ async def chat(
                                 "an answer. Ask it again to start a new analysis.")
         return {**active.public(), "status": "queued"}
     if active and active.status != "waiting_approval":
-        raise HTTPException(status_code=409, detail="An analysis is already running in this "
-                            "conversation. Wait for it to finish, or stop it.")
+        raise HTTPException(status_code=409, detail=BUSY)
     if active:   # a gate nobody answered: the new question replaces it
         await runs.request_cancel(active.id, [{"type": "error", "message": "Replaced by a new "
                                                "question."}, {"type": "done"}])
 
     await session_store.save(session)   # the worker starts from the stored session
-    run, _ = await runs.create(
-        session_id=session.session_id, user_id=current_user.uid,
-        client_request_id=body.client_request_id,
-        input={"message": body.message, "is_approval": body.is_approval,
-               "approval_context": body.approval_context},
-        first_events=[{"type": "session_id", "value": session.session_id,
-                       "message": body.message, "is_approval": body.is_approval}])
+    try:
+        run, _ = await runs.create(
+            session_id=session.session_id, user_id=current_user.uid,
+            client_request_id=body.client_request_id,
+            input={"message": body.message, "is_approval": body.is_approval,
+                   "approval_context": body.approval_context},
+            first_events=[{"type": "session_id", "value": session.session_id,
+                           "message": body.message, "is_approval": body.is_approval}])
+    except RunConflict:   # another request started one a moment ago
+        raise HTTPException(status_code=409, detail=BUSY) from None
     return run.public()
