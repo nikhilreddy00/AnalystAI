@@ -201,7 +201,8 @@ async def test_analysis_node_streams_evidence(recorded_llm, monkeypatch):
                                "event_queue": queue})
     events = [queue.get_nowait() for _ in range(queue.qsize())]
     ev = next(e for e in events if e["type"] == "evidence")
-    assert ev["data"][0]["id"] == "corr:revenue__units" and ev["data"][0]["row_count"] == 3025
+    assert ev["data"][0]["kind"] == "source"   # every answer starts with where the rows came from
+    assert ev["data"][1]["id"] == "corr:revenue__units" and ev["data"][1]["row_count"] == 3025
 
 
 def test_builtin_mom_replaces_the_models():

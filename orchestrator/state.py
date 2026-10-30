@@ -95,6 +95,11 @@ class ColumnInfo(BaseModel):
     is_id: bool = False
     is_metric: bool = False
     null_pct: float = 0.0
+    # Phase 5 Ingestion: why the role was chosen, and the personal-data kind when the column holds
+    # PII (email | phone | ssn | card | ip | name | address | dob | passport). Defaults keep stored
+    # sessions loadable.
+    role_reason: str = ""
+    pii: str | None = None
 
 
 class ConnectorConfig(BaseModel):
@@ -181,6 +186,11 @@ class DataContract(BaseModel):
     # Phase 4: the SQL query that produced this data (SQL connector without a table), so the
     # answer's evidence starts with where the rows came from.
     source_query: "Evidence | None" = None
+    # Phase 5 Ingestion: where the rows came from (reader settings, renames, roles, PII), and a
+    # content hash of the loaded table: the same file always gives the same contract.
+    source_evidence: "Evidence | None" = None
+    fingerprint: str = ""
+    pii_columns: list[str] = Field(default_factory=list)
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────
@@ -335,7 +345,8 @@ class Evidence(BaseModel):
     """Why one finding can be trusted (ADR-0001): built deterministically from the code that ran
     and its output, never written by the model."""
     id: str                                # stable: "corr:revenue__units", "seg:segment/revenue"
-    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query", "cleaning", "eda"]
+    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query", "cleaning", "eda",
+                  "source"]
     claim: str                             # one line, from the computed values
     code: str                              # the analysis body that produced it
     result_excerpt: str                    # the finding's JSON, truncated

@@ -1036,6 +1036,8 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
     if isinstance(want, pd.Timestamp):
         return isinstance(got, pd.Timestamp) and got.normalize() == want.normalize()
     if isinstance(got, str):
+        if got in ("True", "False") and str(want).lower() in ("true", "false"):   # read as bool
+            return got.lower() == str(want).lower()
         return got.strip() == str(want).strip()
     if isinstance(got, pd.Timestamp) and dayfirst is not None:   # a parsed date column
         try:

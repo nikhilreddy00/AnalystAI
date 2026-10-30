@@ -27,6 +27,7 @@ from api.auth import get_current_user, UserProfile
 from api.rate_limit import ip_limit, limiter
 from pydantic import BaseModel, Field
 
+from llm.client import pii_values
 from orchestrator.graph import AgentState, build_graph
 from connectors.csv_connector import check_upload_owner
 from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
@@ -118,6 +119,9 @@ async def chat(
     event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
     async def run_graph() -> None:
+        # This run's PII guard: ingestion fills it, every LLM request is pseudonymized against it.
+        # Set inside the task, so it belongs to this run only.
+        pii_values.set(set())
         state: AgentState = {
             "session": session,
             "df_parquet": None,

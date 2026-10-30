@@ -1,0 +1,15 @@
+id: ing-21-b2b-holdout
+category: pii
+seed: 31
+rows: 300
+format:
+  type: csv
+columns:
+- [account_id, id_seq]
+- [client, company]
+- [account_manager, full_name]
+- {name: new_customer, kind: yesno, trap: true}
+- [contract_value, money]
+- [signed_date, date_iso]
+label_note: 'Added after ing-20 was seen during iteration, labelled before any run: a B2B client
+  list. Company names and a Yes/No customer flag are not people; the account manager is.'

@@ -763,7 +763,7 @@ def executive_jargon(text: str) -> list[str]:
 # ── PII ────────────────────────────────────────────────────────────────────────
 
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|ssn|address|street|dob|birth|passport|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|address|street|dob|birth|passport|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
@@ -772,11 +772,32 @@ _THING_NAME_RE = re.compile(
     r"store|shop|city|country|state|region|department|dept|team|project|campaign|vendor|"
     r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment)"
     r"_names?$", re.I)
+# A column named for a person's role (`sales_rep`, `contact_owner`, `assigned_to`): PII only when
+# its values read as people (pii_kind checks), so `new_customer` (Yes/No) keeps its breakdowns.
+_ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "agent", "salesperson",
+               "seller", "buyer", "manager", "physician", "doctor", "nurse", "clinician",
+               "technician", "driver", "author", "recipient", "sender", "customer", "client",
+               "patient", "employee", "member", "guest", "student", "contact", "cashier",
+               "reviewer", "approver", "requester", "submitter"}
+_PERSON_RE = re.compile(r"^[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*){1,3}$")
+# "Acme Corp" is capitalized words too: a B2B `client` column keeps its "revenue by client".
+_ORG_RE = re.compile(r"\b(?:inc|corp|corporation|co|company|ltd|limited|llc|llp|plc|gmbh|ag|sa|"
+                     r"sas|bv|nv|pty|group|holdings|partners|associates|solutions|services|"
+                     r"systems|technologies)\.?$", re.I)
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 _PHONE_RE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)")
+# International (E.164-style, "+44 20 7946 0958"): 8–15 digits after a leading +.
+_INTL_PHONE_RE = re.compile(r"(?<![\w+])\+\d{1,3}(?:[\s.-]?\(?\d{1,5}\)?){2,5}(?![\w%])")
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+_IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)"
+                      r"(?![\d.])")
 MASK = "[REDACTED]"
+# Never searched for or tokenized as PII values: "May" or "June" in a first-name column would
+# corrupt every date in a prompt.
+CALENDAR_WORDS = {"January", "February", "March", "April", "May", "June", "July", "August",
+                  "September", "October", "November", "December", "Monday", "Tuesday",
+                  "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
 
 
 def _luhn(digits: str) -> bool:
@@ -787,9 +808,19 @@ def _luhn(digits: str) -> bool:
     return total % 10 == 0
 
 
+def _norm_name(name: Any) -> str:
+    """CustomerName / 'Customer Name' / 'Tel.' → Customer_Name / Customer_Name / Tel."""
+    name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", str(name))
+    return re.sub(r"[^0-9A-Za-z]+", "_", name).strip("_")
+
+
 def is_pii_column(name: str) -> bool:
-    name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", str(name))   # CustomerName → Customer_Name
+    name = _norm_name(name)
     return bool(_PII_COL_RE.search(name)) and not _THING_NAME_RE.search(name)
+
+
+def _intl_phone(m: re.Match) -> str:
+    return MASK if 8 <= len(re.sub(r"\D", "", m.group())) <= 15 else m.group()
 
 
 def mask_pii(value: Any) -> Any:
@@ -806,11 +837,70 @@ def mask_pii(value: Any) -> Any:
     v = _EMAIL_RE.sub(MASK, value)
     v = _SSN_RE.sub(MASK, v)
     v = _CARD_RE.sub(lambda m: MASK if _luhn(re.sub(r"\D", "", m.group())) else m.group(), v)
-    return _PHONE_RE.sub(MASK, v)
+    v = _PHONE_RE.sub(MASK, v)
+    v = _INTL_PHONE_RE.sub(_intl_phone, v)
+    return _IPV4_RE.sub(MASK, v)
 
 
-def mask_row(row: dict) -> dict:
-    return {k: MASK if is_pii_column(k) else mask_pii(v) for k, v in row.items()}
+def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
+    """`pii`: the columns ingestion detected (DataContract.pii_columns); names alone miss
+    `sales_rep`."""
+    pii = set(pii)
+    return {k: MASK if k in pii or is_pii_column(k) else mask_pii(v) for k, v in row.items()}
+
+
+_NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
+               ("address", r"address|street"), ("dob", r"dob|birth"), ("passport", r"passport"))
+
+
+def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
+    """(kind, reason) if a column holds personal data, from its name or its values; None if not.
+    `values`: a sample of the column's non-null values.
+    - name: the PII name rule (`customer_email`, 'Tel.'), or a role noun (`sales_rep`) whose
+      values read as people's names;
+    - values: ≥ 30% of them contain an email, phone, SSN, card or IP address."""
+    norm = _norm_name(name)
+    if is_pii_column(name):
+        kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
+                    "name")
+        return kind, f"the column name '{name}' marks personal data"
+    vals = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
+    if not vals:
+        return None
+    text = [v.strip() for v in vals if isinstance(v, str)]
+    last = norm.lower().split("_")[-1] if norm else ""
+    if (last in _ROLE_NOUNS or norm.lower() in _ROLE_NOUNS) and text \
+            and sum(bool(_PERSON_RE.match(t)) and not _ORG_RE.search(t) for t in text) \
+            >= 0.5 * len(vals):
+        return "name", f"'{name}' names a person's role and its values read as people's names"
+    hits: dict[str, int] = {}
+    for v in vals:
+        t = str(int(v)) if isinstance(v, numbers.Number) and not isinstance(v, bool) \
+            and float(v).is_integer() else str(v)
+        for kind, rx in (("email", _EMAIL_RE), ("ssn", _SSN_RE), ("phone", _PHONE_RE),
+                         ("ip", _IPV4_RE)):
+            if rx.search(t):
+                hits[kind] = hits.get(kind, 0) + 1
+                break
+        else:
+            if any(8 <= len(re.sub(r"\D", "", m.group())) <= 15 for m in _INTL_PHONE_RE.finditer(t)):
+                hits["phone"] = hits.get("phone", 0) + 1
+            elif any(_luhn(re.sub(r"\D", "", m.group())) for m in _CARD_RE.finditer(t)):
+                hits["card"] = hits.get("card", 0) + 1
+    if sum(hits.values()) >= 0.3 * len(vals):
+        kind = max(hits, key=hits.get)
+        return kind, f"{sum(hits.values())} of {len(vals)} sampled values contain personal data"
+    return None
+
+
+def pii_strings(value: Any) -> list[str]:
+    """The PII substrings inside one value (emails, phones, SSNs, cards, IPs), for the LLM
+    client's guard: a note "call 555-201-3344" yields the number, not the note."""
+    text = value if isinstance(value, str) else str(value)
+    found = [m.group() for rx in (_EMAIL_RE, _SSN_RE, _PHONE_RE, _IPV4_RE) for m in rx.finditer(text)]
+    found += [m.group() for m in _INTL_PHONE_RE.finditer(text) if _intl_phone(m) == MASK]
+    found += [m.group() for m in _CARD_RE.finditer(text) if _luhn(re.sub(r"\D", "", m.group()))]
+    return found
 
 
 # ── Charts (Phase 5 Visualization) ─────────────────────────────────────────────

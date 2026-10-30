@@ -39,6 +39,7 @@ from agents.data_cleaning import (
     try_numeric_conversion,
 )
 from agents.errors import GuardrailViolation
+from agents.utils import pii_columns
 from agents.visualization_agent import classify_columns
 from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
 from llm.client import trace_verdict
@@ -103,6 +104,7 @@ class CleanContext:
     dates: set[str]         # never filled
     targets: set[str]       # the plan's metrics: never filled
     drop_high_null: bool    # the user chose "Drop those columns" at the high-null gate
+    pii: set[str] = frozenset()   # personal-data columns: the audit never quotes their values
 
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
@@ -118,7 +120,7 @@ def build_context(session: AnalysisSession, drop_high_null: bool = False) -> Cle
     task = session.task_plan
     targets = {m for m in (task.target_metrics if task else []) if m in df.columns}
     return CleanContext(df=df, ids=ids, dates=dates, targets=targets,
-                        drop_high_null=drop_high_null)
+                        drop_high_null=drop_high_null, pii=pii_columns(contract))
 
 
 def _code_like(s: pd.Series) -> bool:
@@ -138,9 +140,9 @@ def _text_cols(df: pd.DataFrame, skip: set[str]) -> list[str]:
     return [c for c in df.columns if c not in skip and pd.api.types.is_string_dtype(df[c])]
 
 
-def _shown(col: str, value: str) -> str:
+def _shown(col: str, value: str, pii: set[str]) -> str:
     """A label as the audit may quote it: masked, and never from a PII column."""
-    return "[REDACTED]" if is_pii_column(col) else repr(mask_pii(value))[:40]
+    return "[REDACTED]" if col in pii or is_pii_column(col) else repr(mask_pii(value))[:40]
 
 
 def _fingerprint(s: pd.Series) -> pd.Series:
@@ -253,7 +255,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         df[col] = s.where(~changed, s.map(mapping))
         merged = sorted({c for c in mapping.values()})[:3]
         examples = "; ".join(
-            f"{', '.join(_shown(col, k) for k in mapping if mapping[k] == c)[:80]} → {_shown(col, c)}"
+            f"{', '.join(_shown(col, k, ctx.pii) for k in mapping if mapping[k] == c)[:80]} → "
+            f"{_shown(col, c, ctx.pii)}"
             for c in merged)
         log(col, "normalize", "merge_variants",
             f"Merged spelling variants: {examples}.", int(changed.sum()))

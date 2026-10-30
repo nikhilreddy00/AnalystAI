@@ -17,7 +17,6 @@ import orchestrator.graph as graph
 from agents.errors import (
     GuardrailViolation, LLMOutputError, LLMRefusal, LLMTruncated, LLMUnavailable, SandboxError,
 )
-from agents.ingestion_agent import _enrich_schema_with_llm
 from api.config import settings
 from agents.intake_agent import generate_data_narrative, run_intake_agent
 from connectors.csv_connector import CSVConnector
@@ -191,10 +190,9 @@ async def test_injected_cell_is_delimited_and_pii_never_reaches_the_model(record
     df = df.sort_index()
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
     recorded_llm.responses += ['{"column_display_names": {}, "entity_singular": "order", '
-                               '"entity_plural": "orders"}', "A sales table."]
+                               '"entity_plural": "orders"}']
 
-    await generate_data_narrative(contract, recorded_llm)
-    await _enrich_schema_with_llm(contract, None)
+    await generate_data_narrative(contract, recorded_llm)   # ingestion itself makes no LLM call
 
     for call in recorded_llm.calls:
         prompt = json.dumps(call["messages"]) + (call["system"] or "")

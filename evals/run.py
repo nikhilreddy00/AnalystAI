@@ -41,6 +41,7 @@ from evals.scoring import (
     result_matches,
     score_cleaning,
     score_ingestion,
+    leaked,
     loaded_cell,
     bundle_facts,
     insight_claims,
@@ -49,7 +50,7 @@ from evals.scoring import (
     score_intake,
     score_visualization,
 )
-from llm.client import get_client, set_client, trace_meter
+from llm.client import get_client, pii_values, set_client, trace_meter
 from orchestrator.state import (
     AnalysisFindings,
     AnalysisSession,
@@ -135,6 +136,9 @@ async def run_e2e_case(case: dict) -> dict:
         connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)),
         overview_done=case.get("overview_done", False),
     )
+    sent: list[str] = []
+    LLM_REQUESTS.set(sent)   # the canary scans every request this case makes
+    pii_values.set(set())    # as api/routes/chat.py does for every run
     error, approvals = None, []
     # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
     # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
@@ -159,8 +163,22 @@ async def run_e2e_case(case: dict) -> dict:
     if approvals and approvals[-1] != "high_null" and not error:
         error = f"stopped at approval_required ({approvals[-1]})"
 
-    return {**score_e2e(case, session, error), "approvals": approvals,
-            "output": session.model_dump(mode="json")}
+    hits = len(leaked("\n".join(sent), e2e_pii_literals(df)))
+    scored = score_e2e(case, session, error)
+    return {**scored, "hard": scored["hard"] + [_canary_rule(hits)], "pii_canary_hits": hits,
+            "approvals": approvals, "output": session.model_dump(mode="json")}
+
+
+def e2e_pii_literals(df: pd.DataFrame) -> list[str]:
+    """The planted PII of a datagen table (its customer emails and names), from the generator's
+    columns, not the agent's detection."""
+    cols = [c for c in ("customer_email", "customer_name") if c in df.columns]
+    return sorted({str(v) for c in cols for v in df[c].dropna()})
+
+
+def _canary_rule(hits: int) -> dict:
+    return {"rule": "pii_canary", "ok": hits == 0,
+            "detail": f"{hits} planted PII values reached an LLM request" if hits else "ok"}
 
 
 def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
@@ -684,9 +702,10 @@ async def run_ingestion_case(case: dict) -> dict:
                               connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)))
     sent: list[str] = []
     LLM_REQUESTS.set(sent)
+    pii_values.set(set())   # as api/routes/chat.py does for every run
     output, error = None, None
     try:
-        contract = await run_ingestion_agent(session)
+        contract = await run_ingestion_agent(session, get_client())
         df = pd.read_parquet(io.BytesIO(session.__dict__.pop("_df_parquet")))
         dump = contract.model_dump(mode="json")
         cells = [[r, c, loaded_cell(df[c].iloc[r]) if c in df.columns and r < len(df) else "<missing>"]
@@ -870,6 +889,8 @@ def rescore(path: Path) -> Path:
             if "output" not in r:
                 raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
             r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+            if "pii_canary_hits" in r:   # scanned at run time: requests aren't stored
+                r["hard"].append(_canary_rule(r["pii_canary_hits"]))
             r["passed"] = all(c["ok"] for c in r["checks"])
     report["summary"] = summarize(report["runs"])
     report["meta"]["rescored_from"] = report["meta"]["report"]
@@ -933,7 +954,8 @@ def _pct(values: list[float], q: float) -> float:
     return round(statistics.quantiles(values, n=100, method="inclusive")[q - 1], 2)
 
 
-_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped"}
+_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped",
+                "pii_tokenized"}
 
 
 def summarize(runs: dict[str, list[dict]]) -> dict:
@@ -952,6 +974,8 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "runs_with_guardrail_retry": sum(any(g not in _NOT_RETRIES for g in r.get("rejections", []))
                                          for r in flat),
         "runs_with_prose_rewritten": sum("grounding_rewritten" in r.get("rejections", []) for r in flat),
+        # The LLM client's PII guard caught a value a builder let through (0 = every builder clean).
+        "runs_with_pii_guard_hit": sum("pii_tokenized" in r.get("rejections", []) for r in flat),
         "cost_per_question_usd": round(statistics.mean(r["cost_usd"] for r in flat), 4),
         "latency_p50_s": _pct([r["latency_s"] for r in flat], 50),
         "latency_p95_s": _pct([r["latency_s"] for r in flat], 95),

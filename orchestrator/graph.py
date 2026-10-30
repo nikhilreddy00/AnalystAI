@@ -18,15 +18,17 @@ Conditional branches:
 """
 from __future__ import annotations
 
+import io
 import logging
 from typing import Any, TypedDict
 
+import pandas as pd
 from langgraph.graph import END, StateGraph
 
 from agents.analysis_agent import run_analysis_agent
 from agents.cleaning_agent import build_evidence as build_cleaning_evidence
 from agents.cleaning_agent import run_cleaning_agent
-from agents.ingestion_agent import run_ingestion_agent
+from agents.ingestion_agent import remember_pii, run_ingestion_agent
 from agents.insight_agent import run_insight_agent
 from agents.intake_agent import (
     generate_data_narrative,
@@ -188,6 +190,8 @@ async def ingestion_node(state: AgentState) -> dict:
             if payload is not None:
                 session.__dict__["_df_parquet"] = payload
                 cached_used = True
+                if session.data_contract:   # this run's LLM guard needs the PII values again
+                    remember_pii(pd.read_parquet(io.BytesIO(payload)), session.data_contract)
                 logger.info("loaded cached parquet for session %s", session.session_id)
         except Exception as exc:
             logger.warning("cached parquet read failed for %s: %s", session.session_id, exc)
@@ -200,7 +204,7 @@ async def ingestion_node(state: AgentState) -> dict:
             question = (session.task_plan.raw_query if again and session.task_plan
                         else state.get("user_message"))
             reuse = session.data_contract.source_query if again and session.data_contract else None
-            contract = await run_ingestion_agent(session, question, reuse)
+            contract = await run_ingestion_agent(session, get_client(), question, reuse)
 
             if not is_resuming:
                 # First-run: store the contract and emit progress
@@ -310,6 +314,8 @@ async def analysis_node(state: AgentState) -> dict:
             findings.evidence.insert(0, build_cleaning_evidence(session.cleaning_audit))
         if session.data_contract and session.data_contract.source_query:
             findings.evidence.insert(0, session.data_contract.source_query)   # where rows came from
+        if session.data_contract and session.data_contract.source_evidence:
+            findings.evidence.insert(0, session.data_contract.source_evidence)   # how they were read
         session.analysis_findings = findings
         _emit(state, {"type": "evidence", "data": [e.model_dump() for e in findings.evidence]})
 

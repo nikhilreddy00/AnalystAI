@@ -28,12 +28,11 @@ from pydantic import BaseModel
 
 from agents.analysis_agent import ANALYSIS_CARD, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
-from agents.utils import strip_markdown_fences
+from agents.utils import pii_columns, strip_markdown_fences
 from guardrails import (
     UNTRUSTED_NOTE,
     delimit_untrusted,
     executive_jargon,
-    is_pii_column,
     mask_pii,
     ungrounded_dates,
     ungrounded_numbers,
@@ -148,7 +147,7 @@ def _by_person(e: Evidence, session: AnalysisSession) -> bool:
         cols = (session.task_plan.segments if session.task_plan else [])[:1]
     else:
         return False
-    return any(is_pii_column(c) for c in cols)
+    return any(c in pii_columns(session.data_contract) for c in cols)
 
 
 def build_context(session: AnalysisSession, past: list[str] | None = None) -> InsightContext:

@@ -204,6 +204,8 @@ def build(case: dict) -> tuple[pd.DataFrame, list[Column]]:
             col.values = [None if h else v for v, h in zip(col.values, hit)]
             keep = {str(v) for v in col.values if v is not None}
             col.literals = [x for x in col.literals if x in keep or col.pii == "embedded"]
+        if extra.get("trap"):
+            col.trap = True
         if extra.get("role"):
             col.roles = tuple(extra["role"]) if isinstance(extra["role"], list) else (extra["role"],)
         cols.append(col)
