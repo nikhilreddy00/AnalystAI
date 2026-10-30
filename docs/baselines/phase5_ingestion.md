@@ -7,10 +7,12 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
   43 planted PII columns, 11 over-masking traps, 28 load checks.
 - **Baseline: `ingestion-20261030T175551Z`** (the old agent with its Haiku summary, 30 cases, k=1).
 - **Guards:** intake `intake-20261030T182544Z` (60 cases, k=1, vs `intake-20261028T144728Z`);
-  E2E `e2e-20261030T182645Z` and its `-rescored` (20 cases, k=1, vs `e2e-20261029T224155Z`).
-- **Spend: ≈ $1.27** of the $5 cap (intake $0.40, E2E $0.79, ingestion baselines ≈ $0.08,
-  including two runs I discarded: one crashed in my scorer, one I re-ran just to read a traceback).
-  No run went over its estimate by more than 30%.
+  E2E `e2e-20261030T182645Z` and its `-rescored` (20 cases, k=1, vs `e2e-20261029T224155Z`);
+  **E2E re-gate on the final code `e2e-20261030T184649Z`** (after the review fixes changed the
+  reader and the guard). Final ingestion re-check after the review fixes: `ingestion-20261030T184529Z`.
+- **Spend: ≈ $2.09** of the $5 cap (intake $0.40, E2E $0.79 + re-gate $0.82, ingestion
+  baselines ≈ $0.08, including two runs I discarded: one crashed in my scorer, one I re-ran just
+  to read a traceback). No run went over its estimate by more than 30%.
 
 ## Numbers
 
@@ -33,9 +35,9 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
 | guard | before | after |
 |---|---|---|
 | Intake (60 cases) | 97.2% (k=3) | **100%** (k=1), 0 invented columns, holdouts 100% |
-| E2E pass rate / hard | 100% / 0 | **100% / 0** (18/20 before the label fix below), PII canary 0 |
+| E2E pass rate / hard | 100% / 0 | **100% / 0** (gate: 18/20 before the label fix below; re-gate on the final code: 20/20), PII canary 0 |
 | E2E runs where the client guard caught a value | — | **0**: every builder is clean on its own |
-| E2E cost / p95 | $0.0399 / 90 s | **$0.0397 / 89 s** |
+| E2E cost / p95 | $0.0399 / 90 s | **$0.0412 / 89 s** (re-gate) |
 | Analysis, Insight | | **not re-run**: inputs byte-identical (snapshot, below) |
 | Cleaning, Visualization, Quality checks | 100% · 100% · 82.4% (checks half) | **unchanged** ($0) |
 
@@ -110,8 +112,33 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
   - The E2E PII canary hard rule scans every recorded request.
   - `evals/snapshot.py` records what every paid suite's agent receives, and
     `tests/test_suite_inputs_unchanged.py` pins it.
-- **Tests:** `test_ingestion.py` (26 cases), `test_pii_never_reaches_llm.py` (9 cases).
-  Offline suite: 782 → 783 passing.
+- **Tests:** `test_ingestion.py`, `test_pii_never_reaches_llm.py`, `test_suite_inputs_unchanged.py`.
+  Offline suite: 753 → **807** passing.
+
+## Review rounds (what fresh eyes caught)
+- **An independent code review of the branch: 10 findings, all fixed with a test each.**
+  - *The SQL path sent PII.* The SQL agent queries before ingestion registers PII values, and its
+    preview masked by column name only, so `sales_rep` names were sent. SQL follow-ups also built
+    their memory before the guard was seeded.
+  - *The reader.* A trailing delimiter made `id` the index. Quoted multi-line fields, and a header
+    narrower than its rows, lost the real header. A US `1,234` in a semicolon file read as 1.234.
+  - *The guard.* A cap of 20k values left the rest unguarded, and matching was case-sensitive.
+    It was rebuilt as a first-word index: 200k values at ~6 ms per prompt (the regex took 0.9 s
+    at 100k), case-insensitive, failing closed past the cap with pattern masking.
+  - *Smaller ones.*
+    - Restored values are JSON-escaped.
+    - Nested JSON cells crashed the profile.
+    - `...Z` timestamps weren't dates.
+    - `+1234567.89` was masked as a phone.
+    - A remembered high-null answer outlived a dataset change.
+- **Automated security reviews on each commit: 4 more, all fixed.**
+  - The guard's pattern was cached by `id(set)`.
+  - Unicode lowercasing ("İ") misaligned offsets.
+  - Bare E.164 (`+14155552671`) stopped matching after the separator rule.
+  - A dataset switch dropped the guard seed while the old answers stayed in memory.
+  - After the last of these, a third E2E gate wasn't run. Instead the snapshot proves every
+    suite's inputs are unchanged, and the new phone rule matches none of 920 strings from the
+    final E2E run.
 
 ## Senior decisions (with the reason)
 - **No LLM in ingestion.** The summary call was read only by Intake, and Intake's eval never saw
@@ -163,3 +190,9 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
   - layout detection reads the first 200 lines.
 - **Insight caveat wording** for the rank repair is new text in the analyst view. No eval scores
   it.
+- **Drill-down reads uncleaned data** (`routing.py`), the same gap targeted answers had. Resumed
+  sessions usually read the cleaned cache, but not always.
+- **A restored value inside single-quoted code** (`'[PII_x]'` → `'O'Brien'`) can break model-written
+  Python. JSON strings are escaped; single-quoted contexts are a stated limit.
+- **Partial or transformed names** (a first name split out by model code) aren't tokenized; only
+  whole values are, in any case.

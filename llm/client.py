@@ -94,13 +94,15 @@ def pseudonymize(obj, values: set[str] | None = None):
 
     def sub(text: str) -> str:
         out, pos = [], 0
-        low = text.lower()
         for m in _WORD_RE.finditer(text):
             if m.start() < pos:
                 continue
             for off, v in index.get(m.group().lower(), ()):
                 a, b = m.start() - off, m.start() - off + len(v)
-                if a >= pos and low[a:b] == v.lower() and not (a and _edge(text[a - 1])) \
+                # Compare slices of the original text: lowercasing can change a string's length
+                # ("İ" → 2 chars), so a separately lowercased copy would misalign the offsets.
+                if a >= pos and b <= len(text) and text[a:b].lower() == v.lower() \
+                        and not (a and _edge(text[a - 1])) \
                         and not (b < len(text) and _edge(text[b])):
                     token = pii_token(text[a:b])
                     mapping[token] = text[a:b]

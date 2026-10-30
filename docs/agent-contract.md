@@ -186,6 +186,10 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
 - **When a fix changes the right answer, the truth must follow.** E2E targeted truth was computed
   on a table with planted duplicate orders. The agent's new numbers matched the deduplicated
   values exactly. Diagnose before re-running, then relabel and say so.
+- **Get a review that isn't anchored on yours, then believe the probes.** A fresh reviewer ran
+  small inputs against the real functions and found 10 bugs that 100% on the eval had hidden:
+  the SQL path leaking names, a header lost to a trailing delimiter, a US thousand read as a
+  decimal, a guard that was too slow to raise its cap. Evals cover what the author imagined.
 - **Keep holdouts out of iteration.** Running them once while iterating spent one of them; a fresh
   holdout, labelled before its first run, restored the unseen check.
 

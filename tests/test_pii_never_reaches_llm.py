@@ -167,3 +167,31 @@ def test_restored_values_cannot_break_json_and_overflow_fails_closed():
         == 'Liam "Lee" O\'Brien'
     out, _ = pseudonymize("mail a.b@example.org", {OVERFLOW, "Somebody Else"})
     assert "a.b@example.org" not in out
+
+
+def test_unicode_case_folding_cannot_shift_the_guard_offsets():
+    """Security review: 'İ'.lower() is 2 characters; slicing a lowercased copy misaligned the
+    match and let the value through."""
+    from llm.client import pseudonymize
+    out, _ = pseudonymize("İİİ İstanbul: Jane Doe called", {"Jane Doe"})
+    assert "Jane Doe" not in out
+
+
+@pytest.mark.parametrize("text,masked", [("+14155552671", True), ("call +44 20 7946 0958.", True),
+                                         ("+12345678.9", False), ("delta +1234567.89", False)])
+def test_bare_e164_is_a_phone_and_a_decimal_tail_is_not(text, masked):
+    from guardrails import MASK, mask_pii
+    assert (MASK in mask_pii(text)) is masked
+
+
+def test_switching_datasets_keeps_guarding_the_old_answers(monkeypatch):
+    """Security review: the conversation still quotes the old data after a connector change."""
+    from api.routes import chat
+    from memory import session_data
+    df = _table()
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    monkeypatch.setattr(session_data, "read_cleaned_parquet", lambda sid: buf.getvalue())
+    s = _session()
+    s.cleaned_data_path = "x"
+    assert set(REPS) <= chat._last_turn_pii(s)

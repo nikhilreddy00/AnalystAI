@@ -788,8 +788,10 @@ _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 _PHONE_RE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)")
 # International (E.164-style, "+44 20 7946 0958"): 8–15 digits after a leading +.
-# Separators are required between groups, so "+1234567.89" (a delta) isn't a phone.
-_INTL_PHONE_RE = re.compile(r"(?<![\w+])\+\d{1,3}(?:[\s.-]\(?\d{1,8}\)?){1,5}(?![\w%.])")
+# Grouped ("+44 20 7946 0958") or bare E.164 ("+14155552671"); a decimal tail means a number
+# ("+1234567.89" is a delta, not a phone).
+_INTL_PHONE_RE = re.compile(r"(?<![\w+])\+(?:\d{1,3}(?:[\s.-]\(?\d{1,8}\)?){1,5}|\d{8,15})"
+                            r"(?![\w%]|\.\d)")
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 _IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)"
                       r"(?![\d.])")
