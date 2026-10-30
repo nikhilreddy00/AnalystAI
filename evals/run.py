@@ -955,7 +955,7 @@ def _pct(values: list[float], q: float) -> float:
 
 
 _NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped",
-                "pii_tokenized"}
+                "pii_tokenized", "rank_removed"}
 
 
 def summarize(runs: dict[str, list[dict]]) -> dict:

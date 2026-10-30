@@ -26,7 +26,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents.analysis_agent import ANALYSIS_CARD, segment_id
+from agents.analysis_agent import ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
 from agents.utils import pii_columns, strip_markdown_fences
 from guardrails import (
@@ -36,6 +36,7 @@ from guardrails import (
     mask_pii,
     ungrounded_dates,
     ungrounded_numbers,
+    claim_rank_conflict,
     without_dates,
 )
 from llm.client import LLMClient, trace_verdict
@@ -51,6 +52,7 @@ from orchestrator.state import (
     ExecutiveSummary,
     InsightReport,
     RecommendedAction,
+    SegmentResult,
     Severity,
 )
 
@@ -89,6 +91,7 @@ _SYSTEM = (INSIGHT_CARD.render() + "\n\n" + (_PROMPTS / f"{PROMPT_VERSION}.md").
            + "\n" + UNTRUSTED_NOTE)
 
 _MAX_EVIDENCE = 40     # ponytail: an item cap, not a token budget; revisit for wide tables
+_MAX_GROUPS = 20       # breakdown cells shown per segment; more are counted, never cut silently
 _CONVENTIONS = [0.05, 0.01, 0.001, 0.95, 0.99]   # significance levels prose may cite
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
 
@@ -150,6 +153,19 @@ def _by_person(e: Evidence, session: AnalysisSession) -> bool:
     return any(c in pii_columns(session.data_contract) for c in cols)
 
 
+def _values(e: Evidence, by_id: dict) -> str:
+    """A finding's results in full, read by id (the stored excerpt is cut at 500 characters and
+    hid the 4th cell of a 2×2 breakdown); other kinds keep their excerpt."""
+    found = by_id.get(e.id)
+    if found is None:
+        return e.result_excerpt[:300]
+    more = len(getattr(found, "results", [])) - _MAX_GROUPS
+    if more > 0:
+        found = found.model_copy(update={"results": found.results[:_MAX_GROUPS]})
+    return json.dumps(found.model_dump(), default=str) + (f" (+{more} more groups not shown)"
+                                                          if more > 0 else "")
+
+
 def build_context(session: AnalysisSession, past: list[str] | None = None) -> InsightContext:
     findings, audit, contract = session.analysis_findings, session.cleaning_audit, session.data_contract
     narrative = session.narrative
@@ -190,15 +206,15 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
             chart_of.setdefault(i, c.title)
         chart_lines.append(f"- {mask_pii(c.title)} (shows {', '.join(ids)})")
 
-    lines = []
+    lines, by_id = [], findings_by_id(findings)
     for e in evidence:
         line = (f"- [{e.id}] {e.claim} | rows: {e.row_count:,} | confidence: {e.confidence} "
                 f"({e.confidence_reason})")
         if e.kind == "trend" and e.id.endswith(":YoY") and 0 < months < 13:
             line += (f" | caution: the data covers {months} months, so this compares partial "
                      "years; do not report it as a year-over-year change")
-        if e.kind != "cleaning":
-            line += f" | values: {e.result_excerpt[:300]}"
+        if e.kind not in ("cleaning", "source"):
+            line += f" | values: {_values(e, by_id)}"
         if e.assumptions:
             line += f" | notes: {'; '.join(e.assumptions[:3])}"
         lines.append(str(mask_pii(line)))
@@ -255,14 +271,20 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     narrative = session.narrative
     evidence = {e.id: e for e in findings.evidence}
     pool, has_dates = ctx.pool(), ctx.first is not None
-    removed = {"sentences": 0, "uncited": 0}
+    removed = {"sentences": 0, "uncited": 0, "ranks": 0}
+    # The quality check's rank rule as a repair: "B has the lowest average (98.06)" when C does
+    # (ins-02, in all 3 runs) is removed before the report ships.
+    groups = [{"id": i, "values": [(str(r.get("name")), r.get("value")) for r in f.results]}
+              for i, f in findings_by_id(findings).items() if isinstance(f, SegmentResult)]
 
     def ok(sentence: str, executive: bool) -> bool:
         bad = (ungrounded_numbers(without_dates(sentence, has_dates), pool)
                or ungrounded_dates(sentence, ctx.first, ctx.last)
                or (executive and executive_jargon(sentence)))
         removed["sentences"] += bool(bad)
-        return not bad
+        misranked = not bad and claim_rank_conflict(sentence, groups) is not None
+        removed["ranks"] += misranked
+        return not bad and not misranked
 
     def fix(text, executive: bool = True) -> str:
         text = _clean_for_executive(str(text or ""), narrative) if executive else str(text or "")
@@ -313,12 +335,17 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
         trace_verdict("insight", PROMPT_VERSION, "grounding_rewritten")
     if removed["uncited"]:
         trace_verdict("insight", PROMPT_VERSION, "uncited_dropped")
+    if removed["ranks"]:
+        trace_verdict("insight", PROMPT_VERSION, "rank_removed")
     if not data:
         caveats.append("The written summary could not be generated; the findings above are the "
                        "computed results, stated plainly.")
     if removed["sentences"] or removed["uncited"]:
         caveats.append(f"{removed['sentences']} sentence(s) stating a number, date or term not "
                        f"in the evidence and {removed['uncited']} uncited claim(s) were removed.")
+    if removed["ranks"]:
+        caveats.append(f"{removed['ranks']} sentence(s) ranking a group differently from its "
+                       "breakdown were removed.")
 
     executive = ExecutiveSummary(headline=headline, headline_evidence_ids=head_ids,
                                  paragraphs=summary, findings=claims, action_items=actions)

@@ -595,6 +595,7 @@ class AnalysisSession(BaseModel):
     narrative: DataNarrative | None = None  # PROMPT-2 follow-up: LLM-generated display names + entity, built once per dataset
     iteration: int = 0
     quality_check_attempts: int = 0        # FEAT-02: entries into quality_check_node per graph run
+    high_null_answer: str | None = None    # the high-null gate's answer ("continue" | "drop"): asked once
     overview_done: bool = False            # Phase 3: True after first comprehensive analysis ships; resets when connector_config changes
     dataset_name: str | None = None
     file_hash: str | None = None

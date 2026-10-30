@@ -297,3 +297,42 @@ def test_a_year_inside_a_multi_year_range_survives_without_a_cue():
     _, hard = score_insight(_case("ins-04"), {"report": report.model_dump(mode="json"),
                                               "bundle": bundle}, None)
     assert all(h["ok"] for h in hard if h["rule"] in ("insight_grounded", "insight_dates_in_range"))
+
+
+def test_a_wrong_superlative_is_removed_and_the_right_ranking_kept():
+    """Quality carry-over (ins-02, all 3 runs): 'B has the lowest average' when C does. The
+    quality check's rank rule now repairs the report before it ships."""
+    session = _bundle("ins-02")[0]
+    seg = "seg:segment/revenue"
+    wrong = ("Segment B also carries the lowest average revenue per order at $98.06, sitting below "
+             "both segment A at $121.29.")
+    right = "Segment B's mean revenue per order is $98.06, above segment C at $78.88."
+    report, _ = _run(_good(findings=[{"text": f"{right} {wrong}", "evidence": [seg]}]), session)
+    assert report.executive_view.findings[0].text == right
+    assert any("ranking a group" in c for c in report.analyst_view.caveats)
+
+
+def test_breakdowns_reach_the_prompt_whole_not_cut_at_300_characters():
+    """Quality carry-over: a 2-way breakdown's excerpt was cut at 300 characters, so insight saw
+    3 of 4 cells. Values are read by id: every cell, or an explicit count of the rest."""
+    from agents.analysis_agent import build_evidence, segment_id
+    from orchestrator.state import SegmentResult
+    s = SESSION.model_copy(deep=True)
+    sid = segment_id("segment|region", "revenue")
+    cells = [{"name": f"{a}|{b}-long-label-region-name", "value": 100.0 + i}
+             for i, (a, b) in enumerate((x, y) for x in "ABCDEFG" for y in ("North", "South", "East", "West"))]
+
+    def line_for(results):
+        s.analysis_findings.segments = [SegmentResult(segment_column="segment|region",
+                                                      metric_column="revenue", aggregation="mean",
+                                                      results=results)]
+        s.analysis_findings.evidence = build_evidence(s.analysis_findings, {}, "#", "#", None)
+        excerpt = next(e.result_excerpt for e in s.analysis_findings.evidence if e.id == sid)
+        return next(x for x in build_context(s).evidence.splitlines() if f"[{sid}]" in x), excerpt
+
+    line, excerpt = line_for(cells[:4])
+    assert cells[3]["name"] not in excerpt[:300]           # the old view lost the 4th cell
+    assert all(c["name"] in line for c in cells[:4])        # the new one has every cell
+    line, _ = line_for(cells[:25])
+    assert cells[19]["name"] in line and cells[20]["name"] not in line
+    assert "(+5 more groups not shown)" in line

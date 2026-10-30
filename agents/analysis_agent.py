@@ -551,6 +551,17 @@ def segment_id(segment_column: str, metric: str, aggregation: str = "mean") -> s
     return base if (aggregation or "mean") == "mean" else f"{base}:{aggregation}"
 
 
+def findings_by_id(f: AnalysisFindings | None) -> dict[str, TrendResult | SegmentResult]:
+    """Trend and segment findings by their Evidence id (the ids evidence and visualization use),
+    so readers get the full results, never the truncated `result_excerpt` (insight, quality)."""
+    if f is None:
+        return {}
+    out: dict = {segment_id(s.segment_column, s.metric_column, s.aggregation): s for s in f.segments}
+    out |= {f"trend:{t.column}" + (f" ({t.segment})" if t.segment else "") + f":{t.period}": t
+            for t in f.trends}
+    return out
+
+
 def _num(v: Any) -> str:
     v = float(v)
     return f"{v:,.2f}" if abs(v) >= 1 else f"{v:.4g}"

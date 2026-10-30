@@ -22,7 +22,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents.analysis_agent import segment_id
+from agents.analysis_agent import findings_by_id
 from agents.errors import AgentError
 from agents import insight_agent
 from agents.insight_agent import InsightContext
@@ -117,19 +117,6 @@ def _excerpt(e: Evidence):
         return None   # the excerpt is stored truncated: long results don't parse
 
 
-def _findings_by_id(session: AnalysisSession) -> dict[str, object]:
-    """Trend and segment findings by their Evidence id (the ids analysis and visualization
-    use), so checks read the full results, not the truncated excerpt."""
-    f = session.analysis_findings
-    if f is None:
-        return {}
-    out: dict[str, object] = {segment_id(s.segment_column, s.metric_column, s.aggregation): s
-                              for s in f.segments}
-    out |= {f"trend:{t.column}" + (f" ({t.segment})" if t.segment else "") + f":{t.period}": t
-            for t in f.trends}
-    return out
-
-
 def _trend(e: Evidence, found: dict) -> dict | None:
     if e.kind != "trend":
         return None
@@ -170,7 +157,7 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     evidence = {e.id: e for e in (session.analysis_findings.evidence
                                   if session.analysis_findings else [])}
     lines, pool, has_dates = _evidence_lines(ctx), ctx.pool(), ctx.first is not None
-    every, by_id = list(evidence.values()), _findings_by_id(session)
+    every, by_id = list(evidence.values()), findings_by_id(session.analysis_findings)
     labels = {p for e in every if (g := _groups(e, by_id)) for n, _ in g["values"]
               for p in n.split("|")}
     labels |= {t["segment"] for e in every if (t := _trend(e, by_id)) and t["segment"]}
@@ -241,7 +228,7 @@ def build_context(session: AnalysisSession, report: InsightReport,
                   flags: list[ReviewFlag], ctx: InsightContext) -> QualityContext:
     claims = report_claims(report)
     contract = session.data_contract
-    values, found = [], _findings_by_id(session)
+    values, found = [], findings_by_id(session.analysis_findings)
     for e in session.analysis_findings.evidence if session.analysis_findings else []:
         if insight_agent._by_person(e, session):
             continue   # people's names: kept out of every prompt, as in the insight context

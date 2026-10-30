@@ -300,8 +300,9 @@ def known_pii_values(df: pd.DataFrame, contract: DataContract) -> set[str]:
                 found.update({f"{v:%Y-%m-%d}", str(v)})
                 continue
             t = str(int(v)) if isinstance(v, float) and v.is_integer() else str(v).strip()
-            found.add(t)
+            found.update({t, *pii_strings(t)})   # the cell, and an email inside a longer note
     for col in df.columns:
+        found.update(pii_strings(col))   # a pivoted export's headers can be emails
         if col not in contract.pii_columns and pd.api.types.is_string_dtype(df[col]):
             for v in df[col].dropna().astype(str).head(_PII_CAP):
                 found.update(pii_strings(v))

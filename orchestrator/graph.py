@@ -263,7 +263,10 @@ async def cleaning_node(state: AgentState) -> dict:
         return {"session": session, "df_parquet": state.get("df_parquet")}
 
     try:
-        drop = answer.startswith("drop") or answer.rstrip(").") == "b"
+        if answer:   # remembered: the gate is asked once per session, later turns reuse it
+            drop_now = answer.startswith("drop") or answer.rstrip(").") == "b"
+            session.high_null_answer = "drop" if drop_now else "continue"
+        drop = session.high_null_answer == "drop"
         _, audit = await run_cleaning_agent(session, drop_high_null=drop)
         session.cleaning_audit = audit
 
@@ -272,7 +275,8 @@ async def cleaning_node(state: AgentState) -> dict:
 
         # Only gate on high-null if this isn't already an approval response.
         # is_approval=True means the user already approved the data quality warning.
-        if audit.high_null_columns and not state.get("is_approval"):
+        if audit.high_null_columns and not state.get("is_approval") \
+                and session.high_null_answer is None:
             _emit(state, {
                 "type": "approval_required",
                 "context": "high_null",
@@ -700,6 +704,7 @@ def build_graph():
     })
     graph.add_conditional_edges("cleaning", route_after_cleaning, {
         "analysis": "analysis",
+        "targeted_analysis": "targeted_analysis",
         "human_approval": "human_approval",
         "error": "error",
     })

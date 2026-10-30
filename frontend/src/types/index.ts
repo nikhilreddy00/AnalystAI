@@ -231,7 +231,7 @@ export interface BriefingEvent {
 // Phase 3 (ADR-0001): why a finding can be trusted. Mirrors orchestrator/state.py Evidence.
 export interface Evidence {
   id: string;
-  kind: "correlation" | "trend" | "segment" | "anomaly" | "test" | "query" | "cleaning" | "eda";
+  kind: "correlation" | "trend" | "segment" | "anomaly" | "test" | "query" | "cleaning" | "eda" | "source";
   claim: string;
   code: string;
   result_excerpt: string;

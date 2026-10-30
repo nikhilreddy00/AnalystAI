@@ -133,3 +133,15 @@ def test_guard_leaves_calendar_words_and_short_values():
     df = pd.DataFrame({"first_name": ["May", "Al", "Grace"], "amount": [1, 2, 3]})
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
     assert known_pii_values(df, contract) == {"Grace"}
+
+
+def test_guard_pattern_follows_the_values_not_the_set_object():
+    """Security review: a pattern cached by id(set) could serve a dead run's pattern to a new
+    run whose set reused the id, leaving the new values unmasked."""
+    from llm.client import pseudonymize
+    a = {"Jane Doe"}
+    assert pseudonymize("Jane Doe", a)[0] != "Jane Doe"
+    a.clear()
+    a.add("Omar Haddad")             # same object, same size, new contents
+    out, _ = pseudonymize("Omar Haddad and Jane Doe", a)
+    assert "Omar Haddad" not in out and "Jane Doe" in out

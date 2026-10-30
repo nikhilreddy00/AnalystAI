@@ -13,6 +13,7 @@ import re
 import time
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -40,7 +41,6 @@ trace_meter: ContextVar[list[dict] | None] = ContextVar("trace_meter", default=N
 # naming a customer still works while the model never sees the name.
 pii_values: ContextVar[set[str] | None] = ContextVar("pii_values", default=None)
 _TOKEN_RE = re.compile(r"\[PII_[0-9a-f]{8}\]")
-_patterns: dict[tuple[int, int], re.Pattern] = {}
 
 
 def pii_token(value: str) -> str:
@@ -57,24 +57,28 @@ def _walk(obj, fn):
     return obj
 
 
+@lru_cache(maxsize=8)
+def _pattern(values: frozenset[str]) -> re.Pattern:
+    """Keyed on the values themselves (never object identity: a new run's set could reuse a dead
+    set's id and get its pattern, leaving its own values unmasked). Several runs can be live."""
+    alts = "|".join(re.escape(v) for v in sorted(values, key=len, reverse=True))
+    return re.compile(rf"(?<![\w@.])(?:{alts})(?![\w@])")
+
+
 def pseudonymize(obj, values: set[str] | None = None):
     """(obj with every known PII value replaced by its token, {token: value} for what was
     replaced). `values` defaults to the current run's set; no set → unchanged."""
     values = pii_values.get() if values is None else values
     if not values:
         return obj, {}
-    key = (id(values), len(values))   # ponytail: one compiled pattern per set size; fine ≤ ~20k values
-    if key not in _patterns:
-        _patterns.clear()
-        alts = "|".join(re.escape(v) for v in sorted(values, key=len, reverse=True))
-        _patterns[key] = re.compile(rf"(?<![\w@.])(?:{alts})(?![\w@])")
+    pattern = _pattern(frozenset(values))   # ponytail: O(n) key per call; fine ≤ ~20k values
     mapping: dict[str, str] = {}
 
     def sub(m: re.Match) -> str:
         token = pii_token(m.group())
         mapping[token] = m.group()
         return token
-    return _walk(obj, lambda t: _patterns[key].sub(sub, t)), mapping
+    return _walk(obj, lambda t: pattern.sub(sub, t)), mapping
 
 
 def restore(obj, mapping: dict[str, str]):

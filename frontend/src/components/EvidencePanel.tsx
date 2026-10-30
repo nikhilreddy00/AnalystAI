@@ -33,6 +33,7 @@ const KIND = {
   query: "SQL query",
   cleaning: "Cleaning",
   eda: "Summary stats",
+  source: "Data source",
 };
 
 interface Props {
