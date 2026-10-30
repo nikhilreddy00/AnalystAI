@@ -95,8 +95,10 @@ async def chat(
                 )
         except HTTPException:
             raise
-        except Exception:
-            pass
+        except Exception as exc:
+            # Fail closed: never fall through to a new session under an id we couldn't check.
+            raise HTTPException(status_code=503, detail="Your conversation could not be loaded. "
+                                "Try again in a moment.") from exc
 
     if session is None:
         session_id = body.session_id or str(uuid.uuid4())
@@ -131,7 +133,7 @@ async def chat(
         session.status = "in_progress"
         session.task_plan = None
 
-    active = await runs.active_for_session(session.session_id)
+    active = await runs.active_for_session(session.session_id, current_user.uid)
     if body.is_approval and body.approval_context in GATES:
         if active and active.status in ("queued", "running"):   # this answer was already sent
             return active.public()

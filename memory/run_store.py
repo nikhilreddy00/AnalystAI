@@ -117,8 +117,9 @@ class InMemoryRunStore:
         r = self._runs.get(run_id)
         return replace(r) if r else None
 
-    async def active_for_session(self, session_id: str) -> Run | None:
-        live = [r for r in self._runs.values() if r.session_id == session_id and r.status in ACTIVE]
+    async def active_for_session(self, session_id: str, user_id: str) -> Run | None:
+        live = [r for r in self._runs.values() if r.session_id == session_id
+                and r.user_id == user_id and r.status in ACTIVE]
         return replace(live[-1]) if live else None
 
     async def claim(self, lease_s: float = LEASE_S) -> Run | None:
@@ -279,12 +280,12 @@ class RunStore:
                                     {"id": run_id})).first()
             return self._run(row) if row else None
 
-    async def active_for_session(self, session_id: str) -> Run | None:
+    async def active_for_session(self, session_id: str, user_id: str) -> Run | None:
         async with self._db() as db:
             row = (await db.execute(text(
-                "SELECT * FROM runs WHERE session_id = :sid AND status = ANY(:active) "
-                "ORDER BY created_at DESC LIMIT 1"),
-                {"sid": session_id, "active": list(ACTIVE)})).first()
+                "SELECT * FROM runs WHERE session_id = :sid AND user_id = :uid "
+                "AND status = ANY(:active) ORDER BY created_at DESC LIMIT 1"),
+                {"sid": session_id, "uid": user_id, "active": list(ACTIVE)})).first()
             return self._run(row) if row else None
 
     async def claim(self, lease_s: float = LEASE_S) -> Run | None:

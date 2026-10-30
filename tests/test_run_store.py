@@ -90,7 +90,8 @@ async def test_cancel_and_resume(store):
     assert await store.request_cancel(running.id, []) == "running"
     assert await store.heartbeat(running.id, claimed.attempt) == (True, True)
     await store.finish(running.id, "waiting_approval", attempt=claimed.attempt)
-    assert (await store.active_for_session("b")).status == "waiting_approval"
+    assert (await store.active_for_session("b", "u1")).status == "waiting_approval"
+    assert await store.active_for_session("b", "u2") is None   # another user's run is invisible
     assert await store.resume(running.id, {"answer": "Continue"})
     again = await store.claim()
     assert again.resume == {"answer": "Continue"} and not again.cancel_requested

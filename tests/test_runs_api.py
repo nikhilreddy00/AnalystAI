@@ -128,3 +128,25 @@ async def test_runs_are_private(api, replay):  # noqa: F811
                   await other.post(f"/runs/{run['run_id']}/cancel"),
                   await other.post(f"/runs/{run['run_id']}/retry")):
             assert r.status_code == 404
+
+
+async def test_another_users_session_id_reaches_none_of_their_runs(api):
+    """Security review: a session id is not a key. Another user naming it can neither answer,
+    cancel nor see the owner's waiting run, and a failed session load fails closed."""
+    client, deps, cfg = api
+    mine = (await client.post("/chat", json={"message": "q", "connector_config": cfg})).json()
+    await deps.run_store.claim()
+    await deps.run_store.finish(mine["run_id"], "waiting_approval")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_app(deps, uid="u2")),
+                                 base_url="http://t") as other:
+        r = await other.post("/chat", json={"message": "Drop", "is_approval": True,
+                                            "approval_context": "high_null",
+                                            "session_id": mine["session_id"]})
+        assert r.status_code == 403
+    assert (await deps.run_store.get(mine["run_id"])).status == "waiting_approval"
+
+    async def broken(_sid):
+        raise ConnectionError("db down")
+    deps.session_store.load = broken
+    r = await client.post("/chat", json={"message": "q", "session_id": "anything"})
+    assert r.status_code == 503

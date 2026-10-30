@@ -90,7 +90,7 @@ async def retry_run(run_id: str, request: Request,
     """Retry from where it failed: resumes from the checkpoint before the failed step."""
     run = await _owned(request, run_id, current_user)
     store = request.app.state.run_store
-    other = await store.active_for_session(run.session_id)
+    other = await store.active_for_session(run.session_id, run.user_id)
     if other and other.id != run.id:
         raise HTTPException(status_code=409, detail="Another analysis is running in this "
                             "conversation. Wait for it to finish, or stop it.")
