@@ -995,3 +995,125 @@ def score_quality(labels: list[dict], output: dict | None, error: str | None,
          "detail": f"echoed {echoed}" if echoed else "ok"},
     ]
     return checks, hard
+
+
+# ── Ingestion (Phase 5): load fidelity, column roles, PII kept out of every prompt ────────────
+
+def ingestion_role(col: dict) -> str:
+    """The role a contract column claims (date > id > metric > category: one wins)."""
+    return ("date" if col.get("is_date") else "id" if col.get("is_id")
+            else "metric" if col.get("is_metric") else "category")
+
+
+def _literal_re(lit: str) -> re.Pattern:
+    return re.compile(rf"(?<![\w@.]){re.escape(lit)}(?![\w@])")
+
+
+def leaked(text: str, literals: list[str]) -> list[str]:
+    """Planted PII strings that appear in `text` (case-sensitive, whole-token)."""
+    return [lit for lit in literals if lit in text and _literal_re(lit).search(text)]
+
+
+def loaded_cell(v: Any) -> Any:
+    """A loaded cell as stored in the report: clean_cell, but dates stay tagged as dates."""
+    if isinstance(v, (pd.Timestamp, datetime.datetime, datetime.date)) and not pd.isna(v):
+        return {"ts": pd.Timestamp(v).isoformat()}
+    if isinstance(v, str) and not v.strip():   # an empty CSV field reads back as missing
+        return None
+    return clean_cell(v)
+
+
+def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
+    """A correct load: numbers as numbers, text as the same text, dates as text or parsed."""
+    if isinstance(got, dict) and "ts" in got:
+        got = pd.Timestamp(got["ts"])
+    if want is None:
+        return got is None
+    if isinstance(want, (int, float)) and not isinstance(want, bool):
+        if isinstance(got, pd.Timestamp) and dayfirst is not None:   # epoch seconds, converted
+            return got == pd.to_datetime(int(want), unit="s")
+        return isinstance(got, float) and math.isclose(got, float(want), rel_tol=1e-6, abs_tol=1e-6)
+    if isinstance(want, pd.Timestamp):
+        return isinstance(got, pd.Timestamp) and got.normalize() == want.normalize()
+    if isinstance(got, str):
+        return got.strip() == str(want).strip()
+    if isinstance(got, pd.Timestamp) and dayfirst is not None:   # a parsed date column
+        try:
+            return got == pd.to_datetime(str(want), dayfirst=dayfirst)
+        except (TypeError, ValueError):
+            return False
+    return False
+
+
+def score_ingestion(truth: dict, output: dict | None, error: str | None
+                    ) -> tuple[list[dict], list[dict]]:
+    """(checks, hard). `truth` comes from the case (evals.run.ingestion_truth), never from the
+    agent. PII recall is behavioural: a planted column counts as protected only if none of its
+    literals appears in any LLM-bound text (the contract the prompts read from, plus every LLM
+    request the run made). Traps: columns that look PII-ish but aren't must keep their samples.
+    Hard rules: no planted literal anywhere (canary), no silent misload, the summary's numbers
+    and dates grounded in the true table, and every contract carries source evidence."""
+    if truth["expect_error"]:
+        typed = bool(error) and error.startswith("IngestionError")
+        return ([{"kind": "error", "ok": typed,
+                  "detail": "typed IngestionError" if typed else (error or "loaded without error")}],
+                [{"rule": "silent_misload", "ok": bool(error), "detail": error or "no error raised"}])
+    cols = truth["columns"]
+    if output is None:
+        fail = [{"kind": "load", "ok": False, "detail": error or "no output"}]
+        fail += [{"kind": "role", "column": c, "ok": False, "detail": "no output"} for c in cols]
+        fail += [{"kind": "pii", "column": c, "pii": t["pii"], "ok": False, "detail": "no output"}
+                 for c, t in cols.items() if t["pii"]]
+        return fail, [{"rule": "silent_misload", "ok": True, "detail": "explicit error"}]
+
+    contract, loaded = output["contract"], output["loaded"]
+    checks: list[dict] = []
+    # Load fidelity: header, row count and the sampled cells.
+    problems = []
+    if loaded["columns"] != truth["order"]:
+        problems.append(f"columns {loaded['columns'][:6]}… ≠ {truth['order'][:6]}…")
+    if loaded["rows"] != truth["rows"]:
+        problems.append(f"{loaded['rows']} rows ≠ {truth['rows']}")
+    got_cells = {(r, c): v for r, c, v in loaded["cells"]}
+    for r, c, want in truth["cells"]:
+        got = got_cells.get((r, c), "<missing>")
+        want = pd.Timestamp(want["ts"]) if isinstance(want, dict) else want
+        if not _same_loaded(want, got, cols.get(c, {}).get("dayfirst")):
+            problems.append(f"[{r}, {c}] {got!r} ≠ {want!r}")
+    checks.append({"kind": "load", "ok": not problems, "detail": "; ".join(problems[:4]) or "ok"})
+
+    by_name = {c["name"]: c for c in contract["columns"]}
+    for name, t in cols.items():
+        got = ingestion_role(by_name[name]) if name in by_name else "missing"
+        checks.append({"kind": "role", "column": name, "ok": got in t["roles"],
+                       "detail": f"{got}" + ("" if got in t["roles"] else f" (want {'/'.join(t['roles'])})")})
+
+    prompt_text = json.dumps(contract, ensure_ascii=False, default=str)
+    sent = prompt_text + "\n".join(output.get("requests", []))
+    for name, t in cols.items():
+        if t["pii"]:
+            hits = leaked(sent, t["literals"])
+            checks.append({"kind": "pii", "column": name, "pii": t["pii"], "ok": not hits,
+                           "detail": f"{len(hits)} values reach a prompt" if hits else "masked"})
+        elif t["trap"] and name in by_name:   # a missing column already fails the load check
+            masked = any("[REDACTED]" in str(v) for v in by_name[name].get("sample_values", []))
+            checks.append({"kind": "overmask", "column": name, "ok": not masked,
+                           "detail": "masked although not PII" if masked else "kept"})
+
+    all_lits = [lit for t in cols.values() for lit in t["literals"]]
+    canary = leaked(sent, all_lits)
+    summary = contract.get("schema_summary", "")
+    bad = ungrounded_numbers(without_dates(summary, True), truth["facts"])
+    bad += ungrounded_dates(summary, *(tuple(x) if x else None for x in truth["date_span"]))
+    src = contract.get("source_evidence")
+    hard = [
+        {"rule": "pii_canary", "ok": not canary,
+         "detail": f"{len(canary)} planted PII values reach a prompt" if canary else "ok"},
+        {"rule": "silent_misload", "ok": checks[0]["ok"] or bool(error),
+         "detail": checks[0]["detail"]},
+        {"rule": "summary_grounded", "ok": not bad, "detail": ", ".join(bad[:5]) or "ok"},
+        {"rule": "source_evidence", "ok": bool(src and src.get("kind") == "source"
+                                               and contract.get("fingerprint")),
+         "detail": "ok" if src else "no source evidence"},
+    ]
+    return checks, hard

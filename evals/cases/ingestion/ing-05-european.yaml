@@ -1,0 +1,21 @@
+id: ing-05-european
+category: layout
+seed: 15
+rows: 300
+format:
+  type: csv
+  sep: ;
+  decimal: ','
+  encoding: cp1252
+columns:
+- - order_id
+  - id_str
+- - order_date
+  - date_eu
+- - city
+  - city_accents
+- - amount
+  - money
+- - customer_name
+  - full_name
+label_note: 'European Excel export: semicolons, decimal comma, cp1252 accents, day-first dates.'

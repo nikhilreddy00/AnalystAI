@@ -1,0 +1,26 @@
+id: ing-01-orders-basic
+category: roles
+seed: 11
+rows: 300
+format:
+  type: csv
+columns:
+- - order_id
+  - id_seq
+- - order_date
+  - date_iso
+- - region
+  - region
+- - product_name
+  - product_name
+- - units
+  - count
+- - unit_price
+  - money
+- - discount
+  - rate01
+- - customer_email
+  - email
+- - customer_name
+  - full_name
+label_note: 'Plain comma CSV: the baseline shape every small shop exports.'

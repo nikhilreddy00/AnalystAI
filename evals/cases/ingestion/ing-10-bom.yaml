@@ -1,0 +1,17 @@
+id: ing-10-bom
+category: layout
+seed: 20
+rows: 300
+format:
+  type: csv
+  encoding: utf-8-sig
+columns:
+- - id
+  - id_seq
+- - created
+  - datetime_iso
+- - status
+  - plan
+- - amount
+  - money
+label_note: 'UTF-8 with BOM: the first header must read ''id'', not ''\ufeffid''.'

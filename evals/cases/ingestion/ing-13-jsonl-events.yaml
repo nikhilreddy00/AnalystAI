@@ -1,0 +1,20 @@
+id: ing-13-jsonl-events
+category: pii
+seed: 23
+rows: 300
+format:
+  type: jsonl
+columns:
+- - event_id
+  - uuid
+- - created_ts
+  - epoch_s
+- - user_email
+  - email
+- - client_ip
+  - ip
+- - page
+  - plan
+- - duration_s
+  - count
+label_note: 'Event log as JSON lines: epoch timestamps, emails, IP addresses.'

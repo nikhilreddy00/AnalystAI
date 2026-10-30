@@ -1,0 +1,17 @@
+id: reg-subscriptions
+category: regression
+dataset:
+  name: subscriptions
+  seed: 7
+roles:
+  account_id: id
+  billing_date: date
+  plan: category
+  mrr: metric
+  seats: metric
+  churned:
+  - metric
+  - category
+  support_tickets: metric
+pii: {}
+label_note: 'An existing eval dataset: roles every other suite depends on must not regress.'

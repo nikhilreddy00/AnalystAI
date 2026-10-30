@@ -1,0 +1,24 @@
+id: ing-16-subscriptions-holdout
+category: roles
+seed: 26
+rows: 300
+format:
+  type: csv
+columns:
+- - account_number
+  - id_seq
+- - mrr
+  - money
+- - seats
+  - count
+- - churned
+  - flag01
+- - renewal_date
+  - date_us
+- - billing_zip
+  - zip_int
+- - contact_phone
+  - phone_us
+- - first_name
+  - first_name
+label_note: 'SaaS accounts: zip and account number are not metrics; first names include ''May'' and ''June''.'

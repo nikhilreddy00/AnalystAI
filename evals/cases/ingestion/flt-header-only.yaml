@@ -1,0 +1,5 @@
+id: flt-header-only
+category: fault
+file: header_only.csv
+expect_error: true
+label_note: 'Headers and no rows: nothing to analyze, say so.'

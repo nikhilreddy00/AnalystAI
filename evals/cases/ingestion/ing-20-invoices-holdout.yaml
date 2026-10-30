@@ -1,0 +1,24 @@
+id: ing-20-invoices-holdout
+category: pii
+seed: 30
+rows: 300
+format:
+  type: csv
+  encoding: cp1252
+  title_rows:
+  - Invoice register
+  - ''
+columns:
+- - invoice_no
+  - invoice10
+- - invoice_date
+  - date_us
+- - client
+  - company
+- - card
+  - card
+- - amount
+  - money
+- - notes
+  - notes_pii
+label_note: Invoice register with a title row, payment cards and contact details in notes.

@@ -1,0 +1,24 @@
+id: ing-19-payroll-holdout
+category: pii
+seed: 29
+rows: 300
+format:
+  type: csv
+columns:
+- - employee_id
+  - id_str
+- - employee_name
+  - full_name
+- - department
+  - plan
+- - salary
+  - money_text
+- - overtime_hours
+  - money
+- - hire_date
+  - date_iso
+- - ssn
+  - ssn
+- - timezone
+  - timezone
+label_note: 'Payroll: names, SSNs, salary as text, overtime is a number.'

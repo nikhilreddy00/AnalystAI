@@ -1,0 +1,22 @@
+id: ing-17-web-holdout
+category: layout
+seed: 27
+rows: 300
+format:
+  type: tsv
+columns:
+- - session_uuid
+  - uuid
+- - started_at
+  - datetime_iso
+- - device
+  - plan
+- - country_code
+  - country_code
+- - pageviews
+  - count
+- - bounce
+  - yesno
+- - visitor_ip
+  - ip
+label_note: Web sessions as TSV with visitor IPs.

@@ -1,0 +1,13 @@
+id: fx-eu-shop-orders
+category: fixture
+file: eu_shop_orders.csv
+truth_read: {sep: ';', decimal: ',', thousands: '.', dtype: {Order: str, Date: str}}
+roles: {Order: id, Date: date, Billing Name: [category, id], Email: [category, id], Total: metric,
+        Currency: category, Country: category, Payment Method: category}
+pii: {Billing Name: name, Email: email}
+expect:
+  rows: 16
+  columns: [Order, Date, Billing Name, Email, Total, Currency, Country, Payment Method]
+  cells: [[0, Total, 129.9], [12, Total, 1249.0], [2, Billing Name, "Chloé Dubois"], [2, Order, "#1003"]]
+label_note: 'Hand-written web-shop export from a European Excel: semicolons, decimal comma with a
+  thousands dot, day-first dates, accents. "Billing Name" holds people.'

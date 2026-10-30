@@ -1,0 +1,25 @@
+id: ing-06-title-rows
+category: layout
+seed: 16
+rows: 300
+format:
+  type: csv
+  title_rows:
+  - Acme Supplies Ltd
+  - Sales by Customer Detail
+  - January - December 2025
+  - ''
+columns:
+- - date
+  - date_us
+- - num
+  - id_str
+- - name
+  - full_name
+- - memo
+  - free_text
+- - amount
+  - money
+- - balance
+  - money
+label_note: Accounting-style export with report title rows above the header.

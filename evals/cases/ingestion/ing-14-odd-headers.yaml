@@ -1,0 +1,22 @@
+id: ing-14-odd-headers
+category: pii
+seed: 24
+rows: 300
+format:
+  type: csv
+  sep: '|'
+  encoding: latin-1
+columns:
+- - Customer Name
+  - full_name
+- - E-mail Address
+  - email
+- - Tel.
+  - phone_us
+- - CustEmail
+  - email
+- - Region
+  - region
+- - Amount
+  - money
+label_note: 'Headers as people type them: spaces, punctuation, camelCase; pipe-delimited latin-1.'

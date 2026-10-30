@@ -1,0 +1,25 @@
+id: ing-02-time-names
+category: roles
+seed: 12
+rows: 300
+format:
+  type: csv
+columns:
+- - account_id
+  - id_seq
+- - signup_date
+  - date_iso
+- - plan
+  - plan
+- - lifetime_value
+  - money
+- - runtime_min
+  - count
+- - overtime_hours
+  - money
+- - timezone
+  - timezone
+- - is_updated
+  - bool_text
+label_note: 'Names containing ''time''/''updated'' that are not dates: value, durations, a timezone, a
+  flag.'

@@ -19,6 +19,8 @@ frontend/.env.local
 uploads/
 *.parquet
 *.csv
+# Eval fixtures are hand-written fake data (no real people), committed on purpose.
+!evals/cases/ingestion/files/*.csv
 *.xlsx
 
 # Session data (per-session artifacts and parquet cache)
