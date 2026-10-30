@@ -659,14 +659,26 @@ def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
 _budget = {"max": float("inf"), "spent": 0.0}   # --max-usd: real money, so a hard stop
 
 
-def estimate_usd(suite: str, n_runs: int, reports: Path) -> float:
-    """Cost of n_runs at the last full report's cost per question (a guess before any run)."""
+def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | None = None,
+                 k: int = 1) -> float:
+    """Cost of the planned runs. Each case is priced at its own mean cost in the newest paid
+    report that ran it (an overview costs ~2.8x the E2E average, so the suite average under-
+    estimated a 5-overview gate by 132%); cases never run fall back to the newest full report's
+    average. A $0 checks-only run is no cost basis."""
+    paid = []
     for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
         rep = json.loads(p.read_text())
-        if not rep["meta"].get("only") and not rep["meta"].get("exclude") \
-                and not rep["meta"].get("checks_only"):   # a $0 checks-only run is no cost basis
-            return round(rep["summary"]["cost_per_question_usd"] * n_runs, 2)
-    return 0.0
+        if not rep["meta"].get("checks_only") and rep["summary"].get("cost_per_question_usd"):
+            paid.append(rep)
+    average = next((r["summary"]["cost_per_question_usd"] for r in paid
+                    if not r["meta"].get("only") and not r["meta"].get("exclude")), 0.0)
+    if case_ids is None:
+        return round(average * n_runs, 2)
+    total = 0.0
+    for cid in case_ids:
+        costs = next(([x["cost_usd"] for x in r["runs"][cid]] for r in paid if cid in r["runs"]), None)
+        total += (statistics.mean(costs) if costs else average) * k
+    return round(total, 2)
 
 
 async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | None:
@@ -1142,7 +1154,8 @@ async def main() -> None:
 
     cases = load_cases(args.suite, args.only, args.exclude)
     QUALITY_CHECKS_ONLY["on"] = args.checks_only
-    estimate = 0.0 if args.checks_only else estimate_usd(args.suite, len(cases) * args.k, Path(args.out))
+    estimate = 0.0 if args.checks_only else estimate_usd(
+        args.suite, len(cases) * args.k, Path(args.out), [c["id"] for c in cases], args.k)
     print(f"estimated cost ≈ ${estimate} (cap ${args.max_usd})", flush=True)
     if estimate > args.max_usd:
         raise SystemExit(f"estimate ${estimate} > --max-usd {args.max_usd}; narrow with --only/--k "

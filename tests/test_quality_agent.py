@@ -253,3 +253,26 @@ def test_values_come_from_the_findings_not_the_truncated_excerpt():
     q = quality_context(s, s.insight_report, [], insight_agent.build_context(s))
     line = next(v for v in q.values.splitlines() if v.startswith("[seg:segment/revenue]"))
     assert all(f"{g} = " in line for g in ("A", "B", "C"))
+
+
+def test_checks_raise_nothing_on_the_stored_real_overviews():
+    """The precision sweep as a standing test: the real E2E overviews written by the final
+    insight agent (gates from e2e-20261029T163644Z on; older ones hold the defects Phase 5
+    Insight fixed) were all read and are correct, so the code checks must flag none of them. A
+    new check, or a change to one, that misfires on real prose fails here, not in a paid run."""
+    import glob
+
+    from orchestrator.state import AnalysisSession
+    seen = 0
+    for path in sorted(glob.glob(str(EVALS_DIR / "reports" / "e2e-2026102*Z.json"))):
+        report = json.load(open(path))
+        if report["meta"]["started_at"] < "20261029T163644Z":
+            continue
+        for runs in report["runs"].values():
+            out = runs[0].get("output") or {}
+            if not out.get("insight_report"):
+                continue
+            s = AnalysisSession.model_validate(out)
+            assert check_claims(s, s.insight_report) == [], (path, [f.reason for f in check_claims(s, s.insight_report)])
+            seen += 1
+    assert seen >= 15

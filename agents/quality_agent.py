@@ -135,8 +135,8 @@ def _trend(e: Evidence, found: dict) -> dict | None:
         return None
     t = found.get(e.id)
     v = t.model_dump() if t is not None else _excerpt(e)
-    if not isinstance(v, dict) or "pct_change" not in v:
-        return None
+    if not isinstance(v, dict) or not isinstance(v.get("pct_change"), (int, float)):
+        return None   # no number to check against (a null change can't crash the review)
     return {"id": e.id, "pct": float(v["pct_change"]), "direction": v.get("direction", ""),
             "period": v.get("period", ""), "segment": v.get("segment"), "claim": e.claim}
 
@@ -404,10 +404,11 @@ async def run_quality_check(session: AnalysisSession, llm: LLMClient, critic: bo
         data = None
         try:
             data = await _ask(qctx, llm)
+            if data is None:
+                trace_verdict("quality", PROMPT_VERSION, "critic_unparseable")
         except AgentError:   # refusal, truncation, outage: the checks still stand
             trace_verdict("quality", PROMPT_VERSION, "critic_failed")
         if data is None:
-            trace_verdict("quality", PROMPT_VERSION, "critic_unavailable")
             note = (" The written review could not be generated this time; the flags come "
                     "from the automatic checks.")
         else:
