@@ -1,0 +1,14 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-05-simpson-minutes-holdout
+insight_case: ins-05-simpson-minutes-holdout
+category: straightforward
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: false
+defects: []
+natural:
+- i: 7
+  label: unclear
+  why: action asserts department 'explains almost no variation'; no variance share was computed

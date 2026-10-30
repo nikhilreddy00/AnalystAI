@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import copy
 import io
 import json
 import re
@@ -41,6 +42,7 @@ from evals.scoring import (
     bundle_facts,
     insight_claims,
     score_insight,
+    score_quality,
     score_intake,
     score_visualization,
 )
@@ -438,6 +440,93 @@ def score_insight_run(case: dict, output: dict | None, error: str | None) -> dic
             "holdout": case["id"].endswith("holdout")}
 
 
+_SOURCES: dict[str, dict] = {}
+
+
+def quality_report(case: dict) -> tuple[dict, list[dict]]:
+    """The stored insight report the case starts from, with its seeded defects applied, and one
+    label per claim (insight_claims order): seeded, natural (hand-labelled), unclear or
+    supported. Labels follow the claim text, so an appended finding can't shift them."""
+    from agents.insight_agent import _flatten_executive_to_text
+    from orchestrator.state import ExecutiveSummary
+    src = case["source"]
+    if src["report"] not in _SOURCES:
+        _SOURCES[src["report"]] = json.loads((EVALS_DIR / "reports" / src["report"]).read_text())
+    report = copy.deepcopy(
+        _SOURCES[src["report"]]["runs"][case["insight_case"]][src["run"]]["output"]["report"])
+    ev = report["executive_view"]
+    original = insight_claims(report)
+    slots = ([("headline", None)] if ev.get("headline") else []) + [
+        (sec, j) for sec in ("paragraphs", "findings", "action_items")
+        for j, x in enumerate(ev.get(sec) or [])]
+    assert len(slots) == len(original), case["id"]   # every claim has text in stored reports
+    for d in case.get("defects", []):
+        if d["op"] == "append":
+            ev[d["section"]].append({"text": d["text"], "evidence_ids": d["ids"]})
+            continue
+        sec, j = slots[d["i"]]
+        if sec == "headline":
+            ev["headline"] = d["text"]
+            ev["headline_evidence_ids"] = d.get("ids", ev.get("headline_evidence_ids", []))
+        else:
+            ev[sec][j] = {"text": d["text"], "evidence_ids": d.get("ids", ev[sec][j]["evidence_ids"])}
+    report["executive_summary"] = _flatten_executive_to_text(ExecutiveSummary.model_validate(ev))
+    by_text = {d["text"]: {"label": d["label"], "origin": "seeded", "kind": d["kind"]}
+               for d in case.get("defects", [])}
+    for n in case.get("natural", []):
+        by_text.setdefault(original[n["i"]]["text"], {
+            "label": n["label"], "kind": "natural",
+            "origin": "unclear" if n["label"] == "unclear" else "natural"})
+    labels = [{"text": c["text"], **by_text.get(c["text"], {"label": "supported", "origin": "supported"})}
+              for c in insight_claims(report)]
+    return report, labels
+
+
+_INSIGHT_CASES: dict[str, dict] = {}
+
+
+def _insight_case(cid: str) -> dict:
+    if not _INSIGHT_CASES:
+        _INSIGHT_CASES.update({c["id"]: c for c in load_cases("insight", None)})
+    return _INSIGHT_CASES[cid]
+
+QUALITY_CHECKS_ONLY = {"on": False}   # --checks-only: the deterministic half, at $0
+
+
+async def run_quality_case(case: dict) -> dict:
+    from agents.quality_agent import report_claims, run_quality_check
+    from orchestrator.state import InsightReport
+    report, _ = quality_report(case)
+    session, past, bundle = await insight_bundle(_insight_case(case["insight_case"]))
+    session.insight_report = InsightReport.model_validate(report)
+    # The production claim order must be the scorer's, or every flag would land on the wrong claim.
+    assert [c["text"] for c in report_claims(session.insight_report)] == \
+        [c["text"] for c in insight_claims(report)], case["id"]
+    review, error = None, None
+    try:
+        review = (await run_quality_check(session, get_client(), critic=not QUALITY_CHECKS_ONLY["on"],
+                                         past=past or None)
+                  ).model_dump(mode="json")
+    except Exception as exc:   # a loud failure is a failed case, not a crashed run
+        error = f"{type(exc).__name__}: {exc}"
+    output = {"review": review, "claims": insight_claims(report), "bundle": bundle,
+              "stored_evidence_ids": _SOURCES[case["source"]["report"]]["runs"][case["insight_case"]][
+                  case["source"]["run"]]["output"]["bundle"]["evidence_ids"]}
+    return {**score_quality_run(case, output, error), "output": output}
+
+
+def score_quality_run(case: dict, output: dict | None, error: str | None) -> dict:
+    _, labels = quality_report(case)
+    injected = _insight_case(case["insight_case"]).get("injected", [])
+    checks, hard = score_quality(labels, output, error, injected)
+    if output and output.get("stored_evidence_ids") is not None:   # the rebuilt session is the stored one
+        same = output["bundle"]["evidence_ids"] == output["stored_evidence_ids"]
+        hard.append({"rule": "bundle_reproduced", "ok": same,
+                     "detail": "ok" if same else "rebuilt evidence ids differ from the stored report"})
+    return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+            "holdout": case["id"].endswith("holdout"), "seeded": case["seeded"]}
+
+
 def cleaning_dataset(case: dict) -> tuple[pd.DataFrame, pd.DataFrame, list[dict], list[str]]:
     """(received, expected, manifest, protected): the dirty table after the CSV round trip the
     real upload goes through, and the columns that must never be filled."""
@@ -570,13 +659,26 @@ def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
 _budget = {"max": float("inf"), "spent": 0.0}   # --max-usd: real money, so a hard stop
 
 
-def estimate_usd(suite: str, n_runs: int, reports: Path) -> float:
-    """Cost of n_runs at the last full report's cost per question (a guess before any run)."""
+def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | None = None,
+                 k: int = 1) -> float:
+    """Cost of the planned runs. Each case is priced at its own mean cost in the newest paid
+    report that ran it (an overview costs ~2.8x the E2E average, so the suite average under-
+    estimated a 5-overview gate by 132%); cases never run fall back to the newest full report's
+    average. A $0 checks-only run is no cost basis."""
+    paid = []
     for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
         rep = json.loads(p.read_text())
-        if not rep["meta"].get("only") and not rep["meta"].get("exclude"):
-            return round(rep["summary"]["cost_per_question_usd"] * n_runs, 2)
-    return 0.0
+        if not rep["meta"].get("checks_only") and rep["summary"].get("cost_per_question_usd"):
+            paid.append(rep)
+    average = next((r["summary"]["cost_per_question_usd"] for r in paid
+                    if not r["meta"].get("only") and not r["meta"].get("exclude")), 0.0)
+    if case_ids is None:
+        return round(average * n_runs, 2)
+    total = 0.0
+    for cid in case_ids:
+        costs = next(([x["cost_usd"] for x in r["runs"][cid]] for r in paid if cid in r["runs"]), None)
+        total += (statistics.mean(costs) if costs else average) * k
+    return round(total, 2)
 
 
 async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | None:
@@ -588,7 +690,8 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         start = time.perf_counter()
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
                   "intake": run_intake_case, "visualization": run_visualization_case,
-                  "cleaning": run_cleaning_case, "insight": run_insight_case}[suite]
+                  "cleaning": run_cleaning_case, "insight": run_insight_case,
+                  "quality": run_quality_case}[suite]
         out = await runner(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
@@ -610,6 +713,7 @@ RESCORERS = {
     "visualization": score_visualization_run,
     "cleaning": score_cleaning_run,
     "insight": score_insight_run,
+    "quality": score_quality_run,
 }
 
 
@@ -716,6 +820,7 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         **_cleaning_quality(flat),
         **_insight_quality(flat),
         **_judge_quality(flat),
+        **_review_quality(flat),
     }
 
 
@@ -880,6 +985,46 @@ def _insight_quality(flat: list[dict]) -> dict:
     }
 
 
+def _review_quality(flat: list[dict]) -> dict:
+    """Phase 5 quality-check metrics (docs/ROADMAP.md Quality row), pooled over runs: recall on
+    the seeded defects (a flag on the claim), false alarms on claims labelled supported."""
+    if not any(c["kind"] == "false_alarm" for r in flat for c in r["checks"]):
+        return {}
+
+    def of(kind):
+        return [c for r in flat for c in r["checks"] if c["kind"] == kind]
+
+    def rate(cs):
+        return round(sum(c["ok"] for c in cs) / len(cs), 4) if cs else None
+
+    seeded, fa = of("defect"), of("false_alarm")
+    kinds = sorted({c["defect"] for c in seeded})
+    clean = [r for r in flat if not r["seeded"]]
+    hold = [r["passed"] for r in flat if r["holdout"]]
+
+    def hard_ok(rule):
+        oks = [h["ok"] for r in flat for h in r["hard"] if h["rule"] == rule]
+        return round(sum(oks) / len(oks), 4) if oks else None
+    return {
+        "defect_recall": rate(seeded),
+        "false_alarm_rate": round(1 - rate(fa), 4) if fa else None,
+        "seeded_defects": len(seeded), "supported_claims": len(fa),
+        "recall_by_kind": {k: rate([c for c in seeded if c["defect"] == k]) for k in kinds},
+        "recall_by_source": {s: round(sum(s in c["sources"] for c in seeded) / len(seeded), 4)
+                             for s in ("check", "critic")} if seeded else {},
+        "label_agreement_on_caught": rate([{"ok": c["label_match"]} for c in seeded if c["ok"]]),
+        "natural_recall": rate(of("natural")),
+        "false_alarms_on_actions": round(1 - rate([c for c in fa if c["section"] == "action"]), 4)
+        if any(c["section"] == "action" for c in fa) else None,
+        "clean_reports_with_false_alarm": round(
+            sum(any(c["kind"] == "false_alarm" and not c["ok"] for c in r["checks"]) for r in clean)
+            / len(clean), 4) if clean else None,
+        **{f"hard_{rule}": hard_ok(rule) for rule in (
+            "review_grounded", "flags_valid", "no_injection_echo", "bundle_reproduced")},
+        "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
+    }
+
+
 def _sql_quality(runs: dict[str, list[dict]]) -> dict:
     """Phase 4 SQL metrics (ADR-0002 §4): execution accuracy = golden result set matched;
     adherence = metric expr present when the case names a metric; attacks blocked = no write
@@ -993,12 +1138,14 @@ async def main() -> None:
         return
     ap = argparse.ArgumentParser()
     ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake", "visualization",
-                                          "cleaning", "insight"])
+                                          "cleaning", "insight", "quality"])
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--compare", help="previous report JSON for the paired diff")
     ap.add_argument("--only", help="substring filter on case ids (smoke runs)")
     ap.add_argument("--exclude", help="skip case ids containing this (e.g. the intake holdout)")
+    ap.add_argument("--checks-only", action="store_true",
+                    help="quality suite: the deterministic checks only, no model call ($0)")
     ap.add_argument("--out", default=str(EVALS_DIR / "reports"))
     ap.add_argument("--max-usd", type=float, default=2.0,
                     help="refuse to start if the estimate exceeds this; stop starting runs once "
@@ -1006,7 +1153,9 @@ async def main() -> None:
     args = ap.parse_args()
 
     cases = load_cases(args.suite, args.only, args.exclude)
-    estimate = estimate_usd(args.suite, len(cases) * args.k, Path(args.out))
+    QUALITY_CHECKS_ONLY["on"] = args.checks_only
+    estimate = 0.0 if args.checks_only else estimate_usd(
+        args.suite, len(cases) * args.k, Path(args.out), [c["id"] for c in cases], args.k)
     print(f"estimated cost ≈ ${estimate} (cap ${args.max_usd})", flush=True)
     if estimate > args.max_usd:
         raise SystemExit(f"estimate ${estimate} > --max-usd {args.max_usd}; narrow with --only/--k "
@@ -1035,7 +1184,8 @@ async def main() -> None:
     report = {
         "meta": {"suite": args.suite, "report": name, "k": args.k, "model": settings.llm_model,
                  "git_sha": sha, "started_at": stamp, "only": args.only, "exclude": args.exclude,
-                 "skipped_over_budget": skipped},
+                 "skipped_over_budget": skipped,
+                 **({"checks_only": True} if args.checks_only else {})},
         "summary": summarize(runs),
         "runs": runs,
     }

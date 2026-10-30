@@ -26,7 +26,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
-| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); next: Quality check |
+| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); **Quality check ✅ (2026-10-29)** `docs/baselines/phase5_quality.md` (defect recall 97.1%, false alarms 0.67%, hard 0; 40 reports k=3, 102 seeded defects; e2e 100%; $4.05); next: Ingestion |
 | 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | pending |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
@@ -82,7 +82,7 @@ User query
 [6. Insight Agent]     Claude  — synthesizes all → InsightReport
   │
   ▼
-[Quality Check Node]  checks + critic — FEAT-02 retry once; first run: grounding check + LLM critic (expert_review) → END
+[Quality Check Node]  checks + critic — FEAT-02 retry once; every full run: claim checks; first run: + Haiku critic + verify (expert_review) → END
 ```
 
 ### Graph Entry Point (IMPORTANT)
@@ -92,7 +92,7 @@ The LangGraph entry point is `ingestion`, NOT `intake`. The graph runs:
 This is intentional: ingestion loads data first so the intake agent has schema context (column names, row count) when parsing the user's question.
 
 ### Quality Check Retry Loop (FEAT-02)
-After `insight_node`, the graph routes to either `error_node` (if `session.error_message` is set) or `quality_check_node`. The quality check inspects the report for missing/short summary, missing technical findings, or missing charts. If issues are found AND `session.quality_check_attempts < 2`, it clears the analysis state and routes back to `analysis` for one retry; the retry budget is reset to 0 at the start of every graph run inside `ingestion_node`. The node is the single source of truth for the retry decision — `route_after_quality_check` only translates "did the node clear `insight_report`?" into `analysis` vs `end`. On the first run's commit path the node also runs the critic (`agents/quality_critic.py`, formerly the `senior_expert` node), fed by the numeric-grounding check, then flips `overview_done`.
+After `insight_node`, the graph routes to either `error_node` (if `session.error_message` is set) or `quality_check_node`. The quality check inspects the report for missing/short summary, missing technical findings, or missing charts. If issues are found AND `session.quality_check_attempts < 2`, it clears the analysis state and routes back to `analysis` for one retry; the retry budget is reset to 0 at the start of every graph run inside `ingestion_node`. The node is the single source of truth for the retry decision — `route_after_quality_check` only translates "did the node clear `insight_report`?" into `analysis` vs `end`. On the commit path the node runs the review (`agents/quality_agent.py`): code checks every claim against the evidence it cites on every full run; on the first run a Haiku critic (+ a verification pass) labels what the checks can't; the report itself is never changed (flags are shown next to their claims); then it flips `overview_done`.
 
 ### Errors (Phase 2)
 Agents raise typed `AgentError` subclasses (`agents/errors.py`); graph nodes route every failure through `_fail()`, which puts `exc.user_message` into `session.error_message` → `error_node` → SSE `error`. Never return empty output on failure, and never `except ...: pass` in `orchestrator/` (a test enforces it). `targeted_analysis` / `drill_down` failures also route to `error_node`.
@@ -136,7 +136,11 @@ agents/
                              memory; no schema_summary / raw rows), model writes only claims citing Evidence ids;
                              repair: ungrounded number/date or jargon sentence removed, uncited claim removed;
                              analyst view + alerts built from Evidence and audit; returns InsightReport
-  quality_critic.py        — LLM critic run by quality_check_node → ExpertReview
+  quality_agent.py         — contract agent: QUALITY_CARD, report_claims (headline, summary, findings,
+                             actions), check_claims (guardrails.claim_*: dates, direction, period,
+                             group, rank, numbers, citations, cause, certainty), critic (Haiku,
+                             prompts/quality/vN.md, first run only) + verify pass; output repaired
+                             (ungrounded reason replaced, bullets dropped); → ExpertReview + ReviewFlag[]
   sql_agent.py             — Phase 4: question → one read-only SQL query (SQL_CARD, prompts/sql/vN.md,
                              tools get_metric_definition/run_sql, fan-out + metric hard rules,
                              Evidence kind "query"); called by ingestion for a SQL source with no table
@@ -230,7 +234,7 @@ charts            → {type: "charts", data: ChartConfig[]}  // Phase 5: + ratio
 export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
 insight           → {type: "insight", data: InsightReport}  // Phase 5: findings/paragraphs are Claim{text, evidence_ids}; actions carry evidence_ids
 quality_retry     → {type: "quality_retry", message: "<reason>; Re-running analysis..."}  // FEAT-02
-expert_review     → {type: "expert_review", data: ExpertReview}  // quality critic, first run only
+expert_review     → {type: "expert_review", data: ExpertReview}  // every full run; Phase 5: + flags: ReviewFlag[] {index, section, claim, label, kind, reason, evidence_ids, source}; critic on the first run only
 error             → {type: "error", message: "<user-readable>"}
 done              → {type: "done"}  // always last
 ```
@@ -257,7 +261,7 @@ done              → {type: "done"}  // always last
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
   Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost ~$59 (2026-10-27), mostly
-  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case); Phase 5 Quality $4.05 (checks iterated at $0; one E2E overview re-gate ran 132% over its estimate). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,

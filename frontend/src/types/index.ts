@@ -108,12 +108,25 @@ export interface InsightReport {
 }
 
 // Phase 6: senior-expert critique from the 7th agent
+// Phase 5 Quality: one claim the review disputes (orchestrator/state.py ReviewFlag).
+export interface ReviewFlag {
+  index: number; // position in claim order: headline, summary paragraphs, findings, actions
+  section: "headline" | "paragraph" | "finding" | "action";
+  claim: string;
+  label: "unsupported" | "contradicted" | "overstated";
+  kind: string; // number | date | direction | period | group | rank | citation | causal | certainty | critic
+  reason: string;
+  evidence_ids: string[];
+  source: "check" | "critic";
+}
+
 export interface ExpertReview {
   review_summary: string;
   strengths: string[];
   gaps: string[];
   next_investigations: string[];
   methodology_concerns: string[];
+  flags?: ReviewFlag[]; // absent on sessions stored before Phase 5 Quality
   generated_at: string;
 }
 

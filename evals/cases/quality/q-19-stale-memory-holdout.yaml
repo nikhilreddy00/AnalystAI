@@ -1,0 +1,17 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-19-stale-memory-holdout
+insight_case: ins-19-stale-memory-holdout
+category: contradictory
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 3
+  kind: number
+  label: unsupported
+  text: Monthly recurring revenue fell 20% year over year, and it also fell 8.0% in October 2026 compared
+    with September 2026.
+natural: []

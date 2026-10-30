@@ -1,0 +1,17 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-28-one-month
+insight_case: ins-28-one-month
+category: date_scope
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 1
+  kind: number
+  label: unsupported
+  text: Revenue grew 12% month over month, with a median of $57.52, and segment A outperforms the others
+    by a notable margin.
+natural: []

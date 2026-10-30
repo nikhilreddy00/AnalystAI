@@ -301,7 +301,11 @@ made the high-null gate honour Drop/Cancel and delimited the audit in the insigh
 **Insight ✅ 2026-10-29** (`docs/baselines/phase5_insight.md`; the model writes only claims that cite
 evidence, code holds grounding, dates and jargon by repair and writes the analyst view and alerts; a
 calibrated Haiku judge measures faithfulness; also scoped memory to user + dataset and measured the
-targeted-path cleaning gap for the Ingestion PR).
+targeted-path cleaning gap for the Ingestion PR);
+**Quality check ✅ 2026-10-29** (`docs/baselines/phase5_quality.md`; code checks every claim against the
+evidence it cites, a Haiku critic plus a verification pass judges the rest, flags are shown next to their
+claims; 40 golden reports built from the stored insight run; also found a real insight defect and the
+truncated-excerpt carry-over for Ingestion).
 Each PR runs the same 7 steps:
 1. agent card;
 2. eval cases first;

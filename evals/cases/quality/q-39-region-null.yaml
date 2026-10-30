@@ -1,0 +1,23 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-39-region-null
+insight_case: ins-39-region-null
+category: null_result
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 3
+  kind: semantic
+  label: contradicted
+  text: North averages $104.23 per order and East averages $101.63, so North is ahead, as the question
+    assumes.
+- op: replace
+  i: 4
+  kind: certainty
+  label: overstated
+  text: The difference between the two regions is proven and reliable, based on the statistical test across
+    1,479 orders.
+natural: []

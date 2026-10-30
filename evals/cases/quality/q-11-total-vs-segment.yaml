@@ -1,0 +1,22 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-11-total-vs-segment
+insight_case: ins-11-total-vs-segment
+category: contradictory
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 4
+  kind: group
+  label: contradicted
+  text: Segment B moved against the overall trend, with revenue up 6.5% over the same period, based on
+    739 orders.
+- op: replace
+  i: 3
+  kind: period
+  label: contradicted
+  text: Total revenue was down 2.8% year over year across all 3,000 orders.
+natural: []

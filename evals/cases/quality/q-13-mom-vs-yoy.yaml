@@ -1,0 +1,23 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-13-mom-vs-yoy
+insight_case: ins-13-mom-vs-yoy
+category: contradictory
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 3
+  kind: direction
+  label: contradicted
+  text: Year-over-year, monthly recurring revenue fell 6.5%, suggesting the underlying trend is negative.
+- op: replace
+  i: 4
+  kind: citation
+  label: unsupported
+  text: Month-over-month, monthly recurring revenue fell 8.0% in Oct 2026 compared with Sep 2026.
+  ids:
+  - trend:mrr:YoY
+natural: []

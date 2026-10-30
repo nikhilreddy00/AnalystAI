@@ -1,0 +1,23 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-15-gap-not-significant
+insight_case: ins-15-gap-not-significant
+category: contradictory
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 3
+  kind: certainty
+  label: overstated
+  text: North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns
+    the South.
+- op: replace
+  i: 4
+  kind: certainty
+  label: overstated
+  text: 'A comparison test between the two regions confirmed a real difference: North definitively earns
+    more.'
+natural: []

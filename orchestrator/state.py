@@ -518,16 +518,32 @@ class TargetedResponse(BaseModel):
 
 # ── Agent 7 output: ExpertReview (Phase 6) ────────────────────────────────────
 
+class ReviewFlag(BaseModel):
+    """Phase 5 Quality: one report claim the review disputes. `index` is the claim's position in
+    report order (headline, summary paragraphs, findings, actions); `source` says whether code
+    (`check`) or the LLM critic found it. Shown next to the claim, never applied silently."""
+    index: int
+    section: Literal["headline", "paragraph", "finding", "action"]
+    claim: str
+    label: Literal["unsupported", "contradicted", "overstated"]
+    kind: str            # number | date | direction | period | group | citation | causal | certainty | critic
+    reason: str
+    evidence_ids: list[str] = Field(default_factory=list)
+    source: Literal["check", "critic"]
+
+
 class ExpertReview(BaseModel):
     """
-    Senior-expert critique of the analysis. Only generated on the first-run
-    auto-overview — follow-up Q&A skips this step.
+    The quality check's review of one report (agents/quality_agent.py): located flags from the
+    claim checks and the critic, plus the critic's grounded bullets. `review_summary` is
+    written by code from the flags. The critic runs on the first full run only.
     """
-    review_summary: str                  # 2-3 sentences: overall assessment
-    strengths: list[str]                 # what the analysis did well
-    gaps: list[str]                      # what's missing or could go deeper
-    next_investigations: list[str]       # specific recommended deeper dives
-    methodology_concerns: list[str]      # caveats, assumptions to verify
+    review_summary: str                  # code-written verdict line
+    strengths: list[str]                 # no longer written (Phase 5); kept for stored sessions
+    gaps: list[str]                      # what the question needed that no evidence covers
+    next_investigations: list[str]       # runnable next analyses, on columns that exist
+    methodology_concerns: list[str]      # about methods the evidence shows
+    flags: list[ReviewFlag] = Field(default_factory=list)
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

@@ -149,6 +149,25 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
 - **Measure the carry-over instead of arguing it.** Replaying stored targeted plans on raw vs
   cleaned frames turned "targeted skips cleaning" into "10 of 15 answers change", at $0.
 
+## What the quality agent taught us (Phase 5, PR 5)
+- **A reviewer is only as good as its precision.** The first critic caught every seeded defect, but
+  23% of its flags were right and half the clean reports got one. Fix precision before recall: an
+  explicit not-a-defect list, a quote of what the evidence says, and a second pass that re-judges
+  each flag alone (false alarms 8.1% → 0.4%, for +$0.0007 a report).
+- **Layer by what has one right answer.** Code checks caught all 25 rule-shaped defects (numbers,
+  dates, direction, period, group, rank, cause, certainty) at $0 with 0% false alarms. The LLM is
+  needed only for the semantic rest (Simpson, "typical" = mean, data quality vs the audit).
+- **Run a check over every stored output before it counts.** 140 real reports found 9 false-positive
+  patterns the eval didn't plant (a pronoun, "respectively", "second-largest", a possessive), and one
+  real insight defect the insight eval had passed in all 3 runs.
+- **Truncation is a silent input bug.** Evidence excerpts are stored cut at 300 characters; the old
+  critic, the new one and the insight agent each misread a 4-cell breakdown as missing a cell.
+  Read structured results by id, never a display excerpt.
+- **Don't relabel after you see the result.** One holdout flag is arguable; it was labelled before the
+  run and is counted. Label fixes found during iteration (q-32) are listed and rescored.
+- **Estimate from the runs you're about to repeat.** An E2E re-gate on 5 overviews cost 2.8× the
+  suite's per-question average; the estimate used the average and ran 132% over.
+
 ## Rolling it out to the next agent (Phase 5)
 Each agent gets one PR, in this order:
 1. **Agent card**, with honest, measured limits.

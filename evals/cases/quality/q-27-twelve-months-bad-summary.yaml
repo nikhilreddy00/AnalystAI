@@ -1,0 +1,22 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-27-twelve-months-bad-summary
+insight_case: ins-27-twelve-months-bad-summary
+category: date_scope
+source:
+  report: insight-20261029T162956Z-rescored-judged.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 1
+  kind: date
+  label: contradicted
+  text: The dataset covers only November 2025, across three customer segments, with Segment A generating
+    the highest average revenue.
+- op: replace
+  i: 5
+  kind: group
+  label: contradicted
+  text: Revenue for Segment C declined 12.6% in Oct 2026 versus Sep 2026, a drop worth monitoring.
+natural: []

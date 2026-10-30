@@ -41,7 +41,7 @@ from agents.intent_handlers import (
 from agents.targeted_analysis_agent import run_targeted_analysis
 from agents.drill_down_agent import run_drill_down_agent
 from agents.errors import AgentError
-from agents.quality_critic import run_quality_critic
+from agents.quality_agent import run_quality_check
 from agents.visualization_agent import (
     classify_columns,
     compute_briefing_extras,
@@ -61,7 +61,6 @@ from orchestrator.routing import (
     route_after_quality_check,
     route_after_terminal,
 )
-from guardrails import ungrounded_numbers
 from memory.session_data import write_cleaned_parquet, read_cleaned_parquet
 from memory.vector_store import dataset_key
 from orchestrator.state import AnalysisSession, MessageRole, QuestionIntent
@@ -78,6 +77,7 @@ class AgentState(TypedDict):
     approval_context: str | None       # which gate the approval answers ("high_null", …)
     session_store: Any                 # SessionStore | None
     vector_store: Any                  # VectorStore | None
+    similar_insights: list[str]        # earlier analyses insight was shown (the critic reads them)
 
 
 # ── SSE helper ─────────────────────────────────────────────────────────────────
@@ -460,7 +460,7 @@ async def insight_node(state: AgentState) -> dict:
     # Commit side-effects (add_message, iteration++, vector_store, done)
     # live in quality_check_node so that a retry doesn't corrupt history,
     # double-increment iteration, persist a bad embedding, or emit done early.
-    return {"session": session}
+    return {"session": session, "similar_insights": similar_insights}
 
 
 async def quality_check_node(state: AgentState) -> dict:
@@ -522,28 +522,22 @@ async def quality_check_node(state: AgentState) -> dict:
             except Exception:
                 logger.warning("insight not stored in vector memory", exc_info=True)
 
-    # First run: the critic reviews the report. Follow-up turns skip it to stay fast.
-    if report and not session.overview_done:
+    # The review: code checks every claim against its evidence on every full run; the critic
+    # (an LLM) joins on the first run only, so follow-ups stay fast. The report is not changed.
+    if report:
+        first_run = not session.overview_done
         _emit(state, {"type": "agent_start", "agent": "quality_check",
                       "message": "Reviewing the analysis..."})
-        findings = session.analysis_findings
-        evidence = findings.model_dump(exclude={"code_executed", "figures_base64"}) \
-            if findings else {}
-        if session.data_contract:
-            evidence["row_count"] = session.data_contract.row_count
-        claims = " ".join([report.executive_summary, *report.technical_findings])
-        ungrounded = ungrounded_numbers(claims, evidence)
-        if ungrounded:
-            logger.info("quality check: ungrounded numbers %s", ungrounded)
         try:
-            review = await run_quality_critic(session, ungrounded)
+            review = await run_quality_check(session, get_client(), critic=first_run,
+                                             past=state.get("similar_insights") or None)
             session.expert_review = review
-            _emit(state, {"type": "expert_review", "data": review.model_dump()})
+            _emit(state, {"type": "expert_review", "data": review.model_dump(mode="json")})
             _emit(state, {"type": "agent_complete", "agent": "quality_check",
-                          "message": "Review ready"})
+                          "message": f"Review ready: {len(review.flags)} claim(s) flagged"})
         except Exception as exc:
             # The user already has the insight; the review is an add-on.
-            logger.warning("quality critic skipped", exc_info=True)
+            logger.warning("quality review skipped", exc_info=True)
             msg = exc.user_message if isinstance(exc, AgentError) else str(exc)
             _emit(state, {"type": "agent_complete", "agent": "quality_check",
                           "message": f"Review skipped: {msg}"})
