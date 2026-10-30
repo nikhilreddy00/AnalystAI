@@ -23,7 +23,7 @@ from memory.session_store import Base
 ACTIVE = ("queued", "running", "waiting_approval")
 TERMINAL = ("completed", "failed", "cancelled")
 LEASE_S = 120          # a worker that misses heartbeats this long has died
-HEARTBEAT_S = 15
+HEARTBEAT_S = 5        # also how fast a cancel is noticed
 MAX_ATTEMPTS = 3       # crashes before the reaper gives up on a run
 
 

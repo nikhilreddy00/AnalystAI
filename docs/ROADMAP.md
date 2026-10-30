@@ -365,7 +365,8 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
     - an identical re-upload is detected by its content hash;
     - the history is a hidden drawer, and runs are not durable.
 
-- **Work, part A: durable runs (5.6a).**
+- **Work, part A: durable runs (5.6a).** ✅ done 2026-10-30, `docs/baselines/phase5_6a.md`,
+  ADR-0006. Deviation: the checkpoint thread id is the run id, not the session id.
   1. **A run is a record, not a request.** `POST /chat` stores a run (`queued → running →
      waiting_approval → completed | failed | cancelled`) and returns its id at once. A separate
      worker process (`python -m worker`, its own service in Docker Compose) executes it.
