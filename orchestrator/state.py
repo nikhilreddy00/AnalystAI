@@ -596,6 +596,9 @@ class AnalysisSession(BaseModel):
     iteration: int = 0
     quality_check_attempts: int = 0        # FEAT-02: entries into quality_check_node per graph run
     high_null_answer: str | None = None    # the high-null gate's answer ("continue" | "drop"): asked once
+    # PII values of data this session switched away from: its conversation still quotes them, so
+    # every later run's LLM guard is seeded with them (stored with the history, which holds them).
+    prior_pii: list[str] = Field(default_factory=list)
     overview_done: bool = False            # Phase 3: True after first comprehensive analysis ships; resets when connector_config changes
     dataset_name: str | None = None
     file_hash: str | None = None

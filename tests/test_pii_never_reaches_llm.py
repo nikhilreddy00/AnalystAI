@@ -195,3 +195,7 @@ def test_switching_datasets_keeps_guarding_the_old_answers(monkeypatch):
     s = _session()
     s.cleaned_data_path = "x"
     assert set(REPS) <= chat._last_turn_pii(s)
+    # Kept on the session (it survives the cache being replaced) and seeds every later run.
+    s.prior_pii = sorted(chat._last_turn_pii(s))
+    s2 = AnalysisSession.model_validate_json(s.model_dump_json())
+    assert set(REPS) <= set(s2.prior_pii)

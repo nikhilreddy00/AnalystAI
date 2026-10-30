@@ -135,7 +135,8 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
   - The guard's pattern was cached by `id(set)`.
   - Unicode lowercasing ("İ") misaligned offsets.
   - Bare E.164 (`+14155552671`) stopped matching after the separator rule.
-  - A dataset switch dropped the guard seed while the old answers stayed in memory.
+  - A dataset switch dropped the guard seed while the old answers stayed in memory (then
+    fixed only for the switch turn; now `AnalysisSession.prior_pii` seeds every later run).
   - After the last of these, a third E2E gate wasn't run. Instead the snapshot proves every
     suite's inputs are unchanged, and the new phone rule matches none of 920 strings from the
     final E2E run.

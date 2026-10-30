@@ -105,7 +105,6 @@ async def chat(
         except Exception:
             pass
 
-    prior_pii: set[str] = set()
     if session is None:
         session_id = body.session_id or str(uuid.uuid4())
         session = AnalysisSession(session_id=session_id, user_id=current_user.uid)
@@ -123,8 +122,8 @@ async def chat(
         # run produces a fresh end-to-end briefing for the new data.
         incoming = _owned_config(body.connector_config, current_user.uid)
         if session.connector_config != incoming:
-            # The conversation still quotes the old data: its PII values guard this run too.
-            prior_pii = _last_turn_pii(session)
+            # The conversation still quotes the old data: its PII values guard every later run.
+            session.prior_pii = sorted(set(session.prior_pii) | _last_turn_pii(session))
             session.connector_config = incoming
             session.overview_done = False
             # Answers and caches about the old data don't carry over.
@@ -144,7 +143,7 @@ async def chat(
     async def run_graph() -> None:
         # This run's PII guard: ingestion fills it, every LLM request is pseudonymized against it.
         # Set inside the task, so it belongs to this run only.
-        pii_values.set(set(prior_pii))
+        pii_values.set(set(session.prior_pii))
         state: AgentState = {
             "session": session,
             "df_parquet": None,
