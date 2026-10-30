@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 
-from guardrails import delimit_untrusted
+from guardrails import delimit_untrusted, is_pii_column
 
 
 def strip_markdown_fences(raw: str) -> str:
@@ -66,7 +66,12 @@ def conversation_context(session, n_turns: int = 6) -> str:
     contract = session.data_contract
     if contract and contract.source_query:
         lines.append(f"LAST QUERY RUN:\n{contract.source_query.code}")
-    return delimit_untrusted("\n".join(lines)) if lines else ""
+    if not lines:
+        return ""
+    # Earlier answers quote the data ("Jane Doe leads with $9,120"): the run's PII values become
+    # the same tokens the LLM client's guard would use.
+    from llm.client import pseudonymize
+    return delimit_untrusted(pseudonymize("\n".join(lines))[0])
 
 
 def partial_last_month(dates) -> bool:
@@ -84,3 +89,34 @@ def partial_last_month(dates) -> bool:
         return False
     last = d.max().normalize()
     return bool(last < last + pd.offsets.MonthEnd(0) and days.iloc[-1] < 0.9 * days.iloc[:-1].median())
+
+
+def looks_like_sequential_id(s, n: int) -> bool:
+    """True if the column looks like a row index / sequential id:
+    whole-number values that fill an interval close to len(df). Shared by visualization (row
+    counts) and ingestion (column roles)."""
+    import pandas as pd
+
+    arr = s.dropna()
+    if arr.empty or not pd.api.types.is_numeric_dtype(arr):
+        return False
+    if not pd.api.types.is_integer_dtype(arr):
+        # Float column containing only whole numbers also counts.
+        try:
+            if not bool((arr % 1 == 0).all()):
+                return False
+        except TypeError:
+            return False
+    nu = int(arr.nunique())
+    if nu / max(n, 1) < 0.95:
+        return False
+    spread = float(arr.max()) - float(arr.min())
+    return spread <= n * 1.5
+
+
+def pii_columns(contract) -> set[str]:
+    """The columns whose values are personal data: what ingestion detected (by name or by
+    values, e.g. `sales_rep` holding names) plus the name rule. Every mask reads this set."""
+    if contract is None:
+        return set()
+    return {c.name for c in contract.columns if c.pii or is_pii_column(c.name)}

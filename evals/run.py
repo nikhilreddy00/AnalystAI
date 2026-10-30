@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import copy
+from contextvars import ContextVar
 import io
 import json
 import re
@@ -39,6 +40,9 @@ from evals.scoring import (
     hard_rule,
     result_matches,
     score_cleaning,
+    score_ingestion,
+    leaked,
+    loaded_cell,
     bundle_facts,
     insight_claims,
     score_insight,
@@ -46,7 +50,7 @@ from evals.scoring import (
     score_intake,
     score_visualization,
 )
-from llm.client import get_client, trace_meter
+from llm.client import get_client, pii_values, set_client, trace_meter
 from orchestrator.state import (
     AnalysisFindings,
     AnalysisSession,
@@ -132,6 +136,9 @@ async def run_e2e_case(case: dict) -> dict:
         connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)),
         overview_done=case.get("overview_done", False),
     )
+    sent: list[str] = []
+    LLM_REQUESTS.set(sent)   # the canary scans every request this case makes
+    pii_values.set(set())    # as api/routes/chat.py does for every run
     error, approvals = None, []
     # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
     # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
@@ -156,8 +163,22 @@ async def run_e2e_case(case: dict) -> dict:
     if approvals and approvals[-1] != "high_null" and not error:
         error = f"stopped at approval_required ({approvals[-1]})"
 
-    return {**score_e2e(case, session, error), "approvals": approvals,
-            "output": session.model_dump(mode="json")}
+    hits = len(leaked("\n".join(sent), e2e_pii_literals(df)))
+    scored = score_e2e(case, session, error)
+    return {**scored, "hard": scored["hard"] + [_canary_rule(hits)], "pii_canary_hits": hits,
+            "approvals": approvals, "output": session.model_dump(mode="json")}
+
+
+def e2e_pii_literals(df: pd.DataFrame) -> list[str]:
+    """The planted PII of a datagen table (its customer emails and names), from the generator's
+    columns, not the agent's detection."""
+    cols = [c for c in ("customer_email", "customer_name") if c in df.columns]
+    return sorted({str(v) for c in cols for v in df[c].dropna()})
+
+
+def _canary_rule(hits: int) -> dict:
+    return {"rule": "pii_canary", "ok": hits == 0,
+            "detail": f"{hits} planted PII values reached an LLM request" if hits else "ok"}
 
 
 def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
@@ -566,6 +587,145 @@ def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> di
             "holdout": case["id"].endswith("holdout")}
 
 
+# ── Ingestion (Phase 5) ────────────────────────────────────────────────────────
+
+# The text of every LLM request a run makes (system + messages), for the PII canary scan.
+LLM_REQUESTS: ContextVar[list | None] = ContextVar("llm_requests", default=None)
+
+
+class RecordingClient:
+    """Evals only: records each request's text into LLM_REQUESTS, then calls the real client."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def complete(self, **kw):
+        if (log := LLM_REQUESTS.get()) is not None:
+            log.append(json.dumps({"system": kw.get("system"), "messages": kw.get("messages")},
+                                  ensure_ascii=False, default=str))
+        return await self.inner.complete(**kw)
+
+
+def _ingestion_facts(df: pd.DataFrame, roles: dict[str, list[str]]) -> dict:
+    """Every number a correct profile could state about the true table."""
+    facts: dict = {"rows": len(df), "columns": df.shape[1],
+                   "roles": {r: sum(r in rs[:1] for rs in roles.values())
+                             for r in ("date", "id", "metric", "category")}}
+    for col in df.columns:
+        s = df[col]
+        f = {"null_pct": round(s.isna().mean() * 100, 2), "nunique": int(s.nunique()),
+             "non_null": int(s.notna().sum())}
+        num = pd.to_numeric(s, errors="coerce")
+        if num.notna().any():
+            f.update(min=float(num.min()), max=float(num.max()), mean=float(num.mean()),
+                     sum=float(num.sum()), median=float(num.median()))
+        facts[str(col)] = f
+    return facts
+
+
+def _date_span(df: pd.DataFrame, cols: dict) -> list:
+    stamps = []
+    for name, t in cols.items():
+        if "date" not in t["roles"][:1] or t["pii"] or name not in df:
+            continue
+        s = df[name]
+        if not pd.api.types.is_datetime64_any_dtype(s):
+            s = (pd.to_datetime(s, unit="s", errors="coerce") if pd.api.types.is_numeric_dtype(s)
+                 else pd.to_datetime(s.astype("string"), format="mixed",
+                                     dayfirst=bool(t.get("dayfirst")), errors="coerce"))
+        stamps += [s.min(), s.max()]
+    stamps = [x for x in stamps if not pd.isna(x)]
+    if not stamps:
+        return [None, None]
+    lo, hi = min(stamps), max(stamps)
+    return [[lo.year, lo.month], [hi.year, hi.month]]
+
+
+def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
+    """(file bytes, extension, truth) for an ingestion case: generated by evals.ingestgen, an
+    existing eval dataset (regression), or a committed file (fixture / fault). The truth never
+    comes from the agent's inference."""
+    import numpy as np
+
+    from evals import ingestgen
+    files = EVALS_DIR / "cases" / "ingestion" / "files"
+    if case.get("expect_error"):
+        p = files / case["file"]
+        return p.read_bytes(), p.suffix, {"expect_error": True}
+    if "columns" in case:
+        df, generated = ingestgen.build(case)
+        data, ext = ingestgen.to_bytes(df, case["format"])
+        cols = {c.name: {"roles": list(c.roles), "pii": c.pii, "literals": c.literals,
+                         "trap": c.trap, "dayfirst": ingestgen.TEXT_DATES.get(c.kind)}
+                for c in generated}
+        cells = None
+    else:
+        if "dataset" in case:
+            df = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])[0]
+            data, ext = df.to_csv(index=False).encode(), ".csv"
+        else:
+            p = files / case["file"]
+            data, ext = p.read_bytes(), p.suffix
+            df = pd.read_csv(io.BytesIO(data), **case.get("truth_read", {}))
+        roles = {c: (r if isinstance(r, list) else [r]) for c, r in case["roles"].items()}
+        cols = {c: {"roles": rs, "pii": case.get("pii", {}).get(c),
+                    "literals": sorted({str(v) for v in df[c].dropna()}
+                                       - ingestgen.CALENDAR_WORDS) if case.get("pii", {}).get(c) else [],
+                    "trap": c in case.get("traps", []),
+                    "dayfirst": (case.get("truth_read", {}).get("sep") == ";") if "date" in rs[:1] else None}
+                for c, rs in roles.items()}
+        cells = case.get("expect", {}).get("cells")
+    if cells is None:   # 20 sampled cells of the canonical frame
+        rng = np.random.default_rng(case.get("seed", 0))
+        names = list(df.columns)
+        cells = [[int(r), names[i % len(names)], loaded_cell(df[names[i % len(names)]].iloc[int(r)])]
+                 for i, r in enumerate(rng.integers(0, len(df), 20))]
+    expect = case.get("expect", {})
+    truth = {"expect_error": False, "columns": cols, "order": expect.get("columns", [str(c) for c in df.columns]),
+             "rows": expect.get("rows", len(df)), "cells": cells,
+             "facts": _ingestion_facts(df, {c: t["roles"] for c, t in cols.items()}),
+             "date_span": _date_span(df, cols)}
+    return data, ext, truth
+
+
+async def run_ingestion_case(case: dict) -> dict:
+    import hashlib
+
+    from agents.ingestion_agent import run_ingestion_agent
+
+    data, ext, truth = ingestion_truth(case)
+    path = UPLOADS / "ingestion" / f"{case['id']}{ext}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists() or path.read_bytes() != data:
+        path.write_bytes(data)
+    session = AnalysisSession(session_id=str(uuid.uuid4()),
+                              connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)))
+    sent: list[str] = []
+    LLM_REQUESTS.set(sent)
+    pii_values.set(set())   # as api/routes/chat.py does for every run
+    output, error = None, None
+    try:
+        contract = await run_ingestion_agent(session, get_client())
+        df = pd.read_parquet(io.BytesIO(session.__dict__.pop("_df_parquet")))
+        dump = contract.model_dump(mode="json")
+        cells = [[r, c, loaded_cell(df[c].iloc[r]) if c in df.columns and r < len(df) else "<missing>"]
+                 for r, c, _ in truth.get("cells", [])]
+        output = {"contract": dump, "requests": sent,
+                  "loaded": {"columns": [str(c) for c in df.columns], "rows": len(df), "cells": cells},
+                  "contract_sha": hashlib.sha256(json.dumps(dump, sort_keys=True, default=str)
+                                                 .encode()).hexdigest()[:16]}
+    except Exception as exc:   # a loud failure is a failed case, not a crashed run
+        error = f"{type(exc).__name__}: {exc}"
+    return {**score_ingestion_run(case, output, error), "output": output}
+
+
+def score_ingestion_run(case: dict, output: dict | None, error: str | None) -> dict:
+    checks, hard = score_ingestion(ingestion_truth(case)[2], output, error)
+    return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+            "case": case["id"], "holdout": case["id"].endswith("holdout"),
+            "contract_sha": (output or {}).get("contract_sha")}
+
+
 _SQL: dict = {}   # engine, layers and golden rows, set up once per sql run
 
 
@@ -668,7 +828,9 @@ def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | N
     paid = []
     for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
         rep = json.loads(p.read_text())
-        if not rep["meta"].get("checks_only") and rep["summary"].get("cost_per_question_usd"):
+        # The newest runs are the cost basis, $0 ones included: an agent that dropped its LLM
+        # (cleaning, ingestion) must not be priced from its old paid reports.
+        if not rep["meta"].get("checks_only") and "cost_per_question_usd" in rep["summary"]:
             paid.append(rep)
     average = next((r["summary"]["cost_per_question_usd"] for r in paid
                     if not r["meta"].get("only") and not r["meta"].get("exclude")), 0.0)
@@ -691,7 +853,7 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
                   "intake": run_intake_case, "visualization": run_visualization_case,
                   "cleaning": run_cleaning_case, "insight": run_insight_case,
-                  "quality": run_quality_case}[suite]
+                  "quality": run_quality_case, "ingestion": run_ingestion_case}[suite]
         out = await runner(case)
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
@@ -714,6 +876,7 @@ RESCORERS = {
     "cleaning": score_cleaning_run,
     "insight": score_insight_run,
     "quality": score_quality_run,
+    "ingestion": score_ingestion_run,
 }
 
 
@@ -728,6 +891,8 @@ def rescore(path: Path) -> Path:
             if "output" not in r:
                 raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
             r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+            if "pii_canary_hits" in r:   # scanned at run time: requests aren't stored
+                r["hard"].append(_canary_rule(r["pii_canary_hits"]))
             r["passed"] = all(c["ok"] for c in r["checks"])
     report["summary"] = summarize(report["runs"])
     report["meta"]["rescored_from"] = report["meta"]["report"]
@@ -791,7 +956,8 @@ def _pct(values: list[float], q: float) -> float:
     return round(statistics.quantiles(values, n=100, method="inclusive")[q - 1], 2)
 
 
-_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped"}
+_NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped",
+                "pii_tokenized", "rank_removed"}
 
 
 def summarize(runs: dict[str, list[dict]]) -> dict:
@@ -810,6 +976,8 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         "runs_with_guardrail_retry": sum(any(g not in _NOT_RETRIES for g in r.get("rejections", []))
                                          for r in flat),
         "runs_with_prose_rewritten": sum("grounding_rewritten" in r.get("rejections", []) for r in flat),
+        # The LLM client's PII guard caught a value a builder let through (0 = every builder clean).
+        "runs_with_pii_guard_hit": sum("pii_tokenized" in r.get("rejections", []) for r in flat),
         "cost_per_question_usd": round(statistics.mean(r["cost_usd"] for r in flat), 4),
         "latency_p50_s": _pct([r["latency_s"] for r in flat], 50),
         "latency_p95_s": _pct([r["latency_s"] for r in flat], 95),
@@ -821,6 +989,7 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         **_insight_quality(flat),
         **_judge_quality(flat),
         **_review_quality(flat),
+        **_ingestion_quality(flat),
     }
 
 
@@ -916,6 +1085,43 @@ def _cleaning_quality(flat: list[dict]) -> dict:
            for rule in ("rows_logged", "changes_logged", "protected_not_filled")},
         "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
         "recall_by_issue": {k: round(sum(v) / len(v), 4) for k, v in sorted(by_issue.items())},
+    }
+
+
+def _ingestion_quality(flat: list[dict]) -> dict:
+    """Phase 5 ingestion metrics (docs/ROADMAP.md Ingestion row), pooled over runs: type
+    inference = column roles right; PII recall = planted PII columns with no value in any prompt;
+    over-masking = PII-looking trap columns masked; load fidelity; hard counts; determinism =
+    cases whose runs produced byte-identical contracts."""
+    if not any(c["kind"] == "role" for r in flat for c in r["checks"]):
+        return {}
+
+    def share(kind):
+        oks = [c["ok"] for r in flat for c in r["checks"] if c["kind"] == kind]
+        return round(sum(oks) / len(oks), 4) if oks else None
+
+    by_kind: dict[str, list[bool]] = {}
+    for r in flat:
+        for c in r["checks"]:
+            if c["kind"] == "pii":
+                by_kind.setdefault(c["pii"], []).append(c["ok"])
+    shas: dict[str, set] = {}
+    for r in flat:
+        if r.get("contract_sha"):
+            shas.setdefault(r["case"], set()).add(r["contract_sha"])
+    traps = share("overmask")
+    hold = [r["passed"] for r in flat if r["holdout"]]
+    return {
+        "type_inference": share("role"),
+        "pii_recall": share("pii"),
+        "over_masking": round(1 - traps, 4) if traps is not None else None,
+        "load_fidelity": share("load"),
+        "typed_errors": share("error"),
+        **{f"hard_{rule}": sum(not h["ok"] for r in flat for h in r["hard"] if h["rule"] == rule)
+           for rule in ("pii_canary", "silent_misload", "summary_grounded", "source_evidence")},
+        "nondeterministic_cases": sum(len(v) > 1 for v in shas.values()),
+        "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
+        "pii_recall_by_kind": {k: round(sum(v) / len(v), 4) for k, v in sorted(by_kind.items())},
     }
 
 
@@ -1138,7 +1344,7 @@ async def main() -> None:
         return
     ap = argparse.ArgumentParser()
     ap.add_argument("suite", choices=["analysis", "e2e", "sql", "intake", "visualization",
-                                          "cleaning", "insight", "quality"])
+                                          "cleaning", "insight", "quality", "ingestion"])
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--compare", help="previous report JSON for the paired diff")
@@ -1163,6 +1369,8 @@ async def main() -> None:
     _budget["max"] = args.max_usd
     if args.suite == "sql":
         _sql_setup()
+    if args.suite in ("ingestion", "e2e"):   # the PII canary scans every request
+        set_client(RecordingClient(get_client()))
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     print(f"{args.suite}: {len(cases)} cases × k={args.k}", flush=True)

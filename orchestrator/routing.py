@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 _FULL_PIPELINE_INTENTS = {QuestionIntent.OVERVIEW}
 
 
+_NO_DATA_INTENTS = {QuestionIntent.META_QUESTION, QuestionIntent.EXPORT_REQUEST}
+
+
 def _is_targeted(task) -> bool:
     return task is not None and task.question_intent not in _FULL_PIPELINE_INTENTS
 
@@ -54,10 +57,10 @@ def route_after_intake(state: dict) -> str:
         return "human_approval"
     if task and task.question_intent == QuestionIntent.DRILL_DOWN:
         return "drill_down"
-    # Phase A: skip cleaning + full analysis + insight for targeted Q&A.
-    # Handlers in targeted_analysis_agent use .dropna() per-column so they're
-    # safe on uncleaned data; trade-off is intentional to keep follow-ups fast.
-    if _is_targeted(task):
+    # Targeted answers read cleaned data too (Phase 5 Ingestion: on raw frames 10 of 15 stored
+    # answers changed, duplicates counted twice). Cleaning is code (~0.2 s). Questions about the
+    # app or an export don't read the data.
+    if _is_targeted(task) and task.question_intent in _NO_DATA_INTENTS:
         return "targeted_analysis"
     return "cleaning"
 
@@ -67,10 +70,11 @@ def route_after_cleaning(state: dict) -> str:
     if session.error_message:
         return "error"
     audit = session.cleaning_audit
-    # Skip approval gate when user already approved (is_approval=True)
-    if audit and audit.high_null_columns and not state.get("is_approval"):
+    # The high-null gate is asked once per session: an answer (this run or earlier) skips it.
+    if audit and audit.high_null_columns and not state.get("is_approval") \
+            and session.high_null_answer is None:
         return "human_approval"
-    return "analysis"
+    return "targeted_analysis" if _is_targeted(session.task_plan) else "analysis"
 
 
 def route_after_analysis(state: dict) -> str:

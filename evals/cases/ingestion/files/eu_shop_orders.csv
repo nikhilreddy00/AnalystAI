@@ -1,0 +1,17 @@
+Order;Date;Billing Name;Email;Total;Currency;Country;Payment Method
+#1001;03.01.2025;Anna Müller;anna.mueller@example.com;129,90;EUR;DE;Card
+#1002;03.01.2025;Lukas Weber;l.weber@example.com;45,00;EUR;DE;PayPal
+#1003;05.01.2025;Chloé Dubois;chloe.d@example.com;212,35;EUR;FR;Card
+#1004;07.01.2025;Marco Bianchi;mbianchi@example.com;18,50;EUR;IT;Card
+#1005;09.01.2025;Sofía Ruiz;sofia.ruiz@example.com;76,20;EUR;ES;Klarna
+#1006;12.01.2025;Jan de Vries;jan.devries@example.com;301,00;EUR;NL;Card
+#1007;14.01.2025;Anna Müller;anna.mueller@example.com;59,90;EUR;DE;PayPal
+#1008;18.01.2025;Emma Larsen;emma.l@example.com;99,00;EUR;DK;Card
+#1009;21.01.2025;Piotr Nowak;p.nowak@example.com;140,75;EUR;PL;Card
+#1010;25.01.2025;Lea Schulz;lea.schulz@example.com;23,40;EUR;DE;PayPal
+#1011;02.02.2025;Hugo Martin;hugo.martin@example.com;188,00;EUR;FR;Card
+#1012;06.02.2025;Giulia Russo;giulia.r@example.com;64,10;EUR;IT;Klarna
+#1013;11.02.2025;Lukas Weber;l.weber@example.com;1.249,00;EUR;DE;Card
+#1014;15.02.2025;Nora Jensen;nora.j@example.com;37,80;EUR;DK;Card
+#1015;20.02.2025;Pablo Gómez;pablo.g@example.com;92,60;EUR;ES;PayPal
+#1016;27.02.2025;Eva Novák;eva.novak@example.com;115,00;EUR;CZ;Card

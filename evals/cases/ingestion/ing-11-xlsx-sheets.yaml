@@ -1,0 +1,31 @@
+id: ing-11-xlsx-sheets
+category: layout
+seed: 21
+rows: 300
+format:
+  type: xlsx
+  sheet: Orders
+  before_sheets:
+  - name: Summary
+    columns:
+    - region
+    - total
+    rows:
+    - - North
+      - 1200.5
+    - - South
+      - 980.0
+    - - East
+      - 1530.25
+columns:
+- - order_id
+  - id_seq
+- - order_date
+  - date_native
+- - region
+  - region
+- - revenue
+  - money
+- - units
+  - count
+label_note: Workbook with a small summary tab first; the data is on the larger sheet.

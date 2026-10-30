@@ -1,0 +1,25 @@
+id: ing-12-parquet-dtypes
+category: roles
+seed: 22
+rows: 300
+format:
+  type: parquet
+  dtypes:
+    units: Int64
+    price: float32
+    qty: int32
+columns:
+- - order_id
+  - id_seq
+- - order_date
+  - date_native
+- - region
+  - region
+- name: units
+  kind: count
+  nulls: 0.1
+- - price
+  - money
+- - qty
+  - count
+label_note: Nullable Int64, float32 and int32 are numbers too.

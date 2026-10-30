@@ -1,0 +1,22 @@
+id: ing-18-retail-holdout
+category: layout
+seed: 28
+rows: 300
+format:
+  type: csv
+  sep: ;
+  decimal: ','
+columns:
+- - sku
+  - sku
+- - product_name
+  - product_name
+- - supplier_name
+  - company
+- - price
+  - money
+- - stock
+  - count
+- - last_updated
+  - datetime_iso
+label_note: Inventory, semicolon + decimal comma; supplier and product names are not people.

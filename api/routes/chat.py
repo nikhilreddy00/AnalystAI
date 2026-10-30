@@ -27,6 +27,7 @@ from api.auth import get_current_user, UserProfile
 from api.rate_limit import ip_limit, limiter
 from pydantic import BaseModel, Field
 
+from llm.client import pii_values
 from orchestrator.graph import AgentState, build_graph
 from connectors.csv_connector import check_upload_owner
 from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
@@ -54,6 +55,22 @@ def _owned_config(raw: dict, uid: str) -> ConnectorConfig:
     if config.type == ConnectorType.CSV and (reason := check_upload_owner(config.file_path, uid)):
         raise HTTPException(status_code=403, detail=reason)
     return config
+
+
+def _last_turn_pii(session: AnalysisSession) -> set[str]:
+    """The PII values of the session's previous data (its cached cleaned frame), so earlier
+    answers quoting that data stay guarded after the user switches datasets."""
+    if not (session.data_contract and session.cleaned_data_path):
+        return set()
+    import io
+
+    import pandas as pd
+
+    from agents.ingestion_agent import known_pii_values
+    from memory.session_data import read_cleaned_parquet
+    cached = read_cleaned_parquet(session.session_id)
+    return known_pii_values(pd.read_parquet(io.BytesIO(cached)), session.data_contract) \
+        if cached else set()
 
 
 @router.post("")
@@ -105,19 +122,28 @@ async def chat(
         # run produces a fresh end-to-end briefing for the new data.
         incoming = _owned_config(body.connector_config, current_user.uid)
         if session.connector_config != incoming:
+            # The conversation still quotes the old data: its PII values guard every later run.
+            session.prior_pii = sorted(set(session.prior_pii) | _last_turn_pii(session))
             session.connector_config = incoming
             session.overview_done = False
+            # Answers and caches about the old data don't carry over.
+            session.high_null_answer = None
+            session.cleaned_data_path = None
 
     if session is not None and body.is_approval and body.approval_context == "rerun_overview":
         # User chose "Run fresh" on the rerun-overview modal. Reset the
         # session so the graph runs a clean OVERVIEW from intake forward.
         session.overview_done = False
+        session.high_null_answer = None   # a fresh run asks the high-null question again
         session.status = "in_progress"
         session.task_plan = None
 
     event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
     async def run_graph() -> None:
+        # This run's PII guard: ingestion fills it, every LLM request is pseudonymized against it.
+        # Set inside the task, so it belongs to this run only.
+        pii_values.set(set(session.prior_pii))
         state: AgentState = {
             "session": session,
             "df_parquet": None,

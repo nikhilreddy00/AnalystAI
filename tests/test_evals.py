@@ -239,6 +239,10 @@ def test_cost_estimate_uses_the_last_full_report(tmp_path):
     rep("analysis-20260102T000000Z", 0.50, only="trend")   # smoke runs don't count
     assert estimate_usd("analysis", 100, tmp_path) == 3.0
     assert estimate_usd("e2e", 10, tmp_path) == 0.0
+    # An agent that dropped its LLM is priced from its newest ($0) run, not its old paid ones.
+    rep("cleaning-20260101T000000Z", 0.07)
+    rep("cleaning-20260103T000000Z", 0.0)
+    assert estimate_usd("cleaning", 25, tmp_path) == 0.0
 
 
 def test_sql_summary_metrics():

@@ -95,6 +95,11 @@ class ColumnInfo(BaseModel):
     is_id: bool = False
     is_metric: bool = False
     null_pct: float = 0.0
+    # Phase 5 Ingestion: why the role was chosen, and the personal-data kind when the column holds
+    # PII (email | phone | ssn | card | ip | name | address | dob | passport). Defaults keep stored
+    # sessions loadable.
+    role_reason: str = ""
+    pii: str | None = None
 
 
 class ConnectorConfig(BaseModel):
@@ -181,6 +186,11 @@ class DataContract(BaseModel):
     # Phase 4: the SQL query that produced this data (SQL connector without a table), so the
     # answer's evidence starts with where the rows came from.
     source_query: "Evidence | None" = None
+    # Phase 5 Ingestion: where the rows came from (reader settings, renames, roles, PII), and a
+    # content hash of the loaded table: the same file always gives the same contract.
+    source_evidence: "Evidence | None" = None
+    fingerprint: str = ""
+    pii_columns: list[str] = Field(default_factory=list)
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────
@@ -335,7 +345,8 @@ class Evidence(BaseModel):
     """Why one finding can be trusted (ADR-0001): built deterministically from the code that ran
     and its output, never written by the model."""
     id: str                                # stable: "corr:revenue__units", "seg:segment/revenue"
-    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query", "cleaning", "eda"]
+    kind: Literal["correlation", "trend", "segment", "anomaly", "test", "query", "cleaning", "eda",
+                  "source"]
     claim: str                             # one line, from the computed values
     code: str                              # the analysis body that produced it
     result_excerpt: str                    # the finding's JSON, truncated
@@ -584,6 +595,10 @@ class AnalysisSession(BaseModel):
     narrative: DataNarrative | None = None  # PROMPT-2 follow-up: LLM-generated display names + entity, built once per dataset
     iteration: int = 0
     quality_check_attempts: int = 0        # FEAT-02: entries into quality_check_node per graph run
+    high_null_answer: str | None = None    # the high-null gate's answer ("continue" | "drop"): asked once
+    # PII values of data this session switched away from: its conversation still quotes them, so
+    # every later run's LLM guard is seeded with them (stored with the history, which holds them).
+    prior_pii: list[str] = Field(default_factory=list)
     overview_done: bool = False            # Phase 3: True after first comprehensive analysis ships; resets when connector_config changes
     dataset_name: str | None = None
     file_hash: str | None = None

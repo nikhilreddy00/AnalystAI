@@ -1,0 +1,25 @@
+id: reg-sales
+category: regression
+dataset:
+  name: sales
+  seed: 7
+roles:
+  order_id: id
+  order_date: date
+  segment: category
+  region: category
+  revenue: metric
+  units: metric
+  discount: metric
+  marketing_spend: metric
+  customer_email:
+  - category
+  - id
+  customer_name:
+  - category
+  - id
+  notes: category
+pii:
+  customer_email: email
+  customer_name: name
+label_note: 'An existing eval dataset: roles every other suite depends on must not regress.'

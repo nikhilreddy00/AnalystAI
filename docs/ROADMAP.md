@@ -305,7 +305,12 @@ targeted-path cleaning gap for the Ingestion PR);
 **Quality check ✅ 2026-10-29** (`docs/baselines/phase5_quality.md`; code checks every claim against the
 evidence it cites, a Haiku critic plus a verification pass judges the rest, flags are shown next to their
 claims; 40 golden reports built from the stored insight run; also found a real insight defect and the
-truncated-excerpt carry-over for Ingestion).
+truncated-excerpt carry-over for Ingestion);
+**Ingestion ✅ 2026-10-30** (`docs/baselines/phase5_ingestion.md`; deterministic, the LLM summary removed;
+one lossless file reader; roles from values; PII by name, role and value, plus a reversible PII guard in
+the shared LLM client that holds the "never reaches an LLM" rule for every agent; also folded in the
+insight carry-overs (findings by id, rank repair) and routed targeted questions through cleaning).
+**Phase 5 is complete.**
 Each PR runs the same 7 steps:
 1. agent card;
 2. eval cases first;

@@ -20,7 +20,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
-from agents.utils import strip_markdown_fences, safe_column_name
+from agents.utils import pii_columns, safe_column_name, strip_markdown_fences
 from guardrails import (
     MASK,
     UNTRUSTED_NOTE,
@@ -361,7 +361,8 @@ TOOLS = [
 _MAX_TOOL_ROUNDS = 3
 
 
-def run_tool(name: str, args: dict, df: pd.DataFrame) -> tuple[str, bool]:
+def run_tool(name: str, args: dict, df: pd.DataFrame, pii: set[str] = frozenset()
+             ) -> tuple[str, bool]:
     """(result text, is_error). Results are dataset text, so they are delimited."""
     if name == "get_schema":
         col = args.get("column")
@@ -371,7 +372,7 @@ def run_tool(name: str, args: dict, df: pd.DataFrame) -> tuple[str, bool]:
         samples = s.dropna().astype(str).unique()[:5].tolist()
         profile = {"dtype": str(s.dtype), "null_pct": round(float(s.isna().mean() * 100), 2),
                    "distinct": int(s.nunique()),
-                   "samples": [MASK] * len(samples) if is_pii_column(col)
+                   "samples": [MASK] * len(samples) if col in pii or is_pii_column(col)
                    else [mask_pii(v) for v in samples]}
         if pd.api.types.is_numeric_dtype(s) and s.notna().any():
             profile |= {"min": float(s.min()), "max": float(s.max())}
@@ -383,7 +384,7 @@ def run_tool(name: str, args: dict, df: pd.DataFrame) -> tuple[str, bool]:
             return f"unknown column(s): {unknown}", True
         n = max(1, min(int(args.get("n") or 5), 10))
         rows = df[cols].head(n).astype(object).where(df[cols].head(n).notna(), None)
-        return delimit_untrusted("\n".join(json.dumps(mask_row(r), default=str)
+        return delimit_untrusted("\n".join(json.dumps(mask_row(r, pii), default=str)
                                             for r in rows.to_dict("records"))), False
     return f"unknown tool: {name}", True
 
@@ -419,7 +420,8 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 df = pd.read_parquet(io.BytesIO(df_parquet))
             results = []
             for call in response.tool_calls:
-                text, is_error = run_tool(call["name"], call["input"], df)
+                text, is_error = run_tool(call["name"], call["input"], df,
+                                          pii_columns(session.data_contract))
                 results.append({"type": "tool_result", "tool_use_id": call["id"],
                                 "content": text, "is_error": is_error})
             messages = messages + [{"role": "assistant", "content": response.content},
@@ -547,6 +549,17 @@ def segment_id(segment_column: str, metric: str, aggregation: str = "mean") -> s
     same pair is a different finding, so only the mean keeps the bare id."""
     base = f"seg:{segment_column}/{metric}"
     return base if (aggregation or "mean") == "mean" else f"{base}:{aggregation}"
+
+
+def findings_by_id(f: AnalysisFindings | None) -> dict[str, TrendResult | SegmentResult]:
+    """Trend and segment findings by their Evidence id (the ids evidence and visualization use),
+    so readers get the full results, never the truncated `result_excerpt` (insight, quality)."""
+    if f is None:
+        return {}
+    out: dict = {segment_id(s.segment_column, s.metric_column, s.aggregation): s for s in f.segments}
+    out |= {f"trend:{t.column}" + (f" ({t.segment})" if t.segment else "") + f":{t.period}": t
+            for t in f.trends}
+    return out
 
 
 def _num(v: Any) -> str:

@@ -7,10 +7,13 @@ Shared LLM client (ADR-0005). Every agent calls Claude through `get_client().com
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import time
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -30,6 +33,116 @@ _PRICES = {
 
 # When set (eval runner), every trace record of the current task is appended here too.
 trace_meter: ContextVar[list[dict] | None] = ContextVar("trace_meter", default=None)
+
+# Hard rule (Phase 5 Ingestion): unmasked PII from the user's data never reaches an LLM. A run's
+# entry point sets an empty set (api/routes/chat.py, the eval harness); ingestion fills it in place
+# with the dataset's PII values, so every node's task sees the same set. Each request's messages are
+# pseudonymized against it ("Jane Doe" → "[PII_1a2b3c4d]") and each reply restored, so a question
+# naming a customer still works while the model never sees the name.
+pii_values: ContextVar[set[str] | None] = ContextVar("pii_values", default=None)
+_TOKEN_RE = re.compile(r"\[PII_[0-9a-f]{8}\]")
+
+
+def pii_token(value: str) -> str:
+    return f"[PII_{hashlib.sha1(value.encode()).hexdigest()[:8]}]"
+
+
+def _walk(obj, fn):
+    if isinstance(obj, str):
+        return fn(obj)
+    if isinstance(obj, list):
+        return [_walk(x, fn) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _walk(v, fn) for k, v in obj.items()}
+    return obj
+
+
+# A value whose run had more distinct PII values than ingestion could register: requests are then
+# also pattern-masked (emails, phones, SSNs, cards, IPs), so the overflow fails closed for those kinds.
+OVERFLOW = "\x00pii-overflow"
+_WORD_RE = re.compile(r"\w+")
+
+
+@lru_cache(maxsize=8)
+def _index(values: frozenset[str]) -> dict[str, list[tuple[int, str]]]:
+    """First word (lowercased) → [(its offset in the value, value)], longest value first. Keyed on
+    the values themselves, never object identity: a new run's set could reuse a dead set's id and
+    get its index, leaving its own values unmasked. Several runs can be live."""
+    out: dict[str, list[tuple[int, str]]] = {}
+    for v in values:
+        if (m := _WORD_RE.search(v)) and v != OVERFLOW:
+            out.setdefault(m.group().lower(), []).append((m.start(), v))
+    for cands in out.values():
+        cands.sort(key=lambda c: -len(c[1]))
+    return out
+
+
+def _edge(ch: str) -> bool:
+    return ch.isalnum() or ch in "_@"
+
+
+def pseudonymize(obj, values: set[str] | None = None):
+    """(obj with every known PII value replaced by its token, {token: value} for what was
+    replaced). Case-insensitive, whole values only. One pass over the text with a dict lookup per
+    word, so the cost doesn't grow with the number of values. `values` defaults to the current
+    run's set; no set → unchanged."""
+    values = pii_values.get() if values is None else values
+    if not values:
+        return obj, {}
+    index, overflow = _index(frozenset(values)), OVERFLOW in values
+    mapping: dict[str, str] = {}
+
+    def sub(text: str) -> str:
+        out, pos = [], 0
+        for m in _WORD_RE.finditer(text):
+            if m.start() < pos:
+                continue
+            for off, v in index.get(m.group().lower(), ()):
+                a, b = m.start() - off, m.start() - off + len(v)
+                # Compare slices of the original text: lowercasing can change a string's length
+                # ("İ" → 2 chars), so a separately lowercased copy would misalign the offsets.
+                if a >= pos and b <= len(text) and text[a:b].lower() == v.lower() \
+                        and not (a and _edge(text[a - 1])) \
+                        and not (b < len(text) and _edge(text[b])):
+                    token = pii_token(text[a:b])
+                    mapping[token] = text[a:b]
+                    out += [text[pos:a], token]
+                    pos = b
+                    break
+        out.append(text[pos:])
+        result = "".join(out)
+        if overflow:
+            from guardrails import mask_pii
+            result = mask_pii(result)
+        return result
+    return _walk(obj, sub), mapping
+
+
+def restore(obj, mapping: dict[str, str]):
+    """Tokens back to the values. A token the model put inside double quotes (a JSON string) gets
+    the value JSON-escaped, so a name with a quote or backslash can't break the output."""
+    if not mapping:
+        return obj
+
+    def back(m: re.Match) -> str:
+        value = mapping.get(m.group("tok"))
+        if value is None:
+            return m.group()
+        if m.group("q"):
+            return f'"{json.dumps(value, ensure_ascii=False)[1:-1]}"'
+        return value
+    return _walk(obj, lambda t: _QUOTED_TOKEN_RE.sub(back, t))
+
+
+_QUOTED_TOKEN_RE = re.compile(r'(?P<q>")?(?P<tok>\[PII_[0-9a-f]{8}\])(?(q)")')
+
+
+def _restore_result(result: "LLMResult", mapping: dict[str, str]) -> "LLMResult":
+    if mapping:
+        result.text = restore(result.text, mapping)
+        result.tool_calls = restore(result.tool_calls, mapping)
+        result.content = restore(result.content, mapping)
+    return result
 
 
 @dataclass
@@ -105,6 +218,9 @@ class ClaudeClient:
         tools: list[dict] | None = None, tool_choice: dict | None = None,
     ) -> LLMResult:
         model = model or self.model
+        messages, mapping = pseudonymize(messages)
+        if mapping:   # a builder let PII through: the guard caught it (label only, never values)
+            trace_verdict(agent, prompt_version, "pii_tokenized")
         # Every agent's system prompt is a module constant, so it is cached (with the tools, which
         # render before it). Prompts under the model's minimum (1024 tokens on Sonnet 4.6, 4096
         # on Haiku 4.5) are silently not cached and cost nothing extra.
@@ -150,7 +266,7 @@ class ClaudeClient:
             "ts": datetime.now(timezone.utc).isoformat(),
             "agent": agent, "prompt_version": prompt_version, "model": model, **record,
         })
-        return _check(result, agent)
+        return _check(_restore_result(result, mapping), agent)
 
 
 class RecordedClient:
@@ -165,12 +281,13 @@ class RecordedClient:
         system: str | None = None, model: str | None = None,
         tools: list[dict] | None = None, tool_choice: dict | None = None,
     ) -> LLMResult:
+        messages, mapping = pseudonymize(messages)   # tests see what would be sent
         self.calls.append({"agent": agent, "system": system, "messages": messages, "model": model,
                            "tools": tools, "tool_choice": tool_choice})
         if not self.responses:
             raise LLMError(agent, "RecordedClient has no recorded response left")
         r = self.responses.pop(0)
-        return _check(LLMResult(text=r) if isinstance(r, str) else r, agent)
+        return _check(_restore_result(LLMResult(text=r) if isinstance(r, str) else r, mapping), agent)
 
 
 _client: LLMClient | None = None

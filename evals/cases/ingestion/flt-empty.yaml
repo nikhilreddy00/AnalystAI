@@ -1,0 +1,5 @@
+id: flt-empty
+category: fault
+file: empty.csv
+expect_error: true
+label_note: 'A 0-byte file: a clear message, not a crash or an empty analysis.'

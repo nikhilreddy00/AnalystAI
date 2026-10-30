@@ -1,0 +1,22 @@
+id: ing-03-text-numbers
+category: roles
+seed: 13
+rows: 300
+format:
+  type: csv
+columns:
+- - invoice_no
+  - invoice10
+- - order_date
+  - date_us
+- - store
+  - region
+- - amount
+  - money_text
+- - margin
+  - pct_text
+- - qty
+  - count
+- - promo_code
+  - promo_code
+label_note: Money and percent stored as text are metrics; a 10-digit invoice number is an id, not a phone.

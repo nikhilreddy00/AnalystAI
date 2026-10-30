@@ -38,3 +38,10 @@ class GuardrailViolation(AgentError):
 
 class SandboxError(AgentError):
     """Generated code failed or timed out in the sandbox."""
+
+
+class IngestionError(AgentError):
+    """The source can't be loaded as a table (empty, not text, unreadable layout, no rows)."""
+
+    def __init__(self, detail: str, user_message: str):
+        super().__init__("ingestion", detail, user_message)

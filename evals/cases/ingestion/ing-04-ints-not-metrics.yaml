@@ -1,0 +1,20 @@
+id: ing-04-ints-not-metrics
+category: roles
+seed: 14
+rows: 300
+format:
+  type: csv
+columns:
+- - order_number
+  - id_seq
+- - zip
+  - zip_int
+- - year
+  - year_int
+- - state
+  - state
+- - units
+  - count
+- - revenue
+  - money
+label_note: 'Integers that must never be summed: a sequential order number, a zip code, a year.'

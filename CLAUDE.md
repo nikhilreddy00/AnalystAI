@@ -26,7 +26,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3 | Analysis agent as the agent-contract template | ✅ done (2026-10-27) — `docs/baselines/phase3.md` (numeric 97.6%, recall 100%, false findings 0.41%, p95 27s, e2e 45.0%); guide `docs/agent-contract.md` |
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
-| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | 🔄 in progress — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); **Quality check ✅ (2026-10-29)** `docs/baselines/phase5_quality.md` (defect recall 97.1%, false alarms 0.67%, hard 0; 40 reports k=3, 102 seeded defects; e2e 100%; $4.05); next: Ingestion |
+| 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | ✅ done (2026-10-30) — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); **Quality check ✅ (2026-10-29)** `docs/baselines/phase5_quality.md` (defect recall 97.1%, false alarms 0.67%, hard 0; 40 reports k=3, 102 seeded defects; e2e 100%; $4.05); **Ingestion ✅ (2026-10-30)** `docs/baselines/phase5_ingestion.md` (type inference 100%, PII recall 100%, load fidelity 100%, PII canary 0, no LLM; 31 cases k=3 at $0; intake 100%, e2e 100%; $2.09) |
 | 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | pending |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
@@ -67,7 +67,7 @@ User query
 [1. Intake Agent]      Claude  — NL → AnalysisTask (structured plan)
   │
   ▼
-[2. Ingestion Agent]   Haiku   — connector.load() → DataFrame + DataContract
+[2. Ingestion Agent]           — deterministic (no LLM): load → roles, PII, masked samples, source evidence → DataContract
   │
   ▼
 [3. Cleaning Agent]            — deterministic (no LLM): parse/merge/dedup, nothing imputed → CleaningAudit
@@ -114,7 +114,10 @@ agents/
   intake_agent.py          — contract agent: INTAKE_CARD, prompts/intake/vN.md, build_context (schema +
                              conversation_context memory + previous plan, all delimited), hard rules
                              (plan_columns, intent, JSON: 1 guided retry, then drop + ask), returns AnalysisTask
-  ingestion_agent.py       — shared LLM client (Haiku), returns DataContract
+  ingestion_agent.py       — contract agent, PURE PYTHON (no LLM): INGESTION_CARD, build_context,
+                             infer_role (values first; names only break ties), build_contract (roles +
+                             reasons, PII kind, masked samples, computed summary, fingerprint, Evidence
+                             kind "source"), known_pii_values → llm.client.pii_values; IngestionError
   cleaning_agent.py        — contract agent, PURE PYTHON (no LLM): CLEANING_CARD, build_context →
                              CleanContext, clean() = 9 allowed operations, one CleaningDecision each
                              (nothing imputed: missing numbers/IDs/dates/targets stay missing, labels →
@@ -166,7 +169,8 @@ orchestrator/
 
 connectors/
   base.py                  — DataConnector ABC + get_connector() factory
-  csv_connector.py         — CSV/Excel with encoding detection
+  csv_connector.py         — one reader (_read_bytes): encoding, delimiter, title rows, decimal comma,
+                             TOTAL footer, largest Excel sheet; lossless (dates parsed only if all parse)
   sql_connector.py         — SQLAlchemy (psycopg 3 for Postgres); query() = parse guard → READ ONLY
                              txn (always rolled back) → statement timeout → 10k-row cap
   sheets_connector.py      — gspread + OAuth2
@@ -229,7 +233,7 @@ agent_start       → {type: "agent_start", agent: "<name>", message: "<status>"
 agent_complete    → {type: "agent_complete", agent: "<name>", message: "<result>"}
 approval_required → {type: "approval_required", context: "clarification"|"high_null", ...}
 suggested_questions → {type: "suggested_questions", questions: string[]}  // FEAT-01
-evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding (+ one "cleaning", + "query" for SQL, + "eda" per described column)
+evidence          → {type: "evidence", data: Evidence[]}  // Phase 3: one per analysis finding (+ "source" first (Phase 5 Ingestion), + one "cleaning", + "query" for SQL, + "eda" per described column)
 charts            → {type: "charts", data: ChartConfig[]}  // Phase 5: + rationale, placement, lint_warnings, error_key, split_key, reference_lines
 export            → {type: "export", format: "pptx", url: "/dashboard/latest/report.pptx"}
 insight           → {type: "insight", data: InsightReport}  // Phase 5: findings/paragraphs are Claim{text, evidence_ids}; actions carry evidence_ids
@@ -251,8 +255,8 @@ done              → {type: "done"}  // always last
 - **Frontend colours**: theme tokens only (`bg-card`, `text-muted-foreground`, `bg-primary`, `text-success`, `--chart-N` …,
   defined for light + dark in `globals.css`). Raw palette classes / hex fail `tests/test_frontend_tokens.py`.
   UI checks without keys: `scripts/ui_check/README.md`
-- **Untrusted data**: dataset text in a prompt goes through `delimit_untrusted()` with `UNTRUSTED_NOTE` in the system prompt; PII is masked once in `build_data_contract` (mask anything else you send, e.g. `mask_row`)
-- **LLM calls**: through `llm/client.py` — never a new `AsyncAnthropic`. Contract agents (analysis, sql, intake so far) take `llm: LLMClient` as a parameter; the rest still call `get_client()` until their Phase 5 PR. Every system prompt is a module constant and is prompt-cached by `ClaudeClient` (keep it constant: per-call text belongs in messages). Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl` (metadata, tool names and guardrail rule labels only)
+- **Untrusted data**: dataset text in a prompt goes through `delimit_untrusted()` with `UNTRUSTED_NOTE` in the system prompt (`tests/test_untrusted_data.py` fails CI for any LLM-calling agent without both); PII is masked once in `build_data_contract` (mask anything else you send with `mask_row(row, pii_columns(contract))`). **PII hard rule**: each run sets `llm.client.pii_values` (chat route, eval harness), ingestion fills it, and `ClaudeClient` tokenizes those values in every request (`[PII_xxxxxxxx]`, restored in the reply). A `pii_tokenized` trace label means a builder leaked: fix the builder
+- **LLM calls**: through `llm/client.py` — never a new `AsyncAnthropic`. Contract agents (all but drill-down) take `llm: LLMClient` as a parameter; the rest still call `get_client()` until their Phase 5 PR. Every system prompt is a module constant and is prompt-cached by `ClaudeClient` (keep it constant: per-call text belongs in messages). Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl` (metadata, tool names and guardrail rule labels only)
 - **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
 - **Eval budget (real money, the user's prepaid credits)**: iterate with `--only <case> --k 1`; one full k=3
@@ -261,13 +265,13 @@ done              → {type: "done"}  // always last
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
   Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost ~$59 (2026-10-27), mostly
-  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case); Phase 5 Quality $4.05 (checks iterated at $0; one E2E overview re-gate ran 132% over its estimate). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case); Phase 5 Quality $4.05 (checks iterated at $0; one E2E overview re-gate ran 132% over its estimate); Phase 5 Ingestion $2.09 (deterministic suite at $0; one E2E re-gate after review fixes; insight + analysis proven unaffected by snapshot, `evals/snapshot.py`). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
   `pg_ctl -D <dir> -o "-p 54329 -c unix_socket_directories='' -c listen_addresses=localhost" start`, `createdb -h localhost -p 54329 -U postgres analystai_eval`. Cases: `evals/cases/sql/` (golden SQL never goes
   in a layer's `verified_queries` or a prompt — a test checks)
-- **Evals**: `uv run python -m evals.run {analysis|e2e|sql|intake|visualization|cleaning|insight} --k 3 [--compare <prev.json>] [--exclude holdout]`; a scorer fix is re-scored for $0 with `python -m evals.run rescore <report.json>` (never re-run for it) — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
+- **Evals**: `uv run python -m evals.run {analysis|e2e|sql|intake|visualization|cleaning|insight|quality|ingestion} --k 3 [--compare <prev.json>] [--exclude holdout]`; a scorer fix is re-scored for $0 with `python -m evals.run rescore <report.json>` (never re-run for it) — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
 
 ---
 

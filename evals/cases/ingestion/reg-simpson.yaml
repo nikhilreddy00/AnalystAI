@@ -1,0 +1,15 @@
+id: reg-simpson
+category: regression
+dataset:
+  name: simpson
+  seed: 7
+roles:
+  visitor_id: id
+  department: category
+  group: category
+  converted:
+  - metric
+  - category
+  session_minutes: metric
+pii: {}
+label_note: 'An existing eval dataset: roles every other suite depends on must not regress.'

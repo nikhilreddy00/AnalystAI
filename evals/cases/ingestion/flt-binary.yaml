@@ -1,0 +1,5 @@
+id: flt-binary
+category: fault
+file: binary.csv
+expect_error: true
+label_note: 'Not text at all (a renamed binary): a clear message.'

@@ -1,0 +1,16 @@
+id: fx-crm-contacts
+category: fixture
+file: crm_contacts.csv
+truth_read: {}
+roles: {Contact Owner: category, First Name: category, Last Name: category, Email: [category, id],
+        Phone Number: [category, id], Company Name: category, Lead Source: category,
+        Create Date: date, Annual Revenue: metric, Lifecycle Stage: category}
+pii: {Contact Owner: name, First Name: name, Last Name: name, Email: email, Phone Number: phone}
+traps: [Company Name]
+expect:
+  rows: 10
+  columns: [Contact Owner, First Name, Last Name, Email, Phone Number, Company Name, Lead Source,
+            Create Date, Annual Revenue, Lifecycle Stage]
+  cells: [[3, Annual Revenue, 5600000], [6, Phone Number, "+91 98765 43210"], [8, Company Name, Sato Robotics]]
+label_note: 'Hand-written CRM contact export: owner, first/last names, international phones; company
+  names are not people.'

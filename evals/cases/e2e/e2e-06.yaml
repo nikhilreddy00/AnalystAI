@@ -6,7 +6,7 @@ question: What is the average revenue for segment B?
 overview_done: true
 checks:
 - kind: number_in_answer
-  truth_key: mean_revenue_by_segment.B
+  truth_key: after_dedup.mean_revenue_by_segment.B  # every answer reads cleaned data: one order exported twice counts once
   rel_tol: 0.02
 hard_rules:
 - charts_lint_clean

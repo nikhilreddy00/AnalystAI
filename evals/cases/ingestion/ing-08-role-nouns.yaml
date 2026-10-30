@@ -1,0 +1,22 @@
+id: ing-08-role-nouns
+category: pii
+seed: 18
+rows: 300
+format:
+  type: csv
+columns:
+- - deal_id
+  - id_str
+- - stage
+  - plan
+- - amount
+  - money
+- - close_date
+  - date_iso
+- - sales_rep
+  - full_name
+- - owner
+  - full_name
+- - assigned_to
+  - full_name
+label_note: 'People named by their role: rep, owner, assignee hold person names.'

@@ -1,0 +1,19 @@
+id: ing-09-utf16-tab
+category: layout
+seed: 19
+rows: 300
+format:
+  type: tsv
+  encoding: utf-16
+columns:
+- - customer_name
+  - full_name
+- - email
+  - email
+- - region
+  - region
+- - revenue
+  - money
+- - order_date
+  - date_iso
+label_note: 'Excel ''Unicode text'': UTF-16 with BOM, tab-separated.'

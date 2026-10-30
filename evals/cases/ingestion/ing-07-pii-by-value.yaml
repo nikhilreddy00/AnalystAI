@@ -1,0 +1,22 @@
+id: ing-07-pii-by-value
+category: pii
+seed: 17
+rows: 300
+format:
+  type: csv
+columns:
+- - visit_date
+  - date_iso
+- - segment
+  - region
+- - spend
+  - money
+- - contact
+  - email
+- - ref
+  - ssn
+- - comments
+  - notes_pii
+- - reach
+  - phone_intl
+label_note: 'PII with no telltale column name: emails, SSNs, international phones, notes with contacts.'

@@ -26,7 +26,7 @@ import pandas as pd
 from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
-from agents.utils import pandas_freq, partial_last_month
+from agents.utils import looks_like_sequential_id, pandas_freq, partial_last_month
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -110,26 +110,6 @@ _ORDINAL_NAME = re.compile(r"(?i)(level|grade|tier|class|rating|priority|stage|r
 _POSITIVE_LABELS = {"yes", "true", "1", "t", "y", "positive", "survived", "churned", "win", "passed", "converted", "default"}
 
 
-def _looks_like_sequential_id(s: pd.Series, n: int) -> bool:
-    """True if the column looks like a row index / sequential id:
-    whole-number values that fill an interval close to len(df)."""
-    arr = s.dropna()
-    if arr.empty or not pd.api.types.is_numeric_dtype(arr):
-        return False
-    if not pd.api.types.is_integer_dtype(arr):
-        # Float column containing only whole numbers also counts.
-        try:
-            if not bool((arr % 1 == 0).all()):
-                return False
-        except Exception:
-            return False
-    nu = int(arr.nunique())
-    if nu / max(n, 1) < 0.95:
-        return False
-    spread = float(arr.max()) - float(arr.min())
-    return spread <= n * 1.5
-
-
 # ── Stage 1: column classifier ───────────────────────────────────────────────
 
 def classify_columns(df: pd.DataFrame) -> dict:
@@ -176,7 +156,7 @@ def classify_columns(df: pd.DataFrame) -> dict:
         # rule to whole-number sequences prevents Age/Fare/revenue from being
         # mis-flagged as ids.
         name_is_id = bool(_ID_NAME.search(col))
-        if name_is_id or _looks_like_sequential_id(s, n):
+        if name_is_id or looks_like_sequential_id(s, n):
             roles["id_cols"].append(col)  # type: ignore[union-attr]
             continue
 

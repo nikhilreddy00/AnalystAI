@@ -1,0 +1,22 @@
+id: ing-15-clinic-holdout
+category: pii
+seed: 25
+rows: 300
+format:
+  type: csv
+columns:
+- - mrn
+  - id_str
+- - patient_name
+  - full_name
+- - dob
+  - dob
+- - physician
+  - full_name
+- - visit_date
+  - date_iso
+- - charge
+  - money_text
+- - street
+  - street
+label_note: 'Clinic visits: patient and physician names, date of birth, address.'

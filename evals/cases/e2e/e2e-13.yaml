@@ -6,7 +6,7 @@ question: How much did segment B revenue change last month compared to the month
 overview_done: true
 checks:
 - kind: number_in_answer
-  truth_key: segB_mom_pct
+  truth_key: after_dedup.segB_mom_pct  # every answer reads cleaned data: one order exported twice counts once
   rel_tol: 0.05
 hard_rules:
 - charts_lint_clean
