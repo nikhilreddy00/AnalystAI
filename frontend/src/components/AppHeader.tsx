@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { fetchHealth } from "@/lib/api";
 import ThemeToggle from "./ThemeToggle";
 
 const NAV = [
@@ -23,6 +25,13 @@ export default function AppHeader({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const initials = (user?.displayName || user?.email || "U").slice(0, 2).toUpperCase();
+  // Audit B4: a development server without Postgres keeps work in memory only. Say so.
+  const [unsaved, setUnsaved] = useState(false);
+  useEffect(() => {
+    fetchHealth()
+      .then((h) => setUnsaved(h?.persistent === false))
+      .catch(() => setUnsaved(false));
+  }, []);
 
   return (
     <header className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-border bg-card px-3 sm:px-4">
@@ -51,6 +60,15 @@ export default function AppHeader({
         })}
       </nav>
       <div className="flex-1" />
+      {unsaved && (
+        <span
+          role="status"
+          title="This server has no database: analyses are lost when it restarts."
+          className="rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning"
+        >
+          Not saved
+        </span>
+      )}
       {children}
       <ThemeToggle />
       {user && (
