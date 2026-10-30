@@ -113,7 +113,7 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
   - `evals/snapshot.py` records what every paid suite's agent receives, and
     `tests/test_suite_inputs_unchanged.py` pins it.
 - **Tests:** `test_ingestion.py`, `test_pii_never_reaches_llm.py`, `test_suite_inputs_unchanged.py`.
-  Offline suite: 753 → **807** passing.
+  Offline suite: 753 → **810** passing.
 
 ## Review rounds (what fresh eyes caught)
 - **An independent code review of the branch: 10 findings, all fixed with a test each.**
@@ -140,6 +140,22 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
   - After the last of these, a third E2E gate wasn't run. Instead the snapshot proves every
     suite's inputs are unchanged, and the new phone rule matches none of 920 strings from the
     final E2E run.
+
+## Pre-merge audit (recurring bug classes, checked across the whole codebase)
+| class (phases it recurred in) | root cause of the repetition | status now |
+|---|---|---|
+| Data text reaching a prompt undelimited (3, Intake, Viz, Insight, Ingestion) | delimiting was a per-builder convention; agents written or skipped later regressed | **drill-down was the last offender (0 delimiting), fixed. `tests/test_untrusted_data.py` now fails CI for any LLM-calling agent that doesn't delimit (verified: it fails on the old drill-down).** |
+| PII reaching a prompt (2, 3, Viz, Insight, Ingestion) | masking was opt-in per builder, and by column name only | **structural**: detection by value plus the client guard on every call. Grep: no name-only masks or bare `mask_row` left. |
+| Roles/dates guessed by column name (BUG-32/33/34, Viz, Ingestion) | every agent had its own name regex | the contract role (values first) is the one definition. Grep: no name-keyword date or role guesses left in agents. |
+| Eval truth computed on a frame the pipeline doesn't analyze (Insight, Quality, Ingestion) | the same author wrote the generator and the scorer; truth came from the raw table | `after_dedup` truth; generator keys pinned byte-identical. |
+| Cost estimates wrong (Quality +132%, Ingestion refused $0 runs twice) | priced from the newest *paid* report, which can be an older agent version | **fixed**: newest report, including $0 ones, plus a test |
+| Swallowed exceptions | | none added (2 deliberate `pass`: an encoding fallthrough and a test) |
+
+**New bug found by the audit:** an API or JSON field mixing types (`1`, then `"x"`) crashed the
+parquet hand-off with a raw `ArrowInvalid`. Such columns are now read as text (lossless, and noted
+in the source evidence); a test covers it. A 300-frame fuzz of awkward dtypes (categorical,
+nullable bool, tz-aware, timedelta, inf, mixed, unicode headers) through the contract, guard and
+reader found 0 crashes.
 
 ## Senior decisions (with the reason)
 - **No LLM in ingestion.** The summary call was read only by Intake, and Intake's eval never saw
@@ -191,6 +207,10 @@ Card `ingestion contract-v1`, no LLM, 2026-10-30, branch `phase-5-ingestion`.
   - layout detection reads the first 200 lines.
 - **Insight caveat wording** for the rank repair is new text in the analyst view. No eval scores
   it.
+- **The E2B sandbox receives the whole dataset, PII columns included.** It isn't an LLM, so the
+  hard rule holds, but it is a third-party cloud service. Options for 5.6/6: drop PII columns
+  from the sandbox upload unless the plan names them (this changes analysis inputs, so it needs a
+  paid analysis run), or self-host the sandbox. Organizations should be told either way.
 - **Drill-down reads uncleaned data** (`routing.py`), the same gap targeted answers had. Resumed
   sessions usually read the cleaned cache, but not always.
 - **A restored value inside single-quoted code** (`'[PII_x]'` → `'O'Brien'`) can break model-written

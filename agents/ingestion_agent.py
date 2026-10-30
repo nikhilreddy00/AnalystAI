@@ -342,6 +342,24 @@ def _seed_guard_from_last_turn(session: AnalysisSession) -> None:
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
+def _mixed_as_text(df: pd.DataFrame) -> list[str]:
+    """Object columns holding more than one kind of scalar (an API field that is 1 in one record
+    and "x" in the next) become text, missing values kept: parquet needs one type per column,
+    and text loses nothing. Nested values (lists, dicts) are left as they are."""
+    mixed = []
+    for col in df.columns:
+        s = df[col]
+        if s.dtype != object:
+            continue
+        kinds = {("number" if isinstance(v, (int, float)) and not isinstance(v, bool) else
+                  type(v).__name__) for v in s.dropna()}
+        if len(kinds) > 1 and not kinds & {"list", "dict", "tuple", "set"}:
+            df[col] = s.map(lambda v: v if v is None or (isinstance(v, float) and v != v)
+                            else str(v)).astype(object)
+            mixed.append(str(col))
+    return mixed
+
+
 def unique_names(columns) -> list[str]:
     seen: dict[str, int] = {}
     out = []
@@ -393,6 +411,9 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
     if renamed:
         info["notes"] = [*info.get("notes", []),
                          f"Duplicate column names were renamed: {', '.join(renamed[:5])}."]
+    if mixed := _mixed_as_text(df):
+        info["notes"] = [*info.get("notes", []), f"Columns mixing numbers and text were read as "
+                         f"text (Cleaning parses them, with an audit entry): {', '.join(mixed[:5])}."]
     contract = build_contract(df, ctx.config.type, info)
     contract.source_query = source_query
     remember_pii(df, contract)

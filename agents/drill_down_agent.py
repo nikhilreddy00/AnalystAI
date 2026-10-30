@@ -14,6 +14,7 @@ import pandas as pd
 
 from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
+from guardrails import UNTRUSTED_NOTE, delimit_untrusted
 from agents.visualization_agent import _why, build_context, finalize_charts
 from llm.client import get_client
 from orchestrator.state import (
@@ -35,6 +36,8 @@ referencing the prior findings when relevant.
 
 If a chart would help, suggest ONE chart spec. Otherwise, leave chart_spec null.
 
+{untrusted}
+
 Respond with ONLY a JSON object (no markdown fences, no extra text):
 
 {
@@ -45,7 +48,7 @@ Respond with ONLY a JSON object (no markdown fences, no extra text):
     "y_column": "<column name>"
   }
 }
-"""
+""".replace("{untrusted}", UNTRUSTED_NOTE)
 
 
 async def run_drill_down_agent(
@@ -94,7 +97,9 @@ async def run_drill_down_agent(
     findings = session.analysis_findings
     eda_summary = json.dumps(findings.eda_summary, default=str)[:1500] if findings else ""
 
-    user_prompt = f"""\
+    # The prior report quotes the data and the column names are the user's: delimited, as in
+    # every other agent (tests/test_untrusted_data.py enforces it for every LLM-calling agent).
+    data_block = delimit_untrusted(f"""\
 Prior analysis:
 - Executive summary: {report.executive_summary}
 - Technical findings: {report.technical_findings[:5]}
@@ -103,7 +108,9 @@ Prior analysis:
 Dataset:
 - Rows: {contract.row_count if contract else "?"}
 - Columns ({len(column_names)}): {column_dtypes}
-- EDA stats (truncated): {eda_summary}
+- EDA stats (truncated): {eda_summary}""")
+    user_prompt = f"""\
+{data_block}
 
 Follow-up question: {query}
 

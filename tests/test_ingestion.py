@@ -229,3 +229,21 @@ async def test_a_follow_up_registers_the_last_turns_pii_before_the_memory(monkey
         assert {"Jane Doe", "Omar Haddad"} <= pii_values.get()
     finally:
         pii_values.reset(token)
+
+
+async def test_an_api_field_mixing_types_loads_as_text_not_a_crash(tmp_path, monkeypatch):
+    """Audit: {"v": 1} then {"v": "x"} crashed the parquet hand-off with a raw ArrowInvalid."""
+    from agents.ingestion_agent import run_ingestion_agent
+    from connectors import csv_connector
+    from llm.client import RecordedClient
+    from orchestrator.state import ConnectorConfig
+    f = tmp_path / "mixed.json"
+    f.write_text('[{"id":1,"v":1},{"id":2,"v":"x"},{"id":3,"v":true},{"id":4,"v":null}]')
+    monkeypatch.setattr(csv_connector, "_validate_upload_path", lambda p: f)
+    s = AnalysisSession(session_id="a", connector_config=ConnectorConfig(type=ConnectorType.CSV,
+                                                                         file_path=str(f)))
+    contract = await run_ingestion_agent(s, RecordedClient())
+    assert [c.name for c in contract.columns] == ["id", "v"]
+    assert any("read as text" in n for n in contract.source_evidence.assumptions)
+    df = pd.read_parquet(io.BytesIO(s.__dict__["_df_parquet"]))
+    assert df["v"].tolist()[:3] == ["1", "x", "True"] and df["v"].isna().iloc[3]

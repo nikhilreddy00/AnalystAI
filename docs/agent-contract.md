@@ -190,6 +190,9 @@ A Pydantic `AgentCard` constant in the agent module: name, version, scope, input
   small inputs against the real functions and found 10 bugs that 100% on the eval had hidden:
   the SQL path leaking names, a header lost to a trailing delimiter, a US thousand read as a
   decimal, a guard that was too slow to raise its cap. Evals cover what the author imagined.
+- **A bug class that recurs is a missing check, not a missing fix.** Undelimited data reached
+  prompts in five phases, each time fixed in one builder. A test that fails CI when any
+  LLM-calling agent doesn't delimit (`tests/test_untrusted_data.py`) ends the class.
 - **Keep holdouts out of iteration.** Running them once while iterating spent one of them; a fresh
   holdout, labelled before its first run, restored the unseen check.
 

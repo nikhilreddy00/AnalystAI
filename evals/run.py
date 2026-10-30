@@ -828,7 +828,9 @@ def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | N
     paid = []
     for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
         rep = json.loads(p.read_text())
-        if not rep["meta"].get("checks_only") and rep["summary"].get("cost_per_question_usd"):
+        # The newest runs are the cost basis, $0 ones included: an agent that dropped its LLM
+        # (cleaning, ingestion) must not be priced from its old paid reports.
+        if not rep["meta"].get("checks_only") and "cost_per_question_usd" in rep["summary"]:
             paid.append(rep)
     average = next((r["summary"]["cost_per_question_usd"] for r in paid
                     if not r["meta"].get("only") and not r["meta"].get("exclude")), 0.0)
