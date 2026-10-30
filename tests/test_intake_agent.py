@@ -116,21 +116,6 @@ def test_conversation_memory_caps_long_turns():
     assert text.count("u") <= 1000 + 10 and text.count("a") <= 400 + 10
 
 
-async def test_high_null_approval_keeps_the_users_question(recorded_llm):
-    """'Continue with imputation' answers the cleaning gate: no intake call, raw_query unchanged."""
-    from orchestrator.graph import intake_node
-    from orchestrator.state import AnalysisTask
-
-    session = _session()
-    session.task_plan = AnalysisTask(raw_query="How has revenue trended?", target_metrics=["revenue"],
-                                     analysis_types=["trend"])
-    state = {"session": session, "event_queue": None, "user_message": "Continue with imputation",
-             "is_approval": True, "approval_context": "high_null"}
-    out = (await intake_node(state))["session"]
-    assert out.task_plan.raw_query == "How has revenue trended?"
-    assert recorded_llm.calls == []
-
-
 async def test_clarification_answer_is_still_classified(recorded_llm):
     from orchestrator.graph import intake_node
     from orchestrator.state import AnalysisTask

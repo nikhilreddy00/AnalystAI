@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -9,8 +10,6 @@ from slowapi.errors import RateLimitExceeded
 
 from api.config import settings
 from api.rate_limit import limiter
-from memory.session_store import SessionStore
-from memory.vector_store import VectorStore
 
 # Surface application INFO logs (intent classification, status changes, etc.).
 # Without this the root logger defaults to WARNING and our logger.info() calls
@@ -20,15 +19,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-# ── Shared singletons (attached to app.state) ──────────────────────────────────
-session_store: SessionStore | None = None
-vector_store: VectorStore | None = None
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global session_store, vector_store
-
     # Fail fast: with these unset every token is rejected / secrets can't be
     # stored safely, and the failure would otherwise only show up as 401s.
     missing = [n for n in ("supabase_url", "encryption_key") if not getattr(settings, n)]
@@ -43,38 +35,29 @@ async def lifespan(app: FastAPI):
     from pathlib import Path
     Path(settings.session_data_dir).mkdir(parents=True, exist_ok=True)
 
-    # Session store — fall back to in-memory if PostgreSQL is unavailable
-    try:
-        session_store = SessionStore(settings.database_url)
-        await session_store.init()
-        app.state.session_store = session_store
-    except Exception as exc:
-        # Audit B4: in production an in-memory store loses every session on restart, silently.
-        if settings.app_env == "production":
-            raise RuntimeError(f"PostgreSQL unavailable in production: {exc}") from exc
-        import warnings
-        from memory.session_store import InMemorySessionStore
-        warnings.warn(f"PostgreSQL unavailable ({exc}). Using in-memory session store "
-                      "(development only — sessions are lost on restart).")
-        app.state.session_store = InMemorySessionStore()
+    # Sessions, runs and checkpoints: Postgres, or memory in development (audit B4: production
+    # refuses to start without it). The vector store degrades gracefully.
+    from orchestrator.runner import open_deps, work
+    deps = await open_deps(settings.app_env, settings.database_url)
+    app.state.deps = deps
+    app.state.session_store = deps.session_store
+    app.state.vector_store = deps.vector_store
+    app.state.run_store = deps.run_store
 
-    # Vector store — gracefully degrade if Qdrant/Ollama is unavailable
-    try:
-        vector_store = VectorStore(
-            qdrant_host=settings.qdrant_host,
-            qdrant_port=settings.qdrant_port,
-            ollama_host=settings.ollama_host,
-        )
-        await vector_store.init()
-        app.state.vector_store = vector_store
-    except Exception as exc:
-        import warnings
-        warnings.warn(f"Qdrant/Ollama unavailable ({exc}). Institutional memory disabled.")
-        app.state.vector_store = None
+    # Development runs the worker in-process (required in memory mode); production runs
+    # `python -m worker` as its own service. Two workers on one Postgres queue are safe.
+    stop = asyncio.Event()
+    embedded = None
+    if settings.app_env != "production":
+        embedded = asyncio.create_task(work(deps, stop, concurrency=settings.worker_concurrency))
 
     yield
 
-    # Cleanup (nothing needed — connections close automatically)
+    stop.set()
+    if embedded:
+        await embedded
+    for close in deps.closers:
+        await close()
 
 
 app = FastAPI(
@@ -96,12 +79,13 @@ app.add_middleware(
 )
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
-from api.routes import chat, dashboard, connectors, sessions  # noqa: E402
+from api.routes import chat, dashboard, connectors, runs, sessions  # noqa: E402
 
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+app.include_router(runs.router, prefix="/runs", tags=["runs"])
 
 
 @app.exception_handler(Exception)
@@ -114,4 +98,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "env": settings.app_env}
+    # persistent=False: development without Postgres; the UI shows a "not saved" banner.
+    deps = getattr(app.state, "deps", None)
+    return {"status": "ok", "env": settings.app_env, "persistent": bool(deps and deps.persistent)}

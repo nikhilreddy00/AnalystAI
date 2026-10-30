@@ -171,22 +171,22 @@ def test_gate_drop_removes_high_null_columns_with_a_decision():
 @pytest.mark.parametrize("answer, dropped", [("Drop those columns", True), ("B", True),
                                              ("Continue", False), ("Continue with imputation", False),
                                              ("don't drop anything", False)])
-async def test_gate_answer_reaches_cleaning(answer, dropped):
+async def test_gate_answer_reaches_cleaning(answer, dropped, run_env):
     from orchestrator.graph import cleaning_node
     df = pd.DataFrame({"memo": ["x", None, None, None, None], "amount": [1.0, 2, 3, 4, 5]})
     s = _session(df)
-    out = await cleaning_node({"session": s, "df_parquet": s.__dict__["_df_parquet"],
-                               "event_queue": None, "user_message": answer, "is_approval": True,
+    run_env.frame = s.__dict__["_df_parquet"]
+    out = await cleaning_node({"session": s, "user_message": answer, "is_approval": True,
                                "approval_context": "high_null"})
     audit = out["session"].cleaning_audit
     assert any(d.operation == "drop_column" for d in audit.decisions) is dropped
 
 
-async def test_gate_cancel_stops_without_cleaning():
+async def test_gate_cancel_stops_without_cleaning(run_env):
     from orchestrator.graph import cleaning_node
     s = _session(pd.DataFrame({"memo": ["x", None, None], "amount": [1.0, 2, 3]}))
-    out = await cleaning_node({"session": s, "df_parquet": s.__dict__["_df_parquet"],
-                               "event_queue": None, "user_message": "Cancel", "is_approval": True,
+    run_env.frame = s.__dict__["_df_parquet"]
+    out = await cleaning_node({"session": s, "user_message": "Cancel", "is_approval": True,
                                "approval_context": "high_null"})
     assert out["session"].cleaning_audit is None
     assert "cancelled" in out["session"].error_message

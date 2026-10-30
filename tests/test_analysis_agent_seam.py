@@ -188,17 +188,16 @@ def test_standard_block_never_overrides_the_model():
     assert g["result"]["correlations"] == {"units__revenue": 0.5} and not g["result"]["builtin"]
 
 
-async def test_analysis_node_streams_evidence(recorded_llm, monkeypatch):
-    import asyncio
+async def test_analysis_node_streams_evidence(recorded_llm, monkeypatch, run_env):
     import orchestrator.graph as graph
     _fake_sandbox(monkeypatch, {"correlations": {"revenue__units": 0.5},
                                 "non_null": {"revenue": 3025, "units": 3025}, "n_rows": 3025})
     recorded_llm.responses.append("result['correlations']['revenue__units'] = 0.5")
     monkeypatch.setattr(graph, "get_client", lambda: recorded_llm)
-    queue: asyncio.Queue = asyncio.Queue()
+    queue = run_env.events
     session = _session()
-    await graph.analysis_node({"session": session, "df_parquet": session.__dict__["_df_parquet"],
-                               "event_queue": queue})
+    run_env.frame = session.__dict__["_df_parquet"]
+    await graph.analysis_node({"session": session})
     events = [queue.get_nowait() for _ in range(queue.qsize())]
     ev = next(e for e in events if e["type"] == "evidence")
     assert ev["data"][0]["kind"] == "source"   # every answer starts with where the rows came from

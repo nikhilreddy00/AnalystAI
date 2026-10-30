@@ -1,41 +1,30 @@
 """
-Chat endpoint — streams agent pipeline execution via Server-Sent Events.
+Chat endpoint — stores a run and returns its id at once (Phase 5.6a: a run is a record, not a
+request). A worker executes it (orchestrator/runner.py); the client streams its progress from
+GET /runs/{id}/events, which replays every event after Last-Event-ID.
 
-SSE event types emitted in order:
-  session_id     → always first, lets the client track this conversation
-  agent_start    → agent is beginning (shows progress bar in UI)
-  agent_complete → agent finished with a status message
-  approval_required → human gate: clarification or high-null warning
-  charts         → list[ChartConfig] (rendered inline in chat)
-  insight        → InsightReport (Executive + Analyst views)
-  error          → pipeline failure with user-readable message
-  done           → stream is finished; client closes the connection
+SSE event types, in order: session_id (seq 1, written here with the question), agent_start,
+agent_complete, approval_required, approval_answered, charts, insight, error, done, …
+(see CLAUDE.md "SSE Event Protocol").
 
 Multi-turn: include session_id from the prior response to continue a conversation.
-Approval responses: set is_approval=True so the graph handles approval context.
+Approval answers: is_approval=True resumes the run waiting at that gate.
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import uuid
-from typing import AsyncIterator
 
 from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import StreamingResponse
 from api.auth import get_current_user, UserProfile
 from api.rate_limit import ip_limit, limiter
 from pydantic import BaseModel, Field
 
-from llm.client import pii_values
-from orchestrator.graph import AgentState, build_graph
 from connectors.csv_connector import check_upload_owner
 from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
 
 router = APIRouter()
 
-# Build once at import time — compiled graph is reusable across requests
-_graph = build_graph()
+GATES = ("clarification", "high_null")   # the gates a run waits at (interrupt())
 
 
 class ChatRequest(BaseModel):
@@ -47,6 +36,7 @@ class ChatRequest(BaseModel):
     file_hash: str | None = Field(default=None, max_length=128)
     dataset_name: str | None = Field(default=None, max_length=256)
     approval_context: str | None = Field(default=None, max_length=64)
+    client_request_id: str | None = Field(default=None, max_length=64)   # double submit → one run
 
 
 def _owned_config(raw: dict, uid: str) -> ConnectorConfig:
@@ -80,14 +70,17 @@ async def chat(
     request: Request,
     body: ChatRequest,
     current_user: UserProfile = Depends(get_current_user)
-) -> StreamingResponse:  # noqa: B008
+) -> dict:  # noqa: B008
     if not body.connector_config and not body.session_id:
         raise HTTPException(
             status_code=400,
             detail="connector_config is required on the first message (no session_id provided).",
         )
     session_store = request.app.state.session_store
-    vector_store = request.app.state.vector_store
+    runs = request.app.state.run_store
+    if body.client_request_id and (
+            seen := await runs.by_request(current_user.uid, body.client_request_id)):
+        return seen.public()
 
     # Load or create session
     session: AnalysisSession | None = None
@@ -138,41 +131,30 @@ async def chat(
         session.status = "in_progress"
         session.task_plan = None
 
-    event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
+    active = await runs.active_for_session(session.session_id)
+    if body.is_approval and body.approval_context in GATES:
+        if active and active.status in ("queued", "running"):   # this answer was already sent
+            return active.public()
+        if not (active and active.status == "waiting_approval" and await runs.resume(
+                active.id, {"answer": body.message},
+                events=[{"type": "approval_answered", "context": body.approval_context,
+                         "answer": body.message}])):
+            raise HTTPException(status_code=409, detail="This question is no longer waiting for "
+                                "an answer. Ask it again to start a new analysis.")
+        return {**active.public(), "status": "queued"}
+    if active and active.status != "waiting_approval":
+        raise HTTPException(status_code=409, detail="An analysis is already running in this "
+                            "conversation. Wait for it to finish, or stop it.")
+    if active:   # a gate nobody answered: the new question replaces it
+        await runs.request_cancel(active.id, [{"type": "error", "message": "Replaced by a new "
+                                               "question."}, {"type": "done"}])
 
-    async def run_graph() -> None:
-        # This run's PII guard: ingestion fills it, every LLM request is pseudonymized against it.
-        # Set inside the task, so it belongs to this run only.
-        pii_values.set(set(session.prior_pii))
-        state: AgentState = {
-            "session": session,
-            "df_parquet": None,
-            "event_queue": event_queue,
-            "user_message": body.message,
-            "is_approval": body.is_approval,
-            "approval_context": body.approval_context,
-            "session_store": session_store,
-            "vector_store": vector_store,
-        }
-        try:
-            await _graph.ainvoke(state)
-        except Exception as exc:
-            event_queue.put_nowait({"type": "error", "message": str(exc)})
-            event_queue.put_nowait({"type": "done"})
-        finally:
-            event_queue.put_nowait(None)  # sentinel — stops the generator
-
-    async def event_stream() -> AsyncIterator[str]:
-        yield f"data: {json.dumps({'type': 'session_id', 'value': session.session_id})}\n\n"
-
-        graph_task = asyncio.create_task(run_graph())
-
-        while True:
-            event = await event_queue.get()
-            if event is None:
-                break
-            yield f"data: {json.dumps(event, default=str)}\n\n"
-
-        await graph_task
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    await session_store.save(session)   # the worker starts from the stored session
+    run, _ = await runs.create(
+        session_id=session.session_id, user_id=current_user.uid,
+        client_request_id=body.client_request_id,
+        input={"message": body.message, "is_approval": body.is_approval,
+               "approval_context": body.approval_context},
+        first_events=[{"type": "session_id", "value": session.session_id,
+                       "message": body.message, "is_approval": body.is_approval}])
+    return run.public()

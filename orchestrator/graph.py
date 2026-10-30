@@ -2,10 +2,10 @@
 LangGraph StateGraph — wires all 6 agents into a stateful pipeline.
 
 State design:
-- `session` carries all Pydantic agent outputs (persisted to PostgreSQL by insight_node)
-- `df_parquet` carries the in-memory DataFrame bytes between ingestion → cleaning → analysis
-  (not serialized to DB; restored by re-running ingestion on multi-turn resume)
-- `event_queue` is an asyncio.Queue the SSE endpoint drains for streaming events
+- `session` carries all Pydantic agent outputs (persisted to PostgreSQL by the terminal nodes)
+- The state is checkpointed after every node (Phase 5.6a), so it holds nothing a checkpoint can't
+  or mustn't store: the DataFrame, the event sink and the stores live in `run_env` (a ContextVar
+  set per run). The state names the frame by `frame_ref`, so a resumed run reloads the same rows.
 
 Node execution order (happy path):
   ingestion → intake → cleaning → analysis → visualization → insight → quality_check → END
@@ -20,10 +20,14 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import Any, TypedDict
+import hashlib
+from contextvars import ContextVar
+from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, TypedDict
 
 import pandas as pd
 from langgraph.graph import END, StateGraph
+from langgraph.types import interrupt
 
 from agents.analysis_agent import run_analysis_agent
 from agents.cleaning_agent import build_evidence as build_cleaning_evidence
@@ -62,6 +66,7 @@ from orchestrator.routing import (
     route_after_insight_node,
     route_after_quality_check,
     route_after_terminal,
+    route_after_approval,
 )
 from memory.session_data import write_cleaned_parquet, read_cleaned_parquet
 from memory.vector_store import dataset_key
@@ -72,20 +77,45 @@ logger = logging.getLogger(__name__)
 
 class AgentState(TypedDict):
     session: AnalysisSession
-    df_parquet: bytes | None           # in-memory only — not saved to DB
-    event_queue: Any                   # asyncio.Queue[dict | None]
     user_message: str
     is_approval: bool
     approval_context: str | None       # which gate the approval answers ("high_null", …)
-    session_store: Any                 # SessionStore | None
-    vector_store: Any                  # VectorStore | None
     similar_insights: list[str]        # earlier analyses insight was shown (the critic reads them)
+    frame_ref: str | None              # "raw:<fingerprint>" | "cleaned:<sha256>": the frame in use
+    gate: str | None                   # the approval gate this run stopped at
+    answered: str | None               # the gate whose answer the run just resumed with
+
+
+@dataclass
+class RunEnv:
+    """What a run needs that is not state: never checkpointed."""
+    events: Any = None                 # asyncio.Queue the SSE side (or the worker) drains
+    flush: Callable[[], Awaitable[None]] | None = None   # after each node: events → run_events
+    session_store: Any = None
+    vector_store: Any = None
+    frame: bytes | None = None         # the DataFrame as parquet, in memory only
+
+
+run_env: ContextVar[RunEnv | None] = ContextVar("run_env", default=None)
+
+
+def _env() -> RunEnv:
+    return run_env.get() or RunEnv()
+
+
+def _frame() -> bytes | None:
+    return _env().frame
+
+
+def _set_frame(frame: bytes | None) -> None:
+    if (env := run_env.get()) is not None:
+        env.frame = frame
 
 
 # ── SSE helper ─────────────────────────────────────────────────────────────────
 
 def _emit(state: AgentState, event: dict) -> None:
-    q = state.get("event_queue")
+    q = _env().events
     if q is not None:
         q.put_nowait(event)
 
@@ -99,7 +129,7 @@ def _fail(session: AnalysisSession, stage: str, exc: Exception) -> None:
 
 
 async def _save(state: AgentState) -> None:
-    ss = state.get("session_store")
+    ss = _env().session_store
     if ss:
         try:
             await ss.save(state["session"])
@@ -114,15 +144,7 @@ async def intake_node(state: AgentState) -> dict:
     _emit(state, {"type": "agent_start", "agent": "intake", "message": "Understanding your request..."})
     session: AnalysisSession = state["session"]
 
-    # The high-null gate's answer ("Continue with imputation") approves the cleaning; it is not a
-    # new question. Keep the plan, so raw_query (read by charts, insight and memory) stays the
-    # user's. A clarification answer still goes through intake: it answers intake's question.
-    if (state.get("is_approval") and state.get("approval_context") == "high_null"
-            and session.task_plan and not session.task_plan.clarification_needed):
-        session.add_message(MessageRole.USER, state["user_message"])
-        _emit(state, {"type": "agent_complete", "agent": "intake", "message": "Analysis plan ready"})
-        return {"session": session}
-
+    gate = None
     try:
         # Phase 3: signal first-run so intake forces a comprehensive plan.
         is_overview = not session.overview_done
@@ -147,6 +169,7 @@ async def intake_node(state: AgentState) -> dict:
                 "context": "clarification",
                 "question": task.clarification_question,
             })
+            gate = "clarification"
         elif (task.question_intent == QuestionIntent.OVERVIEW
               and session.overview_done
               and session.status == "completed"
@@ -160,12 +183,13 @@ async def intake_node(state: AgentState) -> dict:
                 ),
             })
             task.clarification_needed = True   # routes to human_approval via existing route_after_intake
+            gate = "rerun_overview"
         else:
             _emit(state, {"type": "agent_complete", "agent": "intake", "message": "Analysis plan ready"})
     except Exception as exc:
         _fail(session, "Intake agent", exc)
 
-    return {"session": session}
+    return {"session": session, "gate": gate}
 
 
 async def ingestion_node(state: AgentState) -> dict:
@@ -243,15 +267,24 @@ async def ingestion_node(state: AgentState) -> dict:
             "Failed to restore DataFrame for multi-turn resume. "
             "The data source may have changed or become unavailable."
         )
-    return {"session": session, "df_parquet": df_parquet}
+    _set_frame(df_parquet)
+    ref = None
+    if df_parquet is not None:
+        ref = f"cleaned:{_sha(df_parquet)}" if cached_used else f"raw:{contract.fingerprint}"
+    return {"session": session, "frame_ref": ref, "gate": None, "answered": None}
+
+
+def _sha(frame: bytes) -> str:
+    return hashlib.sha256(frame).hexdigest()
 
 
 async def cleaning_node(state: AgentState) -> dict:
     _emit(state, {"type": "agent_start", "agent": "cleaning", "message": "Cleaning the data..."})
     session: AnalysisSession = state["session"]
 
-    if state.get("df_parquet"):
-        session.__dict__["_df_parquet"] = state["df_parquet"]
+    raw = _frame()
+    if raw:
+        session.__dict__["_df_parquet"] = raw
 
     # The high-null gate's answer: "Drop those columns" drops them, "Cancel" stops; anything else
     # (the recommended "Continue") keeps them as they are.
@@ -260,8 +293,10 @@ async def cleaning_node(state: AgentState) -> dict:
     # Match the option, not a word anywhere: "don't drop anything" must not drop.
     if answer.startswith("cancel") or answer.rstrip(").") == "c":
         session.error_message = "Analysis cancelled at your request; nothing was analysed."
-        return {"session": session, "df_parquet": state.get("df_parquet")}
+        session.__dict__.pop("_df_parquet", None)
+        return {"session": session}
 
+    gate = None
     try:
         if answer:   # remembered: the gate is asked once per session, later turns reuse it
             drop_now = answer.startswith("drop") or answer.rstrip(").") == "b"
@@ -289,28 +324,36 @@ async def cleaning_node(state: AgentState) -> dict:
                 ),
                 "high_null_columns": audit.high_null_columns,
             })
+            gate = "high_null"
     except Exception as exc:
         _fail(session, "Data cleaning", exc)
 
+    if gate:   # the answer re-runs cleaning on the raw frame, as if asked before cleaning
+        session.__dict__.pop("_df_parquet", None)
+        return {"session": session, "gate": gate}
+
     # Best-effort cache of cleaned data for fast follow-ups. Never blocks the pipeline.
-    cached = session.__dict__.get("_df_parquet") or state.get("df_parquet")
+    cached = session.__dict__.get("_df_parquet") or _frame()
+    # A resumed run reloads the cleaned frame from this cache; no cache = the resume fails loud.
+    ref = "cleaned:"
     if cached and not session.error_message:
         try:
             path = write_cleaned_parquet(session.session_id, cached)
             session.cleaned_data_path = path
+            ref = f"cleaned:{_sha(cached)}"
         except Exception as exc:
             logger.warning("cached parquet write failed for %s: %s", session.session_id, exc)
 
-    df_parquet: bytes | None = session.__dict__.pop("_df_parquet", state.get("df_parquet"))
-    return {"session": session, "df_parquet": df_parquet}
+    _set_frame(session.__dict__.pop("_df_parquet", _frame()))
+    return {"session": session, "frame_ref": ref}
 
 
 async def analysis_node(state: AgentState) -> dict:
     _emit(state, {"type": "agent_start", "agent": "analysis", "message": "Running statistical analysis..."})
     session: AnalysisSession = state["session"]
 
-    if state.get("df_parquet"):
-        session.__dict__["_df_parquet"] = state["df_parquet"]
+    if _frame():
+        session.__dict__["_df_parquet"] = _frame()
 
     try:
         findings = await run_analysis_agent(session, get_client())
@@ -330,7 +373,7 @@ async def analysis_node(state: AgentState) -> dict:
         # PROMPT-10: same pass also computes briefing-table extras (unique
         # counts, sample values, skewness, pre-cleaning missing %, target
         # correlations, roles summary).
-        df_bytes: bytes | None = state.get("df_parquet")
+        df_bytes: bytes | None = _frame()
         if df_bytes:
             try:
                 import io
@@ -413,11 +456,9 @@ async def visualization_node(state: AgentState) -> dict:
     _emit(state, {"type": "agent_start", "agent": "visualization", "message": "Building charts..."})
     session: AnalysisSession = state["session"]
 
-    # PROMPT-1: viz now classifies columns + picks smart charts directly from
-    # the DataFrame. cleaning_node passes df_parquet through state; analysis_node
-    # returns only {session} so state.df_parquet survives unchanged.
-    if state.get("df_parquet"):
-        session.__dict__["_df_parquet"] = state["df_parquet"]
+    # PROMPT-1: viz classifies columns + picks smart charts directly from the cleaned frame.
+    if _frame():
+        session.__dict__["_df_parquet"] = _frame()
 
     try:
         charts = await run_visualization_agent(session)
@@ -445,7 +486,7 @@ async def insight_node(state: AgentState) -> dict:
     session: AnalysisSession = state["session"]
 
     similar_insights: list[str] = []
-    vs = state.get("vector_store")
+    vs = _env().vector_store
     if vs and session.task_plan:
         try:
             past = await vs.retrieve_similar(session.task_plan.raw_query, session.user_id,
@@ -519,7 +560,7 @@ async def quality_check_node(state: AgentState) -> dict:
         session.add_message(MessageRole.ASSISTANT, report.executive_summary)
         session.iteration += 1
 
-        vs = state.get("vector_store")
+        vs = _env().vector_store
         if vs and session.task_plan:
             try:
                 await vs.store_insight(
@@ -576,8 +617,8 @@ async def targeted_analysis_node(state: AgentState) -> dict:
         "message": f"Answering {intent_label.replace('_', ' ')} question...",
     })
 
-    if state.get("df_parquet"):
-        session.__dict__["_df_parquet"] = state["df_parquet"]
+    if _frame():
+        session.__dict__["_df_parquet"] = _frame()
 
     try:
         intent = session.task_plan.question_intent if session.task_plan else None
@@ -586,7 +627,7 @@ async def targeted_analysis_node(state: AgentState) -> dict:
         elif intent == QuestionIntent.EXPORT_REQUEST:
             response = handle_export_request(session, lambda ev: _emit(state, ev))
         elif intent == QuestionIntent.CHART_REQUEST:
-            df_bytes = state.get("df_parquet")
+            df_bytes = _frame()
             import io
             import pandas as pd
             df = pd.read_parquet(io.BytesIO(df_bytes)) if df_bytes else pd.DataFrame()
@@ -628,7 +669,7 @@ async def drill_down_node(state: AgentState) -> dict:
         return {"session": session}
 
     try:
-        response = await run_drill_down_agent(session, state.get("df_parquet"))
+        response = await run_drill_down_agent(session, _frame())
         session.targeted_response = response
         _emit(state, {"type": "targeted_response", "data": response.model_dump()})
         _emit(state, {"type": "agent_complete", "agent": "drill_down", "message": "Answer ready"})
@@ -650,11 +691,20 @@ async def drill_down_node(state: AgentState) -> dict:
 
 
 async def human_approval_node(state: AgentState) -> dict:
-    # The approval_required event was already emitted by the node that triggered routing here.
-    # End graph — next user message re-enters at intake with approval context.
+    """The approval_required event was already emitted by the node that routed here. The two gates
+    wait as a persisted interrupt: the run resumes here with the answer, after any restart.
+    rerun_overview is a choice the UI makes by sending the question again, so the run ends."""
     await _save(state)
-    _emit(state, {"type": "done"})
-    return {"session": state["session"]}
+    gate = state.get("gate")
+    if gate not in ("clarification", "high_null"):
+        _emit(state, {"type": "done"})
+        return {"session": state["session"], "answered": None}
+    answer = interrupt({"context": gate})
+    session = state["session"]
+    if gate == "high_null":   # an approval, not a new question: intake keeps the user's plan
+        session.add_message(MessageRole.USER, answer)
+    return {"session": session, "user_message": answer, "is_approval": True,
+            "approval_context": gate, "gate": None, "answered": gate}
 
 
 async def error_node(state: AgentState) -> dict:
@@ -669,20 +719,36 @@ async def error_node(state: AgentState) -> dict:
 
 # ── Graph assembly ─────────────────────────────────────────────────────────────
 
-def build_graph():
+def _durable(fn):
+    """Each node's events reach run_events before its checkpoint is written (LangGraph saves
+    after the node returns), so a run killed between two nodes has lost nothing."""
+    async def node(state: AgentState) -> dict:
+        try:
+            return await fn(state)
+        finally:
+            if (env := run_env.get()) is not None and env.flush is not None:
+                await env.flush()
+    node.__name__ = fn.__name__
+    return node
+
+
+def build_graph(checkpointer=None):
     graph: StateGraph = StateGraph(AgentState)
 
-    graph.add_node("intake", intake_node)
-    graph.add_node("ingestion", ingestion_node)
-    graph.add_node("cleaning", cleaning_node)
-    graph.add_node("analysis", analysis_node)
-    graph.add_node("visualization", visualization_node)
-    graph.add_node("insight", insight_node)
-    graph.add_node("quality_check", quality_check_node)  # FEAT-02
-    graph.add_node("targeted_analysis", targeted_analysis_node)  # Phase A — wired in A4
-    graph.add_node("drill_down", drill_down_node)
-    graph.add_node("human_approval", human_approval_node)
-    graph.add_node("error", error_node)
+    for name, fn in (
+        ("intake", intake_node),
+        ("ingestion", ingestion_node),
+        ("cleaning", cleaning_node),
+        ("analysis", analysis_node),
+        ("visualization", visualization_node),
+        ("insight", insight_node),
+        ("quality_check", quality_check_node),          # FEAT-02
+        ("targeted_analysis", targeted_analysis_node),  # Phase A
+        ("drill_down", drill_down_node),
+        ("human_approval", human_approval_node),
+        ("error", error_node),
+    ):
+        graph.add_node(name, _durable(fn))
 
     # Ingestion runs first so intake has schema context (column names, row count)
     # before deciding what analysis to run and whether clarification is needed.
@@ -735,7 +801,9 @@ def build_graph():
         "end": END, "error": "error",
     })
 
-    graph.add_edge("human_approval", END)
+    graph.add_conditional_edges("human_approval", route_after_approval, {
+        "intake": "intake", "cleaning": "cleaning", "end": END,
+    })
     graph.add_edge("error", END)
 
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)

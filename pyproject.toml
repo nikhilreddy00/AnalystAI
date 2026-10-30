@@ -38,6 +38,8 @@ dependencies = [
     "pyyaml>=6.0",
     "sqlglot>=25",
     "psycopg[binary]>=3.2",
+    "langgraph-checkpoint-postgres>=3.2.0",
+    "greenlet>=3.5.0",
 ]
 
 [project.optional-dependencies]

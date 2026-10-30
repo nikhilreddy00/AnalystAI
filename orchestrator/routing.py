@@ -117,3 +117,9 @@ def route_after_quality_check(state: dict) -> str:
 def route_after_terminal(state: dict) -> str:
     """targeted_analysis / drill_down: a failure must reach error_node (SSE error event)."""
     return "error" if state["session"].error_message else "end"
+
+
+def route_after_approval(state: dict) -> str:
+    """A gate's answer resumes the run: a clarification goes back to intake, the high-null
+    choice to cleaning. A rerun_overview stop ends the run."""
+    return {"clarification": "intake", "high_null": "cleaning"}.get(state.get("answered"), "end")
