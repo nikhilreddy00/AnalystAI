@@ -218,7 +218,7 @@ async def test_chart_feedback_persists_a_safe_switch_and_refuses_the_rest(tmp_pa
     viz._why(chart, ctx, "segment→bars", "r", "region", "discount", "mean", len(df))
     store = InMemorySessionStore()
     session = AnalysisSession(session_id="s1", user_id="owner", chart_configs=[chart])
-    await store.save(session)
+    await store.create(session)
     from starlette.requests import Request
     from api.rate_limit import limiter
     monkeypatch.setattr(limiter, "enabled", False)   # the limit is slowapi's job, not this test's
@@ -295,6 +295,7 @@ async def test_dashboard_clears_the_old_generic_palette_on_pinned_charts():
     from memory.session_store import InMemorySessionStore
 
     store = InMemorySessionStore()
+    await store.create(AnalysisSession(session_id="s", user_id="u"))   # pins belong to a thread
     base = {"chart_type": "BarChart", "title": "t", "data": [{"a": "x", "b": 1}], "x_key": "a",
             "y_keys": ["b"], "source_finding": "x"}
     await store.pin_chart("u", "s", {**base, "id": "old", "colors": ["#4E79A7", "#F28E2B"]})

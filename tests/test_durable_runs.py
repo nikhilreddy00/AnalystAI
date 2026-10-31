@@ -67,12 +67,12 @@ def replay(recorded_llm, monkeypatch, tmp_path):
     return path, e2e_pii_literals(df)
 
 
-async def _start(deps: Deps, path: Path) -> str:
-    session = AnalysisSession(session_id="s-1", user_id="u1",
+async def _start(deps: Deps, path: Path, sid: str = "s-1") -> str:
+    session = AnalysisSession(session_id=sid, user_id="u1",
                               connector_config=ConnectorConfig(type=ConnectorType.CSV,
                                                                file_path=str(path)))
-    await deps.session_store.save(session)
-    run, _ = await deps.run_store.create(session_id="s-1", user_id="u1",
+    await deps.session_store.create(session)
+    run, _ = await deps.run_store.create(session_id=sid, user_id="u1",
                                          input={"message": CASE["question"]})
     return run.id
 
@@ -261,7 +261,7 @@ async def test_postgres_kill_at_every_boundary_with_a_new_process_each_time(
         deps = await fresh()
         async with deps.run_store._engine.begin() as conn:
             await conn.execute(text("TRUNCATE runs, run_events, checkpoints, checkpoint_blobs, "
-                                    "checkpoint_writes"))
+                                    "checkpoint_writes, analysis_sessions"))
         run_id = await _start(deps, path)
         assert await _drive(deps, run_id) == ("completed", 0)
         want = _stable(_report(await _pg_session(deps, run_id)))
@@ -274,7 +274,7 @@ async def test_postgres_kill_at_every_boundary_with_a_new_process_each_time(
             monkeypatch.setattr(analysis_agent, "run_code", _sandbox())
             deps = await fresh()
             _arm(deps.graph.checkpointer, k)
-            run_id = await _start(deps, path)
+            run_id = await _start(deps, path, sid=f"s-kill-{k}")
             status, kills = await _drive(deps, run_id, restart=fresh)
             deps = opened[-1]   # the worker that finished it
             assert (status, kills) == ("completed", 1), k

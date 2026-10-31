@@ -9,6 +9,12 @@ agent_complete, approval_required, approval_answered, charts, insight, error, do
 
 Multi-turn: include session_id from the prior response to continue a conversation.
 Approval answers: is_approval=True resumes the run waiting at that gate.
+
+Data (Phase 5.6b): a new thread names its data by `dataset_version_id` (an upload) or
+`dataset_id` (any dataset; an upload means its latest version), so the client never sends a file
+path. A raw `connector_config` still works (live sources become a dataset; a CSV path is a
+legacy thread with no dataset). One dataset per thread: other data on an existing thread is a
+409; the same dataset's version (re-run on current data) is switched in place.
 """
 from __future__ import annotations
 
@@ -22,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from connectors.csv_connector import check_upload_owner
 from memory.run_store import RunConflict
+from memory.session_store import make_title
 from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
 
 router = APIRouter()
@@ -29,6 +36,8 @@ router = APIRouter()
 GATES = ("clarification", "high_null")   # the gates a run waits at (interrupt())
 GATE_WAIT_POLLS = 30   # × 0.1 s
 BUSY = "An analysis is already running in this conversation. Wait for it to finish, or stop it."
+OTHER_DATA = ("This analysis is about another dataset. Start a new analysis to ask about this "
+              "data.")
 
 
 class ChatRequest(BaseModel):
@@ -41,6 +50,16 @@ class ChatRequest(BaseModel):
     dataset_name: str | None = Field(default=None, max_length=256)
     approval_context: str | None = Field(default=None, max_length=64)
     client_request_id: str | None = Field(default=None, max_length=64)   # double submit → one run
+    dataset_version_id: str | None = Field(default=None, max_length=64)
+    dataset_id: str | None = Field(default=None, max_length=64)
+
+
+class _Source(BaseModel):
+    config: ConnectorConfig
+    dataset_id: str | None = None
+    version_id: str | None = None
+    name: str | None = None
+    file_hash: str | None = None
 
 
 def _owned_config(raw: dict, uid: str) -> ConnectorConfig:
@@ -49,6 +68,32 @@ def _owned_config(raw: dict, uid: str) -> ConnectorConfig:
     if config.type == ConnectorType.CSV and (reason := check_upload_owner(config.file_path, uid)):
         raise HTTPException(status_code=403, detail=reason)
     return config
+
+
+async def _source(body: ChatRequest, uid: str, store) -> _Source | None:
+    """The data this request names, checked against the caller's own datasets (404 if not)."""
+    if body.dataset_version_id or body.dataset_id:
+        if body.dataset_version_id:
+            got = await store.get_version(body.dataset_version_id, uid)
+            ds, version = got if got else (None, None)
+        else:
+            ds = await store.get_dataset(body.dataset_id, uid)
+            version = ds.latest if ds else None
+        if ds is None or (ds.kind == "upload" and version is None):
+            raise HTTPException(status_code=404, detail="Dataset not found")
+        if ds.kind == "live":
+            return _Source(config=ds.config, dataset_id=ds.id, name=ds.name)
+        return _Source(config=ConnectorConfig(type=ConnectorType.CSV, file_path=version.file_path),
+                       dataset_id=ds.id, version_id=version.id, name=ds.name,
+                       file_hash=version.content_hash)
+    if not body.connector_config:
+        return None
+    config = _owned_config(body.connector_config, uid)
+    if config.type == ConnectorType.CSV:   # a legacy client: a thread with no dataset
+        return _Source(config=config, name=body.dataset_name, file_hash=body.file_hash)
+    name = body.dataset_name or config.table_name or config.sheet_name or config.url or "data"
+    ds = await store.ensure_live_dataset(uid, name, config)
+    return _Source(config=config, dataset_id=ds.id, name=ds.name)
 
 
 def _last_turn_pii(session: AnalysisSession) -> set[str]:
@@ -75,59 +120,53 @@ async def chat(
     body: ChatRequest,
     current_user: UserProfile = Depends(get_current_user)
 ) -> dict:  # noqa: B008
-    if not body.connector_config and not body.session_id:
-        raise HTTPException(
-            status_code=400,
-            detail="connector_config is required on the first message (no session_id provided).",
-        )
     session_store = request.app.state.session_store
     runs = request.app.state.run_store
     if body.client_request_id and (
             seen := await runs.by_request(current_user.uid, body.client_request_id)):
         return seen.public()
+    src = await _source(body, current_user.uid, session_store)
+    if src is None and not body.session_id:
+        raise HTTPException(
+            status_code=400,
+            detail="A dataset is required on the first message (no session_id provided).",
+        )
 
     # Load or create session
     session: AnalysisSession | None = None
-    if body.session_id and session_store:
+    if body.session_id:
         try:
             session = await session_store.load(body.session_id)
-            # Ensure multi-tenant privacy: user can only load their own session
-            if session and session.user_id != current_user.uid:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Access denied to requested session."
-                )
-        except HTTPException:
-            raise
         except Exception as exc:
             # Fail closed: never fall through to a new session under an id we couldn't check.
             raise HTTPException(status_code=503, detail="Your conversation could not be loaded. "
                                 "Try again in a moment.") from exc
+        if session is None:   # deleted, or never existed: never (re)create it under that id
+            raise HTTPException(status_code=404, detail="This conversation no longer exists.")
+        # Ensure multi-tenant privacy: user can only load their own session
+        if session.user_id != current_user.uid:
+            raise HTTPException(status_code=403, detail="Access denied to requested session.")
 
-    if session is None:
-        session_id = body.session_id or str(uuid.uuid4())
-        session = AnalysisSession(session_id=session_id, user_id=current_user.uid)
-
-        if body.file_hash:
-            session.file_hash = body.file_hash
-        if body.dataset_name:
-            session.dataset_name = body.dataset_name
-
-        if body.connector_config:
-            session.connector_config = _owned_config(body.connector_config, current_user.uid)
-    elif body.connector_config:
-        # Existing session + incoming connector_config: if it points at a different
-        # dataset, update the config AND reset Phase-3 overview_done so the next
-        # run produces a fresh end-to-end briefing for the new data.
-        incoming = _owned_config(body.connector_config, current_user.uid)
-        if session.connector_config != incoming:
-            # The conversation still quotes the old data: its PII values guard every later run.
-            session.prior_pii = sorted(set(session.prior_pii) | _last_turn_pii(session))
-            session.connector_config = incoming
-            session.overview_done = False
-            # Answers and caches about the old data don't carry over.
-            session.high_null_answer = None
-            session.cleaned_data_path = None
+    new = session is None
+    if new:
+        session = AnalysisSession(
+            session_id=str(uuid.uuid4()), user_id=current_user.uid, connector_config=src.config,
+            dataset_id=src.dataset_id, dataset_version_id=src.version_id,
+            dataset_name=src.name, file_hash=src.file_hash)
+    elif src and src.config != session.connector_config:
+        # Another version of this thread's dataset ("re-run on current data"): update the
+        # config AND reset Phase-3 overview_done so the next run produces a fresh end-to-end
+        # briefing for the new data. Any other data is a new thread (ADR-0007).
+        if not (src.dataset_id and src.dataset_id == session.dataset_id):
+            raise HTTPException(status_code=409, detail=OTHER_DATA)
+        # The conversation still quotes the old data: its PII values guard every later run.
+        session.prior_pii = sorted(set(session.prior_pii) | _last_turn_pii(session))
+        session.connector_config = src.config
+        session.dataset_version_id, session.file_hash = src.version_id, src.file_hash
+        session.overview_done = False
+        # Answers and caches about the old data don't carry over.
+        session.high_null_answer = None
+        session.cleaned_data_path = None
 
     if session is not None and body.is_approval and body.approval_context == "rerun_overview":
         # User chose "Run fresh" on the rerun-overview modal. Reset the
@@ -161,7 +200,15 @@ async def chat(
         await runs.request_cancel(active.id, [{"type": "error", "message": "Replaced by a new "
                                                "question."}, {"type": "done"}])
 
-    await session_store.save(session)   # the worker starts from the stored session
+    # The worker starts from the stored session. Only this route creates one; a save of a
+    # thread deleted meanwhile does nothing.
+    if new:
+        await session_store.create(session, title=make_title(
+            session.dataset_name, None if body.is_approval else body.message))
+    elif not await session_store.save(session):
+        raise HTTPException(status_code=404, detail="This conversation no longer exists.")
+    if not body.is_approval:
+        await session_store.note_question(session.session_id, body.message)
     try:
         run, _ = await runs.create(
             session_id=session.session_id, user_id=current_user.uid,

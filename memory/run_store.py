@@ -138,6 +138,14 @@ class InMemoryRunStore:
                 and r.user_id == user_id and r.status in ACTIVE]
         return replace(live[-1]) if live else None
 
+    async def latest_statuses(self, user_id: str, session_ids: list[str]) -> dict[str, str]:
+        """Each thread's latest run status (the sidebar's dot)."""
+        out: dict[str, str] = {}
+        for r in self._runs.values():   # oldest first: the last one wins
+            if r.user_id == user_id and r.session_id in session_ids:
+                out[r.session_id] = r.status
+        return out
+
     async def claim(self, lease_s: float = LEASE_S) -> Run | None:
         for r in self._runs.values():   # dicts keep insertion order: oldest first
             if r.status == "queued":
@@ -328,6 +336,17 @@ class RunStore:
                 "AND status = ANY(:active) ORDER BY created_at DESC LIMIT 1"),
                 {"sid": session_id, "uid": user_id, "active": list(ACTIVE)})).first()
             return self._run(row) if row else None
+
+    async def latest_statuses(self, user_id: str, session_ids: list[str]) -> dict[str, str]:
+        if not session_ids:
+            return {}
+        async with self._db() as db:
+            rows = (await db.execute(text(
+                "SELECT DISTINCT ON (session_id) session_id, status FROM runs "
+                "WHERE user_id = :uid AND session_id = ANY(:sids) "
+                "ORDER BY session_id, created_at DESC"),
+                {"uid": user_id, "sids": session_ids})).all()
+            return dict(rows)
 
     async def claim(self, lease_s: float = LEASE_S) -> Run | None:
         async with self._db() as db:

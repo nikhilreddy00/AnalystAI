@@ -69,8 +69,8 @@ from orchestrator.routing import (
     route_after_approval,
 )
 from memory.session_data import write_cleaned_parquet, read_cleaned_parquet
-from memory.vector_store import dataset_key
-from orchestrator.state import AnalysisSession, MessageRole, QuestionIntent
+from memory.vector_store import memory_key
+from orchestrator.state import AnalysisSession, MemoryRef, MessageRole, QuestionIntent
 
 logger = logging.getLogger(__name__)
 
@@ -486,19 +486,24 @@ async def insight_node(state: AgentState) -> dict:
     session: AnalysisSession = state["session"]
 
     similar_insights: list[str] = []
+    used: list[MemoryRef] = []
     vs = _env().vector_store
     if vs and session.task_plan:
         try:
             past = await vs.retrieve_similar(session.task_plan.raw_query, session.user_id,
-                                             dataset_key(session.connector_config))
+                                             memory_key(session),
+                                             exclude_session=session.session_id)
             similar_insights = [
                 f"{p['task_summary']}: {p['executive_summary']}" for p in past
             ]
+            used = [MemoryRef(session_id=p["session_id"], generated_at=p["generated_at"])
+                    for p in past]
         except Exception:
             logger.warning("past-insight retrieval skipped", exc_info=True)
 
     try:
         report = await run_insight_agent(session, get_client(), similar_insights or None)
+        report.memory_used = used   # the report says which earlier analyses it consulted
         session.insight_report = report
         logger.info("Setting session status to completed for %s", session.session_id)
         session.status = "completed"
@@ -568,7 +573,7 @@ async def quality_check_node(state: AgentState) -> dict:
                     user_id=session.user_id,
                     report=report,
                     task_summary=session.task_plan.raw_query,
-                    dataset=dataset_key(session.connector_config),
+                    dataset=memory_key(session),
                 )
             except Exception:
                 logger.warning("insight not stored in vector memory", exc_info=True)

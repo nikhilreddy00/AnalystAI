@@ -489,6 +489,12 @@ class AnalystDetail(BaseModel):
     code_references: list[str] = Field(default_factory=list)    # how key metrics were derived
 
 
+class MemoryRef(BaseModel):
+    """An earlier analysis (another thread on the same dataset) that this report consulted."""
+    session_id: str
+    generated_at: str
+
+
 class InsightReport(BaseModel):
     """Final output. Powers both Executive View and Analyst View in the UI.
 
@@ -507,6 +513,8 @@ class InsightReport(BaseModel):
     analyst_view: AnalystDetail | None = None       # PROMPT-3: new structured analyst tab
     additional_issues_note: str = ""                # PROMPT-4: "N additional minor issues detected..."
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Phase 5.6b: set by code after the agent (never by the model), shown under the summary.
+    memory_used: list[MemoryRef] = Field(default_factory=list)
 
 
 # ── Phase A output: TargetedResponse ──────────────────────────────────────────
@@ -561,14 +569,15 @@ class ExpertReview(BaseModel):
 # ── Top-level session state (LangGraph shared state) ──────────────────────────
 
 class SessionSummary(BaseModel):
-    """Lightweight session metadata for the sidebar list and dedup lookup.
-    Excludes insight_report / chart_configs to keep list responses cheap.
-    """
+    """One thread in the sidebar (Phase 5.6b). Columns only: listing never parses a session's
+    JSON. `status` is the session's; the latest run's status is added by the route."""
     session_id: str
+    title: str | None = None
+    dataset_id: str | None = None
     dataset_name: str | None = None
-    original_query: str | None = None
-    row_count: int | None = None
-    column_count: int | None = None
+    questions: str = ""            # every question asked, newline-separated (search)
+    pinned: bool = False
+    archived: bool = False
     status: Literal["in_progress", "completed", "failed"] = "in_progress"
     created_at: datetime
     updated_at: datetime
@@ -602,6 +611,8 @@ class AnalysisSession(BaseModel):
     overview_done: bool = False            # Phase 3: True after first comprehensive analysis ships; resets when connector_config changes
     dataset_name: str | None = None
     file_hash: str | None = None
+    dataset_id: str | None = None          # Phase 5.6b: the dataset this thread analyses
+    dataset_version_id: str | None = None  # uploads: the version its current data came from
     status: Literal["in_progress", "completed", "failed"] = "in_progress"
     cleaned_data_path: str | None = None
     error_message: str | None = None

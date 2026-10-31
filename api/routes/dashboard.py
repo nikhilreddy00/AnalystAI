@@ -98,6 +98,10 @@ async def pin_chart(
     current_user: UserProfile = Depends(get_current_user)
 ):
     store = request.app.state.session_store
+    # Only to a thread of your own: a pin on someone else's (or a deleted) thread would outlive
+    # its deletion and show on the wrong dataset page.
+    if not await store.get_summary(body.session_id, current_user.uid):
+        raise HTTPException(status_code=404, detail="Session not found")
     await store.pin_chart(current_user.uid, body.session_id, body.chart)
     return {"status": "pinned"}
 
