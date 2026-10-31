@@ -162,6 +162,27 @@ export interface TargetedResponse {
 export interface SessionIdEvent {
   type: "session_id";
   value: string;
+  message?: string;      // Phase 5.6a: the question, so a reopened tab can rebuild the chat
+  is_approval?: boolean;
+}
+
+// Phase 5.6a: a gate's answer continues the same run; a resumed run says so.
+export interface ApprovalAnsweredEvent {
+  type: "approval_answered";
+  context: string;
+  answer: string;
+}
+
+export interface RunResumedEvent {
+  type: "run_resumed";
+  message: string;
+}
+
+export interface Run {
+  run_id: string;
+  session_id: string;
+  status: "queued" | "running" | "waiting_approval" | "completed" | "failed" | "cancelled";
+  error: string | null;
 }
 
 export interface AgentStartEvent {
@@ -274,6 +295,7 @@ export interface QualityRetryEvent {
 export interface ErrorEvent {
   type: "error";
   message: string;
+  retryable?: boolean;
 }
 
 export interface DoneEvent {
@@ -299,6 +321,8 @@ export type AgentEvent =
   | ExpertReviewEvent
   | TargetedResponseEvent
   | QualityRetryEvent
+  | ApprovalAnsweredEvent
+  | RunResumedEvent
   | ErrorEvent
   | DoneEvent
   | ExportEvent;
@@ -313,6 +337,7 @@ export interface ChatMessage {
   targetedResponse?: TargetedResponse; // Phase A: compact answer for targeted intents
   evidence?: Evidence[];       // Phase 3: one item per analysis finding
   isStreaming?: boolean;
+  runId?: string;              // Phase 5.6a: an error bubble's run, for "retry from where it stopped"
 }
 
 export type SessionStatus = "in_progress" | "completed" | "failed";

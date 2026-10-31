@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     cors_origins: str = "http://localhost:3000"   # comma-separated
     session_data_dir: str = "./session_data"
+    worker_concurrency: int = 4            # runs one worker executes at once
 
     @field_validator("supabase_url")
     @classmethod

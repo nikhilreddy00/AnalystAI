@@ -117,13 +117,19 @@ def score_analysis(case: dict, findings, error: str | None) -> dict:
             "false_findings": false_findings(findings, df, truth) if findings else None}
 
 
-_GRAPH = None
+_DEPS = None
 
 
 async def run_e2e_case(case: dict) -> dict:
-    global _GRAPH
-    from orchestrator.graph import build_graph
-    _GRAPH = _GRAPH or build_graph()
+    """One E2E case through the durable-run path (Phase 5.6a): a stored run, executed by
+    orchestrator.runner exactly as the worker does, resumed at the high-null gate."""
+    global _DEPS
+    from dataclasses import replace
+
+    from memory.run_store import InMemoryRunStore
+    from orchestrator.runner import execute, in_memory_deps
+    _DEPS = _DEPS or in_memory_deps()
+    deps = replace(_DEPS, run_store=InMemoryRunStore())   # this case's queue: claims stay its own
 
     df, truth, csv = dataset(case)
     UPLOADS.mkdir(parents=True, exist_ok=True)
@@ -136,30 +142,26 @@ async def run_e2e_case(case: dict) -> dict:
         connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)),
         overview_done=case.get("overview_done", False),
     )
+    await deps.session_store.save(session)
     sent: list[str] = []
     LLM_REQUESTS.set(sent)   # the canary scans every request this case makes
-    pii_values.set(set())    # as api/routes/chat.py does for every run
-    error, approvals = None, []
+    error, approvals, seen = None, [], 0
+    run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
+                                         input={"message": case["question"]})
     # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
     # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
-    for message, is_approval in ((case["question"], False), ("Continue with imputation", True)):
-        events: asyncio.Queue = asyncio.Queue()
-        try:
-            final = await _GRAPH.ainvoke({
-                "session": session, "df_parquet": None, "event_queue": events,
-                "user_message": message, "is_approval": is_approval,
-                "approval_context": "high_null" if is_approval else None,
-                "session_store": None, "vector_store": None,
-            })
-            session = final["session"]
-            error = session.error_message
-        except Exception as exc:
-            error = f"{type(exc).__name__}: {exc}"
-        gates = [e.get("context") for e in (events.get_nowait() for _ in range(events.qsize()))
-                 if e.get("type") == "approval_required"]
+    for _ in range(2):
+        status = await execute(await deps.run_store.claim(), deps)
+        events = [e for _, e in await deps.run_store.events_after(run.id, seen)]
+        seen += len(events)
+        gates = [e.get("context") for e in events if e.get("type") == "approval_required"]
         approvals += gates
-        if error or gates != ["high_null"]:
+        if status != "waiting_approval" or gates != ["high_null"]:
             break
+        await deps.run_store.resume(run.id, {"answer": "Continue with imputation"})
+    state = await deps.graph.aget_state({"configurable": {"thread_id": run.id}})
+    session = state.values.get("session", session)
+    error = session.error_message or (await deps.run_store.get(run.id)).error
     if approvals and approvals[-1] != "high_null" and not error:
         error = f"stopped at approval_required ({approvals[-1]})"
 

@@ -186,7 +186,7 @@ def test_report_data_reaches_the_critic_only_delimited():
     assert "marketing_spend" in prompt and "marketing_spend" not in outside   # column names too
 
 
-def test_node_reviews_every_full_run_and_calls_the_critic_once(recorded_llm):
+def test_node_reviews_every_full_run_and_calls_the_critic_once(recorded_llm, run_env):
     """quality_check_node: the first run gets the critic, a follow-up the code checks only;
     the report is never changed, and the events arrive in order."""
     from orchestrator.graph import quality_check_node
@@ -195,8 +195,8 @@ def test_node_reviews_every_full_run_and_calls_the_critic_once(recorded_llm):
     before = s.insight_report.model_dump_json()
     recorded_llm.responses.append(_critic())
     for first in (True, False):
-        q: asyncio.Queue = asyncio.Queue()
-        out = asyncio.run(quality_check_node({"session": s, "event_queue": q}))["session"]
+        q = run_env.events = asyncio.Queue()
+        out = asyncio.run(quality_check_node({"session": s}))["session"]
         events = [q.get_nowait()["type"] for _ in range(q.qsize())]
         assert events == ["agent_start", "expert_review", "agent_complete", "done"]
         assert [f.index for f in out.expert_review.flags] == [2] and out.overview_done

@@ -27,7 +27,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
 | 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | ✅ done (2026-10-30) — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); **Quality check ✅ (2026-10-29)** `docs/baselines/phase5_quality.md` (defect recall 97.1%, false alarms 0.67%, hard 0; 40 reports k=3, 102 seeded defects; e2e 100%; $4.05); **Ingestion ✅ (2026-10-30)** `docs/baselines/phase5_ingestion.md` (type inference 100%, PII recall 100%, load fidelity 100%, PII canary 0, no LLM; 31 cases k=3 at $0; intake 100%, e2e 100%; $2.09) |
-| 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | pending |
+| 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | **5.6a durable runs ✅ (2026-10-30)** `docs/baselines/phase5_6a.md` (kill at all 11 checkpoints → identical report, memory + Postgres; post-phase audit fixed 9 bugs; reconnect replay exact; approval after restart; prod refuses without PG; e2e 100%; $0.90; ADR-0006); 5.6b workspace pending |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -100,10 +100,29 @@ Agents raise typed `AgentError` subclasses (`agents/errors.py`); graph nodes rou
 ### Multi-Turn Resume
 When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps directly from ingestion to analysis. The DataFrame is re-loaded from the connector (not stored in DB).
 
+### Durable Runs (Phase 5.6a, ADR-0006)
+`POST /chat` stores a run (`memory/run_store.py`: `runs` is also the queue, `FOR UPDATE SKIP
+LOCKED`) and returns `{run_id, session_id, status}`. A worker (`python -m worker`; development
+also runs one inside the API) executes it with `orchestrator/runner.py`. The graph is
+checkpointed after every node (`durability="sync"`, thread id = **run id**, encrypted on
+Postgres), so a crash resumes at the last finished node. Lease/heartbeat are fenced by `attempt`
+(only goes up); `crashes` is the reaper's budget (3). One active run per session (the store
+enforces it); only the latest run of a session can be retried. Cancel and "retry from
+where it failed" are `POST /runs/{id}/cancel|retry`.
+- **State holds no queue, stores or DataFrame**: those live in `graph.RunEnv` (a ContextVar; tests
+  get one from the `run_env` fixture). The state names the frame by `frame_ref`; a resume reloads
+  it and checks the hash (a change fails the run). The runner seeds `pii_values` on every (re)start.
+- Every SSE event goes to `run_events` before its node's checkpoint; `GET /runs/{id}/events`
+  replays after `Last-Event-ID`. Audit B4: production API and the worker refuse to start without
+  Postgres; dev falls back to memory and `/health` says `persistent: false` (UI: "Not saved").
+
 ### Human Approval Gates
 - **Clarification**: intake detects ambiguous query → `human_approval` node → SSE `approval_required` event
 - **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend;
   the answer reaches `cleaning_node` (Continue = keep as missing, Drop = `drop_column`, Cancel = stop)
+- Both are persisted `interrupt()`s: the run waits (`waiting_approval`) across restarts; the
+  answer (`POST /chat` with `is_approval`) resumes the same run → intake or cleaning
+  (`route_after_approval`). `rerun_overview` is a UI choice: the run ends, the UI asks again.
 
 ---
 
@@ -166,6 +185,10 @@ orchestrator/
   state.py                 — ALL Pydantic schemas (AnalysisSession is the master state)
   graph.py                 — LangGraph StateGraph: 11 nodes + conditional edges (incl. quality_check, targeted_analysis, drill_down, human_approval, error)
   routing.py               — one routing function per conditional edge
+  runner.py                — durable runs: execute (fresh / crash resume / gate answer / retry),
+                             frame reload + PII seeding, worker loop, encrypted checkpoint serde
+
+worker/__main__.py         — `python -m worker`: claims runs from the Postgres queue
 
 connectors/
   base.py                  — DataConnector ABC + get_connector() factory
@@ -179,6 +202,7 @@ connectors/
 memory/
   session_store.py         — PostgreSQL + InMemorySessionStore fallback
   vector_store.py          — Qdrant + Ollama embedding
+  run_store.py             — runs + run_events (Postgres queue, InMemoryRunStore twin)
 
 sandbox/
   executor.py              — E2B wrapper: parquet→CSV, run code, parse output
@@ -186,7 +210,9 @@ sandbox/
 api/
   main.py                  — FastAPI app, lifespan, CORS, rate limiter
   config.py                — pydantic-settings (reads .env)
-  routes/chat.py           — POST /chat → SSE stream (runs full LangGraph)
+  routes/chat.py           — POST /chat → stores a run (or resumes the one waiting at a gate)
+  routes/runs.py           — GET /runs/{id}, /runs/{id}/events (SSE, Last-Event-ID replay),
+                             POST /runs/{id}/cancel, /runs/{id}/retry
   routes/dashboard.py      — GET/POST/DELETE pinned charts; POST /chart-feedback (user's chart-type
                              switch: owner only, swap_options re-checked, saved, label-only trace)
   routes/connectors.py     — POST /connectors/test, /connectors/upload
@@ -217,8 +243,8 @@ frontend/src/
 
 ## Data Flow Through the System
 
-1. **DataFrame is NEVER stored in the database.** It flows as parquet bytes through `session.__dict__["_df_parquet"]` (a transient attribute, not a Pydantic field).
-2. In `graph.py`, each node pops `_df_parquet` from session and passes it via `AgentState["df_parquet"]`.
+1. **DataFrame is NEVER stored in the database** (nor in a checkpoint: a test checks). Agents read it as parquet bytes from `session.__dict__["_df_parquet"]` (a transient attribute, not a Pydantic field).
+2. In `graph.py`, nodes keep it in `run_env.frame` (in memory, per run) and put it on the session for the agent; the checkpointed state only names it (`frame_ref`).
 3. For E2B, parquet is converted to CSV locally (`_parquet_to_csv_bytes`) because E2B's Python env lacks pyarrow.
 4. The final `analysis_node` discards `_df_parquet` — it's not needed after analysis.
 
@@ -226,9 +252,11 @@ frontend/src/
 
 ## SSE Event Protocol
 
-The `/chat` endpoint streams these event types in order:
+`GET /runs/{id}/events` streams these event types (each with `id: <seq>`; replay after Last-Event-ID):
 ```
-session_id        → {type: "session_id", value: "<uuid>"}
+session_id        → {type: "session_id", value: "<uuid>", message, is_approval}  // seq 1, written by POST /chat
+approval_answered → {type: "approval_answered", context, answer}  // a gate's answer resumed this run
+run_resumed       → {type: "run_resumed", message}  // a worker restarted it, or a retry
 agent_start       → {type: "agent_start", agent: "<name>", message: "<status>"}
 agent_complete    → {type: "agent_complete", agent: "<name>", message: "<result>"}
 approval_required → {type: "approval_required", context: "clarification"|"high_null", ...}
@@ -239,8 +267,8 @@ export            → {type: "export", format: "pptx", url: "/dashboard/latest/r
 insight           → {type: "insight", data: InsightReport}  // Phase 5: findings/paragraphs are Claim{text, evidence_ids}; actions carry evidence_ids
 quality_retry     → {type: "quality_retry", message: "<reason>; Re-running analysis..."}  // FEAT-02
 expert_review     → {type: "expert_review", data: ExpertReview}  // every full run; Phase 5: + flags: ReviewFlag[] {index, section, claim, label, kind, reason, evidence_ids, source}; critic on the first run only
-error             → {type: "error", message: "<user-readable>"}
-done              → {type: "done"}  // always last
+error             → {type: "error", message: "<user-readable>", retryable?}
+done              → {type: "done"}  // ends a run (a retry can add more after it); a gate waits without one
 ```
 
 ---
@@ -265,7 +293,7 @@ done              → {type: "done"}  // always last
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
   Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost ~$59 (2026-10-27), mostly
-  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case); Phase 5 Quality $4.05 (checks iterated at $0; one E2E overview re-gate ran 132% over its estimate); Phase 5 Ingestion $2.09 (deterministic suite at $0; one E2E re-gate after review fixes; insight + analysis proven unaffected by snapshot, `evals/snapshot.py`). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case); Phase 5 Quality $4.05 (checks iterated at $0; one E2E overview re-gate ran 132% over its estimate); Phase 5 Ingestion $2.09 (deterministic suite at $0; one E2E re-gate after review fixes; insight + analysis proven unaffected by snapshot, `evals/snapshot.py`); Phase 5.6a $0.90 (one recorded fixture run replays the kill tests at $0; one E2E gate). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
@@ -291,4 +319,7 @@ Optional: `SEMANTIC_LAYER_PATH` (SQL connector), `DATABASE_URL`, `QDRANT_HOST`, 
 3. **The graph entry point is `ingestion`**, not `intake`. This is by design for schema-aware intake.
 4. **API keys are in `.env`** — NEVER commit real keys. The `.env` file should be gitignored.
 5. **SQL connector blocking calls are wrapped in `asyncio.to_thread`** — every sync SQLAlchemy call in `sql_connector.py` goes through `await asyncio.to_thread(...)`. Don't add raw `engine.connect()` calls inside `async def` methods.
-6. **`layout.tsx` is a server component** — `"use client"` lives in `providers.tsx`, not the root layout. Don't move it; metadata exports depend on the layout staying server-side.
+6. **The graph state is checkpointed** — never put a queue, store, DataFrame or other non-data
+   object in `AgentState`; use `RunEnv`. A node must be safe to re-run from its start (a crash
+   inside it re-runs it). E2E goes through `orchestrator.runner.execute`, as the worker does.
+7. **`layout.tsx` is a server component** — `"use client"` lives in `providers.tsx`, not the root layout. Don't move it; metadata exports depend on the layout staying server-side.

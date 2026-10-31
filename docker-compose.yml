@@ -68,6 +68,7 @@ services:
         condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+      - ./session_data:/app/session_data
     restart: unless-stopped
     develop:
       watch:
@@ -78,6 +79,29 @@ services:
             - .venv/
             - uploads/
             - frontend/
+
+  # Phase 5.6a: executes runs from the Postgres queue (the API only stores them).
+  worker:
+    build: .
+    command: ["uv", "run", "python", "-m", "worker"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-analystai}:${POSTGRES_PASSWORD:-analystai}@postgres:5432/${POSTGRES_DB:-analystai}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_HOST=http://ollama:11434
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - E2B_API_KEY=${E2B_API_KEY}
+      - APP_ENV=${APP_ENV:-development}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+      - ./session_data:/app/session_data   # the cleaned-frame cache a resumed run reloads
+    stop_grace_period: 30s               # SIGTERM hands running runs back to the queue
+    restart: unless-stopped
 
   frontend:
     image: node:20-alpine

@@ -57,7 +57,7 @@ function Bubble({
             onClick={onRetry}
             className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Try again
+            {message.runId ? "Retry from where it stopped" : "Try again"}
           </button>
         )}
       </div>
@@ -94,6 +94,9 @@ export default function ChatInterface() {
     pendingApproval,
     setPendingApproval,
     sendMessage,
+    cancelRun,
+    retryRun,
+    resumed,
     setConnectorConfig,
     setUploadMeta,
     hydrateFromSnapshot,
@@ -102,7 +105,9 @@ export default function ChatInterface() {
   const { sessions, loading: sessionsLoading, refresh: refreshSessions, deleteSession } = useSessions();
 
   const [input, setInput] = useState("");
-  const [connected, setConnected] = useState(false);
+  const [connectedSource, setConnected] = useState(false);
+  // A reopened tab reattached to its run: the conversation continues where it was.
+  const connected = connectedSource || resumed;
   const [datasetName, setDatasetName] = useState<string | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [pane, setPane] = useState<"chat" | "report">("report");
@@ -119,6 +124,7 @@ export default function ChatInterface() {
   useEffect(() => {
     if (!isLoading && sessionId) void refreshSessions();
   }, [isLoading, sessionId, refreshSessions]);
+
 
   // The canvas shows the chosen report, else the newest one.
   let latestReport = -1;
@@ -315,11 +321,26 @@ export default function ChatInterface() {
                       }
                     : undefined
                 }
-                onRetry={connected && !isLoading ? () => ask(questionFor(i)) : undefined}
+                onRetry={
+                  connected && !isLoading
+                    ? () => (m.runId ? void retryRun(m.runId) : ask(questionFor(i)))
+                    : undefined
+                }
               />
             ))}
 
-            {isLoading && <AgentProgressStream events={agentEvents} isLoading={isLoading} />}
+            {isLoading && (
+              <div className="space-y-2">
+                <AgentProgressStream events={agentEvents} isLoading={isLoading} />
+                <button
+                  type="button"
+                  onClick={() => void cancelRun()}
+                  className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  Stop
+                </button>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
 

@@ -2,7 +2,6 @@
 aren't tables, PII to the guard, determinism, and the targeted path through cleaning. Offline.
 The eval suite (evals/cases/ingestion) covers the planted tables; these cover what it doesn't."""
 
-import asyncio
 import io
 import time
 
@@ -125,7 +124,7 @@ async def test_a_cached_resume_refills_the_guard(monkeypatch):
                                                      analysis_types=["eda"], resume_from="analysis"))
     token = pii_values.set(set())
     try:
-        await graph.ingestion_node({"session": session, "event_queue": asyncio.Queue()})
+        await graph.ingestion_node({"session": session})
         assert {"Jane Doe", "Omar Haddad"} <= pii_values.get()
     finally:
         pii_values.reset(token)

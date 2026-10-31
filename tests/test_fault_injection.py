@@ -3,7 +3,6 @@ never an empty result. Offline: recorded LLM output and a fake sandbox."""
 from __future__ import annotations
 
 import ast
-import asyncio
 import json
 import re
 from pathlib import Path
@@ -258,13 +257,13 @@ async def test_injected_group_names_reach_insight_only_delimited(recorded_llm):
 
 # ── Graph: a typed error becomes the SSE error event ───────────────────────────
 
-async def test_typed_error_surfaces_as_sse_error_event(monkeypatch):
+async def test_typed_error_surfaces_as_sse_error_event(monkeypatch, run_env):
     async def boom(session, llm):
         raise SandboxError("analysis", "Timeout", "The analysis code failed in the sandbox: Timeout")
 
     monkeypatch.setattr(graph, "run_analysis_agent", boom)
-    queue: asyncio.Queue = asyncio.Queue()
-    state = {"session": _session(), "df_parquet": None, "event_queue": queue}
+    queue = run_env.events
+    state = {"session": _session()}
 
     await graph.analysis_node(state)
     assert route_after_analysis(state) == "error"
