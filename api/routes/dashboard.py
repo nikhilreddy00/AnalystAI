@@ -168,7 +168,9 @@ async def download_latest_report(
     pptx_bytes = build_pptx(session)
 
     safe_query = (session.task_plan.raw_query if session.task_plan else "report") or "report"
-    safe_query = "".join(c if c.isalnum() or c in "-_ " else "_" for c in safe_query)[:40].strip() or "report"
+    # ASCII only: headers are latin-1 (a question like "売上の推移" would be a 500).
+    safe_query = "".join(c if c.isascii() and (c.isalnum() or c in "-_ ") else "_"
+                         for c in safe_query)[:40].strip() or "report"
     filename = f"analystai_{safe_query.replace(' ', '_')}.pptx"
 
     return Response(

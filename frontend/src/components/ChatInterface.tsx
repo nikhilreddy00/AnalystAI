@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowUp, Database, PanelLeft, X } from "lucide-react";
-import { getRun, recalledRun, useAnalysis } from "@/hooks/useAnalysis";
+import { forgetRun, getRun, recalledRun, useAnalysis } from "@/hooks/useAnalysis";
 import { useSessions } from "@/hooks/useSessions";
 import AgentProgressStream from "./AgentProgressStream";
 import AppHeader from "./AppHeader";
@@ -161,6 +161,7 @@ export default function ChatInterface() {
     cancelRun,
     retryRun,
     runsStarted,
+    detach,
     setSource,
     hydrateThread,
     hydrateFromSnapshot,
@@ -208,7 +209,8 @@ export default function ChatInterface() {
     if (!runId || new URLSearchParams(window.location.search).has("t")) return;
     let live = true;
     void getRun(runId).then((r) => {
-      if (live && r && !loaded.current) setUrl(`/chat?t=${r.session_id}`);
+      if (!r) forgetRun();   // purged: stop asking for it on every visit
+      else if (live && !loaded.current) setUrl(`/chat?t=${r.session_id}`);
     });
     return () => {
       live = false;
@@ -226,6 +228,7 @@ export default function ChatInterface() {
   }, [sessionId]);
 
   const openThread = useCallback(async (id: string) => {
+    detach();   // the click wins over a stream or a POST still answering for the old screen
     loaded.current = id;
     setMissing(false);
     setUpload(null);
@@ -252,7 +255,7 @@ export default function ChatInterface() {
       const snapshot = await getSessionResults(id);   // a thread from before Phase 5.6b
       if (snapshot && loaded.current === id) hydrateFromSnapshot(snapshot);
     }
-  }, [hydrateThread, hydrateFromSnapshot, resetWorkspace, setSource]);
+  }, [hydrateThread, hydrateFromSnapshot, resetWorkspace, setSource, detach]);
 
   // On a change of the URL's thread only (never on a re-render: a new thread has its id a moment
   // before its URL). Back to plain /chat (the browser's back button) clears the screen; our own
@@ -269,6 +272,7 @@ export default function ChatInterface() {
   // /chat?dataset=<id> (the Datasets page's "New analysis"): a new thread on it, no upload.
   useEffect(() => {
     if (!datasetParam) return;
+    detach();
     let live = true;
     void getDataset(datasetParam).then((ds) => {
       if (!live) return;

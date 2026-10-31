@@ -309,3 +309,32 @@ test("m7: after a rename, focus is back on the thread", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(row.getByRole("button").first()).toBeFocused();
 });
+
+test("C2: a new thread's first question, then another thread opened before both answer", async ({ page }) => {
+  await page.request.post(`${API}/__seed?n=1`);
+  await page.goto("/chat");
+  await page.locator('input[type="file"]').setInputFiles({ name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n") });
+  let releasePost!: () => void;
+  const post = new Promise<void>((r) => (releasePost = r));
+  await page.route(`${API}/chat`, async (route) => {
+    await post;
+    await route.continue();
+  });
+  let releaseThread!: () => void;
+  const thread = new Promise<void>((r) => (releaseThread = r));
+  await page.route(`${API}/api/sessions/t-0/thread`, async (route) => {
+    await thread;
+    await route.continue();
+  });
+  const input = page.getByLabel("Ask a question about your data");
+  await expect(input).toBeEnabled();
+  await input.fill("first question of a new thread");
+  await input.press("Enter");
+  await openRow(page, "question 0");
+  releasePost();   // the new thread's POST answers while t-0 is still loading
+  await page.waitForTimeout(1000);
+  releaseThread();
+  await expect(page.getByText(SUMMARY).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page).toHaveURL(/t=t-0/);
+  await expect(page.getByRole("region", { name: "Chat" }).getByText("first question of a new thread")).toHaveCount(0);
+});

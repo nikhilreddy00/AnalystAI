@@ -47,13 +47,13 @@ def reset() -> None:
     state.update(threads={"ui-check": thread()}, stale=False, started=False)
 
 
-def thread_status() -> str:
-    """The thread view's run: running only once a POST /chat started it (else it is the
-    fixture's finished run)."""
+def thread_status(sid: str) -> str:
+    """The thread view's run: running only on the thread POST /chat started it in (the mock has
+    one run, run-1, in ui-check), else the fixture's finished run."""
     with lock:
         started = state.get("started", False)
     events = run_events()
-    if started and run_status() == "running":
+    if sid == "ui-check" and started and run_status() == "running":
         return "running"
     return "waiting_approval" if events[-1]["type"] == "approval_required" else "completed"
 
@@ -145,7 +145,7 @@ class H(BaseHTTPRequestHandler):
                         default=0)
             report = [e for e in events[start:] if e.get("type") in REPORT]
             return self._json({**t, "turns": [{
-                "run_id": "run-1", "question": QUESTION, "status": thread_status(), "error": None,
+                "run_id": "run-1", "question": QUESTION, "status": thread_status(sid), "error": None,
                 "last_seq": len(events),
                 "report": report, "report_sha256": "f" * 64, "intact": True,
                 "stale": state["stale"],

@@ -97,7 +97,8 @@ async def _orphans(deps) -> None:
             logger.error("orphan sweep: memory store unavailable", exc_info=True)
     by_session = await deps.run_store.runs_by_session()
     alive = await deps.session_store.session_ids()
-    referenced = {str(p) for p in await deps.session_store.upload_paths()}
+    # Only when there is a file to judge: this reads every pre-5.6b thread's config.
+    referenced = {str(p) for p in await deps.session_store.upload_paths()} if files else set()
 
     for sid, run_ids in by_session.items():
         if sid not in alive:

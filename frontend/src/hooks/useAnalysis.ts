@@ -61,6 +61,7 @@ function recalled(): string | null {
 
 /** The run this browser was following when the tab closed (ChatInterface reopens its thread). */
 export const recalledRun = recalled;
+export const forgetRun = () => remember(null);
 
 export async function getRun(runId: string): Promise<Run | null> {
   const res = await fetch(`${API_URL}/runs/${runId}`, { headers: await getAuthHeaders() });
@@ -450,7 +451,15 @@ export function useAnalysis() {
     source.current = null;
   }, []);
 
+  /** Stop following whatever is streaming, at once: the user is opening something else, so a
+   *  stream or a POST still answering for the old screen must not land in the new one. */
+  const detach = useCallback(() => {
+    newEpoch();
+    run.current = { id: null, seq: 0 };
+  }, []);
+
   return {
+    detach,
     messages,
     sessionId,
     isLoading,

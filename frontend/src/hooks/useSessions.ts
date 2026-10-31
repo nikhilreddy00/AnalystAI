@@ -35,10 +35,15 @@ export function useSessions() {
    *  snapshot taken before would undo another change made meanwhile). */
   const updateSession = useCallback(async (id: string, patch: ThreadPatch) => {
     setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, ...patch } : s)));
-    const saved = await patchSession(id, patch);
-    if (saved) setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, ...saved } : s)));
-    else setSessions(await listSessions());
-    return !!saved;
+    const saved = await patchSession(id, patch).catch(() => null);
+    if (saved) {
+      setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, ...saved } : s)));
+      return true;
+    }
+    // listSessions() is [] on a network error: a blip must not empty the sidebar.
+    const fresh = await listSessions().catch(() => []);
+    if (fresh.length) setSessions(fresh);
+    return false;
   }, []);
 
   // Initial load: state is set only in the promise callbacks, never synchronously.
