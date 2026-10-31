@@ -79,6 +79,12 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _naive_now() -> datetime:
+    """For the zone-less timestamp columns of analysis_sessions: UTC written as is. An aware value
+    would be converted to the database server's time zone and then read back as UTC."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def _utc(dt: datetime) -> datetime:
     """Older columns are stored without a zone (they hold UTC): say so, or a browser reads them
     as local time and puts a thread in the wrong date group."""
@@ -166,6 +172,10 @@ def _own_upload(data: str) -> tuple[str, str] | None:
     if s.dataset_id is None and cfg is not None and cfg.type.value == "csv" and cfg.file_path:
         return cfg.file_path, s.user_id
     return None
+
+
+class DatasetGone(Exception):
+    """The thread's dataset (or version) was deleted, or the version moved, meanwhile."""
 
 
 class DatasetConflict(Exception):
@@ -276,6 +286,11 @@ class InMemorySessionStore:
     async def create(self, session: AnalysisSession, title: str | None = None) -> None:
         if session.session_id in self._sessions:
             raise ValueError(f"session {session.session_id} exists")
+        did, vid = session.dataset_id, session.dataset_version_id
+        if did and (did not in self._datasets or self._datasets[did]["deleted_at"] is not None
+                    or vid and (vid not in self._versions
+                                or self._versions[vid].dataset_id != did)):
+            raise DatasetGone(did)
         now = _now()
         self._sessions[session.session_id] = {"data": session.model_dump_json(), "meta": {
             "user_id": session.user_id, "title": title, "questions": "", "pinned": False,
@@ -348,7 +363,9 @@ class InMemorySessionStore:
         delete_session_files(session_id)
         entry = self._sessions.get(session_id)
         if entry and (own := _own_upload(entry["data"])) and not any(
-                v.file_path == own[0] for v in self._versions.values()):
+                v.file_path == own[0] for v in self._versions.values()) and not any(
+                _own_upload(e["data"]) == own for sid, e in self._sessions.items()
+                if sid != session_id):   # another thread (pre-5.6b) still reads that file
             _delete_upload(*own)
         self._sessions.pop(session_id, None)
 
@@ -444,8 +461,10 @@ class InMemorySessionStore:
             if dataset_id is not None and (dataset_id not in live
                                            or self._datasets[dataset_id]["kind"] != "upload"):
                 return None
+            # An explicit dataset ("Upload new version") only dedups within itself.
             for v in self._versions.values():
-                if v.dataset_id in live and v.content_hash == content_hash:
+                if v.dataset_id in ([dataset_id] if dataset_id else live) \
+                        and v.content_hash == content_hash:
                     return self._dataset(v.dataset_id), v, "existing"
             target = dataset_id or next(
                 (did for did in sorted(live, key=lambda d: self._datasets[d]["created_at"],
@@ -535,9 +554,28 @@ class InMemorySessionStore:
                 if d["deleted_at"] is not None]
 
     async def idle_datasets(self, before: datetime) -> list[tuple[str, str]]:
+        """Datasets no thread uses whose newest upload is older than `before`."""
         used = {e["meta"]["dataset_id"] for e in self._sessions.values()}
+        last = {}
+        for v in self._versions.values():
+            last[v.dataset_id] = max(last.get(v.dataset_id, v.created_at), v.created_at)
         return [(did, d["user_id"]) for did, d in self._datasets.items()
-                if d["deleted_at"] is None and did not in used and d["created_at"] < before]
+                if d["deleted_at"] is None and did not in used
+                and last.get(did, d["created_at"]) < before]
+
+    async def tombstone_threads_of(self, dataset_id: str) -> list[str]:
+        """A deleted dataset's threads that are still live (none, unless a write raced the
+        delete): tombstoned, so the dataset's purge isn't blocked forever."""
+        sids = [sid for sid, e in self._sessions.items() if e["meta"]["dataset_id"] == dataset_id
+                and e["meta"]["deleted_at"] is None]
+        for sid in sids:
+            self._sessions[sid]["meta"]["deleted_at"] = _now()
+        return sids
+
+    async def upload_paths(self) -> set[str]:
+        """Every upload file something still points at: dataset versions and pre-5.6b threads."""
+        return {v.file_path for v in self._versions.values() if v.file_path} | {
+            own[0] for e in self._sessions.values() if (own := _own_upload(e["data"]))}
 
     async def purge_dataset(self, dataset_id: str) -> bool:
         """Files, versions, then the dataset row. False while threads on it still exist."""
@@ -598,10 +636,24 @@ class SessionStore:
         return _summary(m.pop("session_id"), m)
 
     async def create(self, session: AnalysisSession, title: str | None = None) -> None:
+        """Insert a thread. On a dataset, in one transaction with a share lock on the dataset and
+        version rows: a dataset delete or a version split either sees this thread or makes this
+        fail (DatasetGone), never a live thread on deleted data."""
+        now = _naive_now()
         async with self._session_factory() as db:
+            if did := session.dataset_id:
+                live = (await db.execute(text(
+                    "SELECT 1 FROM datasets WHERE id = :d AND deleted_at IS NULL FOR SHARE"),
+                    {"d": did})).first()
+                vid = session.dataset_version_id
+                if not live or vid and not (await db.execute(text(
+                        "SELECT 1 FROM dataset_versions WHERE id = :v AND dataset_id = :d "
+                        "FOR SHARE"), {"v": vid, "d": did})).first():
+                    raise DatasetGone(did)
             db.add(SessionRecord(session_id=session.session_id, user_id=session.user_id,
                                  data=_dump(session), title=title, questions="",
-                                 pinned=False, archived=False, **_session_meta(session)))
+                                 pinned=False, archived=False, created_at=now, updated_at=now,
+                                 **_session_meta(session)))
             await db.commit()
 
     async def save(self, session: AnalysisSession) -> bool:
@@ -609,7 +661,7 @@ class SessionStore:
             done = await db.execute(
                 update(SessionRecord)
                 .where(SessionRecord.session_id == session.session_id, self._LIVE)
-                .values(data=_dump(session), updated_at=_now(), **_session_meta(session)))
+                .values(data=_dump(session), updated_at=_naive_now(), **_session_meta(session)))
             await db.commit()
             return done.rowcount == 1
 
@@ -619,7 +671,7 @@ class SessionStore:
                 "UPDATE analysis_sessions SET questions = trim(both E'\\n' from "
                 "questions || E'\\n' || :q), archived = false, updated_at = :now "
                 "WHERE session_id = :sid AND deleted_at IS NULL"),
-                {"q": question, "sid": session_id, "now": _now()})
+                {"q": question, "sid": session_id, "now": _naive_now()})
             await db.commit()
 
     async def load(self, session_id: str) -> AnalysisSession | None:
@@ -648,9 +700,11 @@ class SessionStore:
 
     async def update_thread(self, session_id: str, user_id: str, **fields) -> bool:
         async with self._session_factory() as db:
+            # A rename, pin or archive isn't activity: it keeps its place in the date groups and
+            # its retention clock (the column's onupdate would move it to now).
             done = await db.execute(update(SessionRecord).where(
                 SessionRecord.session_id == session_id, SessionRecord.user_id == user_id,
-                self._LIVE).values(**fields))
+                self._LIVE).values(**fields, updated_at=SessionRecord.updated_at))
             await db.commit()
             return done.rowcount == 1
 
@@ -682,9 +736,12 @@ class SessionStore:
             data = (await db.execute(select(SessionRecord.data).where(
                 SessionRecord.session_id == session_id))).scalar()
             own = _own_upload(data) if data else None
-            if own and (await db.execute(select(DatasetVersionRow.id).where(
-                    DatasetVersionRow.file_path == own[0]))).first():
-                own = None
+            if own and ((await db.execute(select(DatasetVersionRow.id).where(
+                    DatasetVersionRow.file_path == own[0]))).first() or (await db.execute(text(
+                    "SELECT 1 FROM analysis_sessions WHERE session_id <> :sid AND dataset_id "
+                    "IS NULL AND position(:needle in data) > 0 LIMIT 1"),
+                    {"sid": session_id, "needle": json.dumps(own[0])})).first()):
+                own = None   # a dataset's file, or another pre-5.6b thread still reads it
         delete_session_files(session_id)
         if own:
             _delete_upload(*own)
@@ -806,7 +863,7 @@ class SessionStore:
             if dataset_id is not None and (dataset_id not in by_id
                                            or by_id[dataset_id].kind != "upload"):
                 return None
-            for d in live:
+            for d in ([by_id[dataset_id]] if dataset_id else live):   # explicit: only itself
                 for v in d.versions:
                     if v.content_hash == content_hash:
                         return d, v, "existing"
@@ -906,6 +963,10 @@ class SessionStore:
             return None
         ds, v = got
         async with self._session_factory() as db:
+            # The row lock makes a thread being created on this version (create() holds a share
+            # lock on it) finish first, so the count below sees it.
+            await db.execute(text("SELECT 1 FROM dataset_versions WHERE id = :v FOR UPDATE"),
+                             {"v": version_id})
             used = (await db.execute(text(
                 "SELECT count(*) FROM analysis_sessions WHERE dataset_version_id = :v"),
                 {"v": version_id})).scalar_one()
@@ -924,13 +985,17 @@ class SessionStore:
     async def tombstone_dataset(self, dataset_id: str, user_id: str) -> list[str] | None:
         now = _now()
         async with self._session_factory() as db:
+            # Not while an upload of this user is being placed (it may be placing it here).
+            await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
+                             {"k": f"upload:{user_id}"})
             done = await db.execute(update(DatasetRow).where(
                 DatasetRow.id == dataset_id, *self._live_ds(user_id)).values(deleted_at=now))
             if done.rowcount != 1:
                 return None
             sids = (await db.execute(
                 update(SessionRecord).where(SessionRecord.dataset_id == dataset_id, self._LIVE)
-                .values(deleted_at=now).returning(SessionRecord.session_id))).scalars().all()
+                .values(deleted_at=now, updated_at=SessionRecord.updated_at)
+                .returning(SessionRecord.session_id))).scalars().all()
             await db.commit()
             return list(sids)
 
@@ -944,9 +1009,27 @@ class SessionStore:
         async with self._session_factory() as db:
             rows = (await db.execute(text(
                 "SELECT d.id, d.user_id FROM datasets d WHERE d.deleted_at IS NULL "
-                "AND d.created_at < :before AND NOT EXISTS (SELECT 1 FROM analysis_sessions s "
-                "WHERE s.dataset_id = d.id)"), {"before": before})).all()
+                "AND coalesce((SELECT max(v.created_at) FROM dataset_versions v "
+                "              WHERE v.dataset_id = d.id), d.created_at) < :before "
+                "AND NOT EXISTS (SELECT 1 FROM analysis_sessions s WHERE s.dataset_id = d.id)"),
+                {"before": before})).all()
             return [tuple(r) for r in rows]
+
+    async def tombstone_threads_of(self, dataset_id: str) -> list[str]:
+        async with self._session_factory() as db:
+            sids = (await db.execute(
+                update(SessionRecord).where(SessionRecord.dataset_id == dataset_id, self._LIVE)
+                .values(deleted_at=_now(), updated_at=SessionRecord.updated_at)
+                .returning(SessionRecord.session_id))).scalars().all()
+            await db.commit()
+            return list(sids)
+
+    async def upload_paths(self) -> set[str]:
+        async with self._session_factory() as db:
+            versions = set((await db.execute(select(DatasetVersionRow.file_path))).scalars())
+            legacy = (await db.execute(select(SessionRecord.data).where(
+                SessionRecord.dataset_id.is_(None)))).scalars()
+            return {p for p in versions if p} | {own[0] for d in legacy if (own := _own_upload(d))}
 
     async def purge_dataset(self, dataset_id: str) -> bool:
         async with self._session_factory() as db:

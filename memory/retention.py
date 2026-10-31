@@ -12,7 +12,9 @@ point dropped). The worker runs `sweep` beside the reaper, and it removes everyt
 - a tombstoned dataset, once none of its threads has a row: memory points, then its version files
   and rows;
 - orphans: runs, checkpoints, cached files and memory points whose thread has no row (a write
-  that raced a purge);
+  that raced a purge), and upload files no dataset version or thread points at (after an hour:
+  an upload being placed has its file a moment before its row). Only with a persistent store:
+  in memory every thread is gone after a restart while Qdrant and the files are not;
 - with `retention_days` set, threads idle (and datasets unused) longer than that are tombstoned
   and go the same way.
 
@@ -23,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import time
 from datetime import datetime, timedelta, timezone
 
 from memory.run_store import ACTIVE, LEASE_S, cancel_events
@@ -30,6 +33,7 @@ from memory.run_store import ACTIVE, LEASE_S, cancel_events
 logger = logging.getLogger(__name__)
 
 SWEEP_S = 30
+UPLOAD_GRACE_S = 3600   # an upload's file exists a moment before its version row
 PURGE_TABLES = {
     "analysis_sessions": "session_store.purge_session (last: the tombstone)",
     "dashboard_charts": "session_store.purge_session",
@@ -72,14 +76,29 @@ async def purge_thread(deps, session_id: str, user_id: str, *, now: datetime,
 async def _orphans(deps) -> None:
     """Children are read before their parents: a thread is created before its runs, a run before
     its checkpoints, cached files and memory point. Anything created during the sweep is then
-    missing from the child snapshot, never wrongly missing its parent."""
+    missing from the child snapshot, never wrongly missing its parent. Each store is its own
+    step: one that is down doesn't stop the others."""
+    from connectors import csv_connector
     from memory import session_data
-    threads = await _checkpoint_threads(deps.graph.checkpointer)
+    threads = await _checkpoint_threads(deps)
     dirs = [d for d in session_data._DATA_DIR.iterdir() if d.is_dir()] \
         if session_data._DATA_DIR.is_dir() else []
-    points = await deps.vector_store.session_ids() if deps.vector_store else set()
+    # uploads/<user>/<file> only: uploads/evals is the eval harness's own folder (in use while an
+    # eval runs, referenced by nothing), and older flat files predate per-user folders.
+    root = csv_connector._UPLOADS_DIR
+    files = [f for d in (root.iterdir() if root.is_dir() else []) if d.is_dir()
+             and d.name != "evals" for f in d.iterdir()
+             if f.is_file() and time.time() - f.stat().st_mtime > UPLOAD_GRACE_S]
+    points = None
+    if deps.vector_store:
+        try:
+            points = await deps.vector_store.session_ids()
+        except Exception:
+            logger.error("orphan sweep: memory store unavailable", exc_info=True)
     by_session = await deps.run_store.runs_by_session()
     alive = await deps.session_store.session_ids()
+    referenced = {str(p) for p in await deps.session_store.upload_paths()}
+
     for sid, run_ids in by_session.items():
         if sid not in alive:
             for rid in run_ids:
@@ -92,14 +111,23 @@ async def _orphans(deps) -> None:
     for d in dirs:
         if d.name not in alive:
             shutil.rmtree(d, ignore_errors=True)
-    for sid in points - alive:
+    for f in files:
+        if str(f) not in referenced and str(f.resolve()) not in referenced:
+            f.unlink(missing_ok=True)
+            logger.warning("deleted an upload file nothing points at: %s", f.name)
+    for sid in (points or set()) - alive:
         await deps.vector_store.delete_session(sid)
 
 
-async def _checkpoint_threads(saver) -> set[str]:
-    """Every checkpoint thread id (= run id). ponytail: lists all checkpoints; a DISTINCT query
-    on the checkpoints table if that ever gets slow."""
-    return {c.config["configurable"]["thread_id"] async for c in saver.alist(None)}
+async def _checkpoint_threads(deps) -> set[str]:
+    """Every checkpoint thread id (= run id), without loading a checkpoint: one DISTINCT query on
+    Postgres (the checkpoints live in the run store's database), the dict's keys in memory."""
+    if hasattr(deps.run_store, "_engine"):
+        from sqlalchemy import text
+        async with deps.run_store._engine.connect() as conn:
+            return set((await conn.execute(text(
+                "SELECT DISTINCT thread_id FROM checkpoints"))).scalars())
+    return set(deps.graph.checkpointer.storage)
 
 
 async def sweep(deps, *, now: datetime | None = None, grace_s: float = LEASE_S,
@@ -124,12 +152,26 @@ async def sweep(deps, *, now: datetime | None = None, grace_s: float = LEASE_S,
             logger.error("purge of thread %s failed; retrying next sweep", sid, exc_info=True)
     for did, _uid in await store.tombstoned_datasets():
         try:
+            # A thread created while the dataset was being deleted: deleted with it.
+            for sid in await store.tombstone_threads_of(did):
+                logger.warning("thread %s raced its dataset's delete; tombstoned", sid)
             if deps.vector_store:
                 await deps.vector_store.delete_dataset(did)
             await store.purge_dataset(did)
         except Exception:
             logger.error("purge of dataset %s failed; retrying next sweep", did, exc_info=True)
+    if not deps.persistent:
+        return   # in memory, "no thread" only means the process restarted
     try:
         await _orphans(deps)
     except Exception:
         logger.error("orphan sweep failed; retrying next sweep", exc_info=True)
+
+
+async def sweep_logged(deps) -> None:
+    """The worker's task: a sweep that fails (the database is down) is logged and tried again
+    at the next interval."""
+    try:
+        await sweep(deps)
+    except Exception:
+        logger.error("purge sweep failed; retrying next interval", exc_info=True)

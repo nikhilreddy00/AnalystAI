@@ -329,9 +329,10 @@ async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
     """The worker loop: reap expired leases, purge deleted threads and datasets (memory/retention.py),
     claim queued runs, run up to `concurrency` at once.
     ponytail: polls the queue every `poll_s`; LISTEN/NOTIFY if idle polling ever matters."""
-    from memory.retention import SWEEP_S, sweep
+    from memory.retention import SWEEP_S, sweep_logged
     tasks: set[asyncio.Task] = set()
     last_reap = last_sweep = 0.0
+    sweeping: asyncio.Task | None = None
     try:
         while not stop.is_set():
             try:
@@ -339,9 +340,11 @@ async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
                     for run_id, status in await deps.run_store.reap():
                         logger.warning("reaped run %s → %s", run_id, status)
                     last_reap = time.monotonic()
-                if time.monotonic() - last_sweep > SWEEP_S:   # deletes and retention
+                # Deletes and retention, in their own task: a long sweep never holds up claiming
+                # runs or their heartbeats.
+                if time.monotonic() - last_sweep > SWEEP_S and not (sweeping and not sweeping.done()):
                     last_sweep = time.monotonic()
-                    await sweep(deps)
+                    sweeping = asyncio.create_task(sweep_logged(deps))
                 if len(tasks) < concurrency and (run := await deps.run_store.claim()):
                     task = asyncio.create_task(supervise(run, deps, heartbeat_s))
                     tasks.add(task)
@@ -355,6 +358,6 @@ async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
             except TimeoutError:
                 continue   # the queue was empty: poll again
     finally:
-        for t in list(tasks):
+        for t in [*tasks, *([sweeping] if sweeping else [])]:
             t.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks, *([sweeping] if sweeping else []), return_exceptions=True)

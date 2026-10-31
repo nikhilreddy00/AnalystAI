@@ -62,6 +62,7 @@ async def env(request, replay, monkeypatch):  # noqa: F811
     path, _ = replay
     if request.param == "memory":
         deps = in_memory_deps()
+        deps.persistent = True   # as if it outlived restarts: the orphan sweep runs (memory/retention)
     else:
         if not PG:
             pytest.skip("TEST_PG_URL not set")

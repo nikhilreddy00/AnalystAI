@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import re
 
-from memory.run_store import REPORT_EVENTS, Run, report_hash
+from memory.run_store import Run, report_events, report_hash
 from orchestrator.state import (KPI, AnalysisFindings, AnalysisSession, ChartConfig,
                                 InsightReport)
 
 
 def report_of(events: list[dict]) -> list[dict]:
-    return [e for e in events if e.get("type") in REPORT_EVENTS]
+    return report_events(events)
 
 
 def fold(report: list[dict]) -> dict:

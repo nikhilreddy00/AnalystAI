@@ -142,7 +142,7 @@ async def test_another_users_session_id_reaches_none_of_their_runs(api):
         r = await other.post("/chat", json={"message": "Drop", "is_approval": True,
                                             "approval_context": "high_null",
                                             "session_id": mine["session_id"]})
-        assert r.status_code == 403
+        assert r.status_code == 404
     assert (await deps.run_store.get(mine["run_id"])).status == "waiting_approval"
 
     async def broken(_sid):

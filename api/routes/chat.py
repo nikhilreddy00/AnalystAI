@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 
 from connectors.csv_connector import check_upload_owner
 from memory.run_store import RunConflict
-from memory.session_store import make_title
+from memory.session_store import DatasetGone, make_title
 from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
 
 router = APIRouter()
@@ -151,9 +151,9 @@ async def chat(
                                 "Try again in a moment.") from exc
         if session is None:   # deleted, or never existed: never (re)create it under that id
             raise HTTPException(status_code=404, detail="This conversation no longer exists.")
-        # Ensure multi-tenant privacy: user can only load their own session
+        # Multi-tenant privacy: another user's thread is a 404, like one that doesn't exist.
         if session.user_id != current_user.uid:
-            raise HTTPException(status_code=403, detail="Access denied to requested session.")
+            raise HTTPException(status_code=404, detail="This conversation no longer exists.")
 
     new = session is None
     if new:
@@ -211,8 +211,11 @@ async def chat(
     # The worker starts from the stored session. Only this route creates one; a save of a
     # thread deleted meanwhile does nothing.
     if new:
-        await session_store.create(session, title=make_title(
-            session.dataset_name, None if body.is_approval else body.message))
+        try:   # the dataset may have been deleted since it was looked up above
+            await session_store.create(session, title=make_title(
+                session.dataset_name, None if body.is_approval else body.message))
+        except DatasetGone:
+            raise HTTPException(status_code=404, detail="Dataset not found") from None
     elif not await session_store.save(session):
         raise HTTPException(status_code=404, detail="This conversation no longer exists.")
     if not body.is_approval:

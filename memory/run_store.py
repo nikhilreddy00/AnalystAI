@@ -46,9 +46,28 @@ def _plain(events) -> list[dict]:
     return [json.loads(json.dumps(e, default=str)) for e in events]
 
 
+def report_events(events: list[dict]) -> list[dict]:
+    """The report the user was last shown, as the UI built it (useAnalysis `handle`). A new answer
+    starts at a gate's answer and at a retry (a resume after the run had ended with an error or
+    done); a crash resume carries on the same answer. Each answer keeps what it was shown, and the
+    report canvas shows the newest one that has a report: so does this."""
+    answers: list[list[dict]] = [[]]
+    ended = False
+    for e in events:
+        kind = e.get("type")
+        if kind in ("done", "error"):
+            ended = True
+        elif kind == "approval_answered" or kind == "run_resumed" and ended:
+            answers.append([])
+            ended = False
+        if kind in REPORT_EVENTS:
+            answers[-1].append(e)
+    return next((a for a in reversed(answers) if a), [])
+
+
 def report_hash(events: list[dict]) -> str | None:
     """sha256 over the report events, canonical JSON; None if the run delivered no report."""
-    report = [e for e in events if e.get("type") in REPORT_EVENTS]
+    report = report_events(events)
     if not report:
         return None
     return hashlib.sha256(json.dumps(report, sort_keys=True, separators=(",", ":"),
@@ -343,8 +362,8 @@ class RunStore:
         sha = None
         if status in TERMINAL:
             rows = (await db.execute(text(
-                "SELECT payload FROM run_events WHERE run_id = :id AND type = ANY(:t) "
-                "ORDER BY seq"), {"id": run_id, "t": list(REPORT_EVENTS)})).scalars()
+                "SELECT payload FROM run_events WHERE run_id = :id ORDER BY seq"),
+                {"id": run_id})).scalars()
             sha = report_hash([json.loads(p) for p in rows])
         await db.execute(text("UPDATE runs SET report_sha256 = :h WHERE id = :id"),
                          {"id": run_id, "h": sha})

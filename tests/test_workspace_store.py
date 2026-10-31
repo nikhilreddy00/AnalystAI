@@ -213,8 +213,9 @@ async def test_split_undo(store, uploads):
     assert new.id != ds.id and [v.version for v in new.versions] == [1]
     assert [v.id for v in (await store.get_dataset(ds.id, "u1")).versions] == [v1.id]
     # A version with an analysis can't move: its reports cite it.
-    (_, v3, _), _ = await _upload(store, uploads, "H3")
-    await store.create(_session(dataset_id=ds.id, dataset_version_id=v3.id), title="t")
+    (ds3, v3, _), _ = await _upload(store, uploads, "H3")   # same name: the newest "orders"
+    assert ds3.id == new.id and v3.version == 2
+    await store.create(_session(dataset_id=ds3.id, dataset_version_id=v3.id), title="t")
     with pytest.raises(DatasetConflict):
         await store.split_version(v3.id, "u1")
 

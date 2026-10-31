@@ -180,7 +180,9 @@ async def export_markdown(
 ):
     from api.lib.report import to_markdown
     summary, turns = await _turns(request, session_id, current_user.uid)
-    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in (summary.title or "thread"))
+    # ASCII only: headers are latin-1 (a title like "売上 · …" would be a 500).
+    safe = "".join(c if c.isascii() and (c.isalnum() or c in "-_") else "_"
+                   for c in (summary.title or "thread"))
     return PlainTextResponse(
         to_markdown(summary.title or "Analysis", summary.dataset_name, turns),
         media_type="text/markdown; charset=utf-8",
