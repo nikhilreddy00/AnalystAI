@@ -44,7 +44,18 @@ def thread(sid="ui-check", title="sales_nov · " + QUESTION, updated="2026-10-27
 
 
 def reset() -> None:
-    state.update(threads={"ui-check": thread()}, stale=False)
+    state.update(threads={"ui-check": thread()}, stale=False, started=False)
+
+
+def thread_status() -> str:
+    """The thread view's run: running only once a POST /chat started it (else it is the
+    fixture's finished run)."""
+    with lock:
+        started = state.get("started", False)
+    events = run_events()
+    if started and run_status() == "running":
+        return "running"
+    return "waiting_approval" if events[-1]["type"] == "approval_required" else "completed"
 
 
 reset()
@@ -128,9 +139,14 @@ class H(BaseHTTPRequestHandler):
                 t = state["threads"].get(sid)
             if not t:
                 return self._json({"detail": "Session not found"}, 404)
-            report = [e for e in run_events() if e.get("type") in REPORT]
+            events = run_events()
+            # As memory/run_store.report_events: the report starts at the last gate answer.
+            start = max((i for i, e in enumerate(events) if e.get("type") == "approval_answered"),
+                        default=0)
+            report = [e for e in events[start:] if e.get("type") in REPORT]
             return self._json({**t, "turns": [{
-                "run_id": "run-1", "question": QUESTION, "status": "completed", "error": None,
+                "run_id": "run-1", "question": QUESTION, "status": thread_status(), "error": None,
+                "last_seq": len(events),
                 "report": report, "report_sha256": "f" * 64, "intact": True,
                 "stale": state["stale"],
                 "provenance": {"dataset_version_id": "v-1", "model": "claude-sonnet-4-6",
@@ -182,6 +198,7 @@ class H(BaseHTTPRequestHandler):
         if p == "/chat":
             with lock:
                 state["posts"] += 1
+                state["started"] = True
                 state["connections"].clear()
                 state["served"].clear()
             return self._json({"run_id": "run-1", "session_id": "ui-check", "status": "queued",

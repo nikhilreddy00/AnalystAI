@@ -212,7 +212,8 @@ function DatasetPage({ id }: { id: string }) {
           onCancel={() => setConfirming(false)}
           onConfirm={() => {
             setConfirming(false);
-            void deleteDataset(ds.id).then(() => router.push("/datasets"));
+            void deleteDataset(ds.id).then((ok) =>
+              ok ? router.push("/datasets") : setNote("The dataset couldn't be deleted. Try again."));
           }}
         />
       )}

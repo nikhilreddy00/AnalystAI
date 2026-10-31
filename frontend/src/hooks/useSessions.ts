@@ -31,16 +31,13 @@ export function useSessions() {
     [],
   );
 
-  /** Rename / pin / archive. Shown at once; put back if the server refuses. */
+  /** Rename / pin / archive. Shown at once; if the server refuses, the list is read again (a
+   *  snapshot taken before would undo another change made meanwhile). */
   const updateSession = useCallback(async (id: string, patch: ThreadPatch) => {
-    let before: SessionSummary | undefined;
-    setSessions((prev) => prev.map((s) => {
-      if (s.session_id !== id) return s;
-      before = s;
-      return { ...s, ...patch };
-    }));
+    setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, ...patch } : s)));
     const saved = await patchSession(id, patch);
-    setSessions((prev) => prev.map((s) => (s.session_id !== id ? s : saved ? { ...s, ...saved } : before ?? s)));
+    if (saved) setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, ...saved } : s)));
+    else setSessions(await listSessions());
     return !!saved;
   }, []);
 

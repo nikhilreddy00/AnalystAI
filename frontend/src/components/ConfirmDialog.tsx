@@ -17,13 +17,19 @@ export default function ConfirmDialog({ title, body, confirmLabel, onConfirm, on
 
   useEffect(() => {
     const d = ref.current;
+    const opener = document.activeElement as HTMLElement | null;
     if (d && !d.open) d.showModal();
+    return () => {
+      d?.close();
+      opener?.focus?.();   // focus goes back where the user was
+    };
   }, []);
 
   return (
     <dialog
       ref={ref}
       aria-labelledby="confirm-title"
+      aria-describedby="confirm-body"
       onCancel={(e) => {
         e.preventDefault();
         onCancel();
@@ -33,7 +39,7 @@ export default function ConfirmDialog({ title, body, confirmLabel, onConfirm, on
       <div className="space-y-4">
         <div className="space-y-1.5">
           <h2 id="confirm-title" className="text-base font-semibold">{title}</h2>
-          <div className="text-sm text-muted-foreground">{body}</div>
+          <div id="confirm-body" className="text-sm text-muted-foreground">{body}</div>
         </div>
         <div className="flex justify-end gap-2">
           <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { API_URL, downloadLatestReportPptx, getAuthHeaders } from "@/lib/api";
 import type { AgentEvent, ApprovalRequiredEvent, BriefingData, ChatMessage, ChartConfig, DataSource, Evidence, ExpertReview, InsightReport, Run, SessionResultsSnapshot, TargetedResponse, ThreadView } from "@/types";
 
@@ -59,7 +59,10 @@ function recalled(): string | null {
   }
 }
 
-async function getRun(runId: string): Promise<Run | null> {
+/** The run this browser was following when the tab closed (ChatInterface reopens its thread). */
+export const recalledRun = recalled;
+
+export async function getRun(runId: string): Promise<Run | null> {
   const res = await fetch(`${API_URL}/runs/${runId}`, { headers: await getAuthHeaders() });
   return res.ok ? res.json() : null;
 }
@@ -86,11 +89,21 @@ export function useAnalysis() {
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequiredEvent | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [resumed, setResumed] = useState(false);
+  const [runsStarted, setRunsStarted] = useState(0);   // the sidebar refreshes on each
   const source = useRef<DataSource | null>(null);   // the data a new thread is about
   const run = useRef<{ id: string | null; seq: number }>({ id: null, seq: 0 });
   const acc = useRef<Artifacts>(noArtifacts());
   const sending = useRef(false);   // a double click must not post twice
+  // The workspace's epoch: a new stream, a reopened thread or a reset starts a new one. A stream
+  // or a POST from an older epoch stops (or is dropped) instead of writing into what is now on
+  // screen. The controller aborts the old stream's fetch.
+  const epoch = useRef(0);
+  const stream = useRef<AbortController | null>(null);
+  const newEpoch = () => {
+    stream.current?.abort();
+    stream.current = null;
+    return ++epoch.current;
+  };
 
   const patchLast = (patch: (m: ChatMessage) => ChatMessage) =>
     setMessages((prev) => prev.map((m, i) => (i === prev.length - 1 ? patch(m) : m)));
@@ -148,7 +161,8 @@ export function useAnalysis() {
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last?.role === "assistant" && last.isStreaming) return prev;
-          acc.current = noArtifacts();   // a retry after an error starts a fresh answer
+          // A retry carries the answer on (its earlier steps' charts and evidence stay; the
+          // steps that re-run replace theirs), as memory/run_store.report_events does.
           return [...prev, { role: "assistant", content: "", isStreaming: true }];
         });
         setAgentEvents((prev) => [...prev, event]);
@@ -211,15 +225,21 @@ export function useAnalysis() {
 
   /** Stream a run's events after `after`, reconnecting with Last-Event-ID until it stops. */
   const attach = useCallback(async (runId: string, after: number, replay: boolean) => {
+    const mine = newEpoch();
+    const ctl = new AbortController();
+    stream.current = ctl;
+    const live = () => epoch.current === mine;
     run.current = { id: runId, seq: after };
     remember(runId);
     let failures = 0;
-    while (run.current.id === runId) {
+    while (live()) {
       try {
         const seq = run.current.seq;
         const res = await fetch(`${API_URL}/runs/${runId}/events`, {
           headers: await getAuthHeaders(seq > 0 ? { "Last-Event-ID": String(seq) } : {}),
+          signal: ctl.signal,
         });
+        if (!live()) return;
         if (res.status === 404) {
           remember(null);
           setIsLoading(false);
@@ -227,7 +247,7 @@ export function useAnalysis() {
         }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         for await (const { id, event } of parseSSEStream(res)) {
-          if (run.current.id !== runId) return;   // the user moved on to another run
+          if (!live()) return;   // the user moved on: another thread, run or a new analysis
           if (id !== null) {
             if (id <= run.current.seq) continue;  // already shown: every event appears once
             run.current.seq = id;
@@ -236,10 +256,12 @@ export function useAnalysis() {
           handle(event, replay);
         }
         const status = (await getRun(runId))?.status;
+        if (!live()) return;
         if (status === "queued" || status === "running") continue;   // cut short: reconnect
         if (status !== "waiting_approval") remember(null);
         return;
       } catch (err) {
+        if (!live()) return;   // aborted on purpose
         if (++failures > MAX_RECONNECTS) {
           fail(`Connection error: ${err}`);
           setIsLoading(false);
@@ -249,30 +271,6 @@ export function useAnalysis() {
       }
     }
   }, [handle]);
-
-  // A refreshed or reopened tab picks up its run where the server has it. `live` stops a
-  // second mount (React dev mounts twice) from starting a second replay of the same run.
-  useEffect(() => {
-    const runId = recalled();
-    // A thread link wins: opening it attaches to its own active run (hydrateThread).
-    if (!runId || new URLSearchParams(window.location.search).has("t")) return;
-    let live = true;
-    void (async () => {
-      const r = await getRun(runId);
-      if (!live) return;
-      if (!r) {
-        remember(null);
-        return;
-      }
-      setResumed(true);
-      setSessionId(r.session_id);
-      setIsLoading(r.status === "queued" || r.status === "running");
-      await attach(runId, 0, true);
-    })();
-    return () => {
-      live = false;
-    };
-  }, [attach]);
 
   const sendMessage = useCallback(
     async (content: string, isApproval = false, approvalContext: string | null = null,
@@ -289,6 +287,7 @@ export function useAnalysis() {
         startBubble();
       }
 
+      const sentIn = epoch.current;
       try {
         const res = await fetch(`${API_URL}/chat`, {
           method: "POST",
@@ -307,11 +306,18 @@ export function useAnalysis() {
           throw new Error(typeof detail === "string" ? detail : `HTTP ${res.status}`);
         }
         const r: Run = await res.json();
-        setSessionId(r.session_id);
         sending.current = false;   // posted: the run exists, the next question may follow it
+        // The user opened something else meanwhile: the run goes on on the server (the sidebar
+        // shows it); it must not stream into what is on screen now.
+        if (epoch.current !== sentIn) return;
+        setSessionId(r.session_id);
+        // The thread now holds its data: follow-ups name no data (only "re-run" passes some).
+        if (!data) source.current = null;
+        setRunsStarted((n) => n + 1);
         const sameRun = gateAnswer && run.current.id === r.run_id;
         await attach(r.run_id, sameRun ? run.current.seq : 0, false);
       } catch (err) {
+        if (epoch.current !== sentIn) return;
         fail(`Error: ${err instanceof Error ? err.message : err}`);
         setIsLoading(false);
       } finally {
@@ -331,19 +337,24 @@ export function useAnalysis() {
   const retryRun = useCallback(async (runId: string) => {
     setIsLoading(true);
     setAgentEvents([]);
+    const sentIn = epoch.current;
     const res = await fetch(`${API_URL}/runs/${runId}/retry`, { method: "POST", headers: await getAuthHeaders() });
+    if (epoch.current !== sentIn) return;
     if (!res.ok) {
       const detail = (await res.json().catch(() => null))?.detail;
       fail(`Error: ${typeof detail === "string" ? detail : `HTTP ${res.status}`}`);
       setIsLoading(false);
       return;
     }
+    setRunsStarted((n) => n + 1);
+    // A reopened thread knows its runs' last seq: the retry streams on from there, once.
     await attach(runId, run.current.id === runId ? run.current.seq : 0, false);
   }, [attach]);
 
   /** Rebuild a thread from its runs: each question, then its report replayed through `handle`
    *  (the live stream's own reducer). A run still going attaches to its events instead. */
   const hydrateThread = useCallback((view: ThreadView) => {
+    newEpoch();
     run.current = { id: null, seq: 0 };
     remember(null);
     setSessionId(view.session_id);
@@ -359,10 +370,13 @@ export function useAnalysis() {
       setMessages((prev) => [...prev, { role: "user", content: t.question }]);
       startBubble();
       for (const e of t.report) handle(e, true);
-      if (!t.report.length) {
-        // Only the latest run can be retried (the server refuses older ones).
-        const retry = t === last && t.status !== "completed" ? t.run_id : undefined;
+      if (t.status !== "completed") {
+        // As it was shown: "The analysis stopped" (any partial report stays viewable). Only the
+        // latest run can be retried (the server refuses older ones).
+        const retry = t === last ? t.run_id : undefined;
         patchLast((m) => ({ ...m, content: `Error: ${t.error ?? "This question has no report."}`, runId: retry }));
+      } else if (!t.report.length) {
+        patchLast((m) => ({ ...m, content: "This question has no report." }));
       }
       finish();
       if (t.report.length) {
@@ -373,12 +387,15 @@ export function useAnalysis() {
     if (active) {
       setIsLoading(active.status !== "waiting_approval");
       void attach(active.run_id, 0, true);
+    } else if (last) {
+      run.current = { id: last.run_id, seq: last.last_seq };   // a retry streams on after it
     }
     // The helpers it calls only use state setters and refs, which never change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handle, attach]);
 
   const hydrateFromSnapshot = useCallback((snapshot: SessionResultsSnapshot) => {
+    newEpoch();
     run.current = { id: null, seq: 0 };
     remember(null);
     setSessionId(snapshot.session_id);
@@ -416,6 +433,23 @@ export function useAnalysis() {
     setMessages(replay);
   }, []);
 
+  const setSource = useCallback((src: DataSource | null) => {
+    source.current = src;
+  }, []);
+
+  const resetWorkspace = useCallback(() => {
+    newEpoch();
+    run.current = { id: null, seq: 0 };
+    remember(null);
+    setMessages([]);
+    setSessionId(null);
+    setIsLoading(false);
+    setAgentEvents([]);
+    setPendingApproval(null);
+    setSuggestedQuestions([]);
+    source.current = null;
+  }, []);
+
   return {
     messages,
     sessionId,
@@ -424,26 +458,13 @@ export function useAnalysis() {
     pendingApproval,
     setPendingApproval,
     suggestedQuestions,
-    resumed,
+    runsStarted,
     sendMessage,
     cancelRun,
     retryRun,
-    setSource: (src: DataSource | null) => {
-      source.current = src;
-    },
+    setSource,
     hydrateThread,
     hydrateFromSnapshot,
-    resetWorkspace: () => {
-      run.current = { id: null, seq: 0 };
-      remember(null);
-      setMessages([]);
-      setSessionId(null);
-      setIsLoading(false);
-      setAgentEvents([]);
-      setPendingApproval(null);
-      setSuggestedQuestions([]);
-      setResumed(false);
-      source.current = null;
-    },
+    resetWorkspace,
   };
 }

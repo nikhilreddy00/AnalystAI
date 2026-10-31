@@ -30,8 +30,9 @@ interface Props {
   onDraft?: (q: string) => void;
   /** "Re-run on current data" (a stale report): a new report beside this one. */
   onRerun?: () => void;
-  /** A thread's title by id (the earlier analyses a report consulted). */
-  titleFor?: (sessionId: string) => string | null;
+  /** A thread's title by id (the earlier analyses a report consulted): null if deleted,
+   *  undefined while not known. */
+  titleFor?: (sessionId: string) => string | null | undefined;
 }
 
 function day(iso: string | null | undefined) {
@@ -213,7 +214,10 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
                 {memory.map((m, i) => (
                   <span key={m.session_id}>
                     {i > 0 && "; "}
-                    {titleFor?.(m.session_id) ?? "a deleted analysis"} ({day(m.generated_at)})
+                    {(() => {
+                      const t = titleFor?.(m.session_id);
+                      return t === null ? "a deleted analysis" : t ?? "an earlier analysis";
+                    })()} ({day(m.generated_at)})
                   </span>
                 ))}
                 . They are context, not evidence.

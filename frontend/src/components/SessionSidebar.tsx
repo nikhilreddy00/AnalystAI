@@ -57,18 +57,26 @@ function RowMenu({ s, onRename, onUpdate, onDelete }: {
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const items = () => [...(ref.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]") ?? [])];
   useEffect(() => {
     if (!open) return;
+    items()[0]?.focus();   // a menu opens on its first item
     const close = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
+  const shut = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
   const item = (label: string, act: () => void, danger = false) => (
     <button
       type="button"
       role="menuitem"
+      tabIndex={-1}
       onClick={() => {
         setOpen(false);
         act();
@@ -83,10 +91,23 @@ function RowMenu({ s, onRename, onUpdate, onDelete }: {
       ref={ref}
       className="absolute right-1 top-1.5"
       onKeyDown={(e) => {
-        if (e.key === "Escape") setOpen(false);
+        if (!open) return;
+        if (e.key === "Escape") {
+          e.preventDefault();
+          shut();
+        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const all = items();
+          const i = all.indexOf(document.activeElement as HTMLButtonElement);
+          all[(i + (e.key === "ArrowDown" ? 1 : all.length - 1)) % all.length]?.focus();
+        }
+      }}
+      onBlur={(e) => {
+        if (open && !ref.current?.contains(e.relatedTarget as Node)) setOpen(false);   // tabbed away
       }}
     >
       <button
+        ref={trigger}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -118,10 +139,23 @@ function Row({ s, active, onOpen, onUpdate, onDelete }: {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const status = s.run_status ? STATUS[s.run_status] : null;
+  const openBtn = useRef<HTMLButtonElement>(null);
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (!editing && refocus.current) {   // after a rename, focus is back on the thread
+      refocus.current = false;
+      openBtn.current?.focus();
+    }
+  }, [editing]);
+
+  function stop() {
+    refocus.current = true;
+    setEditing(false);
+  }
 
   function save() {
     const t = draft.split(/\s+/).join(" ").trim();
-    setEditing(false);
+    stop();
     if (t && t !== s.title && t.length <= TITLE_MAX) onUpdate({ title: t });
   }
 
@@ -137,12 +171,13 @@ function Row({ s, active, onOpen, onUpdate, onDelete }: {
           onBlur={save}
           onKeyDown={(e) => {
             if (e.key === "Enter") save();
-            if (e.key === "Escape") setEditing(false);
+            if (e.key === "Escape") stop();
           }}
           className="w-full rounded-md border border-ring bg-background px-2.5 py-2 text-sm text-foreground focus:outline-none"
         />
       ) : (
         <button
+          ref={openBtn}
           type="button"
           onClick={onOpen}
           aria-current={active ? "true" : undefined}

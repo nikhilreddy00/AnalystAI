@@ -740,7 +740,7 @@ class SessionStore:
                     DatasetVersionRow.file_path == own[0]))).first() or (await db.execute(text(
                     "SELECT 1 FROM analysis_sessions WHERE session_id <> :sid AND dataset_id "
                     "IS NULL AND position(:needle in data) > 0 LIMIT 1"),
-                    {"sid": session_id, "needle": json.dumps(own[0])})).first()):
+                    {"sid": session_id, "needle": json.dumps(own[0], ensure_ascii=False)})).first()):
                 own = None   # a dataset's file, or another pre-5.6b thread still reads it
         delete_session_files(session_id)
         if own:

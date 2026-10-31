@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowUp, Database, PanelLeft, X } from "lucide-react";
-import { useAnalysis } from "@/hooks/useAnalysis";
+import { getRun, recalledRun, useAnalysis } from "@/hooks/useAnalysis";
 import { useSessions } from "@/hooks/useSessions";
 import AgentProgressStream from "./AgentProgressStream";
 import AppHeader from "./AppHeader";
@@ -160,7 +160,7 @@ export default function ChatInterface() {
     sendMessage,
     cancelRun,
     retryRun,
-    resumed,
+    runsStarted,
     setSource,
     hydrateThread,
     hydrateFromSnapshot,
@@ -179,8 +179,7 @@ export default function ChatInterface() {
 
   const [input, setInput] = useState("");
   const [connectedSource, setConnected] = useState(false);
-  // A reopened tab reattached to its run: the conversation continues where it was.
-  const connected = connectedSource || resumed;
+  const connected = connectedSource;
   const [datasetName, setDatasetName] = useState<string | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [pane, setPane] = useState<"chat" | "report">("report");
@@ -198,6 +197,24 @@ export default function ChatInterface() {
     if (!isLoading && sessionId) void refreshSessions();
   }, [isLoading, sessionId, refreshSessions]);
 
+  // A run just started (its thread may be new): the sidebar shows it, with its "running" dot.
+  useEffect(() => {
+    if (runsStarted) void refreshSessions();
+  }, [runsStarted, refreshSessions]);
+
+  // A tab closed mid-run and reopened on plain /chat: open that run's thread (all of it).
+  useEffect(() => {
+    const runId = recalledRun();
+    if (!runId || new URLSearchParams(window.location.search).has("t")) return;
+    let live = true;
+    void getRun(runId).then((r) => {
+      if (live && r && !loaded.current) setUrl(`/chat?t=${r.session_id}`);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   // A new thread gets its URL as soon as the server names it, so a refresh or a shared tab
   // reopens it. `loaded` is set first: the URL change must not reload what is on screen.
   useEffect(() => {
@@ -212,6 +229,7 @@ export default function ChatInterface() {
     loaded.current = id;
     setMissing(false);
     setUpload(null);
+    setSource(null);   // a reopened thread has its data; an earlier upload is not its
     const view = await getThread(id);
     if (loaded.current !== id) return;   // another thread was opened meanwhile
     if (!view) {
@@ -232,13 +250,21 @@ export default function ChatInterface() {
       hydrateThread(view);
     } else {
       const snapshot = await getSessionResults(id);   // a thread from before Phase 5.6b
-      if (snapshot) hydrateFromSnapshot(snapshot);
+      if (snapshot && loaded.current === id) hydrateFromSnapshot(snapshot);
     }
-  }, [hydrateThread, hydrateFromSnapshot, resetWorkspace]);
+  }, [hydrateThread, hydrateFromSnapshot, resetWorkspace, setSource]);
 
+  // On a change of the URL's thread only (never on a re-render: a new thread has its id a moment
+  // before its URL). Back to plain /chat (the browser's back button) clears the screen; our own
+  // moves to /chat clear `loaded` first.
+  const prevParam = useRef(threadParam);
   useEffect(() => {
+    const was = prevParam.current;
+    prevParam.current = threadParam;
     if (threadParam && threadParam !== loaded.current) void openThread(threadParam);
-  }, [threadParam, openThread]);
+    else if (!threadParam && was && loaded.current) clearWorkspace();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadParam]);
 
   // /chat?dataset=<id> (the Datasets page's "New analysis"): a new thread on it, no upload.
   useEffect(() => {
@@ -300,8 +326,7 @@ export default function ChatInterface() {
     setUrl(`/chat?t=${id}`, true);
   };
 
-  const handleNewAnalysis = () => {
-    closeDrawer();
+  function clearWorkspace() {
     loaded.current = null;
     resetWorkspace();
     setConnected(false);
@@ -312,6 +337,11 @@ export default function ChatInterface() {
     setUpload(null);
     setMissing(false);
     setPane("report");
+  }
+
+  const handleNewAnalysis = () => {
+    closeDrawer();
+    clearWorkspace();
     setUrl("/chat");
   };
 
@@ -361,9 +391,10 @@ export default function ChatInterface() {
     writeCollapsed(!collapsed);
   };
 
+  /** null: deleted; undefined: not known yet (the list is loading). */
   const titleFor = (sid: string) => {
     const s = sessions.find((x) => x.session_id === sid);
-    return s ? titleOf(s) : null;
+    return s ? titleOf(s) : sessionsLoading ? undefined : null;
   };
 
   const sidebar = (

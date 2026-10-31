@@ -47,22 +47,14 @@ def _plain(events) -> list[dict]:
 
 
 def report_events(events: list[dict]) -> list[dict]:
-    """The report the user was last shown, as the UI built it (useAnalysis `handle`). A new answer
-    starts at a gate's answer and at a retry (a resume after the run had ended with an error or
-    done); a crash resume carries on the same answer. Each answer keeps what it was shown, and the
-    report canvas shows the newest one that has a report: so does this."""
-    answers: list[list[dict]] = [[]]
-    ended = False
-    for e in events:
-        kind = e.get("type")
-        if kind in ("done", "error"):
-            ended = True
-        elif kind == "approval_answered" or kind == "run_resumed" and ended:
-            answers.append([])
-            ended = False
-        if kind in REPORT_EVENTS:
-            answers[-1].append(e)
-    return next((a for a in reversed(answers) if a), [])
+    """The report the user was last shown, as the UI's reducer builds it (useAnalysis `handle`):
+    the report events since the last gate answer (a new answer starts there). A retry or a crash
+    resume carries on the same answer: the steps that re-ran replace their earlier events (the
+    reducer keeps the last of each type), and the ones before them keep theirs, so a retried
+    insight still has the charts and evidence it cites."""
+    start = max((i for i, e in enumerate(events) if e.get("type") == "approval_answered"),
+                default=0)
+    return [e for e in events[start:] if e.get("type") in REPORT_EVENTS]
 
 
 def report_hash(events: list[dict]) -> str | None:

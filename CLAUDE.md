@@ -116,6 +116,20 @@ where it failed" are `POST /runs/{id}/cancel|retry`.
   replays after `Last-Event-ID`. Audit B4: production API and the worker refuse to start without
   Postgres; dev falls back to memory and `/health` says `persistent: false` (UI: "Not saved").
 
+### Workspace (Phase 5.6b, ADR-0007)
+- **One dataset per thread.** Uploads are dataset versions (`datasets`, `dataset_versions`): same
+  bytes → that version, same name + columns → new version, else a new dataset; live sources are
+  one dataset per connection, no versions. `POST /chat` names data by `dataset_version_id` /
+  `dataset_id` (never a file path); other data on an existing thread is a 409.
+- **A report is its run's own report events** (`run_store.report_events`, segmented as the UI
+  does), sealed in `runs.report_sha256` at every terminal transition; never rebuilt from the
+  session. Provenance = the run's `provenance` + `usage` events (`llm.client.run_meter`).
+  `/api/sessions/{id}/thread` returns them; the UI replays them through `handle()`.
+- **Only `POST /chat` creates a thread** (`session_store.create`); `save` is update-only and a
+  no-op on a deleted thread. Seed tests with `create`.
+- **Deletion = tombstone + purge** (`memory/retention.py`, in the worker loop): every table with
+  user data is in `PURGE_TABLES` (a test checks); `RETENTION_DAYS` (0 = forever).
+
 ### Human Approval Gates
 - **Clarification**: intake detects ambiguous query → `human_approval` node → SSE `approval_required` event
 - **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend;
@@ -200,9 +214,13 @@ connectors/
   api_connector.py         — httpx + pagination + auth
 
 memory/
-  session_store.py         — PostgreSQL + InMemorySessionStore fallback
-  vector_store.py          — Qdrant + Ollama embedding
-  run_store.py             — runs + run_events (Postgres queue, InMemoryRunStore twin)
+  session_store.py         — threads (create/save fence, title, pin, archive, tombstone), pinned
+                             charts, datasets + versions (upload rules, split, live sources);
+                             Postgres + InMemorySessionStore twin
+  vector_store.py          — Qdrant + Ollama embedding; memory_key = dataset id; delete by thread
+  run_store.py             — runs + run_events (Postgres queue, InMemoryRunStore twin);
+                             report_events / report_hash (the seal)
+  retention.py             — purge sweep: tombstoned threads/datasets, orphans, retention
 
 sandbox/
   executor.py              — E2B wrapper: parquet→CSV, run code, parse output
@@ -215,15 +233,23 @@ api/
                              POST /runs/{id}/cancel, /runs/{id}/retry
   routes/dashboard.py      — GET/POST/DELETE pinned charts; POST /chart-feedback (user's chart-type
                              switch: owner only, swap_options re-checked, saved, label-only trace)
-  routes/connectors.py     — POST /connectors/test, /connectors/upload
+  routes/connectors.py     — POST /connectors/test, /connectors/upload (→ dataset version)
+  routes/sessions.py       — threads: list (columns + run status), PATCH, DELETE (tombstone),
+                             /thread (reports as delivered), /export.md
+  routes/datasets.py       — datasets: list, page, rename, delete (cascade), version split
+  lib/report.py            — a run's report: fold, provenance, Markdown, PPTX input
 
 frontend/src/
   app/page.tsx             — Landing page
-  app/chat/page.tsx        — Chat view (wraps ChatInterface)
+  app/chat/page.tsx        — Chat view (wraps ChatInterface; ?t=<thread>, ?dataset=<id>)
+  app/datasets/page.tsx    — Datasets view (DatasetsView; ?d=<id>)
   app/dashboard/page.tsx   — Dashboard view (AppHeader + AutoDashboard)
   components/
-    ChatInterface.tsx      — /chat "Workbench": chat column (left) drives ReportCanvas (right);
-                             Chat/Report tabs below lg; history in a <dialog> drawer
+    ChatInterface.tsx      — /chat "Workbench": sidebar (collapsible at lg, <dialog> drawer below),
+                             chat column drives ReportCanvas; thread in the URL
+    SessionSidebar.tsx     — threads by date, search, status dot, rename / pin / archive / delete
+    DatasetsView.tsx       — datasets list + page (versions, analyses, pinned charts)
+    ConfirmDialog.tsx      — native <dialog> confirm
     ReportCanvas.tsx       — one answer as a report: Summary / Evidence / Data / Review tabs
     AppHeader.tsx          — header shared by /chat and /dashboard (nav, theme toggle, sign out)
     ThemeToggle.tsx        — flips the `dark` class set pre-paint in layout.tsx (localStorage "theme")
@@ -234,7 +260,7 @@ frontend/src/
     ApprovalModal.tsx      — Human approval gate modal
     AutoDashboard.tsx      — dashboard: KPI strip, filters, cross-filtered chart grid, edit mode
     EvidencePanel.tsx      — Evidence list + <dialog> drawer (code, rows, confidence, assumptions)
-  hooks/useAnalysis.ts     — SSE stream consumer, state management
+  hooks/useAnalysis.ts     — SSE stream consumer, state management; hydrateThread (reopen)
   types/index.ts           — TypeScript mirrors of Python Pydantic models
   lib/api.ts               — fetch wrappers for dashboard endpoints
 ```
@@ -269,6 +295,8 @@ quality_retry     → {type: "quality_retry", message: "<reason>; Re-running ana
 expert_review     → {type: "expert_review", data: ExpertReview}  // every full run; Phase 5: + flags: ReviewFlag[] {index, section, claim, label, kind, reason, evidence_ids, source}; critic on the first run only
 error             → {type: "error", message: "<user-readable>", retryable?}
 done              → {type: "done"}  // ends a run (a retry can add more after it); a gate waits without one
+provenance        → {type: "provenance", model, fast_model, cards}  // Phase 5.6b: first, on a fresh start
+usage             → {type: "usage", calls: [{agent, prompt_version, model, tokens…, cost_usd}]}  // per node; the UI ignores both
 ```
 
 ---

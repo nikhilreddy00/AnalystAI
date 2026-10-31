@@ -380,6 +380,7 @@ export interface ThreadTurn {
   intact: boolean;
   stale: boolean;
   provenance: Provenance;
+  last_seq: number;
 }
 
 export type SessionStatus = "in_progress" | "completed" | "failed";

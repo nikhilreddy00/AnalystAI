@@ -237,28 +237,28 @@ async def test_r12_another_users_thread_is_a_404_on_chat(ws):  # noqa: F811
     assert (await _ask(other, session_id=sid)).status_code == 404
 
 
-def test_r13_the_report_is_what_the_ui_last_built():
+def test_r13_m4_the_report_is_what_the_ui_last_built():
+    """Reviews #1 and #2: the report the reducer shows. A new answer starts at a gate's answer;
+    a retry or a crash resume carries on, later events replacing earlier ones of their type."""
     ins = lambda n: {"type": "insight", "data": {"n": n}}  # noqa: E731
-    ev = {"type": "evidence", "data": [1]}
-    # A retry after a failure: the UI starts a new answer (the old evidence is gone from it).
-    retry = [ev, ins(1), {"type": "error", "message": "x"}, {"type": "done"},
-             {"type": "run_resumed", "message": "r"}, ins(2), {"type": "done"}]
-    assert report_events(retry) == [ins(2)]
-    # A crash resume carries on the same answer.
-    crash = [ev, {"type": "run_resumed", "message": "r"}, ins(1), {"type": "done"}]
-    assert report_events(crash) == [ev, ins(1)]
+    ev, charts = {"type": "evidence", "data": [1]}, {"type": "charts", "data": [2]}
+    review = {"type": "expert_review", "data": {}}
+    # Insight failed after charts, then "retry from where it stopped" re-ran insight only.
+    retry = [ev, charts, {"type": "error", "message": "x"}, {"type": "done"},
+             {"type": "run_resumed", "message": "r"}, ins(2), review, {"type": "done"}]
+    assert report_events(retry) == [ev, charts, ins(2), review]
+    # Killed after quality_check's events, before its checkpoint: it re-runs and emits again.
+    crash = [ev, charts, ins(1), review, {"type": "done"}, {"type": "run_resumed", "message": "r"},
+             review, {"type": "done"}]
+    assert report_events(crash) == [ev, charts, ins(1), review, review]
+    # Killed after the last checkpoint: resumed, nothing new.
+    late = [ev, ins(1), {"type": "done"}, {"type": "run_resumed", "message": "r"}]
+    assert report_events(late) == [ev, ins(1)]
     # A gate's answer starts the answer that follows it.
     gate = [ev, {"type": "approval_required"}, {"type": "approval_answered"}, ins(1),
             {"type": "done"}]
     assert report_events(gate) == [ins(1)]
-    assert report_hash(retry) == report_hash([ins(2)])   # sealed over what was shown
-    # Killed after the last checkpoint: resumed, nothing new; the answer shown is still the one.
-    late = [ev, ins(1), {"type": "done"}, {"type": "run_resumed", "message": "r"}]
-    assert report_events(late) == [ev, ins(1)]
-    # A retry that failed again before any report: the earlier answer is still the last report.
-    again = [*retry[:4], {"type": "run_resumed", "message": "r"}, {"type": "error", "message": "y"},
-             {"type": "done"}]
-    assert report_events(again) == [ev, ins(1)]
+    assert report_hash(retry) == report_hash([ev, charts, ins(2), review])
     assert json.dumps(report_events([])) == "[]" and report_hash([]) is None
 
 

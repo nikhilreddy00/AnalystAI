@@ -51,6 +51,7 @@ def turn(run: Run, events: list[dict], latest_version_id: str | None) -> dict:
     vid = prov["dataset_version_id"]
     return {
         "run_id": run.id, "question": run.input.get("message", ""), "status": run.status,
+        "last_seq": len(events),   # seqs run 1..n: a retry streams on after this one
         "error": run.error, "report": report, "report_sha256": sha,
         # A stored seal that doesn't match the events means something rewrote them.
         "intact": run.report_sha256 is None or run.report_sha256 == sha,
