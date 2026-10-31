@@ -170,6 +170,9 @@ function Row({ s, active, onOpen, onUpdate, onDelete }: {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={save}
           onKeyDown={(e) => {
+            // Consumed here: focus moves to the thread's button at once, and the same key
+            // must not then open the thread (or close the phone drawer).
+            if (e.key === "Enter" || e.key === "Escape") e.preventDefault();
             if (e.key === "Enter") save();
             if (e.key === "Escape") stop();
           }}

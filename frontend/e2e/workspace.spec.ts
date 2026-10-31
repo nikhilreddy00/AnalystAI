@@ -338,3 +338,22 @@ test("C2: a new thread's first question, then another thread opened before both 
   await expect(page).toHaveURL(/t=t-0/);
   await expect(page.getByRole("region", { name: "Chat" }).getByText("first question of a new thread")).toHaveCount(0);
 });
+
+test("plan §5: a 120-character title at 390 px, and every thread archived", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "Analyses", exact: true }).click();
+  const drawer = page.getByRole("dialog", { name: "Analyses" });
+  const row = drawer.getByTestId("thread-row").first();
+  await row.getByRole("button", { name: /^Actions for/ }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+  await drawer.getByLabel("Thread title").fill("x".repeat(120));
+  await page.keyboard.press("Enter");
+  await expect(row).toContainText("x".repeat(20));
+  await noSideScroll(page);
+  await row.getByRole("button", { name: /^Actions for/ }).click();
+  await page.getByRole("menuitem", { name: "Archive" }).click();
+  await expect(drawer.getByText("Archived · 1")).toBeVisible();
+  await expect(drawer.getByText("No analyses yet")).toHaveCount(0);   // archived, not gone
+  await noSideScroll(page);
+});

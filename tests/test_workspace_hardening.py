@@ -272,3 +272,12 @@ async def test_r14_in_memory_the_sweep_leaves_memory_points_and_files_alone(repl
     await sweep(deps, grace_s=0)
     assert deps.vector_store.points
     assert (session_data._DATA_DIR / "from-before-a-restart").exists()
+
+
+def test_a_targeted_or_drill_down_answer_is_its_report():
+    """Plan §5 'snapshot × targeted / drill-down': the compact answer (and its charts) is the
+    report; a follow-up overview in the same run isn't possible (one question per run)."""
+    tr = {"type": "targeted_response", "data": {"answer_text": "B fell 12%", "chart_configs": []}}
+    events = [{"type": "provenance"}, {"type": "agent_start"}, tr, {"type": "usage", "calls": []},
+              {"type": "done"}]
+    assert report_events(events) == [tr] and report_hash(events)
