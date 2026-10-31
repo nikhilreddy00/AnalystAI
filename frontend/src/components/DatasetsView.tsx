@@ -16,7 +16,8 @@ import { deleteDataset, getDataset, listDatasets, renameDataset, uploadFile } fr
 import type { Dataset, DatasetDetail } from "@/types";
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-const BTN = "inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground hover:bg-accent";
+const BASE = "inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm hover:bg-accent";
+const BTN = `${BASE} text-foreground`;
 
 function shape(ds: Dataset) {
   if (ds.kind === "live") return `Live ${ds.source} connection`;
@@ -142,7 +143,7 @@ function DatasetPage({ id }: { id: string }) {
             </>
           )}
           <button type="button" className={BTN} onClick={() => { setName(ds.name); setRenaming(true); }}>Rename</button>
-          <button type="button" className={`${BTN} text-destructive`} onClick={() => setConfirming(true)}>Delete</button>
+          <button type="button" className={`${BASE} text-destructive`} onClick={() => setConfirming(true)}>Delete</button>
         </div>
         {note && <p role="status" className="text-sm text-foreground">{note}</p>}
       </div>
