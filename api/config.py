@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     cors_origins: str = "http://localhost:3000"   # comma-separated
     session_data_dir: str = "./session_data"
+    # Phase 5.6b: threads idle (and datasets unused) this many days are deleted, every store
+    # included. 0 keeps everything forever.
+    retention_days: int = 0
     worker_concurrency: int = 4            # runs one worker executes at once
 
     @field_validator("supabase_url")

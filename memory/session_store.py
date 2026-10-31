@@ -158,6 +158,16 @@ class Dataset:
                 "source": self.config.type.value if self.config else "csv"}
 
 
+def _own_upload(data: str) -> tuple[str, str] | None:
+    """A pre-5.6b thread's own upload (no dataset): (path, user). A dataset's files are the
+    dataset's, deleted with it, never with a thread."""
+    s = AnalysisSession.model_validate_json(data)
+    cfg = s.connector_config
+    if s.dataset_id is None and cfg is not None and cfg.type.value == "csv" and cfg.file_path:
+        return cfg.file_path, s.user_id
+    return None
+
+
 class DatasetConflict(Exception):
     """The version already has analyses (it can no longer be split off)."""
 
@@ -336,6 +346,10 @@ class InMemorySessionStore:
         for cid in [c for c, v in self._charts.items() if v["session_id"] == session_id]:
             self._charts.pop(cid)
         delete_session_files(session_id)
+        entry = self._sessions.get(session_id)
+        if entry and (own := _own_upload(entry["data"])) and not any(
+                v.file_path == own[0] for v in self._versions.values()):
+            _delete_upload(*own)
         self._sessions.pop(session_id, None)
 
     async def count_rows(self, *, session_id: str | None = None,
@@ -665,7 +679,15 @@ class SessionStore:
         async with self._session_factory() as db:
             await db.execute(delete(DashboardChart).where(DashboardChart.session_id == session_id))
             await db.commit()
+            data = (await db.execute(select(SessionRecord.data).where(
+                SessionRecord.session_id == session_id))).scalar()
+            own = _own_upload(data) if data else None
+            if own and (await db.execute(select(DatasetVersionRow.id).where(
+                    DatasetVersionRow.file_path == own[0]))).first():
+                own = None
         delete_session_files(session_id)
+        if own:
+            _delete_upload(*own)
         async with self._session_factory() as db:   # the tombstone goes last
             await db.execute(delete(SessionRecord).where(SessionRecord.session_id == session_id))
             await db.commit()

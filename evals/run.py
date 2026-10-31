@@ -142,7 +142,7 @@ async def run_e2e_case(case: dict) -> dict:
         connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)),
         overview_done=case.get("overview_done", False),
     )
-    await deps.session_store.save(session)
+    await deps.session_store.create(session)   # as POST /chat does: save() never inserts
     sent: list[str] = []
     LLM_REQUESTS.set(sent)   # the canary scans every request this case makes
     error, approvals, seen = None, [], 0

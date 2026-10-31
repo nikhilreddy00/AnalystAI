@@ -369,3 +369,15 @@ async def test_a_database_blip_does_not_kill_the_worker(replay, recorded_llm):
     stop.set()
     await task
     assert len(calls) > 1 and (await deps.run_store.get(run_id)).status == "waiting_approval"
+
+
+async def test_the_e2e_eval_path_runs_offline(replay, recorded_llm, monkeypatch, tmp_path):
+    """The paid E2E gate's own code path (evals.run.run_e2e_case), on the recorded run at $0:
+    a change that breaks it (5.6b: save() stopped inserting) fails here, not in a paid run."""
+    import evals.run as er
+    monkeypatch.setattr(er, "UPLOADS", tmp_path.resolve() / "evals")
+    monkeypatch.setattr(er, "_DEPS", None)
+    out = await er.run_e2e_case(CASE)
+    assert out["error"] is None and out["approvals"] == ["high_null"]
+    assert not recorded_llm.responses and out["pii_canary_hits"] == 0
+    assert out["output"]["insight_report"]

@@ -173,6 +173,12 @@ async def test_delete_hides_the_thread_and_stops_its_run(ws):
     assert (await client.delete(f"/api/sessions/{sid}")).status_code == 404
     assert (await _ask(client, session_id=sid)).status_code == 404
     assert (await client.get(f"/api/sessions/{sid}/results")).status_code == 404
+    rid = run["run_id"]
+    for r in (await client.get(f"/runs/{rid}"), await client.get(f"/runs/{rid}/events"),
+              await client.post(f"/runs/{rid}/cancel"), await client.post(f"/runs/{rid}/retry"),
+              await client.get(f"/runs/{rid}/report.pptx"),
+              await client.get(f"/api/sessions/{sid}/thread")):
+        assert r.status_code == 404   # a deleted thread's runs are gone too
 
 
 async def test_pins_only_on_your_own_live_thread(ws):

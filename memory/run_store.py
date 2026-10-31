@@ -177,6 +177,22 @@ class InMemoryRunStore:
         return [replace(r) for r in self._runs.values()
                 if r.session_id == session_id and r.user_id == user_id]
 
+    async def runs_by_session(self) -> dict[str, list[str]]:
+        """Every run id, by thread (the orphan sweep)."""
+        out: dict[str, list[str]] = {}
+        for r in self._runs.values():
+            out.setdefault(r.session_id, []).append(r.id)
+        return out
+
+    async def purge_runs(self, run_ids: list[str]) -> None:
+        for rid in run_ids:
+            self._runs.pop(rid, None)
+
+    async def count_rows(self, run_ids: list[str], session_id: str) -> dict[str, int]:
+        return {"runs": sum(1 for r in self._runs.values()
+                            if r.id in run_ids or r.session_id == session_id),
+                "run_events": sum(len(self._runs[r].events) for r in run_ids if r in self._runs)}
+
     async def latest_statuses(self, user_id: str, session_ids: list[str]) -> dict[str, str]:
         """Each thread's latest run status (the sidebar's dot)."""
         out: dict[str, str] = {}
@@ -332,6 +348,31 @@ class RunStore:
             sha = report_hash([json.loads(p) for p in rows])
         await db.execute(text("UPDATE runs SET report_sha256 = :h WHERE id = :id"),
                          {"id": run_id, "h": sha})
+
+    async def runs_by_session(self) -> dict[str, list[str]]:
+        async with self._db() as db:
+            rows = (await db.execute(text("SELECT session_id, id FROM runs"))).all()
+        out: dict[str, list[str]] = {}
+        for sid, rid in rows:
+            out.setdefault(sid, []).append(rid)
+        return out
+
+    async def purge_runs(self, run_ids: list[str]) -> None:
+        if not run_ids:
+            return
+        async with self._db() as db:   # events first: a run row is the marker the sweep retries by
+            await db.execute(text("DELETE FROM run_events WHERE run_id = ANY(:ids)"),
+                             {"ids": run_ids})
+            await db.execute(text("DELETE FROM runs WHERE id = ANY(:ids)"), {"ids": run_ids})
+            await db.commit()
+
+    async def count_rows(self, run_ids: list[str], session_id: str) -> dict[str, int]:
+        async with self._db() as db:
+            runs, events = (await db.execute(text(
+                "SELECT (SELECT count(*) FROM runs WHERE id = ANY(:ids) OR session_id = :sid), "
+                "       (SELECT count(*) FROM run_events WHERE run_id = ANY(:ids))"),
+                {"ids": run_ids, "sid": session_id})).one()
+        return {"runs": runs, "run_events": events}
 
     async def for_session(self, session_id: str, user_id: str) -> list[Run]:
         async with self._db() as db:

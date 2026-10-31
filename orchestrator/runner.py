@@ -326,10 +326,12 @@ async def supervise(run: Run, deps: Deps, heartbeat_s: float = HEARTBEAT_S) -> s
 
 async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
                poll_s: float = 0.5, heartbeat_s: float = HEARTBEAT_S) -> None:
-    """The worker loop: reap expired leases, claim queued runs, run up to `concurrency` at once.
+    """The worker loop: reap expired leases, purge deleted threads and datasets (memory/retention.py),
+    claim queued runs, run up to `concurrency` at once.
     ponytail: polls the queue every `poll_s`; LISTEN/NOTIFY if idle polling ever matters."""
+    from memory.retention import SWEEP_S, sweep
     tasks: set[asyncio.Task] = set()
-    last_reap = 0.0
+    last_reap = last_sweep = 0.0
     try:
         while not stop.is_set():
             try:
@@ -337,6 +339,9 @@ async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
                     for run_id, status in await deps.run_store.reap():
                         logger.warning("reaped run %s → %s", run_id, status)
                     last_reap = time.monotonic()
+                if time.monotonic() - last_sweep > SWEEP_S:   # deletes and retention
+                    last_sweep = time.monotonic()
+                    await sweep(deps)
                 if len(tasks) < concurrency and (run := await deps.run_store.claim()):
                     task = asyncio.create_task(supervise(run, deps, heartbeat_s))
                     tasks.add(task)
