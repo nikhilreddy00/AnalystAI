@@ -80,25 +80,21 @@ async function sniffColumnCount(file: File): Promise<number | null> {
   return null;
 }
 
-import type { UploadResponse, ExistingSessionHint } from "@/types";
+import type { DataSource, UploadResponse } from "@/types";
+import { uploadFile as apiUpload } from "@/lib/api";
 
 interface ConnectorSetupProps {
-  onConnectorReady: (payload: {
-    connector_config: Record<string, unknown>;
-    file_hash: string;
-    dataset_name: string;
-  }) => void;
-  onLoadExistingSession: (sessionId: string) => void;
+  /** The data a new analysis is about; `upload` says how an upload was filed (Phase 5.6b). */
+  onConnectorReady: (source: DataSource, upload?: UploadResponse) => void;
 }
 
-export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession }: ConnectorSetupProps) {
+export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps) {
   const [type, setType] = useState<ConnectorType>("csv");
   const [config, setConfig] = useState<Partial<ConnectorConfig>>({});
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [preview, setPreview] = useState<FilePreview | null>(null);
-  const [pendingUpload, setPendingUpload] = useState<UploadResponse | null>(null);
 
   const update = (key: string, value: string) =>
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -118,26 +114,9 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
   async function uploadFile(file: File) {
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-
-      const res = await fetch(`${API_URL}/connectors/upload`, {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: form,
-      });
-      const data = await res.json() as UploadResponse;
-      if (!res.ok) throw new Error((data as unknown as { detail?: string }).detail || "Upload failed");
+      const data = await apiUpload(file);
       setStatus({ ok: true, message: `✓ ${data.filename} uploaded` });
-      if (data.existing_session) {
-        setPendingUpload(data);
-        return;
-      }
-      onConnectorReady({
-        connector_config: data.connector_config,
-        file_hash: data.file_hash,
-        dataset_name: data.dataset_name,
-      });
+      onConnectorReady({ dataset_version_id: data.dataset_version_id, dataset_name: data.dataset_name }, data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Upload failed";
       setStatus({ ok: false, message });
@@ -145,25 +124,6 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
     } finally {
       setUploading(false);
     }
-  }
-
-  function acceptLoadPrevious(hint: ExistingSessionHint) {
-    setPendingUpload(null);
-    onLoadExistingSession(hint.session_id);
-  }
-
-  function acceptRunFresh(upload: UploadResponse) {
-    setPendingUpload(null);
-    onConnectorReady({
-      connector_config: upload.connector_config,
-      file_hash: upload.file_hash,
-      dataset_name: upload.dataset_name,
-    });
-  }
-
-  function cancelDedup() {
-    setPendingUpload(null);
-    // Intentionally do NOT delete the uploaded file from `uploads/` — orphan-file GC is out of scope.
   }
 
   function clearPreview() {
@@ -186,7 +146,6 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
       setStatus({ ok: data.success, message: data.message });
       if (data.success) onConnectorReady({
         connector_config: body as unknown as Record<string, unknown>,
-        file_hash: "",
         dataset_name: body.table_name || body.spreadsheet_id || body.url || (body.type === "sql" ? "Database" : ""),
       });
     } catch (err: unknown) {
@@ -351,43 +310,6 @@ export default function ConnectorSetup({ onConnectorReady, onLoadExistingSession
         </div>
       )}
 
-      {pendingUpload?.existing_session && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="dedup-title" className="bg-card text-foreground rounded-lg border border-border p-6 max-w-md shadow-xl">
-            <h3 id="dedup-title" className="text-base font-semibold mb-2">
-              Previously analyzed dataset
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              <span className="font-medium">{pendingUpload.filename}</span> was analyzed on{" "}
-              {new Date(pendingUpload.existing_session.updated_at).toLocaleDateString()}.
-              Load the previous analysis or run fresh?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={cancelDedup}
-                className="px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => acceptRunFresh(pendingUpload)}
-                className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted"
-              >
-                Run fresh
-              </button>
-              <button
-                type="button"
-                onClick={() => acceptLoadPrevious(pendingUpload.existing_session!)}
-                className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
-              >
-                Load previous
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

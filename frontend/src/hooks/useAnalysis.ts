@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL, downloadLatestReportPptx, getAuthHeaders } from "@/lib/api";
-import type { AgentEvent, ApprovalRequiredEvent, BriefingData, ChatMessage, ChartConfig, Evidence, ExpertReview, InsightReport, Run, SessionResultsSnapshot, TargetedResponse } from "@/types";
+import type { AgentEvent, ApprovalRequiredEvent, BriefingData, ChatMessage, ChartConfig, DataSource, Evidence, ExpertReview, InsightReport, Run, SessionResultsSnapshot, TargetedResponse, ThreadView } from "@/types";
 
 // Phase 5.6a: a run is a record on the server. POST /chat returns its id; progress streams from
 // GET /runs/{id}/events, which replays every event after Last-Event-ID. The active run is kept in
 // localStorage, so a refreshed or reopened tab attaches again and rebuilds the same chat.
+// Phase 5.6b: a thread reopened from the sidebar (/chat?t=<id>) replays each run's stored report
+// events through the same handler as the live stream, so it shows exactly what was delivered.
 const ACTIVE_RUN = "analystai:activeRun";
 const GATES = ["clarification", "high_null"];
 const MAX_RECONNECTS = 8;
@@ -85,9 +87,7 @@ export function useAnalysis() {
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequiredEvent | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [resumed, setResumed] = useState(false);
-  const connectorConfig = useRef<Record<string, unknown> | null>(null);
-  const fileHashRef = useRef<string | null>(null);
-  const datasetNameRef = useRef<string | null>(null);
+  const source = useRef<DataSource | null>(null);   // the data a new thread is about
   const run = useRef<{ id: string | null; seq: number }>({ id: null, seq: 0 });
   const acc = useRef<Artifacts>(noArtifacts());
   const sending = useRef(false);   // a double click must not post twice
@@ -254,7 +254,8 @@ export function useAnalysis() {
   // second mount (React dev mounts twice) from starting a second replay of the same run.
   useEffect(() => {
     const runId = recalled();
-    if (!runId) return;
+    // A thread link wins: opening it attaches to its own active run (hydrateThread).
+    if (!runId || new URLSearchParams(window.location.search).has("t")) return;
     let live = true;
     void (async () => {
       const r = await getRun(runId);
@@ -274,7 +275,8 @@ export function useAnalysis() {
   }, [attach]);
 
   const sendMessage = useCallback(
-    async (content: string, isApproval = false, approvalContext: string | null = null) => {
+    async (content: string, isApproval = false, approvalContext: string | null = null,
+           data: Partial<DataSource> | null = null) => {
       if (sending.current) return;
       sending.current = true;
       setIsLoading(true);
@@ -296,9 +298,7 @@ export function useAnalysis() {
             session_id: sessionId,
             is_approval: isApproval,
             approval_context: approvalContext,
-            connector_config: connectorConfig.current,
-            file_hash: fileHashRef.current,
-            dataset_name: datasetNameRef.current,
+            ...(data ?? source.current ?? {}),   // the server resolves it to your own dataset
             client_request_id: crypto.randomUUID(),   // a double submit starts one run
           }),
         });
@@ -340,6 +340,43 @@ export function useAnalysis() {
     }
     await attach(runId, run.current.id === runId ? run.current.seq : 0, false);
   }, [attach]);
+
+  /** Rebuild a thread from its runs: each question, then its report replayed through `handle`
+   *  (the live stream's own reducer). A run still going attaches to its events instead. */
+  const hydrateThread = useCallback((view: ThreadView) => {
+    run.current = { id: null, seq: 0 };
+    remember(null);
+    setSessionId(view.session_id);
+    setIsLoading(false);
+    setPendingApproval(null);
+    setSuggestedQuestions([]);
+    setAgentEvents([]);
+    setMessages([]);
+    const last = view.turns[view.turns.length - 1];
+    const active = last && ["queued", "running", "waiting_approval"].includes(last.status) ? last : null;
+    for (const t of view.turns) {
+      if (t === active) break;
+      setMessages((prev) => [...prev, { role: "user", content: t.question }]);
+      startBubble();
+      for (const e of t.report) handle(e, true);
+      if (!t.report.length) {
+        // Only the latest run can be retried (the server refuses older ones).
+        const retry = t === last && t.status !== "completed" ? t.run_id : undefined;
+        patchLast((m) => ({ ...m, content: `Error: ${t.error ?? "This question has no report."}`, runId: retry }));
+      }
+      finish();
+      if (t.report.length) {
+        patchLast((m) => ({ ...m, delivered: { runId: t.run_id, reportSha256: t.report_sha256,
+                                              intact: t.intact, stale: t.stale, provenance: t.provenance } }));
+      }
+    }
+    if (active) {
+      setIsLoading(active.status !== "waiting_approval");
+      void attach(active.run_id, 0, true);
+    }
+    // The helpers it calls only use state setters and refs, which never change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handle, attach]);
 
   const hydrateFromSnapshot = useCallback((snapshot: SessionResultsSnapshot) => {
     run.current = { id: null, seq: 0 };
@@ -391,13 +428,10 @@ export function useAnalysis() {
     sendMessage,
     cancelRun,
     retryRun,
-    setConnectorConfig: (cfg: Record<string, unknown>) => {
-      connectorConfig.current = cfg;
+    setSource: (src: DataSource | null) => {
+      source.current = src;
     },
-    setUploadMeta: (hash: string | null, name: string | null) => {
-      fileHashRef.current = hash;
-      datasetNameRef.current = name;
-    },
+    hydrateThread,
     hydrateFromSnapshot,
     resetWorkspace: () => {
       run.current = { id: null, seq: 0 };
@@ -409,9 +443,7 @@ export function useAnalysis() {
       setPendingApproval(null);
       setSuggestedQuestions([]);
       setResumed(false);
-      connectorConfig.current = null;
-      fileHashRef.current = null;
-      datasetNameRef.current = null;
+      source.current = null;
     },
   };
 }

@@ -5,7 +5,7 @@
 // chat column on the left drives it.
 
 import { useId, useRef, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, FileText, RefreshCw } from "lucide-react";
 import BriefingPanel from "./BriefingPanel";
 import ChartRenderer from "./ChartRenderer";
 import EvidencePanel from "./EvidencePanel";
@@ -14,7 +14,7 @@ import InsightPanel from "./InsightPanel";
 import KPICard, { KPIStrip } from "./KPICard";
 import PinButton from "./PinButton";
 import TargetedResponsePanel from "./TargetedResponsePanel";
-import { downloadLatestReportPptx } from "@/lib/api";
+import { downloadLatestReportPptx, downloadReportPptx, downloadThreadMarkdown } from "@/lib/api";
 import type { ChatMessage } from "@/types";
 
 type Tab = "summary" | "evidence" | "data" | "review";
@@ -28,13 +28,22 @@ interface Props {
   onFollowUp: (q: string) => void;
   /** Prefills the chat box (a chart's "Change variables…"). */
   onDraft?: (q: string) => void;
+  /** "Re-run on current data" (a stale report): a new report beside this one. */
+  onRerun?: () => void;
+  /** A thread's title by id (the earlier analyses a report consulted). */
+  titleFor?: (sessionId: string) => string | null;
+}
+
+function day(iso: string | null | undefined) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
 }
 
 export function hasReport(m: ChatMessage) {
   return !m.isStreaming && !!(m.insight || m.charts?.length || m.targetedResponse || m.briefing || m.evidence?.length);
 }
 
-export default function ReportCanvas({ message, question, sessionId, isLatest, onFollowUp, onDraft }: Props) {
+export default function ReportCanvas({ message, question, sessionId, isLatest, onFollowUp, onDraft, onRerun, titleFor }: Props) {
+  const delivered = message.delivered;
   // Phase 5: row-count / profile charts describe the table, so they live in the Data tab.
   const summaryCharts = (message.charts ?? []).filter((c) => c.placement !== "data");
   const dataCharts = (message.charts ?? []).filter((c) => c.placement === "data");
@@ -62,14 +71,17 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
     tabRefs.current[next.id]?.focus();
   }
 
-  async function exportPptx() {
+  async function exportWith(fn: () => Promise<void>) {
     setExportError(false);
     try {
-      await downloadLatestReportPptx();
+      await fn();
     } catch {
       setExportError(true);
     }
   }
+  // A stored report exports itself; a live one is the thread's latest on the server.
+  const pptx = delivered ? () => downloadReportPptx(delivered.runId) : isLatest ? downloadLatestReportPptx : null;
+  const memory = message.insight?.memory_used ?? [];
 
   const kpis = message.briefing?.kpis ?? [];
   const hasEvidence = !!message.evidence?.length;
@@ -83,7 +95,8 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
     <ChartRenderer
       key={chart.id}
       config={chart}
-      sessionId={sessionId}
+      // A delivered report never changes: switching a chart type on it stays on screen only.
+      sessionId={delivered ? null : sessionId}
       onEvidence={hasEvidence ? openEvidence : undefined}
       onDraft={onDraft}
       action={(current) => sessionId && <PinButton sessionId={sessionId} chart={current} />}
@@ -97,20 +110,52 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
           <p className="text-xs text-muted-foreground">Report</p>
           <h2 className="text-lg font-semibold leading-snug text-foreground text-balance">{question || "Analysis"}</h2>
         </div>
-        {isLatest && message.insight && (
-          <div className="flex items-center gap-2">
-            {exportError && <span className="text-xs text-destructive">Export failed. Try again.</span>}
+        <div className="flex flex-wrap items-center gap-2">
+          {exportError && <span className="text-xs text-destructive">Export failed. Try again.</span>}
+          {pptx && message.insight && (
             <button
               type="button"
-              onClick={exportPptx}
+              onClick={() => void exportWith(pptx)}
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground hover:bg-accent"
             >
               <Download className="h-3.5 w-3.5" />
               PowerPoint
             </button>
-          </div>
-        )}
+          )}
+          {sessionId && !message.isStreaming && (
+            <button
+              type="button"
+              onClick={() => void exportWith(() => downloadThreadMarkdown(sessionId))}
+              title="Every question in this analysis, with its evidence"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground hover:bg-accent"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Markdown
+            </button>
+          )}
+        </div>
       </header>
+
+      {delivered?.stale && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+          <span className="text-foreground">The data has changed since this report. It shows the data as it was then.</span>
+          {onRerun && (
+            <button
+              type="button"
+              onClick={onRerun}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:bg-accent"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Re-run on current data
+            </button>
+          )}
+        </div>
+      )}
+      {delivered && !delivered.intact && (
+        <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          This stored report doesn&apos;t match the seal recorded when it was delivered.
+        </p>
+      )}
 
       {tabs.length > 1 && (
         <div role="tablist" aria-label="Report sections" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border [scrollbar-width:none]" onKeyDown={onTabKey}>
@@ -162,8 +207,27 @@ export default function ReportCanvas({ message, question, sessionId, isLatest, o
                 />
               </div>
             )}
+            {memory.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Also considered {memory.length === 1 ? "an earlier analysis" : `${memory.length} earlier analyses`} of this dataset:{" "}
+                {memory.map((m, i) => (
+                  <span key={m.session_id}>
+                    {i > 0 && "; "}
+                    {titleFor?.(m.session_id) ?? "a deleted analysis"} ({day(m.generated_at)})
+                  </span>
+                ))}
+                . They are context, not evidence.
+              </p>
+            )}
             {summaryCharts.length > 0 && (
               <div className="grid gap-3 xl:grid-cols-2">{summaryCharts.map(chartCard)}</div>
+            )}
+            {delivered && (
+              <p className="text-xs text-muted-foreground" data-testid="provenance">
+                Delivered {day(delivered.provenance.finished_at)} · {delivered.provenance.model ?? "model unknown"} ·{" "}
+                {delivered.provenance.llm_calls} model calls · ${delivered.provenance.cost_usd.toFixed(4)}
+                {delivered.reportSha256 && <> · sha256 {delivered.reportSha256.slice(0, 12)}</>}
+              </p>
             )}
           </>
         )}

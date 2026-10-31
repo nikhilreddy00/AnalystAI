@@ -10,6 +10,7 @@ import ThemeToggle from "./ThemeToggle";
 
 const NAV = [
   { href: "/chat", label: "Analysis" },
+  { href: "/datasets", label: "Datasets" },
   { href: "/dashboard", label: "Dashboard" },
 ];
 
@@ -34,7 +35,7 @@ export default function AppHeader({
   }, []);
 
   return (
-    <header className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-border bg-card px-3 sm:px-4">
+    <header className="flex h-12 flex-shrink-0 items-center gap-1 border-b border-border bg-card px-3 sm:gap-2 sm:px-4">
       {start}
       <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
         <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -42,7 +43,7 @@ export default function AppHeader({
         </span>
         <span className="hidden sm:inline">AnalystAI</span>
       </Link>
-      <nav className="ml-2 flex gap-0.5" aria-label="Main">
+      <nav className="ml-1 flex min-w-0 gap-0.5 overflow-x-auto [scrollbar-width:none] sm:ml-2" aria-label="Main">
         {NAV.map(({ href, label }) => {
           const active = pathname === href;
           return (
@@ -50,7 +51,7 @@ export default function AppHeader({
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`rounded-md px-2.5 py-1.5 text-sm ${
+              className={`whitespace-nowrap rounded-md px-2 py-1.5 text-sm sm:px-2.5 ${
                 active ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
               }`}
             >

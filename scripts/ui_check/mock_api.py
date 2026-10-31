@@ -10,6 +10,11 @@ the Phase 5 e2e-01 gate output: claims with evidence chips), or for the reconnec
 (frontend/e2e/reconnect.spec.ts): drop = full, the first connection cut after 8 events;
 trickle = full, one event every 0.4 s. GET /__served lists every seq sent, per connection;
 GET /__posts counts POST /chat calls since the mock started.
+
+Phase 5.6b workspace (frontend/e2e/workspace.spec.ts): threads live in memory (list, PATCH,
+DELETE, /thread built from the same SSE fixture the live run streams, so a reopened report must
+render as the live one did), one dataset, and test hooks: POST /__reset, POST /__seed?n=200
+(threads), POST /__stale (a newer dataset version).
 """
 
 import json
@@ -24,6 +29,25 @@ SCEN = D + "/scenario"  # file holding full|error|approval|slow|insight|drop|tri
 QUESTION = "Give me an overview of this sales data"
 lock = threading.Lock()
 state = {"connections": [], "served": set(), "posts": 0}   # seqs sent, per connection
+REPORT = ("briefing", "evidence", "charts", "insight", "expert_review", "targeted_response")
+DATASET = {"id": "ds-1", "name": "sales_nov", "kind": "upload", "source": "csv",
+           "created_at": "2026-10-27T11:00:00Z", "analyses": 1}
+VERSION = {"id": "v-1", "version": 1, "content_hash": "ab12cd34ef56" * 5 + "abcd", "rows": 3000,
+           "columns": ["date", "region", "segment", "revenue"], "created_at": "2026-10-27T11:00:00Z"}
+
+
+def thread(sid="ui-check", title="sales_nov · " + QUESTION, updated="2026-10-27T12:00:00Z",
+           run_status="completed") -> dict:
+    return {"session_id": sid, "title": title, "dataset_id": "ds-1", "dataset_name": "sales_nov",
+            "questions": QUESTION, "pinned": False, "archived": False, "status": "completed",
+            "run_status": run_status, "created_at": updated, "updated_at": updated}
+
+
+def reset() -> None:
+    state.update(threads={"ui-check": thread()}, stale=False)
+
+
+reset()
 
 
 def scenario() -> str:
@@ -94,20 +118,33 @@ class H(BaseHTTPRequestHandler):
         if p == "/runs/run-1/events":
             return self._stream()
         if p == "/api/sessions":
-            return self._json(
-                [
-                    {
-                        "session_id": "ui-check",
-                        "dataset_name": "sales_nov.csv",
-                        "original_query": "Give me an overview of this sales data",
-                        "row_count": 3000,
-                        "column_count": 11,
-                        "status": "completed",
-                        "created_at": "2026-10-27T11:00:00Z",
-                        "updated_at": "2026-10-27T12:00:00Z",
-                    }
-                ]
-            )
+            with lock:
+                items = sorted(state["threads"].values(), key=lambda t: t["updated_at"],
+                               reverse=True)
+            return self._json(items)
+        if p.startswith("/api/sessions/") and p.endswith("/thread"):
+            sid = p.split("/")[3]
+            with lock:
+                t = state["threads"].get(sid)
+            if not t:
+                return self._json({"detail": "Session not found"}, 404)
+            report = [e for e in run_events() if e.get("type") in REPORT]
+            return self._json({**t, "turns": [{
+                "run_id": "run-1", "question": QUESTION, "status": "completed", "error": None,
+                "report": report, "report_sha256": "f" * 64, "intact": True,
+                "stale": state["stale"],
+                "provenance": {"dataset_version_id": "v-1", "model": "claude-sonnet-4-6",
+                               "fast_model": "claude-haiku-4-5", "cards": {}, "prompts": [],
+                               "llm_calls": 7, "cost_usd": 0.1085, "input_tokens": 0,
+                               "output_tokens": 0, "started_at": "2026-10-27T11:58:00Z",
+                               "finished_at": "2026-10-27T12:00:00Z"}}]})
+        if p == "/api/datasets":
+            return self._json([{**DATASET, "latest": VERSION, "versions": [VERSION]}])
+        if p.startswith("/api/datasets/"):
+            with lock:
+                threads = list(state["threads"].values())
+            return self._json({**DATASET, "latest": VERSION, "versions": [VERSION],
+                               "threads": threads, "charts": []})
         if p == "/dashboard/latest":
             return self._json(json.load(open(D + "/dash_latest.json")))
         if p == "/dashboard/latest/data":
@@ -121,17 +158,27 @@ class H(BaseHTTPRequestHandler):
         self.rfile.read(n)
         p = self.path.split("?")[0]
         if p == "/connectors/upload":
-            return self._json(
-                {
-                    "filename": "sales_nov.csv",
-                    "status": "ok",
-                    "file_path": "/tmp/x.csv",
-                    "file_hash": "h",
-                    "dataset_name": "sales_nov.csv",
-                    "existing_session": None,
-                    "connector_config": {"type": "csv", "file_path": "/tmp/x.csv"},
-                }
-            )
+            return self._json({
+                "status": "new_dataset", "filename": "sales_nov.csv",
+                "dataset": {**DATASET, "analyses": 0, "latest": VERSION, "versions": [VERSION]},
+                "dataset_id": "ds-1", "dataset_version_id": "v-1", "version": 1,
+                "dataset_name": "sales_nov", "file_hash": VERSION["content_hash"]})
+        if p == "/__reset":
+            with lock:
+                reset()
+            return self._json({})
+        if p == "/__stale":
+            with lock:
+                state["stale"] = True
+            return self._json({})
+        if p == "/__seed":
+            n = int(self.path.split("n=")[1]) if "n=" in self.path else 200
+            with lock:
+                for i in range(n):
+                    day = f"2026-{10 - i // 60:02d}-{28 - (i % 28):02d}T10:00:00Z"
+                    state["threads"][f"t-{i}"] = thread(f"t-{i}", f"sales_nov · question {i}",
+                                                        day, run_status=None)
+            return self._json({})
         if p == "/chat":
             with lock:
                 state["posts"] += 1
@@ -145,6 +192,22 @@ class H(BaseHTTPRequestHandler):
         if p.startswith("/auth/v1/token"):
             return self._json({})
         return self._json({})
+
+    def do_PATCH(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        body = json.loads(self.rfile.read(n) or b"{}")
+        sid = self.path.split("?")[0].split("/")[3]
+        with lock:
+            t = state["threads"].get(sid)
+            if t:
+                t.update(body)
+        return self._json(t, 200) if t else self._json({"detail": "Session not found"}, 404)
+
+    def do_DELETE(self):
+        sid = self.path.split("?")[0].split("/")[3]
+        with lock:
+            gone = state["threads"].pop(sid, None)
+        return self._json({"deleted": True}, 202) if gone else self._json({}, 404)
 
     def _stream(self):
         s, events = scenario(), run_events()

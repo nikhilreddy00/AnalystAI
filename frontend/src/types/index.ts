@@ -105,6 +105,12 @@ export interface InsightReport {
   analyst_view?: AnalystDetail | null;       // PROMPT-3
   additional_issues_note?: string;           // PROMPT-4: "N additional minor issues..."
   generated_at: string;
+  memory_used?: MemoryRef[];                 // Phase 5.6b: earlier analyses it consulted
+}
+
+export interface MemoryRef {
+  session_id: string;
+  generated_at: string;
 }
 
 // Phase 6: senior-expert critique from the 7th agent
@@ -338,19 +344,87 @@ export interface ChatMessage {
   evidence?: Evidence[];       // Phase 3: one item per analysis finding
   isStreaming?: boolean;
   runId?: string;              // Phase 5.6a: an error bubble's run, for "retry from where it stopped"
+  delivered?: DeliveredMeta;   // Phase 5.6b: a reopened report: its run, seal and provenance
+}
+
+/** What a stored report ran under (GET /api/sessions/{id}/thread). */
+export interface Provenance {
+  dataset_version_id: string | null;
+  model: string | null;
+  fast_model: string | null;
+  cards: Record<string, string>;
+  prompts: { agent: string; prompt_version: string; model: string }[];
+  llm_calls: number;
+  cost_usd: number;
+  input_tokens: number;
+  output_tokens: number;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface DeliveredMeta {
+  runId: string;
+  reportSha256: string | null;
+  intact: boolean;
+  stale: boolean;
+  provenance: Provenance;
+}
+
+export interface ThreadTurn {
+  run_id: string;
+  question: string;
+  status: Run["status"];
+  error: string | null;
+  report: AgentEvent[];
+  report_sha256: string | null;
+  intact: boolean;
+  stale: boolean;
+  provenance: Provenance;
 }
 
 export type SessionStatus = "in_progress" | "completed" | "failed";
 
 export interface SessionSummary {
   session_id: string;
+  title: string | null;
+  dataset_id: string | null;
   dataset_name: string | null;
-  original_query: string | null;
-  row_count: number | null;
-  column_count: number | null;
+  questions: string;           // every question, newline-separated (search)
+  pinned: boolean;
+  archived: boolean;
   status: SessionStatus;
+  run_status?: Run["status"] | null;   // the latest run (the sidebar's dot)
   created_at: string;
   updated_at: string;
+}
+
+export interface ThreadView extends SessionSummary {
+  turns: ThreadTurn[];
+}
+
+export interface DatasetVersion {
+  id: string;
+  version: number;
+  content_hash: string;
+  rows: number | null;
+  columns: string[];
+  created_at: string;
+}
+
+export interface Dataset {
+  id: string;
+  name: string;
+  kind: "upload" | "live";
+  source: string;
+  created_at: string;
+  analyses: number;
+  latest: DatasetVersion | null;
+  versions: DatasetVersion[];
+}
+
+export interface DatasetDetail extends Dataset {
+  threads: SessionSummary[];
+  charts: ChartConfig[];
 }
 
 export interface SessionResultsSnapshot {
@@ -368,21 +442,23 @@ export interface SessionResultsSnapshot {
   conversation_history: { role: "user" | "assistant" | "system"; content: string }[];
 }
 
-export interface ExistingSessionHint {
-  session_id: string;
-  dataset_name: string | null;
-  updated_at: string;
-  original_query: string | null;
+export interface UploadResponse {
+  status: "existing" | "new_version" | "new_dataset";
+  filename: string;
+  dataset: Dataset;
+  dataset_id: string;
+  dataset_version_id: string;
+  version: number;
+  dataset_name: string;
+  file_hash: string;
 }
 
-export interface UploadResponse {
-  status: string;
-  filename: string;
-  file_path: string;
-  connector_config: Record<string, unknown>;
-  file_hash: string;
+/** The data a new thread is about: an uploaded version, or a live connection. */
+export interface DataSource {
+  dataset_version_id?: string;
+  dataset_id?: string;
+  connector_config?: Record<string, unknown>;
   dataset_name: string;
-  existing_session: ExistingSessionHint | null;
 }
 
 export interface ColumnRoles {
