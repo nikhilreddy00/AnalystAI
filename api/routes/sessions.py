@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
 
 from api.auth import UserProfile, get_current_user
@@ -140,6 +140,51 @@ async def get_session_data(
         media_type="application/octet-stream",
         filename=f"{session.dataset_name or session_id}.parquet",
     )
+
+
+async def _turns(request: Request, session_id: str, user_id: str) -> tuple:
+    store = _store(request)
+    summary = await store.get_summary(session_id, user_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Session not found")
+    from api.lib.report import turn
+    latest = None
+    if summary.dataset_id and (ds := await store.get_dataset(summary.dataset_id, user_id)):
+        latest = ds.latest.id if ds.latest else None
+    rs = request.app.state.run_store
+    # One run per question (a gate answer resumes its question's run; "run fresh" re-asks it).
+    turns = [turn(r, [e for _, e in await rs.events_after(r.id, 0)], latest)
+             for r in await rs.for_session(session_id, user_id)]
+    return summary, turns
+
+
+@router.get("/{session_id}/thread")
+@limiter.limit("60/minute")
+async def get_thread(
+    request: Request,
+    session_id: str,
+    current_user: UserProfile = Depends(get_current_user),
+):
+    """Every question in the thread with the report it delivered, exactly as delivered (its run's
+    report events and their sha256), and what it ran under."""
+    summary, turns = await _turns(request, session_id, current_user.uid)
+    return {**summary.model_dump(mode="json"), "turns": turns}
+
+
+@router.get("/{session_id}/export.md")
+@limiter.limit("30/minute")
+async def export_markdown(
+    request: Request,
+    session_id: str,
+    current_user: UserProfile = Depends(get_current_user),
+):
+    from api.lib.report import to_markdown
+    summary, turns = await _turns(request, session_id, current_user.uid)
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in (summary.title or "thread"))
+    return PlainTextResponse(
+        to_markdown(summary.title or "Analysis", summary.dataset_name, turns),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{safe[:60]}.md"'})
 
 
 @router.patch("/{session_id}")

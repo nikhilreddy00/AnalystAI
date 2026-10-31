@@ -465,6 +465,17 @@ class InMemorySessionStore:
             return None
         return self._dataset(v.dataset_id), v
 
+    async def version_by_path(self, file_path: str,
+                              user_id: str) -> tuple[Dataset | None, DatasetVersion] | None:
+        """The version stored at this upload path: (its dataset, or None if that dataset was
+        deleted, version). None: the path is no dataset's (a pre-5.6b upload)."""
+        v = next((v for v in self._versions.values() if v.file_path == file_path
+                  and self._datasets[v.dataset_id]["user_id"] == user_id), None)
+        if v is None:
+            return None
+        return (self._dataset(v.dataset_id) if v.dataset_id in self._live_datasets(user_id)
+                else None), v
+
     async def list_datasets(self, user_id: str) -> list[tuple[Dataset, int]]:
         """(dataset, live threads using it), newest first."""
         out = [(self._dataset(did), sum(1 for e in self._sessions.values()
@@ -840,6 +851,16 @@ class SessionStore:
         if ds is None:
             return None
         return ds, next(v for v in ds.versions if v.id == version_id)
+
+    async def version_by_path(self, file_path: str,
+                              user_id: str) -> tuple[Dataset | None, DatasetVersion] | None:
+        async with self._session_factory() as db:
+            vrow = (await db.execute(select(DatasetVersionRow).where(
+                DatasetVersionRow.file_path == file_path,
+                DatasetVersionRow.user_id == user_id))).scalars().first()
+        if vrow is None:
+            return None
+        return await self.get_dataset(vrow.dataset_id, user_id), self._version(vrow)
 
     async def list_datasets(self, user_id: str) -> list[tuple[Dataset, int]]:
         async with self._session_factory() as db:

@@ -4,6 +4,10 @@ worker claims it from the queue (Postgres `FOR UPDATE SKIP LOCKED`), and every p
 written to `run_events` so any client can replay it.
 
 Status: queued → running → waiting_approval → completed | failed | cancelled.
+A run's report (Phase 5.6b) is its own report events, in order (`REPORT_EVENTS`): what the user was
+shown, never rebuilt from the session. Each terminal transition (completed, failed, cancelled,
+reaped) seals `report_sha256` over them in the same transaction; a resume clears it.
+
 `attempt` counts claims and only ever goes up: it fences a worker that lost its lease (its
 heartbeats and event writes name the attempt it claimed, and update nothing once another worker
 has the run). `crashes` counts expired leases since the user last acted (answered a gate or
@@ -17,6 +21,8 @@ import uuid
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 
+import hashlib
+
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -29,6 +35,24 @@ LEASE_S = 120          # a worker that misses heartbeats this long has died
 HEARTBEAT_S = 5        # also how fast a cancel is noticed
 MAX_CRASHES = 3        # expired leases (since the user last acted) before the reaper gives up
 CANCELLED = "Cancelled at your request."
+# The events a report is made of (the snapshot). Progress, gates, export and usage aren't.
+REPORT_EVENTS = ("briefing", "evidence", "charts", "insight", "expert_review",
+                 "targeted_response")
+
+
+def _plain(events) -> list[dict]:
+    """Events as stored: JSON round-tripped, exactly as Postgres keeps them (`default=str`), so
+    both stores replay, and hash, the same values."""
+    return [json.loads(json.dumps(e, default=str)) for e in events]
+
+
+def report_hash(events: list[dict]) -> str | None:
+    """sha256 over the report events, canonical JSON; None if the run delivered no report."""
+    report = [e for e in events if e.get("type") in REPORT_EVENTS]
+    if not report:
+        return None
+    return hashlib.sha256(json.dumps(report, sort_keys=True, separators=(",", ":"),
+                                     ensure_ascii=False).encode()).hexdigest()
 
 
 class RunConflict(Exception):
@@ -53,6 +77,7 @@ class RunRow(Base):
     cancel_requested = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
+    report_sha256 = Column(String, nullable=True)   # sealed when the run turns terminal
 
 
 class RunEventRow(Base):
@@ -79,6 +104,9 @@ class Run:
     crashes: int = 0
     cancel_requested: bool = False
     lease_until: float | None = None             # epoch seconds (in-memory store only)
+    report_sha256: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     events: list[dict] = field(default_factory=list, repr=False)
 
     def public(self) -> dict:
@@ -116,8 +144,9 @@ class InMemoryRunStore:
         if any(r.session_id == session_id and r.status in ACTIVE for r in self._runs.values()):
             raise RunConflict(session_id)
         run = Run(id=str(uuid.uuid4()), session_id=session_id, user_id=user_id, status="queued",
-                  input=input, client_request_id=client_request_id)
-        run.events = list(first_events)
+                  input=input, client_request_id=client_request_id, created_at=_now(),
+                  updated_at=_now())
+        run.events = _plain(first_events)
         self._runs[run.id] = run
         return replace(run), True
 
@@ -137,6 +166,16 @@ class InMemoryRunStore:
         live = [r for r in self._runs.values() if r.session_id == session_id
                 and r.user_id == user_id and r.status in ACTIVE]
         return replace(live[-1]) if live else None
+
+    def _end(self, r: Run, status: str, error: str | None, events) -> None:
+        """Every terminal (or waiting) transition: the status, its events, then the seal."""
+        r.status, r.error, r.updated_at = status, error, _now()
+        r.events.extend(_plain(events))
+        r.report_sha256 = report_hash(r.events) if status in TERMINAL else None
+
+    async def for_session(self, session_id: str, user_id: str) -> list[Run]:
+        return [replace(r) for r in self._runs.values()
+                if r.session_id == session_id and r.user_id == user_id]
 
     async def latest_statuses(self, user_id: str, session_ids: list[str]) -> dict[str, str]:
         """Each thread's latest run status (the sidebar's dot)."""
@@ -165,7 +204,7 @@ class InMemoryRunStore:
         r = self._runs[run_id]
         if attempt is not None and (r.status != "running" or r.attempt != attempt):
             return False
-        r.events.extend(events)
+        r.events.extend(_plain(events))
         return True
 
     async def events_after(self, run_id: str, after: int) -> list[tuple[int, dict]]:
@@ -177,8 +216,8 @@ class InMemoryRunStore:
         r = self._runs[run_id]
         if attempt is not None and (r.status != "running" or r.attempt != attempt):
             return False
-        r.status, r.error, r.lease_until, r.resume = status, error, None, None
-        r.events.extend(events)
+        r.lease_until, r.resume = None, None
+        self._end(r, status, error, events)
         return True
 
     async def resume(self, run_id: str, payload: dict, events: list[dict] = (),
@@ -189,7 +228,8 @@ class InMemoryRunStore:
             return False
         r.status, r.resume, r.error, r.cancel_requested = "queued", payload, None, False
         r.crashes = 0   # the user acted: a fresh crash budget (attempt keeps counting: the fence)
-        r.events.extend(events)
+        r.report_sha256, r.updated_at = None, _now()   # its report may still grow
+        r.events.extend(_plain(events))
         return True
 
     async def request_cancel(self, run_id: str, events: list[dict]) -> str:
@@ -197,8 +237,7 @@ class InMemoryRunStore:
         if r.status == "running":
             r.cancel_requested = True
         elif r.status in ACTIVE:
-            r.status, r.error = "cancelled", CANCELLED
-            r.events.extend(events)
+            self._end(r, "cancelled", CANCELLED, events)
         return r.status
 
     async def requeue(self, run_id: str, attempt: int) -> None:
@@ -214,15 +253,14 @@ class InMemoryRunStore:
                 r.lease_until = None
                 r.crashes += 1
                 if r.cancel_requested:   # its worker died before it could stop it
-                    r.status, r.error = "cancelled", CANCELLED
-                    r.events += cancel_events()
+                    self._end(r, "cancelled", CANCELLED, cancel_events())
                 elif r.crashes < MAX_CRASHES:
-                    r.status = "queued"
-                    r.events.append(_resumed_event())
+                    r.status, r.updated_at = "queued", _now()
+                    r.events += _plain([_resumed_event()])
                 else:
-                    r.status, r.error = "failed", _reap_message(r.crashes)
-                    r.events += [{"type": "error", "message": r.error, "retryable": True},
-                                 {"type": "done"}]
+                    error = _reap_message(r.crashes)
+                    self._end(r, "failed", error, [{"type": "error", "message": error,
+                                                    "retryable": True}, {"type": "done"}])
                 out.append((r.id, r.status))
         return out
 
@@ -251,6 +289,8 @@ class RunStore:
                                                                  RunEventRow.__table__])
             await conn.execute(text(   # tables made before the crash budget had its own column
                 "ALTER TABLE runs ADD COLUMN IF NOT EXISTS crashes INTEGER NOT NULL DEFAULT 0"))
+            await conn.execute(text(
+                "ALTER TABLE runs ADD COLUMN IF NOT EXISTS report_sha256 VARCHAR"))
             # One active run per session, enforced by the database (two requests can race).
             await conn.execute(text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS runs_one_active_per_session ON runs "
@@ -264,7 +304,8 @@ class RunStore:
                    client_request_id=m["client_request_id"],
                    resume=json.loads(m["resume"]) if m["resume"] else None, error=m["error"],
                    attempt=m["attempt"], crashes=m["crashes"],
-                   cancel_requested=m["cancel_requested"])
+                   cancel_requested=m["cancel_requested"], report_sha256=m["report_sha256"],
+                   created_at=m["created_at"], updated_at=m["updated_at"])
 
     async def _append(self, db, run_id: str, events) -> None:
         """Caller holds the run row lock, so seqs are allocated one writer at a time."""
@@ -280,6 +321,24 @@ class RunStore:
             [{"run_id": run_id, "seq": last + i, "type": e.get("type", ""),
               "payload": json.dumps(e, default=str), "at": now}
              for i, e in enumerate(events, 1)])
+
+    async def _seal(self, db, run_id: str, status: str) -> None:
+        """After a transition's events are appended, in its transaction."""
+        sha = None
+        if status in TERMINAL:
+            rows = (await db.execute(text(
+                "SELECT payload FROM run_events WHERE run_id = :id AND type = ANY(:t) "
+                "ORDER BY seq"), {"id": run_id, "t": list(REPORT_EVENTS)})).scalars()
+            sha = report_hash([json.loads(p) for p in rows])
+        await db.execute(text("UPDATE runs SET report_sha256 = :h WHERE id = :id"),
+                         {"id": run_id, "h": sha})
+
+    async def for_session(self, session_id: str, user_id: str) -> list[Run]:
+        async with self._db() as db:
+            rows = (await db.execute(text(
+                "SELECT * FROM runs WHERE session_id = :sid AND user_id = :uid "
+                "ORDER BY created_at"), {"sid": session_id, "uid": user_id})).all()
+            return [self._run(r) for r in rows]
 
     async def _locked(self, db, run_id: str):
         return (await db.execute(text("SELECT * FROM runs WHERE id = :id FOR UPDATE"),
@@ -398,6 +457,7 @@ class RunStore:
                 "UPDATE runs SET status = :s, error = :e, lease_until = NULL, resume = NULL, "
                 "updated_at = now() WHERE id = :id"), {"id": run_id, "s": status, "e": error})
             await self._append(db, run_id, events)
+            await self._seal(db, run_id, status)
             await db.commit()
             return True
 
@@ -410,7 +470,8 @@ class RunStore:
             try:
                 await db.execute(text(
                     "UPDATE runs SET status = 'queued', resume = :r, error = NULL, "
-                    "cancel_requested = false, crashes = 0, updated_at = now() WHERE id = :id"),
+                    "cancel_requested = false, crashes = 0, report_sha256 = NULL, "
+                    "updated_at = now() WHERE id = :id"),
                     {"id": run_id, "r": json.dumps(payload)})
             except IntegrityError:   # another run became active on this session meanwhile
                 return False
@@ -431,6 +492,7 @@ class RunStore:
                     "UPDATE runs SET status = 'cancelled', error = :e, "
                     "updated_at = now() WHERE id = :id"), {"id": run_id, "e": CANCELLED})
                 await self._append(db, run_id, events)
+                await self._seal(db, run_id, status)
             await db.commit()
             return status
 
@@ -462,6 +524,7 @@ class RunStore:
                     "updated_at = now() WHERE id = :id"),
                     {"id": run_id, "s": status, "e": error, "c": crashes})
                 await self._append(db, run_id, events)
+                await self._seal(db, run_id, status)
                 out.append((run_id, status))
             await db.commit()
         return out

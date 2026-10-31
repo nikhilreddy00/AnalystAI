@@ -221,6 +221,54 @@ def test_memory_is_scoped_to_the_dataset_and_never_keyed_by_credentials():
     assert must == {("user_id", "user-1"), ("dataset_key", a)}
 
 
+def test_memory_follows_the_dataset_and_says_what_it_consulted(monkeypatch):
+    """Phase 5.6b: the key is the dataset id (a re-upload keeps its memory), the thread's own
+    earlier report is not "an earlier analysis", and the report lists what it consulted."""
+    from memory.vector_store import VectorStore, dataset_key, memory_key
+    from orchestrator import graph
+    from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType, InsightReport
+    cfg = ConnectorConfig(type=ConnectorType.CSV, file_path="uploads/u/a.csv")
+    assert memory_key(AnalysisSession(session_id="s", connector_config=cfg,
+                                      dataset_id="ds-1")) == "ds-1"
+    assert memory_key(AnalysisSession(session_id="s", connector_config=cfg)) == dataset_key(cfg)
+
+    seen = {}
+
+    class FakeQdrant:
+        async def search(self, **kw):
+            seen.update(kw)
+            hit = type("P", (), {"score": 0.9, "payload": {
+                "session_id": "other-thread", "executive_summary": "e", "task_summary": "t",
+                "generated_at": "2026-10-01T00:00:00+00:00"}})
+            return [hit]
+
+    vs = VectorStore.__new__(VectorStore)
+    vs._client = FakeQdrant()
+
+    async def embed(text):
+        return [0.0]
+    vs._embed = embed
+    session, _, _ = _bundle("ins-01")
+    session.dataset_id = "ds-1"
+    report = InsightReport(executive_summary="x", technical_findings=[], recommended_actions=[],
+                           anomaly_alerts=[], proactive_questions=[], methodology_notes="")
+
+    async def fake_agent(s, llm, past):
+        assert past == ["t: e"]
+        return report
+    monkeypatch.setattr(graph, "run_insight_agent", fake_agent)
+    token = graph.run_env.set(graph.RunEnv(vector_store=vs))
+    try:
+        asyncio.run(graph.insight_node({"session": session}))
+    finally:
+        graph.run_env.reset(token)
+    f = seen["query_filter"]
+    assert ("dataset_key", "ds-1") in {(c.key, c.match.value) for c in f.must}
+    assert [(c.key, c.match.value) for c in f.must_not] == [("session_id", session.session_id)]
+    assert [(m.session_id, m.generated_at) for m in session.insight_report.memory_used] == [
+        ("other-thread", "2026-10-01T00:00:00+00:00")]
+
+
 def test_methodology_names_only_the_methods_that_ran():
     session, _, _ = _bundle("ins-30")   # no date column, no trend evidence
     report, _ = _run(_good(), session=session)

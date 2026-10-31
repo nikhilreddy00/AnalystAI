@@ -16,7 +16,8 @@ from connectors import csv_connector
 from evals.run import dataset, e2e_pii_literals, load_cases
 from llm.client import LLMResult, pii_values
 from memory import session_data
-from memory.run_store import InMemoryRunStore
+from api.lib.report import provenance
+from memory.run_store import InMemoryRunStore, report_hash
 from memory.session_store import InMemorySessionStore
 from orchestrator.graph import build_graph
 from api.config import settings
@@ -26,6 +27,7 @@ from sandbox.executor import ExecutionResult
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures/runs/e2e-01.json").read_text())
 CASE = load_cases("e2e", "e2e-01")[0]
+WANT_COST = round(sum(r["cost_usd"] for r in FIXTURE["replies"]), 6)
 ANSWER = "Continue with imputation"
 
 
@@ -158,6 +160,15 @@ async def test_uninterrupted_replay_completes(replay, recorded_llm):
     types = [e["type"] for e in events]
     assert types.count("approval_required") == 1 and types.count("done") == 1
     assert types[-1] == "done"
+    # Phase 5.6b: the report is sealed, and the run knows what it ran under and what it cost.
+    run = await deps.run_store.get(run_id)
+    assert run.report_sha256 and run.report_sha256 == report_hash(events)
+    assert types[0] == "provenance" and types.count("provenance") == 1
+    prov = provenance(run, events)
+    assert prov["llm_calls"] == len(FIXTURE["replies"])
+    assert prov["cost_usd"] == WANT_COST > 0
+    assert {p["agent"] for p in prov["prompts"]} >= {"intake", "analysis", "insight"}
+    assert prov["cards"]["analysis"] and prov["model"]
 
 
 async def test_kill_at_every_node_boundary_resumes_to_the_same_report(
@@ -181,6 +192,9 @@ async def test_kill_at_every_node_boundary_resumes_to_the_same_report(
         assert _stable(_report(_result(deps, run_id))) == _stable(want), f"kill at {k}: report"
         events = [e for _, e in await deps.run_store.events_after(run_id, 0)]
         assert _stable([e for e in events if e["type"] != "run_resumed"]) == _stable(want_events), k
+        run = await deps.run_store.get(run_id)   # one seal, over what this run delivered
+        assert run.report_sha256 == report_hash(events) and run.report_sha256, k
+        assert provenance(run, events)["cost_usd"] == WANT_COST, f"kill at {k}: cost"
         sent = json.dumps([c["messages"] for c in recorded_llm.calls])
         assert not [v for v in pii if v in sent], f"kill at {k}: PII reached the model"
 
@@ -282,6 +296,9 @@ async def test_postgres_kill_at_every_boundary_with_a_new_process_each_time(
             assert _stable(_report(await _pg_session(deps, run_id))) == want, k
             events = [e for _, e in await deps.run_store.events_after(run_id, 0)]
             assert _stable([e for e in events if e["type"] != "run_resumed"]) == want_events, k
+            run = await deps.run_store.get(run_id)
+            assert run.report_sha256 == report_hash(events) and run.report_sha256, k
+            assert provenance(run, events)["cost_usd"] == WANT_COST, k
             assert not [v for v in pii if v in json.dumps([c["messages"]
                                                            for c in recorded_llm.calls])], k
 

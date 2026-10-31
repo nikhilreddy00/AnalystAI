@@ -223,3 +223,17 @@ async def test_deleting_a_dataset_hides_its_threads(ws):
     assert (await client.get("/api/sessions")).json() == []
     assert (await deps.run_store.get(run["run_id"])).status == "cancelled"
     assert (await _ask(client, dataset_version_id=up["dataset_version_id"])).status_code == 404
+
+
+async def test_a_deleted_datasets_file_cant_be_reused_by_path(ws):
+    """Security review: a raw connector_config naming a deleted (not yet purged) dataset's file
+    must not start a thread on it; a live version's path is that version."""
+    client, _, deps, csv = ws
+    up = (await _upload(client, csv)).json()
+    path = str(_uploads(deps)[0])
+    run = (await _ask(client, connector_config={"type": "csv", "file_path": path})).json()
+    s = await deps.session_store.load(run["session_id"])
+    assert (s.dataset_id, s.dataset_version_id) == (up["dataset_id"], up["dataset_version_id"])
+    await client.delete(f"/api/datasets/{up['dataset_id']}")
+    r = await _ask(client, connector_config={"type": "csv", "file_path": path})
+    assert r.status_code == 404

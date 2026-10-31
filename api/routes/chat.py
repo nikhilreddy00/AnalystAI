@@ -89,7 +89,15 @@ async def _source(body: ChatRequest, uid: str, store) -> _Source | None:
     if not body.connector_config:
         return None
     config = _owned_config(body.connector_config, uid)
-    if config.type == ConnectorType.CSV:   # a legacy client: a thread with no dataset
+    if config.type == ConnectorType.CSV:
+        # A path that is a dataset version's file is that version; a deleted dataset's file
+        # (not yet purged) is gone. Any other path is a pre-5.6b upload: a thread with no dataset.
+        if hit := await store.version_by_path(config.file_path, uid):
+            ds, version = hit
+            if ds is None:
+                raise HTTPException(status_code=404, detail="Dataset not found")
+            return _Source(config=config, dataset_id=ds.id, version_id=version.id, name=ds.name,
+                           file_hash=version.content_hash)
         return _Source(config=config, name=body.dataset_name, file_hash=body.file_hash)
     name = body.dataset_name or config.table_name or config.sheet_name or config.url or "data"
     ds = await store.ensure_live_dataset(uid, name, config)
@@ -214,7 +222,9 @@ async def chat(
             session_id=session.session_id, user_id=current_user.uid,
             client_request_id=body.client_request_id,
             input={"message": body.message, "is_approval": body.is_approval,
-                   "approval_context": body.approval_context},
+                   "approval_context": body.approval_context,
+                   # Provenance: the data version this question was asked of (uploads).
+                   "dataset_version_id": session.dataset_version_id},
             first_events=[{"type": "session_id", "value": session.session_id,
                            "message": body.message, "is_approval": body.is_approval}])
     except RunConflict:   # another request started one a moment ago

@@ -28,7 +28,7 @@ from langgraph.checkpoint.serde.encrypted import EncryptedSerializer
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.types import Command
 
-from llm.client import get_client, pii_values
+from llm.client import get_client, pii_values, run_meter
 from memory.run_store import (CANCELLED, HEARTBEAT_S, InMemoryRunStore, Run, RunStore,
                               cancel_events)
 from memory.session_data import read_cleaned_parquet
@@ -141,6 +141,25 @@ async def open_deps(app_env: str, database_url: str, *, vector: bool = True) -> 
     return deps
 
 
+def provenance() -> dict:
+    """What a run ran under, recorded when it starts (Phase 5.6b): the models and every agent's
+    card version. The prompt each model call used is in that call's usage record."""
+    from agents.analysis_agent import ANALYSIS_CARD
+    from agents.cleaning_agent import CLEANING_CARD
+    from agents.ingestion_agent import INGESTION_CARD
+    from agents.insight_agent import INSIGHT_CARD
+    from agents.intake_agent import INTAKE_CARD
+    from agents.quality_agent import QUALITY_CARD
+    from agents.sql_agent import SQL_CARD
+    from agents.visualization_agent import VIZ_CARD
+    from api.config import settings
+    return {"type": "provenance", "model": settings.llm_model,
+            "fast_model": settings.llm_fast_model,
+            "cards": {c.name: c.version for c in (INGESTION_CARD, INTAKE_CARD, SQL_CARD,
+                                                  CLEANING_CARD, ANALYSIS_CARD, VIZ_CARD,
+                                                  INSIGHT_CARD, QUALITY_CARD)}}
+
+
 def _config(run_id: str) -> dict:
     return {"configurable": {"thread_id": run_id}}
 
@@ -187,14 +206,22 @@ async def execute(run: Run, deps: Deps) -> str:
     config = _config(run.id)
     queue: asyncio.Queue = asyncio.Queue()
 
+    meter: list[dict] = []
+
     async def flush() -> None:
-        if (events := _drain(queue)) and not await store.append(run.id, events,
-                                                                 attempt=run.attempt):
+        # Model usage goes out with the node's events, in the same fenced write: a crash after
+        # the node's checkpoint can't lose its cost, and a node that re-runs is counted again.
+        events = _drain(queue)
+        if meter:   # first: the node's own events end with its `done`
+            events.insert(0, {"type": "usage", "calls": meter[:]})
+            meter.clear()
+        if events and not await store.append(run.id, events, attempt=run.attempt):
             raise LeaseLost(run.id)
 
     env = RunEnv(events=queue, flush=flush, session_store=deps.session_store,
                  vector_store=deps.vector_store)
     token = run_env.set(env)
+    meter_token = run_meter.set(meter)
     try:
         snap = await graph.aget_state(config)
         resume = run.resume or {}
@@ -220,6 +247,8 @@ async def execute(run: Run, deps: Deps) -> str:
                    "is_approval": run.input.get("is_approval", False),
                    "approval_context": run.input.get("approval_context"),
                    "similar_insights": [], "frame_ref": None, "gate": None, "answered": None}
+            queue.put_nowait(provenance())
+            await flush()   # before the first checkpoint: a kill right after it can't lose this
         if inp is not _FINISHED:
             session = inp["session"] if isinstance(inp, dict) else snap.values["session"]
             # This run's PII guard: ingestion (or the reload below) fills it, and every LLM
@@ -241,6 +270,7 @@ async def execute(run: Run, deps: Deps) -> str:
         logger.error("run %s crashed", run.id, exc_info=exc)
         return await _fail(store, run, f"The analysis stopped unexpectedly: {exc}")
     finally:
+        run_meter.reset(meter_token)
         run_env.reset(token)
 
     state = await graph.aget_state(_config(run.id))
