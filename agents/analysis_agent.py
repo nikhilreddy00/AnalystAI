@@ -310,6 +310,7 @@ class AnalysisContext(BaseModel):
     cleaning_notes: list[str]
     samples: dict[str, list[Any]]      # 3 masked values per column (from the DataContract)
     aggregations: list[str] = []       # semantic-layer meanings (Phase 5.5); empty: none matched
+    question: str = ""                 # the user's words: a rate's definition lives only here
 
     def render(self) -> str:
         # Column names come from the user's file, so the whole schema block is delimited.
@@ -329,9 +330,12 @@ class AnalysisContext(BaseModel):
                  if self.aggregations else "")
         cleaning = ("\n\nCleaning already applied:\n" + delimit_untrusted(
             "\n".join(self.cleaning_notes))) if self.cleaning_notes else ""
+        question = ("\nThe user's question (the plan below was made from it; when it defines a "
+                    "measure — a rate, its window, which rows count — compute exactly that):\n"
+                    + delimit_untrusted(self.question)) if self.question else ""
         return f"""\
 Dataset schema (column names come from the user's file):
-{delimit_untrusted(schema)}{rules}
+{delimit_untrusted(schema)}{rules}{question}
 Analysis types requested: {self.analysis_types}
 Timeframe: {self.timeframe}{cleaning}
 
@@ -379,6 +383,7 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         # file's): a unit read from the file alone would put a file-written header out here.
         aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
                       for c in contract.columns if c.aggregation],
+        question=(task.raw_query or "")[:2000],
     )
 
 

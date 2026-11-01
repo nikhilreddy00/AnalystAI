@@ -144,8 +144,8 @@ def test_the_layer_rules_sit_outside_the_untrusted_block():
     s = AnalysisSession(session_id="x", data_contract=_bank_contract(), task_plan=AnalysisTask(
         raw_query="q", analysis_types=["trend"], target_metrics=["balance"]))
     text = build_context(s).render()
-    rules = text.index("How columns aggregate")
-    assert text.rindex("</untrusted_data>") < rules
+    before = text[:text.index("How columns aggregate")]
+    assert before.count("<untrusted_data>") == before.count("</untrusted_data>") >= 1   # outside every block
 
 
 # ── layers ──────────────────────────────────────────────────────────────────────────────────
