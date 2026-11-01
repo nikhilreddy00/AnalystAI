@@ -15,7 +15,7 @@ import pandas as pd
 
 from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
-from domain_pack import pack_for
+from domain_pack import defaults_pack
 from guardrails import (
     UNTRUSTED_NOTE,
     claim_causal_overreach,
@@ -220,8 +220,10 @@ def checked_answer(answer: str, session: AnalysisSession, shown: list) -> str:
     pack's causal words, no experiment cited), is removed and counted. Nothing left: a fixed
     reply, never an unchecked one."""
     contract = session.data_contract
-    pack = pack_for(contract.domain) if contract else None
-    triggers = pack.causal_triggers if pack else ()
+    pack = defaults_pack(contract)
+    if pack is None:   # a domain's checks (strong match); other answers as before
+        return answer
+    triggers = pack.causal_triggers
     has_dates = bool(contract and contract.date_columns)
     kept, dropped = [], 0
     for s in (x for x in re.split(r"(?<=[.!?])\s+", answer) if x.strip()):

@@ -23,7 +23,15 @@ from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
-from domain_pack import ROW_KINDS, computable, glossary_hits, pack_brief, pack_for, with_row_kind
+from domain_pack import (
+    ROW_KINDS,
+    computable,
+    defaults_pack,
+    glossary_hits,
+    pack_brief,
+    pack_for,
+    with_row_kind,
+)
 from guardrails import (
     pseudonym,
     is_phi_identifier,
@@ -254,7 +262,7 @@ try:
         # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months
         # compare fairly (agents.utils.weekly_cadence).
         _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
-        _weekly = len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
+        _weekly = {defaults_pack(contract) is not None!r} and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')

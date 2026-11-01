@@ -38,7 +38,7 @@ from agents.utils import (
     partial_last_month,
     weekly_cadence,
 )
-from domain_pack import compute_kpi, describe_kpi, main_currency, pack_for, row_kinds
+from domain_pack import compute_kpi, defaults_pack, describe_kpi, main_currency, pack_for, row_kinds
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -2238,7 +2238,9 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
                           ctx.contract, over_time=True) * scale
     except LevelUnavailable:
         return None
-    weekly = monthly and agg == "sum" and weekly_cadence(sub[date])
+    # a domain's convention (retail, strong match): other data keeps calendar-month sums
+    weekly = monthly and agg == "sum" and defaults_pack(ctx.contract) is not None \
+        and weekly_cadence(sub[date])
     if weekly:   # weekly flows: a month is its average week, as the reported MoM (4 vs 5 weeks)
         weeks = sub[date].groupby(period).nunique()
         table = table.div(weeks, level=0) if split else table / weeks.reindex(table.index)

@@ -387,7 +387,8 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     value = _kpi_value(df, row_kinds(df, roles, pack), roles, pack, kpi, by)
     if value is None:
         return None
-    if by:
+    if by:   # a group with no values is no group (a NaN would break the answer's JSON)
+        value = value.dropna()
         return value if len(value) else None
     return None if pd.isna(value) else float(value)
 
@@ -573,3 +574,12 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     name = ROW_KIND_COLUMN if ROW_KIND_COLUMN not in df.columns else f"_{ROW_KIND_COLUMN}"
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     return df.assign(**{name: row_kinds(df, roles, pack)}), name
+
+
+def defaults_pack(contract) -> Pack | None:
+    """The pack whose conventions change default behaviour (tiles, sums by group, weekly months,
+    partial weeks, follow-up checks): only on a strong match. A weak match changes nothing by
+    default; it says how it read the file, and answers a KPI the user names."""
+    if contract is None or contract.domain_confidence != "strong":
+        return None
+    return pack_for(contract.domain)

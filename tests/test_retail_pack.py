@@ -453,7 +453,7 @@ def test_the_trend_leaves_the_partial_month_out_and_gives_mom_and_yoy(shop):
     r = _ask(s, "net sales trend", QuestionIntent.TIME_SERIES, kpi="net_sales")
     assert f"({truth['jan26_mom_pct']:+.1f}%)" in r.answer_text
     assert f"{truth['jan26_yoy_pct']:+.1f}% year over year" in r.answer_text
-    assert "2026-02 is left out" in r.answer_text
+    assert "The last month (2026-02) is left out" in r.answer_text
 
 
 @pytest.mark.parametrize("start, end, said", [
@@ -718,8 +718,8 @@ def test_year_over_year_compares_the_same_days():
              period_start="2024", period_end="2024")
     assert "the data starts 15 Mar 2024" in r.answer_text
     r = _ask(s, "net sales by quarter", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="Q")
-    assert "latest 2024Q4" in r.answer_text and "The last quarter is left out" in r.answer_text
-    assert "The first quarter is left out: the data starts 15 Mar 2024" in r.answer_text
+    assert "latest 2024Q4" in r.answer_text and "The last quarter (2025Q1) is left out" in r.answer_text
+    assert "The first quarter (2024Q1) is left out: the data starts 15 Mar 2024" in r.answer_text
 
 
 def test_a_missing_period_is_not_the_period_before():
@@ -764,9 +764,10 @@ def test_only_wholly_numbered_name_columns_lose_pii_status(values, pii):
     assert bool(pii_kind("Name", values)) is pii
 
 
-def test_different_zones_keep_their_order_one_zone_change_is_local_time():
+def test_several_places_are_read_as_utc_instants():
     two_places = parse_text_dates(pd.Series(["2025-01-05 10:00 -05:00", "2025-01-05 16:30 +01:00"]))
-    assert two_places.tolist() == [pd.Timestamp("2025-01-05 15:00"), pd.Timestamp("2025-01-05 15:30")]
+    assert two_places.tolist() == [pd.Timestamp("2025-01-05 15:00", tz="UTC"),
+                                   pd.Timestamp("2025-01-05 15:30", tz="UTC")]
 
 
 def test_a_utc_column_filters_by_period():
@@ -922,8 +923,9 @@ def test_a_net_sales_column_is_not_reduced_by_its_refunds_column():
 def _flat_daily(end: str) -> AnalysisSession:
     import io
     days = pd.date_range("2025-09-01", end)
-    df = pd.DataFrame({"Order": [f"#{i}" for i in range(len(days))], "Created at": days,
-                       "Lineitem name": "Tee", "Lineitem quantity": 1, "Lineitem price": 100.0})
+    df = pd.DataFrame({"Order": [f"#{1001 + i}" for i in range(len(days))], "Created at": days,
+                       "Lineitem name": "Tee", "Lineitem sku": "T-1", "Lineitem quantity": 1,
+                       "Lineitem price": 100.0})   # a SKU: a strong match, the retail conventions
     s = AnalysisSession(session_id="t", data_contract=_contract(df),
                         task_plan=AnalysisTask(raw_query="o", analysis_types=["eda"], target_metrics=[]))
     buf = io.BytesIO()
@@ -935,7 +937,7 @@ def _flat_daily(end: str) -> AnalysisSession:
 def test_daily_data_cut_mid_week_shows_no_false_weekly_drop():
     s = _flat_daily("2025-11-26")   # a Wednesday
     r = _ask(s, "net sales by week", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="W")
-    assert "(+0.0%)" in r.answer_text and "The last week is left out" in r.answer_text
+    assert "(+0.0%)" in r.answer_text and "The last week (" in r.answer_text
     g = _ask(s, "sales by week", QuestionIntent.TIME_SERIES, metric_column="Lineitem price",
              frequency="W", aggregation="sum")
     assert "flat 0.0%" in g.answer_text or "trended flat" in g.answer_text, g.answer_text
@@ -990,48 +992,19 @@ def test_swapped_whole_periods_keep_their_width():
     assert len(rows) == 731 and note.startswith("01 Jan 2024 to 31 Dec 2025")
 
 
-def test_a_chain_across_us_zones_keeps_its_local_day_and_the_scorer_agrees():
+def test_one_place_across_daylight_saving_is_local_and_places_are_utc_and_the_scorer_agrees():
     from evals.scoring import _same_loaded
-    vals = ["2025-01-31 21:00 -0500", "2025-01-31 20:00 -0600", "2025-07-31 21:00 -0400"]
-    got = parse_text_dates(pd.Series(vals))
-    assert [g.day for g in got] == [31, 31, 31]
-    assert all(_same_loaded(v, g, False) for v, g in zip(vals, got))
-    hawaii = parse_text_dates(pd.Series(["2025-07-31 21:00 -0400", "2025-07-31 20:00 -0700",
-                                         "2025-07-31 15:00 -1000"]))
-    assert [g.day for g in hawaii] == [31, 31, 31]
-    # ponytail: the scorer reads a cell's local time; places across UTC (loaded in UTC) have no
-    # fixture yet, and would need the column-level rule in the scorer
-
-
-@pytest.mark.parametrize("email, kind", [("TEST-1001", "test"), ("test 1", "test"),
-                                          ("test+1@shop.com", "test"), ("test.smith@gmail.com", "sale")])
-def test_test_orders_in_their_usual_shapes(email, kind):
-    df = _lines(o=["1"], q=[1], p=[1.0], e=[email])
-    assert row_kinds(df, _r(df), RETAIL).tolist() == [kind]
-
-
-# ── Diff review of fix round 2: one test per finding ────────────────────────────────────────
-@pytest.mark.parametrize("csv", [
-    "Store,DayOfWeek,Date,Sales,Customers,Open,Promo\n1,5,2015-07-31,5263,555,1,1\n2,5,2015-07-31,6064,625,1,1\n",
-    "Store,Dept,Week Ending,Sales\n1,1,2012-02-03,24924.5\n1,2,2012-02-03,50605.27\n",
-])
-def test_store_sales_without_products_are_retail(csv):
-    assert _contract(_load(csv)).domain == "retail"
-
-
-@pytest.mark.parametrize("csv", [
-    "PO #,Supplier,Product,Quantity,Unit Price,Date\n1001,Acme,Tee,10,2,2025-01-02\n1002,Acme,Cap,5,3,2025-01-03\n",
-    "PO Number,Vendor Name,Item,Qty,Unit Price,Order Date\nP1,Acme,Tee,10,2,2025-01-02\nP2,Acme,Cap,5,3,2025-01-03\n",
-    "Date,Action,Stock Symbol,Description,Quantity,Price,Amount\n2025-01-02,Buy,AAPL,Apple,10,190,1900\n"
-    "2025-01-03,Sell,AAPL,Apple,5,191,955\n",
-    "Rx #,Date,Product,Qty,Price,Prescriber\n1001,2025-01-02,Insulin,1,120,Dr A\n1002,2025-01-03,Statin,30,15,Dr B\n",
-    "Patient MRN,Date,Item,Units,Price,Invoice No\nM1,2025-01-02,X-ray,1,120,1001\nM2,2025-01-03,Lab,2,40,1002\n",
-    "Policy No,Product,Date,Premium,Quantity\nP1,Auto,2025-01-02,1200,1\nP2,Home,2025-01-03,900,1\n",
-    "Deal,Stage,Product,Quantity,Unit Price,Date\nD1,Won,Seat,10,50,2025-01-02\nD2,Lost,Seat,5,50,2025-01-03\n",
-    "Shop,Date,Revenue,Occupancy\nH1,2025-01-02,12000,0.8\nH2,2025-01-02,9000,0.7\n",
-])
-def test_purchase_trade_pharmacy_clinic_policy_crm_hotel_files_are_not_retail(csv):
-    assert _contract(_load(csv)).domain is None
+    dst = ["2025-01-31 21:00 -0500", "2025-07-31 21:00 -0400"]   # one shop, winter and summer
+    got = parse_text_dates(pd.Series(dst))
+    assert [g.hour for g in got] == [21, 21] and got.dt.tz is None
+    assert all(_same_loaded(v, g, False) for v, g in zip(dst, got))
+    # pickup in New York, delivery in Los Angeles: instants (a 30-hour transit stays 30 hours)
+    places = ["2025-03-01 08:00 -0500", "2025-03-02 11:00 -0800"]
+    got = parse_text_dates(pd.Series(places))
+    assert (got.iloc[1] - got.iloc[0]) == pd.Timedelta(hours=30)
+    assert all(_same_loaded(v, g, False) for v, g in zip(places, got))
+    # ponytail: a US chain across zones is read in UTC (an ET evening sale can fall on the next
+    # UTC day); a per-pack "local clock" opt-in would fix it, stated as a known limit
 
 
 def test_complete_years_with_less_activity_are_kept_and_two_buckets_stay():
@@ -1123,7 +1096,7 @@ def test_three_buckets_still_lose_a_partial_last_one():
     days = pd.Series(pd.date_range("2023-01-01", "2025-03-15"))
     years = pd.Series([365.0, 366.0, 74.0], index=pd.PeriodIndex(["2023", "2024", "2025"], freq="Y"))
     out, note = _cut_partial(years, days, "Y")
-    assert out.index[-1] == pd.Period("2024", "Y") and "last year is left out" in note
+    assert out.index[-1] == pd.Period("2024", "Y") and "The last year (2025) is left out" in note
 
 
 @pytest.mark.parametrize("csv", [
@@ -1192,3 +1165,37 @@ def test_a_follow_up_turn_is_scored_on_its_own_answer():
     s.targeted_response = TargetedResponse(intent=QuestionIntent.SEGMENT_COMPARE, answer_text="No data.")
     from evals.scoring import answer_text
     assert "160.88" in answer_text(s) and "160.88" not in answer_text(turn_view(s))
+
+
+
+@pytest.mark.parametrize("email, kind", [("TEST-1001", "test"), ("test 1", "test"),
+                                          ("test+1@shop.com", "test"), ("test.smith@gmail.com", "sale")])
+def test_test_orders_in_their_usual_shapes(email, kind):
+    df = _lines(o=["1"], q=[1], p=[1.0], e=[email])
+    assert row_kinds(df, _r(df), RETAIL).tolist() == [kind]
+
+
+
+# ── Diff review of fix round 2: one test per finding ────────────────────────────────────────
+@pytest.mark.parametrize("csv", [
+    "Store,DayOfWeek,Date,Sales,Customers,Open,Promo\n1,5,2015-07-31,5263,555,1,1\n2,5,2015-07-31,6064,625,1,1\n",
+    "Store,Dept,Week Ending,Sales\n1,1,2012-02-03,24924.5\n1,2,2012-02-03,50605.27\n",
+])
+def test_store_sales_without_products_are_retail(csv):
+    assert _contract(_load(csv)).domain == "retail"
+
+
+
+@pytest.mark.parametrize("csv", [
+    "PO #,Supplier,Product,Quantity,Unit Price,Date\n1001,Acme,Tee,10,2,2025-01-02\n1002,Acme,Cap,5,3,2025-01-03\n",
+    "PO Number,Vendor Name,Item,Qty,Unit Price,Order Date\nP1,Acme,Tee,10,2,2025-01-02\nP2,Acme,Cap,5,3,2025-01-03\n",
+    "Date,Action,Stock Symbol,Description,Quantity,Price,Amount\n2025-01-02,Buy,AAPL,Apple,10,190,1900\n"
+    "2025-01-03,Sell,AAPL,Apple,5,191,955\n",
+    "Rx #,Date,Product,Qty,Price,Prescriber\n1001,2025-01-02,Insulin,1,120,Dr A\n1002,2025-01-03,Statin,30,15,Dr B\n",
+    "Patient MRN,Date,Item,Units,Price,Invoice No\nM1,2025-01-02,X-ray,1,120,1001\nM2,2025-01-03,Lab,2,40,1002\n",
+    "Policy No,Product,Date,Premium,Quantity\nP1,Auto,2025-01-02,1200,1\nP2,Home,2025-01-03,900,1\n",
+    "Deal,Stage,Product,Quantity,Unit Price,Date\nD1,Won,Seat,10,50,2025-01-02\nD2,Lost,Seat,5,50,2025-01-03\n",
+    "Shop,Date,Revenue,Occupancy\nH1,2025-01-02,12000,0.8\nH2,2025-01-02,9000,0.7\n",
+])
+def test_purchase_trade_pharmacy_clinic_policy_crm_hotel_files_are_not_retail(csv):
+    assert _contract(_load(csv)).domain is None

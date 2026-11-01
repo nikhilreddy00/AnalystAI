@@ -1275,10 +1275,13 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
     if isinstance(got, pd.Timestamp) and dayfirst is not None:   # a parsed date column
         try:
             # an offset after a time (" -0500") is dropped: the load keeps local time
-            if got.tzinfo is not None:
-                got = got.tz_localize(None)
+            if got.tzinfo is not None:   # loaded with a zone (UTC, or one offset): the instant
+                try:
+                    return got == pd.Timestamp(str(want))
+                except (ValueError, TypeError):
+                    return False
             local = re.sub(r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$", r"\1", str(want))
-            return got == pd.to_datetime(local, dayfirst=dayfirst)   # one region: local time
+            return got == pd.to_datetime(local, dayfirst=dayfirst)   # one place's local time
         except (TypeError, ValueError):
             return False
     return False

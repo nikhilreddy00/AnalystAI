@@ -311,17 +311,26 @@ def filter_period(df, date: str | None, start: str | None, end: str | None):
     return rows, note, None
 
 
-def year_earlier(df, date: str, start: str | None, end: str | None):
+def _year_back(weekly: bool):
+    import pandas as pd
+    # weekly data: 52 weeks back, so both windows hold the same number of week-endings
+    return pd.DateOffset(weeks=52) if weekly else pd.DateOffset(years=1)
+
+
+def year_earlier(df, date: str, start: str | None, end: str | None, weekly: bool = False):
     """(rows, note, error) for the same window one year earlier (YoY). Both windows are first cut
     to the days the data covers; a year-earlier window the data doesn't fully cover is an error
-    to say (a 15-day March against a 31-day March is no year-over-year change)."""
+    to say (a 15-day March against a 31-day March is no year-over-year change). A data start up
+    to a week inside the earlier window (2 Jan, the first trading day) still counts."""
     import pandas as pd
 
     lo, hi, first, last, why = period_window(df, date, start, end)
     if why:
         return df.iloc[:0], "", why
     lo, hi = max(lo, first.normalize()), min(hi, last)
-    p_lo, p_hi = lo - pd.DateOffset(years=1), hi - pd.DateOffset(years=1)
+    p_lo, p_hi = lo - _year_back(weekly), hi - _year_back(weekly)
+    if first.normalize() - pd.Timedelta(days=7) <= p_lo < first.normalize():
+        p_lo = first.normalize()   # (the current window is cut to match in current_window)
     if p_lo < first.normalize():
         return df.iloc[:0], "", (f"the data starts {first:%d %b %Y}, so it has no full "
                                  f"{p_lo:%d %b %Y} to {p_hi:%d %b %Y}")
@@ -329,12 +338,15 @@ def year_earlier(df, date: str, start: str | None, end: str | None):
     return df[(t >= p_lo) & (t <= p_hi)], f"{p_lo:%d %b %Y} to {p_hi:%d %b %Y}", None
 
 
-def current_window(df, date: str, start: str | None, end: str | None):
-    """The asked window cut to the data's days: what a YoY compares with its year-earlier twin."""
+def current_window(df, date: str, start: str | None, end: str | None, weekly: bool = False):
+    """The asked window cut to the data's days, and to the year-earlier twin's (YoY compares
+    the same days)."""
     import pandas as pd
 
     lo, hi, first, last, why = period_window(df, date, start, end)
     if why:
         return df.iloc[:0]
+    lo, hi = max(lo, first.normalize()), min(hi, last)
+    lo = max(lo, first.normalize() + _year_back(weekly))   # the twin starts no earlier than the data
     t = _local(pd.to_datetime(df[date], errors="coerce"))
-    return df[(t >= max(lo, first.normalize())) & (t <= min(hi, last))]
+    return df[(t >= lo) & (t <= hi)]
