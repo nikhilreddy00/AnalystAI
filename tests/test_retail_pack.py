@@ -723,7 +723,7 @@ def test_year_over_year_compares_the_same_days():
     assert "the data starts 15 Mar 2024" in r.answer_text
     r = _ask(s, "net sales by quarter", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="Q")
     assert "latest 2024Q4" in r.answer_text and "The last quarter (2025Q1) is left out" in r.answer_text
-    assert "The first quarter (2024Q1) is left out: the data starts 15 Mar 2024" in r.answer_text
+    assert "The first quarter (2024Q1) is left out: it is covered only from 15 Mar 2024" in r.answer_text
 
 
 def test_a_missing_period_is_not_the_period_before():
@@ -1033,7 +1033,8 @@ def test_two_buckets_of_month_start_data_keep_the_last_one():
     from agents.targeted_analysis_agent import _cut_partial
     t = pd.Series(pd.date_range("2025-01-01", "2025-06-01", freq="MS"))
     quarters = pd.Series([1.0, 2.0], index=pd.PeriodIndex(["2025Q1", "2025Q2"], freq="Q"))
-    assert _cut_partial(quarters, t, "Q") == (quarters, "")
+    out, note = _cut_partial(quarters, t, "Q")
+    assert out.equals(quarters) and note == ""
     daily = pd.Series(pd.date_range("2025-01-01", "2025-05-10"))   # daily, stops early in Q2
     assert len(_cut_partial(quarters, daily, "Q")[0]) == 1
 
@@ -1287,6 +1288,16 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     ("Markdowns doubled in November.", False),
     ("Total discount increased 12%.", False),
     ("Promotions grew from 3 to 7 per month.", False),
+    # diff review 3 (M5): a noun phrase may open with a year, a digit, this or last ...
+    ("Promotions increased year-end sales by 12%.", True),
+    ("The Black Friday promotion increased this quarter's revenue.", True),
+    ("Discounts increased 2025 holiday sales.", True),
+    ("Promotions increased last-minute orders.", True),
+    # ... and an adverb, 'as' or 'while' ends the verb phrase: the word's own change
+    ("Promotions increased markedly in Q4.", False),
+    ("Coupons increased as a share of orders.", False),
+    ("Discounts increased while sales were flat.", False),
+    ("Discounts increased $500 in March.", False),
 ])
 def test_promotions_given_credit_anywhere_in_the_claim(sentence, flagged):
     from guardrails import claim_causal_overreach
@@ -1316,6 +1327,10 @@ def test_profit_claims_need_a_cost_or_profit_column():
     assert claim_profit_without_cost("Add cost data to measure margin.", has_cost=False) is None
     assert claim_profit_without_cost("Margin Street store leads net sales.", has_cost=False) is None
     assert claim_profit_without_cost("Margin fell 3 points in March.", has_cost=False)
+    # diff review 3 (M6): mentioning a cost is not asking for the missing cost data
+    assert claim_profit_without_cost("Margins improved as costs fell in Q4.", has_cost=False)
+    assert claim_profit_without_cost("Profit rose 20% while shipping costs fell.", has_cost=False)
+    assert claim_profit_without_cost("Upload unit costs to see margin by product.", has_cost=False) is None
 
 
 def test_the_markdown_export_carries_how_the_numbers_were_counted():
@@ -1600,3 +1615,76 @@ def test_one_month_asked_is_compared_with_the_same_month_last_year(shop):
     early = _ask(s, "net sales in March 2025", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
                  period_start="2025-03-01", period_end="2025-03-31").answer_text
     assert "year" not in early.split("How:")[0], early
+
+
+def _daily(start: str, end: str) -> pd.DataFrame:
+    days = pd.date_range(start, end)
+    return _load("Order ID,Order Date,SKU,Quantity,Unit Price,Revenue\n" + "".join(
+        f"#{i},{d:%Y-%m-%d},SK-{i % 5},1,10,10\n" for i, d in enumerate(days)))
+
+
+@pytest.mark.parametrize("start, end, freq", [("2025-01-15", "2025-02-10", "M"),
+                                              ("2025-02-15", "2025-05-10", "Q")])
+def test_no_partial_period_is_shown_as_the_period(start, end, freq):
+    """Diff review 3 (M1): both ends partial: no '2025-01 $170' as if January; it says no
+    complete period is covered and gives the value over the days there are."""
+    text = _answer(_daily(start, end), QuestionIntent.TIME_SERIES, kpi="net_sales",
+                   frequency=freq).answer_text
+    assert "latest" not in text and "No complete" in text, text
+
+
+def test_generic_monthly_answers_cut_a_partial_first_month_on_strong_data():
+    """Diff review 3 (M2): 'Revenue by month' from 20 Jan: January is not the trend's start."""
+    df = _daily("2025-01-20", "2025-04-30")
+    c = _contract(df).model_copy(update={"domain_confidence": "strong"})
+    text = _answer(df, QuestionIntent.TIME_SERIES, contract=c, metric_column="Revenue",
+                   frequency="M", aggregation="sum").answer_text
+    assert "from 2025-02-28" in text and "The first month (2025-01) is left out" in text, text
+
+
+def test_one_month_asked_as_a_trend_is_compared_with_last_year(shop):
+    """Diff review 3 (M3): a TIME_SERIES plan for January 2026 is one period: the value path,
+    with the year-earlier comparison, never 'no earlier complete period'."""
+    s, truth = shop
+    text = _ask(s, "net sales in January 2026", QuestionIntent.TIME_SERIES, kpi="net_sales",
+                period_start="2026-01-01", period_end="2026-01-31").answer_text
+    assert "no earlier" not in text and f"{truth['jan26_yoy_pct']:+.1f}%" in text, text
+
+
+def test_a_single_day_is_not_compared_with_last_year_unasked(shop):
+    """Diff review 3 (M4): a Monday against a Sunday is no 'same days'."""
+    s, _ = shop
+    text = _ask(s, "net sales on 5 Jan 2026", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+                period_start="2026-01-05", period_end="2026-01-05").answer_text
+    assert "year" not in text.split("How:")[0], text
+
+
+def test_weekly_data_keeps_a_whole_first_month():
+    """Diff review 3 (M7): store_weeks Jan-Jun 2025 by month: January has its 4 week-endings."""
+    text = _answer(_gen("store_weeks"), QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="M",
+                   period_start="2025-01-01", period_end="2025-06-30").answer_text
+    assert "left out" not in text, text
+
+
+def test_a_day_is_named_as_a_day():
+    from agents.targeted_analysis_agent import _period_name
+    assert _period_name(pd.Timestamp("2025-03-05"), "D") == "2025-03-05"
+
+
+@pytest.mark.parametrize("start, end, offered", [("2025-01-20", "2026-02-03", False),
+                                                 ("2025-01-01", "2026-01-31", True)])
+def test_a_year_question_needs_thirteen_complete_months(start, end, offered):
+    """Diff review 3 (m9): 20 Jan 2025 to 3 Feb 2026 is 12 complete months; Jan 2025 to Jan 2026
+    is 13."""
+    from domain_pack import first_questions
+    df = _daily(start, end)
+    qs = first_questions(RETAIL, _contract(df).roles, df)
+    assert any("last year" in q for q in qs) is offered
+
+
+def test_a_trend_before_the_new_stores_has_no_stores_note():
+    """Diff review 3 (m10): the 3 new stores open in 2026; a Jan-Jun 2025 trend compares the same
+    stores throughout."""
+    text = _answer(_gen("store_weeks"), QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="M",
+                   period_start="2025-01-01", period_end="2025-06-30").answer_text
+    assert "opened or closed" not in text, text

@@ -729,11 +729,16 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
 
 _SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
 _PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|over|across"
-# a verb with an object ('increased units'): 'Discounts increased 15%' is the discount's own change
+# a verb with an object ('increased units', 'increased 2025 holiday sales'): what ends the verb
+# phrase instead ('Discounts increased 15%', '… markedly', '… as a share', '… while') is the
+# trigger word's own change, a fact
 _SUBJECT_VERB_RE = re.compile(
-    r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b(?=\s+(?:the\s+|our\s+)?"
-    r"(?!(?:by|in|on|at|from|to|over|across|during|year|month|week|quarter|last|this|each|per|"
-    r"again|sharply|slightly|steadily|strongly|significantly|and|but)\b)[a-z])", re.I)
+    r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b(?=\s+"
+    r"(?!(?:by|in|on|at|from|to|over|across|during|per|each|again|and|but|or|as|while|when|"
+    r"whereas|compared|versus|vs|than|since|after|before|until|through)\b)"
+    r"(?!\w+ly\b)"
+    r"(?![$£€]|\d[\d.,]*\s*(?:%|x\b|pts?\b|points?\b|percent\b|per cent\b|times\b|[.;,!?]|$))"
+    r"[\w'])", re.I)
 
 
 def claim_causal_overreach(text: str, cited_kinds: list[str],
@@ -776,7 +781,9 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
     return None
 
 
-_COST_ASK_RE = re.compile(r"\b(?:costs?|cogs)\b", re.I)
+# asking for the missing data ('Add cost data to measure margin'), not any sentence naming a cost
+_COST_ASK_RE = re.compile(r"\b(?:add|adding|upload|provide|include|collect|track|capture|need(?:s|ed)?|"
+                          r"without|missing|requires?|no)\b[^.]*\b(?:costs?|cogs)\b", re.I)
 _PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
 
 

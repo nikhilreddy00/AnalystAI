@@ -661,8 +661,13 @@ def first_questions(pack: Pack, roles: dict[str, str], df: pd.DataFrame | None =
             return True   # not knowable without the data: offered, as before
         if n == "year":
             t = pd.to_datetime(df[roles["date"]], errors="coerce").dropna() if "date" in roles else None
-            return t is not None and not t.empty and \
-                (t.max().to_period("M") - t.min().to_period("M")).n >= 13   # 13 full + a partial
+            if t is None or t.empty:
+                return False
+            lo, hi = t.min(), t.max()   # complete months: a few days' slack at either end
+            months = (hi.to_period("M") - lo.to_period("M")).n + 1
+            months -= (lo.day > 3) + (hi.normalize() < (hi + pd.offsets.MonthEnd(0)).normalize()
+                                      - pd.Timedelta(days=3))
+            return months >= 13
         return n in kinds
     return [q if isinstance(q, str) else str(q["q"]) for q in pack.first_questions
             if isinstance(q, str) or all(any(has(a) for a in n.split("|")) for n in q.get("needs", []))]

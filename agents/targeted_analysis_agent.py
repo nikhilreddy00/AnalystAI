@@ -29,6 +29,7 @@ from agents.utils import (
     current_window,
     filter_period,
     pandas_freq,
+    period_window,
     pii_columns,
     partial_last_month,
     time_axis,
@@ -503,12 +504,15 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         )
 
     partial = ""
-    if freq == "M" and len(series) >= 3 and partial_last_month(s[date]):
+    if conventions and freq in ("W", "M", "Q", "Y"):   # a domain's rule: either end, any bucket
+        series, partial = _cut_partial(series, s[date], freq, rule if freq == "W" else None)
+        if series.empty:
+            return _unanswerable(QuestionIntent.TIME_SERIES, partial.strip(),
+                                 ["Ask for a finer period (week or day)", "Ask for the total"])
+    elif freq == "M" and len(series) >= 3 and partial_last_month(s[date]):
         partial = (f" {series.index[-1]:%b %Y} is left out: the data ends {s[date].max():%d %b %Y}, "
                    "so that month is incomplete.")
         series = series.iloc[:-1]
-    elif conventions and freq in ("W", "Q", "Y"):
-        series, partial = _cut_partial(series, s[date], freq, rule if freq == "W" else None)
     chart_data = [{"period": idx.strftime("%Y-%m-%d"), metric: float(v)} for idx, v in series.items()]
     first, last = series.iloc[0], series.iloc[-1]
     pct = (last - first) / first * 100 if first not in (0, None) else float("nan")
@@ -845,54 +849,66 @@ def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
         lo = _local(pd.to_datetime(compared[0][date], errors="coerce")).min()
         hi = _local(pd.to_datetime(compared[1][date], errors="coerce")).max()
     month = pd.Timedelta(days=28)
-    opened = (span["min"] > lo + month) & (span["min"] <= hi)
-    closed = (span["max"] < hi - month) & (span["max"] >= lo)
-    changed = int((opened | closed).sum())
+    active = span[(span["max"] >= lo) & (span["min"] <= hi)]   # stores trading in the span
+    changed = int(((active["min"] > lo + month) | (active["max"] < hi - month)).sum())
     if not changed:
         return ""
-    return (f" {changed} of {len(span)} stores opened or closed within the data (opening dates "
-            "inferred from first sales): this is total growth; like-for-like growth leaves them out.")
+    return (f" {changed} of {len(active)} stores opened or closed between the periods compared "
+            "(opening dates inferred from first sales): this is total growth; like-for-like "
+            "growth leaves them out.")
+
+
+def _window_days(df: pd.DataFrame, date: str, start: str | None, end: str | None) -> int:
+    """Days of the asked window the data covers (0 when none)."""
+    lo, hi, first, last, why = period_window(df, date, start, end)
+    if why:
+        return 0
+    return max(0, (min(hi, last).normalize() - max(lo, first.normalize())).days + 1)
 
 
 def _period_name(stamp: pd.Timestamp, freq: str) -> str:
-    """2025-12-31 at Y → '2025', at Q → '2025Q4', at M → '2025-12'; a week by its ending date."""
-    return str(stamp.to_period(freq)) if freq in ("M", "Q", "Y") else f"week ending {stamp.date()}"
+    """2025-12-31 at Y → '2025', at Q → '2025Q4', at M → '2025-12'; a week by its ending date;
+    a day by itself."""
+    if freq in ("M", "Q", "Y"):
+        return str(stamp.to_period(freq))
+    return f"week ending {stamp.date()}" if freq == "W" else str(stamp.date())
 
 
 def _cut_partial(series: pd.Series, t: pd.Series, freq: str, rule: str | None = None
                  ) -> tuple[pd.Series, str]:
-    """Leave out a first or last bucket the data only partly covers. A month: the shared rule
-    (utils.partial_last_month, also in the sandbox). A week, quarter or year: by the data's own
-    density, as that rule does: fewer distinct dates than 0.9 × the median bucket (monthly data
-    dated on the 1st keeps its last quarter; daily data cut mid-week loses the stub weeks)."""
-    if freq not in ("W", "M", "Q", "Y") or len(series) < 2:
+    """Leave out a first or last bucket the dates don't cover from its start to its end, give or
+    take the data's own spacing (weekly data covers a month through its last week-ending;
+    month-start data covers its quarter; daily data may open on the 2nd or 3rd). A middle bucket
+    is never partial (a closed week is a fact to show). A month's end: the shared rule
+    (utils.partial_last_month, also in the sandbox and the charts). May leave nothing: the note
+    then says no complete period is covered, and the caller answers without a comparison."""
+    if freq not in ("W", "M", "Q", "Y") or series.empty:
         return series, ""
-    d = _local(pd.to_datetime(t, errors="coerce")).dropna().dt.normalize().drop_duplicates()
+    d = _local(pd.to_datetime(t, errors="coerce")).dropna().dt.normalize().drop_duplicates().sort_values()
+    if d.empty:
+        return series, ""
     period = rule or freq
     labels = series.index if isinstance(series.index, pd.PeriodIndex) else series.index.to_period(period)
-    # by label: an empty bucket (a closed week) counts 0 dates, never shifts the others
-    days = d.groupby(d.dt.to_period(period)).size().reindex(labels, fill_value=0)
+    step = d.diff().median() if len(d) > 1 else pd.Timedelta(days=1)
 
-    def thin(i: int) -> bool:   # the bucket has fewer dates than a full one would
-        if len(days) >= 3:
-            return days.iloc[i] < 0.9 * days.iloc[1:-1].median()
-        p = labels[i]   # two buckets: by calendar coverage, to the data's own cadence's end
-        step = d.diff().median() if len(d) > 1 else pd.Timedelta(days=1)   # month-start: ~30 days
-        end = d.max() + step - pd.Timedelta(days=1)
-        covered = (min(end, p.end_time) - max(d.min(), p.start_time)).days + 1
-        return covered < 0.9 * ((p.end_time - p.start_time).days + 1)
+    def slack(p) -> pd.Timedelta:   # the data's spacing, or a few days of a long bucket
+        length = p.end_time.normalize() - p.start_time + pd.Timedelta(days=1)
+        return max(step - pd.Timedelta(days=1), min(pd.Timedelta(days=3), length * 0.1))
 
-    note, unit = "", {"M": "month", **_UNIT}[freq]
-    # cut only where the data stops inside the bucket (fewer active days alone is a fact to show)
-    last = partial_last_month(t) if freq == "M" and len(days) >= 3 else thin(-1)
-    if last and d.max() < labels[-1].end_time.normalize():
-        note += f" The last {unit} ({labels[-1]}) is left out: the data ends {d.max():%d %b %Y}."
-        series, labels = series.iloc[:-1], labels[:-1]
-    # a partial first bucket is never 'the period before' (a half year against a full one):
-    # cut even down to one point, which the answer says has nothing complete to compare with
-    if len(series) > 1 and thin(0) and d.min() > labels[0].start_time:
-        note += f" The first {unit} ({labels[0]}) is left out: the data starts {d.min():%d %b %Y}."
-        series = series.iloc[1:]
+    first, last = labels[0], labels[-1]
+    if freq == "M" and len(series) >= 3:
+        cut_last = partial_last_month(t) and d.max() < last.end_time.normalize()
+    else:
+        cut_last = d.max() < last.end_time.normalize() - slack(last)
+    cut_first = d.min() > first.start_time + slack(first)
+    unit, note = {"M": "month", **_UNIT}[freq], ""
+    if cut_last:
+        note += f" The last {unit} ({last}) is left out: it is covered only to {d.max():%d %b %Y}."
+    if cut_first and (len(series) > 1 or not cut_last):
+        note += f" The first {unit} ({first}) is left out: it is covered only from {d.min():%d %b %Y}."
+    series = series.iloc[int(cut_first): len(series) - int(cut_last)]
+    if series.empty:
+        note = f" No complete {unit} is covered ({d.min():%d %b %Y} to {d.max():%d %b %Y})."
     return series, note
 
 
@@ -971,6 +987,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                 chart_configs=[chart],   # every group's value, not only the ends
                                 table_data=[{group: str(k), kpi.label: fmt(v)} for k, v in by.items()])
+    carry = ""   # a note from the trend path when it hands one period to the value path below
     one_period = params.compare == "yoy" and (params.period_start or params.period_end)
     if intent == QuestionIntent.TIME_SERIES and date and not one_period:
         flow = kpi.den is None and kind != "percent"
@@ -991,40 +1008,46 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             weeks = t.groupby(t.dt.to_period("M")).nunique()
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
         series, note = _cut_partial(series, t, freq, rule if freq == "W" else None)
-        latest = series.index[-1]
+        carry = ""
+        if series.empty or (len(series) == 1 and (params.period_start or params.period_end)):
+            carry = note if series.empty else ""   # one period asked: answered (and compared) below
+        else:
+            latest = series.index[-1]
 
-        def name(p) -> str:   # a week is named by its week-ending date
-            return f"week ending {p.end_time:%Y-%m-%d}" if freq == "W" else str(p)
+            def name(p) -> str:   # a week is named by its week-ending date
+                return f"week ending {p.end_time:%Y-%m-%d}" if freq == "W" else str(p)
 
-        answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{where}: latest " \
-                 f"{name(latest)} {fmt(series.iloc[-1])}"
-        before = series.get(latest - 1)   # by label: a missing period is no "period before"
-        if before:
-            answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"
-        prior = series.get(latest - {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq]) if freq != "Y" else None
-        if prior:   # (by year, "a year earlier" is the period before: said once)
-            answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
-        if len(series) < 2:
-            answer += "; there is no earlier complete period to compare with"
-        answer += "." + note + (stores_note(contract, full, date) if len(series) > 1 else "")
-        chart = _chart(ChartType.LINE, f"{kpi.label} over time{where}",
-                       [{"period": f"{k.end_time:%Y-%m-%d}" if freq == "W" else str(k),
-                         kpi.label: float(v)} for k, v in series.items()],
-                       x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
-                       source="kpi")
-        _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date,
-             kpi.label, "sum" if kpi.den is None else "none", len(df))
-        return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
-                                chart_configs=[chart])
+            answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{where}: latest " \
+                     f"{name(latest)} {fmt(series.iloc[-1])}"
+            before = series.get(latest - 1)   # by label: a missing period is no "period before"
+            if before:
+                answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"
+            prior = series.get(latest - {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq]) if freq != "Y" else None
+            if prior:   # (by year, "a year earlier" is the period before: said once)
+                answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
+            if len(series) < 2:
+                answer += "; there is no earlier complete period to compare with"
+            answer += "." + note + (stores_note(contract, full, date, (df, df)) if len(series) > 1 else "")
+            chart = _chart(ChartType.LINE, f"{kpi.label} over time{where}",
+                           [{"period": f"{k.end_time:%Y-%m-%d}" if freq == "W" else str(k),
+                             kpi.label: float(v)} for k, v in series.items()],
+                           x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
+                           source="kpi")
+            _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date,
+                 kpi.label, "sum" if kpi.den is None else "none", len(df))
+            return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
+                                    chart_configs=[chart])
     value = compute_kpi(df, roles, pack, kpi.name)
     if value is None:
         return _unanswerable(intent, f"{kpi.label.lower()} can't be computed from these rows",
                              ["Ask about a longer period"])
-    answer = f"{kpi.label}{where}: {fmt(value)}."
-    # one period asked on strong pack data: against the same period a year earlier when the data
-    # has it (seasonal sales: last January, never December), unasked, so silent when it can't
+    answer = f"{kpi.label}{where}: {fmt(value)}." + carry
+    # one period asked on strong pack data (a month or longer): against the same period a year
+    # earlier when the data has it (seasonal sales: last January, never December); unasked, so
+    # silent when it can't, and never a single day (a Monday against a Sunday)
     auto = params.compare is None and bool(params.period_start or params.period_end) \
-        and defaults_pack(contract) is not None
+        and defaults_pack(contract) is not None and date is not None \
+        and _window_days(full, date, params.period_start, params.period_end) >= 28
     if (params.compare == "yoy" or auto) and date:
         prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                    weekly)
