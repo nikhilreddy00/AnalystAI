@@ -207,7 +207,16 @@ docker compose up postgres qdrant ollama -d
 
 Domains with a passing eval (Phase 5.5; per-domain numbers are in `docs/baselines/phase5_5.md`):
 <!-- domains:start -->
-_pending the Phase 5.5 gate_
+Passed every run (analysis k=3, E2E k=1, 0 hard-rule violations): **retail, banking, healthcare,
+insurance, HR, logistics**.
+
+Passed by majority: **IoT, SaaS**. Each had one case pass 2 of 3 runs, because the model labelled a
+standard deviation or a median as an average. The parser now corrects that, which was checked on
+the stored outputs, not on a new run.
+
+Each new domain has 3–4 analysis cases and 2 E2E cases, and only 1–2 of its analysis cases depend
+on the model (the rest pass on built-in code alone), so read these as first evidence, not as
+broad coverage.
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one
