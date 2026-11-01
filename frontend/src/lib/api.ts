@@ -121,10 +121,19 @@ export async function downloadLatestReportPptx(): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+/** Throws on any failure: an empty list must mean "no analyses", never "the server was down". */
 export async function listSessions(): Promise<SessionSummary[]> {
   const res = await fetch(`${API_URL}/api/sessions`, { headers: await getAuthHeaders() });
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as SessionSummary[];
+}
+
+/** null only for a 404 (deleted, or not this user's); any other failure throws. */
+async function getOrGone<T>(path: string): Promise<T | null> {
+  const res = await fetch(`${API_URL}${path}`, { headers: await getAuthHeaders() });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as T;
 }
 
 export async function getSessionResults(
@@ -160,8 +169,7 @@ export async function patchSession(sessionId: string, patch: ThreadPatch): Promi
 
 /** Every question in a thread with the report it delivered, exactly as delivered. */
 export async function getThread(sessionId: string): Promise<ThreadView | null> {
-  const res = await fetch(`${API_URL}/api/sessions/${sessionId}/thread`, { headers: await getAuthHeaders() });
-  return res.ok ? ((await res.json()) as ThreadView) : null;
+  return getOrGone<ThreadView>(`/api/sessions/${sessionId}/thread`);
 }
 
 async function download(path: string, fallback: string): Promise<void> {
@@ -185,12 +193,12 @@ export const downloadThreadMarkdown = (sessionId: string) =>
 
 export async function listDatasets(): Promise<Dataset[]> {
   const res = await fetch(`${API_URL}/api/datasets`, { headers: await getAuthHeaders() });
-  return res.ok ? ((await res.json()) as Dataset[]) : [];
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as Dataset[];
 }
 
 export async function getDataset(id: string): Promise<DatasetDetail | null> {
-  const res = await fetch(`${API_URL}/api/datasets/${id}`, { headers: await getAuthHeaders() });
-  return res.ok ? ((await res.json()) as DatasetDetail) : null;
+  return getOrGone<DatasetDetail>(`/api/datasets/${id}`);
 }
 
 export async function renameDataset(id: string, name: string): Promise<Dataset | null> {

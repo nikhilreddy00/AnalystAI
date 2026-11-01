@@ -27,13 +27,15 @@ function shape(ds: Dataset) {
 
 function DatasetList() {
   const [items, setItems] = useState<Dataset[] | null>(null);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     let live = true;
-    listDatasets().then((d) => live && setItems(d));
+    listDatasets().then((d) => live && setItems(d)).catch(() => live && setFailed(true));
     return () => {
       live = false;
     };
   }, []);
+  if (failed) return <p role="alert" className="text-sm text-destructive">Couldn&apos;t load your datasets. Reload the page to try again.</p>;
   if (items === null) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!items.length) {
     return (
@@ -72,12 +74,21 @@ function DatasetPage({ id }: { id: string }) {
   const [note, setNote] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(() => getDataset(id).then(setDs), [id]);
+  const [failed, setFailed] = useState(false);
+  // A failed read is not "deleted": keep what is shown, say so.
+  const load = useCallback(() => getDataset(id).then((d) => {
+    setDs(d);
+    setFailed(false);
+  }, () => setFailed(true)), [id]);
   useEffect(() => {
     void load();
   }, [load]);
 
-  if (ds === undefined) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (ds === undefined) {
+    return failed
+      ? <p role="alert" className="text-sm text-destructive">Couldn&apos;t load this dataset. Reload the page to try again.</p>
+      : <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
   if (ds === null) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -146,6 +157,7 @@ function DatasetPage({ id }: { id: string }) {
           <button type="button" className={`${BASE} text-destructive`} onClick={() => setConfirming(true)}>Delete</button>
         </div>
         {note && <p role="status" className="text-sm text-foreground">{note}</p>}
+        {failed && <p role="alert" className="text-sm text-destructive">Couldn&apos;t refresh this dataset. What you see may be out of date.</p>}
       </div>
 
       {ds.kind === "upload" && (

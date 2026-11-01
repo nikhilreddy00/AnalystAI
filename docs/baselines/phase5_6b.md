@@ -25,7 +25,7 @@ Every cell of the plan's state × event tables (§5: thread, dataset, snapshot, 
 - `tests/test_durable_runs.py` (the kill test now also asserts one seal and the same cost at all 11 checkpoints)
 - `frontend/e2e/workspace.spec.ts` (22 Playwright tests, with `reconnect.spec.ts`)
 
-Final counts: pytest **1001 passed** with Postgres, Playwright **22 passed**, ruff, tsc and eslint clean.
+Final counts (after the post-"done" audit): pytest **1005 passed** with Postgres (psycopg), the store tests **87 passed** on asyncpg, Playwright **29 passed**, ruff, tsc and eslint clean.
 
 ## Built
 - **Datasets** (`datasets`, `dataset_versions`):
@@ -68,6 +68,8 @@ The user asked for the count to fall at each stage and for nothing to be found a
 | Independent review #1 (backend, code only) | **14** (3 major) | Chat racing a dataset delete, a shared legacy file deleted, the sweep decrypting every checkpoint, non-UTC servers, dedup across datasets, retention clock, report segmentation. |
 | Independent review #2 (whole diff; the first review of the frontend) | **17** (3 blockers, 4 major): 15 frontend, 2 backend | **Frontend:** stream / POST epochs, a stale data source on follow-ups, failed turns shown as "Done", the sidebar refresh, accessibility. **Backend:** report segmentation (retry / resume), the legacy-path check. |
 | Confirmation review (fresh) | **5** (1 medium, 4 low): 2 of the 31 fixes incomplete, 3 new | B2 for a brand-new thread; R4's sibling route (`/dashboard/latest/report.pptx`); a sidebar blank after a failed patch; the upload sweep's cost; a stale recalled run. |
+
+| Post-"done" audit (two fresh reviewers, backend + frontend) | **10** (1 major in production, 9 minor) | **Backend:** production's asyncpg driver rejected the aware `pinned_at` / `analysis_sessions` timestamps, so **pinning failed in production** (pre-5.6b; CI ran only psycopg, which accepts them silently; CI now also runs the store tests on asyncpg); the pin upsert let a chart id move to another user; a thread deleted mid-run got its memory point back until the purge; a 50 MB upload write and a parquet read blocked the event loop. **Frontend:** a server error looked like "deleted" (thread, dataset) or "empty" (sidebar, Datasets); a failed rename/pin wasn't undone when the list couldn't be re-read; a failed delete or retry was silent (spinner forever); a remembered run hijacked "New analysis" on a dataset. Each has a test that fails without its fix (A1–A7 Playwright; 2 pytest × 2 stores; the asyncpg CI step). |
 
 **Per area the count fell:**
 - backend: 14 → 2 → 1;

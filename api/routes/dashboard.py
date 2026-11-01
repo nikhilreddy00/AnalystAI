@@ -102,7 +102,8 @@ async def pin_chart(
     # its deletion and show on the wrong dataset page.
     if not await store.get_summary(body.session_id, current_user.uid):
         raise HTTPException(status_code=404, detail="Session not found")
-    await store.pin_chart(current_user.uid, body.session_id, body.chart)
+    if not await store.pin_chart(current_user.uid, body.session_id, body.chart):
+        raise HTTPException(status_code=404, detail="Chart not found")   # another user's pin
     return {"status": "pinned"}
 
 

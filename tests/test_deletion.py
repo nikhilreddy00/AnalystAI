@@ -3,6 +3,7 @@ every store (GDPR Art. 17), in memory and on Postgres. A real delivered run (the
 overview, $0) fills every store first; each store is counted before (> 0, so the test can't pass
 on an empty store) and after (0). Purge also survives a crash after each of its steps, a memory
 store that is down, orphans left by a race, and retention."""
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +19,7 @@ from memory.retention import NOT_USER_DATA, PURGE_TABLES, sweep
 from orchestrator.runner import in_memory_deps, open_deps
 from tests.test_durable_runs import FIXTURE, _close, _sandbox, replay  # noqa: F401
 from tests.test_workspace_api import _ask, _client, _upload
-from tests.test_workspace_reports import _deliver
+from tests.test_workspace_reports import ANSWER, _deliver, _worker
 
 PG = os.environ.get("TEST_PG_URL")
 CHART = {"id": "c1", "chart_type": "BarChart", "title": "t", "data": [], "x_key": "a",
@@ -276,3 +277,32 @@ async def test_retention(env):
     after = await inventory(deps, sid=sid, run_ids=[run_id], dataset_id=up["dataset_id"],
                             files=True)
     assert after == dict.fromkeys(after, 0), after
+
+
+async def test_a_thread_deleted_mid_run_does_not_get_its_memory_point_back(env):
+    """Post-phase audit: DELETE drops the point at once, but a run still finishing (it stops only
+    at its next heartbeat) stored it again, feeding the dataset's other threads until the purge."""
+    client, deps, csv = env
+    up = (await _upload(client, csv)).json()
+    mem = deps.vector_store
+
+    async def delete_meanwhile(query, user_id, dataset, exclude_session=None, **kw):
+        await deps.session_store.tombstone(exclude_session, user_id)   # as DELETE, mid-run
+        await mem.delete_session(exclude_session)
+        return []
+
+    mem.retrieve_similar = delete_meanwhile
+    run = (await _ask(client, dataset_version_id=up["dataset_version_id"])).json()
+    stop, task = await _worker(deps)
+    try:
+        for _ in range(400):
+            r = await deps.run_store.get(run["run_id"])
+            if r.status in ("completed", "failed", "cancelled", "waiting_approval"):
+                if r.status != "waiting_approval":
+                    break
+                await client.post("/chat", json={**ANSWER, "session_id": run["session_id"]})
+            await asyncio.sleep(0.05)
+    finally:
+        stop.set()
+        await task
+    assert mem.points == {}

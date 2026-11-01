@@ -195,8 +195,8 @@ class SessionRecord(Base):
     dataset_name = Column(String, nullable=True)
     file_hash = Column(String, nullable=True, index=True)
     status = Column(String, nullable=False, default="in_progress")
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=_naive_now)
+    updated_at = Column(DateTime, default=_naive_now, onupdate=_naive_now)
     # Phase 5.6b: the workspace sidebar reads only these columns, never `data`.
     dataset_id = Column(String, nullable=True, index=True)
     dataset_version_id = Column(String, nullable=True)
@@ -214,7 +214,7 @@ class DashboardChart(Base):
     user_id = Column(String, nullable=False, index=True)
     session_id = Column(String, nullable=False)
     chart_data = Column(Text, nullable=False)    # ChartConfig as JSON
-    pinned_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    pinned_at = Column(DateTime, default=lambda: _naive_now())
 
 
 class DatasetRow(Base):
@@ -385,14 +385,18 @@ class InMemorySessionStore:
 
     # ── Dashboard chart pinning ────────────────────────────────────────────────
 
-    async def pin_chart(self, user_id: str, session_id: str, chart_data: dict) -> None:
+    async def pin_chart(self, user_id: str, session_id: str, chart_data: dict) -> bool:
+        """False (nothing changed) if the chart id is another user's pin."""
         from orchestrator.state import ChartConfig
         chart = ChartConfig.model_validate(chart_data)
+        if self._charts.get(chart.id, {}).get("user_id", user_id) != user_id:
+            return False
         self._charts[chart.id] = {
             "user_id": user_id,
             "session_id": session_id,
             "chart": chart.model_dump(),
         }
+        return True
 
     async def get_dashboard(self, user_id: str,
                             session_ids: set[str] | None = None) -> list[dict]:
@@ -473,7 +477,7 @@ class InMemorySessionStore:
                  and self._datasets[did]["name"].lower() == name.lower()
                  and (latest := self._dataset(did).latest)
                  and _same_columns(latest.columns, columns)), None)
-            path = write_file()
+            path = await asyncio.to_thread(write_file)   # up to 50 MB: off the event loop
             status = "new_version" if target else "new_dataset"
             did = target or self._new_dataset(user_id, name, "upload")
             v = self._add_version(did, content_hash, path, rows, columns, user_id)
@@ -764,17 +768,20 @@ class SessionStore:
 
     # ── Dashboard chart pinning ────────────────────────────────────────────────
 
-    async def pin_chart(self, user_id: str, session_id: str, chart_data: dict) -> None:
+    async def pin_chart(self, user_id: str, session_id: str, chart_data: dict) -> bool:
+        """False (nothing changed) if the chart id is another user's pin."""
         from orchestrator.state import ChartConfig
         chart = ChartConfig.model_validate(chart_data)
         async with self._session_factory() as db:
             # BUG-28: Upsert to avoid duplicate primary key errors when re-pinning
             existing = await db.get(DashboardChart, chart.id)
+            if existing and existing.user_id != user_id:
+                return False
             if existing:
                 existing.chart_data = chart.model_dump_json()
                 existing.user_id = user_id
                 existing.session_id = session_id
-                existing.pinned_at = datetime.now(timezone.utc)
+                existing.pinned_at = _naive_now()
             else:
                 db.add(DashboardChart(
                     id=chart.id,
@@ -783,6 +790,7 @@ class SessionStore:
                     chart_data=chart.model_dump_json(),
                 ))
             await db.commit()
+            return True
 
     async def get_dashboard(self, user_id: str,
                             session_ids: set[str] | None = None) -> list[dict]:
@@ -870,7 +878,7 @@ class SessionStore:
             target = by_id.get(dataset_id) if dataset_id else next(
                 (d for d in live if d.kind == "upload" and d.name.lower() == name.lower()
                  and d.latest and _same_columns(d.latest.columns, columns)), None)
-            path = write_file()
+            path = await asyncio.to_thread(write_file)   # up to 50 MB: off the event loop
             try:
                 if target is None:
                     target = Dataset(id=str(uuid.uuid4()), user_id=user_id, name=name,

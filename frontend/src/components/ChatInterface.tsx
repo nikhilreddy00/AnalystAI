@@ -167,14 +167,14 @@ export default function ChatInterface() {
     hydrateFromSnapshot,
     resetWorkspace,
   } = useAnalysis();
-  const { sessions, loading: sessionsLoading, refresh: refreshSessions, deleteSession, updateSession } = useSessions();
+  const { sessions, loading: sessionsLoading, failed: sessionsFailed, refresh: refreshSessions, deleteSession, updateSession } = useSessions();
   const params = useSearchParams();
   const threadParam = params.get("t");
   const datasetParam = params.get("dataset");
   // The thread in memory: the URL loads a thread only when it names another one.
   const loaded = useRef<string | null>(null);
   const [threadDataset, setThreadDataset] = useState<string | null>(null);
-  const [missing, setMissing] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);   // "that analysis is gone", a failed load or delete
   const [upload, setUpload] = useState<UploadResponse | null>(null);
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
 
@@ -206,7 +206,8 @@ export default function ChatInterface() {
   // A tab closed mid-run and reopened on plain /chat: open that run's thread (all of it).
   useEffect(() => {
     const runId = recalledRun();
-    if (!runId || new URLSearchParams(window.location.search).has("t")) return;
+    const q = new URLSearchParams(window.location.search);
+    if (!runId || q.has("t") || q.has("dataset")) return;
     let live = true;
     void getRun(runId).then((r) => {
       if (!r) forgetRun();   // purged: stop asking for it on every visit
@@ -230,16 +231,27 @@ export default function ChatInterface() {
   const openThread = useCallback(async (id: string) => {
     detach();   // the click wins over a stream or a POST still answering for the old screen
     loaded.current = id;
-    setMissing(false);
+    setNotice(null);
     setUpload(null);
     setSource(null);   // a reopened thread has its data; an earlier upload is not its
-    const view = await getThread(id);
+    let view;
+    try {
+      view = await getThread(id);
+    } catch {
+      // The server is down, not the thread gone: keep the link, so a retry (or a reload) opens it.
+      if (loaded.current !== id) return;
+      loaded.current = null;
+      resetWorkspace();
+      setConnected(false);
+      setNotice("That analysis couldn't be loaded. Check your connection and try again.");
+      return;
+    }
     if (loaded.current !== id) return;   // another thread was opened meanwhile
     if (!view) {
       loaded.current = null;
       resetWorkspace();
       setConnected(false);
-      setMissing(true);
+      setNotice("That analysis no longer exists. It may have been deleted.");
       setUrl("/chat");
       return;
     }
@@ -274,10 +286,13 @@ export default function ChatInterface() {
     if (!datasetParam) return;
     detach();
     let live = true;
-    void getDataset(datasetParam).then((ds) => {
+    void getDataset(datasetParam).catch(() => undefined).then((ds) => {
       if (!live) return;
       setUrl("/chat");
-      if (!ds) return;
+      if (!ds) {
+        setNotice(ds === null ? "That dataset no longer exists." : "That dataset couldn't be loaded. Try again.");
+        return;
+      }
       loaded.current = null;
       resetWorkspace();
       setSource({ dataset_id: ds.id, dataset_name: ds.name });
@@ -327,6 +342,10 @@ export default function ChatInterface() {
       setPane("report");
       return;
     }
+    if (id === threadParam) {   // the URL already names it (its load failed): open it again
+      void openThread(id);
+      return;
+    }
     setUrl(`/chat?t=${id}`, true);
   };
 
@@ -339,7 +358,7 @@ export default function ChatInterface() {
     setSelectedIdx(null);
     setViewingHistory(false);
     setUpload(null);
-    setMissing(false);
+    setNotice(null);
     setPane("report");
   }
 
@@ -359,7 +378,7 @@ export default function ChatInterface() {
     setUpload(filed ?? null);
     setConnected(true);
     setViewingHistory(false);
-    setMissing(false);
+    setNotice(null);
     setPane("chat");
     setUrl("/chat");
   };
@@ -375,7 +394,8 @@ export default function ChatInterface() {
 
   const handleDeleteSession = async (id: string) => {
     const ok = await deleteSession(id);
-    if (ok && (sessionId === id || loaded.current === id)) handleNewAnalysis();
+    if (!ok) setNotice("That analysis couldn't be deleted. Try again.");
+    else if (sessionId === id || loaded.current === id) handleNewAnalysis();
   };
 
   /** "Re-run on current data": the same question on the dataset's newest version, as a new
@@ -395,10 +415,10 @@ export default function ChatInterface() {
     writeCollapsed(!collapsed);
   };
 
-  /** null: deleted; undefined: not known yet (the list is loading). */
+  /** null: deleted; undefined: not known (the list is loading, or could not be read). */
   const titleFor = (sid: string) => {
     const s = sessions.find((x) => x.session_id === sid);
-    return s ? titleOf(s) : sessionsLoading ? undefined : null;
+    return s ? titleOf(s) : sessionsLoading || sessionsFailed ? undefined : null;
   };
 
   const sidebar = (
@@ -406,6 +426,8 @@ export default function ChatInterface() {
       sessions={sessions}
       activeSessionId={sessionId ?? threadParam}
       loading={sessionsLoading}
+      failed={sessionsFailed}
+      onRetry={() => void refreshSessions()}
       onLoadSession={handleLoadSession}
       onDeleteSession={(id) => void handleDeleteSession(id)}
       onUpdateSession={(id, patch) => void updateSession(id, patch)}
@@ -504,9 +526,9 @@ export default function ChatInterface() {
           </div>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
-            {missing && (
+            {notice && (
               <p role="status" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
-                That analysis no longer exists. It may have been deleted.
+                {notice}
               </p>
             )}
             {upload && messages.length === 0 && <UploadNotice upload={upload} onSplit={() => void handleSplit()} />}

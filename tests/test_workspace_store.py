@@ -262,3 +262,17 @@ async def test_purge_never_deletes_a_file_outside_the_users_uploads(store, uploa
     await store.tombstone_dataset(ds.id, "u1")
     assert await store.purge_dataset(ds.id) is True
     assert outside.exists()
+
+
+async def test_a_chart_id_pinned_by_another_user_is_not_taken_over(store):
+    """Post-phase audit: the pin upsert keyed by chart id alone reassigned u1's pin to u2."""
+    from orchestrator.state import ChartConfig, ChartType
+    await store.create(_session(), title="t")
+    await store.create(_session("s2", "u2"), title="t")
+    chart = ChartConfig(id="c1", chart_type=ChartType.BAR, title="c", x_key="a", y_keys=["b"],
+                        data=[], source_finding="f")
+    assert await store.pin_chart("u1", "s1", chart.model_dump()) is True
+    assert await store.pin_chart("u2", "s2", chart.model_dump()) is False
+    assert [c["id"] for c in await store.get_dashboard("u1")] == ["c1"]
+    assert await store.get_dashboard("u2") == []
+    assert await store.pin_chart("u1", "s1", chart.model_dump()) is True   # re-pin: still yours

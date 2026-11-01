@@ -339,7 +339,15 @@ export function useAnalysis() {
     setIsLoading(true);
     setAgentEvents([]);
     const sentIn = epoch.current;
-    const res = await fetch(`${API_URL}/runs/${runId}/retry`, { method: "POST", headers: await getAuthHeaders() });
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}/runs/${runId}/retry`, { method: "POST", headers: await getAuthHeaders() });
+    } catch {
+      if (epoch.current !== sentIn) return;
+      fail("Error: couldn't reach the server. Try again.");
+      setIsLoading(false);
+      return;
+    }
     if (epoch.current !== sentIn) return;
     if (!res.ok) {
       const detail = (await res.json().catch(() => null))?.detail;

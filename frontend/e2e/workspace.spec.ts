@@ -357,3 +357,90 @@ test("plan §5: a 120-character title at 390 px, and every thread archived", asy
   await expect(drawer.getByText("No analyses yet")).toHaveCount(0);   // archived, not gone
   await noSideScroll(page);
 });
+
+// Post-phase audit: a server error is never shown as "deleted" or "empty", and nothing fails silently.
+const fail500 = (route: import("@playwright/test").Route) =>
+  route.fulfill({ status: 500, contentType: "application/json", body: '{"detail":"boom"}' });
+
+test("A1: a failed thread load keeps the link and opens on a retry, never 'no longer exists'", async ({ page }) => {
+  await page.route("**/api/sessions/ui-check/thread", fail500);
+  await page.goto("/chat?t=ui-check");
+  await expect(page.getByText("That analysis couldn't be loaded")).toBeVisible();
+  await expect(page.getByText("no longer exists")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/chat\?t=ui-check$/);
+  await page.unroute("**/api/sessions/ui-check/thread");
+  const side = page.getByRole("complementary", { name: "Analyses sidebar" });
+  await side.getByTestId("thread-row").first().getByRole("button").first().click();
+  await expect(page.getByText(SUMMARY).first()).toBeVisible({ timeout: 30_000 });
+});
+
+test("A2: a failed list says so with a retry, never 'No analyses yet'", async ({ page }) => {
+  await page.route("**/api/sessions", fail500);
+  await page.goto("/chat");
+  const side = page.getByRole("complementary", { name: "Analyses sidebar" });
+  await expect(side.getByText("Couldn't load your analyses")).toBeVisible();
+  await expect(side.getByText("No analyses yet")).toHaveCount(0);
+  await page.unroute("**/api/sessions");
+  await side.getByRole("button", { name: "Retry" }).click();
+  await expect(side.getByTestId("thread-row")).toHaveCount(1);
+  await expect(side.getByText("Couldn't load your analyses")).toHaveCount(0);
+});
+
+test("A3: a pin the server never saved is undone, even when the list can't be re-read", async ({ page }) => {
+  await page.goto("/chat");
+  const side = page.getByRole("complementary", { name: "Analyses sidebar" });
+  await expect(side.getByTestId("thread-row")).toHaveCount(1);
+  await page.route("**/api/sessions**", (r) => r.abort());
+  await side.getByTestId("thread-row").first().getByRole("button", { name: /^Actions for/ }).click();
+  await page.getByRole("menuitem", { name: "Pin" }).click();
+  await expect(side.getByRole("heading", { name: "Pinned" })).toHaveCount(0);
+  await expect(side.getByTestId("thread-row")).toHaveCount(1);
+});
+
+test("A4: a failed delete says so and keeps the thread", async ({ page }) => {
+  await page.goto("/chat");
+  const side = page.getByRole("complementary", { name: "Analyses sidebar" });
+  await expect(side.getByTestId("thread-row")).toHaveCount(1);
+  await page.route("**/api/sessions/ui-check", (r) => r.request().method() === "DELETE" ? fail500(r) : r.continue());
+  await side.getByTestId("thread-row").first().getByRole("button", { name: /^Actions for/ }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("dialog", { name: "Delete this analysis?" }).getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("That analysis couldn't be deleted")).toBeVisible();
+  await expect(side.getByTestId("thread-row")).toHaveCount(1);
+});
+
+test("A5: 'New analysis' on a dataset wins over a remembered run", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("analystai:activeRun", "run-1"));
+  await page.goto("/chat?dataset=ds-1");
+  await expect(page.getByText("What would you like to know?")).toBeVisible();
+  await page.waitForTimeout(1000);   // getRun(run-1) has answered by now
+  await expect(page).toHaveURL(/\/chat$/);
+  await expect(page.getByText(SUMMARY)).toHaveCount(0);
+});
+
+test("A6: the Datasets page says when it couldn't load, never 'No datasets yet'", async ({ page }) => {
+  await page.route("**/api/datasets", fail500);
+  await page.goto("/datasets");
+  await expect(page.getByText("Couldn't load your datasets")).toBeVisible();
+  await expect(page.getByText("No datasets yet")).toHaveCount(0);
+});
+
+test("A7: a retry that can't reach the server stops the spinner and says so", async ({ page }) => {
+  await page.route(`${API}/api/sessions/ui-check/thread`, async (route) => {
+    const body = await (await route.fetch()).json();
+    const t = body.turns[0];
+    body.turns = [{ ...t, status: "failed", error: "The insight step failed.",
+      report: t.report.filter((e: { type: string }) => ["briefing", "evidence", "charts"].includes(e.type)) }];
+    await route.fulfill({ json: body });
+  });
+  await page.route(`${API}/runs/run-1`, (r) => r.fulfill({ json: {
+    run_id: "run-1", session_id: "ui-check", status: "failed", error: "The insight step failed." } }));
+  await page.route("**/runs/run-1/retry", (r) => r.abort());
+  await page.goto("/chat?t=ui-check");
+  const chat = page.getByRole("region", { name: "Chat" });
+  await expect(chat.getByRole("button", { name: "Retry from where it stopped" })).toBeVisible({ timeout: 30_000 });
+  await chat.getByRole("button", { name: "Retry from where it stopped" }).click();
+  await expect(chat.getByText("couldn't reach the server")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Ask a question about your data")).toBeEnabled();
+});

@@ -565,8 +565,13 @@ async def quality_check_node(state: AgentState) -> dict:
         session.add_message(MessageRole.ASSISTANT, report.executive_summary)
         session.iteration += 1
 
-        vs = _env().vector_store
-        if vs and session.task_plan:
+        env = _env()
+        vs = env.vector_store
+        # A thread deleted mid-run: its memory point was dropped at once and must not come back
+        # (to feed the dataset's other threads) before the purge removes it again.
+        deleted = env.session_store is not None and not await env.session_store.get_summary(
+            session.session_id, session.user_id)
+        if vs and session.task_plan and not deleted:
             try:
                 await vs.store_insight(
                     session_id=session.session_id,

@@ -168,7 +168,7 @@ async def chat(
         if not (src.dataset_id and src.dataset_id == session.dataset_id):
             raise HTTPException(status_code=409, detail=OTHER_DATA)
         # The conversation still quotes the old data: its PII values guard every later run.
-        session.prior_pii = sorted(set(session.prior_pii) | _last_turn_pii(session))
+        session.prior_pii = sorted(set(session.prior_pii) | await asyncio.to_thread(_last_turn_pii, session))
         session.connector_config = src.config
         session.dataset_version_id, session.file_hash = src.version_id, src.file_hash
         session.overview_done = False

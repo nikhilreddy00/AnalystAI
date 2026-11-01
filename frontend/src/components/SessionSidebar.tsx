@@ -14,6 +14,9 @@ interface Props {
   sessions: SessionSummary[];
   activeSessionId: string | null;
   loading: boolean;
+  /** The last list read failed (the list shown may be old or empty). */
+  failed?: boolean;
+  onRetry?: () => void;
   onLoadSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onUpdateSession: (id: string, patch: ThreadPatch) => void;
@@ -217,6 +220,8 @@ export function SessionSidebar({
   sessions,
   activeSessionId,
   loading,
+  failed = false,
+  onRetry,
   onLoadSession,
   onDeleteSession,
   onUpdateSession,
@@ -271,7 +276,13 @@ export function SessionSidebar({
       </label>
 
       {loading && sessions.length === 0 && <p className="px-1 text-xs text-muted-foreground">Loading…</p>}
-      {!loading && sessions.length === 0 && (
+      {failed && (
+        <p role="alert" className="px-1 text-xs text-destructive">
+          Couldn&apos;t load your analyses.{" "}
+          <button type="button" onClick={onRetry} className="underline hover:text-foreground">Retry</button>
+        </p>
+      )}
+      {!loading && !failed && sessions.length === 0 && (
         <p className="px-1 text-xs text-muted-foreground">No analyses yet. Connect data to start one.</p>
       )}
       {sessions.length > 0 && groups.any === 0 && (
