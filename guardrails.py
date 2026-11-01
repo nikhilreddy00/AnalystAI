@@ -883,9 +883,17 @@ def _is_measure(values: Iterable[Any]) -> bool:
 
 
 # Named as the date itself (`dob`, `birth_date`), not something measured at birth (`birth_order`).
-_DATE_NAME_RE = re.compile(r"(?:^|_)(?:dob|dod|bday|birth_?(?:date|dt|day|year|yr)|born\w*|"
+_DATE_NAME_RE = re.compile(r"(?:^|_)(?:dob|dod|bday|birth(?:_?(?:date|dt|day|year|yr))?$|"
+                           r"birth_?(?:date|dt|day|year|yr)|born\w*|"
                            r"(?:year|date|day)_of_(?:birth|death)|death_?(?:date|dt|day)|"
                            r"deceased_?(?:date|dt|on)|date_?(?:born|deceased))(?:$|_)", re.I)
+def _serial_dates(values: Iterable[Any]) -> bool:
+    """Whole numbers that read as spreadsheet dates (days since 1900: 1919–2028)."""
+    nums = [v for v in values if isinstance(v, numbers.Number) and not isinstance(v, bool)
+            and not (isinstance(v, float) and math.isnan(v))]
+    return bool(nums) and all(float(v).is_integer() and 7_000 <= v <= 47_000 for v in nums)
+
+
 _DEATH_NAME_RE = re.compile(r"(?:^|_)(?:death|deceased|died|dod)(?:$|_)", re.I)
 _DATE_TEXT_RE = re.compile(r"^\s*(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})")
 
@@ -931,8 +939,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
-        if kind == "dob" and _is_measure(values) and (_MEASURE_NAME_RE.search(norm)
-                                                      or not _DATE_NAME_RE.search(norm)):
+        if kind == "dob" and _is_measure(values) and (_MEASURE_NAME_RE.search(norm) or not (
+                _DATE_NAME_RE.search(norm) or _serial_dates(values))):
             return None   # births = 120, birth_order = 2, birth_length_cm = 50.5; a `dob` of
             # 25204 (a spreadsheet date) stays a date
         return kind, f"the column name '{name}' marks personal data"
@@ -1204,7 +1212,7 @@ def delimit_untrusted(text: str) -> str:
     return f"<untrusted_data>\n{safe}\n</untrusted_data>"
 
 
-def person_shaped(values: Iterable[Any], last_first: bool = False,
+def person_shaped(values: Iterable[Any], last_first: bool = True,
                   lowercase: bool = False) -> float:
     """Share of distinct text values that read as a person's name ("Ana Ito"), not an
     organisation or a department ("Critical Care", "Blue Cross Blue Shield"). `last_first`:

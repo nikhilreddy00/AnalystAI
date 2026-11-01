@@ -2383,8 +2383,9 @@ def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
     seen: set[tuple] = set()
     for s in sorted(f.segments, key=lambda s: "|" not in s.segment_column):   # stratified first
         parts = [c for c in s.segment_column.split("|") if c]
-        if not parts or any(c not in cols for c in parts) or s.metric_column not in cols:
-            continue
+        if not parts or any(c not in cols for c in parts) or s.metric_column not in cols \
+                or s.aggregation == "ratio":   # ponytail: a derived rate can't be re-aggregated
+            continue                           # from the frame; chart its results when needed
         x, sp = (parts[1], parts[0]) if len(parts) >= 2 else (parts[0], None)
         seen.add((parts[0], s.metric_column))
         agg = effective_agg(ctx.contract, s.metric_column, s.aggregation) or "mean"   # a level: current

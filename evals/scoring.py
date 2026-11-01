@@ -72,6 +72,30 @@ def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
     return df.groupby(by)[metric].agg(agg)
 
 
+def _populations(df: pd.DataFrame) -> list[pd.DataFrame]:
+    """The rows a group value can be computed over. Snapshot data (a semantic-layer level:
+    seats, balances) has two right readings: every snapshot row, or each entity's current
+    snapshot ("seats per account" — production's latest_rows, which the agent is told about)."""
+    from agents.ingestion_agent import build_contract
+    from agents.utils import latest_rows
+    from orchestrator.state import ConnectorType
+    contract = build_contract(df, ConnectorType.CSV, {})
+    level = next((c.name for c in contract.columns if c.aggregation in ("last", "first")), None)
+    return [df] if level is None else [df, latest_rows(df, level, contract)]
+
+
+def _mismatch(seg, want: pd.Series, agg: str, scales: tuple, rel_tol: float) -> str | None:
+    """Why the segment's values don't match `want`, or None if every group does."""
+    want.index = want.index.astype(str)
+    for row in seg.results:
+        name = str(row.get("name"))
+        if name not in want.index:
+            return f"invented group '{name}' in {seg.metric_column} by {seg.segment_column}"
+        if not any(_close(row.get("value"), want[name] * sc, rel_tol) for sc in scales):
+            return f"{agg} {seg.metric_column}[{name}]: got {row.get('value')}, want {want[name]:.4f}"
+    return None
+
+
 def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, metric: str,
                         rel_tol: float = 0.01, scales: tuple = (1, 100),
                         aggregation: str | None = None) -> tuple[bool, str]:
@@ -84,18 +108,15 @@ def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, met
     if not matches:
         return False, f"no {aggregation or ''} segment result for {metric} by {segment}"
     for seg in matches:
-        agg = seg.aggregation if seg.aggregation in (*_AGGS, "last", "first") else "mean"
-        want = _grouped(df, segment, metric, agg)
-        want.index = want.index.astype(str)
-        for row in seg.results:
-            name = str(row.get("name"))
-            if name not in want.index:
-                return False, f"invented group '{name}' in {metric} by {segment}"
-            if not any(_close(row.get("value"), want[name] * sc, rel_tol) for sc in
-                       (scales if _is_rate(df[metric]) else (1,))):
-                return False, f"{agg} {metric}[{name}]: got {row.get('value')}, want {want[name]:.4f}"
         if not seg.results:
             return False, f"empty results for {metric} by {segment}"
+        agg = seg.aggregation if seg.aggregation in (*_AGGS, "last", "first") else "mean"
+        scs = scales if _is_rate(df[metric]) else (1,)
+        whys = [_mismatch(seg, _grouped(rows, segment, metric, agg), agg, scs, rel_tol)
+                for rows in _populations(df)]
+        why = None if None in whys else whys[0]
+        if why:
+            return False, why
     return True, "ok"
 
 
@@ -245,6 +266,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                 if stat in stats:
                     want = float(s.count() if stat == "count" else getattr(s, stat)())
                     claims.append((f"{col}.{stat}", not _close(stats[stat], want, 0.01)))
+    pops = _populations(df) if f.segments else []
     for seg in f.segments:
         cols = _strata(seg.segment_column)
         if not set(cols) <= set(df.columns) or seg.metric_column not in numeric:
@@ -255,12 +277,17 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         if seg.aggregation not in (*_AGGS, "last", "first") or _derived_truth(seg, truth):
             continue
         agg = seg.aggregation
-        want = _grouped(df, cols, seg.metric_column, agg)
-        want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in want.index]
+        wants = []
+        for rows in pops:
+            want = _grouped(rows, cols, seg.metric_column, agg)
+            want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
+                          for i in want.index]
+            wants.append(want)
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
         for row in seg.results:
             name = "|".join(_strata(str(row.get("name")))) if len(cols) > 1 else str(row.get("name"))
-            ok = name in want.index and any(_close(row.get("value"), want[name] * k, 0.01) for k in sc)
+            ok = any(name in w.index and any(_close(row.get("value"), w[name] * k, 0.01) for k in sc)
+                     for w in wants)
             claims.append((f"{agg} {seg.metric_column}[{name}]", not ok))
     for a, b in truth.get("null_pairs", []):
         for t in f.statistical_tests:

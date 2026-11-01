@@ -312,8 +312,9 @@ class TrendResult(BaseModel):
 class SegmentResult(BaseModel):
     segment_column: str
     metric_column: str
-    aggregation: str                       # sum | mean | count | pct
+    aggregation: str                       # sum | mean | count | pct | ratio (a derived rate)
     results: list[dict[str, Any]]         # [{segment: "West", value: 42000}, ...]
+    label: str | None = None              # a ratio's name ("loss_ratio"); metric_column is its source
 
 
 class KPIRecipe(BaseModel):

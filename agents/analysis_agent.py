@@ -57,7 +57,7 @@ from orchestrator.state import (
 )
 from sandbox.executor import run_code
 
-PROMPT_VERSION = "v7"
+PROMPT_VERSION = "v8"
 
 ANALYSIS_CARD = AgentCard(
     name="analysis",
@@ -879,9 +879,11 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                         t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
+        what = (f"{s.label or 'ratio'} (from {s.metric_column})" if s.aggregation == "ratio"
+                else f"{s.aggregation} {s.metric_column}")
         out.append(item("segment", segment_id(s.segment_column, s.metric_column, s.aggregation),
-                        f"{s.aggregation} {s.metric_column} by {s.segment_column} "
-                        f"({len(s.results)} groups)", cols, s.model_dump()))
+                        f"{what} by {s.segment_column} ({len(s.results)} groups)", cols,
+                        s.model_dump(exclude={"label"} if s.label is None else None)))
     by_col: dict[str, list] = {}
     for a in f.anomalies:
         by_col.setdefault(a.column, []).append(a)
@@ -924,6 +926,8 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
             segment_column=s.get("segment_column", ""),
             metric_column=s.get("metric_column", ""),
             aggregation=s.get("aggregation", "mean"),
+            label=s["label"] if isinstance(s.get("label"), str)   # a name, never prose
+            and re.fullmatch(r"[a-z][a-z0-9_]{0,40}", s["label"]) else None,
             results=s.get("results", []),
         )
         for s in raw.get("segments", [])

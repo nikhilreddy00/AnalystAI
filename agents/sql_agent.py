@@ -170,7 +170,7 @@ def _pii_columns(res: QueryResult) -> set[str]:
 
 
 def _patient_rows(res: QueryResult) -> bool:
-    return health_signal(res.columns) or any(is_phi_identifier(c) for c in res.columns)
+    return health_signal(res.columns, weak_ok=True) or any(is_phi_identifier(c) for c in res.columns)
 
 
 def _non_category_text(res: QueryResult) -> set[str]:
