@@ -1,0 +1,23 @@
+id: saas-1
+domain: saas
+category: trend
+dataset:
+  name: saas_accounts
+  seed: 1
+question: How did MRR change last month?
+task:
+  analysis_types:
+  - trend
+  target_metrics:
+  - mrr
+  segments: []
+checks:
+- kind: trend
+  planted: true
+  column: mrr
+  truth_key: mrr_mom_pct
+  abs_tol: 1.0
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

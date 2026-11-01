@@ -796,6 +796,10 @@ _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 _IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)"
                       r"(?![\d.])")
 MASK = "[REDACTED]"
+# PHI mode (Phase 5.5): a category with fewer than SMALL_CELL rows is pooled under POOLED_LABEL
+# (the CMS cell-size rule), so no reported group can single out a few patients.
+SMALL_CELL = 11
+POOLED_LABEL = "Other (fewer than 11 each)"
 # Never searched for or tokenized as PII values: "May" or "June" in a first-name column would
 # corrupt every date in a prompt.
 CALENDAR_WORDS = {"January", "February", "March", "April", "May", "June", "July", "August",
@@ -894,6 +898,95 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
         kind = max(hits, key=hits.get)
         return kind, f"{sum(hits.values())} of {len(vals)} sampled values contain personal data"
     return None
+
+
+# ── PHI (Phase 5.5): patient records, pseudonyms, Safe Harbor generalisations ──────────────────
+
+_PHI_ID_RE = re.compile(r"(?:^|_)(?:mrn|medical_?record(?:_?(?:no|nr|num|number|id))?|"
+                        r"patient_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+_DX_NAME_RE = re.compile(r"(?:^|_)(?:icd(?:_?10)?|diagnos[ie]s|diag|dx)(?:_?codes?)?(?:$|_)", re.I)
+_ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
+# HIPAA Safe Harbor: 3-digit ZIPs covering ≤ 20,000 people (2000 census) become 000.
+RESTRICTED_ZIP3 = frozenset({"036", "059", "063", "102", "203", "556", "692", "790", "821", "823",
+                             "830", "831", "878", "879", "884", "890", "893"})
+_ZIP_NAME_RE = re.compile(r"(?:^|_)(?:zip|zipcode|postal|postcode)(?:_?code)?$", re.I)
+_AGE_NAME_RE = re.compile(r"(?:^|_)age(?:_?(?:years|yrs|at_\w+))?$", re.I)
+AGE_CAP = 90
+
+
+def is_phi_identifier(name: str) -> bool:
+    """A medical record number or patient id: identifies a patient (Safe Harbor #8)."""
+    return bool(_PHI_ID_RE.search(_norm_name(name)))
+
+
+def is_diagnosis_column(name: str, values: Iterable[Any]) -> bool:
+    """A diagnosis-code column: named like one and most values are ICD-10 shaped."""
+    if not _DX_NAME_RE.search(_norm_name(name)):
+        return False
+    text = [str(v).strip().upper() for v in values if isinstance(v, str) and v.strip()]
+    return bool(text) and sum(bool(_ICD10_RE.match(t)) for t in text) >= 0.5 * len(text)
+
+
+def is_zip_column(name: str) -> bool:
+    return bool(_ZIP_NAME_RE.search(_norm_name(name)))
+
+
+def is_age_column(name: str) -> bool:
+    return bool(_AGE_NAME_RE.search(_norm_name(name)))
+
+
+def pseudonym_key() -> bytes:
+    """The key for one-way pseudonyms, derived from ENCRYPTION_KEY (never the key itself, which
+    also encrypts checkpoints). Empty key = anyone could recompute the pseudonyms: refuse."""
+    import hashlib
+    import hmac
+
+    from api.config import settings
+    if not settings.encryption_key:
+        raise ValueError("ENCRYPTION_KEY is not set: pseudonyms would be reversible")
+    return hmac.new(settings.encryption_key.encode(), b"phi-pseudonym-v1", hashlib.sha256).digest()
+
+
+def _canonical_value(value: Any) -> str:
+    if isinstance(value, numbers.Number) and not isinstance(value, bool) and float(value).is_integer():
+        return str(int(value))
+    return str(value).strip()
+
+
+def pseudonym(value: Any, key: bytes) -> str:
+    """One-way, keyed, stable: 'ID-' + 64 bits of HMAC-SHA256 over the canonical value (1001,
+    1001.0 and ' 1001 ' are one value). E2B and the LLM can't reverse it; a resume gets the same."""
+    import hashlib
+    import hmac
+    return "ID-" + hmac.new(key, _canonical_value(value).encode(), hashlib.sha256).hexdigest()[:16]
+
+
+def pseudonymize_columns(df, columns: Iterable[str], key: bytes):
+    """A copy of `df` with every value of `columns` replaced by its pseudonym (missing stays
+    missing). Two values with one pseudonym would merge two people: that fails closed."""
+    import pandas as pd
+    out = df.copy()
+    for col in columns:
+        if col not in out.columns:
+            continue
+        values = out[col].dropna().map(_canonical_value).unique()
+        mapping = {v: pseudonym(v, key) for v in values}
+        if len(set(mapping.values())) != len(mapping):
+            raise ValueError(f"pseudonym collision in '{col}'")
+        out[col] = out[col].map(lambda v: v if pd.isna(v) else mapping[_canonical_value(v)])
+    return out
+
+
+def zip3(value: Any) -> Any:
+    """Safe Harbor ZIP: the first 3 digits (zero-padded: 2139 → '021'), '000' for the restricted
+    areas. Missing or digit-less stays as it is."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return value
+    digits = re.sub(r"\D", "", _canonical_value(value))
+    if not digits:
+        return value
+    z = digits.zfill(5)[:3] if len(digits) <= 5 else digits[:3]
+    return "000" if z in RESTRICTED_ZIP3 else z
 
 
 def pii_strings(value: Any) -> list[str]:

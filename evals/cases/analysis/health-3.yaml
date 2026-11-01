@@ -1,0 +1,22 @@
+id: health-3
+domain: healthcare
+category: segment
+dataset:
+  name: encounters
+  seed: 3
+question: How does cost differ by department?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - cost
+  segments:
+  - department
+checks:
+- kind: segment_value
+  segment: department
+  metric: cost
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

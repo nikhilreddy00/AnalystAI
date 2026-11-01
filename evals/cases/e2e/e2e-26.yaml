@@ -1,0 +1,15 @@
+id: e2e-26
+domain: insurance
+dataset:
+  name: claims
+  seed: 1
+question: What are the total claims for each line of business?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: total_claims_by_line.auto
+  rel_tol: 0.01
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

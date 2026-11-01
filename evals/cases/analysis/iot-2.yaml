@@ -1,0 +1,23 @@
+id: iot-2
+domain: iot
+category: segment
+dataset:
+  name: sensor_readings
+  seed: 2
+question: How does vibration differ by production line?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - vibration
+  segments:
+  - line
+checks:
+- kind: segment_value
+  planted: true
+  segment: line
+  metric: vibration
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

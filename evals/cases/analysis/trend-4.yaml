@@ -1,4 +1,5 @@
 id: trend-4
+domain: retail
 category: trend
 dataset:
   name: sales

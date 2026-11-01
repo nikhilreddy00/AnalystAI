@@ -1,0 +1,23 @@
+id: e2e-27
+domain: hr
+dataset:
+  name: employees
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+checks:
+- kind: findings
+  check: eda_stat
+  column: salary
+  stats:
+  - mean
+  - median
+  rel_tol: 0.02
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence

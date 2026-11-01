@@ -1,4 +1,5 @@
 id: e2e-16
+domain: retail
 dataset:
   name: sales
   seed: 2

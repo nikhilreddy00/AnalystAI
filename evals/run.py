@@ -16,6 +16,8 @@ import copy
 from contextvars import ContextVar
 import io
 import json
+import math
+import numbers
 import re
 import statistics
 import subprocess
@@ -30,10 +32,14 @@ from scipy.stats import binomtest
 
 from api.config import settings
 from evals import cleangen, datagen
+from evals.datagen import INJECTION
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
     NUMERIC_CHECKS,
+    _INSIGHT_RULES,
+    _truth_value,
+    scale_units,
     answer_text,
     clean_cell,
     false_findings,
@@ -50,7 +56,7 @@ from evals.scoring import (
     score_intake,
     score_visualization,
 )
-from llm.client import get_client, pii_values, set_client, trace_meter
+from llm.client import get_client, pii_values, pseudonymize, set_client, trace_meter
 from orchestrator.state import (
     AnalysisFindings,
     AnalysisSession,
@@ -111,7 +117,8 @@ def score_analysis(case: dict, findings, error: str | None) -> dict:
         ok, detail = ANALYSIS_CHECKS[kind](findings, df, truth, **kwargs) if findings else (False, "no findings")
         checks.append({"kind": kind, "ok": ok, "detail": detail, "planted": spec.get("planted", False)})
     types = frozenset(case["task"].get("analysis_types", []))
-    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings, types=types))))
+    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings, types=types,
+                                                                truth=truth))))
             for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
             "false_findings": false_findings(findings, df, truth) if findings else None}
@@ -144,7 +151,8 @@ async def run_e2e_case(case: dict) -> dict:
     )
     await deps.session_store.create(session)   # as POST /chat does: save() never inserts
     sent: list[str] = []
-    LLM_REQUESTS.set(sent)   # the canary scans every request this case makes
+    LLM_REQUESTS.set(sent)   # the canary scans every request this case makes…
+    LLM_SENT.set([])         # …and what the client's guard let through
     error, approvals, seen = None, [], 0
     run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
                                          input={"message": case["question"]})
@@ -165,22 +173,36 @@ async def run_e2e_case(case: dict) -> dict:
     if approvals and approvals[-1] != "high_null" and not error:
         error = f"stopped at approval_required ({approvals[-1]})"
 
-    hits = len(leaked("\n".join(sent), e2e_pii_literals(df)))
+    literals = e2e_pii_literals(datagen.make(case["dataset"]["name"], case["dataset"]["seed"])[0], truth)
+    hits = len(leaked("\n".join(sent), literals))
+    model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
     scored = score_e2e(case, session, error)
-    return {**scored, "hard": scored["hard"] + [_canary_rule(hits)], "pii_canary_hits": hits,
+    return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals))],
+            "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
             "approvals": approvals, "output": session.model_dump(mode="json")}
 
 
-def e2e_pii_literals(df: pd.DataFrame) -> list[str]:
-    """The planted PII of a datagen table (its customer emails and names), from the generator's
-    columns, not the agent's detection."""
-    cols = [c for c in ("customer_email", "customer_name") if c in df.columns]
-    return sorted({str(v) for c in cols for v in df[c].dropna()})
+def e2e_pii_literals(df: pd.DataFrame, truth: dict | None = None) -> list[str]:
+    """The planted PII of a datagen table, from the generator's own list of PII columns (the
+    sales tables: customer emails and names), not the agent's detection."""
+    listed = (truth or {}).get("pii_columns")
+    if listed is not None and (missing := set(listed) - set(df.columns)):
+        raise ValueError(f"truth names PII columns the table lacks: {sorted(missing)}")
+    cols = listed if listed is not None else [c for c in ("customer_email", "customer_name")
+                                              if c in df.columns]
+    extra = list((truth or {}).get("pii_extra_literals", []))
+    return sorted({str(v) for c in cols for v in df[c].dropna()} | set(extra))
 
 
-def _canary_rule(hits: int) -> dict:
-    return {"rule": "pii_canary", "ok": hits == 0,
-            "detail": f"{hits} planted PII values reached an LLM request" if hits else "ok"}
+def _canary_rule(hits: int, model_hits: int | None = None, planted: int | None = None) -> dict:
+    """`hits`: planted values in what the agents built; `model_hits`: in what the client sent
+    after its guard. Both must be 0. `planted=0`: nothing to find, so not a pass (n/a)."""
+    if planted == 0:
+        return {"rule": "pii_canary", "ok": True, "na": True, "detail": "n/a: no planted PII"}
+    sent = model_hits or 0
+    detail = (f"{hits} planted PII values in built requests, {sent} sent to the model"
+              if hits or sent else "ok")
+    return {"rule": "pii_canary", "ok": hits == 0 and sent == 0, "detail": detail}
 
 
 def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
@@ -190,7 +212,8 @@ def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k != "kind"}
         ok, detail = E2E_CHECKS[kind](session, df, truth, **kwargs)
         checks.append({"kind": kind, "ok": ok, "detail": detail})
-    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, session.analysis_findings, session))))
+    hard = [dict(zip(("rule", "ok", "detail"),
+                     (r, *hard_rule(r, df, session.analysis_findings, session, truth=truth))))
             for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
             "answer": answer_text(session)[:1500]}
@@ -593,6 +616,7 @@ def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> di
 
 # The text of every LLM request a run makes (system + messages), for the PII canary scan.
 LLM_REQUESTS: ContextVar[list | None] = ContextVar("llm_requests", default=None)
+LLM_SENT: ContextVar[list | None] = ContextVar("llm_sent", default=None)
 
 
 class RecordingClient:
@@ -605,6 +629,10 @@ class RecordingClient:
         if (log := LLM_REQUESTS.get()) is not None:
             log.append(json.dumps({"system": kw.get("system"), "messages": kw.get("messages")},
                                   ensure_ascii=False, default=str))
+        if (sent := LLM_SENT.get()) is not None:   # as ClaudeClient sends it: messages guarded
+            sent.append(json.dumps({"system": kw.get("system"),
+                                    "messages": pseudonymize(kw.get("messages"))[0]},
+                                   ensure_ascii=False, default=str))
         return await self.inner.complete(**kw)
 
 
@@ -810,12 +838,75 @@ async def run_sql_case(case: dict) -> dict:
             "tool_calls": answer.tool_calls if answer else []}
 
 
+def lint_case(case: dict) -> list[str]:
+    """Ways a case could pass without measuring its claim (analysis and E2E suites). A paid run
+    refuses to start on any of them; a test runs it over every committed case."""
+    problems: list[str] = []
+    checks = case.get("checks") or []
+    if not checks:
+        return ["no checks: all([]) would pass"]
+    df, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
+    if all(c["kind"] in _NEGATIVE or c.get("check") in _NEGATIVE for c in checks):
+        problems.append("only negative checks: a silent answer would pass")
+    pairs = {frozenset((c.get("a"), c.get("b"))) for c in checks if c["kind"] == "pair_reported"}
+    question_nums = [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*\.?\d*",
+                                                                  case.get("question", ""))]
+    for c in checks:
+        if c["kind"] == "correlation_absent" and frozenset((c.get("a"), c.get("b"))) not in pairs:
+            problems.append("correlation_absent without pair_reported: silence would pass")
+        if "truth_key" not in c:
+            continue
+        want = _truth_value(truth, c["truth_key"])
+        if not isinstance(want, numbers.Number) or isinstance(want, bool):
+            continue
+        pairs_ = scale_units(c.get("scales", (1,)), c.get("unit"))
+        shown = [abs(want) * sc for sc, _ in pairs_]
+        if any(math.isclose(q, v, rel_tol=0.01) for q in question_nums for v in shown):
+            problems.append(f"{c['truth_key']}: the truth appears in the question")
+        if c["kind"] in ("number_in_answer", "must_not_number") and any(
+                not u and (1 <= abs(want) * sc <= 31 or 1900 <= abs(want) * sc <= 2100)
+                for sc, u in pairs_):
+            problems.append(f"{c['truth_key']}: a truth in 1-31 or 1900-2100 needs a unit "
+                            "(days, counts and years collide)")
+    if case.get("hard_rules") and set(case["hard_rules"]) & set(_INSIGHT_RULES) and "task" in case:
+        problems.append("insight rules on an analysis case: there is no report to check")
+    if "no_injection_echo" in case.get("hard_rules", []) and "injection" not in truth and not (
+            df.astype(str).apply(lambda col: col.str.contains(INJECTION, regex=False)).any().any()):
+        problems.append("no_injection_echo on a dataset with no planted injection: it can't fail")
+    if case.get("trap"):
+        naive = [c for c in checks if c["kind"] in ("must_not_number", "must_not_match")]
+        if not naive:
+            problems.append("trap case without a negative check on the naive answer")
+        for n in (c for c in naive if c["kind"] == "must_not_number"):
+            bads = [abs(_truth_value(truth, n["truth_key"])) * sc
+                    for sc, _ in scale_units(n.get("scales", (1,)), None)]
+            for c in (c for c in checks if c["kind"] == "number_in_answer"):
+                tol = max(c.get("rel_tol", 0.02), n.get("rel_tol", 0.02))
+                wants = [abs(_truth_value(truth, c["truth_key"])) * sc
+                         for sc, _ in scale_units(c.get("scales", (1,)), None)]
+                if any(abs(b - w) <= 3 * tol * max(w, b) for b in bads for w in wants):
+                    problems.append(f"naive {n['truth_key']} within 3×rel_tol of {c['truth_key']}")
+    return problems
+
+
+_NEGATIVE = {"must_not_number", "must_not_match", "correlation_absent"}
+
+
+def passed(checks: list[dict]) -> bool:
+    """A run passes only on at least one check, all ok: `all([])` would pass a case that
+    measures nothing."""
+    return bool(checks) and all(c["ok"] for c in checks)
+
+
 def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
-    """A surfaced error or question is not a *silent* empty result."""
+    """A surfaced error or question is not a *silent* empty result, and a run that stopped with
+    an explicit error has no report to ground (its checks fail instead)."""
     if not error:
         return hard
-    return [{**h, "ok": True, "detail": "explicit error"} if h["rule"] == "non_empty_or_error" else h
-            for h in hard]
+    def exempt(h: dict) -> bool:
+        return h["rule"] == "non_empty_or_error" or (
+            h["rule"] in _INSIGHT_RULES and h["detail"] == "no insight report")
+    return [{**h, "ok": True, "detail": "explicit error"} if exempt(h) else h for h in hard]
 
 
 _budget = {"max": float("inf"), "spent": 0.0}   # --max-usd: real money, so a hard stop
@@ -857,13 +948,15 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
                   "cleaning": run_cleaning_case, "insight": run_insight_case,
                   "quality": run_quality_case, "ingestion": run_ingestion_case}[suite]
         out = await runner(case)
+        if "domain" in case:
+            out["domain"] = case["domain"]
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
         out["cost_usd"] = round(sum(r["cost_usd"] for r in calls), 5)
         out["llm_calls"] = len(calls)
         out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
         out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
-        out["passed"] = all(c["ok"] for c in out["checks"])
+        out["passed"] = passed(out["checks"])
         _budget["spent"] += out["cost_usd"]
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
@@ -894,8 +987,9 @@ def rescore(path: Path) -> Path:
                 raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
             r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
             if "pii_canary_hits" in r:   # scanned at run time: requests aren't stored
-                r["hard"].append(_canary_rule(r["pii_canary_hits"]))
-            r["passed"] = all(c["ok"] for c in r["checks"])
+                r["hard"].append(_canary_rule(r["pii_canary_hits"], r.get("pii_model_hits"),
+                                              r.get("pii_planted")))
+            r["passed"] = passed(r["checks"])
     report["summary"] = summarize(report["runs"])
     report["meta"]["rescored_from"] = report["meta"]["report"]
     report["meta"]["report"] = name = f"{report['meta']['report']}-rescored"
@@ -992,7 +1086,29 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         **_judge_quality(flat),
         **_review_quality(flat),
         **_ingestion_quality(flat),
+        **_by_domain(runs),
     }
+
+
+def _by_domain(runs: dict[str, list[dict]]) -> dict:
+    """Phase 5.5: each domain's own numbers ('passed N of M cases at k'), so a domain is called
+    supported on its cases, never on the pooled rate. Absent for reports that predate domains."""
+    domains: dict[str, dict] = {}
+    for cid, rs in runs.items():
+        if rs and "domain" in rs[0]:
+            domains.setdefault(rs[0]["domain"], {})[cid] = rs
+    if not domains:
+        return {}
+    out = {}
+    for d, sub in sorted(domains.items()):
+        flat = [r for rs in sub.values() for r in rs]
+        out[d] = {"cases": len(sub), "k_min": min(len(rs) for rs in sub.values()),
+                  "k_max": max(len(rs) for rs in sub.values()),
+                  "cases_passed_all_runs": sum(all(r["passed"] for r in rs) for rs in sub.values()),
+                  "pass_rate": round(sum(r["passed"] for r in flat) / len(flat), 4),
+                  "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
+                  **_quality(flat)}
+    return {"by_domain": out}
 
 
 def _intake_quality(flat: list[dict]) -> dict:
@@ -1361,6 +1477,8 @@ async def main() -> None:
     args = ap.parse_args()
 
     cases = load_cases(args.suite, args.only, args.exclude)
+    if args.suite in ("analysis", "e2e") and (bad := {c["id"]: p for c in cases if (p := lint_case(c))}):
+        raise SystemExit(f"cases that can't measure their claim: {bad}")
     QUALITY_CHECKS_ONLY["on"] = args.checks_only
     estimate = 0.0 if args.checks_only else estimate_usd(
         args.suite, len(cases) * args.k, Path(args.out), [c["id"] for c in cases], args.k)

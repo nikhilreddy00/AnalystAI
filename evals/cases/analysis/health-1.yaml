@@ -1,0 +1,24 @@
+id: health-1
+domain: healthcare
+category: ratio
+dataset:
+  name: encounters
+  seed: 1
+question: What is the 30-day readmission rate by department (the share of discharges
+  followed by another admission within 30 days)?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics: []
+  segments:
+  - department
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: department
+  truth_key: readmit_rate_by_dept
+  abs_tol: 0.01
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

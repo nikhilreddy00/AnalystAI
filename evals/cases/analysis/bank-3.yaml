@@ -1,0 +1,22 @@
+id: bank-3
+domain: banking
+category: anomaly
+dataset:
+  name: bank_balances
+  seed: 3
+question: Find unusual deposits.
+task:
+  analysis_types:
+  - anomaly
+  target_metrics:
+  - deposits
+  segments: []
+checks:
+- kind: anomaly_rows
+  planted: true
+  column: deposits
+  min_recall: 0.6
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

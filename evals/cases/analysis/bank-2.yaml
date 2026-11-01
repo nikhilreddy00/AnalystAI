@@ -1,0 +1,26 @@
+id: bank-2
+domain: banking
+category: segment_trend
+dataset:
+  name: bank_balances
+  seed: 2
+question: Which customer segment's balances changed most last month?
+task:
+  analysis_types:
+  - trend
+  - segmentation
+  target_metrics:
+  - balance
+  segments:
+  - segment
+checks:
+- kind: segment_trend
+  planted: true
+  column: balance
+  segment: business
+  truth_key: business_balance_mom_pct
+  abs_tol: 1.0
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

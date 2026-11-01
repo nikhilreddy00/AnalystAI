@@ -1,4 +1,5 @@
 id: aggregation-1
+domain: retail
 category: aggregation
 dataset:
   name: sales

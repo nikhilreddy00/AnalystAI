@@ -1,0 +1,18 @@
+id: e2e-34
+domain: logistics
+dataset:
+  name: shipments
+  seed: 1
+question: What share of shipments does each carrier deliver on time?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: pooled_ontime.X
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
