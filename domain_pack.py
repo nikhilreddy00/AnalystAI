@@ -140,6 +140,8 @@ class Pack(_Strict):
                 errors.append(f"{where}: invalid regex {rx!r}: {exc}")
         errors += [f"caveat {c}: no such condition (one of {CONDITIONS})" for c in self.caveats
                    if c not in CONDITIONS]
+        if "read_as_domain_weak" not in self.caveats:   # a weak match's only effect is this hedge
+            errors.append("caveats: read_as_domain_weak is required")
         names = [k.name for k in self.kpis]
         errors += [f"glossary {c}: neither a KPI, a definition nor unsupported" for c in self.glossary
                    if c not in names and c not in self.definitions and c not in self.unsupported]
@@ -422,6 +424,14 @@ def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
     return kpi is not None and side(kpi.num) and (kpi.den is None or side(kpi.den))
 
 
+def additive(pack: Pack, name: str) -> bool:
+    """A sum of rows (net sales, units): adds up over weeks. A distinct count (orders, customers)
+    does not: a month's customers are not 4 weeks of customers."""
+    kpi = pack.kpi(name)
+    return kpi.den is None and all(not t.nunique and (not t.kpi or additive(pack, t.kpi))
+                                   for alt in kpi.num for t in alt)
+
+
 def kpi_roles(pack: Pack, name: str) -> set[str]:
     """Every role a KPI can read, through the KPIs it refers to."""
     kpi = pack.kpi(name)
@@ -541,6 +551,11 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     return lines
 
 
+def ordinal(n: int) -> str:
+    """12 → '12th', 1 → '1st', 22 → '22nd'."""
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
 def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | None = None,
                  always: bool = False) -> list[str]:
     """What the report must say, from the cleaning audit (the data's own facts): each caveat
@@ -567,14 +582,16 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     if "repeated_rows" in flags:
         facts["repeated_rows_kept"] = {"n": f"{flags['repeated_rows'].rows_affected:,}"}
     if audit and date and (p := audit.partial_months.get(date)):
-        facts["partial_last_period"] = {"label": pd.Period(p[0], "M").strftime("%b %Y"), "days": p[1]}
+        facts["partial_last_period"] = {"label": pd.Period(p[0], "M").strftime("%b %Y"),
+                                        "through": ordinal(p[1])}
     for cond, kind in (("returns_present", "return"), ("refunded_excluded", "refunded"),
                        ("cancelled_excluded", "cancel"), ("test_excluded", "test"),
                        ("non_product_excluded", "non_product")):
         if kind in flags:
             facts[cond] = {"n": f"{flags[kind].rows_affected:,}"}
-    if span and 1 < span[2] < 13:
-        facts["months_lt_13"] = {"months": span[2]}
+    full = span[2] - bool(audit.partial_months.get(date)) if span else 0   # a partial month isn't one
+    if 1 < full < 13:
+        facts["months_lt_13"] = {"months": full}
     if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}

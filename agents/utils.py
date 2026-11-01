@@ -339,14 +339,15 @@ def year_earlier(df, date: str, start: str | None, end: str | None, weekly: bool
 
 
 def current_window(df, date: str, start: str | None, end: str | None, weekly: bool = False):
-    """The asked window cut to the data's days, and to the year-earlier twin's (YoY compares
-    the same days)."""
+    """(rows, label, cut): the asked window cut to the data's days, and to the year-earlier
+    twin's (YoY compares the same days); `cut` when the twin's start made it shorter than the
+    period shown, so the answer states the same-days value it compared."""
     import pandas as pd
 
     lo, hi, first, last, why = period_window(df, date, start, end)
     if why:
-        return df.iloc[:0]
+        return df.iloc[:0], "", False
     lo, hi = max(lo, first.normalize()), min(hi, last)
-    lo = max(lo, first.normalize() + _year_back(weekly))   # the twin starts no earlier than the data
+    twin = max(lo, first.normalize() + _year_back(weekly))   # the twin starts no earlier than the data
     t = _local(pd.to_datetime(df[date], errors="coerce"))
-    return df[(t >= lo) & (t <= hi)]
+    return df[(t >= twin) & (t <= hi)], f"{twin:%d %b %Y} to {hi:%d %b %Y}", twin > lo

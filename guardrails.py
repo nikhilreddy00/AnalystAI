@@ -728,6 +728,7 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
 
 
 _SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
+_PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|over|across"
 _SUBJECT_VERB_RE = re.compile(r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b", re.I)
 
 
@@ -756,9 +757,15 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
             end = _SPAN_END_RE.search(sentence, v.end())
             start = max((x.end() for x in _SPAN_END_RE.finditer(sentence, 0, v.start())), default=0)
             span = sentence[start:end.start() if end else len(sentence)]
-            if _CAUSAL_RE.fullmatch(v.group(0)) is None:   # increased …: the trigger is the subject
+            # increased …: the trigger must head the subject ('The markdown increased'), not modify
+            # it ('Sales in the promotion weeks grew', 'Units sold at a discount increased')
+            subject = _CAUSAL_RE.fullmatch(v.group(0)) is None
+            if subject:
                 span = sentence[start:v.start()]
-            word = next((t for t in triggers if re.search(rf"\b{re.escape(t)}\b", span, re.I)), None)
+            word = next((t for t in triggers if re.search(
+                rf"^(?:(?!\b(?:{_PREPOSITIONS})\b).)*\b{re.escape(t)}(?:s|es)?\s*$" if subject
+                else rf"\b{re.escape(t)}\b",
+                span.strip() if subject else span, re.I)), None)
             if word:
                 return (f"says the {word} caused a change ('{v.group(0)}'); without a control group "
                         "that can't be told from the season or the mix")
@@ -775,7 +782,11 @@ def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
     if has_cost:
         return None
     for sentence in _SENTENCE_RE.split(text):
-        if (m := _PROFIT_RE.search(sentence)) and not _HEDGE_RE.search(sentence):
+        if _HEDGE_RE.search(sentence):
+            continue
+        # 'the Profit Center store': a capital mid-sentence is a name, not a claim
+        if m := next((m for m in _PROFIT_RE.finditer(sentence)
+                      if m.start() == 0 or not m.group(0)[0].isupper()), None):
             return f"speaks of {m.group(0)} but the data has no cost or profit column"
     return None
 

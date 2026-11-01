@@ -47,7 +47,8 @@ def _gen(name: str, seed: int = 1) -> pd.DataFrame:
 
 
 _BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
-         "roles": {"r": {"kind": "money", "headers": ["rev"]}, "s": {"kind": "count", "headers": ["q"]}}}
+         "roles": {"r": {"kind": "money", "headers": ["rev"]}, "s": {"kind": "count", "headers": ["q"]}},
+         "caveats": {"read_as_domain_weak": "Read as x data: {roles}."}}
 
 
 @pytest.mark.parametrize("change, error", [
@@ -63,8 +64,10 @@ _BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "r", "nunique": "s"}]]}]}, "exactly one"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": ["r", "/", "s"]}]]}]}, "'\\*' or '-'"),
     ({"surprise": 1}, "Extra inputs"),
+    ({"caveats": {}}, "read_as_domain_weak"),   # a weak match must be able to hedge
 ])
 def test_an_invalid_pack_is_refused_with_its_reason(change, error):
+    Pack.model_validate(_BASE)   # the base itself is valid
     with pytest.raises(ValueError, match=error):
         Pack.model_validate({**_BASE, **change})
 
@@ -395,7 +398,7 @@ def test_insight_names_the_last_two_full_months_when_the_last_is_partial():
         return build_context(AnalysisSession(session_id="t", cleaning_audit=audit)).facts
 
     text = facts({"d": ["2026-02", 12]})
-    assert "Feb 2026 is partial (12 days of data)" in text
+    assert "Feb 2026 is partial (data through the 12th)" in text
     assert "compare Jan 2026 with Dec 2025" in text
     assert "compare Feb 2026 with Jan 2026" in facts({})   # a full last month: as before
 
@@ -815,7 +818,7 @@ def _audited(name: str):
 
 
 @pytest.mark.parametrize("name, says", [
-    ("retail_lines", ["Feb 2026 is partial (12 days of data)", "lines of refunded orders are left out",
+    ("retail_lines", ["Feb 2026 is partial (data through the 12th)", "lines of refunded orders are left out",
                       "lines of cancelled or voided orders are left out", "test-order lines are left out",
                       "rows in currencies other than USD are left out"]),
     ("b2b_invoices", ["Net sales are after 119 return or credit lines", "postage, fee or adjustment lines"]),
@@ -1022,6 +1025,16 @@ def test_complete_years_with_less_activity_are_kept_and_two_buckets_stay():
     short = pd.Series(pd.date_range("2025-01-09", "2025-01-21"))
     weeks = pd.Series([1.0, 1.0, 1.0], index=pd.PeriodIndex(["2025-01-11", "2025-01-18", "2025-01-25"], freq="W-SAT"))
     assert len(_cut_partial(weeks, short, "W", "W-SAT")[0]) >= 2
+
+
+def test_two_buckets_of_month_start_data_keep_the_last_one():
+    """Diff review: monthly data dated on the 1st covers its last month to the month's end."""
+    from agents.targeted_analysis_agent import _cut_partial
+    t = pd.Series(pd.date_range("2025-01-01", "2025-06-01", freq="MS"))
+    quarters = pd.Series([1.0, 2.0], index=pd.PeriodIndex(["2025Q1", "2025Q2"], freq="Q"))
+    assert _cut_partial(quarters, t, "Q") == (quarters, "")
+    daily = pd.Series(pd.date_range("2025-01-01", "2025-05-10"))   # daily, stops early in Q2
+    assert len(_cut_partial(quarters, daily, "Q")[0]) == 1
 
 
 def test_a_closed_week_does_not_stop_the_stub_weeks_being_cut():
@@ -1263,6 +1276,11 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     ("The markdown increased units sold by 30%.", True),
     ("Sales lifted after the promo, though without a control group the effect is unclear.", False),
     ("Units increased 5% in stores without a promotion.", False),
+    ("The Black Friday promotion doubled weekend traffic.", True),
+    # diff review: a trigger inside a modifier is a description, not a cause
+    ("Sales in the promotion weeks grew 40% over the other weeks.", False),
+    ("Units sold at a discount increased from 120 to 180.", False),
+    ("The campaign weeks grew 8% but non-campaign weeks grew 10%.", False),
 ])
 def test_promotions_given_credit_anywhere_in_the_claim(sentence, flagged):
     from guardrails import claim_causal_overreach
@@ -1286,6 +1304,8 @@ def test_profit_claims_need_a_cost_or_profit_column():
         "Audit pricing for Oct 2026. Identifies whether the revenue decline is a deliberate "
         "trade-off or an unintended margin leak.", has_cost=False) is None
     assert claim_profit_without_cost("Sales may be up. Margin fell 3 points.", has_cost=False)
+    # diff review: a capitalised name mid-sentence is a store or column value, not a claim
+    assert claim_profit_without_cost("Net sales of the Profit Center store rose 4%.", has_cost=False) is None
 
 
 def test_the_markdown_export_carries_how_the_numbers_were_counted():
@@ -1335,3 +1355,101 @@ def test_the_by_column_is_whichever_field_the_intent_holds():
     from evals.scoring import _intake_field
     assert _intake_field({"targeted_params": {"segment_column": "Region"}}, "by") == "Region"
     assert _intake_field({"targeted_params": {"group_by": "Dept"}}, "by") == "Dept"
+
+
+def test_a_yoy_cut_to_the_data_start_states_the_value_it_compared():
+    """Diff review: data from 3 Jan 2025, January 2026 vs a year earlier compares 3-31 Jan; the
+    answer shows that same-days value, not only the whole month's, beside the % change."""
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisSession, AnalysisTask, QuestionIntent, TargetedParams
+    rows = ["Order ID,Order Date,SKU,Quantity,Unit Price,Revenue"]
+    for i, d in enumerate(pd.date_range("2025-01-03", "2026-01-31")):
+        for j in range(3):
+            rows.append(f"#{1000 + i * 3 + j},{d:%Y-%m-%d},SK-{j}{i % 7},{1 + j},10,"
+                        f"{5000 if d.day == 1 else 100}")
+    df = _load("\n".join(rows) + "\n")
+    c = _contract(df)
+    buf = io.BytesIO()
+    df.to_parquet(buf)
+    s = AnalysisSession(session_id="x", data_contract=c, task_plan=AnalysisTask(
+        raw_query="net sales January 2026 vs last year", analysis_types=["eda"], target_metrics=[],
+        question_intent=QuestionIntent.TIME_SERIES, targeted_params=TargetedParams(
+            kpi="net_sales", compare="yoy", period_start="2026-01", period_end="2026-01")))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    text = run_targeted_analysis(s).answer_text
+    assert "On the same days (03 Jan 2026 to 31 Jan 2026)" in text, text
+    assert "+0.0% year over year" in text   # the same days, the same sales: no change
+
+
+def test_a_named_kpi_is_kept_whatever_column_the_model_chose():
+    """Diff review: 'return rate by country' with the model's metric_column = Total (no role of
+    the return rate's) still answers the return rate, never a sum of Total."""
+    from agents.intake_agent import _pack_params
+    c = _contract(_gen("retail_lines"))
+    got = _pack_params({"metric_column": "Total", "segment_column": "Shipping Country"}, c,
+                       "What is the return rate by country?")
+    assert got["kpi"] == "return_rate"
+
+
+@pytest.mark.parametrize("confidence, refused", [("strong", True), ("weak", False)])
+def test_a_sales_answer_names_no_consumers(confidence, refused):
+    """Fix A7 (exp-m6): 'top 10 customers by sales' grouped by a name or email column refuses on
+    strong retail data; elsewhere it answers as on main."""
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisSession, AnalysisTask, QuestionIntent, TargetedParams
+    df = _gen("retail_lines")
+    c = _contract(df).model_copy(update={"domain_confidence": confidence})
+    buf = io.BytesIO()
+    df.to_parquet(buf)
+    s = AnalysisSession(session_id="x", data_contract=c, task_plan=AnalysisTask(
+        raw_query="top 10 customers by sales", analysis_types=["eda"], target_metrics=[],
+        question_intent=QuestionIntent.TOP_N, targeted_params=TargetedParams(
+            metric_column="Lineitem price", group_by="Email", n=10)))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    r = run_targeted_analysis(s)
+    assert bool(r.unanswerable_reason and "identifies people" in r.unanswerable_reason) is refused
+
+
+def test_thirteen_calendar_months_with_a_partial_last_are_twelve_full_ones():
+    """Fix F (exp-m2): Jan 2025 to 15 Jan 2026 touches 13 months but has 12 full ones and no
+    full same-month-last-year: the seasonal caveat stays."""
+    from types import SimpleNamespace
+
+    from domain_pack import pack_caveats
+    audit = SimpleNamespace(decisions=[], date_ranges={"Date": ["2025-01-01", "2026-01-15", 13]},
+                            partial_months={"Date": ["2026-01", 15]}, main_currency=None)
+    got = " ".join(pack_caveats(RETAIL, audit, {"date": "Date"}))
+    assert "covers 12 months" in got, got
+
+
+def test_only_sums_become_an_average_week():
+    """Diff review: weekly data asked by month divides net sales and units by the month's weeks;
+    a distinct count (orders, customers) and a ratio stay the month's own."""
+    from domain_pack import additive
+    assert additive(RETAIL, "net_sales") and additive(RETAIL, "units")
+    assert not additive(RETAIL, "orders") and not additive(RETAIL, "customers")
+    assert not additive(RETAIL, "aov")
+
+
+def test_grouped_growth_says_stores_opened_too():
+    """Diff review: 'net sales by region, Q1 2026 vs a year earlier' on store_weeks (3 stores
+    opened in year 2) says the growth is total, not like-for-like, as the overall answer does."""
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisSession, AnalysisTask, QuestionIntent, TargetedParams
+    df = _gen("store_weeks")
+    buf = io.BytesIO()
+    df.to_parquet(buf)
+    s = AnalysisSession(session_id="x", data_contract=_contract(df), task_plan=AnalysisTask(
+        raw_query="net sales by region Q1 2026 vs last year", analysis_types=["eda"],
+        target_metrics=[], question_intent=QuestionIntent.SEGMENT_COMPARE,
+        targeted_params=TargetedParams(kpi="net_sales", segment_column="Region", compare="yoy",
+                                       period_start="2026-01-01", period_end="2026-03-31")))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    text = run_targeted_analysis(s).answer_text
+    assert "A year earlier" in text and "opened or closed" in text, text

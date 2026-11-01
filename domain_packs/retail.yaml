@@ -197,7 +197,7 @@ caveats:
   read_as_domain: "Read as retail sales data ({kpis})."
   read_as_domain_weak: "Read as retail sales data because it has {roles} columns; if these are not sales, the sales figures here don't apply."
   repeated_rows_kept: "{n} rows repeat another row exactly and were kept (a second scan of an item is a real sale)."
-  partial_last_period: "{label} is partial ({days} days of data) and is left out of period comparisons."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
   returns_present: "Net sales are after {n} return or credit lines (netted, not left out)."
   refunded_excluded: "{n} lines of refunded orders are left out of net sales."
   cancelled_excluded: "{n} lines of cancelled or voided orders are left out of sales."

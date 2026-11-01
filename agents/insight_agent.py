@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
 from agents.utils import pii_columns, strip_markdown_fences
-from domain_pack import glossary_hits, pack_caveats, pack_for
+from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
     UNTRUSTED_NOTE,
     delimit_untrusted,
@@ -198,7 +198,7 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         partial = (audit.partial_months.get(col) if audit else None)
         if partial and months > 2:   # a mid-month export: its last month is left out (5.7)
             full = _prev(last)
-            facts.append(f"{_month(last)} is partial ({partial[1]} days of data) and is left out "
+            facts.append(f"{_month(last)} is partial (data through the {ordinal(partial[1])}) and is left out "
                          f"of period comparisons: month-over-month figures compare {_month(full)} "
                          f"with {_month(_prev(full))}.")
         elif months > 1:
@@ -295,7 +295,7 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     pool, has_dates = ctx.pool(), ctx.first is not None
     removed = {"sentences": 0, "uncited": 0, "ranks": 0, "causal": 0}
     contract = session.data_contract
-    pack = pack_for(contract.domain) if contract else None
+    pack = defaults_pack(contract)   # a removal changes the report: strong matches only
     # 5.7: "the discount drove sales" with no experiment cited is removed, as quality flags it
     triggers = pack.causal_triggers if pack and not any(e.kind == "test" for e in findings.evidence) else ()
     # The quality check's rank rule as a repair: "B has the lowest average (98.06)" when C does

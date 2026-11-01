@@ -396,9 +396,7 @@ function ChartGrid({
   const derivedCharts = useMemo(
     () =>
       charts.map((c) => {
-        // Re-aggregated from rows only for a filtered row-count chart: a KPI or a sum (an AOV by
-        // country, pinned from an answer) would otherwise show row counts under its own name.
-        const agg = hasActiveFilters && c.rationale?.aggregation === "count"
+        const agg = hasActiveFilters
           ? aggregateForChart(filteredRows, c)
           : ({ mode: "unfiltered" } as const);
         const renderedData = agg.mode === "unfiltered" ? c.data : agg.data;

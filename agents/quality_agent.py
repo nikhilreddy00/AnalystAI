@@ -28,7 +28,7 @@ from agents import insight_agent
 from agents.insight_agent import InsightContext
 from agents.utils import strip_markdown_fences
 from api.config import settings
-from domain_pack import pack_for
+from domain_pack import defaults_pack
 from guardrails import (
     UNTRUSTED_NOTE,
     check_columns,
@@ -165,7 +165,7 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     labels |= {t["segment"] for e in every if (t := _trend(e, by_id)) and t["segment"]}
     base = [ctx.facts, ctx.quality, pool[-2], pool[-1]]   # facts, quality, conventions, years
     contract = session.data_contract
-    pack = pack_for(contract.domain) if contract else None
+    pack = defaults_pack(contract)   # pack conventions: strong matches only (a weak one only hedges)
     triggers = pack.causal_triggers if pack else ()
     has_cost = not pack or bool({"cost", "unit_cost", "profit"} & set(contract.roles))
     flags: list[ReviewFlag] = []

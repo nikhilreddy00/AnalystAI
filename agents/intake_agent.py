@@ -18,7 +18,7 @@ from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
-from domain_pack import computable, describe_kpi, first_questions, glossary_hits, kpi_roles, pack_for
+from domain_pack import computable, describe_kpi, first_questions, glossary_hits, pack_for
 from guardrails import (
     PLAN_LIST_FIELDS,
     PLAN_SCALAR_FIELDS,
@@ -178,11 +178,8 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
         params["kpi"] = None
     kpis = [c for c, _ in glossary_hits(pack, message, [c.name for c in contract.columns])
             if pack.kpi(c)]
-    role = next((r for r, c in contract.roles.items() if c == params.get("metric_column")), None)
-    # the model's own column wins when it is not one of the KPI's ("sales tax" → the Tax column)
-    model_column = params.get("metric_column") and (role is None or role not in kpi_roles(pack, kpis[0])) \
-        if kpis else False
-    if not params.get("kpi") and len(kpis) == 1 and not model_column:
+    # a phrase that isn't the KPI ("sales tax") is the pack's `consumed`, never a KPI hit
+    if not params.get("kpi") and len(kpis) == 1:
         params["kpi"] = kpis[0]
     for f in ("period_start", "period_end"):   # 2025-03-31, or a whole month / year: 2025-03, 2025
         if params.get(f):
