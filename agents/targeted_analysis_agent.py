@@ -29,6 +29,7 @@ from agents.utils import (
     pandas_freq,
     partial_last_month,
     time_axis,
+    weekly_cadence,
     year_earlier,
 )
 from agents.visualization_agent import (
@@ -733,11 +734,7 @@ def _default_freq(dates: pd.Series, agg: str = "sum") -> str:
     """Weekly flows (one date a week: POS week endings) stay weekly: summed into calendar months
     they show a ~25% sawtooth in months with five week-endings. A level (a balance: each month's
     last snapshot) or a mean has no sawtooth: monthly, like anything else."""
-    if agg not in ("sum", "count"):
-        return "M"
-    d = pd.to_datetime(dates, errors="coerce").dropna().drop_duplicates().sort_values()
-    gaps = d.diff().dt.days.dropna()
-    return "W" if len(gaps) >= 3 and gaps.median() == 7 else "M"
+    return "W" if agg in ("sum", "count") and weekly_cadence(dates) else "M"
 
 
 def _week_anchor(dates: pd.Series) -> str:

@@ -495,3 +495,46 @@ def test_weekly_levels_stay_monthly_only_weekly_flows_stay_weekly():
     assert _default_freq(weeks, "sum") == "W" and _default_freq(weeks, "count") == "W"
     assert _default_freq(weeks, "last") == "M" and _default_freq(weeks, "mean") == "M"
     assert _default_freq(pd.Series(pd.date_range("2025-01-01", periods=60)), "sum") == "M"
+
+
+def test_weekly_flows_compare_average_weeks_in_the_sandbox_and_one_cadence_rule():
+    from agents.utils import weekly_cadence
+    df, truth = datagen.make("store_weeks", 1)
+    dates = pd.to_datetime(df["Wk_End_Dt"], dayfirst=True)
+    assert weekly_cadence(dates) and not weekly_cadence(pd.Series(pd.date_range("2025-01-01", periods=30)))
+    g = _months_for(df.assign(Wk_End_Dt=dates.dt.strftime("%Y-%m-%d")), "Wk_End_Dt", "Net Sales")
+    mom = next(t for t in g["result"]["trends"] if not t.get("segment"))["pct_change"]
+    # June 2026 (4 week-endings) vs May (5): the average week, not the sum
+    m = dates.dt.to_period("M")
+    week = df.groupby(m)["Net Sales"].sum() / dates.groupby(m).nunique()
+    assert mom == round((week.iloc[-1] / week.iloc[-2] - 1) * 100, 2)
+    total = df.groupby(m)["Net Sales"].sum()
+    assert abs(mom - (total.iloc[-1] / total.iloc[-2] - 1) * 100) > 10   # the sawtooth avoided
+    assert any("average week" in a for a in g["result"]["assumptions"])
+
+
+def _months_for(df: pd.DataFrame, date: str, metric: str) -> dict:
+    from agents.analysis_agent import _build_standard_code
+    from orchestrator.state import AnalysisTask
+    contract = _contract(_load(df.to_csv(index=False)))
+    code = _build_standard_code(contract, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                                       target_metrics=[metric]))
+    g = {"df": _load(df.to_csv(index=False)), "pd": pd,
+         "result": {"trends": [], "builtin": [], "segments": [], "correlations": {}, "assumptions": []}}
+    exec(code, g)
+    return g
+
+
+def test_the_month_line_of_weekly_flows_is_the_average_week_and_levels_are_untouched():
+    from agents.visualization_agent import build_context, month_line
+    df = _gen("store_weeks")
+    c = _contract(df)
+    ch = month_line(df, "Wk_End_Dt", "Net Sales", build_context(df, contract=c), monthly=True)
+    assert "(average week)" in ch.y_label and "average week" in ch.rationale.reason
+    m = df["Wk_End_Dt"].dt.to_period("M")
+    week = df.groupby(m)["Net Sales"].sum() / df.groupby(m)["Wk_End_Dt"].nunique()
+    assert [r["Net Sales"] for r in ch.data] == [round(float(week[pd.Period(r["period"])]), 4)
+                                                 for r in ch.data]
+    bank = _gen("bank_balances")
+    line = month_line(bank, "snapshot_date", "balance", build_context(bank, contract=_contract(bank)))
+    assert "average week" not in (line.y_label or "")

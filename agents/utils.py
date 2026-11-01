@@ -99,6 +99,16 @@ def partial_last_month(dates) -> bool:
                 and days.iloc[-1] < 0.9 * full)
 
 
+def weekly_cadence(dates) -> bool:
+    """One date a week (POS week endings): distinct dates 7 days apart. Weekly flows summed into
+    calendar months show a ~25% sawtooth (4 vs 5 week-endings). Mirrored in the analysis
+    sandbox (`_weekly` in _build_standard_code)."""
+    import pandas as pd
+
+    d = pd.to_datetime(dates, errors="coerce").dropna().drop_duplicates().sort_values()
+    return len(d) >= 4 and d.diff().dt.days.median() == 7
+
+
 def looks_like_sequential_id(s, n: int) -> bool:
     """True if the column looks like a row index / sequential id:
     whole-number values that fill an interval close to len(df). Shared by visualization (row

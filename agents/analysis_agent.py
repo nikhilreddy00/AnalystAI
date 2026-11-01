@@ -248,6 +248,10 @@ try:
         # by month total. A semantic layer (Phase 4) can declare the aggregation instead.
         # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's
         # last value in the month, summed; a reading is a mean.
+        # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months
+        # compare fairly (agents.utils.weekly_cadence).
+        _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
+        _weekly = len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
@@ -262,6 +266,10 @@ try:
                 _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
             else:
                 _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
+                if _weekly and _agg == 'sum':
+                    _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)
+                    if 'weekly' not in ' '.join(result['assumptions']):
+                        result['assumptions'].append('Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).')
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
                 return None, 0
             _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])

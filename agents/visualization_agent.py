@@ -36,6 +36,7 @@ from agents.utils import (
     looks_like_sequential_id,
     pandas_freq,
     partial_last_month,
+    weekly_cadence,
 )
 from domain_pack import compute_kpi, describe_kpi, main_currency, pack_for, row_kinds
 from guardrails import chart_lint
@@ -2237,6 +2238,10 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
                           ctx.contract, over_time=True) * scale
     except LevelUnavailable:
         return None
+    weekly = monthly and agg == "sum" and weekly_cadence(sub[date])
+    if weekly:   # weekly flows: a month is its average week, as the reported MoM (4 vs 5 weeks)
+        weeks = sub[date].groupby(period).nunique()
+        table = table.div(weeks, level=0) if split else table / weeks.reindex(table.index)
     if split:
         table = table.unstack()[keys]
     if len(table) < 2:
@@ -2253,17 +2258,22 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     by = f", per {_display(split, ctx.narrative)}" if split else ""
     freq = "M" if monthly else "D"
     groupby = f"[_period, {split!r}]" if split else "_period"
+    label = _label(metric, agg, ctx) + (" (average week)" if weekly else "")
+    if weekly:
+        note = (note + " " if note else "") + "Weekly data: each month is its average week " \
+            "(months have 4 or 5 week-endings)."
     return ChartConfig(
         id=str(uuid.uuid4()), chart_type=ChartType.LINE,
-        title=f"{_label(metric, agg, ctx).replace(' (%)', '')} by {step}{by}",
+        title=f"{label.replace(' (%)', '')} by {step}{by}",
         data=data, x_key="period", y_keys=[metric] if not split else [str(k) for k in keys],
-        colors=[], x_label=step.title(), y_label=_label(metric, agg, ctx),
+        colors=[], x_label=step.title(), y_label=label,
         show_legend=bool(split), source_finding="time_series", split_key=split,
         value_format="percent" if rate else "number", layout_hint="full_width",
         rationale=ChartRationale(
             rule="", reason=note, x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
             code=f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
-                 + (f"df.groupby({groupby})[{metric!r}].{agg}()" if not hint else
+                 + (f"df.groupby({groupby})[{metric!r}].{agg}()" + (
+                     f" / df.groupby(_period)[{date!r}].nunique()" if weekly else "") if not hint else
                     f"df.sort_values({date!r}).groupby([{groupby}, *{hint.aggregation_by!r}])"
                     f"[{metric!r}].{agg}().groupby(level=0).sum()   # each entity's {agg}, summed")),
     )
