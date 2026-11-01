@@ -30,3 +30,18 @@ async def test_every_snapshotted_case_still_gets_the_same_inputs():
     assert {c: now["e2e"][c]["roles"] for c in before["e2e"]} == \
         {c: v["roles"] for c, v in before["e2e"].items()}
     assert len(now["analysis"]) == 68 and len(now["e2e"]) == 34   # the 5.5 cases are in it
+
+
+# Phase 5.7: the no-LLM stages' outputs per eval dataset (contract, cleaning audit, KPI tiles,
+# briefing extras, cleaned frame), from evals/snapshots/pre_5_7.json taken at ab05639. A domain
+# pack must not change another domain's data; a dataset listed here changed on purpose, and its
+# paid cases are re-measured at the domain's gate (named in its review note).
+CHANGED_ON_PURPOSE: set[str] = set()
+
+
+async def test_no_llm_outputs_unchanged_outside_the_domain_being_built():
+    before = json.loads((EVALS_DIR / "snapshots" / "pre_5_7.json").read_text())["deterministic"]
+    now = (await snapshot(("deterministic",)))["deterministic"]
+    changed = sorted(d for d in before if now.get(d) != before[d] and d not in CHANGED_ON_PURPOSE)
+    assert not changed, [(d, {k for k in before[d] if now.get(d, {}).get(k) != before[d][k]})
+                         for d in changed]

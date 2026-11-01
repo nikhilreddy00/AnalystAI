@@ -1680,6 +1680,8 @@ async def main() -> None:
     ap.add_argument("--max-usd", type=float, default=2.0,
                     help="refuse to start if the estimate exceeds this; stop starting runs once "
                          "spend reaches it (default $2 — raise it on purpose for a final k=3 run)")
+    ap.add_argument("--fail-under", type=float,
+                    help="exit 1 if the pass rate is below this or any hard rule broke (CI gate)")
     args = ap.parse_args()
 
     cases = load_cases(args.suite, args.only, args.exclude)
@@ -1736,6 +1738,11 @@ async def main() -> None:
     if "compare" in report:
         print(json.dumps(report["compare"], indent=1))
     print(f"→ {out / name}.md")
+    summary = report["summary"]
+    if args.fail_under is not None and (summary["pass_rate"] < args.fail_under
+                                        or summary["hard_rule_violations"]):
+        raise SystemExit(f"gate failed: pass rate {summary['pass_rate']} < {args.fail_under} "
+                         f"or {summary['hard_rule_violations']} hard-rule violations")
 
 
 if __name__ == "__main__":
