@@ -14,7 +14,8 @@ async def test_every_snapshotted_case_still_gets_the_same_inputs():
     before = json.loads((EVALS_DIR / "snapshots" / "pre_5_5.json").read_text())
     now = await snapshot(("analysis", "intake", "insight", "e2e"))
     for suite in ("analysis", "intake", "insight"):
-        assert {c: now[suite].get(c) for c in before[suite]} == before[suite], suite
+        changed = sorted(c for c in before[suite] if now[suite].get(c) != before[suite][c])
+        assert not changed, (suite, changed, [(now[suite].get(c), before[suite][c]) for c in changed[:2]])
     assert {c: now["e2e"][c]["roles"] for c in before["e2e"]} == \
         {c: v["roles"] for c, v in before["e2e"].items()}
     assert len(now["analysis"]) == 67 and len(now["e2e"]) == 34   # the 5.5 cases are in it
