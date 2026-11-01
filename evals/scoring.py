@@ -72,16 +72,19 @@ def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
     return df.groupby(by)[metric].agg(agg)
 
 
-def _populations(df: pd.DataFrame) -> list[pd.DataFrame]:
-    """The rows a group value can be computed over. Snapshot data (a semantic-layer level:
-    seats, balances) has two right readings: every snapshot row, or each entity's current
-    snapshot ("seats per account" — production's latest_rows, which the agent is told about)."""
+def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
+    """The rows a group value of `metric` can be computed over. A snapshot column (a
+    semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
+    entity's current snapshot ("seats per account" — production's latest_rows, which the agent
+    is told about). Any other column: every row (a churn rate over latest rows is another number)."""
     from agents.ingestion_agent import build_contract
-    from agents.utils import latest_rows
+    from agents.utils import column_hint, latest_rows
     from orchestrator.state import ConnectorType
     contract = build_contract(df, ConnectorType.CSV, {})
-    level = next((c.name for c in contract.columns if c.aggregation in ("last", "first")), None)
-    return [df] if level is None else [df, latest_rows(df, level, contract)]
+    hint = column_hint(contract, metric)
+    if hint is None or hint.aggregation not in ("last", "first"):
+        return [df]
+    return [df, latest_rows(df, metric, contract)]
 
 
 def _mismatch(seg, want: pd.Series, agg: str, scales: tuple, rel_tol: float) -> str | None:
@@ -113,7 +116,7 @@ def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, met
         agg = seg.aggregation if seg.aggregation in (*_AGGS, "last", "first") else "mean"
         scs = scales if _is_rate(df[metric]) else (1,)
         whys = [_mismatch(seg, _grouped(rows, segment, metric, agg), agg, scs, rel_tol)
-                for rows in _populations(df)]
+                for rows in _populations(df, metric)]
         why = None if None in whys else whys[0]
         if why:
             return False, why
@@ -266,7 +269,6 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                 if stat in stats:
                     want = float(s.count() if stat == "count" else getattr(s, stat)())
                     claims.append((f"{col}.{stat}", not _close(stats[stat], want, 0.01)))
-    pops = _populations(df) if f.segments else []
     for seg in f.segments:
         cols = _strata(seg.segment_column)
         if not set(cols) <= set(df.columns) or seg.metric_column not in numeric:
@@ -278,7 +280,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
             continue
         agg = seg.aggregation
         wants = []
-        for rows in pops:
+        for rows in _populations(df, seg.metric_column):
             want = _grouped(rows, cols, seg.metric_column, agg)
             want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
                           for i in want.index]

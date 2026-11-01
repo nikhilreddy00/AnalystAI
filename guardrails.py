@@ -801,16 +801,20 @@ _PERSON_RE = re.compile(r"^[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*){1,3}$
 _LAST_FIRST_RE = re.compile(r"^[^\W\d_][\w'’.-]+ ?, ?(?![A-Z]{2}$)[^\W\d_][\w'’.-]+(?: [^\W\d_]\.?)?$")
 # ponytail: US states + common countries; a "City, Region" outside the list reads as a name.
 _PLACE_NAMES = frozenset("""alabama alaska arizona arkansas california colorado connecticut delaware
-florida georgia hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland
-massachusetts michigan minnesota mississippi missouri montana nebraska nevada ohio oklahoma oregon
-pennsylvania tennessee texas utah vermont virginia washington wisconsin wyoming usa us uk canada
-mexico france germany spain italy portugal ireland england scotland wales india china japan brazil
-australia netherlands belgium sweden norway denmark finland poland austria switzerland ontario
-quebec al ak az ar ca co ct de fl ga hi id il in ia ks ky la me md ma mi mn ms mo mt ne nv nh nj
-nm ny nc nd oh ok or pa ri sc sd tn tx ut vt va wa wv wi wy""".split()) | {"new hampshire", "new jersey", "new mexico", "new york", "north carolina",
+florida hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland
+massachusetts michigan minnesota mississippi missouri nebraska nevada ohio oklahoma oregon
+pennsylvania tennessee texas utah vermont washington wisconsin wyoming usa uk canada mexico
+france germany spain italy portugal ireland england scotland wales japan brazil australia
+netherlands belgium sweden norway denmark finland poland austria switzerland ontario
+quebec""".split()) | {"new hampshire", "new jersey", "new mexico", "new york", "north carolina",
                      "north dakota", "rhode island", "south carolina", "south dakota",
                      "west virginia", "british columbia", "united states", "united kingdom",
-                     "new zealand", "south africa", "district of columbia", "d.c.", "dc"}
+                     "new zealand", "south africa", "district of columbia", "d.c."}
+# Georgia, Virginia, Carolina, India, Montana are first names too: left out (a "City, Georgia"
+# is withheld in patient data rather than a "Ross, Virginia" kept). State codes count only in
+# capitals ("Springfield, IL", never "Lee, Mo").
+_STATE_CODES = frozenset("""AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS
+MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC""".split())
 # "Acme Corp" is capitalized words too: a B2B `client` column keeps its "revenue by client".
 _ORG_RE = re.compile(r"\b(?:inc|corp|corporation|co|company|ltd|limited|llc|llp|plc|gmbh|ag|sa|"
                      r"sas|bv|nv|pty|group|holdings|partners|associates|solutions|services|"
@@ -883,9 +887,10 @@ def _is_measure(values: Iterable[Any]) -> bool:
 
 
 # Named as the date itself (`dob`, `birth_date`), not something measured at birth (`birth_order`).
-_DATE_NAME_RE = re.compile(r"(?:^|_)(?:dob|dod|bday|birth(?:_?(?:date|dt|day|year|yr))?$|"
-                           r"birth_?(?:date|dt|day|year|yr)|born\w*|"
-                           r"(?:year|date|day)_of_(?:birth|death)|death_?(?:date|dt|day)|"
+_DATE_PART = r"(?:date|dt|day|year|yr|month|mo|mon|quarter|qtr|week|wk|weekday|dow)"
+_DATE_NAME_RE = re.compile(rf"(?:^|_)(?:dob|dod|bday|birth(?:_?{_DATE_PART})?$|"
+                           rf"birth_?{_DATE_PART}|born\w*|"
+                           rf"(?:year|date|day|month|quarter)_of_(?:birth|death)|death_?{_DATE_PART}|"
                            r"deceased_?(?:date|dt|on)|date_?(?:born|deceased))(?:$|_)", re.I)
 def _serial_dates(values: Iterable[Any]) -> bool:
     """Whole numbers that read as spreadsheet dates (days since 1900: 1919–2028)."""
@@ -1212,6 +1217,12 @@ def delimit_untrusted(text: str) -> str:
     return f"<untrusted_data>\n{safe}\n</untrusted_data>"
 
 
+def _is_place(x: str) -> bool:
+    """"Seattle, Washington", "springfield, IL": a place, not "Last, First"."""
+    tail = x.split(",")[-1].strip()
+    return tail.lower() in _PLACE_NAMES or tail in _STATE_CODES
+
+
 def person_shaped(values: Iterable[Any], last_first: bool = True,
                   lowercase: bool = False) -> float:
     """Share of distinct text values that read as a person's name ("Ana Ito"), not an
@@ -1222,6 +1233,5 @@ def person_shaped(values: Iterable[Any], last_first: bool = True,
     if not v:
         return 0.0
     return sum((bool(_PERSON_RE.match(x.title() if lowercase and x.islower() else x))
-                or (last_first and bool(_LAST_FIRST_RE.match(x))
-                    and x.split(",")[-1].strip().lower() not in _PLACE_NAMES))
+                or (last_first and bool(_LAST_FIRST_RE.match(x)) and not _is_place(x)))
                and not _ORG_RE.search(x) and not _PLACE_WORDS.search(x) for x in v) / len(v)

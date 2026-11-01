@@ -504,18 +504,20 @@ def pseudonymize_literals(code: str, back: dict, pii: Iterable[str] = ()) -> str
 
 
 _NUM_LITERAL = re.compile(r"(?<![\w.])\d{4,}(?![\w.])")
-_ID_SHAPED = re.compile(r"(?=.*\d)(?:\d{6,}|(?=.{5,}).*[A-Za-z].*)")   # MRN-100005, 4500123; not 2025, Q1
+_ID_SHAPED = re.compile(r"(?=.*\d)(?![A-Za-z]\d$)(?:\d{6,}|.*[A-Za-z].*)")   # MRN-100005, P001; not 2025, Q1
 # `df.total_charges > 100000`, `df['quarter'] == 'Q1'`: compared to another column, not an id.
 _COMPARED_TO = re.compile(r"""(?:\[['"]([^'"]+)['"]\]|\.(\w+))\s*(?:[<>]=?|[!=]=)\s*$""")
 
 
-def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes) -> str:
+def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes,
+                             others: Iterable[str] = ()) -> str:
     """Patient data: the frame holds record numbers as pseudonyms. A literal compared against a
     pseudonymised id column on the same line (`df['mrn'] == 'MRN-100005'`, `df.id == 4501`)
     becomes its pseudonym, so E2B never gets it and the filter matches. A year, a threshold or a
     date elsewhere is left alone, and digits inside another string are never touched."""
     if not present:
         return code
+    others = set(others) - set(present)   # the frame's non-id columns: a threshold, a quarter
 
     def find(v: str, cols: list[str]) -> str | None:
         return next((p for col in cols if (p := pseudonym(v, key, col)) in present[col]), None)
@@ -531,7 +533,7 @@ def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes
 
         def other_column(start: int) -> bool:
             m = _COMPARED_TO.search(text[:start])
-            return bool(m) and (m[1] or m[2]) not in present
+            return bool(m) and (m[1] or m[2]) in others   # `.values`, `patient_id_x`: not known
 
         def num(n: re.Match) -> str:
             v = n[0]
@@ -639,7 +641,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(df_parquet),
                                                 columns=ids) if ids else None
                 present = {c: {str(v) for v in frame[c].dropna().unique()} for c in ids} if ids else {}
-                code = pseudonymize_id_literals(code, present, pseudonym_key(session.user_id))
+                others = {c.name for c in contract.columns if c.name not in ids and not c.is_id}
+                code = pseudonymize_id_literals(code, present, pseudonym_key(session.user_id),
+                                                others)
             execution = await run_code(code, upload)
             # Never return empty findings for a failed run: no JSON on stdout means the code died.
             try:
@@ -813,10 +817,14 @@ def confidence(n: int, p: float | None = None, r: float | None = None,
     return "high", f"{n} rows" + (f", p = {p:.3g}" if p is not None else "")
 
 
-def segment_id(segment_column: str, metric: str, aggregation: str = "mean") -> str:
+def segment_id(segment_column: str, metric: str, aggregation: str = "mean",
+               label: str | None = None) -> str:
     """The Evidence id of a segment finding (visualization cites it too). A count or sum of the
-    same pair is a different finding, so only the mean keeps the bare id."""
+    same pair is a different finding, so only the mean keeps the bare id; two ratios from one
+    column (loss ratio, claim frequency) differ by their label."""
     base = f"seg:{segment_column}/{metric}"
+    if aggregation == "ratio" and label:
+        return f"{base}:ratio:{label}"
     return base if (aggregation or "mean") == "mean" else f"{base}:{aggregation}"
 
 
@@ -825,7 +833,7 @@ def findings_by_id(f: AnalysisFindings | None) -> dict[str, TrendResult | Segmen
     so readers get the full results, never the truncated `result_excerpt` (insight, quality)."""
     if f is None:
         return {}
-    out: dict = {segment_id(s.segment_column, s.metric_column, s.aggregation): s for s in f.segments}
+    out: dict = {segment_id(s.segment_column, s.metric_column, s.aggregation, s.label): s for s in f.segments}
     out |= {f"trend:{t.column}" + (f" ({t.segment})" if t.segment else "") + f":{t.period}": t
             for t in f.trends}
     return out
@@ -886,7 +894,7 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
         what = (f"{s.label or 'ratio'} (from {s.metric_column})" if s.aggregation == "ratio"
                 else f"{s.aggregation} {s.metric_column}")
-        out.append(item("segment", segment_id(s.segment_column, s.metric_column, s.aggregation),
+        out.append(item("segment", segment_id(s.segment_column, s.metric_column, s.aggregation, s.label),
                         f"{what} by {s.segment_column} ({len(s.results)} groups)", cols,
                         s.model_dump(exclude={"label"} if s.label is None else None)))
     by_col: dict[str, list] = {}

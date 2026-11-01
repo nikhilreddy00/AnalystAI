@@ -468,7 +468,8 @@ def _person_share(s: pd.Series, people: pd.Series | None) -> float:
     ("north east") repeats across many people."""
     v = s.dropna()
     if people is not None:
-        own = people.loc[v.index].groupby(v).nunique().le(1).mean() >= 0.8
+        pairs = pd.DataFrame({"v": s.to_numpy(), "p": people.to_numpy()}).dropna(subset=["v"])
+        own = pairs.groupby("v")["p"].nunique().le(1).mean() >= 0.8   # by position: any index
     else:
         own = v.nunique() >= 0.3 * len(v)
     return person_shaped(v.unique(), last_first=True, lowercase=bool(own))

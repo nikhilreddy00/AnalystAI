@@ -394,7 +394,7 @@ def _plain(e: Evidence, findings, narrative: DataNarrative | None) -> str:
             text = f"{_name(t.column, narrative)}{seg} {way} {abs(t.pct_change):.1f}% {period}."
     elif e.kind == "segment":
         s = next((s for s in findings.segments
-                  if segment_id(s.segment_column, s.metric_column, s.aggregation) == e.id), None)
+                  if segment_id(s.segment_column, s.metric_column, s.aggregation, s.label) == e.id), None)
         vals = [r for r in (s.results if s else []) if isinstance(r.get("value"), (int, float))]
         if vals:
             hi = max(vals, key=lambda r: r["value"])

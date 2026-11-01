@@ -66,7 +66,7 @@ def test_a_threshold_or_category_equal_to_an_id_is_not_rewritten():
                "visit_code": {pseudonym(v, key, "visit_code") for v in ["Q1", "V2"]}}
     code = ("big = df[df.total_charges > 100000]\nq = df[df['quarter'] == 'Q1']\n"
             "ids = [100003]\nx = df[df.patient_id == 100004]")
-    out = pseudonymize_id_literals(code, present, key).split("\n")
+    out = pseudonymize_id_literals(code, present, key, others={"total_charges", "quarter"}).split("\n")
     assert out[:2] == code.split("\n")[:2]
     assert "100003" not in out[2] and "100004" not in out[3]
 
@@ -162,3 +162,55 @@ def test_the_analysis_model_reads_the_question_delimited():
     i = text.index("30-day readmission rate")
     assert text[:i].count("<untrusted_data>") == text[:i].count("</untrusted_data>") + 1
     assert text.count("</untrusted_data>") == text.count("<untrusted_data>")
+
+
+# ── review of 868db1e..3c96cba ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("line", ["ids = ['P001', 'P002']", "m[m.patient_id_x == 'MRN-100005']",
+                                  "df[df.patient_id.values == 'MRN-100005']",
+                                  "if row.name == 'MRN-100005':", "df[df.pid == 'MRN-100005']"])
+def test_record_numbers_are_rewritten_wherever_the_comparison_is_not_a_known_column(line):
+    from agents.analysis_agent import pseudonymize_id_literals
+    from guardrails import pseudonym
+    key = b"k" * 32
+    present = {"patient_id": {pseudonym(v, key, "patient_id") for v in ["P001", "P002", "MRN-100005"]}}
+    out = pseudonymize_id_literals(line, present, key, others={"total_charges", "quarter"})
+    assert "P001" not in out and "MRN-100005" not in out
+
+
+@pytest.mark.parametrize("name", ["birth_month", "birth_quarter", "birth_weekday", "dod_month"])
+def test_parts_of_a_birth_date_are_personal(name):
+    from guardrails import pii_kind
+    assert pii_kind(name, [3, 4, 5, 1]) is not None
+
+
+def test_two_ratios_from_one_column_keep_their_own_evidence():
+    from agents.analysis_agent import _parse_findings, build_evidence, findings_by_id
+    other = {**_RATIO, "label": "claim_frequency",
+             "results": [{"name": "auto", "value": 0.08}, {"name": "home", "value": 0.1}]}
+    f = _parse_findings({"segments": [_RATIO, other]}, "", [])
+    ids = [e.id for e in build_evidence(f, {}, "", "", None) if e.kind == "segment"]
+    assert len(set(ids)) == 2 and len(findings_by_id(f)) == 2
+
+
+def test_a_latest_snapshot_rate_of_a_flow_column_is_not_accepted():
+    from agents.analysis_agent import _parse_findings
+    from evals import datagen
+    from evals.scoring import check_segment_value
+    df, _ = datagen.make("saas_accounts", 1)
+    cur = df.sort_values("month").groupby("account_id").tail(1)
+    seg = {"segment_column": "plan", "metric_column": "churned", "aggregation": "mean",
+           "results": [{"name": k, "value": float(v)} for k, v in cur.groupby("plan")["churned"].mean().items()]}
+    assert not check_segment_value(_parse_findings({"segments": [seg]}, "", []), df, "plan", "churned")[0]
+
+
+def test_people_named_like_places_are_names_and_state_codes_count_in_capitals():
+    from guardrails import person_shaped
+    assert person_shaped(["Jones, Georgia", "Ross, Virginia", "Lee, Mo", "Smith, Al"]) == 1.0
+    assert person_shaped(["Springfield, IL", "Seattle, Washington"]) == 0.0
+
+
+def test_a_patient_frame_with_a_duplicate_index_is_prepared():
+    df = pd.DataFrame({"mrn": [f"MRN{i % 50}" for i in range(N)], "region": rng.choice(["north east", "west"], N),
+                       "los_days": rng.integers(1, 9, N)}, index=[0] * N)
+    assert phi_plan(df, _contract(df))[0] == []

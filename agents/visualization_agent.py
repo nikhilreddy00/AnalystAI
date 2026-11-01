@@ -2390,7 +2390,7 @@ def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
         seen.add((parts[0], s.metric_column))
         agg = effective_agg(ctx.contract, s.metric_column, s.aggregation) or "mean"   # a level: current
         jobs["segment"].append(((x, s.metric_column, agg, sp),
-                                [segment_id(s.segment_column, s.metric_column, s.aggregation)]))
+                                [segment_id(s.segment_column, s.metric_column, s.aggregation, s.label)]))
     for i, t in enumerate(f.statistical_tests):
         if not task or not task.target_metrics or not task.segments:
             continue

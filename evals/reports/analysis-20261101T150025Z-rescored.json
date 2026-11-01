@@ -29,7 +29,7 @@
   "latency_p95_s": 21.17,
   "numeric_accuracy": 0.3333,
   "insight_recall": 0.3333,
-  "false_finding_rate": 0.0164,
+  "false_finding_rate": 0.0328,
   "verifiable_claims": 183,
   "by_domain": {
    "healthcare": {
@@ -89,12 +89,12 @@
     "model_dependent_cases": 1,
     "numeric_accuracy": 1.0,
     "insight_recall": 1.0,
-    "false_finding_rate": 0.0,
+    "false_finding_rate": 0.0769,
     "verifiable_claims": 39,
     "model_dependent_quality": {
      "numeric_accuracy": 1.0,
      "insight_recall": 1.0,
-     "false_finding_rate": 0.0,
+     "false_finding_rate": 0.0769,
      "verifiable_claims": 39
     }
    }
@@ -1891,9 +1891,13 @@
     ],
     "error": null,
     "false_findings": {
-     "false": 0,
+     "false": 3,
      "verifiable": 39,
-     "details": []
+     "details": [
+      "mean churned[Starter]",
+      "mean churned[Pro]",
+      "mean churned[Scale]"
+     ]
     },
     "builtin_only": false,
     "pii_exits": {
