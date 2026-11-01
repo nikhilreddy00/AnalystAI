@@ -728,6 +728,9 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
 
 
 _SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
+# the trigger path only (a domain pack's words): more ways to give a cause than the shared rule
+_TRIGGER_CAUSAL_RE = re.compile(_CAUSAL_RE.pattern[:-3] + r"|due to|owing to|as a result of|"
+                                r"attributable to|responsible for|contribut(?:ed|es|ing) to)\b", re.I)
 _PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|over|across"
 # a verb with an object ('increased units', 'increased 2025 holiday sales'): what ends the verb
 # phrase instead ('Discounts increased 15%', '… markedly', '… as a share', '… while') is the
@@ -735,8 +738,10 @@ _PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|
 _SUBJECT_VERB_RE = re.compile(
     r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b(?=\s+"
     r"(?!(?:by|in|on|at|from|to|over|across|during|per|each|again|and|but|or|as|while|when|"
-    r"whereas|compared|versus|vs|than|since|after|before|until|through)\b)"
+    r"whereas|compared|versus|vs|than|since|after|before|until|through|again|yoy|mom|wow)\b)"
     r"(?!\w+ly\b)"
+    r"(?!(?:this|last|next|that)\s+(?:week|month|quarter|year|season|period)\b(?!'s))"
+    r"(?!(?:week|month|quarter|year)\s+(?:over|on)\s+(?:week|month|quarter|year)\b)"
     r"(?![$£€]|\d[\d.,]*\s*(?:%|x\b|pts?\b|points?\b|percent\b|per cent\b|times\b|[.;,!?]|$))"
     r"[\w'])", re.I)
 
@@ -761,19 +766,19 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         if _NOT_ASSERTED_RE.search(sentence) or re.search(r"\bunclear\b", sentence, re.I):
             continue
-        verbs = [*_CAUSAL_RE.finditer(sentence), *_SUBJECT_VERB_RE.finditer(sentence)]
+        verbs = [*_TRIGGER_CAUSAL_RE.finditer(sentence), *_SUBJECT_VERB_RE.finditer(sentence)]
         for v in verbs:
             end = _SPAN_END_RE.search(sentence, v.end())
             start = max((x.end() for x in _SPAN_END_RE.finditer(sentence, 0, v.start())), default=0)
             span = sentence[start:end.start() if end else len(sentence)]
             # increased …: the trigger must head the subject ('The markdown increased'), not modify
             # it ('Sales in the promotion weeks grew', 'Units sold at a discount increased')
-            subject = _CAUSAL_RE.fullmatch(v.group(0)) is None
+            subject = _TRIGGER_CAUSAL_RE.fullmatch(v.group(0)) is None
             if subject:
                 span = sentence[start:v.start()]
             word = next((t for t in triggers if re.search(
-                rf"^(?:(?!\b(?:{_PREPOSITIONS})\b).)*\b{re.escape(t)}(?:s|es)?\s*$" if subject
-                else rf"\b{re.escape(t)}\b",
+                rf"^(?:(?!\b(?:{_PREPOSITIONS})\b).)*\b{re.escape(t)}(?:s|es|ing|ed)?\s*$" if subject
+                else rf"\b{re.escape(t)}(?:ing|ed)?\b",
                 span.strip() if subject else span, re.I)), None)
             if word:
                 return (f"says the {word} caused a change ('{v.group(0)}'); without a control group "
@@ -783,7 +788,8 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
 
 # asking for the missing data ('Add cost data to measure margin'), not any sentence naming a cost
 _COST_ASK_RE = re.compile(r"\b(?:add|adding|upload|provide|include|collect|track|capture|need(?:s|ed)?|"
-                          r"without|missing|requires?|no)\b[^.]*\b(?:costs?|cogs)\b", re.I)
+                          r"without|missing|requires?|no)\b[^.]*\b(?:costs?|cogs)\b|"
+                          r"\b(?:unknown|unavailable|not available|not known)\b", re.I)
 _PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
 
 

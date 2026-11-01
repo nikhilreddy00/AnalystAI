@@ -19,7 +19,7 @@ from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
-from domain_pack import computable, describe_kpi, first_questions, glossary_hits, pack_for
+from domain_pack import computable, defaults_pack, describe_kpi, first_questions, glossary_hits, pack_for
 from guardrails import (
     PLAN_LIST_FIELDS,
     PLAN_SCALAR_FIELDS,
@@ -470,7 +470,7 @@ Rules:
 - Mix question types: overview, trend, comparison, anomaly, correlation
 - Questions should be immediately actionable (no setup needed)
 - Return a JSON array of 5 strings — no explanation, no markdown fences."""
-    pack = pack_for(contract.domain)
+    pack = defaults_pack(contract)   # a weak match is not told "this is retail data"
     firsts = first_questions(pack, contract.roles, df) if pack else []
     if firsts:   # 5.7: what a senior analyst of this domain asks first, that this data supports
         prompt += ("\n\nThis is " + pack.domain + " data. Questions a senior " + pack.domain +

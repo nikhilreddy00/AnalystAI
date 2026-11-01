@@ -329,6 +329,10 @@ def year_earlier(df, date: str, start: str | None, end: str | None, weekly: bool
         return df.iloc[:0], "", why
     lo, hi = max(lo, first.normalize()), min(hi, last)
     p_lo, p_hi = lo - _year_back(weekly), hi - _year_back(weekly)
+    if not weekly and lo.day == 1 and hi.normalize() == (hi + pd.offsets.MonthEnd(0)).normalize():
+        # whole months: the same months a year earlier (Feb 2025 against all of Feb 2024, the 29th too)
+        p_lo = (lo.to_period("M") - 12).start_time
+        p_hi = (hi.to_period("M") - 12).end_time
     if first.normalize() - pd.Timedelta(days=7) <= p_lo < first.normalize():
         p_lo = first.normalize()   # (the current window is cut to match in current_window)
     if p_lo < first.normalize():

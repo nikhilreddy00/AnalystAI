@@ -146,6 +146,13 @@ class Pack(_Strict):
         errors += [f"glossary {c}: neither a KPI, a definition nor unsupported" for c in self.glossary
                    if c not in names and c not in self.definitions and c not in self.unsupported]
         errors += [f"duplicate kpi {n}" for n in {n for n in names if names.count(n) > 1}]
+        if self.week_ends not in ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"):
+            errors.append(f"week_ends {self.week_ends!r}: one of MON … SUN")
+        errors += [f"first question {q!r}: needs a 'q'" for q in self.first_questions
+                   if isinstance(q, dict) and not q.get("q")]
+        errors += [f"kpi {k.name}: net_of {t.net_of} is not a rate role" for k in self.kpis
+                   for alt in [*k.num, *(k.den or [])] for t in alt
+                   if t.net_of and t.net_of in self.roles and self.roles[t.net_of].kind != "rate"]
         errors += [f"first question needs {n}: not a KPI, a role, a row kind or 'year'"
                    for q in self.first_questions if isinstance(q, dict)
                    for need in q.get("needs", []) for n in need.split("|")   # "sku|product": either
@@ -330,9 +337,17 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     if term.kpi:
         return _kpi_value(df, kinds, roles, pack, pack.kpi(term.kpi), by)
     part = df[rows]
+    # no rows of these kinds here (no returns this month, in this store) while the data has them
+    # elsewhere: 0, and a group keeps its place (a 0% return rate ranks lowest); none anywhere in
+    # the data (returns may not be exported at all): unknown
+    if part.empty and not set(term.rows or kpi.rows) & kinds.attrs.get("present", set(kinds)):
+        return None
+    groups = pd.unique(df[by].dropna()) if by else None
     if term.nunique:
         col = part[roles[term.nunique]]
-        return col.groupby(part[by]).nunique() if by else col.nunique()
+        return col.groupby(part[by]).nunique().reindex(groups, fill_value=0) if by else col.nunique()
+    if part.empty and not by:
+        return 0.0
     expr = term.sum if term.sum is not None else term.sum_abs
     values = _column(part, roles, expr)
     if _order_level(df, roles, pack, expr):
@@ -351,7 +366,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         values = values.abs()
     if term.optional:   # a blank discount is no discount
         values = values.fillna(0)
-    return values.groupby(part[by]).sum(min_count=1) if by else values.sum(min_count=1)
+    if by:
+        return values.groupby(part[by]).sum(min_count=1).reindex(groups, fill_value=0)
+    return values.sum(min_count=1)
 
 
 def _side(df, kinds, roles, pack, kpi, alternatives, by):
@@ -386,15 +403,20 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
 
 
 def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
-                by: str | None = None):
+                by: str | None = None, full: pd.DataFrame | None = None):
     """A KPI's value (or a Series per `by` group) on the main currency's rows; None when the data
-    lacks its roles or a denominator is 0 — never a 0 or an infinity standing in for "unknown"."""
+    lacks its roles or a denominator is 0 — never a 0 or an infinity standing in for "unknown".
+    `full`: the whole data when `df` is a period of it (a month with no returns has a 0% return
+    rate when the data has returns at all)."""
     kpi = pack.kpi(name)
     if kpi is None or df.empty:
         return None
     keep, _, _ = main_currency(df, roles)
     df = df[keep]
-    value = _kpi_value(df, row_kinds(df, roles, pack), roles, pack, kpi, by)
+    kinds = row_kinds(df, roles, pack)
+    whole = kinds if full is None else row_kinds(full, roles, pack)
+    kinds.attrs["present"] = set(whole.unique())
+    value = _kpi_value(df, kinds, roles, pack, kpi, by)
     if value is None:
         return None
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)

@@ -65,6 +65,9 @@ _BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": ["r", "/", "s"]}]]}]}, "'\\*' or '-'"),
     ({"surprise": 1}, "Extra inputs"),
     ({"caveats": {}}, "read_as_domain_weak"),   # a weak match must be able to hedge
+    ({"week_ends": "SATURDAY"}, "week_ends"),   # audit pass 3 (m8)
+    ({"first_questions": [{"needs": ["r"]}]}, "needs a 'q'"),
+    ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "r", "net_of": "s"}]]}]}, "not a rate role"),
 ])
 def test_an_invalid_pack_is_refused_with_its_reason(change, error):
     Pack.model_validate(_BASE)   # the base itself is valid
@@ -886,6 +889,10 @@ async def test_first_questions_are_the_domains_when_the_model_fails(recorded_llm
     assert qs == first_questions(RETAIL, c.roles)[:5] and not any("margin" in q for q in qs)
     stores = _contract(_gen("store_weeks"))   # no order id: no average-order-value question
     assert not any("order value" in q for q in first_questions(RETAIL, stores.roles))
+    # audit pass 3 (m4): a weak match gets no retail questions ("this is retail data")
+    recorded_llm.responses.append("not json")
+    weak = c.model_copy(update={"domain_confidence": "weak"})
+    assert not set(await generate_proactive_questions(weak, get_client())) & set(first_questions(RETAIL, c.roles))
 
 
 # ── Diff review of fix round 1: one test per finding ────────────────────────────────────────
@@ -1298,6 +1305,16 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     ("Coupons increased as a share of orders.", False),
     ("Discounts increased while sales were flat.", False),
     ("Discounts increased $500 in March.", False),
+    # audit pass 3 (M5): a time phrase after the verb is the word's own change ...
+    ("Discounts increased year over year.", False),
+    ("Promotions doubled last quarter.", False),
+    ("Markdowns grew this year, to 8% of gross sales.", False),
+    # ... (M6) and these phrasings give the cause
+    ("Net sales rose 20% due to the spring promotion.", True),
+    ("Sales rose 20% as a result of the discount.", True),
+    ("The November promotion was responsible for the spike in units.", True),
+    ("The coupon campaign contributed to the 15% rise in orders.", True),
+    ("Discounting raised order volume in March.", True),
 ])
 def test_promotions_given_credit_anywhere_in_the_claim(sentence, flagged):
     from guardrails import claim_causal_overreach
@@ -1331,6 +1348,7 @@ def test_profit_claims_need_a_cost_or_profit_column():
     assert claim_profit_without_cost("Margins improved as costs fell in Q4.", has_cost=False)
     assert claim_profit_without_cost("Profit rose 20% while shipping costs fell.", has_cost=False)
     assert claim_profit_without_cost("Upload unit costs to see margin by product.", has_cost=False) is None
+    assert claim_profit_without_cost("Gross margin is unknown.", has_cost=False) is None   # pass 3 m5
 
 
 def test_the_markdown_export_carries_how_the_numbers_were_counted():
@@ -1688,3 +1706,105 @@ def test_a_trend_before_the_new_stores_has_no_stores_note():
     text = _answer(_gen("store_weeks"), QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="M",
                    period_start="2025-01-01", period_end="2025-06-30").answer_text
     assert "opened or closed" not in text, text
+
+
+def test_a_zero_return_rate_is_zero_not_unknown():
+    """Audit pass 3 (M1): a store or month with no returns has a 0% return rate; it ranks lowest
+    and stays on the chart."""
+    from domain_pack import compute_kpi
+    df = _load("Order ID,Order Date,SKU,Quantity,Unit Price,Store\n"
+               "#1,2025-01-02,A,2,10,S1\n#2,2025-01-03,A,-1,10,S1\n#3,2025-01-04,A,2,10,S2\n"
+               "#4,2025-02-02,A,3,10,S2\n")
+    c = _contract(df)
+    roles = {r: col for r, col in c.roles.items() if col in df.columns}
+    by = compute_kpi(df, roles, RETAIL, "return_rate", by=c.roles["store"])
+    assert dict(by.round(4)) == {"S1": 0.5, "S2": 0.0}, by
+    feb = df[df["Order Date"].astype(str).str.startswith("2025-02")]
+    assert compute_kpi(feb, roles, RETAIL, "return_rate", full=df) == 0.0
+    assert compute_kpi(feb, roles, RETAIL, "return_rate") is None   # no returns anywhere: unknown
+
+
+def _weekdays(start: str, end: str, days=range(5)) -> pd.DataFrame:
+    dates = [d for d in pd.date_range(start, end) if d.weekday() in days]
+    return _load("Order ID,Order Date,SKU,Quantity,Unit Price,Revenue\n" + "".join(
+        f"#{i},{d:%Y-%m-%d},SK-{i % 5},1,10,10\n" for i, d in enumerate(dates)))
+
+
+@pytest.mark.parametrize("days", [range(5), range(6)])
+def test_a_seller_closed_at_weekends_keeps_its_edge_weeks(days):
+    """Audit pass 3 (M2): Mon-Fri (or Mon-Sat) trading, 6 Jan to 28/29 Mar 2025: every week is
+    complete for this seller."""
+    text = _answer(_weekdays("2025-01-06", "2025-03-29", days), QuestionIntent.TIME_SERIES,
+                   kpi="net_sales", frequency="W").answer_text
+    assert "left out" not in text, text
+
+
+def test_month_start_rows_keep_their_last_quarter_and_year():
+    """Audit pass 3 (M3): monthly rows on the 1st, Apr-Dec 2024: Q4 is complete (Dec covers it)."""
+    from agents.targeted_analysis_agent import _cut_partial
+    t = pd.Series(pd.date_range("2024-04-01", "2024-12-01", freq="MS"))
+    q = pd.Series([1.0, 2.0, 3.0], index=pd.PeriodIndex(["2024Q2", "2024Q3", "2024Q4"], freq="Q"))
+    assert _cut_partial(q, t, "Q")[0].equals(q)
+
+
+def test_how_were_sales_in_a_quarter_is_its_total_against_last_year(shop):
+    """Audit pass 3 (M4): 'How were net sales in Q4 2025?' is Q4's total against Q4 2024, never
+    December against November; asked by month, the months have their year-earlier figures."""
+    s, _ = shop
+    text = _ask(s, "How were net sales in Q4 2025?", QuestionIntent.TIME_SERIES, kpi="net_sales",
+                period_start="2025-10-01", period_end="2025-12-31").answer_text
+    # Q4 2024 is before the data (it starts Jan 2025): the total, and no comparison at all
+    assert "(01 Oct 2025 to 31 Dec 2025): $" in text and "the period before" not in text, text
+    monthly = _ask(s, "net sales by month, Dec 2025 to Jan 2026", QuestionIntent.TIME_SERIES,
+                   kpi="net_sales", frequency="M", period_start="2025-12-01",
+                   period_end="2026-01-31").answer_text   # Jan 2025 is outside the window
+    assert "latest 2026-01" in monthly and "a year earlier" in monthly, monthly
+
+
+def test_a_zero_rate_is_a_value_to_compare_with():
+    """Audit pass 3 (m2): a 0% return rate the month before is 'vs 0.0%', not skipped."""
+    from agents.targeted_analysis_agent import _cut_partial  # noqa: F401 (module import)
+    rows = ["Order ID,Order Date,SKU,Quantity,Unit Price"]
+    for i, d in enumerate(pd.date_range("2025-01-01", "2025-03-31")):
+        q = -1 if d.month == 3 and d.day == 5 else 1   # one return, in March only
+        rows.append(f"#{i},{d:%Y-%m-%d},SK-{i % 5},{q},10")
+    text = _answer(_load("\n".join(rows) + "\n"), QuestionIntent.TIME_SERIES, kpi="return_rate",
+                   frequency="M").answer_text
+    assert "the period before" in text, text
+
+
+def test_february_against_a_leap_february_counts_the_29th():
+    """Audit pass 3 (m3): Feb 2025 vs a year earlier is all of Feb 2024, 29 days."""
+    text = _answer(_daily("2024-01-01", "2025-03-31"), QuestionIntent.SEGMENT_COMPARE,
+                   kpi="net_sales", period_start="2025-02-01", period_end="2025-02-28",
+                   compare="yoy").answer_text
+    assert "01 Feb 2024 to 29 Feb 2024): $290.00" in text, text
+
+
+def test_a_missing_kpi_names_every_way_to_compute_it():
+    """Audit pass 3 (m6): gross margin needs a profit column, or a cost one."""
+    from agents.targeted_analysis_agent import _missing
+    got = _missing(RETAIL, "gross_margin_pct", {"revenue": "Sales", "quantity": "Qty"})
+    assert "profit" in got and "cost" in got, got
+
+
+def test_a_daily_kpi_trend_stays_daily():
+    """Audit pass 3 (m7): frequency D is by day, never silently by month."""
+    text = _answer(_daily("2025-03-01", "2025-03-20"), QuestionIntent.TIME_SERIES, kpi="net_sales",
+                   frequency="D").answer_text
+    assert "latest 2025-03-20" in text, text
+
+
+def test_the_trend_stores_note_reads_the_weeks_compared():
+    """Audit pass 3 (m1): store 3 opens in Apr 2024; the latest week and the week a year earlier
+    both have it, so the comparison is like-for-like: no note."""
+    rows = ["Store,Week End,Net Sales,Units,Dept"]
+    for d in pd.date_range("2024-01-06", "2025-12-27", freq="W-SAT"):
+        for st in ("S1", "S2", "S3"):
+            if st == "S3" and d < pd.Timestamp("2024-04-06"):
+                continue
+            rows.append(f"{st},{d:%Y-%m-%d},1000,50,A")
+    df = _load("\n".join(rows) + "\n")
+    c = _contract(df).model_copy(update={"domain_confidence": "strong"})
+    text = _answer(df, QuestionIntent.TIME_SERIES, contract=c, kpi="net_sales", frequency="W").answer_text
+    assert "a year earlier" in text and "opened or closed" not in text, text
