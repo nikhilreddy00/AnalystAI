@@ -561,8 +561,10 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 raise SandboxError("analysis", detail, message) from None
             raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
-            reason = review_findings(findings, raw, known, set(ctx.analysis_types), {
-                c.name: c.aggregation_by for c in contract.columns if c.aggregation in ('last', 'first')})
+            if fixed := repair_levels(findings, pd.read_parquet(io.BytesIO(df_parquet)), contract):
+                trace_verdict("analysis", PROMPT_VERSION, "level_recomputed")
+                raw["assumptions"] = [*(raw.get("assumptions") or []), *fixed]
+            reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
                 if repaired := ground_prose(findings, raw):
                     trace_verdict("analysis", PROMPT_VERSION, "grounding_rewritten")
@@ -609,7 +611,7 @@ def _finding_columns(f: AnalysisFindings) -> set[str]:
 
 
 def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
-                    types: set[str] = frozenset(), levels: dict | None = None) -> str | None:
+                    types: set[str] = frozenset()) -> str | None:
     """Hard rules that need a retry: non-empty output and real columns. eda_summary counts only
     when EDA was asked for: the built-in block always fills it. Grounding is enforced by
     ground_prose instead (a rewrite, not a retry)."""
@@ -619,12 +621,33 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
                 "(a near-zero correlation or a non-significant test is a finding)")
     if reason := check_columns(_finding_columns(f), known):
         return f"findings name {reason}"
-    for s in f.segments:   # a level (balance, MRR) summed over its snapshots: a wrong total
-        if s.metric_column in (levels or {}) and (s.aggregation or "").lower() in ("sum", "total"):
-            by = ", ".join(levels[s.metric_column])
-            return (f"{s.metric_column} is a level: its total by {s.segment_column} is each {by}'s "
-                    f"latest value in the latest period, summed; not a sum over every row")
     return None
+
+
+def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract) -> list[str]:
+    """A breakdown that summed a level (balance, MRR) over every snapshot: recomputed here as its
+    period-end total, the same rule as charts and answers, instead of failing the run (5.5 live
+    run: the model did it twice on the guided retry). Returns notes for the evidence."""
+    from agents.utils import LevelUnavailable, aggregate, column_hint
+    notes = []
+    for s in list(f.segments):
+        hint = column_hint(contract, s.metric_column)
+        if hint is None or hint.aggregation not in ("last", "first") \
+                or (s.aggregation or "").lower() not in ("sum", "total"):
+            continue
+        cols = [c for c in s.segment_column.split("|") if c]
+        try:
+            totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+        except (LevelUnavailable, KeyError):
+            f.segments.remove(s)
+            notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
+            continue
+        s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
+                      "value": round(float(v), 4)} for k, v in totals.items()]
+        s.aggregation = hint.aggregation
+        notes.append(f"{s.metric_column} by {s.segment_column} recomputed as the period-end total "
+                     f"(each {', '.join(hint.aggregation_by)}'s latest value), not a sum of every row")
+    return notes
 
 
 def ground_prose(f: AnalysisFindings, raw: dict) -> list[str]:

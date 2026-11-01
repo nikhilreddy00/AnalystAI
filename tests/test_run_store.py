@@ -147,3 +147,23 @@ async def test_the_reaper_honours_a_cancel_instead_of_requeueing(store):
     assert await store.reap() == [(run.id, "cancelled")]
     events = [e for _, e in await store.events_after(run.id, 0)]
     assert events[-1] == {"type": "done"} and (await store.claim()) is None
+
+
+async def test_a_query_cancelled_mid_flight_does_not_break_the_next_request(store):
+    """5.5 live run: a client that drops /runs/{id}/events mid-query cancelled an asyncpg
+    connection; the pool handed it to the next POST /chat, which got a 500."""
+    if isinstance(store, InMemoryRunStore):
+        pytest.skip("Postgres only")
+    await store.active_for_session("s1", "u1")   # one pooled connection, now idle
+
+    async def slow():
+        async with store._engine.connect() as conn:
+            await conn.execute(text("SELECT pg_sleep(5)"))
+    task = asyncio.create_task(slow())
+    await asyncio.sleep(0.3)
+    while not task.done():   # as a cancel scope does: the cleanup is cancelled too
+        task.cancel()
+        await asyncio.sleep(0)
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert await store.active_for_session("s1", "u1") is None   # served, not "connection is closed"

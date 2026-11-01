@@ -109,15 +109,20 @@ def test_an_explicit_sum_of_an_averaged_column_is_kept():
     assert effective_agg(_bank_contract(), "balance", "sum") == "last"
 
 
-def test_a_model_finding_that_sums_a_level_gets_a_guided_retry():
-    from agents.analysis_agent import review_findings
+def test_a_model_finding_that_sums_a_level_is_recomputed_not_failed():
+    """5.5 live run: the banking overview failed when the model summed balances twice."""
+    from agents.analysis_agent import repair_levels
     from orchestrator.state import SegmentResult
+    df, _ = datagen.make("bank_balances", 1)
     seg = SegmentResult(segment_column="segment", metric_column="balance", aggregation="sum",
                         results=[{"name": "business", "value": 1.0}])
     f = _findings(segments=[seg])
-    reason = review_findings(f, {}, ["segment", "balance"], set(), {"balance": ["account_id"]})
-    assert reason and "is a level" in reason
-    assert review_findings(f, {}, ["segment", "balance"], set(), {}) is None
+    notes = repair_levels(f, df, _bank_contract())
+    latest = df[df.snapshot_date == df.snapshot_date.max()].groupby("segment").balance.sum()
+    assert notes and {r["name"]: r["value"] for r in f.segments[0].results} == pytest.approx(
+        latest.to_dict()) and f.segments[0].aggregation == "last"
+    gone = _findings(segments=[seg.model_copy(update={"aggregation": "sum"})])
+    assert repair_levels(gone, df.drop(columns="account_id"), _bank_contract()) and not gone.segments
 
 
 def test_charts_of_a_summed_level_finding_show_the_current_total():

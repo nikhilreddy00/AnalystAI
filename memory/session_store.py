@@ -601,7 +601,9 @@ class InMemorySessionStore:
 
 class SessionStore:
     def __init__(self, database_url: str) -> None:
-        self._engine = create_async_engine(database_url, echo=False)
+        # pool_pre_ping: a client that drops an SSE stream mid-query leaves a dead asyncpg
+        # connection in the pool; without the ping the next request gets it and fails (5.5 live run).
+        self._engine = create_async_engine(database_url, echo=False, pool_pre_ping=True)
         self._session_factory = async_sessionmaker(self._engine, expire_on_commit=False)
 
     async def init(self) -> None:
