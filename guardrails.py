@@ -953,8 +953,11 @@ _WEAK_PHI_ID_RE = re.compile(r"(?:^|_)(?:chart_?(?:no|nr|num|number|id)|"
 # Words that only health data uses in a header: with a personal or identifier column next to
 # them they mark patient records even without an MRN (a 'patient' name + a 'diagnosis' text).
 _HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|"
-                        r"medications?|prescriptions?|hospitals?|hospital_\w+|physician|encounters?|"
-                        r"lab_?results?|allerg\w*|vaccin\w*)(?:$|_)", re.I)
+                        r"medications?|prescriptions?|hospital(?!ity)\w*|physician|encounters?|"
+                        r"lab_?results?|allerg\w*|vaccin\w*|adverse_?events?|ae_\w+|"
+                        r"treatment_?arm|arm|doses?|dosage|dosing|hospitaliz\w*|discharge\w*|"
+                        r"vitals?|bmi|blood_?pressure|systolic|diastolic|heart_?rate|symptoms?|"
+                        r"triage|ward|clinic\w*|trial)(?:$|_)", re.I)
 _DX_NAME_RE = re.compile(r"(?:^|_)(?:icd(?:_?10)?|diagnos[ie]s|diag|dx)(?:_?codes?)?(?:$|_)", re.I)
 _ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
 # HIPAA Safe Harbor: 3-digit ZIPs covering ≤ 20,000 people (2000 census) become 000.

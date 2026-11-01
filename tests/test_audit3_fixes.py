@@ -199,3 +199,12 @@ def test_by_domain_reads_attribution_from_any_run():
     base = {"domain": "hr", "checks": [{"kind": "x", "ok": True}], "hard": [], "passed": True}
     runs = {"hr-1": [{**base, "passed": False}, {**base, "builtin_only": False}]}
     assert _by_domain(runs)["by_domain"]["hr"]["model_dependent_cases"] == 1
+
+
+@pytest.mark.parametrize("extra", ["adverse_event", "dose_mg", "treatment_arm", "hospitalized",
+                                   "discharge_date", "hospital_name"])
+def test_a_trial_subject_id_next_to_clinical_columns_is_patient_data(extra):
+    """Security review: narrowing subject_id must not drop clinical-trial data out of PHI mode."""
+    df = pd.DataFrame({"subject_id": [f"S{i % 40}" for i in range(200)],
+                       extra: [f"v{i % 3}" for i in range(200)], "value": range(200)})
+    assert _contract(df).phi
