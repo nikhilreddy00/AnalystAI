@@ -38,7 +38,7 @@ from agents.utils import (
     partial_last_month,
     weekly_cadence,
 )
-from domain_pack import compute_kpi, defaults_pack, describe_kpi, main_currency, pack_for, row_kinds
+from domain_pack import compute_kpi, defaults_pack, describe_kpi, main_currency, row_kinds
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -1145,7 +1145,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
     data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
     and the run goes on. Money is in the main currency; other currencies are left out, said in
     the tile's context."""
-    pack = pack_for(contract.domain) if contract else None
+    pack = defaults_pack(contract)   # a weak match keeps the generic tiles (and says how it read)
     if pack is None or df is None or df.empty:
         return []
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
@@ -1167,13 +1167,12 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
             continue
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
-        context = (f"{currency} only; {other:,} rows in other currencies left out"
-                   if other and kind == "currency" else "")
+        context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
         tiles.append(KPI(label=k.label, value=_format_value(v, kind, unit), context=context,
                          recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
                                           **_unit_fields(kind, unit)),
                          how=describe_kpi(pack, k.name, roles, present)))
-    return tiles[:5]
+    return tiles[:5] if len(tiles) >= 2 else []   # one tile is no strip: the generic tiles
 
 
 def generate_smart_kpis(
@@ -2215,6 +2214,13 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         monthly = True   # staggered snapshots: a day holds only some accounts, a month all
     extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
+    pack = defaults_pack(ctx.contract)
+    role = next((r for r, c in ctx.contract.roles.items() if c == metric), None) if pack else None
+    if role and pack.roles[role].kind == "money" and pack.roles[role].additive:
+        # a domain's money counts sale and return rows in the main currency, as its tiles do
+        roles = {r: c for r, c in ctx.contract.roles.items() if c in df.columns}
+        keep, _, _ = main_currency(df, roles)
+        df = df[keep & row_kinds(df, roles, pack).isin(["sale", "return"])]
     sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")

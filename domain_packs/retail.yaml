@@ -102,7 +102,8 @@ sentinels: {unit_price: [-1, 99999], quantity: [9999, 99999], cost: [-1, 99999]}
 ranges: {unit_price: {ge: 0}, discount_rate: {le: 1}}
 # Shopify writes these on an order's first line only; the total stays there (summing it down an
 # order's lines would count it once per line).
-order_fields: [discount, status, email, customer_id, country, currency, channel]
+order_fields: [status, email, customer_id, country, currency, channel]   # never money: a discount
+                                                                         # carried down is counted per line
 
 kpis:
   # Net sales: the revenue column if there is one, else quantity × price less order discounts.

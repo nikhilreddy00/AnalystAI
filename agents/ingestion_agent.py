@@ -355,14 +355,15 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     if pack := pack_for(domain):   # the pack knows a store number is a label, not a quantity
         for c in cols:
             role = next((r for r, col in roles.items() if col == c.name), None)
-            s = df[c.name].dropna()
-            shaped = bool(role) and bool(pack.roles[role].pattern) and \
-                s.head(1000).astype(str).str.fullmatch(pack.roles[role].pattern).mean() >= 0.9
+            if not role or pack.roles[role].kind != "id" or c.is_id:
+                continue
+            s = df[c.name].dropna().astype(str)   # text: a nested value can't break nunique
+            shaped = bool(pack.roles[role].pattern) and \
+                s.head(1000).str.fullmatch(pack.roles[role].pattern).mean() >= 0.9
             # many digit-bearing codes (SKU 85123A, customer numbers); "Store 1".."Store 3" are labels
-            coded = s.nunique() > 20 and s.head(1000).astype(str).str.contains(r"\d").mean() >= 0.9
-            if role and pack.roles[role].kind == "id" and not c.is_id and (
-                    c.is_metric or shaped or coded or s.nunique() >= 0.5 * max(len(s), 1)):   # a store number, an
-                # order number ("#1001"); a store named "Downtown" (few values) stays a category
+            coded = s.nunique() > 20 and s.head(1000).str.contains(r"\d").mean() >= 0.9
+            # a store number, an order number ("#1001"); "Downtown" (few names) stays a category
+            if c.is_metric or shaped or coded or s.nunique() >= 0.5 * max(len(s), 1):
                 c.is_id, c.is_metric = True, False
                 c.role_reason = f"id: the {domain} {role.replace('_', ' ')}"
     return DataContract(

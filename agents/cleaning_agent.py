@@ -165,6 +165,18 @@ def _whole_orders(flat: pd.DataFrame, dup: pd.Series, order: str) -> set:
     return set(per.index[(per["nunique"] == 1) & (per["min"] >= 2)])
 
 
+def _first_line_only(df: pd.DataFrame, by: pd.Series, col: str) -> bool:
+    """The export writes `col` on an order's first line and leaves the rest blank, in at least 80%
+    of the orders with several lines (Shopify): a layout, not missing data."""
+    multi = by.notna() & by.duplicated(keep=False)
+    if not multi.any():
+        return False
+    first = ~by[multi].duplicated()
+    filled = df.loc[multi, col].notna()
+    per = pd.DataFrame({"o": by[multi], "first_only": filled.eq(first)}).groupby("o")["first_only"].all()
+    return bool(per.mean() >= 0.8)
+
+
 def _null_pct(s: pd.Series) -> float:
     return round(float(s.isna().mean() * 100), 1) if len(s) else 0.0
 
@@ -361,12 +373,13 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
             f"{why}.", n_dup)
 
-    # 5b. Order-level fields on an order's first line only: carried down the order.
-    if ctx.pack and ctx.strong and order:
+    # 5b. Order-level fields on an order's first line only (the layout, seen in the data, not
+    #     guessed from the domain): carried down the order.
+    if ctx.pack and order:
         by = df[order]
         for role in ctx.pack.order_fields:
             col = ctx.roles.get(role)
-            if col is None or col == order or not df[col].isna().any():
+            if col is None or col == order or not df[col].isna().any() or not _first_line_only(df, by, col):
                 continue
             values = df[col].groupby(by).transform("nunique")
             gap = df[col].isna() & by.notna() & values.eq(1)

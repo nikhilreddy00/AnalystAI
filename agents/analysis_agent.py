@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
+    ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
     defaults_pack,
@@ -209,6 +210,22 @@ except Exception:
     return "\n".join(lines)
 
 
+def kind_column(contract: DataContract) -> str:
+    """The row-kind column's name in the frame analysis gets (domain_pack.with_row_kind's rule)."""
+    names = {c.name for c in contract.columns}
+    return next(n for n in (ROW_KIND_COLUMN, f"_{ROW_KIND_COLUMN}", f"pack_{ROW_KIND_COLUMN}")
+                if n not in names)
+
+
+def _money_targets(contract: DataContract, targets: list[str]) -> list[str]:
+    """Targets that are a strong-matched pack's additive money roles (net of the row rules)."""
+    pack = defaults_pack(contract)
+    if pack is None:
+        return []
+    return [c for r, c in contract.roles.items() if c in targets and pack.roles[r].kind == "money"
+            and pack.roles[r].additive]
+
+
 def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
     """Statistics with one right answer, for the requested analysis types, computed here rather
     than by the model (shorter generated code, no arithmetic slips). MoM of a target metric
@@ -263,6 +280,8 @@ try:
         # compare fairly (agents.utils.weekly_cadence).
         _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
         _weekly = {defaults_pack(contract) is not None!r} and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
+        # a domain's money columns count sale and return rows in the main currency (as its tiles)
+        _money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
@@ -276,6 +295,8 @@ try:
                 _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')
                 _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
             else:
+                if _col in _money and _kind in _frame.columns:
+                    _frame = _frame[_frame[_kind].isin(['sale', 'return'])]
                 _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
                 if _weekly and _agg == 'sum':
                     _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)
@@ -437,7 +458,8 @@ def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
     present = {d.strategy for d in (audit.decisions if audit else [])
                if d.operation == "flag" and d.strategy in ROW_KINDS}
     grain = audit.grain if audit else None
-    brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None)
+    brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None,
+                       kind_column(contract))
     if not brief:
         return {}
     return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
@@ -645,12 +667,15 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     ctx = build_context(session)
     contract = session.data_contract
     known = [c.name for c in contract.columns]
-    if ctx.domain:   # 5.7: a domain pack's row kinds as a column the code filters on
-        framed, kind_col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
-        if kind_col:
+    if ctx.domain or defaults_pack(contract):   # 5.7: row kinds as a column code filters on
+        def framed_bytes() -> tuple[bytes, str | None]:
+            framed, col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
             buf = io.BytesIO()
             framed.to_parquet(buf, index=False)
-            df_parquet, known = buf.getvalue(), known + [kind_col]
+            return buf.getvalue(), col
+        new_bytes, kind_col = await asyncio.to_thread(framed_bytes)
+        if kind_col:
+            df_parquet, known = new_bytes, known + [kind_col]
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
     back: dict = {}                  # {pseudonym: value}, never leaves this process

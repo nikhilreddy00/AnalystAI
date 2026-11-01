@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
+ROW_KIND_COLUMN = "row_kind"   # each row's kind, in the frame analysis code gets
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
 CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded")
@@ -207,8 +208,8 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
         case "status":
             known = {v.lower() for vs in pack.status_values.values() for v in vs}
             return vals.astype(str).str.strip().str.lower().isin(known).mean() >= 0.5
-        case "currency":
-            return vals.astype(str).str.fullmatch(r"[A-Z]{3}").mean() >= 0.9
+        case "currency":   # "usd" as well as "USD"
+            return vals.astype(str).str.strip().str.upper().str.fullmatch(r"[A-Z]{3}").mean() >= 0.9
         case "category" | "text":
             return not numeric
     return True   # id
@@ -290,7 +291,8 @@ def main_currency(df: pd.DataFrame, roles: dict[str, str]) -> tuple[pd.Series, s
     if "currency" not in roles:
         return pd.Series(True, index=df.index), None, 0
     cur = df[roles["currency"]].astype(str).str.strip().str.upper()
-    counts = cur[df[roles["currency"]].notna()].value_counts()
+    code = cur.str.fullmatch(r"[A-Z]{3}") & df[roles["currency"]].notna()
+    counts = cur[code].value_counts()   # only real codes: a cell of text is never "the currency"
     if counts.empty:
         return pd.Series(True, index=df.index), None, 0
     main = str(counts.index[0])
@@ -488,21 +490,23 @@ def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(R
 
 
 def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: str | None = None,
-               present: set[str] = frozenset(), currency: str | None = None) -> list[str]:
+               present: set[str] = frozenset(), currency: str | None = None,
+               kind_column: str = ROW_KIND_COLUMN) -> list[str]:
     """The pack's rules, in role names: which rows are not sales (the kinds `present` in this
     data), the grain, and each concept (a KPI or a definition) asked about. Roles, never column
     names: the caller shows the role → column map inside its untrusted-data block."""
     named = {r: r for r in roles}
     lines = []
     if present - {"sale"} or concepts:   # rows to leave out, or a KPI to compute
-        lines.append(f"Each row's kind is in the column '{ROW_KIND_COLUMN}' (sale, return, refunded, "
-                     "cancel, test, non_product), computed by these rules: filter on it, never "
-                     "re-derive it. Sales figures use sale rows; net figures sale and return rows.")
+        lines.append(f"Each row's kind is in the column '{kind_column}' (sale, return, refunded, "
+                     "cancel, test, non_product, other_currency), computed by these rules: filter on "
+                     "it, never re-derive it. Sales figures use sale rows; net figures sale and "
+                     "return rows.")
     if rules := row_rules(pack, roles, present):
         lines.append(f"Row kinds: {rules}.")
     if currency and "currency" in roles:
-        lines.append(f"Money totals use {currency} only: rows whose currency is another are left "
-                     "out of every money figure (never added across currencies).")
+        lines.append(f"Every figure uses {currency} rows only: rows in another currency are left "
+                     "out (never added across currencies).")
     if grain == "line":
         lines.append("One row is an order line: count orders as distinct order_id, never rows; "
                      "an average per order divides by orders.")
@@ -560,8 +564,6 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
 
 
-ROW_KIND_COLUMN = "row_kind"
-
 
 def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]:
     """The frame with each row's kind as a column (sale, return, refunded, cancel, test,
@@ -571,9 +573,12 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     pack = pack_for(contract.domain) if contract is not None else None
     if pack is None:
         return df, None
-    name = ROW_KIND_COLUMN if ROW_KIND_COLUMN not in df.columns else f"_{ROW_KIND_COLUMN}"
+    name = next(n for n in (ROW_KIND_COLUMN, f"_{ROW_KIND_COLUMN}", f"pack_{ROW_KIND_COLUMN}")
+                if n not in df.columns)   # never a user's own column
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    return df.assign(**{name: row_kinds(df, roles, pack)}), name
+    kinds = row_kinds(df, roles, pack)
+    keep, _, _ = main_currency(df, roles)
+    return df.assign(**{name: kinds.where(keep, "other_currency")}), name
 
 
 def defaults_pack(contract) -> Pack | None:

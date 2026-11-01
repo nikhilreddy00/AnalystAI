@@ -179,12 +179,9 @@ def test_a_currency_written_in_the_file_is_used():
 
 def test_no_unit_keeps_the_name_rule_so_sales_still_shows_dollars():
     df, _ = datagen.make("sales", 1)
-    c = _contract(df)
-    # 5.7: sales is retail, so its money tiles are the pack's (no "Avg revenue"), still dollars
-    from agents.visualization_agent import classify_columns, generate_smart_kpis, kpi_mismatches
-    tiles = generate_smart_kpis(df, classify_columns(df), contract=c)
-    assert tiles[0].label == "Net sales" and tiles[0].value.startswith("$")
-    assert kpi_mismatches(tiles, df, {}, c) == []
+    # 5.7: the old sales table is a weak retail match: its generic tiles, as before
+    k = _kpi(df, _contract(df))
+    assert k.value.startswith("$") and k.recipe.currency is None
 
 
 def test_an_unknown_code_is_a_suffix_not_a_crash():

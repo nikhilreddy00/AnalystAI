@@ -7,9 +7,6 @@ expect_decisions:
 - column: '*'
   operation: drop_duplicates
   truth_key: duplicate_rows
-- column: Discount Amount
-  operation: fill_within_order
-  truth_key: first_line_blanks
 - column: Financial Status
   operation: fill_within_order
   truth_key: first_line_blanks
@@ -37,6 +34,8 @@ forbid:
   operation: fill_unknown
 - operation: flag
   strategy: return
+- column: Discount Amount
+  operation: fill_within_order
 expect_grain: line
 label_note: 'Shopify lines: order fields carried down each order (never the total), 40 export duplicates removed
   by order + SKU, refunded / voided / test lines flagged and kept.'
