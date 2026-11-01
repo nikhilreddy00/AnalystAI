@@ -62,6 +62,18 @@ async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "
     return out
 
 
+def _rounded(v):
+    """Floats to 9 significant digits: the last digits of a threshold differ between macOS and
+    CI's Linux (numpy builds); a real change moves far more than that."""
+    if isinstance(v, float):
+        return float(f"{v:.9g}")
+    if isinstance(v, dict):
+        return {k: _rounded(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_rounded(x) for x in v]
+    return v
+
+
 def _set_only(d: dict, new_fields: tuple[str, ...]) -> dict:
     return {k: v for k, v in d.items() if not (k in new_fields and not v)}
 
@@ -96,7 +108,7 @@ async def deterministic(datasets: set[tuple[str, int]]) -> dict:
         roles = classify_columns(clean_df)
         kpis = generate_smart_kpis(clean_df, roles, session.task_plan.raw_query, contract=contract)
         extras = compute_briefing_extras(clean_df, roles, contract)
-        out[f"{name}-{seed}"] = {k: _sha(json.dumps(v, sort_keys=True, default=str)) for k, v in {
+        out[f"{name}-{seed}"] = {k: _sha(json.dumps(_rounded(v), sort_keys=True, default=str)) for k, v in {
             # fields added since pre_5_7 count only when set (a new empty field is no change)
             "contract": _set_only(contract.model_dump(mode="json"), ("domain", "roles")),
             "audit": _set_only(audit.model_dump(mode="json"), ("grain", "partial_months")),
