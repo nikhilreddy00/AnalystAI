@@ -1,0 +1,592 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261101T151704Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "3c96cba",
+  "started_at": "20261101T151704Z",
+  "only": "health-1",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0138,
+  "latency_p50_s": 16.99,
+  "latency_p95_s": 16.99,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 18,
+  "by_domain": {
+   "healthcare": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 1,
+    "model_dependent_cases": 1,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 18,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 18
+    }
+   }
+  }
+ },
+ "runs": {
+  "health-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (discharge_date)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 9613,
+    "output": {
+     "eda_summary": {
+      "length_of_stay": {
+       "mean": 5.9993,
+       "std": 3.176,
+       "min": 1.0,
+       "max": 11.0,
+       "median": 6.0,
+       "count": 2667
+      },
+      "cost": {
+       "mean": 14404.7236,
+       "std": 7896.6844,
+       "min": 1547.78,
+       "max": 34910.96,
+       "median": 14078.18,
+       "count": 2667
+      },
+      "age": {
+       "mean": 53.634,
+       "std": 24.4063,
+       "min": 11.0,
+       "max": 90.0,
+       "median": 54.0,
+       "count": 2667
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "department",
+       "metric_column": "discharge_date",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Cardiology",
+         "value": 0.179104
+        },
+        {
+         "name": "General Medicine",
+         "value": 0.098446
+        },
+        {
+         "name": "Orthopedics",
+         "value": 0.094059
+        },
+        {
+         "name": "Neurology",
+         "value": 0.075188
+        },
+        {
+         "name": "Oncology",
+         "value": 0.073333
+        },
+        {
+         "name": "Other (fewer than 11 each)",
+         "value": 0.0
+        }
+       ],
+       "label": "readmission_rate_30d"
+      },
+      {
+       "segment_column": "department",
+       "metric_column": "discharge_date",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "overall",
+         "value": 0.117126
+        }
+       ],
+       "label": "readmission_rate_30d_overall"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "length_of_stay": [
+       {
+        "label": "(0.99, 2.0]",
+        "count": 499
+       },
+       {
+        "label": "(2.0, 3.0]",
+        "count": 230
+       },
+       {
+        "label": "(3.0, 4.0]",
+        "count": 232
+       },
+       {
+        "label": "(4.0, 5.0]",
+        "count": 263
+       },
+       {
+        "label": "(5.0, 6.0]",
+        "count": 225
+       },
+       {
+        "label": "(6.0, 7.0]",
+        "count": 220
+       },
+       {
+        "label": "(7.0, 8.0]",
+        "count": 274
+       },
+       {
+        "label": "(8.0, 9.0]",
+        "count": 253
+       },
+       {
+        "label": "(9.0, 10.0]",
+        "count": 220
+       },
+       {
+        "label": "(10.0, 11.0]",
+        "count": 251
+       }
+      ],
+      "cost": [
+       {
+        "label": "(1514.417, 4884.098]",
+        "count": 403
+       },
+       {
+        "label": "(4884.098, 8220.416]",
+        "count": 330
+       },
+       {
+        "label": "(8220.416, 11556.734]",
+        "count": 329
+       },
+       {
+        "label": "(11556.734, 14893.052]",
+        "count": 341
+       },
+       {
+        "label": "(14893.052, 18229.37]",
+        "count": 325
+       },
+       {
+        "label": "(18229.37, 21565.688]",
+        "count": 352
+       },
+       {
+        "label": "(21565.688, 24902.006]",
+        "count": 303
+       },
+       {
+        "label": "(24902.006, 28238.324]",
+        "count": 198
+       },
+       {
+        "label": "(28238.324, 31574.642]",
+        "count": 74
+       },
+       {
+        "label": "(31574.642, 34910.96]",
+        "count": 12
+       }
+      ],
+      "age": [
+       {
+        "label": "(10.921, 18.9]",
+        "count": 226
+       },
+       {
+        "label": "(18.9, 26.8]",
+        "count": 255
+       },
+       {
+        "label": "(26.8, 34.7]",
+        "count": 242
+       },
+       {
+        "label": "(34.7, 42.6]",
+        "count": 260
+       },
+       {
+        "label": "(42.6, 50.5]",
+        "count": 259
+       },
+       {
+        "label": "(50.5, 58.4]",
+        "count": 249
+       },
+       {
+        "label": "(58.4, 66.3]",
+        "count": 229
+       },
+       {
+        "label": "(66.3, 74.2]",
+        "count": 250
+       },
+       {
+        "label": "(74.2, 82.1]",
+        "count": 231
+       },
+       {
+        "label": "(82.1, 90.0]",
+        "count": 466
+       }
+      ],
+      "zip_code": [
+       {
+        "label": "0",
+        "count": 80
+       },
+       {
+        "label": "547",
+        "count": 9
+       },
+       {
+        "label": "757",
+        "count": 9
+       },
+       {
+        "label": "304",
+        "count": 9
+       },
+       {
+        "label": "511",
+        "count": 9
+       },
+       {
+        "label": "724",
+        "count": 8
+       },
+       {
+        "label": "71",
+        "count": 8
+       },
+       {
+        "label": "216",
+        "count": 8
+       },
+       {
+        "label": "416",
+        "count": 8
+       },
+       {
+        "label": "957",
+        "count": 8
+       }
+      ],
+      "department": [
+       {
+        "label": "Cardiology",
+        "count": 871
+       },
+       {
+        "label": "Orthopedics",
+        "count": 525
+       },
+       {
+        "label": "General Medicine",
+        "count": 515
+       },
+       {
+        "label": "Oncology",
+        "count": 388
+       },
+       {
+        "label": "Neurology",
+        "count": 362
+       },
+       {
+        "label": "Other (fewer than 11 each)",
+        "count": 6
+       }
+      ],
+      "diagnosis_code": [
+       {
+        "label": "I50.9",
+        "count": 301
+       },
+       {
+        "label": "I21.4",
+        "count": 295
+       },
+       {
+        "label": "M17.11",
+        "count": 286
+       },
+       {
+        "label": "I48.91",
+        "count": 275
+       },
+       {
+        "label": "S72.001A",
+        "count": 239
+       },
+       {
+        "label": "C50.911",
+        "count": 207
+       },
+       {
+        "label": "N39.0",
+        "count": 193
+       },
+       {
+        "label": "G40.909",
+        "count": 186
+       },
+       {
+        "label": "C34.90",
+        "count": 181
+       },
+       {
+        "label": "I63.9",
+        "count": 176
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import pandas as pd\n    import numpy as np\n\n    df['admit_date'] = pd.to_datetime(df['admit_date'])\n    df['discharge_date'] = pd.to_datetime(df['discharge_date'])\n\n    cutoff_date = df['discharge_date'].max() - pd.Timedelta(days=30)\n    eligible = df[df['discharge_date'] <= cutoff_date].copy()\n\n    def is_readmitted(row, all_df):\n        same_patient = all_df[all_df['mrn'] == row['mrn']]\n        subsequent = same_patient[\n            (same_patient['admit_date'] > row['discharge_date']) &\n            (same_patient['admit_date'] <= row['discharge_date'] + pd.Timedelta(days=30))\n        ]\n        return len(subsequent) > 0\n\n    eligible = eligible.copy()\n    eligible['readmitted'] = eligible.apply(lambda r: is_readmitted(r, df), axis=1)\n\n    dept_results = []\n    for dept, grp in eligible.groupby('department'):\n        total = len(grp)\n        readmits = grp['readmitted'].sum()\n        rate = readmits / total if total > 0 else 0.0\n        dept_results.append({\"name\": str(dept), \"value\": round(float(rate), 6)})\n\n    dept_results_sorted = sorted(dept_results, key=lambda x: -x[\"value\"])[:10]\n\n    overall_total = len(eligible)\n    overall_readmits = eligible['readmitted'].sum()\n    overall_rate = overall_readmits / overall_total if overall_total > 0 else 0.0\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d\",\n        \"results\": dept_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(float(overall_rate), 6)}]\n    })\n\n    result['assumptions'].append(\n        f\"Eligible discharges (30-day window ended): {overall_total} of {len(df)} total encounters.\"\n    )\n    result['assumptions'].append(\n        \"Readmission defined as any admission for the same MRN within 30 days after discharge date.\"\n    )\n    result['assumptions'].append(\n        f\"Cutoff date for eligible discharges: {cutoff_date.date()}; encounters discharged after this are excluded.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Standard statistics (deterministic) \u2500\u2500\u2500\nresult['builtin'] = []\n_targets, _segs, _date, _hints = [], ['department'], 'admit_date', {}\ntry:\n    if False:\n        for _i, _a in enumerate(_targets):\n            for _b in _targets[_i + 1:]:\n                if f'{_a}__{_b}' not in result['correlations'] and f'{_b}__{_a}' not in result['correlations']:\n                    _r = df[_a].corr(df[_b])\n                    if _r == _r:\n                        result['correlations'][f'{_a}__{_b}'] = round(float(_r), 4)\n                        result['builtin'].append(f'corr:{_a}__{_b}')\nexcept Exception:\n    pass\ntry:\n    if (_date or _hints) and False:\n        # A mid-month export compares the last two complete months (agents.utils.partial_last_month).\n        def _cut(_t):\n            _mm = _t.dt.to_period('M')\n            _d = _t.dropna()\n            if _d.empty:\n                return _mm\n            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()\n            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():\n                _mm = _mm.where(_mm != _days.index[-1])\n            return _mm\n        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')\n        def _level_months(_tc):\n            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))\n        # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.\n        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]\n        # ponytail: values all in [0, 1] \u2192 a rate or flag, compared by month mean; anything else\n        # by month total. A semantic layer (Phase 4) can declare the aggregation instead.\n        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's\n        # last value in the month, summed; a reading is a mean.\n        def _mom(_frame, _col):\n            _h = _hints.get(_col)\n            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')\n            _mon = _month\n            if _agg in ('last', 'first'):\n                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:\n                    return None, 0   # its account (or time) column is gone: no total, never a sum\n                _mon = _level_months(_h[2])   # the level's own months, partial last month out\n                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),\n                                   _m=_mon.loc[_frame.index])\n                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')\n                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()\n            else:\n                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()\n            if len(_tot) < 2 or _tot.iloc[-2] == 0:\n                return None, 0\n            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])\n            _n = int(_frame.loc[_last2, _col].notna().sum())\n            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n\n        for _c in _targets:\n            _jobs = [(None, df)]\n            if _segs:\n                _top = df[_segs[0]].value_counts().head(10).index\n                _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]\n            for _seg, _frame in _jobs:\n                _p, _n = _mom(_frame, _c)\n                if _p is not None:\n                    result['trends'].append({'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,\n                                             'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'})\n                    result['builtin'].append(f'trend:{_c}' + (f' ({_seg})' if _seg else '') + ':MoM')\nexcept Exception:\n    pass\ntry:\n    if len(_segs) >= 2 and 'segmentation' in ['segmentation']:\n        _joint = '|'.join(_segs[:2])\n        for _c in _targets:\n            if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):\n                continue\n            _g = df.groupby(_segs[:2])[_c].mean()\n            _n = df.groupby(_segs[:2]).size().sort_values(ascending=False).head(20).index\n            result['segments'].append({'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',\n                                       'results': [{'name': f'{_a}|{_b}', 'value': round(float(_g[(_a, _b)]), 4)} for _a, _b in _n]})\n            result['builtin'].append(f'seg:{_joint}/{_c}')\nexcept Exception:\n    pass\n\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'length_of_stay' in df.columns and pd.api.types.is_numeric_dtype(df['length_of_stay']):\n        _s = df['length_of_stay'].dropna()\n        if len(_s) > 0 and 'length_of_stay' not in result['eda_summary']:\n            result['eda_summary']['length_of_stay'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'cost' in df.columns and pd.api.types.is_numeric_dtype(df['cost']):\n        _s = df['cost'].dropna()\n        if len(_s) > 0 and 'cost' not in result['eda_summary']:\n            result['eda_summary']['cost'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'age' in df.columns and pd.api.types.is_numeric_dtype(df['age']):\n        _s = df['age'].dropna()\n        if len(_s) > 0 and 'age' not in result['eda_summary']:\n            result['eda_summary']['age'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'length_of_stay' in df.columns and pd.api.types.is_numeric_dtype(df['length_of_stay']):\n        _col_data = df['length_of_stay'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['length_of_stay'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'cost' in df.columns and pd.api.types.is_numeric_dtype(df['cost']):\n        _col_data = df['cost'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['cost'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'age' in df.columns and pd.api.types.is_numeric_dtype(df['age']):\n        _col_data = df['age'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['age'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'zip_code' in df.columns:\n        _vc = df['zip_code'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['zip_code'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'department' in df.columns:\n        _vc = df['department'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['department'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'diagnosis_code' in df.columns:\n        _vc = df['diagnosis_code'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['diagnosis_code'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "encounter_id": "ID-e3052669a184d1f9",
+       "mrn": "ID-8d8ea50f991f26f8",
+       "zip_code": 495,
+       "department": "Neurology",
+       "admit_date": "2025-11-01 00:00:00",
+       "length_of_stay": 10,
+       "discharge_date": "2025-11-11 00:00:00",
+       "diagnosis_code": "G40.909",
+       "cost": 21578.11,
+       "age": 29
+      },
+      {
+       "encounter_id": "ID-d0727a7033178da9",
+       "mrn": "ID-4ea7f84d7572ebd8",
+       "zip_code": 329,
+       "department": "Orthopedics",
+       "admit_date": "2025-11-01 00:00:00",
+       "length_of_stay": 4,
+       "discharge_date": "2025-11-05 00:00:00",
+       "diagnosis_code": "M17.11",
+       "cost": 8553.76,
+       "age": 36
+      },
+      {
+       "encounter_id": "ID-a7b4f3c8508dcdde",
+       "mrn": "ID-c5ba1bbaa921e9c0",
+       "zip_code": 137,
+       "department": "Cardiology",
+       "admit_date": "2025-11-01 00:00:00",
+       "length_of_stay": 9,
+       "discharge_date": "2025-11-10 00:00:00",
+       "diagnosis_code": "I48.91",
+       "cost": 23139.97,
+       "age": 85
+      },
+      {
+       "encounter_id": "ID-e87649ab42c63c60",
+       "mrn": "ID-2b210f879a281041",
+       "zip_code": 639,
+       "department": "Oncology",
+       "admit_date": "2025-11-01 00:00:00",
+       "length_of_stay": 10,
+       "discharge_date": "2025-11-11 00:00:00",
+       "diagnosis_code": "C34.90",
+       "cost": 24022.38,
+       "age": 11
+      },
+      {
+       "encounter_id": "ID-529fbe7bc7b2bab8",
+       "mrn": "ID-b9fee1e7bcd25bdc",
+       "zip_code": 784,
+       "department": "Neurology",
+       "admit_date": "2025-11-02 00:00:00",
+       "length_of_stay": 2,
+       "discharge_date": "2025-11-04 00:00:00",
+       "diagnosis_code": "G40.909",
+       "cost": 4809.02,
+       "age": 71
+      }
+     ],
+     "dtypes_summary": {
+      "encounter_id": "object",
+      "mrn": "object",
+      "zip_code": "int64",
+      "department": "object",
+      "admit_date": "datetime64[ns]",
+      "length_of_stay": "int64",
+      "discharge_date": "datetime64[ns]",
+      "diagnosis_code": "object",
+      "cost": "float64",
+      "age": "int64"
+     },
+     "missing_pct": {
+      "encounter_id": 0.0,
+      "mrn": 0.0,
+      "zip_code": 0.0,
+      "department": 0.0,
+      "admit_date": 0.0,
+      "length_of_stay": 0.0,
+      "discharge_date": 0.0,
+      "diagnosis_code": 0.0,
+      "cost": 0.0,
+      "age": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:department/discharge_date:ratio",
+       "kind": "segment",
+       "claim": "readmission_rate_30d (from discharge_date) by department (6 groups)",
+       "code": "try:\n    import pandas as pd\n    import numpy as np\n\n    df['admit_date'] = pd.to_datetime(df['admit_date'])\n    df['discharge_date'] = pd.to_datetime(df['discharge_date'])\n\n    cutoff_date = df['discharge_date'].max() - pd.Timedelta(days=30)\n    eligible = df[df['discharge_date'] <= cutoff_date].copy()\n\n    def is_readmitted(row, all_df):\n        same_patient = all_df[all_df['mrn'] == row['mrn']]\n        subsequent = same_patient[\n            (same_patient['admit_date'] > row['discharge_date']) &\n            (same_patient['admit_date'] <= row['discharge_date'] + pd.Timedelta(days=30))\n        ]\n        return len(subsequent) > 0\n\n    eligible = eligible.copy()\n    eligible['readmitted'] = eligible.apply(lambda r: is_readmitted(r, df), axis=1)\n\n    dept_results = []\n    for dept, grp in eligible.groupby('department'):\n        total = len(grp)\n        readmits = grp['readmitted'].sum()\n        rate = readmits / total if total > 0 else 0.0\n        dept_results.append({\"name\": str(dept), \"value\": round(float(rate), 6)})\n\n    dept_results_sorted = sorted(dept_results, key=lambda x: -x[\"value\"])[:10]\n\n    overall_total = len(eligible)\n    overall_readmits = eligible['readmitted'].sum()\n    overall_rate = overall_readmits / overall_total if overall_total > 0 else 0.0\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d\",\n        \"results\": dept_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(float(overall_rate), 6)}]\n    })\n\n    result['assumptions'].append(\n        f\"Eligible discharges (30-day window ended): {overall_total} of {len(df)} total encounters.\"\n    )\n    result['assumptions'].append(\n        \"Readmission defined as any admission for the same MRN within 30 days after discharge date.\"\n    )\n    result['assumptions'].append(\n        f\"Cutoff date for eligible discharges: {cutoff_date.date()}; encounters discharged after this are excluded.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"department\", \"metric_column\": \"discharge_date\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Cardiology\", \"value\": 0.179104}, {\"name\": \"General Medicine\", \"value\": 0.098446}, {\"name\": \"Orthopedics\", \"value\": 0.094059}, {\"name\": \"Neurology\", \"value\": 0.075188}, {\"name\": \"Oncology\", \"value\": 0.073333}, {\"name\": \"Other (fewer than 11 each)\", \"value\": 0.0}], \"label\": \"readmission_rate_30d\"}",
+       "row_count": 2667,
+       "confidence": "high",
+       "confidence_reason": "2667 rows",
+       "assumptions": []
+      },
+      {
+       "id": "seg:department/discharge_date:ratio",
+       "kind": "segment",
+       "claim": "readmission_rate_30d_overall (from discharge_date) by department (1 groups)",
+       "code": "try:\n    import pandas as pd\n    import numpy as np\n\n    df['admit_date'] = pd.to_datetime(df['admit_date'])\n    df['discharge_date'] = pd.to_datetime(df['discharge_date'])\n\n    cutoff_date = df['discharge_date'].max() - pd.Timedelta(days=30)\n    eligible = df[df['discharge_date'] <= cutoff_date].copy()\n\n    def is_readmitted(row, all_df):\n        same_patient = all_df[all_df['mrn'] == row['mrn']]\n        subsequent = same_patient[\n            (same_patient['admit_date'] > row['discharge_date']) &\n            (same_patient['admit_date'] <= row['discharge_date'] + pd.Timedelta(days=30))\n        ]\n        return len(subsequent) > 0\n\n    eligible = eligible.copy()\n    eligible['readmitted'] = eligible.apply(lambda r: is_readmitted(r, df), axis=1)\n\n    dept_results = []\n    for dept, grp in eligible.groupby('department'):\n        total = len(grp)\n        readmits = grp['readmitted'].sum()\n        rate = readmits / total if total > 0 else 0.0\n        dept_results.append({\"name\": str(dept), \"value\": round(float(rate), 6)})\n\n    dept_results_sorted = sorted(dept_results, key=lambda x: -x[\"value\"])[:10]\n\n    overall_total = len(eligible)\n    overall_readmits = eligible['readmitted'].sum()\n    overall_rate = overall_readmits / overall_total if overall_total > 0 else 0.0\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d\",\n        \"results\": dept_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(float(overall_rate), 6)}]\n    })\n\n    result['assumptions'].append(\n        f\"Eligible discharges (30-day window ended): {overall_total} of {len(df)} total encounters.\"\n    )\n    result['assumptions'].append(\n        \"Readmission defined as any admission for the same MRN within 30 days after discharge date.\"\n    )\n    result['assumptions'].append(\n        f\"Cutoff date for eligible discharges: {cutoff_date.date()}; encounters discharged after this are excluded.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"department\", \"metric_column\": \"discharge_date\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"overall\", \"value\": 0.117126}], \"label\": \"readmission_rate_30d_overall\"}",
+       "row_count": 2667,
+       "confidence": "high",
+       "confidence_reason": "2667 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:length_of_stay",
+       "kind": "eda",
+       "claim": "length_of_stay: median 6.00, mean 6.00, range 1.00 to 11.00",
+       "code": "try:\n    import pandas as pd\n    import numpy as np\n\n    df['admit_date'] = pd.to_datetime(df['admit_date'])\n    df['discharge_date'] = pd.to_datetime(df['discharge_date'])\n\n    cutoff_date = df['discharge_date'].max() - pd.Timedelta(days=30)\n    eligible = df[df['discharge_date'] <= cutoff_date].copy()\n\n    def is_readmitted(row, all_df):\n        same_patient = all_df[all_df['mrn'] == row['mrn']]\n        subsequent = same_patient[\n            (same_patient['admit_date'] > row['discharge_date']) &\n            (same_patient['admit_date'] <= row['discharge_date'] + pd.Timedelta(days=30))\n        ]\n        return len(subsequent) > 0\n\n    eligible = eligible.copy()\n    eligible['readmitted'] = eligible.apply(lambda r: is_readmitted(r, df), axis=1)\n\n    dept_results = []\n    for dept, grp in eligible.groupby('department'):\n        total = len(grp)\n        readmits = grp['readmitted'].sum()\n        rate = readmits / total if total > 0 else 0.0\n        dept_results.append({\"name\": str(dept), \"value\": round(float(rate), 6)})\n\n    dept_results_sorted = sorted(dept_results, key=lambda x: -x[\"value\"])[:10]\n\n    overall_total = len(eligible)\n    overall_readmits = eligible['readmitted'].sum()\n    overall_rate = overall_readmits / overall_total if overall_total > 0 else 0.0\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d\",\n        \"results\": dept_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(float(overall_rate), 6)}]\n    })\n\n    result['assumptions'].append(\n        f\"Eligible discharges (30-day window ended): {overall_total} of {len(df)} total encounters.\"\n    )\n    result['assumptions'].append(\n        \"Readmission defined as any admission for the same MRN within 30 days after discharge date.\"\n    )\n    result['assumptions'].append(\n        f\"Cutoff date for eligible discharges: {cutoff_date.date()}; encounters discharged after this are excluded.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 5.9993, \"std\": 3.176, \"min\": 1.0, \"max\": 11.0, \"median\": 6.0, \"count\": 2667}",
+       "row_count": 2667,
+       "confidence": "high",
+       "confidence_reason": "2667 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:cost",
+       "kind": "eda",
+       "claim": "cost: median 14,078.18, mean 14,404.72, range 1,547.78 to 34,910.96",
+       "code": "try:\n    import pandas as pd\n    import numpy as np\n\n    df['admit_date'] = pd.to_datetime(df['admit_date'])\n    df['discharge_date'] = pd.to_datetime(df['discharge_date'])\n\n    cutoff_date = df['discharge_date'].max() - pd.Timedelta(days=30)\n    eligible = df[df['discharge_date'] <= cutoff_date].copy()\n\n    def is_readmitted(row, all_df):\n        same_patient = all_df[all_df['mrn'] == row['mrn']]\n        subsequent = same_patient[\n            (same_patient['admit_date'] > row['discharge_date']) &\n            (same_patient['admit_date'] <= row['discharge_date'] + pd.Timedelta(days=30))\n        ]\n        return len(subsequent) > 0\n\n    eligible = eligible.copy()\n    eligible['readmitted'] = eligible.apply(lambda r: is_readmitted(r, df), axis=1)\n\n    dept_results = []\n    for dept, grp in eligible.groupby('department'):\n        total = len(grp)\n        readmits = grp['readmitted'].sum()\n        rate = readmits / total if total > 0 else 0.0\n        dept_results.append({\"name\": str(dept), \"value\": round(float(rate), 6)})\n\n    dept_results_sorted = sorted(dept_results, key=lambda x: -x[\"value\"])[:10]\n\n    overall_total = len(eligible)\n    overall_readmits = eligible['readmitted'].sum()\n    overall_rate = overall_readmits / overall_total if overall_total > 0 else 0.0\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d\",\n        \"results\": dept_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(float(overall_rate), 6)}]\n    })\n\n    result['assumptions'].append(\n        f\"Eligible discharges (30-day window ended): {overall_total} of {len(df)} total encounters.\"\n    )\n    result['assumptions'].append(\n        \"Readmission defined as any admission for the same MRN within 30 days after discharge date.\"\n    )\n    result['assumptions'].append(\n        f\"Cutoff date for eligible discharges: {cutoff_date.date()}; encounters discharged after this are excluded.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 14404.7236, \"std\": 7896.6844, \"min\": 1547.78, \"max\": 34910.96, \"median\": 14078.18, \"count\": 2667}",
+       "row_count": 2667,
+       "confidence": "high",
+       "confidence_reason": "2667 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:age",
+       "kind": "eda",
+       "claim": "age: median 54.00, mean 53.63, range 11.00 to 90.00",
+       "code": "try:\n    import pandas as pd\n    import numpy as np\n\n    df['admit_date'] = pd.to_datetime(df['admit_date'])\n    df['discharge_date'] = pd.to_datetime(df['discharge_date'])\n\n    cutoff_date = df['discharge_date'].max() - pd.Timedelta(days=30)\n    eligible = df[df['discharge_date'] <= cutoff_date].copy()\n\n    def is_readmitted(row, all_df):\n        same_patient = all_df[all_df['mrn'] == row['mrn']]\n        subsequent = same_patient[\n            (same_patient['admit_date'] > row['discharge_date']) &\n            (same_patient['admit_date'] <= row['discharge_date'] + pd.Timedelta(days=30))\n        ]\n        return len(subsequent) > 0\n\n    eligible = eligible.copy()\n    eligible['readmitted'] = eligible.apply(lambda r: is_readmitted(r, df), axis=1)\n\n    dept_results = []\n    for dept, grp in eligible.groupby('department'):\n        total = len(grp)\n        readmits = grp['readmitted'].sum()\n        rate = readmits / total if total > 0 else 0.0\n        dept_results.append({\"name\": str(dept), \"value\": round(float(rate), 6)})\n\n    dept_results_sorted = sorted(dept_results, key=lambda x: -x[\"value\"])[:10]\n\n    overall_total = len(eligible)\n    overall_readmits = eligible['readmitted'].sum()\n    overall_rate = overall_readmits / overall_total if overall_total > 0 else 0.0\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d\",\n        \"results\": dept_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"department\",\n        \"metric_column\": \"discharge_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"readmission_rate_30d_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(float(overall_rate), 6)}]\n    })\n\n    result['assumptions'].append(\n        f\"Eligible discharges (30-day window ended): {overall_total} of {len(df)} total encounters.\"\n    )\n    result['assumptions'].append(\n        \"Readmission defined as any admission for the same MRN within 30 days after discharge date.\"\n    )\n    result['assumptions'].append(\n        f\"Cutoff date for eligible discharges: {cutoff_date.date()}; encounters discharged after this are excluded.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 53.634, \"std\": 24.4063, \"min\": 11.0, \"max\": 90.0, \"median\": 54.0, \"count\": 2667}",
+       "row_count": 2667,
+       "confidence": "high",
+       "confidence_reason": "2667 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "healthcare",
+    "latency_s": 16.99,
+    "cost_usd": 0.01383,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

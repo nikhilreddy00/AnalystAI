@@ -119,4 +119,108 @@ def pii_columns(contract) -> set[str]:
     values, e.g. `sales_rep` holding names) plus the name rule. Every mask reads this set."""
     if contract is None:
         return set()
-    return {c.name for c in contract.columns if c.pii or is_pii_column(c.name)}
+    # The name rule alone never takes a measure (births = 120 is a count, not a birth date).
+    return {c.name for c in contract.columns if c.pii or (is_pii_column(c.name) and not c.is_metric)}
+
+
+# ── Aggregation from the semantic layer (Phase 5.5) ───────────────────────────────────────────
+
+def column_hint(contract, column: str):
+    """The contract's ColumnInfo for `column` when it carries a semantic-layer hint, else None."""
+    if contract is None:
+        return None
+    return next((c for c in contract.columns if c.name == column and c.aggregation), None)
+
+
+def effective_agg(contract, column: str, requested: str | None = None) -> str | None:
+    """How `column` aggregates. A level ('last' / 'first': a balance, MRR) overrides a sum,
+    asked for or defaulted: summing snapshots counts the same money again. A layer's average
+    ('mean': ALOS, a temperature) only replaces a default: an explicit sum ("total payroll",
+    "how many failed") is kept. Any other explicit aggregation is kept."""
+    hint = column_hint(contract, column)
+    if hint is None:
+        return requested
+    if hint.aggregation in _LEVEL and requested in (None, "sum"):
+        return hint.aggregation
+    return requested if requested is not None else hint.aggregation
+
+
+class LevelUnavailable(ValueError):
+    """A level (a balance) whose entity or time column is gone (dropped at the high-null gate):
+    its total can't be computed, and a plain sum would count each snapshot again."""
+
+
+_LEVEL = ("last", "first")
+
+
+def _snapshots(df, hint):
+    """The frame ready for a level's window: undated snapshots out (one can't be the latest),
+    ordered by time. Missing entity or time column: LevelUnavailable."""
+    import pandas as pd
+    missing = [c for c in [*hint.aggregation_by, hint.aggregation_time] if not c or c not in df.columns]
+    if not hint.aggregation_by or missing:
+        raise LevelUnavailable(f"{hint.name} is a level (a balance-like value), and the column "
+                               f"{', '.join(missing or ['entity'])} it needs is no longer in the "
+                               "data, so it can't be totalled")
+    t = pd.to_datetime(df[hint.aggregation_time], format="mixed", errors="coerce")
+    return df.loc[t.notna()].assign(_t=t[t.notna()]).sort_values("_t", kind="stable")
+
+
+def time_axis(contract, metric: str | None = None, df=None) -> str | None:
+    """The date a metric is plotted and trended over: a level's own snapshot time when the layer
+    names one, else the data's first time axis (never a birth date). One rule for charts,
+    answers and the built-in trend."""
+    hint = column_hint(contract, metric) if metric else None
+    cands = [hint.aggregation_time] if hint and hint.aggregation_time else []
+    cands += list(contract.date_columns) if contract is not None else []
+    return next((c for c in cands if c and (df is None or c in df.columns)), None)
+
+
+def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = False):
+    """`df.groupby(keys)[column].agg(agg)`, except a level ('last' / 'first'): over time (a key
+    is a period) each entity's window value within each period, summed; across groups (no
+    period) the current total, each entity's latest snapshot in the latest period (latest_rows),
+    so the answer and its chart agree. Missing values are never carried forward."""
+    import pandas as pd
+    hint = column_hint(contract, column)
+    if agg not in _LEVEL or hint is None:
+        return df.groupby(keys)[column].agg("sum" if agg in _LEVEL else agg)
+    names = [k for k in (keys if isinstance(keys, list) else [keys]) if isinstance(k, str)]
+    if not over_time and hint.aggregation_time not in names:
+        return latest_rows(df, column, contract).groupby(keys)[column].sum()
+    keys = keys if isinstance(keys, list) else [keys]
+    d = _snapshots(df.dropna(subset=[column]), hint)
+    per = d.groupby([*(k.loc[d.index] if isinstance(k, pd.Series) else k for k in keys),
+                     *(d[e] for e in hint.aggregation_by)])[column].agg(agg)
+    return per.groupby(level=list(range(len(keys)))).sum()
+
+
+def latest_rows(df, column: str, contract):
+    """For a level by group (bars, answers): each entity's latest snapshot (or first, for a
+    'first' window), the rows a current total adds up. An entity whose latest snapshot is a full
+    usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
+    data: not in the newest complete month); staggered snapshots (each account on its own day)
+    all count. Anything else: the frame as it is."""
+    import pandas as pd
+    hint = column_hint(contract, column)
+    if hint is None or hint.aggregation not in _LEVEL:
+        return df
+    d = _snapshots(df.dropna(subset=[column]), hint)
+    g = d.groupby(hint.aggregation_by, sort=False)
+    if hint.aggregation == "first":
+        return g.head(1).drop(columns="_t")
+    gaps = g["_t"].diff().dt.total_seconds().dropna()
+    cadence = gaps.groupby([d.loc[gaps.index, e] for e in hint.aggregation_by]).median().median() \
+        if len(gaps) else 0.0
+    last = g.tail(1)
+    newest = d["_t"].max()
+    if cadence and cadence == cadence:
+        if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month,
+            # or the one before while the newest is still partial (a 4 Nov export of accounts
+            # billed on their own day: most have only October so far)
+            months = 2 if partial_last_month(d["_t"]) else 1
+            last = last[last["_t"].dt.to_period("M") > newest.to_period("M") - months]
+        else:   # daily / weekly, staggered or not: stopped = missed two usual gaps (a day's
+            # refresh lag, or weekday-only rows on a Saturday export, is still current)
+            last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
+    return last.drop(columns="_t")

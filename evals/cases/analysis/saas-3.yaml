@@ -1,0 +1,24 @@
+id: saas-3
+domain: saas
+category: correlation
+dataset:
+  name: saas_accounts
+  seed: 3
+question: Are seats related to active users?
+task:
+  analysis_types:
+  - correlation
+  target_metrics:
+  - seats
+  - active_users
+  segments: []
+checks:
+- kind: correlation
+  planted: true
+  a: seats
+  b: active_users
+  abs_tol: 0.02
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

@@ -31,6 +31,7 @@ from langgraph.types import Command
 from llm.client import get_client, pii_values, run_meter
 from memory.run_store import (CANCELLED, HEARTBEAT_S, InMemoryRunStore, Run, RunStore,
                               cancel_events)
+from agents.errors import AgentError
 from memory.session_data import read_cleaned_parquet
 from orchestrator.graph import RunEnv, build_graph, run_env
 from orchestrator.state import AnalysisSession
@@ -115,6 +116,9 @@ async def open_deps(app_env: str, database_url: str, *, vector: bool = True) -> 
         await runs.init()
         pool = AsyncConnectionPool(database_url.replace("+asyncpg", "").replace("+psycopg", ""),
                                    open=False, max_size=10,
+                                   # a connection dropped by a Postgres restart or a pooler is
+                                   # replaced before use, as the stores' pre-ping does (5.5)
+                                   check=AsyncConnectionPool.check_connection,
                                    kwargs={"autocommit": True, "prepare_threshold": 0,
                                            "row_factory": dict_row})
         await pool.open(wait=True, timeout=10)
@@ -170,18 +174,29 @@ def _drain(q: asyncio.Queue) -> list[dict]:
 
 async def _restore_frame(env: RunEnv, session: AnalysisSession, ref: str | None) -> None:
     """Reload the frame a resumed run was using; this also refills the PII guard."""
-    from agents.ingestion_agent import remember_pii, run_ingestion_agent
+    from agents.ingestion_agent import (
+        looks_like_patient_data,
+        remember_pii,
+        run_ingestion_agent,
+        seed_phi_guard,
+    )
     if not ref or session.data_contract is None:
         return
     kind, _, want = ref.partition(":")
     if kind == "cleaned":
+        dc = session.data_contract
+        if not dc.phi and looks_like_patient_data(dc):   # cached before PHI mode: not de-identified
+            raise DataChanged("this analysis started before patient data was de-identified")
         frame = read_cleaned_parquet(session.session_id)
         if frame is None or hashlib.sha256(frame).hexdigest() != want:
             raise DataChanged("the cleaned data saved for this analysis is gone or was replaced")
-        remember_pii(pd.read_parquet(io.BytesIO(frame)), session.data_contract)
+        await asyncio.to_thread(lambda: remember_pii(pd.read_parquet(io.BytesIO(frame)),
+                                                     session.data_contract))
+        await seed_phi_guard(session, get_client())   # patient data: the cache holds no names
     else:
         probe = session.model_copy(deep=True)
         question = session.task_plan.raw_query if session.task_plan else None
+        # seed_last stays on: intake re-runs and its memory quotes the previous turn's answer
         contract = await run_ingestion_agent(probe, get_client(), question,
                                              session.data_contract.source_query)
         if contract.fingerprint != want:
@@ -241,8 +256,8 @@ async def execute(run: Run, deps: Deps) -> str:
             inp = _FINISHED
         else:
             session = await deps.session_store.load(run.session_id)
-            if session is None:
-                raise RuntimeError("the conversation for this run was not found")
+            if session is None:   # deleted while the run waited: a retry can't bring it back
+                raise DataChanged("the conversation for this run was deleted")
             inp = {"session": session, "user_message": run.input["message"],
                    "is_approval": run.input.get("is_approval", False),
                    "approval_context": run.input.get("approval_context"),
@@ -263,12 +278,16 @@ async def execute(run: Run, deps: Deps) -> str:
     except LeaseLost:
         logger.warning("run %s: lease lost, another worker has it", run.id)
         return "lost"
+    except AgentError as exc:   # e.g. the source behind a patient-data resume is unreachable
+        logger.error("run %s failed", run.id, exc_info=exc)
+        return await _fail(store, run, exc.user_message, retryable=exc.retryable, reask=exc.reask)
     except DataChanged as exc:
         return await _fail(store, run, f"This analysis can't continue: {exc}. Ask the question "
                                        "again to analyse the current data.", retryable=False)
     except Exception as exc:
-        logger.error("run %s crashed", run.id, exc_info=exc)
-        return await _fail(store, run, f"The analysis stopped unexpectedly: {exc}")
+        logger.error("run %s crashed", run.id, exc_info=exc)   # scrubbed log; events get the type
+        return await _fail(store, run, "The analysis stopped unexpectedly. Retry it, or ask the "
+                                       "question again.")
     finally:
         run_meter.reset(meter_token)
         run_env.reset(token)
@@ -284,9 +303,10 @@ async def execute(run: Run, deps: Deps) -> str:
     return status
 
 
-async def _fail(store, run: Run, message: str, retryable: bool = True) -> str:
+async def _fail(store, run: Run, message: str, retryable: bool = True, reask: bool = True) -> str:
     await store.finish(run.id, "failed", attempt=run.attempt, error=message,
-                       events=[{"type": "error", "message": message, "retryable": retryable},
+                       events=[{"type": "error", "message": message, "retryable": retryable,
+                                "reask": reask},
                                {"type": "done"}])
     return "failed"
 

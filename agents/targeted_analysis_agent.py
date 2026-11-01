@@ -13,13 +13,22 @@ when task.question_intent is anything other than OVERVIEW or DRILL_DOWN.
 from __future__ import annotations
 
 import io
+import re
 from typing import Callable
 from uuid import uuid4
 
 import numpy as np
 import pandas as pd
 
-from agents.utils import pandas_freq, partial_last_month
+from agents.utils import (
+    LevelUnavailable,
+    aggregate,
+    column_hint,
+    effective_agg,
+    pandas_freq,
+    partial_last_month,
+    time_axis,
+)
 from agents.visualization_agent import (
     VizContext,
     _why,
@@ -74,14 +83,32 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
             ["Ask for an overview", "Rephrase as a top-N or comparison question"],
         )
     # Phase 5: every chart a user sees follows the visualization policy and its lint.
-    ctx = build_context(df, session.task_plan, narrative=session.narrative)
+    ctx = build_context(df, session.task_plan, narrative=session.narrative,
+                        contract=session.data_contract)
     extra = {"strata": session.task_plan.segments} if intent == QuestionIntent.AB_SIGNIFICANCE else {}
-    response = handler(df, params, contract, ctx=ctx, **extra)
+    response = handler(df, _asked_agg(params, contract, session.task_plan.raw_query), contract,
+                       ctx=ctx, **extra)
     response.chart_configs = finalize_charts(response.chart_configs, ctx)
     return response
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+_TOTAL_WORDS = re.compile(r"\b(?:total|sum|summed|combined|altogether|overall amount|payroll|"
+                          r"bed[- ]?days|how much)\b", re.I)
+
+
+def _asked_agg(params: TargetedParams | None, contract: DataContract, question: str):
+    """Intake fills top-N's aggregation with "sum" by default, which would rank lines by their
+    number of temperature readings: for a column the layer averages, a "sum" the question
+    never asked for ("total payroll" does) is left to the layer."""
+    if params is None or (params.aggregation or "").lower() != "sum" or not params.metric_column:
+        return params
+    hint = column_hint(contract, params.metric_column)
+    if hint is None or hint.aggregation != "mean" or _TOTAL_WORDS.search(question or ""):
+        return params
+    return params.model_copy(update={"aggregation": None})
+
 
 def _unanswerable(intent: QuestionIntent, reason: str, suggestions: list[str]) -> TargetedResponse:
     return TargetedResponse(
@@ -246,37 +273,87 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
         )
 
     n = params.n or 10
-    agg = (params.aggregation or "sum").lower()
-    asc = (params.order or "desc").lower() == "asc"
+    asked = (params.aggregation or "").lower() or None
     valid_aggs = {"sum", "mean", "median", "count", "min", "max"}
-    if agg not in valid_aggs:
-        agg = "sum"
+    asked = asked if asked in valid_aggs else None
+    agg = effective_agg(contract, metric, asked) or "sum"   # a balance is its current total
+    asc = (params.order or "desc").lower() == "asc"
 
     try:
-        grouped = df.groupby(group)[metric].agg(agg).sort_values(ascending=asc).head(n)
+        grouped = aggregate(df, [group], metric, agg, contract).sort_values(ascending=asc).head(n)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TOP_N,
-            f"Aggregation failed: {exc}",
+            f"Aggregation failed ({_why_failed(exc)})",
             ["Try a different aggregation (sum/mean/count)", "Pick a different grouping column"],
         )
+    if grouped.empty:
+        return _unanswerable(QuestionIntent.TOP_N, f"no rows have both {group} and {metric}",
+                             [f"Distribution of {metric}", "Pick a different grouping column"])
 
     chart_data = [{group: str(k), metric: float(v)} for k, v in grouped.items()]
     direction = "Bottom" if asc else "Top"
     answer = (
-        f"{direction} {len(grouped)} {group} by {agg}({metric}). "
-        f"Leader: {grouped.index[0]} = {grouped.iloc[0]:,.2f}."
+        f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}. "
+        f"Leader: {grouped.index[0]} = {_num(grouped.iloc[0])}."
     )
     chart = _chart(
-        ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {agg}({metric})",
-        chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=f"{agg}({metric})",
+        ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}",
+        chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=_with_unit(_of(agg, metric, False), metric, contract),
         source="top_n",
     )
-    _why(chart, ctx, "targeted:top_n→ranked bars", f"Ranks {group} by {agg} {metric}, "
+    _why(chart, ctx, "targeted:top_n→ranked bars", f"Ranks {group} by {_agg_name(agg)} {metric}, "
          f"{'lowest' if asc else 'highest'} first.", group, metric, agg,
          int(df[[group, metric]].dropna().shape[0]),
-         code=f"df.groupby({group!r})[{metric!r}].{agg}().sort_values(ascending={asc}).head({n})")
+         code=_code(f"df.groupby({group!r})[{metric!r}]", agg, metric, contract)
+         + f".sort_values(ascending={asc}).head({n})")
     return TargetedResponse(intent=QuestionIntent.TOP_N, answer_text=answer, chart_configs=[chart])
+
+
+def _why_failed(exc: Exception) -> str:
+    """What failed, for the answer: our own message for a level that can't be totalled, else the
+    exception's type only (pandas quotes cell values)."""
+    return str(exc) if isinstance(exc, LevelUnavailable) else type(exc).__name__
+
+
+def _num(v: float) -> str:
+    """An answer's number: 2 decimals, 4 under 1 (a rate of 0.0743 isn't 0.07)."""
+    return f"{v:,.4f}" if abs(v) < 1 else f"{v:,.2f}"
+
+
+def _with_unit(label: str, metric: str, contract) -> str:
+    unit = next((c.unit for c in (contract.columns if contract else []) if c.name == metric and c.unit),
+                None)
+    return f"{label} ({unit})" if unit else label
+
+
+def _code(base: str, agg: str, metric: str, contract, over: str | None = None) -> str:
+    """The pandas that reproduces the number. A level: over time, each entity's snapshot per
+    period then summed; by group, each entity's latest snapshot in the newest period, summed."""
+    hint = column_hint(contract, metric)
+    if agg in ("last", "first") and hint:
+        by = hint.aggregation_by
+        if over:   # base = the period grouper
+            return (f"df.sort_values({hint.aggregation_time!r}).groupby([{over}, *{by!r}])"
+                    f"[{metric!r}].{agg}().groupby(level=0).sum()")
+        return (f"# each {', '.join(by)}'s latest snapshot (newest period), then summed\n"
+                f"latest_rows(df, {metric!r}){base[2:]}.sum()")
+    return f"{base}.{agg}()"
+
+
+def _agg_name(agg: str, over_time: bool = False) -> str:
+    """How an aggregation reads in an answer. A level's 'last' over time is each period's end
+    total; by group it is the latest total (each entity's latest snapshot)."""
+    if agg == "last":
+        return "period-end total" if over_time else "latest total"
+    return "period-start total" if agg == "first" else agg
+
+
+def _of(agg: str, metric: str, over_time: bool = False) -> str:
+    """'sum(revenue)', or for a level 'latest total of balance' (the old form kept for the rest)."""
+    if agg in ("last", "first"):
+        return f"{_agg_name(agg, over_time)} of {metric}"
+    return f"{agg}({metric})"
 
 
 def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
@@ -294,7 +371,7 @@ def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
 def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        ctx: VizContext | None = None) -> TargetedResponse:
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
-    date = params.date_column or (contract.date_columns[0] if contract.date_columns else None)
+    date = params.date_column or time_axis(contract, metric, df)
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
@@ -311,24 +388,33 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     freq = (params.frequency or "M").upper()
     if freq not in {"D", "W", "M", "Q", "Y"}:
         freq = "M"
-    agg = (params.aggregation or "sum").lower()
-    if agg not in {"sum", "mean", "median", "count", "min", "max"}:
-        agg = "sum"
+    asked = (params.aggregation or "").lower() or None
+    asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
+    agg = effective_agg(contract, metric, asked) or "sum"   # "balance at month end": each account's last
+    if agg in ("last", "first") and freq == "D":
+        freq = "W"   # staggered snapshots: a day holds only some accounts, a week each once
 
     group = _named_group(df, params)
     if group is not None:
         df = df[df[params.segment_column].astype(str) == group]
     try:
-        s = df[[date, metric]].copy()
+        hint = column_hint(contract, metric)
+        extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
+                 if c and c in df.columns and c not in (date, metric)]
+        s = df[[date, metric, *extra]].copy()
         s[date] = pd.to_datetime(s[date], errors="coerce")
         s = s.dropna(subset=[date, metric])
         if s.empty:
             raise ValueError("no valid (date, metric) rows after coercion")
-        series = s.set_index(date)[metric].resample(pandas_freq(freq)).agg(agg).dropna()
+        if agg in ("last", "first"):
+            series = aggregate(s, [pd.Grouper(key=date, freq=pandas_freq(freq))], metric, agg,
+                               contract, over_time=True).dropna()
+        else:
+            series = s.set_index(date)[metric].resample(pandas_freq(freq)).agg(agg).dropna()
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
-            f"Could not build time series: {exc}",
+            f"Could not build time series ({_why_failed(exc)})",
             [f"Top 10 by {metric}", f"Distribution of {metric}"],
         )
 
@@ -352,22 +438,23 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     scope = f" for {params.segment_column} {group}" if group is not None else ""
     answer = (
         f"{metric}{scope} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to "
-        f"{series.index[-1].date()} (freq={freq}, agg={agg})."
+        f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg, True)})."
     )
     if len(series) >= 2 and series.iloc[-2]:
         # "How did X change last month?" asks about the latest step, not the whole range.
         step = (series.iloc[-1] / series.iloc[-2] - 1) * 100
         answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
-                   f"{step:+.1f}% ({series.iloc[-2]:,.2f} → {series.iloc[-1]:,.2f}).")
+                   f"{step:+.1f}% ({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
     answer += partial
     chart = _chart(
-        ChartType.LINE, f"{agg}({metric}) over time", chart_data,
-        x_key="period", y_keys=[metric], x_label="Period", y_label=f"{agg}({metric})",
+        ChartType.LINE, f"{_of(agg, metric, True)} over time", chart_data,
+        x_key="period", y_keys=[metric], x_label="Period", y_label=_with_unit(_of(agg, metric, True), metric, contract),
         source="time_series",
     )
     _why(chart, ctx, "targeted:time_series→line", f"{metric} over time, {agg} per period "
          f"({freq}){scope}.", date, metric, agg, len(s),
-         code=f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r}).{agg}()")
+         code=_code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
+                    agg, metric, contract, over=f"pd.Grouper(key={date!r}, freq={freq!r})"))
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
 
 
@@ -389,34 +476,39 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
             [f"Compare {metric} across {c}" for c in candidates],
         )
 
-    agg = (params.aggregation or "mean").lower()
-    if agg not in {"sum", "mean", "median", "count", "min", "max"}:
-        agg = "mean"
+    asked = (params.aggregation or "").lower() or None
+    asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
+    agg = effective_agg(contract, metric, asked) or "mean"
 
     try:
-        grouped = df.groupby(segment)[metric].agg(agg).sort_values(ascending=False).head(20)
+        full = aggregate(df, [segment], metric, agg, contract)
+        grouped = full.sort_values(ascending=False).head(20)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.SEGMENT_COMPARE,
-            f"Aggregation failed: {exc}",
+            f"Aggregation failed ({_why_failed(exc)})",
             ["Try a different aggregation", "Pick a different segment"],
         )
+    if grouped.empty:
+        return _unanswerable(QuestionIntent.SEGMENT_COMPARE, f"no rows have both {segment} and "
+                             f"{metric}", [f"Distribution of {metric}", "Pick a different segment"])
 
     top_seg, top_val = grouped.index[0], grouped.iloc[0]
     bottom_seg, bottom_val = grouped.index[-1], grouped.iloc[-1]
     answer = (
-        f"{agg}({metric}) by {segment}: '{top_seg}' leads at {top_val:,.2f}, "
-        f"'{bottom_seg}' trails at {bottom_val:,.2f}."
+        f"{_of(agg, metric, False)} by {segment}: '{top_seg}' leads at {_num(top_val)}, "
+        f"'{bottom_seg}' trails at {_num(bottom_val)}."
     )
     group = _named_group(df, params)
     if group is not None:
-        value = df.loc[df[segment].astype(str) == group, metric].agg(agg)
-        answer = f"{agg}({metric}) for {segment} '{group}': {value:,.2f}. " + answer
+        # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
+        value = float(full[full.index.astype(str) == group].sum())
+        answer = f"{_of(agg, metric, False)} for {segment} '{group}': {_num(value)}. " + answer
     ctx = ctx or build_context(df)
     chart = group_bars(df, segment, metric, agg, ctx, top=20)
     if chart and chart.rationale:
         r = chart.rationale
-        _why(chart, ctx, "targeted:segment_compare→bars", f"Compares {agg} {metric} across "
+        _why(chart, ctx, "targeted:segment_compare→bars", f"Compares {_agg_name(agg)} {metric} across "
              f"{segment}" + ("; whiskers are 95% confidence intervals." if chart.error_key else "."),
              r.x, r.y, r.aggregation, r.n_rows, code=r.code)
     return TargetedResponse(intent=QuestionIntent.SEGMENT_COMPARE, answer_text=answer,
@@ -458,7 +550,7 @@ def handle_hypothesis_test(df: pd.DataFrame, params: TargetedParams, contract: D
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.HYPOTHESIS_TEST,
-            f"Could not run {test}: {exc}",
+            f"Could not run {test} ({_why_failed(exc)})",
             ["Try a t-test on two numeric columns", "Try a correlation between the same columns"],
         )
 
@@ -511,7 +603,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.AB_SIGNIFICANCE,
-            f"t-test failed: {exc}",
+            f"t-test failed ({_why_failed(exc)})",
             [f"Compare {metric} by {variant}", "Check the metric is numeric"],
         )
 

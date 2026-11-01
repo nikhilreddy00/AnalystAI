@@ -3,6 +3,7 @@
 (when TEST_PG_URL is set)."""
 import asyncio
 import os
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -276,3 +277,41 @@ async def test_a_chart_id_pinned_by_another_user_is_not_taken_over(store):
     assert [c["id"] for c in await store.get_dashboard("u1")] == ["c1"]
     assert await store.get_dashboard("u2") == []
     assert await store.pin_chart("u1", "s1", chart.model_dump()) is True   # re-pin: still yours
+
+
+async def test_a_phi_contract_round_trips_through_the_store(store):
+    """Phase 5.5: `phi` and the de-identification decisions live on the stored contract (a
+    resume and the cleaning audit read them back), on psycopg and on asyncpg."""
+    import pandas as pd
+
+    from agents.ingestion_agent import build_contract, prepare_frame
+    from evals import datagen
+    df, _ = datagen.make("encounters", 1)
+    _, contract = prepare_frame(df, build_contract(df, ConnectorType.CSV, {}), ConnectorType.CSV)
+    s = _session(data_contract=contract)
+    await store.create(s)
+    back = await store.load("s1")
+    assert back.data_contract.phi and back.data_contract.deidentification == contract.deidentification
+    assert isinstance(pd.DataFrame(back.data_contract.sample_rows), pd.DataFrame)
+
+
+async def test_the_guard_values_are_encrypted_at_rest(store):
+    """`prior_pii` holds every personal value of a thread's earlier data: Fernet at rest (5.5)."""
+    s = _session(prior_pii=["Jane Doe", "jane@x.io"])
+    await store.create(s)
+    assert (await store.load("s1")).prior_pii == ["Jane Doe", "jane@x.io"]
+    if isinstance(store, SessionStore):
+        async with store._engine.connect() as conn:
+            raw = (await conn.execute(text("SELECT data::text FROM analysis_sessions"))).scalar()
+        assert "Jane Doe" not in raw and "jane@x.io" not in raw
+
+
+async def test_the_same_bytes_again_restore_a_lost_file(store, uploads):
+    """Audit pass 3: a moved uploads volume left every thread on the dataset failing; uploading
+    the identical file again must put it back where the version points."""
+    (_, v, _), _ = await _upload(store, uploads, "H")
+    Path(v.file_path).unlink()
+    (_, again, status), calls = await _upload(store, uploads, "H")
+    assert status == "existing" and again.id == v.id and Path(v.file_path).is_file()
+    (_, _, _), calls = await _upload(store, uploads, "H")
+    assert calls == []   # present: nothing is written

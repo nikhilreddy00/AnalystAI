@@ -1,0 +1,23 @@
+# Sensor readings. A reading is averaged over time, never summed (a month with more readings
+# is not hotter).
+tables:
+  - name: readings
+    source: file.readings
+    primary_key: [sensor_id, reading_time]
+    columns:
+      - {name: sensor_id, type: id}
+      - {name: reading_time, type: time}
+      - {name: line, type: dimension, description: production line}
+      - {name: temperature, type: fact, unit: °C}
+      - {name: vibration, type: fact, unit: mm/s}
+      - {name: failure, type: fact, description: 1 if the reading came with a failure}
+metrics:
+  - name: average_temperature
+    table: readings
+    expr: AVG(readings.temperature)
+  - name: average_vibration
+    table: readings
+    expr: AVG(readings.vibration)
+  - name: failure_rate
+    table: readings
+    expr: AVG(readings.failure)

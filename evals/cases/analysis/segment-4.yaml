@@ -1,4 +1,5 @@
 id: segment-4
+domain: retail
 category: segment
 dataset:
   name: sales

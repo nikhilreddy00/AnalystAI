@@ -18,6 +18,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -61,17 +62,23 @@ def _dec_config(cfg: ConnectorConfig) -> ConnectorConfig:
 
 
 def _dump(session: AnalysisSession) -> str:
-    """Serialize with connector secrets Fernet-encrypted (never plaintext at rest)."""
-    cfg = session.connector_config
-    if cfg is None:
-        return session.model_dump_json()
-    return session.model_copy(update={"connector_config": _enc_config(cfg)}).model_dump_json()
+    """Serialize with connector secrets and the PII guard's values Fernet-encrypted (never
+    plaintext at rest: `prior_pii` holds every personal value of the thread's earlier data)."""
+    update: dict = {}
+    if session.connector_config is not None:
+        update["connector_config"] = _enc_config(session.connector_config)
+    if session.prior_pii:
+        update["prior_pii"] = [_ENC_PREFIX + _fernet().encrypt(
+            json.dumps(session.prior_pii).encode()).decode()]
+    return (session.model_copy(update=update) if update else session).model_dump_json()
 
 
 def _load(data: str) -> AnalysisSession:
     s = AnalysisSession.model_validate_json(data)
     if s.connector_config is not None:
         _dec_config(s.connector_config)
+    if len(s.prior_pii) == 1 and s.prior_pii[0].startswith(_ENC_PREFIX):
+        s.prior_pii = json.loads(_fernet().decrypt(s.prior_pii[0][len(_ENC_PREFIX):].encode()))
     return s
 
 
@@ -112,6 +119,16 @@ def conn_key(cfg: ConnectorConfig) -> str:
              cfg.sheet_name, cfg.url]
     return hmac.new(settings.encryption_key.encode(), "|".join(str(w or "") for w in where).encode(),
                     hashlib.sha256).hexdigest()[:32]
+
+
+def _restore_file(path: str | None, write_file: Callable[[], str]) -> None:
+    """The same bytes uploaded again after the file was lost (a moved uploads volume): put them
+    back where the version and its threads expect them, or nothing on it could ever run again."""
+    if not path or Path(path).is_file():
+        return
+    new = Path(write_file())
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    os.replace(new, path)
 
 
 def _same_columns(a: list[str], b: list[str]) -> bool:
@@ -469,6 +486,7 @@ class InMemorySessionStore:
             for v in self._versions.values():
                 if v.dataset_id in ([dataset_id] if dataset_id else live) \
                         and v.content_hash == content_hash:
+                    await asyncio.to_thread(_restore_file, v.file_path, write_file)
                     return self._dataset(v.dataset_id), v, "existing"
             target = dataset_id or next(
                 (did for did in sorted(live, key=lambda d: self._datasets[d]["created_at"],
@@ -595,7 +613,9 @@ class InMemorySessionStore:
 
 class SessionStore:
     def __init__(self, database_url: str) -> None:
-        self._engine = create_async_engine(database_url, echo=False)
+        # pool_pre_ping: a client that drops an SSE stream mid-query leaves a dead asyncpg
+        # connection in the pool; without the ping the next request gets it and fails (5.5 live run).
+        self._engine = create_async_engine(database_url, echo=False, pool_pre_ping=True)
         self._session_factory = async_sessionmaker(self._engine, expire_on_commit=False)
 
     async def init(self) -> None:
@@ -874,6 +894,7 @@ class SessionStore:
             for d in ([by_id[dataset_id]] if dataset_id else live):   # explicit: only itself
                 for v in d.versions:
                     if v.content_hash == content_hash:
+                        await asyncio.to_thread(_restore_file, v.file_path, write_file)
                         return d, v, "existing"
             target = by_id.get(dataset_id) if dataset_id else next(
                 (d for d in live if d.kind == "upload" and d.name.lower() == name.lower()

@@ -1,0 +1,28 @@
+id: e2e-31
+domain: iot
+dataset:
+  name: sensor_readings
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+checks:
+- kind: findings
+  check: eda_stat
+  column: temperature
+  stats:
+  - mean
+  - median
+  rel_tol: 0.02
+- kind: must_not_number
+  truth_key: naive_temp_mom_pct
+  rel_tol: 0.03
+  unit: '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+trap: true

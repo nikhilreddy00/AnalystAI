@@ -1,0 +1,18 @@
+id: e2e-24
+domain: healthcare
+dataset:
+  name: encounters
+  seed: 1
+question: How many encounters did each department have?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: encounters_by_dept.Cardiology
+  rel_tol: 0.0
+- kind: must_not_match
+  pattern: Radiology
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

@@ -1,0 +1,25 @@
+id: ins-1
+domain: insurance
+category: ratio
+dataset:
+  name: claims
+  seed: 1
+question: What is the loss ratio for each line of business?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - claim_amount
+  - earned_premium
+  segments:
+  - line
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: line
+  truth_key: loss_ratio_by_line
+  abs_tol: 0.02
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

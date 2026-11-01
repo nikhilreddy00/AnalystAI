@@ -1,4 +1,5 @@
 id: e2e-13
+domain: retail
 dataset:
   name: sales
   seed: 2
@@ -8,6 +9,7 @@ checks:
 - kind: number_in_answer
   truth_key: after_dedup.segB_mom_pct  # every answer reads cleaned data: one order exported twice counts once
   rel_tol: 0.05
+  unit: "%"
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale

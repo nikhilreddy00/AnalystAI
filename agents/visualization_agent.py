@@ -26,7 +26,17 @@ import pandas as pd
 from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
-from agents.utils import looks_like_sequential_id, pandas_freq, partial_last_month
+from agents.utils import (
+    LevelUnavailable,
+    aggregate,
+    column_hint,
+    effective_agg,
+    latest_rows,
+    time_axis,
+    looks_like_sequential_id,
+    pandas_freq,
+    partial_last_month,
+)
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -685,7 +695,20 @@ _TIME_KEYWORDS = ("trend", "over time", "weekly", "monthly", "yearly", "quarterl
 
 # ── PROMPT-2: smart KPI selector ─────────────────────────────────────────────
 
-_KPI_CURRENCY_RE = re.compile(r"(?i)(price|cost|fare|revenue|amount|salary|income|spend|budget|fee|total)")
+# Word-bounded, the same list as the Data tab's old-report rule (DescriptiveStatsTable): one
+# decision for "is this money" (`spending_score`, `coffee_cups` are not).
+_KPI_CURRENCY_RE = re.compile(r"(?i)(?:^|_|\s)(price|cost|fare|revenue|amount|salary|income|spend|"
+                              r"budget|fee|total|usd|sales|profit)(?:$|_|\s)")
+_KPI_NOT_MONEY_RE = re.compile(r"(?i)(?:^|_)(?:qty|quantity|count|calls|num|volume|visits|"
+                               r"orders|leads|reps|headcount)(?:$|_)")
+
+
+def _money_name(col: str) -> bool:
+    """The KPI name rule for money: `TotalAmount`, `unit_price`, `sales`; not `sales_qty`."""
+    snake = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", str(col))
+    return bool(_KPI_CURRENCY_RE.search(snake)) and not _KPI_NOT_MONEY_RE.search(snake)
+
+
 _KPI_PERCENT_RE = re.compile(r"(?i)(rate|pct|percent|ratio|share|proportion)")
 _KPI_COUNT_RE = re.compile(r"(?i)(count|num|qty|quantity|total|volume)")
 _KPI_PRIMARY_RE = re.compile(r"(?i)(revenue|sales|amount|score|value|total|profit)")
@@ -730,9 +753,19 @@ def _display(col: str, narrative: DataNarrative | None) -> str:
     return _title_case(col)
 
 
-def _detect_entity_singular(columns, query: str = "") -> str:
-    """Deterministic fallback when the narrative wasn't generated. Picks a noun
+def _detect_entity_singular(columns, query: str = "", df: pd.DataFrame | None = None) -> str:
+    """Deterministic fallback when the narrative wasn't generated. A row-unique `<noun>_id`
+    names what one row is (claim_id → claim; a sensor_id repeats, so it doesn't); else a noun
     from the entity-keyword table based on column names + the user's query."""
+    if df is not None:
+        found = []
+        for c in map(str, columns):
+            m = re.fullmatch(r"([a-z]{3,})_id", c.lower()) or re.fullmatch(r"([a-z]{3,})Id", c)
+            if m and m[1].lower() not in ("row", "record", "uuid", "guid") \
+                    and df[c].notna().all() and df[c].is_unique:
+                found.append(m[1].lower())
+        if len(found) == 1:   # two unique ids (customer and order once each): ambiguous
+            return found[0]
     blob = " ".join(str(c).lower() for c in columns)
     if query:
         blob = f"{blob} {query.lower()}"
@@ -757,7 +790,7 @@ def _pluralize(noun: str) -> str:
 
 
 def _entity_pair(
-    columns, narrative: DataNarrative | None, query: str = ""
+    columns, narrative: DataNarrative | None, query: str = "", df: pd.DataFrame | None = None
 ) -> tuple[str, str]:
     """Return (singular, plural) entity nouns. Prefers the narrative; falls back
     to the deterministic keyword detector."""
@@ -765,7 +798,7 @@ def _entity_pair(
         sg = narrative.entity_singular.lower().strip()
         pl = (narrative.entity_plural or _pluralize(sg)).lower().strip()
         return sg, pl
-    sg = _detect_entity_singular(columns, query)
+    sg = _detect_entity_singular(columns, query, df)
     return sg, _pluralize(sg)
 
 
@@ -842,8 +875,71 @@ def _binary_phrase_pair(
     return f"were not {disp}", f"were {disp}"
 
 
-def _format_currency(v: float) -> str:
-    return f"${v:,.2f}"
+# Each currency as the browser's Intl (en-US) writes it: (prefix, decimals). The frontend
+# (formatUnit.ts) formats with Intl, so a tile reads the same after a dashboard filter recomputes
+# it there; tests pin a few strings on both sides. Any other unit (°C, RPM) follows the number.
+_CURRENCY_FORMAT = {
+    "USD": ("$", 2),
+    "EUR": ("\u20ac", 2),
+    "GBP": ("\u00a3", 2),
+    "JPY": ("\u00a5", 0),
+    "INR": ("\u20b9", 2),
+    "CNY": ("CN\u00a5", 2),
+    "CAD": ("CA$", 2),
+    "AUD": ("A$", 2),
+    "CHF": ("CHF\u00a0", 2),
+    "BRL": ("R$", 2),
+    "MXN": ("MX$", 2),
+    "SEK": ("SEK\u00a0", 2),
+    "NOK": ("NOK\u00a0", 2),
+    "DKK": ("DKK\u00a0", 2),
+    "PLN": ("PLN\u00a0", 2),
+    "CZK": ("CZK\u00a0", 2),
+    "HUF": ("HUF\u00a0", 0),
+    "ZAR": ("ZAR\u00a0", 2),
+    "NZD": ("NZ$", 2),
+    "SGD": ("SGD\u00a0", 2),
+    "HKD": ("HK$", 2),
+    "KRW": ("\u20a9", 0),
+    "TRY": ("TRY\u00a0", 2),
+    "ILS": ("\u20aa", 2),
+    "AED": ("AED\u00a0", 2),
+    "SAR": ("SAR\u00a0", 2),
+    "THB": ("THB\u00a0", 2),
+    "MYR": ("MYR\u00a0", 2),
+    "IDR": ("IDR\u00a0", 0),
+    "PHP": ("\u20b1", 2),
+    "VND": ("\u20ab", 0),
+    "RUB": ("RUB\u00a0", 2),
+    "EGP": ("EGP\u00a0", 2),
+    "NGN": ("NGN\u00a0", 2),
+    "KES": ("KES\u00a0", 2),
+    "COP": ("COP\u00a0", 0),
+    "CLP": ("CLP\u00a0", 0),
+    "PEN": ("PEN\u00a0", 2),
+    "ARS": ("ARS\u00a0", 2),
+    "TWD": ("NT$", 2),
+}
+ISO_CURRENCIES = frozenset(_CURRENCY_FORMAT)
+
+
+def is_currency(unit: str | None) -> bool:
+    return unit in ISO_CURRENCIES
+
+
+def _format_currency(v: float, currency: str | None = None) -> str:
+    sym, digits = _CURRENCY_FORMAT.get(currency or "USD", _CURRENCY_FORMAT["USD"])
+    return f"{'-' if v < 0 else ''}{sym}{_half_up(abs(v), digits)}"
+
+
+def _half_up(v: float, digits: int) -> str:
+    """`v` with thousands commas, rounded half away from zero as Intl does (Python's format
+    rounds half to even: 1234.5 → '1,234', the browser's '1,235')."""
+    from decimal import ROUND_HALF_UP, Decimal
+    v = float(v)   # numpy scalars repr as np.float64(…)
+    if not math.isfinite(v):
+        return "—"
+    return f"{Decimal(str(v)).quantize(Decimal(1).scaleb(-digits), ROUND_HALF_UP):,.{digits}f}"
 
 
 def _format_percent(v: float) -> str:
@@ -851,19 +947,23 @@ def _format_percent(v: float) -> str:
 
 
 def _format_count(v: float) -> str:
-    return f"{int(round(v)):,}"
+    return ("-" if v < 0 else "") + _half_up(abs(v), 0)
 
 
 def _format_number(v: float) -> str:
-    return f"{v:,.2f}"
+    return ("-" if v < 0 else "") + _half_up(abs(v), 2)
 
 
-def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str]) -> str:
+def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str],
+                     unit: str | None = None) -> str:
     """Pick a formatter for a numeric column. Returns one of:
-    'currency' | 'percent' | 'count' | 'number'."""
+    'currency' | 'percent' | 'count' | 'number'. A known unit decides first (semantic layer or a
+    symbol in the file): money is currency, °C or days a number; the name rule is the fallback."""
     if col in binary_cols:
         return "percent"
-    if _KPI_CURRENCY_RE.search(col):
+    if unit:
+        return "currency" if is_currency(unit) else "number"
+    if _money_name(col):
         return "currency"
     if _KPI_PERCENT_RE.search(col):
         return "percent"
@@ -879,16 +979,21 @@ def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str]) -> str:
     return "number"
 
 
-def _format_value(v: float, kind: str) -> str:
+def _format_value(v: float, kind: str, unit: str | None = None) -> str:
     """Format a raw number per the inferred kind. Percent assumes the value is
-    already on a 0–1 scale and multiplies by 100."""
+    already on a 0–1 scale and multiplies by 100. `unit`: the currency for a currency, else a
+    suffix ('70.62 °C')."""
     if kind == "currency":
-        return _format_currency(v)
+        return _format_currency(v, unit if is_currency(unit) else None)
     if kind == "percent":
         return _format_percent(v * 100)
     if kind == "count":
         return _format_count(v)
-    return _format_number(v)
+    return _format_number(v) + (f"\u00a0{unit}" if unit and not is_currency(unit) else "")
+
+
+def _unit(col: str, contract) -> str | None:
+    return next((c.unit for c in (contract.columns if contract else []) if c.name == col), None)
 
 
 def _pick_primary_metric(
@@ -990,6 +1095,7 @@ def _highest_cv_kpi(
     id_cols: set[str],
     binary_cols: set[str],
     narrative: DataNarrative | None,
+    contract: DataContract | None = None,
 ) -> KPI | None:
     """Continuous column with the highest coefficient of variation (std / |mean|).
     Used as the 5th KPI when there's no target to compare against."""
@@ -1014,15 +1120,22 @@ def _highest_cv_kpi(
     if best is None:
         return None
     s = pd.to_numeric(df[best], errors="coerce").dropna()
-    kind = _kpi_format_kind(best, s, binary_cols)
+    unit = _unit(best, contract)
+    kind = _kpi_format_kind(best, s, binary_cols, unit)
     mean = float(s.mean())
     std = float(s.std())
     return KPI(
         label=f"{_display(best, narrative)} Variability",
         value=f"CV {best_cv:.2f}",
-        context=f"Mean {_format_value(mean, kind)} ± {_format_value(std, kind)}",
-        recipe=KPIRecipe(kind="highest_cv", column=best, format_kind=kind),
+        context=f"Mean {_format_value(mean, kind, unit)} ± {_format_value(std, kind, unit)}",
+        recipe=KPIRecipe(kind="highest_cv", column=best, format_kind=kind, **_unit_fields(kind, unit)),
     )
+
+
+def _unit_fields(kind: str, unit: str | None) -> dict:
+    if not unit:
+        return {}
+    return {"currency": unit} if kind == "currency" else {"unit": unit}
 
 
 def generate_smart_kpis(
@@ -1030,6 +1143,7 @@ def generate_smart_kpis(
     column_roles: dict,
     query: str = "",
     narrative: DataNarrative | None = None,
+    contract: DataContract | None = None,
 ) -> list[KPI]:
     """Build up to 5 hero KPIs from a DataFrame and the visualization agent's
     column roles. Works on any dataset: row count + (optional) target rate +
@@ -1045,11 +1159,13 @@ def generate_smart_kpis(
     binary_cols: set[str] = set(column_roles.get("binary_cols") or [])
     target_col: str | None = column_roles.get("target_col")  # type: ignore[assignment]
     continuous: list[str] = list(column_roles.get("continuous") or [])
-    low_card_cat: list[str] = list(column_roles.get("low_card_cat") or [])
-    high_card_cat: list[str] = list(column_roles.get("high_card_cat") or [])
+    # A measure the layer aggregates (delivery days, a balance) is never a category to split by.
+    hinted = {c.name for c in contract.columns if c.aggregation} if contract is not None else set()
+    low_card_cat: list[str] = [c for c in column_roles.get("low_card_cat") or [] if c not in hinted]
+    high_card_cat: list[str] = [c for c in column_roles.get("high_card_cat") or [] if c not in hinted]
     ordinal_cols: set[str] = set(column_roles.get("ordinal_cols") or [])
 
-    entity_sg, entity_pl = _entity_pair(df.columns, narrative, query)
+    entity_sg, entity_pl = _entity_pair(df.columns, narrative, query, df)
 
     kpis: list[KPI] = []
 
@@ -1078,19 +1194,24 @@ def generate_smart_kpis(
             ))
 
     # KPI 3 — primary continuous metric
+    # A level (a balance) averaged over every snapshot row is no one's balance: not a tile.
+    levels = {c.name for c in (contract.columns if contract else []) if c.aggregation in ("last", "first")}
+    continuous = [c for c in continuous if c not in levels]
     primary = _pick_primary_metric(df, continuous, id_cols)
     if primary:
         s = pd.to_numeric(df[primary], errors="coerce").dropna()
         if len(s) >= 2:
-            kind = _kpi_format_kind(primary, df[primary], binary_cols)
+            unit = _unit(primary, contract)
+            kind = _kpi_format_kind(primary, df[primary], binary_cols, unit)
             mean = float(s.mean())
             mn = float(s.min())
             mx = float(s.max())
             kpis.append(KPI(
                 label=f"Avg {_display(primary, narrative)}",
-                value=_format_value(mean, kind),
-                context=f"Range {_format_value(mn, kind)} – {_format_value(mx, kind)}",
-                recipe=KPIRecipe(kind="metric_avg", column=primary, format_kind=kind),
+                value=_format_value(mean, kind, unit),
+                context=f"Range {_format_value(mn, kind, unit)} – {_format_value(mx, kind, unit)}",
+                recipe=KPIRecipe(kind="metric_avg", column=primary, format_kind=kind,
+                                 **_unit_fields(kind, unit)),
             ))
 
     # KPI 4 — top category (humanize ordinal numerics: 3 → "Class 3" or "3rd")
@@ -1115,7 +1236,7 @@ def generate_smart_kpis(
         if comp:
             kpis.append(comp)
     else:
-        cv = _highest_cv_kpi(df, continuous, id_cols, binary_cols, narrative)
+        cv = _highest_cv_kpi(df, continuous, id_cols, binary_cols, narrative, contract)
         if cv:
             kpis.append(cv)
 
@@ -1164,7 +1285,7 @@ def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None) -
                 ok = k.value == f"{float(_to_01(df[col]).mean()) * 100:.1f}%"
             elif r.kind == "metric_avg":
                 mean = float(pd.to_numeric(df[col], errors="coerce").dropna().mean())
-                ok = k.value == _format_value(mean, r.format_kind or "number")
+                ok = k.value == _format_value(mean, r.format_kind or "number", r.currency or r.unit)
                 stated = ((eda or {}).get(col) or {}).get("mean")
                 if ok and isinstance(stated, (int, float)) and mean:
                     ok = abs(float(stated) - mean) <= 0.005 * abs(mean)
@@ -1754,6 +1875,11 @@ def compute_briefing_extras(
             continue
     out["unique_counts"] = unique_counts
     out["sample_values_per_col"] = sample_values
+    # Phase 5.5: units from the semantic layer or the file ($ → USD), so the UI never guesses money.
+    out["column_units"] = {c.name: c.unit for c in (contract.columns if contract else []) if c.unit}
+    for c in (contract.columns if contract else []):   # the KPI name rule, sent: one decision
+        if c.is_metric and c.name not in out["column_units"] and _money_name(c.name):
+            out["column_units"][c.name] = "USD"
 
     # Skewness per numeric column
     skew: dict[str, float] = {}
@@ -1839,7 +1965,8 @@ _GENERIC_COLORS = {c.lower() for c in _PALETTE} | {_NEUTRAL_TEAL.lower(), "#6366
 _MAX_SUMMARY = 6
 _MAX_SERIES = 8
 _AGG_WORD = {"sum": "Total", "mean": "Average", "count": "Number of", "median": "Median",
-             "min": "Minimum", "max": "Maximum"}
+             "min": "Minimum", "max": "Maximum", "last": "Period-end total",
+             "first": "Period-start total"}
 _LINT_NOTE = {
     "pie_non_additive": "A pie shows parts of a whole, and an average is not one; bars compare "
                         "these values more accurately.",
@@ -1868,6 +1995,7 @@ class VizContext:
     findings: AnalysisFindings | None = None
     evidence: dict[str, Evidence] = field(default_factory=dict)
     narrative: DataNarrative | None = None
+    contract: DataContract | None = None   # semantic-layer hints: how a column aggregates (5.5)
 
 
 def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
@@ -1881,17 +2009,25 @@ def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
 
 def build_context(df: pd.DataFrame, task: AnalysisTask | None = None,
                   findings: AnalysisFindings | None = None,
-                  narrative: DataNarrative | None = None) -> VizContext:
+                  narrative: DataNarrative | None = None,
+                  contract: DataContract | None = None) -> VizContext:
     roles = classify_columns(df)
     dates = list(roles.get("datetime_cols") or [])
+    # With a contract, its time axis (never a birth date; one rule with answers and the trend);
+    # without one, the first datetime column.
+    date = time_axis(contract, None, df) if contract is not None else (dates[0] if dates else None)
     return VizContext(df=df, roles=roles, measures=measure_columns(df, roles),
-                      date=dates[0] if dates else None, task=task, findings=findings,
+                      date=date, task=task, findings=findings,
                       evidence={e.id: e for e in (findings.evidence if findings else [])},
-                      narrative=narrative)
+                      narrative=narrative, contract=contract)
 
 
-def month_agg(s: pd.Series) -> str:
-    """The analysis agent's MoM rule: values within 0-1 (rates, flags) by mean, else by total."""
+def month_agg(s: pd.Series, contract: DataContract | None = None) -> str:
+    """The analysis agent's MoM rule: the semantic layer's aggregation when it names the column
+    (a balance's last, a reading's mean), else values within 0-1 (rates, flags) by mean, else by
+    total."""
+    if hint := column_hint(contract, str(s.name)):
+        return hint.aggregation
     v = pd.to_numeric(s, errors="coerce").dropna()
     return "mean" if len(v) and v.between(0, 1).all() else "sum"
 
@@ -1922,7 +2058,10 @@ def _label(metric: str, agg: str, ctx: VizContext) -> str:
     disp = _display(metric, ctx.narrative)
     if agg == "mean" and _is_flag(ctx.df[metric]):
         return f"{_rate_label(metric, ctx.narrative)} (%)"
-    return f"{_AGG_WORD.get(agg, agg.title())} {disp.lower() if agg == 'count' else disp}"
+    unit = next((c.unit for c in (ctx.contract.columns if ctx.contract else []) if c.name == metric
+                 and c.unit), None)
+    label = f"{_AGG_WORD.get(agg, agg.title())} {disp.lower() if agg == 'count' else disp}"
+    return f"{label} ({unit})" if unit else label
 
 
 def _why(chart: ChartConfig, ctx: VizContext | None, rule: str, reason: str, x: str, y: str,
@@ -1959,6 +2098,15 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
+    level = None
+    if agg in ("last", "first"):   # a balance by group: each account's latest snapshot, added up
+        hint = level = column_hint(ctx.contract, metric)
+        if hint and x == hint.aggregation_time:
+            return None   # a level over its own time is a line's job (month_line), not bars
+        try:
+            df, agg = latest_rows(df, metric, ctx.contract), "sum"
+        except LevelUnavailable:   # its account column is gone: no chart beats a wrong total
+            return None
     cols = [x, metric] + ([split] if split else [])
     if any(c not in df.columns for c in cols):
         return None
@@ -1999,7 +2147,10 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
         source_finding="group_bars", value_format="percent" if rate else "number",
         error_key="__ci" if any_ci else None, split_key=split,
         rationale=ChartRationale(rule="", reason="", x=x, y=metric, split=split, aggregation=agg,
-                                 n_rows=len(sub), code=f"df.groupby({groupby})[{metric!r}].{agg}()"),
+                                 n_rows=len(sub), code=(f"df.groupby({groupby})[{metric!r}].{agg}()" if not level else
+                                       f"# each {', '.join(level.aggregation_by)}'s latest snapshot (newest "
+                                       f"period), then summed\nlatest_rows(df, {metric!r}).groupby({groupby})"
+                                       f"[{metric!r}].sum()")),
     )
 
 
@@ -2007,16 +2158,22 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
                split: str | None = None, monthly: bool | None = None) -> ChartConfig | None:
     """agg(metric) per calendar month (per day under ~3 months), one line per split value (top 8
     by rows). Months match the analysis agent's MoM, so the chart shows the reported change."""
+    date = time_axis(ctx.contract, metric, df) or date   # a level over its own snapshot time
     cols = [date, metric] + ([split] if split else [])
     if any(c not in df.columns for c in cols):
         return None
-    sub = df[cols].copy()
+    agg = month_agg(df[metric], ctx.contract)
+    hint = column_hint(ctx.contract, metric) if agg in ("last", "first") else None
+    if hint:
+        monthly = True   # staggered snapshots: a day holds only some accounts, a month all
+    extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
+             if c and c in df.columns and c not in cols]
+    sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
-    sub = sub.dropna()
+    sub = sub.dropna(subset=cols)
     if sub.empty:
         return None
-    agg = month_agg(df[metric])
     if monthly is None:   # a month-over-month finding always gets months
         monthly = (sub[date].max() - sub[date].min()).days >= 90
     note = ""
@@ -2029,7 +2186,11 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
     keys = [None] if not split else list(sub[split].value_counts().index[:_MAX_SERIES])
-    table = (sub.groupby([period] + ([sub[split]] if split else []))[metric].agg(agg) * scale)
+    try:
+        table = aggregate(sub, [period] + ([sub[split]] if split else []), metric, agg,
+                          ctx.contract, over_time=True) * scale
+    except LevelUnavailable:
+        return None
     if split:
         table = table.unstack()[keys]
     if len(table) < 2:
@@ -2056,7 +2217,9 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         rationale=ChartRationale(
             rule="", reason=note, x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
             code=f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
-                 f"df.groupby({groupby})[{metric!r}].{agg}()"),
+                 + (f"df.groupby({groupby})[{metric!r}].{agg}()" if not hint else
+                    f"df.sort_values({date!r}).groupby([{groupby}, *{hint.aggregation_by!r}])"
+                    f"[{metric!r}].{agg}().groupby(level=0).sum()   # each entity's {agg}, summed")),
     )
 
 
@@ -2220,12 +2383,14 @@ def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
     seen: set[tuple] = set()
     for s in sorted(f.segments, key=lambda s: "|" not in s.segment_column):   # stratified first
         parts = [c for c in s.segment_column.split("|") if c]
-        if not parts or any(c not in cols for c in parts) or s.metric_column not in cols:
-            continue
+        if not parts or any(c not in cols for c in parts) or s.metric_column not in cols \
+                or s.aggregation == "ratio":   # ponytail: a derived rate can't be re-aggregated
+            continue                           # from the frame; chart its results when needed
         x, sp = (parts[1], parts[0]) if len(parts) >= 2 else (parts[0], None)
         seen.add((parts[0], s.metric_column))
-        jobs["segment"].append(((x, s.metric_column, s.aggregation or "mean", sp),
-                                [segment_id(s.segment_column, s.metric_column, s.aggregation)]))
+        agg = effective_agg(ctx.contract, s.metric_column, s.aggregation) or "mean"   # a level: current
+        jobs["segment"].append(((x, s.metric_column, agg, sp),
+                                [segment_id(s.segment_column, s.metric_column, s.aggregation, s.label)]))
     for i, t in enumerate(f.statistical_tests):
         if not task or not task.target_metrics or not task.segments:
             continue
@@ -2389,7 +2554,8 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
     if df.empty:
         return _contract_fallback_charts(contract)
 
-    ctx = build_context(df, session.task_plan, session.analysis_findings, session.narrative)
+    ctx = build_context(df, session.task_plan, session.analysis_findings, session.narrative,
+                        session.data_contract)
     charts = charts_for_findings(ctx)
     if len(charts) < 4:
         query = session.task_plan.raw_query if session.task_plan else ""
@@ -2408,6 +2574,7 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
 def build_single_chart(
     df: "pd.DataFrame",
     params: "TargetedParams",
+    contract: "DataContract | None" = None,
 ) -> "ChartConfig":
     """One chart the user asked for (CHART_REQUEST). Deterministic; drawn as asked, with a lint
     note when the choice misleads. Bars and pies aggregate the analysis way: totals for additive
@@ -2424,7 +2591,7 @@ def build_single_chart(
         elif col not in y_keys:
             y_keys.append(col)
 
-    ctx = build_context(df)
+    ctx = build_context(df, contract=contract)
     if x_key is None or not y_keys:
         # Last resort: first non-id column on x, first measure on y.
         id_cols = set(ctx.roles.get("id_cols") or [])
@@ -2433,7 +2600,7 @@ def build_single_chart(
                                  available[1] if len(available) > 1 else x_key)]
     y = y_keys[0]
     numeric_y = y in df.columns and pd.api.types.is_numeric_dtype(df[y])
-    agg = month_agg(df[y]) if numeric_y else "count"
+    agg = month_agg(df[y], contract) if numeric_y else "count"
 
     chart: ChartConfig | None = None
     if chart_type == ChartType.SCATTER and numeric_y:

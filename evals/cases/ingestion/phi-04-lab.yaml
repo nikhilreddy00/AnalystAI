@@ -1,0 +1,17 @@
+id: phi-04-lab
+category: phi
+phi: true
+seed: 54
+rows: 300
+format: {type: tsv}
+columns:
+- [patient_id, patient_id]
+- [patient_name, full_name]
+- [birth_date, dob]
+- [patient_email, email]
+- [device_ip, ip]
+- [zip, zip5]
+- [diagnosis, icd10]
+- [comments, notes_pii]
+- [result_value, rate01]
+label_note: 'Lab results with an IP, email and notes carrying contact details.'

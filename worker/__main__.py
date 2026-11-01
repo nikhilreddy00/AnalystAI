@@ -9,14 +9,18 @@ import logging
 import signal
 
 from api.config import settings
+from api.logging_scrub import install as install_log_scrub
 from orchestrator.runner import open_deps, work
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+install_log_scrub()   # every log line is scrubbed of PII before it is written
 
 
 async def main() -> None:
     if not settings.encryption_key:
         raise SystemExit("ENCRYPTION_KEY is not set: checkpoints can't be stored safely.")
+    from semantic_layer import file_layers
+    file_layers()   # an invalid semantic layer stops the worker too, before it claims a run
     deps = await open_deps("production", settings.database_url)   # no in-memory fallback
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

@@ -1,4 +1,5 @@
 id: anomaly-5
+domain: retail
 category: anomaly
 dataset:
   name: sales

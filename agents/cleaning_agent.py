@@ -105,6 +105,9 @@ class CleanContext:
     targets: set[str]       # the plan's metrics: never filled
     drop_high_null: bool    # the user chose "Drop those columns" at the high-null gate
     pii: set[str] = frozenset()   # personal-data columns: the audit never quotes their values
+    # PHI mode's working copy (5.5): withheld columns and pooled labels can make distinct records
+    # look identical, so duplicates were judged on the raw rows already (prepare_frame).
+    deidentified: bool = False
 
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
@@ -120,7 +123,8 @@ def build_context(session: AnalysisSession, drop_high_null: bool = False) -> Cle
     task = session.task_plan
     targets = {m for m in (task.target_metrics if task else []) if m in df.columns}
     return CleanContext(df=df, ids=ids, dates=dates, targets=targets,
-                        drop_high_null=drop_high_null, pii=pii_columns(contract))
+                        drop_high_null=drop_high_null, pii=pii_columns(contract),
+                        deidentified=contract.deidentified)
 
 
 def _code_like(s: pd.Series) -> bool:
@@ -155,6 +159,13 @@ async def run_cleaning_agent(session: AnalysisSession, drop_high_null: bool = Fa
     parquet back on the session. The frame keeps the input's row labels."""
     ctx = build_context(session, drop_high_null)
     df, audit = clean(ctx)
+    if session.data_contract and session.data_contract.deidentification:
+        # Patient data: ingestion's de-identification steps head the audit (Phase 5.5).
+        deid = session.data_contract.deidentification
+        audit.decisions = [*deid, *audit.decisions]
+        audit.duplicates_removed += sum(d.rows_removed for d in deid if d.operation == "drop_duplicates")
+        audit.summary = (f"Patient data de-identified first ({len(deid)} steps: identifiers "
+                         f"withheld or pseudonymised, small groups pooled). " + audit.summary)
     dropped = {d.column for d in audit.decisions if d.operation == "drop_column"}
     if dropped and session.data_contract:   # downstream agents read columns from the contract
         c = session.data_contract
@@ -267,13 +278,16 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     n_dup = int(dup.sum())
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
-    if n_dup and keys:
+    if n_dup and keys and not ctx.deidentified:
         df = df[~dup]
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
             f"(same {keys[0]} and every other value).", n_dup, removed=n_dup)
     elif n_dup:
+        why = ("the patient data was de-identified first, and duplicates were judged on the "
+               "original rows" if ctx.deidentified else
+               "there is no ID column to tell a copy from a repeated record")
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
-            "there is no ID column to tell a copy from a repeated record.", n_dup)
+            f"{why}.", n_dup)
 
     # 6. Rows with no value at all.
     n = len(df)
@@ -344,17 +358,18 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                anomaly_report.methodology_note),
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
-        date_ranges=_date_ranges(df),
+        date_ranges=_date_ranges(df, ctx.pii),
     )
     return df, audit
 
 
-def _date_ranges(df: pd.DataFrame) -> dict[str, list]:
+def _date_ranges(df: pd.DataFrame, pii: set[str] = frozenset()) -> dict[str, list]:
     """[first, last, months spanned] per parsed date column: the data's period, computed, so the
-    report never has to guess it from a few sample rows."""
+    report never has to guess it from a few sample rows. Not a birth date: it is no period, and
+    its ends are two people's birthdays."""
     out: dict[str, list] = {}
     for col in df.columns:
-        if not pd.api.types.is_datetime64_any_dtype(df[col]):
+        if col in pii or not pd.api.types.is_datetime64_any_dtype(df[col]):
             continue
         s = df[col].dropna()
         if s.empty:

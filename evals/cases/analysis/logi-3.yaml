@@ -1,0 +1,24 @@
+id: logi-3
+domain: logistics
+category: correlation
+dataset:
+  name: shipments
+  seed: 3
+question: Is distance related to delivery time?
+task:
+  analysis_types:
+  - correlation
+  target_metrics:
+  - distance_km
+  - delivery_days
+  segments: []
+checks:
+- kind: correlation
+  planted: true
+  a: distance_km
+  b: delivery_days
+  abs_tol: 0.02
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

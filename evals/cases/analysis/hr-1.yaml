@@ -1,0 +1,24 @@
+id: hr-1
+domain: hr
+category: segment
+dataset:
+  name: employees
+  seed: 1
+question: Which department has the highest attrition?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - left
+  segments:
+  - department
+checks:
+- kind: segment_value
+  planted: true
+  segment: department
+  metric: left
+  aggregation: mean
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

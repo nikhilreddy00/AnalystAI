@@ -472,9 +472,57 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
 - **Done when:** each listed domain passes its suite at the analysis/E2E targets, PII/PHI recall
   ≥ 95% on the healthcare set, and the README lists exactly the domains that passed.
 
+- **Status:** done 2026-11-01 (`docs/baselines/phase5_5.md`): the plumbing works on 8 domains
+  (PHI working copy, E2B pseudonyms, YAML domain meaning, derived-rate contract). Depth is thin:
+  one synthetic table and 1–2 model-dependent cases per domain. Phase 5.7 adds the depth.
+
+### Phase 5.7: Domain depth, one domain per session (added 2026-11-01 at the user's request)
+- **Why:** the product promise is "upload any domain's data and get a senior analyst of that
+  domain". A banking analyst doesn't know HR; each domain needs its own expert knowledge, tested
+  end to end through every agent, not one planted trap.
+- **Order (one session each, plan mode first, user sign-off between):**
+  0. Shared domain pack + expert rubric (no paid runs) — folded into session 1 if small.
+  1. Sales / retail (the pilot: most existing cases, validates the pack cheaply).
+  2. Banking. 3. Healthcare (highest privacy risk). 4. Insurance. 5. HR. 6. SaaS. 7. IoT /
+     manufacturing. 8. Logistics. Optional after: marketing, finance (P&L), education.
+- **Budget:** **< $5 of eval spend per domain session** (estimate before every paid run,
+  `--max-usd` per run, stop at $4.70 cumulative or a run > 30% over its estimate).
+- **Domain pack** (data, not code: adding domain 9 never edits an agent), one per domain, read by:
+  - intake: a glossary of terms ("NPL", "loss ratio", "ALOS") and their column synonyms;
+  - analysis + KPI tiles: KPI definitions with exact formulas, windows and exclusions;
+  - suggested questions + overview: the questions a senior analyst asks first;
+  - cleaning: sentinels, never-impute fields, valid ranges;
+  - visualization: chart conventions (cohort/vintage curves, funnels, control charts);
+  - insight + quality: must-say caveats and forbidden claims;
+  - ingestion: domain PII/PHI conventions.
+- **Each domain session, same shape:**
+  1. Plan mode: an expert brief (how a 25-year analyst of that domain reads a new dataset: grain,
+     reporting date, KPIs and definitions, traps, what the report must and must not say), written
+     from the domain expert's view AND the tool builders' view (every agent: intake, ingestion,
+     cleaning, analysis, visualization, insight, quality, multi-turn, UI), red-teamed by a fresh
+     reviewer playing that expert, approved by the user.
+  2. 2–3 realistic datasets (real-world column-name variants, mess, several traps, edge cases).
+  3. Cases across every agent, each with a model-dependent check (a built-in-only pass is no
+     evidence), plus a multi-turn conversation case.
+  4. Offline first: everything checkable at $0 is fixed before any paid run; every finished
+     domain's $0 suites re-run on every commit (cross-domain regressions).
+  5. Paid smoke run (~3 hard cases, k=1, ~$0.10) BEFORE the audit loop, then the domain gates.
+  6. Domain audit by fresh reviewers (the expert + the defect checklist), review note, sign-off.
+- **Converging audits (the bug count must go down pass over pass, never up):**
+  - fix the root cause in the shared function, never a symptom per caller;
+  - a widened or narrowed rule ships with negative cases from every other domain;
+  - every finding gets a test that fails without its fix, kept forever;
+  - after each fix round, one reviewer reads only that fix diff before the next broad pass;
+  - pass 1 broad; later passes only re-open areas the previous fixes touched;
+  - the per-pass count (major/minor) is recorded in the review note's bug ledger.
+- **Done when (per domain):** its analysis cases pass at k=3 on every run and its E2E cases at
+  k=1 (k=3 on failures), hard rules 100%, each agent's expert-rubric checks pass, the final
+  audit pass finds 0 major and ≤ 2 minor, and the README's domain list is regenerated from the
+  reports (`tests/test_readme_domains.py`).
+
 ### Phase 6: End-to-end hardening and open-source release (v0.1)
-Order of the remaining work (2026-10-29): Phase 5 Quality check → Phase 5 Ingestion → Phase 5.6
-(durable runs, workspace) → Phase 5.5 (domains) → Phase 6.
+Order of the remaining work (2026-11-01): Phase 5.7 (domain depth, one domain per session) →
+Phase 6.
 - **Work:**
   - Run the E2E suite through the API and worker, not only the graph, so durable runs are part
     of the release gate.

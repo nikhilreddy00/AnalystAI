@@ -9,6 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from api.config import settings
+from api.logging_scrub import install as _scrub_logs
 from api.rate_limit import limiter
 
 # Surface application INFO logs (intent classification, status changes, etc.).
@@ -18,6 +19,8 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+_scrub_logs()   # every log line is scrubbed of PII before it is written
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,8 +31,9 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Required settings not set: {', '.join(n.upper() for n in missing)}")
 
     # ADR-0003: an invalid semantic layer stops the boot instead of failing every SQL question.
-    from semantic_layer import configured_layer
+    from semantic_layer import configured_layer, file_layers
     configured_layer()
+    file_layers()   # Phase 5.5: the flat-file layers too (semantic_layers/*.yaml)
 
     # Bootstrap on-disk artifact dir for per-session parquet cache.
     from pathlib import Path

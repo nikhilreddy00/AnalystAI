@@ -224,7 +224,7 @@ async def test_a_follow_up_registers_the_last_turns_pii_before_the_memory(monkey
                               data_contract=build_contract(df, ConnectorType.CSV))
     token = pii_values.set(set())
     try:
-        ingestion_agent._seed_guard_from_last_turn(session)
+        await ingestion_agent._seed_guard_from_last_turn(session, None)
         assert {"Jane Doe", "Omar Haddad"} <= pii_values.get()
     finally:
         pii_values.reset(token)

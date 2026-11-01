@@ -1,0 +1,29 @@
+# Shipments. On-time is a rate; compare carriers within distance bands as well as pooled (the
+# mix of long and short routes differs by carrier).
+tables:
+  - name: shipments
+    source: file.shipments
+    primary_key: [shipment_id]
+    columns:
+      - {name: shipment_id, type: id}
+      - {name: ship_date, type: time}
+      - {name: distance_band, type: dimension}
+      - {name: carrier, type: dimension}
+      - {name: on_time, type: fact, description: 1 if delivered on time}
+      - {name: distance_km, type: fact, unit: km}
+      - {name: weight_kg, type: fact, unit: kg}
+      - {name: delivery_days, type: fact, unit: days}
+      - {name: cost, type: fact, unit: USD}
+metrics:
+  - name: on_time_rate
+    table: shipments
+    expr: AVG(shipments.on_time)
+  - name: average_delivery_days
+    table: shipments
+    expr: AVG(shipments.delivery_days)
+  - name: total_shipping_cost
+    table: shipments
+    expr: SUM(shipments.cost)
+  - name: total_weight
+    table: shipments
+    expr: SUM(shipments.weight_kg)

@@ -45,3 +45,47 @@ async def test_health_reports_whether_work_is_saved():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),
                                  base_url="http://t") as c:
         assert (await c.get("/health")).json()["persistent"] is False
+
+
+@pytest.fixture
+def bad_layer(tmp_path, monkeypatch):
+    import semantic_layer
+    (tmp_path / "broken.yaml").write_text("tables: [{name: t, source: s.t, primary_key: [x], "
+                                          "columns: [{name: y, type: fact}]}]\n")
+    monkeypatch.setattr(semantic_layer, "SAMPLE_LAYERS", tmp_path)
+    semantic_layer.file_layers.cache_clear()
+    yield
+    semantic_layer.file_layers.cache_clear()
+
+
+async def test_an_invalid_flat_file_layer_stops_the_api(prod, bad_layer):
+    from api.main import app, lifespan
+    with pytest.raises(ValueError, match="invalid semantic layer"):
+        async with lifespan(app):
+            pass
+
+
+async def test_an_invalid_flat_file_layer_stops_the_worker(prod, bad_layer):
+    from worker.__main__ import main
+    with pytest.raises(ValueError, match="invalid semantic layer"):
+        await main()
+
+
+async def test_unreadable_yaml_stops_boot(prod, tmp_path, monkeypatch):
+    import semantic_layer
+    (tmp_path / "x.yaml").write_text("tables: [unclosed")
+    monkeypatch.setattr(semantic_layer, "SAMPLE_LAYERS", tmp_path)
+    semantic_layer.file_layers.cache_clear()
+    try:
+        from worker.__main__ import main
+        with pytest.raises(Exception, match="(?i)yaml|scanner|parser|flow"):
+            await main()
+    finally:
+        semantic_layer.file_layers.cache_clear()
+
+
+def test_the_shipped_layers_are_valid_and_found_from_any_directory(tmp_path, monkeypatch):
+    import semantic_layer
+    monkeypatch.chdir(tmp_path)   # the worker's cwd needn't be the repo
+    semantic_layer.file_layers.cache_clear()
+    assert len(semantic_layer.file_layers()) == 7

@@ -17,3 +17,6 @@ uploads/
 *.xlsx
 README.md
 docs/
+evals/
+traces/
+session_data/

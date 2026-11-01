@@ -10,6 +10,7 @@ environment does not include pyarrow or fastparquet.
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import os
 from dataclasses import dataclass, field
@@ -27,6 +28,7 @@ class ExecutionResult:
     error: str | None
     figures_base64: list[str] = field(default_factory=list)
     output_json: str | None = None  # last stdout line if JSON
+    error_name: str | None = None   # the exception's type (KeyError), never its text
 
 
 def _ensure_api_key() -> None:
@@ -48,6 +50,9 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
     If df_parquet is provided, the DataFrame is available via pd.read_csv('/data/df.csv').
     """
     _ensure_api_key()
+    if not os.environ.get("E2B_API_KEY"):
+        return ExecutionResult(stdout="", stderr="", error="E2B_API_KEY is not set",
+                               error_name="SandboxNotConfigured")
 
     # BUG-25: Wrap sandbox creation in try/except with clear error message
     try:
@@ -58,11 +63,12 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
             stdout="",
             stderr=str(exc),
             error=f"Code execution sandbox unavailable. Check E2B API key and connectivity. Detail: {exc}",
+            error_name="SandboxUnavailable",
         )
 
     try:
         if df_parquet:
-            csv_bytes = _parquet_to_csv_bytes(df_parquet)
+            csv_bytes = await asyncio.to_thread(_parquet_to_csv_bytes, df_parquet)
             await sandbox.files.write("/data/df.csv", csv_bytes)
 
         # BUG-40: Add timeout to prevent infinite loops in LLM-generated code
@@ -70,7 +76,9 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
             execution = await sandbox.run_code(code, timeout=60)
         except Exception as exc:   # e2b raises on timeout; callers get a typed SandboxError
             return ExecutionResult(stdout="", stderr=str(exc),
-                                   error=f"Sandbox execution failed: {type(exc).__name__}: {exc}")
+                                   error=f"Sandbox execution failed: {type(exc).__name__}: {exc}",
+                                   error_name="SandboxTimeout" if "timeout" in type(exc).__name__.lower()
+                                   else type(exc).__name__)
 
         figures: list[str] = []
         for result in execution.results:
@@ -80,6 +88,7 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
         stdout = "\n".join(execution.logs.stdout) if execution.logs.stdout else ""
         stderr = "\n".join(execution.logs.stderr) if execution.logs.stderr else ""
         error = str(execution.error) if execution.error else None
+        error_name = getattr(execution.error, "name", None) if execution.error else None
 
         output_json: str | None = None
         if stdout:
@@ -93,6 +102,7 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
             error=error,
             figures_base64=figures,
             output_json=output_json,
+            error_name=error_name,
         )
     finally:
         await sandbox.kill()

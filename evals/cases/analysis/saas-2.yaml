@@ -1,0 +1,26 @@
+id: saas-2
+domain: saas
+category: segment_trend
+dataset:
+  name: saas_accounts
+  seed: 2
+question: Which plan's MRR changed most last month?
+task:
+  analysis_types:
+  - trend
+  - segmentation
+  target_metrics:
+  - mrr
+  segments:
+  - plan
+checks:
+- kind: segment_trend
+  planted: true
+  column: mrr
+  segment: Pro
+  truth_key: pro_mrr_mom_pct
+  abs_tol: 1.0
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

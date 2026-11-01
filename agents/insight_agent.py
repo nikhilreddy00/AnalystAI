@@ -162,8 +162,9 @@ def _values(e: Evidence, by_id: dict) -> str:
     more = len(getattr(found, "results", [])) - _MAX_GROUPS
     if more > 0:
         found = found.model_copy(update={"results": found.results[:_MAX_GROUPS]})
-    return json.dumps(found.model_dump(), default=str) + (f" (+{more} more groups not shown)"
-                                                          if more > 0 else "")
+    drop = {"label"} if getattr(found, "label", 1) is None else None   # as before Phase 5.5
+    return json.dumps(found.model_dump(exclude=drop), default=str) + (f" (+{more} more groups not shown)"
+                                                                      if more > 0 else "")
 
 
 def build_context(session: AnalysisSession, past: list[str] | None = None) -> InsightContext:
@@ -393,14 +394,16 @@ def _plain(e: Evidence, findings, narrative: DataNarrative | None) -> str:
             text = f"{_name(t.column, narrative)}{seg} {way} {abs(t.pct_change):.1f}% {period}."
     elif e.kind == "segment":
         s = next((s for s in findings.segments
-                  if segment_id(s.segment_column, s.metric_column, s.aggregation) == e.id), None)
+                  if segment_id(s.segment_column, s.metric_column, s.aggregation, s.label) == e.id), None)
         vals = [r for r in (s.results if s else []) if isinstance(r.get("value"), (int, float))]
         if vals:
             hi = max(vals, key=lambda r: r["value"])
             lo = min(vals, key=lambda r: r["value"])
             what = {"mean": "Average", "sum": "Total", "count": "Number of rows for"}.get(
                 s.aggregation, s.aggregation.title())
-            text = (f"{what} {_name(s.metric_column, narrative)} by "
+            head = (_name(s.label or f"{s.metric_column}_ratio", narrative).capitalize()
+                    if s.aggregation == "ratio" else f"{what} {_name(s.metric_column, narrative)}")
+            text = (f"{head} by "
                     f"{_name(s.segment_column.replace('|', ' and '), narrative)}: "
                     f"{_label(hi.get('name'))} highest ({hi['value']:,.2f}), "
                     f"{_label(lo.get('name'))} lowest ({lo['value']:,.2f}).")

@@ -6,6 +6,7 @@ or a soft one (lower confidence / tell the critic).
 from __future__ import annotations
 
 import ast
+import datetime
 import math
 import numbers
 import re
@@ -762,8 +763,15 @@ def executive_jargon(text: str) -> list[str]:
 
 # ── PII ────────────────────────────────────────────────────────────────────────
 
+# A date of birth or death, not a measure about births or deaths (`births`, `birthweight`,
+# `total_deaths`, `is_deceased`, `country_of_birth`, `cost_borne_by`).
+_DOB_NAME = (r"dob|dod|bday|(?<!of_)birth(?:_?(?:date|dt|day|year|yr))?|"
+             r"(?:year|date|day)_of_(?:birth|death)|born(?:_?(?:on|date|dt))?|"
+             r"death_?(?:date|dt|day)|deceased_?(?:date|dt|on)|date_?(?:born|deceased)")
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|address|street|dob|birth|passport|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|"
+    rf"{_DOB_NAME}|"
+    r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
@@ -778,8 +786,35 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                "seller", "buyer", "manager", "physician", "doctor", "nurse", "clinician",
                "technician", "driver", "author", "recipient", "sender", "customer", "client",
                "patient", "employee", "member", "guest", "student", "contact", "cashier",
-               "reviewer", "approver", "requester", "submitter"}
+               "reviewer", "approver", "requester", "submitter",
+               # insurance and health plans (Phase 5.5): people, named by their role
+               "policyholder", "insured", "beneficiary", "subscriber", "guarantor", "claimant",
+               "dependent", "caregiver", "guardian"}
+# Department / unit names read like people ("Critical Care"): these words mark a thing, not a person.
+_PLACE_WORDS = re.compile(r"\b(?:medicine|care|surgery|surgical|unit|clinic|center|centre|department|"
+                          r"service|services|therapy|health|practice|ward|room|lab|laboratory|imaging|"
+                          r"radiology|\w+ology|\w+ics|\w+iatry|emergency|outpatient|inpatient|"
+                          r"pharmacy|hospital|nursing|rehab\w*|office|team|group|plan|insurance|"
+                          r"shield|cross|mutual|medicaid|medicare|street|road|avenue)\b", re.I)
 _PERSON_RE = re.compile(r"^[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*){1,3}$")
+# "Lee, Ana", "LEE,ANA", "Lee, Ana M." — but not a place with its state ("Boston, MA").
+_LAST_FIRST_RE = re.compile(r"^[^\W\d_][\w'’.-]+ ?, ?(?![A-Z]{2}$)[^\W\d_][\w'’.-]+(?: [^\W\d_]\.?)?$")
+# ponytail: US states + common countries; a "City, Region" outside the list reads as a name.
+_PLACE_NAMES = frozenset("""alabama alaska arizona arkansas california colorado connecticut delaware
+florida hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland
+massachusetts michigan minnesota mississippi missouri nebraska nevada ohio oklahoma oregon
+pennsylvania tennessee texas utah vermont washington wisconsin wyoming usa uk canada mexico
+france germany spain italy portugal ireland england scotland wales japan brazil australia
+netherlands belgium sweden norway denmark finland poland austria switzerland ontario
+quebec""".split()) | {"new hampshire", "new jersey", "new mexico", "new york", "north carolina",
+                     "north dakota", "rhode island", "south carolina", "south dakota",
+                     "west virginia", "british columbia", "united states", "united kingdom",
+                     "new zealand", "south africa", "district of columbia", "d.c."}
+# Georgia, Virginia, Carolina, India, Montana are first names too: left out (a "City, Georgia"
+# is withheld in patient data rather than a "Ross, Virginia" kept). State codes count only in
+# capitals ("Springfield, IL", never "Lee, Mo").
+_STATE_CODES = frozenset("""AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS
+MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC""".split())
 # "Acme Corp" is capitalized words too: a B2B `client` column keeps its "revenue by client".
 _ORG_RE = re.compile(r"\b(?:inc|corp|corporation|co|company|ltd|limited|llc|llp|plc|gmbh|ag|sa|"
                      r"sas|bv|nv|pty|group|holdings|partners|associates|solutions|services|"
@@ -796,6 +831,10 @@ _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 _IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)"
                       r"(?![\d.])")
 MASK = "[REDACTED]"
+# PHI mode (Phase 5.5): a category with fewer than SMALL_CELL rows is pooled under POOLED_LABEL
+# (the CMS cell-size rule), so no reported group can single out a few patients.
+SMALL_CELL = 11
+POOLED_LABEL = "Other (fewer than 11 each)"
 # Never searched for or tokenized as PII values: "May" or "June" in a first-name column would
 # corrupt every date in a prompt.
 CALENDAR_WORDS = {"January", "February", "March", "April", "May", "June", "July", "August",
@@ -826,6 +865,44 @@ def _intl_phone(m: re.Match) -> str:
     return MASK if 8 <= len(re.sub(r"\D", "", m.group())) <= 15 else m.group()
 
 
+_MEASURE_NAME_RE = re.compile(r"(?:^|_)(?:births|deaths|weight\w*|rate|count|n|num|number|total|"
+                              r"pct|percent|per)(?:$|_)", re.I)
+
+
+def mask_emails(value: Any) -> Any:
+    """Emails only: safe on code-like text, where the phone and IP patterns would misfire."""
+    return _EMAIL_RE.sub(MASK, value) if isinstance(value, str) else value
+
+
+def _is_measure(values: Iterable[Any]) -> bool:
+    """Numbers that aren't dates or years (a count of births, a weight at birth): a birth- or
+    death-named column holding them is a measure, not a person's date."""
+    nums = [v for v in values if isinstance(v, numbers.Number) and not isinstance(v, bool)
+            and not (isinstance(v, float) and math.isnan(v))]
+    if not nums or len(nums) < 0.9 * sum(1 for v in values if v is not None):
+        return False
+    years = all(float(v).is_integer() and 1880 <= v <= 2100 for v in nums)
+    yyyymmdd = all(float(v).is_integer() and 18800101 <= v <= 21001231 for v in nums)
+    return not (years or yyyymmdd)
+
+
+# Named as the date itself (`dob`, `birth_date`), not something measured at birth (`birth_order`).
+_DATE_PART = r"(?:date|dt|day|year|yr|month|mo|mon|quarter|qtr|week|wk|weekday|dow)"
+_DATE_NAME_RE = re.compile(rf"(?:^|_)(?:dob|dod|bday|birth(?:_?{_DATE_PART})?$|"
+                           rf"birth_?{_DATE_PART}|born\w*|"
+                           rf"(?:year|date|day|month|quarter)_of_(?:birth|death)|death_?{_DATE_PART}|"
+                           r"deceased_?(?:date|dt|on)|date_?(?:born|deceased))(?:$|_)", re.I)
+def _serial_dates(values: Iterable[Any]) -> bool:
+    """Whole numbers that read as spreadsheet dates (days since 1900: 1919–2028)."""
+    nums = [v for v in values if isinstance(v, numbers.Number) and not isinstance(v, bool)
+            and not (isinstance(v, float) and math.isnan(v))]
+    return bool(nums) and all(float(v).is_integer() and 7_000 <= v <= 47_000 for v in nums)
+
+
+_DEATH_NAME_RE = re.compile(r"(?:^|_)(?:death|deceased|died|dod)(?:$|_)", re.I)
+_DATE_TEXT_RE = re.compile(r"^\s*(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})")
+
+
 def mask_pii(value: Any) -> Any:
     """Mask PII patterns inside a single value. Integers are checked as text too (a card
     number stored as int); other non-strings pass through."""
@@ -853,7 +930,8 @@ def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
 
 
 _NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
-               ("address", r"address|street"), ("dob", r"dob|birth"), ("passport", r"passport"))
+               ("address", r"address|street"), ("dob", _DOB_NAME),
+               ("passport", r"passport"))
 
 
 def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
@@ -866,10 +944,18 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
+        if kind == "dob" and _is_measure(values) and (_MEASURE_NAME_RE.search(norm) or not (
+                _DATE_NAME_RE.search(norm) or _serial_dates(values))):
+            return None   # births = 120, birth_order = 2, birth_length_cm = 50.5; a `dob` of
+            # 25204 (a spreadsheet date) stays a date
         return kind, f"the column name '{name}' marks personal data"
     vals = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
     if not vals:
         return None
+    if _DEATH_NAME_RE.search(norm) and all(isinstance(v, (datetime.date, str)) and
+                                           (not isinstance(v, str) or _DATE_TEXT_RE.match(v))
+                                           for v in vals):
+        return "dob", f"'{name}' holds dates of death"   # `deceased` = 2021-03-04, not a flag
     text = [v.strip() for v in vals if isinstance(v, str)]
     last = norm.lower().split("_")[-1] if norm else ""
     if (last in _ROLE_NOUNS or norm.lower() in _ROLE_NOUNS) and text \
@@ -894,6 +980,134 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
         kind = max(hits, key=hits.get)
         return kind, f"{sum(hits.values())} of {len(vals)} sampled values contain personal data"
     return None
+
+
+# ── PHI (Phase 5.5): patient records, pseudonyms, Safe Harbor generalisations ──────────────────
+
+_PHI_ID_RE = re.compile(r"(?:^|_)(?:mrn|medical_?record(?:_?(?:no|nr|num|number|id))?|"
+                        r"health_?record(?:_?(?:no|nr|num|number|id))?|"
+                        r"patient_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+# A school's `subject_id`, a `chart_id`, a `pt_no` are patient numbers only next to health data.
+_WEAK_PHI_ID_RE = re.compile(r"(?:^|_)(?:chart_?(?:no|nr|num|number|id)|"
+                             r"(?:pt|subject)_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+# Words that only health data uses in a header: with a personal or identifier column next to
+# them they mark patient records even without an MRN (a 'patient' name + a 'diagnosis' text).
+_HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|"
+                        r"medications?|prescriptions?|hospital(?!ity)\w*|physician|encounters?|"
+                        r"lab_?results?|allerg\w*|vaccin\w*|adverse_?events?|ae_\w+|"
+                        r"treatment_?arm|hospitaliz\w*|vitals?|bmi|blood_?pressure|systolic|"
+                        r"diastolic|heart_?rate|symptoms?|triage|sbp|dbp|los|drg|hba1c|"
+                        r"ecog|crp|inpatient|outpatient)(?:$|_)", re.I)
+# Words other domains use too (a SaaS `is_trial`, an A/B `arm`, a port of `discharge`, an
+# election `ward`): health only when two different ones appear together.
+_WEAK_HEALTH = (r"trial", r"arm", r"dos(?:es?|age|ing)", r"discharge\w*", r"ward", r"clinic\w*",
+                r"admi(?:t|ssion)\w*")
+
+
+def health_signal(names: Iterable[str], weak_ok: bool = False) -> bool:
+    """Headers that together read as health data: one health-only word, or two different
+    shared ones (`arm` + `dose`). `weak_ok`: one shared word is enough (next to a `subject_id`,
+    which is already half the signal)."""
+    names = [_norm_name(n) for n in names]
+    if any(_HEALTH_RE.search(n) for n in names):
+        return True
+    return sum(any(re.search(rf"(?:^|_){rx}(?:$|_)", n, re.I) for n in names)
+               for rx in _WEAK_HEALTH) >= (1 if weak_ok else 2)
+
+
+_DX_NAME_RE = re.compile(r"(?:^|_)(?:icd(?:_?10)?|diagnos[ie]s|diag|dx)(?:_?codes?)?(?:$|_)", re.I)
+_ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
+# HIPAA Safe Harbor: 3-digit ZIPs covering ≤ 20,000 people (2000 census) become 000.
+RESTRICTED_ZIP3 = frozenset({"036", "059", "063", "102", "203", "556", "692", "790", "821", "823",
+                             "830", "831", "878", "879", "884", "890", "893"})
+_ZIP_NAME_RE = re.compile(r"(?:^|_)(?:zip\d?|zipcode|postal|postcode|plz)(?:_?code)?$", re.I)
+_AGE_NAME_RE = re.compile(r"(?:^|_)(?:age(?:_?(?:years|yrs|at_\w+?))?|years_old)"
+                          r"(?<!_days)(?<!_weeks)(?<!_months)$", re.I)   # age_at_admission_days: no cap
+AGE_CAP = 90
+
+
+def is_phi_identifier(name: str, strong: bool = False) -> bool:
+    """A patient's record number. `strong`: on its own, without other health columns."""
+    n = _norm_name(name)
+    return bool(_PHI_ID_RE.search(n) or (not strong and _WEAK_PHI_ID_RE.search(n)))
+
+
+def is_diagnosis_column(name: str, values: Iterable[Any]) -> bool:
+    """A diagnosis-code column: named like one and most values are ICD-10 shaped."""
+    if not _DX_NAME_RE.search(_norm_name(name)):
+        return False
+    text = [str(v).strip().upper() for v in values if isinstance(v, str) and v.strip()]
+    return bool(text) and sum(bool(_ICD10_RE.match(t)) for t in text) >= 0.5 * len(text)
+
+
+def is_zip_column(name: str) -> bool:
+    return bool(_ZIP_NAME_RE.search(_norm_name(name)))
+
+
+def is_age_column(name: str) -> bool:
+    return bool(_AGE_NAME_RE.search(_norm_name(name)))
+
+
+def pseudonym_key(scope: str = "") -> bytes:
+    """The key for one-way pseudonyms, derived from ENCRYPTION_KEY (never the key itself, which
+    also encrypts checkpoints) and `scope` (the user: the same patient gets different IDs in two
+    accounts). Empty key = anyone could recompute the pseudonyms: refuse. Rotating
+    ENCRYPTION_KEY changes every pseudonym (stated in ADR-0008)."""
+    import hashlib
+    import hmac
+
+    from api.config import settings
+    if not settings.encryption_key:
+        raise ValueError("ENCRYPTION_KEY is not set: pseudonyms would be reversible")
+    return hmac.new(settings.encryption_key.encode(), b"phi-pseudonym-v1|" + scope.encode(),
+                    hashlib.sha256).digest()
+
+
+def _canonical_value(value: Any) -> str:
+    if isinstance(value, numbers.Number) and not isinstance(value, bool) and float(value).is_integer():
+        return str(int(value))
+    return str(value).strip()
+
+
+def pseudonym(value: Any, key: bytes, column: str = "") -> str:
+    """One-way, keyed, stable: 'ID-' + 64 bits of HMAC-SHA256 over the column and the canonical
+    value (1001, 1001.0 and ' 1001 ' are one value; visit 2 and patient 2 are not). E2B and the
+    LLM can't reverse it; a resume gets the same."""
+    import hashlib
+    import hmac
+    msg = f"{column}\x00{_canonical_value(value)}".encode()
+    return "ID-" + hmac.new(key, msg, hashlib.sha256).hexdigest()[:16]
+
+
+def pseudonymize_columns(df, columns: Iterable[str], key: bytes, back: dict | None = None):
+    """A copy of `df` with every value of `columns` replaced by its pseudonym (missing stays
+    missing). Two values with one pseudonym would merge two people: that fails closed.
+    `back`, if given, collects {pseudonym: original} (kept server-side, never sent)."""
+    import pandas as pd
+    out = df.copy()
+    for col in columns:
+        if col not in out.columns:
+            continue
+        values = out[col].dropna().map(_canonical_value).unique()
+        mapping = {v: pseudonym(v, key, col) for v in values}
+        if len(set(mapping.values())) != len(mapping):
+            raise ValueError(f"pseudonym collision in '{col}'")
+        out[col] = out[col].map(lambda v, m=mapping: v if pd.isna(v) else m[_canonical_value(v)])
+        if back is not None:
+            back.update({p: v for v, p in mapping.items()})
+    return out
+
+
+def zip3(value: Any) -> Any:
+    """Safe Harbor ZIP: the first 3 digits (zero-padded: 2139 → '021'), '000' for the restricted
+    areas. Missing or digit-less stays as it is."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return value
+    digits = re.sub(r"\D", "", _canonical_value(value))
+    if not digits:
+        return value
+    z = digits.zfill(5)[:3] if len(digits) <= 5 else digits[:3]
+    return "000" if z in RESTRICTED_ZIP3 else z
 
 
 def pii_strings(value: Any) -> list[str]:
@@ -1001,3 +1215,23 @@ _CLOSE_TAG_RE = re.compile(r"<\s*/\s*untrusted_data\s*>", re.I)
 def delimit_untrusted(text: str) -> str:
     safe = _CLOSE_TAG_RE.sub("</untrusted_data_>", str(text))   # every spelling of the close tag
     return f"<untrusted_data>\n{safe}\n</untrusted_data>"
+
+
+def _is_place(x: str) -> bool:
+    """"Seattle, Washington", "springfield, IL": a place, not "Last, First"."""
+    tail = x.split(",")[-1].strip()
+    return tail.lower() in _PLACE_NAMES or tail in _STATE_CODES
+
+
+def person_shaped(values: Iterable[Any], last_first: bool = True,
+                  lowercase: bool = False) -> float:
+    """Share of distinct text values that read as a person's name ("Ana Ito"), not an
+    organisation or a department ("Critical Care", "Blue Cross Blue Shield"). `last_first`:
+    "Lee, Ana" too, but not "Seattle, Washington"; `lowercase`: "ana ito" too (a shape categories
+    share: "north east"), for values known to follow one person each."""
+    v = {str(x).strip() for x in values if isinstance(x, str) and x.strip()}
+    if not v:
+        return 0.0
+    return sum((bool(_PERSON_RE.match(x.title() if lowercase and x.islower() else x))
+                or (last_first and bool(_LAST_FIRST_RE.match(x)) and not _is_place(x)))
+               and not _ORG_RE.search(x) and not _PLACE_WORDS.search(x) for x in v) / len(v)

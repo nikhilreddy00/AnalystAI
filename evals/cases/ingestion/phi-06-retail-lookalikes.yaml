@@ -1,0 +1,12 @@
+id: phi-06-retail-lookalikes
+category: phi
+seed: 56
+rows: 300
+format: {type: csv}
+columns:
+- [sku, sku_icd]
+- [member_id, member_id]
+- [product, product_name]
+- [price, money]
+- [order_date, date_iso]
+label_note: 'Retail: ICD-shaped SKUs and loyalty member ids are not patient data.'

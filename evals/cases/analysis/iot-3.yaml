@@ -1,0 +1,24 @@
+id: iot-3
+domain: iot
+category: correlation
+dataset:
+  name: sensor_readings
+  seed: 3
+question: Is vibration related to failures?
+task:
+  analysis_types:
+  - correlation
+  target_metrics:
+  - vibration
+  - failure
+  segments: []
+checks:
+- kind: correlation
+  planted: true
+  a: vibration
+  b: failure
+  abs_tol: 0.02
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

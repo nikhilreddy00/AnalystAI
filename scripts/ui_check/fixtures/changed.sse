@@ -1,0 +1,18 @@
+data: {"type": "session_id", "value": "ui-check"}
+
+data: {"type": "agent_start", "agent": "ingestion", "message": "Loading data..."}
+
+data: {"type": "agent_complete", "agent": "ingestion", "message": "Loaded 3,025 rows \u00d7 11 columns"}
+
+data: {"type": "agent_start", "agent": "intake", "message": "Understanding your question..."}
+
+data: {"type": "agent_complete", "agent": "intake", "message": "Plan: overview across segment and region"}
+
+data: {"type": "agent_start", "agent": "cleaning", "message": "Cleaning data..."}
+
+data: {"type": "agent_complete", "agent": "cleaning", "message": "Dropped 25 duplicates; imputed 1 column"}
+
+data: {"type": "error", "message": "This analysis can't continue: the data source returns different rows than when this run started. Ask the question again to analyse the current data.", "retryable": false, "reask": true}
+
+data: {"type": "done"}
+

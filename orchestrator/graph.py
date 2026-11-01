@@ -18,6 +18,7 @@ Conditional branches:
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import hashlib
@@ -32,7 +33,12 @@ from langgraph.types import interrupt
 from agents.analysis_agent import run_analysis_agent
 from agents.cleaning_agent import build_evidence as build_cleaning_evidence
 from agents.cleaning_agent import run_cleaning_agent
-from agents.ingestion_agent import remember_pii, run_ingestion_agent
+from agents.ingestion_agent import (
+    looks_like_patient_data,
+    remember_pii,
+    run_ingestion_agent,
+    seed_phi_guard,
+)
 from agents.insight_agent import run_insight_agent
 from agents.intake_agent import (
     generate_data_narrative,
@@ -120,12 +126,23 @@ def _emit(state: AgentState, event: dict) -> None:
         q.put_nowait(event)
 
 
+_STEP = {"Intake agent": "question-reading", "Data ingestion": "data-loading",
+         "Data cleaning": "cleaning", "Analysis": "analysis", "Visualization": "chart",
+         "Insight generation": "report-writing", "Targeted analysis": "answer",
+         "Drill-down": "follow-up"}
+
+
 def _fail(session: AnalysisSession, stage: str, exc: Exception) -> None:
     """Route a node failure to error_node. Typed errors carry their own user message."""
-    logger.error("%s failed", stage, exc_info=exc)
+    logger.error("%s failed", stage, exc_info=exc)   # the log is scrubbed (api/logging_scrub.py)
+    # An exception's text can quote cell values: the user (and run_events) get its type only.
     session.error_message = (
-        exc.user_message if isinstance(exc, AgentError) else f"{stage} failed: {exc}"
+        exc.user_message if isinstance(exc, AgentError)
+        else f"The {_STEP.get(stage, 'analysis')} step stopped unexpectedly. Try again; if it "
+             "keeps failing, ask a different question."
     )
+    session.error_retryable = getattr(exc, "retryable", True)
+    session.error_reask = getattr(exc, "reask", True)
 
 
 async def _save(state: AgentState) -> None:
@@ -151,16 +168,9 @@ async def intake_node(state: AgentState) -> dict:
         task = await run_intake_agent(session, state["user_message"], get_client(),
                                       is_overview_request=is_overview)
         session.task_plan = task
-        logger.info(
-            "Intent classified as: %s for query: %s",
-            task.question_intent.value if task.question_intent else None,
-            task.raw_query,
-        )
-        logger.info(
-            "Intake: raw_query='%s', intent=%s",
-            session.task_plan.raw_query,
-            session.task_plan.question_intent,
-        )
+        # Never the question's text: it can name a patient or a customer.
+        logger.info("intent classified as %s",
+                    task.question_intent.value if task.question_intent else None)
         session.add_message(MessageRole.USER, state["user_message"])
 
         if task.clarification_needed:
@@ -196,6 +206,7 @@ async def ingestion_node(state: AgentState) -> dict:
     session: AnalysisSession = state["session"]
     # BUG-09: Clear error_message at the start of every graph run
     session.error_message = None
+    session.error_retryable, session.error_reask = True, True
     # FEAT-02: reset quality-retry budget for each run (counts entries into quality_check)
     session.quality_check_attempts = 0
     session.status = "in_progress"
@@ -205,17 +216,23 @@ async def ingestion_node(state: AgentState) -> dict:
         _emit(state, {"type": "agent_start", "agent": "ingestion", "message": "Loading your data..."})
 
     cached_used = False
-    if is_resuming and session.cleaned_data_path:
+    dc = session.data_contract
+    # A patient-data thread from before PHI mode cached the raw frame: re-ingest it (de-identified).
+    legacy_phi = bool(dc and not dc.phi and looks_like_patient_data(dc))
+    if is_resuming and session.cleaned_data_path and not legacy_phi:
         # Try the on-disk cache before re-loading from the connector. Cuts a full
         # connector round-trip on every follow-up question and detaches the
         # follow-up from connector drift (a re-queried SQL table won't surprise us).
         try:
             payload = read_cleaned_parquet(session.session_id)
             if payload is not None:
+                if session.data_contract:   # this run's LLM guard needs the PII values again
+                    await asyncio.to_thread(lambda: remember_pii(
+                        pd.read_parquet(io.BytesIO(payload)), session.data_contract))
+                    # Patient data: the cache holds no names, so the guard reads the source too.
+                    await seed_phi_guard(session, get_client())
                 session.__dict__["_df_parquet"] = payload
                 cached_used = True
-                if session.data_contract:   # this run's LLM guard needs the PII values again
-                    remember_pii(pd.read_parquet(io.BytesIO(payload)), session.data_contract)
                 logger.info("loaded cached parquet for session %s", session.session_id)
         except Exception as exc:
             logger.warning("cached parquet read failed for %s: %s", session.session_id, exc)
@@ -256,6 +273,10 @@ async def ingestion_node(state: AgentState) -> dict:
                         session.narrative = await generate_data_narrative(contract, get_client())
                     except Exception:
                         logger.warning("data narrative skipped", exc_info=True)
+            elif contract.phi or (session.data_contract and session.data_contract.phi):
+                # Patient data: the frame was just de-identified, so the stored contract (maybe
+                # from before PHI mode, or before a column crossed a threshold) can't describe it.
+                session.data_contract = contract
             # On resume without cache: data_contract already set from prior session; df_parquet just restored.
         except Exception as exc:
             _fail(session, "Data ingestion", exc)
@@ -382,7 +403,7 @@ async def analysis_node(state: AgentState) -> dict:
                 roles = classify_columns(df)
                 query = session.task_plan.raw_query if session.task_plan else ""
                 findings.kpis = generate_smart_kpis(
-                    df, roles, query, narrative=session.narrative
+                    df, roles, query, narrative=session.narrative, contract=session.data_contract
                 )
                 # Phase 5: a tile whose number doesn't match the data or the report is dropped.
                 wrong = set(kpi_mismatches(findings.kpis, df, findings.eda_summary))
@@ -397,6 +418,7 @@ async def analysis_node(state: AgentState) -> dict:
                 findings.target_correlations = extras.get("target_correlations", {})
                 findings.target_col = extras.get("target_col")
                 findings.column_roles_summary = extras.get("column_roles_summary", {})
+                findings.column_units = extras.get("column_units", {})
                 # Overlay the cleaning-stage skip set: any column the triage
                 # layer excluded gets a 'skipped' role so the schema table can
                 # render the gray badge regardless of what classify_columns
@@ -443,6 +465,7 @@ async def analysis_node(state: AgentState) -> dict:
                     "target_correlations": findings.target_correlations,
                     "target_col": findings.target_col,
                     "column_roles_summary": findings.column_roles_summary,
+                    "column_units": findings.column_units,
                 },
             })
     except Exception as exc:
@@ -599,7 +622,7 @@ async def quality_check_node(state: AgentState) -> dict:
         except Exception as exc:
             # The user already has the insight; the review is an add-on.
             logger.warning("quality review skipped", exc_info=True)
-            msg = exc.user_message if isinstance(exc, AgentError) else str(exc)
+            msg = exc.user_message if isinstance(exc, AgentError) else "it couldn't be completed"
             _emit(state, {"type": "agent_complete", "agent": "quality_check",
                           "message": f"Review skipped: {msg}"})
         # Flip after the first full run so the next turn becomes targeted Q&A.
@@ -721,7 +744,8 @@ async def error_node(state: AgentState) -> dict:
     session: AnalysisSession = state["session"]
     session.status = "failed"
     msg = session.error_message or "An unexpected error occurred."
-    _emit(state, {"type": "error", "message": msg})
+    _emit(state, {"type": "error", "message": msg, "retryable": session.error_retryable,
+                  "reask": session.error_reask})
     _emit(state, {"type": "done"})
     await _save(state)
     return {"session": session}

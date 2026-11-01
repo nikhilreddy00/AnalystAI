@@ -1,4 +1,5 @@
 import type { KPIRecipe } from "@/types";
+import { formatMoney, formatWithUnit } from "./formatUnit.ts";
 
 const POSITIVE = new Set(["1", "true", "yes", "y", "t"]);
 const NEGATIVE = new Set(["0", "false", "no", "n", "f"]);
@@ -24,22 +25,20 @@ function numeric(rows: Record<string, unknown>[], col: string): number[] {
   return out;
 }
 
-function formatValue(n: number, kind: KPIRecipe["format_kind"]): string {
+function formatValue(n: number, kind: KPIRecipe["format_kind"], currency?: string | null,
+                     unit?: string | null): string {
   if (!Number.isFinite(n)) return "—";
   switch (kind) {
     case "currency":
-      return n.toLocaleString("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 2,
-      });
+      // Reports from before Phase 5.5 carry no currency: they were USD.
+      return formatMoney(n, currency);
     case "percent":
       return `${(n * 100).toFixed(1)}%`;
     case "count":
       return Math.round(n).toLocaleString("en-US");
     case "number":
     default:
-      return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+      return formatWithUnit(n, unit);
   }
 }
 
@@ -88,7 +87,7 @@ export function evaluateKPI(
       const vals = numeric(rows, recipe.column);
       if (vals.length === 0) return { value: "—", ok: false };
       const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-      return { value: formatValue(mean, recipe.format_kind), ok: true };
+      return { value: formatValue(mean, recipe.format_kind, recipe.currency, recipe.unit), ok: true };
     }
 
     case "top_cat": {
@@ -128,21 +127,17 @@ export function evaluateKPI(
         segs.set(k, e);
       }
       if (segs.size === 0) return { value: "—", ok: false };
-      let topKey = "";
       let topRate = -1;
-      for (const [k, e] of segs) {
+      let lowRate = 2;
+      for (const [, e] of segs) {
         if (e.tot === 0) continue;
         const rate = e.pos / e.tot;
-        if (rate > topRate) {
-          topKey = k;
-          topRate = rate;
-        }
+        topRate = Math.max(topRate, rate);
+        lowRate = Math.min(lowRate, rate);
       }
       if (topRate < 0) return { value: "—", ok: false };
-      return {
-        value: `${topKey}: ${(topRate * 100).toFixed(1)}%`,
-        ok: true,
-      };
+      // As the backend writes the tile ("45.0% vs 30.0%"), so an unchanged filter shows no change.
+      return { value: `${(topRate * 100).toFixed(1)}% vs ${(lowRate * 100).toFixed(1)}%`, ok: true };
     }
 
     case "highest_cv": {
@@ -151,10 +146,11 @@ export function evaluateKPI(
       if (vals.length < 2) return { value: "—", ok: false };
       const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
       if (Math.abs(mean) < 1e-12) return { value: "—", ok: false };
+      // As the backend writes it: sample std (n - 1), "CV 0.59".
       const variance =
-        vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length;
+        vals.reduce((s, v) => s + (v - mean) ** 2, 0) / (vals.length - 1);
       const cv = Math.sqrt(variance) / Math.abs(mean);
-      return { value: formatValue(cv, "percent"), ok: true };
+      return { value: `CV ${cv.toFixed(2)}`, ok: true };
     }
   }
 }

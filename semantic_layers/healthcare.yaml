@@ -1,0 +1,27 @@
+# Hospital encounters, as PHI mode leaves them (names, DOB, phone and notes withheld; MRN
+# pseudonymised; ZIP3). Length of stay is averaged; cost adds up.
+tables:
+  - name: encounters
+    source: file.encounters
+    primary_key: [encounter_id]
+    columns:
+      - {name: encounter_id, type: id}
+      - {name: mrn, type: id, description: pseudonymised medical record number}
+      - {name: department, type: dimension}
+      - {name: diagnosis_code, type: dimension, description: ICD-10}
+      - {name: admit_date, type: time}
+      - {name: discharge_date, type: time}
+      - {name: length_of_stay, type: fact, unit: days}
+      - {name: cost, type: fact, unit: USD}
+      - {name: age, type: fact, unit: years, description: ages over 90 shown as 90}
+metrics:
+  - name: average_length_of_stay
+    table: encounters
+    expr: AVG(encounters.length_of_stay)
+    synonyms: [ALOS, LOS]
+  - name: total_cost
+    table: encounters
+    expr: SUM(encounters.cost)
+  - name: average_age
+    table: encounters
+    expr: AVG(encounters.age)

@@ -1,0 +1,22 @@
+id: logi-2
+domain: logistics
+category: segment
+dataset:
+  name: shipments
+  seed: 2
+question: How do delivery times differ by carrier?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - delivery_days
+  segments:
+  - carrier
+checks:
+- kind: segment_value
+  segment: carrier
+  metric: delivery_days
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

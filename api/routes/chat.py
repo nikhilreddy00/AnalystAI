@@ -113,8 +113,22 @@ def _last_turn_pii(session: AnalysisSession) -> set[str]:
 
     import pandas as pd
 
-    from agents.ingestion_agent import known_pii_values
+    from agents.ingestion_agent import build_contract, known_pii_values
     from memory.session_data import read_cleaned_parquet
+    if session.data_contract.phi:   # the cached copy holds no names: read the raw upload
+        from pathlib import Path
+
+        from connectors.csv_connector import _read_bytes
+        path = session.connector_config.file_path if session.connector_config else None
+        if not path:   # ponytail: uploaded files only (a SQL source has none)
+            return set()
+        try:   # a purged file is as unreadable as a corrupt one
+            raw, _ = _read_bytes(Path(path).read_bytes(), Path(path).suffix.lower())
+        except Exception as exc:   # its patient names can't be guarded: don't switch blind
+            raise HTTPException(status_code=409, detail="The earlier version of this dataset "
+                                "can't be read, so this conversation can't switch to a new one. "
+                                "Start a new analysis instead.") from exc
+        return known_pii_values(raw, build_contract(raw, session.connector_config.type, {}))
     cached = read_cleaned_parquet(session.session_id)
     return known_pii_values(pd.read_parquet(io.BytesIO(cached)), session.data_contract) \
         if cached else set()

@@ -1,4 +1,5 @@
 id: segment_trend-1
+domain: retail
 category: segment_trend
 dataset:
   name: sales

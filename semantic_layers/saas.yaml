@@ -1,0 +1,31 @@
+# Account-months of a subscription product. MRR and seats are monthly levels: the month's MRR is
+# that month's sum over accounts; summing MRR over months is not a total of anything.
+tables:
+  - name: account_months
+    source: file.account_months
+    primary_key: [account_id, month]
+    columns:
+      - {name: account_id, type: id}
+      - {name: month, type: time}
+      - {name: plan, type: dimension}
+      - {name: mrr, type: fact, unit: USD, description: monthly recurring revenue}
+      - {name: seats, type: fact}
+      - {name: active_users, type: fact}
+      - {name: churned, type: fact, description: 1 if the account churned that month}
+metrics:
+  - name: total_mrr
+    table: account_months
+    expr: SUM(account_months.mrr)
+    non_additive_dimension: {name: month, window: last}
+    synonyms: [MRR, monthly recurring revenue]
+  - name: total_seats
+    table: account_months
+    expr: SUM(account_months.seats)
+    non_additive_dimension: {name: month, window: last}
+  - name: total_active_users
+    table: account_months
+    expr: SUM(account_months.active_users)
+    non_additive_dimension: {name: month, window: last}
+  - name: churn_rate
+    table: account_months
+    expr: AVG(account_months.churned)

@@ -213,7 +213,8 @@ export function useAnalysis() {
         break;
       case "error":
         patchLast((m) => ({ ...m, content: `Error: ${event.message}`, isStreaming: false,
-                            runId: event.retryable === false ? undefined : run.current.id ?? undefined }));
+                            runId: event.retryable === false ? undefined : run.current.id ?? undefined,
+                            final: event.reask === false }));
         break;
       case "done":
         finish();
@@ -382,8 +383,10 @@ export function useAnalysis() {
       if (t.status !== "completed") {
         // As it was shown: "The analysis stopped" (any partial report stays viewable). Only the
         // latest run can be retried (the server refuses older ones).
-        const retry = t === last ? t.run_id : undefined;
-        patchLast((m) => ({ ...m, content: `Error: ${t.error ?? "This question has no report."}`, runId: retry }));
+        // A final error (retryable: false) offers no "retry from where it stopped".
+        const retry = t === last && t.retryable !== false ? t.run_id : undefined;
+        patchLast((m) => ({ ...m, content: `Error: ${t.error ?? "This question has no report."}`, runId: retry,
+                            final: t.reask === false }));
       } else if (!t.report.length) {
         patchLast((m) => ({ ...m, content: "This question has no report." }));
       }

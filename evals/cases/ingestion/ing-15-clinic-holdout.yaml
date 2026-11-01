@@ -1,5 +1,6 @@
 id: ing-15-clinic-holdout
 category: pii
+phi: true   # Phase 5.5: an MRN marks patient records
 seed: 25
 rows: 300
 format:

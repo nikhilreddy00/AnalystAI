@@ -1,0 +1,28 @@
+id: logi-1
+domain: logistics
+category: simpson
+dataset:
+  name: shipments
+  seed: 1
+question: Which carrier delivers on time more often?
+task:
+  analysis_types:
+  - segmentation
+  - hypothesis
+  target_metrics:
+  - on_time
+  segments:
+  - carrier
+  - distance_band
+checks:
+- kind: simpson_reversal
+  planted: true
+  metric: on_time
+  strata:
+  - distance_band
+  - carrier
+  truth_key: band_carrier_ontime
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

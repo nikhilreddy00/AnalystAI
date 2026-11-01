@@ -128,7 +128,7 @@ def handle_chart_request(session: AnalysisSession, df: pd.DataFrame) -> Targeted
             ),
         )
 
-    chart = build_single_chart(df, p)
+    chart = build_single_chart(df, p, session.data_contract)
     return TargetedResponse(
         intent=QuestionIntent.CHART_REQUEST,
         answer_text=f"Here's the {chart.chart_type} you asked for.",

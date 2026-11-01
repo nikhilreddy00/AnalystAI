@@ -16,6 +16,8 @@ import copy
 from contextvars import ContextVar
 import io
 import json
+import math
+import numbers
 import re
 import statistics
 import subprocess
@@ -30,10 +32,14 @@ from scipy.stats import binomtest
 
 from api.config import settings
 from evals import cleangen, datagen
+from evals.datagen import INJECTION
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
     NUMERIC_CHECKS,
+    _INSIGHT_RULES,
+    _truth_value,
+    scale_units,
     answer_text,
     clean_cell,
     false_findings,
@@ -50,7 +56,7 @@ from evals.scoring import (
     score_intake,
     score_visualization,
 )
-from llm.client import get_client, pii_values, set_client, trace_meter
+from llm.client import get_client, pii_values, pseudonymize, set_client, trace_meter
 from orchestrator.state import (
     AnalysisFindings,
     AnalysisSession,
@@ -80,13 +86,37 @@ def dataset(case: dict) -> tuple[pd.DataFrame, dict, str]:
     return pd.read_csv(io.StringIO(csv)), truth, csv
 
 
+def working_frame(case: dict, guard: bool = False):
+    """(frame, contract) as production's ingestion hands them on: the contract from the raw load,
+    the guard seeded with the raw PII (`guard`), then PHI mode's working copy (a no-op off patient
+    data). The analysis suite runs and is scored on this, never on the raw table."""
+    from agents.ingestion_agent import prepare_frame, remember_pii
+    from connectors.csv_connector import CSVConnector, _read_bytes
+    df, _, csv = dataset(case)
+    if case.get("domain", "retail") != "retail":
+        # Production's reader (dates parsed, leading zeros kept), so E2B gets the frame it would
+        # in the product. ponytail: the 46 retail cases keep read_csv: their inputs are pinned
+        # (evals/snapshots/pre_5_5.json) and changing them buys a paid re-run.
+        df = _read_bytes(csv.encode(), ".csv")[0]
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    if guard:
+        remember_pii(df, contract)
+    # The scope production uses: the session's user (an eval session's user is "default").
+    return prepare_frame(df, contract, ConnectorType.CSV, {}, AnalysisSession(session_id="x").user_id)
+
+
 async def run_analysis_case(case: dict) -> dict:
     from agents.analysis_agent import run_analysis_agent
-    from connectors.csv_connector import CSVConnector
 
-    df, truth, _ = dataset(case)
+    sent: list[str] = []
+    LLM_REQUESTS.set(sent)   # the canary scans every request, as in the E2E suite
+    LLM_SENT.set([])
+    uploads: list[str] = []
+    E2B_UPLOADS.set(uploads)
+    pii_values.set(set())    # this case's guard, as the runner sets one per run
+    df, contract = working_frame(case, guard=True)
     session = AnalysisSession(session_id=str(uuid.uuid4()))
-    session.data_contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    session.data_contract = contract
     session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
@@ -98,23 +128,63 @@ async def run_analysis_case(case: dict) -> dict:
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
 
-    return {**score_analysis(case, findings, error),
+    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
+    hits = len(leaked("\n".join(sent), literals))
+    model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
+    scored = score_analysis(case, findings, error)
+    exits = exits_rule(literals, uploads, None)
+    return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals)), exits],
+            "pii_exits": exits, "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
             "output": findings.model_dump(mode="json") if findings else None}
 
 
-def score_analysis(case: dict, findings, error: str | None) -> dict:
-    """Scores one analysis run from its stored output (so `rescore` costs nothing)."""
-    df, truth, _ = dataset(case)
+_BUILTIN: dict[str, bool] = {}
+
+
+def builtin_only(case: dict) -> bool:
+    """Does the case pass on the deterministic built-in code alone (an empty model body), run
+    locally on the frame E2B would get? Such a case measures that code, not the model: the
+    domain claim rests on the others. $0, cached per case."""
+    if case["id"] in _BUILTIN:
+        return _BUILTIN[case["id"]]
+    from agents.analysis_agent import (_CODE_HEADER, _build_guaranteed_code,
+                                       _build_standard_code, _parse_findings, e2b_frame)
+    from agents.utils import pii_columns
+    df, contract = working_frame(case)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    upload, _ = e2b_frame(buf.getvalue(), pii_columns(contract))
+    task = AnalysisTask(raw_query=case["question"], **case["task"])
+    code = (_CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "") +
+            _build_standard_code(contract, task) + _build_guaranteed_code(contract))
+    g = {"df": pd.read_csv(io.StringIO(pd.read_parquet(io.BytesIO(upload)).to_csv(index=False)))}
+    try:
+        exec(code, g)
+        findings = _parse_findings(json.loads(json.dumps(g["result"], default=str)), "", [])
+        out = passed(score_analysis(case, findings, None, baseline=False)["checks"])
+    except Exception:
+        out = False
+    _BUILTIN[case["id"]] = out
+    return out
+
+
+def score_analysis(case: dict, findings, error: str | None, baseline: bool = True) -> dict:
+    """Scores one analysis run from its stored output (so `rescore` costs nothing), against the
+    frame the agent was given (PHI mode's working copy on patient data)."""
+    _, truth, _ = dataset(case)
+    df = working_frame(case)[0]
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}
         ok, detail = ANALYSIS_CHECKS[kind](findings, df, truth, **kwargs) if findings else (False, "no findings")
         checks.append({"kind": kind, "ok": ok, "detail": detail, "planted": spec.get("planted", False)})
     types = frozenset(case["task"].get("analysis_types", []))
-    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings, types=types))))
+    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, findings, types=types,
+                                                                truth=truth))))
             for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
-            "false_findings": false_findings(findings, df, truth) if findings else None}
+            "false_findings": false_findings(findings, df, truth) if findings else None,
+            **({"builtin_only": builtin_only(case)} if baseline and "domain" in case else {})}
 
 
 _DEPS = None
@@ -144,7 +214,10 @@ async def run_e2e_case(case: dict) -> dict:
     )
     await deps.session_store.create(session)   # as POST /chat does: save() never inserts
     sent: list[str] = []
-    LLM_REQUESTS.set(sent)   # the canary scans every request this case makes
+    LLM_REQUESTS.set(sent)   # the canary scans every request this case makes…
+    LLM_SENT.set([])         # …and what the client's guard let through…
+    uploads: list[str] = []
+    E2B_UPLOADS.set(uploads)  # …and every frame sent to E2B
     error, approvals, seen = None, [], 0
     run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
                                          input={"message": case["question"]})
@@ -165,22 +238,42 @@ async def run_e2e_case(case: dict) -> dict:
     if approvals and approvals[-1] != "high_null" and not error:
         error = f"stopped at approval_required ({approvals[-1]})"
 
-    hits = len(leaked("\n".join(sent), e2e_pii_literals(df)))
+    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
+    hits = len(leaked("\n".join(sent), literals))
+    model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
+    shown = None
+    if session.data_contract and session.data_contract.phi:
+        every = [e for _, e in await deps.run_store.events_after(run.id, 0)]
+        shown = json.dumps(every, default=str) + session.model_dump_json(exclude={"prior_pii"})
+    exits = exits_rule(literals, uploads, shown, case["question"])
     scored = score_e2e(case, session, error)
-    return {**scored, "hard": scored["hard"] + [_canary_rule(hits)], "pii_canary_hits": hits,
+    return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals)), exits],
+            "pii_exits": exits,
+            "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
             "approvals": approvals, "output": session.model_dump(mode="json")}
 
 
-def e2e_pii_literals(df: pd.DataFrame) -> list[str]:
-    """The planted PII of a datagen table (its customer emails and names), from the generator's
-    columns, not the agent's detection."""
-    cols = [c for c in ("customer_email", "customer_name") if c in df.columns]
-    return sorted({str(v) for c in cols for v in df[c].dropna()})
+def e2e_pii_literals(df: pd.DataFrame, truth: dict | None = None) -> list[str]:
+    """The planted PII of a datagen table, from the generator's own list of PII columns (the
+    sales tables: customer emails and names), not the agent's detection."""
+    listed = (truth or {}).get("pii_columns")
+    if listed is not None and (missing := set(listed) - set(df.columns)):
+        raise ValueError(f"truth names PII columns the table lacks: {sorted(missing)}")
+    cols = listed if listed is not None else [c for c in ("customer_email", "customer_name")
+                                              if c in df.columns]
+    extra = list((truth or {}).get("pii_extra_literals", []))
+    return sorted({str(v) for c in cols for v in df[c].dropna()} | set(extra))
 
 
-def _canary_rule(hits: int) -> dict:
-    return {"rule": "pii_canary", "ok": hits == 0,
-            "detail": f"{hits} planted PII values reached an LLM request" if hits else "ok"}
+def _canary_rule(hits: int, model_hits: int | None = None, planted: int | None = None) -> dict:
+    """`hits`: planted values in what the agents built; `model_hits`: in what the client sent
+    after its guard. Both must be 0. `planted=0`: nothing to find, so not a pass (n/a)."""
+    if planted == 0:
+        return {"rule": "pii_canary", "ok": True, "na": True, "detail": "n/a: no planted PII"}
+    sent = model_hits or 0
+    detail = (f"{hits} planted PII values in built requests, {sent} sent to the model"
+              if hits or sent else "ok")
+    return {"rule": "pii_canary", "ok": hits == 0 and sent == 0, "detail": detail}
 
 
 def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
@@ -190,7 +283,8 @@ def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k != "kind"}
         ok, detail = E2E_CHECKS[kind](session, df, truth, **kwargs)
         checks.append({"kind": kind, "ok": ok, "detail": detail})
-    hard = [dict(zip(("rule", "ok", "detail"), (r, *hard_rule(r, df, session.analysis_findings, session))))
+    hard = [dict(zip(("rule", "ok", "detail"),
+                     (r, *hard_rule(r, df, session.analysis_findings, session, truth=truth))))
             for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
             "answer": answer_text(session)[:1500]}
@@ -593,6 +687,41 @@ def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> di
 
 # The text of every LLM request a run makes (system + messages), for the PII canary scan.
 LLM_REQUESTS: ContextVar[list | None] = ContextVar("llm_requests", default=None)
+LLM_SENT: ContextVar[list | None] = ContextVar("llm_sent", default=None)
+E2B_UPLOADS: ContextVar[list | None] = ContextVar("e2b_uploads", default=None)
+
+
+def record_e2b_uploads() -> None:
+    """Evals only: keep each frame the analysis agent uploads to E2B (per case, via E2B_UPLOADS),
+    so the exit scan can prove no planted PII left for the sandbox."""
+    from agents import analysis_agent
+    inner = analysis_agent.run_code
+    if getattr(inner, "records_uploads", False):
+        return
+
+    async def run_code(code, df_parquet=None):
+        if (log := E2B_UPLOADS.get()) is not None:   # the code goes to E2B too
+            log.append(code)
+            if df_parquet:
+                log.append(pd.read_parquet(io.BytesIO(df_parquet)).to_csv(index=False))
+        return await inner(code, df_parquet)
+    run_code.records_uploads = True
+    analysis_agent.run_code = run_code
+
+
+def exits_rule(literals: list[str], uploads: list[str], shown: str | None,
+               exempt: str = "") -> dict:
+    """No planted PII in what left for E2B; on patient data (`shown` given), none in what the
+    user is shown or stored either (the run's events and its session). The user's own question
+    is exempt: they typed it."""
+    if not literals:
+        return {"rule": "pii_exits", "ok": True, "na": True, "detail": "n/a: no planted PII"}
+    lits = [x for x in literals if x.lower() not in exempt.lower()]
+    e2b = leaked("\n".join(uploads), lits)
+    out = leaked(shown, lits) if shown is not None else []
+    detail = (f"E2B upload {len(e2b)}" + (f", events/session {len(out)}" if shown is not None else "")
+              if e2b or out else "ok")
+    return {"rule": "pii_exits", "ok": not e2b and not out, "detail": detail}
 
 
 class RecordingClient:
@@ -605,6 +734,10 @@ class RecordingClient:
         if (log := LLM_REQUESTS.get()) is not None:
             log.append(json.dumps({"system": kw.get("system"), "messages": kw.get("messages")},
                                   ensure_ascii=False, default=str))
+        if (sent := LLM_SENT.get()) is not None:   # as ClaudeClient sends it: messages guarded
+            sent.append(json.dumps({"system": kw.get("system"),
+                                    "messages": pseudonymize(kw.get("messages"))[0]},
+                                   ensure_ascii=False, default=str))
         return await self.inner.complete(**kw)
 
 
@@ -658,6 +791,7 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
         df, generated = ingestgen.build(case)
         data, ext = ingestgen.to_bytes(df, case["format"])
         cols = {c.name: {"roles": list(c.roles), "pii": c.pii, "literals": c.literals,
+                         "phi": c.phi, "phi_trap": c.phi_trap,
                          "trap": c.trap, "dayfirst": ingestgen.TEXT_DATES.get(c.kind)}
                 for c in generated}
         cells = None
@@ -683,7 +817,7 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
         cells = [[int(r), names[i % len(names)], loaded_cell(df[names[i % len(names)]].iloc[int(r)])]
                  for i, r in enumerate(rng.integers(0, len(df), 20))]
     expect = case.get("expect", {})
-    truth = {"expect_error": False, "columns": cols, "order": expect.get("columns", [str(c) for c in df.columns]),
+    truth = {"expect_error": False, "phi": bool(case.get("phi")), "columns": cols, "order": expect.get("columns", [str(c) for c in df.columns]),
              "rows": expect.get("rows", len(df)), "cells": cells,
              "facts": _ingestion_facts(df, {c: t["roles"] for c, t in cols.items()}),
              "date_span": _date_span(df, cols)}
@@ -707,7 +841,8 @@ async def run_ingestion_case(case: dict) -> dict:
     pii_values.set(set())   # as api/routes/chat.py does for every run
     output, error = None, None
     try:
-        contract = await run_ingestion_agent(session, get_client())
+        # The raw load is what this suite scores; PHI mode's working copy is scored apart below.
+        contract = await run_ingestion_agent(session, get_client(), prepare=False)
         df = pd.read_parquet(io.BytesIO(session.__dict__.pop("_df_parquet")))
         dump = contract.model_dump(mode="json")
         cells = [[r, c, loaded_cell(df[c].iloc[r]) if c in df.columns and r < len(df) else "<missing>"]
@@ -715,10 +850,40 @@ async def run_ingestion_case(case: dict) -> dict:
         output = {"contract": dump, "requests": sent,
                   "loaded": {"columns": [str(c) for c in df.columns], "rows": len(df), "cells": cells},
                   "contract_sha": hashlib.sha256(json.dumps(dump, sort_keys=True, default=str)
-                                                 .encode()).hexdigest()[:16]}
+                                                 .encode()).hexdigest()[:16],
+                  "phi": phi_output(df, contract)}
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
     return {**score_ingestion_run(case, output, error), "output": output}
+
+
+_PSEUDONYM = re.compile(r"^ID-[0-9a-f]{16}$")
+
+
+def phi_output(df: pd.DataFrame, contract) -> dict:
+    """What PHI mode makes of the loaded frame: the flag, each column's fate (withheld,
+    pseudonymized, generalized, kept, changed) and the working contract the prompts read."""
+    from agents.ingestion_agent import prepare_frame
+    try:
+        out, prepared = prepare_frame(df, contract, ConnectorType.CSV, {})
+    except Exception as exc:
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    status = {}
+    for col in map(str, df.columns):
+        if col not in out.columns:
+            status[col] = "withheld"
+            continue
+        got, raw = out[col].dropna().astype(str), df[col].dropna().astype(str)
+        if len(got) and got.str.match(_PSEUDONYM).all():
+            status[col] = "pseudonymized"
+        elif len(got) and got.isin(set(raw)).all() and set(got) == set(raw):
+            status[col] = "kept"
+        elif len(got) and (got.str.len() <= 3).all() and not got.isin(raw).any():
+            status[col] = "generalized"
+        else:
+            status[col] = "changed"
+    return {"flag": prepared.phi, "status": status,
+            "contract": prepared.model_dump(mode="json") if prepared.phi else None}
 
 
 def score_ingestion_run(case: dict, output: dict | None, error: str | None) -> dict:
@@ -810,12 +975,89 @@ async def run_sql_case(case: dict) -> dict:
             "tool_calls": answer.tool_calls if answer else []}
 
 
+def lint_case(case: dict) -> list[str]:
+    """Ways a case could pass without measuring its claim (analysis and E2E suites). A paid run
+    refuses to start on any of them; a test runs it over every committed case."""
+    problems: list[str] = []
+    checks = case.get("checks") or []
+    if not checks:
+        return ["no checks: all([]) would pass"]
+    df, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
+    if all(c["kind"] in _NEGATIVE or c.get("check") in _NEGATIVE for c in checks):
+        problems.append("only negative checks: a silent answer would pass")
+    pairs = {frozenset((c.get("a"), c.get("b"))) for c in checks if c["kind"] == "pair_reported"}
+    question_nums = [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*\.?\d*",
+                                                                  case.get("question", ""))]
+    for c in checks:
+        if c["kind"] == "correlation_absent" and frozenset((c.get("a"), c.get("b"))) not in pairs:
+            problems.append("correlation_absent without pair_reported: silence would pass")
+        if "truth_key" not in c:
+            continue
+        want = _truth_value(truth, c["truth_key"])
+        if not isinstance(want, numbers.Number) or isinstance(want, bool):
+            continue
+        pairs_ = scale_units(c.get("scales", (1,)), c.get("unit"))
+        shown = [abs(want) * sc for sc, _ in pairs_]
+        if any(math.isclose(q, v, rel_tol=0.01) for q in question_nums for v in shown):
+            problems.append(f"{c['truth_key']}: the truth appears in the question")
+        if c["kind"] in ("number_in_answer", "must_not_number") and any(
+                not u and (1 <= abs(want) * sc <= 31 or 1900 <= abs(want) * sc <= 2100)
+                for sc, u in pairs_):
+            problems.append(f"{c['truth_key']}: a truth in 1-31 or 1900-2100 needs a unit "
+                            "(days, counts and years collide)")
+    if case.get("hard_rules") and set(case["hard_rules"]) & set(_INSIGHT_RULES) and "task" in case:
+        problems.append("insight rules on an analysis case: there is no report to check")
+    if "no_injection_echo" in case.get("hard_rules", []):
+        planted = truth.get("injection", INJECTION)
+        try:   # what the agents see: PHI mode withholds free text, injection and all
+            seen = working_frame(case)[0]
+        except Exception:
+            seen = df
+        if not seen.astype(str).apply(lambda col: col.str.contains(planted, regex=False)).any().any():
+            problems.append("no_injection_echo, but no agent sees the planted injection: it can't fail")
+    if case.get("trap"):
+        naive = [c for c in checks if c["kind"] in ("must_not_number", "must_not_match")]
+        if not naive:
+            problems.append("trap case without a negative check on the naive answer")
+        for n in (c for c in naive if c["kind"] == "must_not_number"):
+            bads = [abs(_truth_value(truth, n["truth_key"])) * sc
+                    for sc, _ in scale_units(n.get("scales", (1,)), None)]
+            for c in (c for c in checks if c["kind"] == "number_in_answer"):
+                tol = max(c.get("rel_tol", 0.02), n.get("rel_tol", 0.02))
+                wants = [abs(_truth_value(truth, c["truth_key"])) * sc
+                         for sc, _ in scale_units(c.get("scales", (1,)), None)]
+                if any(abs(b - w) <= 3 * tol * max(w, b) for b in bads for w in wants):
+                    problems.append(f"naive {n['truth_key']} within 3×rel_tol of {c['truth_key']}")
+    return problems
+
+
+_NEGATIVE = {"must_not_number", "must_not_match", "correlation_absent"}
+
+
+def passed(checks: list[dict]) -> bool:
+    """A run passes only on at least one check, all ok: `all([])` would pass a case that
+    measures nothing."""
+    return bool(checks) and all(c["ok"] for c in checks)
+
+
+def run_passed(suite: str, case: dict, out: dict) -> bool:
+    """`passed`, and for a domain's E2E case its hard rules too: an overview's only positive
+    check is a built-in statistic, so without them an empty or ungrounded report would pass."""
+    ok = passed(out["checks"])
+    if suite == "e2e" and case.get("domain", "retail") != "retail":
+        ok = ok and all(h["ok"] for h in out.get("hard") or [])
+    return ok
+
+
 def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
-    """A surfaced error or question is not a *silent* empty result."""
+    """A surfaced error or question is not a *silent* empty result, and a run that stopped with
+    an explicit error has no report to ground (its checks fail instead)."""
     if not error:
         return hard
-    return [{**h, "ok": True, "detail": "explicit error"} if h["rule"] == "non_empty_or_error" else h
-            for h in hard]
+    def exempt(h: dict) -> bool:
+        return h["rule"] == "non_empty_or_error" or (
+            h["rule"] in _INSIGHT_RULES and h["detail"] == "no insight report")
+    return [{**h, "ok": True, "detail": "explicit error"} if exempt(h) else h for h in hard]
 
 
 _budget = {"max": float("inf"), "spent": 0.0}   # --max-usd: real money, so a hard stop
@@ -838,9 +1080,23 @@ def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | N
                     if not r["meta"].get("only") and not r["meta"].get("exclude")), 0.0)
     if case_ids is None:
         return round(average * n_runs, 2)
+    # A case never run is priced like the runs of its kind (E2E: an overview costs ~9× a
+    # targeted question), not at the suite average.
+    kinds: dict = {}
+    if suite == "e2e":
+        cases = {c["id"]: c for c in load_cases("e2e", None)}
+        for r in paid[:1]:
+            for cid, rs in r["runs"].items():
+                if cid in cases:
+                    kinds.setdefault(cases[cid].get("overview_done", False), []).extend(
+                        x["cost_usd"] for x in rs)
     total = 0.0
     for cid in case_ids:
         costs = next(([x["cost_usd"] for x in r["runs"][cid]] for r in paid if cid in r["runs"]), None)
+        if not costs and kinds:
+            kind = next((c.get("overview_done", False) for c in load_cases("e2e", None)
+                         if c["id"] == cid), False)
+            costs = kinds.get(kind)
         total += (statistics.mean(costs) if costs else average) * k
     return round(total, 2)
 
@@ -856,14 +1112,21 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
                   "intake": run_intake_case, "visualization": run_visualization_case,
                   "cleaning": run_cleaning_case, "insight": run_insight_case,
                   "quality": run_quality_case, "ingestion": run_ingestion_case}[suite]
-        out = await runner(case)
+        try:
+            out = await runner(case)
+        except Exception as exc:   # a scorer or harness bug fails this run, never the report
+            out = {"checks": [{"kind": "harness", "ok": False,
+                               "detail": f"{type(exc).__name__}: {exc}"[:300]}],
+                   "hard": [], "error": f"harness: {type(exc).__name__}: {exc}"[:300], "output": None}
+        if "domain" in case:
+            out["domain"] = case["domain"]
         out["latency_s"] = round(time.perf_counter() - start, 2)
         calls = [r for r in meter if "model" in r]
         out["cost_usd"] = round(sum(r["cost_usd"] for r in calls), 5)
         out["llm_calls"] = len(calls)
         out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
         out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
-        out["passed"] = all(c["ok"] for c in out["checks"])
+        out["passed"] = run_passed(suite, case, out)
         _budget["spent"] += out["cost_usd"]
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
@@ -892,10 +1155,17 @@ def rescore(path: Path) -> Path:
         for r in rs:
             if "output" not in r:
                 raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
-            r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+            try:
+                r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+            except Exception as exc:   # one unscoreable run, not a lost report
+                r.update({"checks": [{"kind": "harness", "ok": False,
+                                      "detail": f"{type(exc).__name__}: {exc}"[:300]}], "hard": []})
             if "pii_canary_hits" in r:   # scanned at run time: requests aren't stored
-                r["hard"].append(_canary_rule(r["pii_canary_hits"]))
-            r["passed"] = all(c["ok"] for c in r["checks"])
+                r["hard"].append(_canary_rule(r["pii_canary_hits"], r.get("pii_model_hits"),
+                                              r.get("pii_planted")))
+            if "pii_exits" in r:   # scanned at run time: uploads and events aren't stored
+                r["hard"].append(r["pii_exits"])
+            r["passed"] = run_passed(suite, cases[cid], r)
     report["summary"] = summarize(report["runs"])
     report["meta"]["rescored_from"] = report["meta"]["report"]
     report["meta"]["report"] = name = f"{report['meta']['report']}-rescored"
@@ -959,7 +1229,7 @@ def _pct(values: list[float], q: float) -> float:
 
 
 _NOT_RETRIES = {"grounding_rewritten", "refused_write", "readonly", "uncited_dropped",
-                "pii_tokenized", "rank_removed"}
+                "pii_tokenized", "rank_removed", "level_recomputed"}
 
 
 def summarize(runs: dict[str, list[dict]]) -> dict:
@@ -972,6 +1242,8 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
             sum(sum(r["passed"] for r in rs) * 2 > len(rs) for rs in runs.values()) / len(runs), 4),
         "flip_rate": round(sum(len({r["passed"] for r in rs}) > 1 for rs in runs.values()) / len(runs), 4),
         "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
+        # a canary or exit scan with nothing planted measures nothing: counted apart, not a pass
+        "hard_rules_na": sum(bool(h.get("na")) for r in flat for h in r["hard"]),
         "errors": sum(bool(r["error"]) for r in flat),
         "runs_with_truncated_llm_output": sum(r.get("truncated_calls", 0) > 0 for r in flat),
         # Refusals and read-only blocks end the run; they are never retried.
@@ -992,7 +1264,41 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
         **_judge_quality(flat),
         **_review_quality(flat),
         **_ingestion_quality(flat),
+        **_by_domain(runs),
     }
+
+
+def _by_domain(runs: dict[str, list[dict]]) -> dict:
+    """Phase 5.5: each domain's own numbers ('passed N of M cases at k'), so a domain is called
+    supported on its cases, never on the pooled rate. Absent for reports that predate domains."""
+    domains: dict[str, dict] = {}
+    for cid, rs in runs.items():
+        if rs and "domain" in rs[0]:
+            domains.setdefault(rs[0]["domain"], {})[cid] = rs
+    if not domains:
+        return {}
+    def builtin(rs: list[dict]):   # any run that recorded it (run 1 may have been a harness error)
+        return next((r["builtin_only"] for r in rs if "builtin_only" in r), None)
+    out = {}
+    for d, sub in sorted(domains.items()):
+        flat = [r for rs in sub.values() for r in rs]
+        model = [r for rs in sub.values() if builtin(rs) is False for r in rs]
+        out[d] = {"cases": len(sub), "k_min": min(len(rs) for rs in sub.values()),
+                  "k_max": max(len(rs) for rs in sub.values()),
+                  "cases_passed_all_runs": sum(all(r["passed"] for r in rs) for rs in sub.values()),
+                  "pass_rate": round(sum(r["passed"] for r in flat) / len(flat), 4),
+                  "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
+                  "hard_rules_na": sum(bool(h.get("na")) for r in flat for h in r["hard"]),
+                  # cases the deterministic built-in code passes with no model code at all:
+                  # the domain claim rests on the others (model_dependent)
+                  "builtin_only_cases": sorted(c for c, rs in sub.items() if builtin(rs)),
+                  "model_dependent_passed": sum(all(r["passed"] for r in rs) for rs in sub.values()
+                                                if builtin(rs) is False),
+                  "model_dependent_cases": sum(builtin(rs) is False for rs in sub.values()),
+                  **_quality(flat),
+                  # the model's own numbers: built-in claims would dilute recall and false findings
+                  **({"model_dependent_quality": _quality(model)} if model else {})}
+    return {"by_domain": out}
 
 
 def _intake_quality(flat: list[dict]) -> dict:
@@ -1112,6 +1418,7 @@ def _ingestion_quality(flat: list[dict]) -> dict:
         if r.get("contract_sha"):
             shas.setdefault(r["case"], set()).add(r["contract_sha"])
     traps = share("overmask")
+    keep = share("phi_keep")
     hold = [r["passed"] for r in flat if r["holdout"]]
     return {
         "type_inference": share("role"),
@@ -1124,6 +1431,13 @@ def _ingestion_quality(flat: list[dict]) -> dict:
         "nondeterministic_cases": sum(len(v) > 1 for v in shas.values()),
         "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
         "pii_recall_by_kind": {k: round(sum(v) / len(v), 4) for k, v in sorted(by_kind.items())},
+        # Phase 5.5: planted patient identifiers PHI mode withheld / all planted; look-alikes and
+        # non-patient data changed / all kept; the flag right on every case.
+        "phi_recall": share("phi"),
+        "phi_planted_columns": len({(r["case"], c["column"]) for r in flat for c in r["checks"]
+                                    if c["kind"] == "phi"}),
+        "phi_over_masking": round(1 - keep, 4) if keep is not None else None,
+        "phi_flag_accuracy": share("phi_flag"),
     }
 
 
@@ -1336,8 +1650,16 @@ def to_markdown(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+# Pseudonyms need a key; evals don't boot the API, so they use a fixed one (pseudonyms are then
+# reproducible across eval runs, never comparable with production's).
+EVAL_ENCRYPTION_KEY = "ZXZhbHMtZml4ZWQta2V5LWZvci1wc2V1ZG9ueW1zLTEyMzQ="
+
+
 async def main() -> None:
     import sys
+
+    if not settings.encryption_key:
+        settings.encryption_key = EVAL_ENCRYPTION_KEY
     if sys.argv[1:2] == ["rescore"]:
         print(f"→ {rescore(Path(sys.argv[2]))}")
         return
@@ -1361,6 +1683,8 @@ async def main() -> None:
     args = ap.parse_args()
 
     cases = load_cases(args.suite, args.only, args.exclude)
+    if args.suite in ("analysis", "e2e") and (bad := {c["id"]: p for c in cases if (p := lint_case(c))}):
+        raise SystemExit(f"cases that can't measure their claim: {bad}")
     QUALITY_CHECKS_ONLY["on"] = args.checks_only
     estimate = 0.0 if args.checks_only else estimate_usd(
         args.suite, len(cases) * args.k, Path(args.out), [c["id"] for c in cases], args.k)
@@ -1371,8 +1695,10 @@ async def main() -> None:
     _budget["max"] = args.max_usd
     if args.suite == "sql":
         _sql_setup()
-    if args.suite in ("ingestion", "e2e"):   # the PII canary scans every request
+    if args.suite in ("ingestion", "e2e", "analysis"):   # the PII canary scans every request
         set_client(RecordingClient(get_client()))
+    if args.suite in ("e2e", "analysis"):   # …and every frame uploaded to E2B
+        record_e2b_uploads()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     print(f"{args.suite}: {len(cases)} cases × k={args.k}", flush=True)

@@ -1,0 +1,28 @@
+# Policy-months. The loss ratio is total claims / total earned premium (a ratio of sums, never
+# the mean of each row's ratio).
+tables:
+  - name: policy_months
+    source: file.policy_months
+    primary_key: [policy_id, month]
+    columns:
+      - {name: policy_id, type: id}
+      - {name: month, type: time}
+      - {name: line, type: dimension, description: line of business}
+      - {name: region, type: dimension}
+      - {name: earned_premium, type: fact, unit: USD}
+      - {name: claim_count, type: fact}
+      - {name: claim_amount, type: fact, unit: USD}
+metrics:
+  - name: total_claims
+    table: policy_months
+    expr: SUM(policy_months.claim_amount)
+    synonyms: [incurred losses]
+  - name: earned_premium_total
+    table: policy_months
+    expr: SUM(policy_months.earned_premium)
+  - name: claim_frequency
+    table: policy_months
+    expr: SUM(policy_months.claim_count)
+  - name: loss_ratio
+    table: policy_months
+    expr: SUM(policy_months.claim_amount) / SUM(policy_months.earned_premium)

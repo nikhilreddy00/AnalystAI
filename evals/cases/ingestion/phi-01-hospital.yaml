@@ -1,0 +1,18 @@
+id: phi-01-hospital
+category: phi
+phi: true
+seed: 51
+rows: 300
+format: {type: csv}
+columns:
+- [mrn, mrn]
+- [patient_name, full_name]
+- [date_of_birth, dob]
+- [zip_code, zip5]
+- [phone, phone_us]
+- [diagnosis_code, icd10]
+- [admit_date, date_iso]
+- [charge, money_text]
+- [attending_npi, npi]
+- [visit_id, visit_id]
+label_note: 'Inpatient stays: MRN, name, DOB, ZIP, phone; provider NPI and visit ids are not the patient.'

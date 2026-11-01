@@ -1,0 +1,22 @@
+id: ins-2
+domain: insurance
+category: segment
+dataset:
+  name: claims
+  seed: 2
+question: How do claim amounts differ by region?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - claim_amount
+  segments:
+  - region
+checks:
+- kind: segment_value
+  segment: region
+  metric: claim_amount
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

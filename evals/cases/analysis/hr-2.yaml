@@ -1,0 +1,27 @@
+id: hr-2
+domain: hr
+category: null_effect
+dataset:
+  name: employees
+  seed: 2
+question: Does salary affect whether employees leave?
+task:
+  analysis_types:
+  - correlation
+  - hypothesis
+  target_metrics:
+  - salary
+  - left
+  segments: []
+checks:
+- kind: correlation_absent
+  a: salary
+  b: left
+- kind: pair_reported
+  planted: true
+  a: salary
+  b: left
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

@@ -57,6 +57,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run lint
+      - run: node --experimental-strip-types --test src/lib/*.test.ts   # pure helpers
       # Phase 5.6a: dropped stream + reopened tab replay every event once (mock backend, $0)
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test

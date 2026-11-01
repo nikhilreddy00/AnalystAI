@@ -76,6 +76,7 @@ async def get_latest_analysis(
             "target_correlations": findings.target_correlations,
             "target_col": findings.target_col,
             "column_roles_summary": findings.column_roles_summary,
+            "column_units": findings.column_units,
         }
 
     return {

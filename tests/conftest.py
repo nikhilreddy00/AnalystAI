@@ -26,3 +26,12 @@ def run_env():
     token = var.set(env)
     yield env
     var.reset(token)
+
+
+@pytest.fixture(autouse=True)
+def encryption_key(monkeypatch):
+    """A fixed key, as production always has one (the API and the worker refuse to start
+    without). PHI pseudonyms refuse an empty key; no test may pin a pseudonym made with it."""
+    from api.config import settings
+    if not settings.encryption_key:
+        monkeypatch.setattr(settings, "encryption_key", "dGVzdC1maXhlZC1rZXktZm9yLXBzZXVkb255bXMtMTI=")

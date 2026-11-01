@@ -1,0 +1,24 @@
+id: ins-3
+domain: insurance
+category: correlation
+dataset:
+  name: claims
+  seed: 3
+question: Is the number of claims related to the claim amount?
+task:
+  analysis_types:
+  - correlation
+  target_metrics:
+  - claim_count
+  - claim_amount
+  segments: []
+checks:
+- kind: correlation
+  planted: true
+  a: claim_count
+  b: claim_amount
+  abs_tol: 0.02
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

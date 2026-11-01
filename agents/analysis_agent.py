@@ -11,10 +11,12 @@ fails completely, distributions are always populated from DataContract column na
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import pandas as pd
 from pydantic import BaseModel
@@ -22,6 +24,8 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import pii_columns, safe_column_name, strip_markdown_fences
 from guardrails import (
+    pseudonym,
+    is_phi_identifier,
     MASK,
     UNTRUSTED_NOTE,
     check_code,
@@ -29,16 +33,19 @@ from guardrails import (
     code_column_refs,
     delimit_untrusted,
     is_pii_column,
+    mask_emails,
     mask_pii,
     mask_row,
+    pseudonym_key,
+    pseudonymize_columns,
     ungrounded_numbers,
 )
 from llm.client import LLMClient, trace_verdict
 from orchestrator.state import (
     AgentCard,
     AnalysisFindings,
-    AnalysisTask,
     AnalysisSession,
+    AnalysisTask,
     AnomalyRecord,
     CleaningAudit,
     DataContract,
@@ -50,7 +57,7 @@ from orchestrator.state import (
 )
 from sandbox.executor import run_code
 
-PROMPT_VERSION = "v7"
+PROMPT_VERSION = "v8"
 
 ANALYSIS_CARD = AgentCard(
     name="analysis",
@@ -203,10 +210,12 @@ def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
     targets = [c for c in task.target_metrics if c in contract.metric_columns]
     segments = [c for c in task.segments if c in names]
     date = next(iter(contract.date_columns), None)
+    hints = {c.name: [c.aggregation, c.aggregation_by, c.aggregation_time]
+             for c in contract.columns if c.name in targets and c.aggregation}
     return f"""
 # ─── Standard statistics (deterministic) ───
 result['builtin'] = []
-_targets, _segs, _date = {targets!r}, {segments!r}, {date!r}
+_targets, _segs, _date, _hints = {targets!r}, {segments!r}, {date!r}, {hints!r}
 try:
     if {bool(types & {"correlation", "hypothesis"})!r}:
         for _i, _a in enumerate(_targets):
@@ -219,23 +228,43 @@ try:
 except Exception:
     pass
 try:
-    if _date and {bool(types & {"trend", "forecasting"})!r}:
-        _month = pd.to_datetime(df[_date], errors='coerce').dt.to_period('M')
+    if (_date or _hints) and {bool(types & {"trend", "forecasting"})!r}:
         # A mid-month export compares the last two complete months (agents.utils.partial_last_month).
-        _d = pd.to_datetime(df[_date], errors='coerce').dropna()
-        _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
-        if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
-            _month = _month.where(_month != _days.index[-1])
+        def _cut(_t):
+            _mm = _t.dt.to_period('M')
+            _d = _t.dropna()
+            if _d.empty:
+                return _mm
+            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
+            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
+                _mm = _mm.where(_mm != _days.index[-1])
+            return _mm
+        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')
+        def _level_months(_tc):
+            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))
         # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
         result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
         # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else
         # by month total. A semantic layer (Phase 4) can declare the aggregation instead.
+        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's
+        # last value in the month, summed; a reading is a mean.
         def _mom(_frame, _col):
-            _agg = 'mean' if df[_col].dropna().between(0, 1).all() else 'sum'
-            _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
+            _h = _hints.get(_col)
+            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
+            _mon = _month
+            if _agg in ('last', 'first'):
+                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:
+                    return None, 0   # its account (or time) column is gone: no total, never a sum
+                _mon = _level_months(_h[2])   # the level's own months, partial last month out
+                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),
+                                   _m=_mon.loc[_frame.index])
+                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')
+                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
+            else:
+                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
                 return None, 0
-            _last2 = _month.loc[_frame.index].isin(_tot.index[-2:])
+            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])
             _n = int(_frame.loc[_last2, _col].notna().sum())
             return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n
         for _c in _targets:
@@ -280,6 +309,8 @@ class AnalysisContext(BaseModel):
     timeframe: str
     cleaning_notes: list[str]
     samples: dict[str, list[Any]]      # 3 masked values per column (from the DataContract)
+    aggregations: list[str] = []       # semantic-layer meanings (Phase 5.5); empty: none matched
+    question: str = ""                 # the user's words: a rate's definition lives only here
 
     def render(self) -> str:
         # Column names come from the user's file, so the whole schema block is delimited.
@@ -293,11 +324,18 @@ class AnalysisContext(BaseModel):
             f"Target metrics from task: {self.target_metrics}\n"
             f"Sample values (PII masked): {json.dumps(self.samples, default=str)}"
         )
+        # The layer is the operator's own config (its column names matched the file exactly):
+        # outside the untrusted-data block, so the model treats it as a rule.
+        rules = ("\nHow columns aggregate (semantic layer): " + "; ".join(self.aggregations)
+                 if self.aggregations else "")
         cleaning = ("\n\nCleaning already applied:\n" + delimit_untrusted(
             "\n".join(self.cleaning_notes))) if self.cleaning_notes else ""
+        question = ("\nThe user's question (the plan below was made from it; when it defines a "
+                    "measure — a rate, its window, which rows count — compute exactly that):\n"
+                    + delimit_untrusted(self.question)) if self.question else ""
         return f"""\
 Dataset schema (column names come from the user's file):
-{delimit_untrusted(schema)}
+{delimit_untrusted(schema)}{rules}{question}
 Analysis types requested: {self.analysis_types}
 Timeframe: {self.timeframe}{cleaning}
 
@@ -341,7 +379,27 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         timeframe=task.timeframe or "full dataset",
         cleaning_notes=notes[:_MAX_NOTES],
         samples={c.name: (c.sample_values or [])[:3] for c in contract.columns[:_MAX_COLUMNS]},
+        # Only what the semantic layer matched (its column names are the operator's, equal to the
+        # file's): a unit read from the file alone would put a file-written header out here.
+        aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
+                      for c in contract.columns if c.aggregation],
+        question=(task.raw_query or "")[:2000],
     )
+
+
+def _aggregation_line(c, names: set[str]) -> str:
+    unit = f" ({c.unit})" if c.unit else ""
+    if c.aggregation in ("last", "first"):
+        need = [*c.aggregation_by, c.aggregation_time]
+        if not all(n in names for n in need):
+            return (f"{c.name}{unit} is a level, but a column it needs ({', '.join(need)}) was "
+                    "removed: never total it across dates or rows")
+        return (f"{c.name}{unit} is a level: per period take each {', '.join(c.aggregation_by)}'s "
+                f"{c.aggregation} value (by {c.aggregation_time}), then sum; never sum it across "
+                "dates")
+    if c.aggregation == "mean":
+        return f"{c.name}{unit} is summarized as an average (sum it only for a total that is asked for)"
+    return f"{c.name}{unit} adds up" if c.aggregation == "sum" else f"{c.name}{unit}"
 
 
 # ── Tools (ADR-0001 §4): read-only lookups on the local DataFrame, PII-masked ──────────────
@@ -389,6 +447,139 @@ def run_tool(name: str, args: dict, df: pd.DataFrame, pii: set[str] = frozenset(
     return f"unknown tool: {name}", True
 
 
+def e2b_frame(df_parquet: bytes, pii: Iterable[str], scope: str = "",
+              years: Iterable[str] = ()) -> tuple[bytes, dict]:
+    """(the frame E2B, a third party, receives, {pseudonym: original}). Every value of a personal
+    column becomes its one-way pseudonym and emails, phones, SSNs, cards and IPs inside other
+    text are masked; columns and headers are unchanged, so counts and group-bys still work and
+    no code that names a column breaks. The map stays here: it puts names back in the results.
+    Nothing personal anywhere: the same bytes."""
+    df = pd.read_parquet(io.BytesIO(df_parquet))
+    years = [c for c in years if c in df.columns]
+    for c in years:   # a birth date reaches E2B as its year: ages stay computable, the day doesn't
+        df[c] = pd.to_datetime(df[c], format="mixed", errors="coerce").dt.year.astype("Int64")
+    cols = [c for c in pii if c in df.columns and c not in years]
+    # Every pattern is masked in text with words (a note with an email, however rare); a code
+    # column without spaces (a firmware 2.1.0.15, a SKU 123-456-7890) gets the email pattern only,
+    # or group-bys would merge its values.
+    text = [c for c in df.columns if c not in cols and (pd.api.types.is_string_dtype(df[c])
+                                                        or df[c].dtype == object)]
+    words = {c for c in text if df[c].dropna().astype(str).str.contains(r"\s", regex=True).any()}
+    masked = {c: df[c].map(mask_pii if c in words else mask_emails) for c in text}
+    changed = [c for c in text if not masked[c].equals(df[c])]
+    if not cols and not changed and not years:
+        return df_parquet, {}
+    back: dict = {}
+    df = pseudonymize_columns(df.assign(**{c: masked[c] for c in changed}), cols,
+                              pseudonym_key(scope), back)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    return buf.getvalue(), back
+
+
+_STRING_LITERAL = re.compile(r"""(?P<q>'|")(?P<s>(?:\\.|(?!(?P=q)).){1,200})(?P=q)""")
+_PSEUDONYM_RE = re.compile(r"ID-[0-9a-f]{16}")
+
+
+def pseudonymize_literals(code: str, back: dict, pii: Iterable[str] = ()) -> str:
+    """The model's code, with each string literal compared against a personal column
+    (`df['customer_name'] == 'Ana Ito'`, `.isin([...])`, `.str.contains(...)`) replaced by that
+    value's pseudonym: E2B never gets the value, and the filter matches the pseudonymised frame.
+    A literal elsewhere ('Unknown' in a region filter) is left alone. Case and spaces don't matter.
+    ponytail: a statement-level check (the column named on the same line), not a full dataflow."""
+    if not back:
+        return code
+    fwd = {str(v).strip().casefold(): p for p, v in back.items()}
+    cols = [c for c in pii]
+
+    def line(text: str) -> str:
+        named = any(f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text for c in cols)
+
+        def sub(m: re.Match) -> str:   # elsewhere (`t = 'Ana Ito'`, used on the next line):
+            v = m["s"].strip()          # only values no category would have (words, an email)
+            p = fwd.get(v.casefold()) if named or " " in v or "@" in v else None
+            return f"{m['q']}{p}{m['q']}" if p else m[0]
+        return _STRING_LITERAL.sub(sub, text)
+    return "\n".join(line(t) for t in code.split("\n"))
+
+
+_NUM_LITERAL = re.compile(r"(?<![\w.])\d{4,}(?![\w.])")
+_ID_SHAPED = re.compile(r"(?=.*\d)(?![A-Za-z]\d$)(?:\d{6,}|.*[A-Za-z].*)")   # MRN-100005, P001; not 2025, Q1
+# `df.total_charges > 100000`, `df['quarter'] == 'Q1'`: compared to another column, not an id.
+_COMPARED_TO = re.compile(r"""(?:\[['"]([^'"]+)['"]\]|\.(\w+))\s*(?:[<>]=?|[!=]=)\s*$""")
+
+
+def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes,
+                             others: Iterable[str] = ()) -> str:
+    """Patient data: the frame holds record numbers as pseudonyms. A literal compared against a
+    pseudonymised id column on the same line (`df['mrn'] == 'MRN-100005'`, `df.id == 4501`)
+    becomes its pseudonym, so E2B never gets it and the filter matches. A year, a threshold or a
+    date elsewhere is left alone, and digits inside another string are never touched."""
+    if not present:
+        return code
+    others = set(others) - set(present)   # the frame's non-id columns: a threshold, a quarter
+
+    def find(v: str, cols: list[str]) -> str | None:
+        return next((p for col in cols if (p := pseudonym(v, key, col)) in present[col]), None)
+
+    def line(text: str) -> str:
+        # An id-shaped literal (MRN-100005, 4500123) is rewritten anywhere (`ids = [...]`, used
+        # two lines later) except right after another column (`df.charges > 100000`); a short
+        # number only right after its column (`df.id == 4501`), so a year or threshold on the
+        # same line (`& (df.year == 2025)`) is left alone.
+        named = [c for c in present if f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text]
+        spans = {n.span(1) for c in named for n in re.finditer(
+            rf"""(?:\[['"]{re.escape(c)}['"]\]|\.{re.escape(c)})\s*[!=]=\s*(\d{{4,5}})\b""", text)}
+
+        def other_column(start: int) -> bool:
+            m = _COMPARED_TO.search(text[:start])
+            return bool(m) and (m[1] or m[2]) in others   # `.values`, `patient_id_x`: not known
+
+        def num(n: re.Match) -> str:
+            v = n[0]
+            ok = (_ID_SHAPED.fullmatch(v) and not other_column(n.start() + base)) \
+                or (n.start() + base, n.end() + base) in spans
+            return f"'{p}'" if ok and (p := find(v, named if not _ID_SHAPED.fullmatch(v)
+                                                  else list(present))) else v
+
+        def lit(m: re.Match) -> str:
+            v = m["s"].strip()
+            if other_column(m.start()):
+                return m[0]
+            p = find(v, named) if named else None
+            p = p or (find(v, list(present)) if _ID_SHAPED.fullmatch(v) else None)
+            return f"{m['q']}{p}{m['q']}" if p else m[0]
+        out, pos = [], 0
+        for m in [*_STRING_LITERAL.finditer(text), None]:
+            end = m.start() if m else len(text)
+            base = pos
+            out.append(_NUM_LITERAL.sub(num, text[pos:end]))
+            if m:
+                out.append(lit(m))
+                pos = m.end()
+        return "".join(out)
+    return "\n".join(line(t) for t in code.split("\n"))
+
+
+def restore_pseudonyms(obj, back: dict):
+    """E2B's output with pseudonyms turned back into the original values, in keys and values
+    alike (a breakdown by person is keyed by the person), for the data's owner. Only this run's
+    own pseudonyms; PHI mode's are not in `back` and stay."""
+    if not back:
+        return obj
+
+    def text(s: str) -> str:
+        return _PSEUDONYM_RE.sub(lambda m: str(back.get(m[0], m[0])), s)
+    if isinstance(obj, str):
+        return text(obj)
+    if isinstance(obj, dict):
+        return {restore_pseudonyms(k, back) if isinstance(k, str) else k: restore_pseudonyms(v, back)
+                for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [restore_pseudonyms(v, back) for v in obj]
+    return obj
+
+
 async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> AnalysisFindings:
     """Write analysis code (tools allowed), guard it, run it in E2B, and return findings with
     evidence. One guided retry covers every rejection: code guard, empty or ungrounded output."""
@@ -399,6 +590,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     contract = session.data_contract
     known = [c.name for c in contract.columns]
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
+    upload: bytes | None = None      # what E2B receives: personal values pseudonymised
+    back: dict = {}                  # {pseudonym: value}, never leaves this process
+    raw_ids: list[str] = []
 
     messages: list[dict] = [{"role": "user", "content": ctx.render()}]
     for attempt in range(2):
@@ -433,15 +627,54 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             standard = _build_standard_code(contract, session.task_plan)
             full_code = (_CODE_HEADER + "\n" + body + "\n" + standard + "\n"
                          + _build_guaranteed_code(contract) + _CODE_FOOTER)
-            execution = await run_code(full_code, df_parquet)
+            if upload is None:   # once per run: the guided retry uploads the same frame
+                # Record numbers by name too, unless PHI mode already pseudonymised them: a thread
+                # from before PHI mode still holds raw MRNs.
+                raw_ids = [] if contract.deidentified else [
+                    c.name for c in contract.columns if is_phi_identifier(c.name) and not c.pii]
+                upload, back = await asyncio.to_thread(
+                    e2b_frame, df_parquet, [*pii_columns(contract), *raw_ids], session.user_id,
+                    [c.name for c in contract.columns if c.pii == "dob"])
+            code = pseudonymize_literals(full_code, back, [*pii_columns(contract), *raw_ids])
+            if contract.deidentified:   # record numbers the user named → their pseudonyms
+                ids = [d.column for d in contract.deidentification if d.operation == "pseudonymize"]
+                frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(df_parquet),
+                                                columns=ids) if ids else None
+                present = {c: {str(v) for v in frame[c].dropna().unique()} for c in ids} if ids else {}
+                others = {c.name for c in contract.columns if c.name not in ids and not c.is_id}
+                code = pseudonymize_id_literals(code, present, pseudonym_key(session.user_id),
+                                                others)
+            execution = await run_code(code, upload)
             # Never return empty findings for a failed run: no JSON on stdout means the code died.
             try:
                 raw = json.loads(execution.output_json or "")
             except json.JSONDecodeError:
                 detail = (execution.error or "no JSON output").strip()
-                raise SandboxError("analysis", detail,
-                                   f"The analysis code failed in the sandbox: {detail[:200]}") from None
+                # The sandbox's traceback can quote cell values: it goes to the log (scrubbed),
+                # never to the user's error or the run's events.
+                kind = (getattr(execution, "error_name", None)
+                        or (execution.error or "").split(":", 1)[0].strip()[:40] or "no output")
+                kind = kind if kind.isidentifier() else "error"   # a type name, never a value
+                message = {"SandboxNotConfigured": "The code sandbox isn't set up on this "
+                                                   "server (no E2B key). Ask your administrator.",
+                           "SandboxUnavailable": "The code sandbox is unavailable right now. "
+                                                 "Try again in a few minutes.",
+                           "SandboxTimeout": "The analysis took too long in the sandbox and was "
+                                             "stopped. Try a narrower question."}.get(
+                    kind, f"The analysis code failed in the sandbox ({kind}).")
+                err = SandboxError("analysis", detail, message)   # retryable: new code
+                if kind == "SandboxNotConfigured":   # a setup problem: no retry can fix it
+                    err.retryable = err.reask = False
+                raise err from None
+            raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
+            levels = any(c.aggregation in ("last", "first") for c in contract.columns)
+            if levels and (fixed := await asyncio.to_thread(
+                    lambda: repair_levels(findings, pd.read_parquet(io.BytesIO(df_parquet)),
+                                          contract, session.task_plan.timeframe
+                                          if session.task_plan else None))):
+                trace_verdict("analysis", PROMPT_VERSION, "level_recomputed")
+                raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
                 if repaired := ground_prose(findings, raw):
@@ -502,6 +735,46 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
     return None
 
 
+def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
+                  timeframe: str | None = None) -> list[str]:
+    """A breakdown that summed a level (balance, MRR) over every snapshot: recomputed here as its
+    period-end total, the same rule as charts and answers, instead of failing the run (5.5 live
+    run: the model did it twice on the guided retry). Returns notes for the evidence."""
+    from agents.utils import LevelUnavailable, aggregate, column_hint
+    notes = []
+    for s in list(f.segments):
+        hint = column_hint(contract, s.metric_column)
+        if hint is None or hint.aggregation not in ("last", "first") \
+                or (s.aggregation or "").lower() not in ("sum", "total"):
+            continue
+        cols = [c for c in s.segment_column.split("|") if c]
+        if hint.aggregation_time in cols:   # by its own snapshot time: a total per date, right
+            totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+            s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
+                          "value": round(float(v), 4)} for k, v in totals.items()]
+            s.aggregation = hint.aggregation
+            notes.append(f"{s.metric_column} by {s.segment_column} recomputed per snapshot")
+            continue
+        if timeframe and timeframe.strip().lower() not in ("full dataset", "all", ""):
+            # A breakdown for a stated period: the current total would answer another question.
+            f.segments.remove(s)
+            notes.append(f"{s.metric_column} by {s.segment_column} for {timeframe} removed: it "
+                         "summed a balance-like value over every snapshot")
+            continue
+        try:
+            totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+        except (LevelUnavailable, KeyError):
+            f.segments.remove(s)
+            notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
+            continue
+        s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
+                      "value": round(float(v), 4)} for k, v in totals.items()]
+        s.aggregation = hint.aggregation
+        notes.append(f"{s.metric_column} by {s.segment_column} recomputed as the latest total "
+                     f"(each {', '.join(hint.aggregation_by)}'s latest value), not a sum of every row")
+    return notes
+
+
 def ground_prose(f: AnalysisFindings, raw: dict) -> list[str]:
     """Hard rule: no number in prose that the code didn't compute. A sentence that breaks it is
     rewritten from the stored values. Rewriting costs nothing; a guided retry cost ~25s and
@@ -544,10 +817,14 @@ def confidence(n: int, p: float | None = None, r: float | None = None,
     return "high", f"{n} rows" + (f", p = {p:.3g}" if p is not None else "")
 
 
-def segment_id(segment_column: str, metric: str, aggregation: str = "mean") -> str:
+def segment_id(segment_column: str, metric: str, aggregation: str = "mean",
+               label: str | None = None) -> str:
     """The Evidence id of a segment finding (visualization cites it too). A count or sum of the
-    same pair is a different finding, so only the mean keeps the bare id."""
+    same pair is a different finding, so only the mean keeps the bare id; two ratios from one
+    column (loss ratio, claim frequency) differ by their label."""
     base = f"seg:{segment_column}/{metric}"
+    if aggregation == "ratio" and label:
+        return f"{base}:ratio:{label}"
     return base if (aggregation or "mean") == "mean" else f"{base}:{aggregation}"
 
 
@@ -556,7 +833,7 @@ def findings_by_id(f: AnalysisFindings | None) -> dict[str, TrendResult | Segmen
     so readers get the full results, never the truncated `result_excerpt` (insight, quality)."""
     if f is None:
         return {}
-    out: dict = {segment_id(s.segment_column, s.metric_column, s.aggregation): s for s in f.segments}
+    out: dict = {segment_id(s.segment_column, s.metric_column, s.aggregation, s.label): s for s in f.segments}
     out |= {f"trend:{t.column}" + (f" ({t.segment})" if t.segment else "") + f":{t.period}": t
             for t in f.trends}
     return out
@@ -615,9 +892,11 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                         t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
-        out.append(item("segment", segment_id(s.segment_column, s.metric_column, s.aggregation),
-                        f"{s.aggregation} {s.metric_column} by {s.segment_column} "
-                        f"({len(s.results)} groups)", cols, s.model_dump()))
+        what = (f"{s.label or 'ratio'} (from {s.metric_column})" if s.aggregation == "ratio"
+                else f"{s.aggregation} {s.metric_column}")
+        out.append(item("segment", segment_id(s.segment_column, s.metric_column, s.aggregation, s.label),
+                        f"{what} by {s.segment_column} ({len(s.results)} groups)", cols,
+                        s.model_dump(exclude={"label"} if s.label is None else None)))
     by_col: dict[str, list] = {}
     for a in f.anomalies:
         by_col.setdefault(a.column, []).append(a)
@@ -640,6 +919,31 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     return out
 
 
+_STAT_IN_LABEL = (("median", r"median"), ("std", r"std|stdev|sd|std_dev"), ("min", r"min|minimum"),
+                  ("max", r"max|maximum"))
+
+
+def _stated_aggregation(s: dict) -> str:
+    """The aggregation, corrected by the segment's own label: "median_seats" filed as "mean" is a
+    median (the report would call medians averages)."""
+    agg = s.get("aggregation", "mean")
+    label = s.get("label")
+    if agg == "ratio" or not isinstance(label, str):
+        return agg
+    words = set(label.lower().split("_"))
+    return next((name for name, rx in _STAT_IN_LABEL if words & set(rx.split("|"))), agg)
+
+
+def _plain_names(s: dict) -> list:
+    """Group names as values: "failure=1" under segment_column "failure" is "1"."""
+    col, rows = s.get("segment_column", ""), s.get("results", [])
+    if not isinstance(rows, list) or not col or "|" in col:
+        return rows
+    prefix = f"{col}="
+    return [{**r, "name": r["name"][len(prefix):]} if isinstance(r, dict) and isinstance(
+        r.get("name"), str) and r["name"].startswith(prefix) else r for r in rows]
+
+
 def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) -> AnalysisFindings:
     """Parse the JSON output from E2B into an AnalysisFindings object."""
 
@@ -659,10 +963,12 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
         SegmentResult(
             segment_column=s.get("segment_column", ""),
             metric_column=s.get("metric_column", ""),
-            aggregation=s.get("aggregation", "mean"),
-            results=s.get("results", []),
+            aggregation=_stated_aggregation(s),
+            label=s["label"] if isinstance(s.get("label"), str)   # a name, never prose
+            and re.fullmatch(r"[a-z][a-z0-9_]{0,40}", s["label"]) else None,
+            results=_plain_names(s),
         )
-        for s in raw.get("segments", [])
+        for s in raw.get("segments", []) if isinstance(s, dict)
     ]
 
     statistical_tests = [

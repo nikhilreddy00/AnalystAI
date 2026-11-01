@@ -1,4 +1,5 @@
 id: correlation-2
+domain: retail
 category: correlation
 dataset:
   name: sales

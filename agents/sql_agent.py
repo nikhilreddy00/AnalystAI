@@ -23,6 +23,10 @@ from guardrails import (
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
+    health_signal,
+    is_phi_identifier,
+    mask_pii,
+    person_shaped,
     mask_row,
     pii_kind,
     sql_fanout,
@@ -160,13 +164,45 @@ def build_context(question: str, layer, dialect: str, introspected_schema: str =
 def _pii_columns(res: QueryResult) -> set[str]:
     """Result columns holding personal data, by name or by value (`sales_rep` holding names): the
     query runs before ingestion has registered the run's PII values with the client guard."""
-    return {c for i, c in enumerate(res.columns)
-            if pii_kind(c, [r[i] for r in res.rows[:200]])}
+    pii = {c for i, c in enumerate(res.columns)
+           if pii_kind(c, [r[i] for r in res.rows[:200]]) or is_phi_identifier(c)}
+    return pii
+
+
+def _patient_rows(res: QueryResult) -> bool:
+    return health_signal(res.columns, weak_ok=True) or any(is_phi_identifier(c) for c in res.columns)
+
+
+def _non_category_text(res: QueryResult) -> set[str]:
+    """Patient data, before PHI mode has seen it: text columns that aren't plainly categories.
+    A column's text is shown only when, over a result of 5+ rows, it has at most 20 distinct short
+    labels (1-2 words), each repeating, and at most half as many labels as rows; a name or a note
+    under any header stays masked (fewer than 5 rows: every text column is). Numbers and dates
+    are kept."""
+    from collections import Counter
+    hidden = set()
+    for i, c in enumerate(res.columns):
+        vals = [r[i] for r in res.rows[:200] if isinstance(r[i], str)]
+        if not vals:
+            continue
+        counts = Counter(vals)
+        if (len(vals) < 5 or len(counts) > 20 or len(counts) > len(vals) / 2
+                or min(counts.values()) < 2 or any(len(v.split()) > 2 for v in counts)
+                or person_shaped(counts) > 0):
+            hidden.add(c)
+    return hidden
+
+
+def masked_rows(res: QueryResult, n: int) -> list[dict]:
+    """The first `n` result rows as a model or the user may see them: personal columns and
+    patterns masked, and on patient rows every text column that isn't a category. Every quote of
+    a result (the tool preview, the evidence excerpt) goes through here."""
+    pii = _pii_columns(res) | (_non_category_text(res) if _patient_rows(res) else set())
+    return [mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:n]]
 
 
 def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:
-    pii = _pii_columns(res)
-    rows = [mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:n]]
+    rows = masked_rows(res, n)
     head = f"columns: {res.columns}\nrows returned: {len(res.rows)}"
     if res.truncated:
         head += f" (capped at {MAX_ROWS:,})"
@@ -176,7 +212,7 @@ def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:
 def _db_error(exc: Exception) -> str:
     """First line of a database error. It can quote data, so it is delimited."""
     msg = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
-    return delimit_untrusted(msg)
+    return delimit_untrusted(mask_pii(msg))
 
 
 async def run_tool(name: str, args: dict, layer, connector: SQLConnector) -> tuple[str, bool]:
@@ -251,9 +287,7 @@ def _evidence(sql: str, metrics: list[str], res: QueryResult, layer) -> Evidence
     assumptions = [f"{m.name}: {m.description}" for m in defs if m]
     if res.truncated:
         assumptions.append(f"Only the first {MAX_ROWS:,} rows were returned.")
-    pii = _pii_columns(res)
-    excerpt = json.dumps([mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:5]],
-                         default=str)
+    excerpt = json.dumps(masked_rows(res, 5), default=str)
     return Evidence(
         id="sql:query", kind="query",
         claim=f"{len(res.rows):,} row(s) from one read-only query"

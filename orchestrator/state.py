@@ -100,6 +100,13 @@ class ColumnInfo(BaseModel):
     # sessions loadable.
     role_reason: str = ""
     pii: str | None = None
+    # Phase 5.5, from a semantic-layer table matching the upload (semantic_layer.column_hints):
+    # how the column aggregates over time and groups (sum | mean | last / first: each `aggregation_by`
+    # entity's last value per period, then summed), and its unit (ISO currency or °C, days…).
+    aggregation: str | None = None
+    aggregation_by: list[str] = Field(default_factory=list)   # the level's entity (key columns)
+    aggregation_time: str | None = None   # the level's time column (its snapshots' order)
+    unit: str | None = None
 
 
 class ConnectorConfig(BaseModel):
@@ -191,6 +198,11 @@ class DataContract(BaseModel):
     source_evidence: "Evidence | None" = None
     fingerprint: str = ""
     pii_columns: list[str] = Field(default_factory=list)
+    # Phase 5.5: the data holds patient records (an MRN / patient id, or ICD-10 diagnosis codes):
+    # the working frame is a de-identified copy, and these are the steps that made it.
+    phi: bool = False
+    deidentification: list["CleaningDecision"] = Field(default_factory=list)
+    deidentified: bool = False   # this contract describes PHI mode's working copy, not the raw rows
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────
@@ -300,8 +312,9 @@ class TrendResult(BaseModel):
 class SegmentResult(BaseModel):
     segment_column: str
     metric_column: str
-    aggregation: str                       # sum | mean | count | pct
+    aggregation: str                       # sum | mean | count | pct | ratio (a derived rate)
     results: list[dict[str, Any]]         # [{segment: "West", value: 42000}, ...]
+    label: str | None = None              # a ratio's name ("loss_ratio"); metric_column is its source
 
 
 class KPIRecipe(BaseModel):
@@ -319,6 +332,10 @@ class KPIRecipe(BaseModel):
     target_column: str | None = None
     segment_column: str | None = None
     format_kind: str | None = None  # "currency" | "percent" | "count" | "number"
+    # Phase 5.5: an ISO currency (format_kind "currency") or a unit shown after a number ("°C").
+    # Absent: a currency tile is USD, as before.
+    currency: str | None = None
+    unit: str | None = None
 
 
 class KPI(BaseModel):
@@ -383,6 +400,7 @@ class AnalysisFindings(BaseModel):
     target_correlations: dict[str, float] = Field(default_factory=dict)        # Pearson r vs target_col (when one exists)
     target_col: str | None = None                                              # auto-detected target column name
     column_roles_summary: dict[str, str] = Field(default_factory=dict)         # column → role (id/binary/continuous/...)
+    column_units: dict[str, str] = Field(default_factory=dict)                 # 5.5: column → ISO currency or unit
     evidence: list[Evidence] = Field(default_factory=list)                     # Phase 3: one per finding
 
 
@@ -608,6 +626,8 @@ class AnalysisSession(BaseModel):
     # PII values of data this session switched away from: its conversation still quotes them, so
     # every later run's LLM guard is seeded with them (stored with the history, which holds them).
     prior_pii: list[str] = Field(default_factory=list)
+    error_retryable: bool = True   # error_message's failure can pass on a retry (5.5)
+    error_reask: bool = True       # asking the question again can help (5.5)
     overview_done: bool = False            # Phase 3: True after first comprehensive analysis ships; resets when connector_config changes
     dataset_name: str | None = None
     file_hash: str | None = None

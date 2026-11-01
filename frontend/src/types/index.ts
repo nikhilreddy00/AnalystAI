@@ -222,6 +222,9 @@ export interface KPIRecipe {
   segment_column?: string | null;
   segment_value?: string | null;
   format_kind?: "currency" | "percent" | "count" | "number" | null;
+  // Phase 5.5: an ISO currency for "currency" tiles (absent: USD), or a unit after a number.
+  currency?: string | null;
+  unit?: string | null;
 }
 
 // PROMPT-2: backend-computed hero KPI card. Values are pre-formatted display
@@ -248,6 +251,7 @@ export interface BriefingData {
   target_correlations?: Record<string, number>;
   target_col?: string | null;
   column_roles_summary?: Record<string, string>;
+  column_units?: Record<string, string>;   // Phase 5.5: ISO currency or unit per column
 }
 
 export interface BriefingEvent {
@@ -302,6 +306,7 @@ export interface ErrorEvent {
   type: "error";
   message: string;
   retryable?: boolean;
+  reask?: boolean;      // Phase 5.5: false when asking again can't help
 }
 
 export interface DoneEvent {
@@ -344,6 +349,7 @@ export interface ChatMessage {
   evidence?: Evidence[];       // Phase 3: one item per analysis finding
   isStreaming?: boolean;
   runId?: string;              // Phase 5.6a: an error bubble's run, for "retry from where it stopped"
+  final?: boolean;             // Phase 5.5: asking again can't help (the error says what to fix)
   delivered?: DeliveredMeta;   // Phase 5.6b: a reopened report: its run, seal and provenance
 }
 
@@ -381,6 +387,8 @@ export interface ThreadTurn {
   stale: boolean;
   provenance: Provenance;
   last_seq: number;
+  retryable?: boolean;   // Phase 5.5: false when retrying would fail the same way
+  reask?: boolean;       // Phase 5.5: false when asking again can't help (fix the data first)
 }
 
 export type SessionStatus = "in_progress" | "completed" | "failed";

@@ -1,0 +1,23 @@
+id: hr-3
+domain: hr
+category: eda
+dataset:
+  name: employees
+  seed: 3
+question: Describe salaries.
+task:
+  analysis_types:
+  - eda
+  target_metrics:
+  - salary
+  segments: []
+checks:
+- kind: eda_stat
+  column: salary
+  stats:
+  - mean
+  - median
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
