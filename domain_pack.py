@@ -88,6 +88,7 @@ class Pack(_Strict):
     order_fields: list[str] = Field(default_factory=list)
     kpis: list[KPI] = Field(default_factory=list)
     glossary: dict[str, list[str]] = Field(default_factory=dict)   # KPI or concept → its words
+    definitions: dict[str, str] = Field(default_factory=dict)      # a non-KPI concept → its rule
     unsupported: dict[str, str] = Field(default_factory=dict)      # concept → what it needs
     caveats: dict[str, str] = Field(default_factory=dict)          # condition → text
     causal_triggers: list[str] = Field(default_factory=list)
@@ -114,6 +115,8 @@ class Pack(_Strict):
         if len(self.signals) < 2:
             errors.append("signals needs two groups (two independent signals)")
         names = [k.name for k in self.kpis]
+        errors += [f"glossary {c}: neither a KPI, a definition nor unsupported" for c in self.glossary
+                   if c not in names and c not in self.definitions and c not in self.unsupported]
         errors += [f"duplicate kpi {n}" for n in {n for n in names if names.count(n) > 1}]
         for k in self.kpis:
             for alt in [*k.num, *(k.den or [])]:
@@ -378,3 +381,67 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
         text += f"; over {' and '.join(_ROWS_TEXT[k] for k in kpi.rows)}"
         text += f" ({', '.join(left_out)} left out)" if left_out else ""
     return text[0].upper() + text[1:] + "."
+
+
+def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
+    """[(concept, the words used)] for each glossary concept the question names as whole words,
+    unless the words are just one of the data's own column names ("revenue" in a file with a
+    revenue column needs no glossary)."""
+    q = question.lower()
+    own = {normalize_header(c) for c in columns}
+    hits = []
+    for concept, words in pack.glossary.items():
+        for w in sorted(words, key=len, reverse=True):
+            if re.search(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q):
+                if normalize_header(w) not in own:
+                    hits.append((concept, w))
+                break
+    return hits
+
+
+def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(ROW_KINDS)) -> str:
+    """Which rows are not plain sales, in the pack's words, for the kinds this data has."""
+    rules = []
+    if "return" in present and (any(r in roles for r in ("quantity", "revenue"))
+                                or any(r in roles for r in pack.credit_prefix)):
+        neg = " or ".join(r for r in ("quantity", "revenue") if r in roles)
+        credit = [f"{r} starting {p!r}" for r, p in pack.credit_prefix.items() if r in roles]
+        rules.append("a return (netted in net sales): " + " or ".join(
+            ([f"a negative {neg}"] if neg else []) + credit))
+    sv = pack.status_values
+    if "status" in roles and "refunded" in present:
+        rules.append(f"refunded (left out): status in {sv.get('return', [])}")
+    if "status" in roles and "cancel" in present:
+        rules.append(f"cancelled (left out): status in {sv.get('cancel', [])}")
+    if "non_product" in present:
+        rules += [f"non-product (left out): {r} in {v}" for r, v in pack.non_product.items() if r in roles]
+    test = [r for r in pack.test_roles if r in roles]
+    if pack.test_marker and test and "test" in present:
+        rules.append(f"a test order (left out): {' or '.join(test)} matching {pack.test_marker!r}")
+    return "; ".join(rules)
+
+
+def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: str | None = None,
+               present: set[str] = frozenset()) -> list[str]:
+    """The pack's rules, in role names: which rows are not sales (the kinds `present` in this
+    data), the grain, and each concept (a KPI or a definition) asked about. Roles, never column
+    names: the caller shows the role → column map inside its untrusted-data block."""
+    named = {r: r for r in roles}
+    lines = []
+    if rules := row_rules(pack, roles, present):
+        lines.append(f"Row kinds: {rules}.")
+    if grain == "line":
+        lines.append("One row is an order line: count orders as distinct order_id, never rows; "
+                     "an average per order divides by orders.")
+    for c in dict.fromkeys(concepts):
+        if kpi := pack.kpi(c):
+            if used_terms(pack, kpi, roles) and (kpi.den is None or used_terms(pack, kpi, roles, "den")):
+                lines.append(f"{kpi.label} ({c}): {describe_kpi(pack, c, named, present)}")
+            else:
+                lines.append(f"{kpi.label} ({c}): this data lacks the columns it needs; say so, "
+                             "never approximate it with another column.")
+        elif c in pack.definitions:
+            lines.append(f"{c}: {pack.definitions[c]}")
+        elif c in pack.unsupported:
+            lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
+    return lines

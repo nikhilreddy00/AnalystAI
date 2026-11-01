@@ -142,6 +142,10 @@ glossary:
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
   repeat_rate: [repeat rate, repeat customers, returning customers, repeat purchase rate]
   sell_through: [sell through, sell-through, sellthrough]
+definitions:
+  comp: "Like-for-like (comp) growth counts only stores, channels or products selling through BOTH periods compared (a store that opened or closed in either period is left out); total growth includes them. Say which one a number is."
+  yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
+  repeat_rate: "Repeat rate = customers with 2 or more orders (distinct order ids, not lines) / customers with 1 or more, in a stated window; orders with no customer id (guests) are left out of both."
 unsupported:
   sell_through: inventory on hand (units received), which this data does not have
 

@@ -16,6 +16,10 @@ from evals.snapshot import snapshot
 # (where the snapshot was taken) and CI's Linux; on the snapshot's own platform they are pinned
 # like the rest (checked for Phase 5.5 on macOS).
 PLATFORM_FLOATS = {"ins-15-gap-not-significant", "ins-39-region-null", "ins-40-minutes-null-holdout"}
+# Phase 5.7 (retail pack): contexts that changed on purpose, re-measured at the domain's gate.
+# "Show profit margin by region" on sales data now carries the pack's note that margin needs a
+# cost or profit column (the case expects the ask).
+CONTEXT_CHANGED = {"intake-oos-csv-01"}
 
 
 async def test_every_snapshotted_case_still_gets_the_same_inputs():
@@ -25,7 +29,7 @@ async def test_every_snapshotted_case_still_gets_the_same_inputs():
         {c: v["roles"] for c, v in before["analysis"].items()}
     for suite in ("intake", "insight"):
         changed = sorted(c for c in before[suite] if now[suite].get(c) != before[suite][c]
-                         and c not in PLATFORM_FLOATS)
+                         and c not in PLATFORM_FLOATS | CONTEXT_CHANGED)
         assert not changed, (suite, changed, [(now[suite].get(c), before[suite][c]) for c in changed[:2]])
     assert {c: now["e2e"][c]["roles"] for c in before["e2e"]} == \
         {c: v["roles"] for c, v in before["e2e"].items()}

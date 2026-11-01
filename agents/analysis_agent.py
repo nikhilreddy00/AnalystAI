@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import PARTIAL_MIN_DAYS, pii_columns, safe_column_name, strip_markdown_fences
+from domain_pack import ROW_KINDS, glossary_hits, pack_brief, pack_for, used_terms
 from guardrails import (
     pseudonym,
     is_phi_identifier,
@@ -319,6 +320,10 @@ class AnalysisContext(BaseModel):
     samples: dict[str, list[Any]]      # 3 masked values per column (from the DataContract)
     aggregations: list[str] = []       # semantic-layer meanings (Phase 5.5); empty: none matched
     question: str = ""                 # the user's words: a rate's definition lives only here
+    # Phase 5.7: the domain pack's rules for this question (or an overview): role names only,
+    # and the role → column map (column names are the user's: delimited).
+    domain: list[str] = []
+    domain_roles: str = ""
 
     def render(self) -> str:
         # Column names come from the user's file, so the whole schema block is delimited.
@@ -338,12 +343,15 @@ class AnalysisContext(BaseModel):
                  if self.aggregations else "")
         cleaning = ("\n\nCleaning already applied:\n" + delimit_untrusted(
             "\n".join(self.cleaning_notes))) if self.cleaning_notes else ""
+        domain = ("\nDomain rules (the product's domain pack; each role is a column of this data):\n"
+                  + delimit_untrusted(self.domain_roles) + "\n" + "\n".join(
+                      f"- {line}" for line in self.domain)) if self.domain else ""
         question = ("\nThe user's question (the plan below was made from it; when it defines a "
                     "measure — a rate, its window, which rows count — compute exactly that):\n"
                     + delimit_untrusted(self.question)) if self.question else ""
         return f"""\
 Dataset schema (column names come from the user's file):
-{delimit_untrusted(schema)}{rules}{question}
+{delimit_untrusted(schema)}{rules}{domain}{question}
 Analysis types requested: {self.analysis_types}
 Timeframe: {self.timeframe}{cleaning}
 
@@ -392,7 +400,37 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
                       for c in contract.columns if c.aggregation],
         question=(task.raw_query or "")[:2000],
+        **_domain(contract, task, audit),
     )
+
+
+# An overview of the data itself ("an overview of this dataset", "what's in my sales file"), not
+# of one measure ("an overview of revenue by segment", "summarize spend per order").
+_OVERVIEW_WORDS = re.compile(r"\b(?:overview|summary|tour|walk me through|what(?:'s| is) in)\b(?: of)?"
+                             r"(?: (?:this|the|my|our))? (?:data(?:set)?|file|upload|sales data|"
+                             r"spreadsheet|export)\b", re.I)
+
+
+def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
+    """The pack's rules, relevant ones only, so a question they don't touch reads as before:
+    the row kinds Cleaning found in this data (returns, refunds, test orders …), a line grain,
+    the KPIs or concepts the question names (every tile KPI the data supports when it asks for
+    an overview)."""
+    pack = pack_for(contract.domain)
+    if pack is None:
+        return {}
+    question = task.raw_query or ""
+    concepts = [c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns])]
+    roles = dict(contract.roles)
+    if _OVERVIEW_WORDS.search(question):
+        concepts = [k.name for k in pack.kpis if k.tile and used_terms(pack, k, roles)] + concepts
+    present = {d.strategy for d in (audit.decisions if audit else [])
+               if d.operation == "flag" and d.strategy in ROW_KINDS}
+    grain = audit.grain if audit else None
+    brief = pack_brief(pack, roles, concepts, grain, present)
+    if not brief:
+        return {}
+    return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
 
 
 def _aggregation_line(c, names: set[str]) -> str:
