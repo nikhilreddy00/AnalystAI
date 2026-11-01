@@ -132,28 +132,66 @@ def column_hint(contract, column: str):
 
 
 def effective_agg(contract, column: str, requested: str | None = None) -> str | None:
-    """How `column` aggregates. A level ('last': a balance, MRR) or a reading ('mean': a
-    temperature) overrides a sum, asked for or defaulted: summing them over time or rows is
-    wrong whatever the wording. An explicit mean, count, min, max or median is kept."""
+    """How `column` aggregates. A level ('last' / 'first': a balance, MRR) overrides a sum,
+    asked for or defaulted: summing snapshots counts the same money again. A layer's average
+    ('mean': ALOS, a temperature) only replaces a default: an explicit sum ("total payroll",
+    "how many failed") is kept. Any other explicit aggregation is kept."""
     hint = column_hint(contract, column)
-    if hint is None or requested not in (None, "sum"):
+    if hint is None:
         return requested
-    return hint.aggregation
+    if hint.aggregation in _LEVEL and requested in (None, "sum"):
+        return hint.aggregation
+    return requested if requested is not None else hint.aggregation
 
 
-def aggregate(df, keys, column: str, agg: str, contract=None):
-    """`df.groupby(keys)[column].agg(agg)`, except a level ('last'): each entity's last value
-    (by the level's time column) within each key, summed over entities."""
+class LevelUnavailable(ValueError):
+    """A level (a balance) whose entity or time column is gone (dropped at the high-null gate):
+    its total can't be computed, and a plain sum would count each snapshot again."""
+
+
+_LEVEL = ("last", "first")
+
+
+def _snapshots(df, hint):
+    """The frame ready for a level's window: undated snapshots out (one can't be the latest),
+    ordered by time. Missing entity or time column: LevelUnavailable."""
+    import pandas as pd
+    missing = [c for c in [*hint.aggregation_by, hint.aggregation_time] if not c or c not in df.columns]
+    if not hint.aggregation_by or missing:
+        raise LevelUnavailable(f"{hint.name} is a level (a balance-like value), and the column "
+                               f"{', '.join(missing or ['entity'])} it needs is no longer in the "
+                               "data, so it can't be totalled")
+    t = pd.to_datetime(df[hint.aggregation_time], format="mixed", errors="coerce")
+    return df.loc[t.notna()].assign(_t=t[t.notna()]).sort_values("_t", kind="stable")
+
+
+def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = False):
+    """`df.groupby(keys)[column].agg(agg)`, except a level ('last' / 'first'): over time (a key
+    is a period) each entity's window value within each period, summed; across groups (no
+    period) the current total, each entity's latest snapshot in the latest period (latest_rows),
+    so the answer and its chart agree. Missing values are never carried forward."""
     import pandas as pd
     hint = column_hint(contract, column)
-    if agg != "last" or hint is None or hint.aggregation_by not in df.columns:
-        return df.groupby(keys)[column].agg("sum" if agg == "last" else agg)
+    if agg not in _LEVEL or hint is None:
+        return df.groupby(keys)[column].agg("sum" if agg in _LEVEL else agg)
+    if not over_time:
+        return latest_rows(df, column, contract).groupby(keys)[column].sum()
     keys = keys if isinstance(keys, list) else [keys]
-    d = df
-    if hint.aggregation_time in df.columns:
-        order = pd.to_datetime(df[hint.aggregation_time], format="mixed", errors="coerce")
-        d = df.assign(_t=order).sort_values("_t", kind="stable")
-    ent = d[hint.aggregation_by]
-    per = d.groupby([*(k.loc[d.index] if isinstance(k, pd.Series) else k for k in keys), ent]
-                    )[column].last()
+    d = _snapshots(df.dropna(subset=[column]), hint)
+    per = d.groupby([*(k.loc[d.index] if isinstance(k, pd.Series) else k for k in keys),
+                     *(d[e] for e in hint.aggregation_by)])[column].agg(agg)
     return per.groupby(level=list(range(len(keys)))).sum()
+
+
+def latest_rows(df, column: str, contract):
+    """For a level by group (bars): each entity's window snapshot (its latest, or its first),
+    the rows a total by group adds up. Anything else: the frame as it is."""
+    hint = column_hint(contract, column)
+    if hint is None or hint.aggregation not in _LEVEL:
+        return df
+    d = _snapshots(df.dropna(subset=[column]), hint)
+    month = d["_t"].dt.to_period("M")
+    edge = month.max() if hint.aggregation == "last" else month.min()
+    d = d[month == edge].drop(columns="_t")   # a closed account isn't in the latest period
+    g = d.groupby(hint.aggregation_by, sort=False)
+    return g.tail(1) if hint.aggregation == "last" else g.head(1)

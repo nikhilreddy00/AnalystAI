@@ -28,7 +28,7 @@ def test_one_matching_table_gives_its_hints():
     c = _contract(datagen.make("bank_balances", 1)[0])
     b = _hint(c, "balance")
     assert (b.aggregation, b.aggregation_by, b.aggregation_time, b.unit) == (
-        "last", "account_id", "snapshot_date", "USD")
+        "last", ["account_id"], "snapshot_date", "USD")
     assert _hint(c, "deposits").aggregation == "sum"
     assert any("semantic layer table 'balances'" in a for a in c.source_evidence.assumptions)
 
@@ -139,12 +139,11 @@ def test_an_explicit_sum_of_a_level_becomes_its_period_end_total(handler, params
     assert naive not in r.answer_text
 
 
-def test_a_reading_is_averaged_even_when_a_sum_is_asked():
+def test_a_reading_is_averaged_when_no_aggregation_is_asked():
     from agents import targeted_analysis_agent as ta
     df, truth = datagen.make("sensor_readings", 1)
-    r = ta.handle_segment_compare(df, TargetedParams(metric_column="temperature",
-                                                     segment_column="line", aggregation="sum"),
-                                  _contract(df))
+    r = ta.handle_top_n(df, TargetedParams(metric_column="temperature", group_by="line"),
+                        _contract(df))   # top-N defaults to a sum; the layer says it averages
     assert f"{truth['mean_temp_by_line']['B']:,.2f}" in r.answer_text
 
 
@@ -167,7 +166,7 @@ def _kpi(df, contract):
 def test_a_layer_unit_formats_the_tile():
     df, _ = datagen.make("sensor_readings", 1)
     k = _kpi(df, _contract(df))
-    assert k.value.endswith(" °C") and k.recipe.unit == "°C" and "$" not in k.value
+    assert k.value.endswith("\u00a0°C") and k.recipe.unit == "°C" and "$" not in k.value
 
 
 def test_a_currency_written_in_the_file_is_used():
@@ -187,7 +186,7 @@ def test_no_unit_keeps_the_name_rule_so_sales_still_shows_dollars():
 def test_an_unknown_code_is_a_suffix_not_a_crash():
     from agents.visualization_agent import _format_value, _kpi_format_kind
     assert _kpi_format_kind("x", pd.Series([1.0]), set(), "EURO") == "number"
-    assert _format_value(2.5, "number", "EURO") == "2.50 EURO"
+    assert _format_value(2.5, "number", "EURO") == "2.50\u00a0EURO"
     assert _format_value(-3.0, "currency", "GBP") == "-£3.00"
 
 

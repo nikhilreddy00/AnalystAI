@@ -101,10 +101,10 @@ class ColumnInfo(BaseModel):
     role_reason: str = ""
     pii: str | None = None
     # Phase 5.5, from a semantic-layer table matching the upload (semantic_layer.column_hints):
-    # how the column aggregates over time and groups (sum | mean | last: each `aggregation_by`
+    # how the column aggregates over time and groups (sum | mean | last / first: each `aggregation_by`
     # entity's last value per period, then summed), and its unit (ISO currency or °C, days…).
     aggregation: str | None = None
-    aggregation_by: str | None = None
+    aggregation_by: list[str] = Field(default_factory=list)   # the level's entity (key columns)
     aggregation_time: str | None = None   # the level's time column (its snapshots' order)
     unit: str | None = None
 

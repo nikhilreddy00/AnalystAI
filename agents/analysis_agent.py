@@ -242,13 +242,15 @@ try:
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
-            if _agg == 'last' and _h[1] in df.columns:
-                _f = _frame.assign(_m=_month.loc[_frame.index]).dropna(subset=['_m'])
-                if _h[2] in df.columns:
-                    _f = _f.assign(_t=pd.to_datetime(_f[_h[2]], errors='coerce')).sort_values('_t', kind='stable')
-                _tot = _f.groupby(['_m', _h[1]])[_col].last().groupby(level=0).sum().sort_index()
+            if _agg in ('last', 'first'):
+                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:
+                    return None, 0   # its account (or time) column is gone: no total, never a sum
+                _t = pd.to_datetime(_frame[_h[2]], errors='coerce')
+                _f = _frame.assign(_t=_t, _m=_t.dt.to_period('M'))   # the level's own months
+                _f = _f.dropna(subset=['_m', '_t']).sort_values('_t', kind='stable')
+                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
             else:
-                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg('sum' if _agg == 'last' else _agg).sort_index()
+                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
                 return None, 0
             _last2 = _month.loc[_frame.index].isin(_tot.index[-2:])
@@ -309,14 +311,16 @@ class AnalysisContext(BaseModel):
             f"Segment columns: {self.segments}\n"
             f"Target metrics from task: {self.target_metrics}\n"
             f"Sample values (PII masked): {json.dumps(self.samples, default=str)}"
-            + ("\nHow columns aggregate (semantic layer): " + "; ".join(self.aggregations)
-               if self.aggregations else "")
         )
+        # The layer is the operator's own config (its column names matched the file exactly):
+        # outside the untrusted-data block, so the model treats it as a rule.
+        rules = ("\nHow columns aggregate (semantic layer): " + "; ".join(self.aggregations)
+                 if self.aggregations else "")
         cleaning = ("\n\nCleaning already applied:\n" + delimit_untrusted(
             "\n".join(self.cleaning_notes))) if self.cleaning_notes else ""
         return f"""\
 Dataset schema (column names come from the user's file):
-{delimit_untrusted(schema)}
+{delimit_untrusted(schema)}{rules}
 Analysis types requested: {self.analysis_types}
 Timeframe: {self.timeframe}{cleaning}
 
@@ -360,17 +364,23 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         timeframe=task.timeframe or "full dataset",
         cleaning_notes=notes[:_MAX_NOTES],
         samples={c.name: (c.sample_values or [])[:3] for c in contract.columns[:_MAX_COLUMNS]},
-        aggregations=[_aggregation_line(c) for c in contract.columns if c.aggregation or c.unit],
+        aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
+                      for c in contract.columns if c.aggregation or c.unit],
     )
 
 
-def _aggregation_line(c) -> str:
+def _aggregation_line(c, names: set[str]) -> str:
     unit = f" ({c.unit})" if c.unit else ""
-    if c.aggregation == "last":
-        return (f"{c.name}{unit} is a level: per period take each {c.aggregation_by}'s last value"
-                f" (by {c.aggregation_time}), then sum; never sum it across dates")
+    if c.aggregation in ("last", "first"):
+        need = [*c.aggregation_by, c.aggregation_time]
+        if not all(n in names for n in need):
+            return (f"{c.name}{unit} is a level, but a column it needs ({', '.join(need)}) was "
+                    "removed: never total it across dates or rows")
+        return (f"{c.name}{unit} is a level: per period take each {', '.join(c.aggregation_by)}'s "
+                f"{c.aggregation} value (by {c.aggregation_time}), then sum; never sum it across "
+                "dates")
     if c.aggregation == "mean":
-        return f"{c.name}{unit} averages (never sum it across rows or dates)"
+        return f"{c.name}{unit} is summarized as an average (sum it only for a total that is asked for)"
     return f"{c.name}{unit} adds up" if c.aggregation == "sum" else f"{c.name}{unit}"
 
 
@@ -551,7 +561,8 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 raise SandboxError("analysis", detail, message) from None
             raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
-            reason = review_findings(findings, raw, known, set(ctx.analysis_types))
+            reason = review_findings(findings, raw, known, set(ctx.analysis_types), {
+                c.name: c.aggregation_by for c in contract.columns if c.aggregation in ('last', 'first')})
             if reason is None:
                 if repaired := ground_prose(findings, raw):
                     trace_verdict("analysis", PROMPT_VERSION, "grounding_rewritten")
@@ -598,7 +609,7 @@ def _finding_columns(f: AnalysisFindings) -> set[str]:
 
 
 def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
-                    types: set[str] = frozenset()) -> str | None:
+                    types: set[str] = frozenset(), levels: dict | None = None) -> str | None:
     """Hard rules that need a retry: non-empty output and real columns. eda_summary counts only
     when EDA was asked for: the built-in block always fills it. Grounding is enforced by
     ground_prose instead (a rewrite, not a retry)."""
@@ -608,6 +619,11 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
                 "(a near-zero correlation or a non-significant test is a finding)")
     if reason := check_columns(_finding_columns(f), known):
         return f"findings name {reason}"
+    for s in f.segments:   # a level (balance, MRR) summed over its snapshots: a wrong total
+        if s.metric_column in (levels or {}) and (s.aggregation or "").lower() in ("sum", "total"):
+            by = ", ".join(levels[s.metric_column])
+            return (f"{s.metric_column} is a level: its total by {s.segment_column} is each {by}'s "
+                    f"latest value in the latest period, summed; not a sum over every row")
     return None
 
 

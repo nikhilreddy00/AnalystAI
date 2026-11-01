@@ -20,7 +20,6 @@ from agents.errors import AgentError, GuardrailViolation, LLMOutputError
 from agents.utils import strip_markdown_fences
 from connectors.sql_connector import MAX_ROWS, QueryResult, SQLConnector, sql_dialect
 from guardrails import (
-    MASK,
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
@@ -173,21 +172,35 @@ def _patient_rows(res: QueryResult) -> bool:
     return any(is_health_column(c) or is_phi_identifier(c) for c in res.columns)
 
 
-def _category_cells(res: QueryResult, rows: list) -> list[dict]:
-    """Patient data, before PHI mode has seen it: a text cell is shown only when it is a short
-    label (1-2 words) that repeats in the result, a category; a name or a note under any header
-    stays masked, however few rows came back. Numbers and dates are kept."""
+def _non_category_text(res: QueryResult) -> set[str]:
+    """Patient data, before PHI mode has seen it: text columns that aren't plainly categories.
+    A column's text is shown only when, over a result of 5+ rows, it has at most 20 distinct short
+    labels (1-2 words), each repeating, and at most half as many labels as rows; a name or a note
+    under any header stays masked (fewer than 5 rows: every text column is). Numbers and dates
+    are kept."""
     from collections import Counter
-    counts = Counter(v for r in res.rows[:200] for v in r if isinstance(v, str))
-    return [{k: (MASK if isinstance(v, str) and (counts[v] < 2 or len(v.split()) > 2) else v)
-             for k, v in row.items()} for row in rows]
+    hidden = set()
+    for i, c in enumerate(res.columns):
+        vals = [r[i] for r in res.rows[:200] if isinstance(r[i], str)]
+        if not vals:
+            continue
+        counts = Counter(vals)
+        if (len(vals) < 5 or len(counts) > 20 or len(counts) > len(vals) / 2
+                or min(counts.values()) < 2 or any(len(v.split()) > 2 for v in counts)):
+            hidden.add(c)
+    return hidden
+
+
+def masked_rows(res: QueryResult, n: int) -> list[dict]:
+    """The first `n` result rows as a model or the user may see them: personal columns and
+    patterns masked, and on patient rows every text column that isn't a category. Every quote of
+    a result (the tool preview, the evidence excerpt) goes through here."""
+    pii = _pii_columns(res) | (_non_category_text(res) if _patient_rows(res) else set())
+    return [mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:n]]
 
 
 def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:
-    pii = _pii_columns(res)
-    rows = [mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:n]]
-    if _patient_rows(res):
-        rows = _category_cells(res, rows)
+    rows = masked_rows(res, n)
     head = f"columns: {res.columns}\nrows returned: {len(res.rows)}"
     if res.truncated:
         head += f" (capped at {MAX_ROWS:,})"
@@ -272,9 +285,7 @@ def _evidence(sql: str, metrics: list[str], res: QueryResult, layer) -> Evidence
     assumptions = [f"{m.name}: {m.description}" for m in defs if m]
     if res.truncated:
         assumptions.append(f"Only the first {MAX_ROWS:,} rows were returned.")
-    pii = _pii_columns(res)
-    excerpt = json.dumps([mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:5]],
-                         default=str)
+    excerpt = json.dumps(masked_rows(res, 5), default=str)
     return Evidence(
         id="sql:query", kind="query",
         claim=f"{len(res.rows):,} row(s) from one read-only query"

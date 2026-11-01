@@ -244,9 +244,10 @@ def _written_currency(s: pd.Series) -> str | None:
     v = s.dropna().astype(str).str.strip().head(_SAMPLE)
     if v.empty:
         return None
-    lead = v.str.lstrip("-(+ ").str[:1]
-    sym = lead.mode().iloc[0]
-    return _SYMBOLS.get(sym) if sym in _SYMBOLS and (lead == sym).mean() >= 0.8 else None
+    # $1,249.00, -$5, ($3,000.00) or 10,50 € (written after the number in much of Europe)
+    edge = v.str.strip("-(+) ").map(lambda t: t[:1] if t[:1] in _SYMBOLS else t[-1:])
+    sym = edge.mode().iloc[0]
+    return _SYMBOLS.get(sym) if sym in _SYMBOLS and (edge == sym).mean() >= 0.8 else None
 
 
 def _role(c: ColumnInfo) -> str:
@@ -320,7 +321,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     hints, layer_note = column_hints([c.name for c in cols])
     for c in cols:
         h = hints.get(c.name, {})
-        c.aggregation, c.aggregation_by, c.unit = h.get("aggregation"), h.get("by"), h.get("unit")
+        c.aggregation, c.aggregation_by, c.unit = h.get("aggregation"), h.get("by", []), h.get("unit")
         c.aggregation_time = h.get("time")
         if c.unit is None and c.is_metric:   # "$1,249.00" in the file: the money's currency
             c.unit = _written_currency(df[c.name])

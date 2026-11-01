@@ -19,7 +19,14 @@ from uuid import uuid4
 import numpy as np
 import pandas as pd
 
-from agents.utils import aggregate, column_hint, effective_agg, pandas_freq, partial_last_month
+from agents.utils import (
+    LevelUnavailable,
+    aggregate,
+    column_hint,
+    effective_agg,
+    pandas_freq,
+    partial_last_month,
+)
 from agents.visualization_agent import (
     VizContext,
     _why,
@@ -247,21 +254,23 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
         )
 
     n = params.n or 10
-    agg = (params.aggregation or "sum").lower()
-    asc = (params.order or "desc").lower() == "asc"
+    asked = (params.aggregation or "").lower() or None
     valid_aggs = {"sum", "mean", "median", "count", "min", "max"}
-    if agg not in valid_aggs:
-        agg = "sum"
-    agg = effective_agg(contract, metric, agg)   # a balance is its latest total, a reading a mean
+    asked = asked if asked in valid_aggs else None
+    agg = effective_agg(contract, metric, asked) or "sum"   # a balance is its current total
+    asc = (params.order or "desc").lower() == "asc"
 
     try:
         grouped = aggregate(df, [group], metric, agg, contract).sort_values(ascending=asc).head(n)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TOP_N,
-            f"Aggregation failed ({type(exc).__name__})",
+            f"Aggregation failed ({_why_failed(exc)})",
             ["Try a different aggregation (sum/mean/count)", "Pick a different grouping column"],
         )
+    if grouped.empty:
+        return _unanswerable(QuestionIntent.TOP_N, f"no rows have both {group} and {metric}",
+                             [f"Distribution of {metric}", "Pick a different grouping column"])
 
     chart_data = [{group: str(k), metric: float(v)} for k, v in grouped.items()]
     direction = "Bottom" if asc else "Top"
@@ -281,9 +290,15 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     return TargetedResponse(intent=QuestionIntent.TOP_N, answer_text=answer, chart_configs=[chart])
 
 
+def _why_failed(exc: Exception) -> str:
+    """What failed, for the answer: our own message for a level that can't be totalled, else the
+    exception's type only (pandas quotes cell values)."""
+    return str(exc) if isinstance(exc, LevelUnavailable) else type(exc).__name__
+
+
 def _agg_name(agg: str) -> str:
     """How an aggregation reads in an answer: a level's 'last' is the period-end total."""
-    return "period-end total" if agg == "last" else agg
+    return {"last": "period-end total", "first": "period-start total"}.get(agg, agg)
 
 
 def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
@@ -318,32 +333,31 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     freq = (params.frequency or "M").upper()
     if freq not in {"D", "W", "M", "Q", "Y"}:
         freq = "M"
-    agg = (params.aggregation or "sum").lower()
-    if agg not in {"sum", "mean", "median", "count", "min", "max"}:
-        agg = "sum"
-    agg = effective_agg(contract, metric, agg)   # "total balance at month end": each account's last
+    asked = (params.aggregation or "").lower() or None
+    asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
+    agg = effective_agg(contract, metric, asked) or "sum"   # "balance at month end": each account's last
 
     group = _named_group(df, params)
     if group is not None:
         df = df[df[params.segment_column].astype(str) == group]
     try:
         hint = column_hint(contract, metric)
-        extra = [c for c in ((hint.aggregation_by, hint.aggregation_time) if hint else ())
+        extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
                  if c and c in df.columns and c not in (date, metric)]
         s = df[[date, metric, *extra]].copy()
         s[date] = pd.to_datetime(s[date], errors="coerce")
         s = s.dropna(subset=[date, metric])
         if s.empty:
             raise ValueError("no valid (date, metric) rows after coercion")
-        if agg == "last":
+        if agg in ("last", "first"):
             series = aggregate(s, [pd.Grouper(key=date, freq=pandas_freq(freq))], metric, agg,
-                               contract).dropna()
+                               contract, over_time=True).dropna()
         else:
             series = s.set_index(date)[metric].resample(pandas_freq(freq)).agg(agg).dropna()
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
-            f"Could not build time series ({type(exc).__name__})",
+            f"Could not build time series ({_why_failed(exc)})",
             [f"Top 10 by {metric}", f"Distribution of {metric}"],
         )
 
@@ -404,19 +418,21 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
             [f"Compare {metric} across {c}" for c in candidates],
         )
 
-    agg = (params.aggregation or "mean").lower()
-    if agg not in {"sum", "mean", "median", "count", "min", "max"}:
-        agg = "mean"
-    agg = effective_agg(contract, metric, agg)
+    asked = (params.aggregation or "").lower() or None
+    asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
+    agg = effective_agg(contract, metric, asked) or "mean"
 
     try:
         grouped = aggregate(df, [segment], metric, agg, contract).sort_values(ascending=False).head(20)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.SEGMENT_COMPARE,
-            f"Aggregation failed ({type(exc).__name__})",
+            f"Aggregation failed ({_why_failed(exc)})",
             ["Try a different aggregation", "Pick a different segment"],
         )
+    if grouped.empty:
+        return _unanswerable(QuestionIntent.SEGMENT_COMPARE, f"no rows have both {segment} and "
+                             f"{metric}", [f"Distribution of {metric}", "Pick a different segment"])
 
     top_seg, top_val = grouped.index[0], grouped.iloc[0]
     bottom_seg, bottom_val = grouped.index[-1], grouped.iloc[-1]
@@ -475,7 +491,7 @@ def handle_hypothesis_test(df: pd.DataFrame, params: TargetedParams, contract: D
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.HYPOTHESIS_TEST,
-            f"Could not run {test} ({type(exc).__name__})",
+            f"Could not run {test} ({_why_failed(exc)})",
             ["Try a t-test on two numeric columns", "Try a correlation between the same columns"],
         )
 
@@ -528,7 +544,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.AB_SIGNIFICANCE,
-            f"t-test failed ({type(exc).__name__})",
+            f"t-test failed ({_why_failed(exc)})",
             [f"Compare {metric} by {variant}", "Check the metric is numeric"],
         )
 

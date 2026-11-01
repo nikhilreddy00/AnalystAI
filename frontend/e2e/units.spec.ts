@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test.afterAll(() => writeFileSync(SCENARIO, "full\n"));
+test.afterEach(() => writeFileSync(SCENARIO, "full\n"));
 
 test("descriptive statistics show each column in its own unit", async ({ page }) => {
   await page.goto("/chat");
@@ -39,4 +39,20 @@ test("descriptive statistics show each column in its own unit", async ({ page })
   await expect(row("revenue")).not.toContainText("$");
   await expect(row("marketing_spend")).toContainText("°C");      // a unit after the number
   await expect(row("marketing_spend")).not.toContainText("$");
+});
+
+test("a column without a unit keeps the old name rule", async ({ page }) => {
+  writeFileSync(SCENARIO, "full\n");   // the run before Phase 5.5: no column_units at all
+  await page.goto("/chat");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
+  });
+  const input = page.getByLabel("Ask a question about your data");
+  await expect(input).toBeEnabled();
+  await input.fill("Give me an overview of this sales data");
+  await input.press("Enter");
+  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });
+  await page.getByRole("tab", { name: /^Data/ }).click();
+  const table = page.locator("table", { hasText: "Skewness" });
+  await expect(table.locator("tr", { hasText: "revenue" }).first()).toContainText("$102.82");
 });

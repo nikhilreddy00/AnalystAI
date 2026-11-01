@@ -28,6 +28,7 @@ class ScrubFilter(logging.Filter):
                                     and 100 <= a <= 599 else scrub(str(a)) for a in record.args)
             else:   # anything else: formatted first, then scrubbed as text (a number can be a phone)
                 record.msg, record.args = scrub(record.getMessage()), None
+                record.__dict__.pop("color_message", None)   # uvicorn's coloured copy, unscrubbed
             if record.exc_text:
                 record.exc_text = scrub(record.exc_text)
                 record.exc_info = None   # a formatter re-reading exc_info would get the raw one
@@ -40,7 +41,9 @@ class ScrubFilter(logging.Filter):
 
 
 def install() -> None:
-    """Attach the filter to every handler that can write a record (idempotent)."""
+    """Attach the filter to every handler that can write a record (idempotent). Warnings go
+    through logging too (a warning can quote an exception's text)."""
+    logging.captureWarnings(True)
     loggers = [logging.getLogger(), *(logging.getLogger(n) for n in
                                       ("uvicorn", "uvicorn.error", "uvicorn.access"))]
     for handler in (h for lg in loggers for h in lg.handlers):

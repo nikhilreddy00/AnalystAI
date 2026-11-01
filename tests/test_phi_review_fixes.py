@@ -333,4 +333,20 @@ def test_a_small_patient_result_still_hides_names():
     from connectors.sql_connector import QueryResult
     rows = [["MRN-1", "Jane Roe", "Cardiology"], ["MRN-2", "Bo Li", "Cardiology"]]
     text = _preview(QueryResult(columns=["mrn", "attending", "department"], rows=rows, truncated=False))
-    assert "Jane Roe" not in text and "Bo Li" not in text and "Cardiology" in text
+    assert "Jane Roe" not in text and "Bo Li" not in text   # 2 rows: no text at all
+    rows = [[f"MRN-{i}", f"Pat {i} Doe", ["Cardiology", "Oncology"][i % 2]] for i in range(10)]
+    text = _preview(QueryResult(columns=["mrn", "patient", "department"], rows=rows, truncated=False))
+    assert "Pat 3 Doe" not in text and "Cardiology" in text   # names masked, departments shown
+
+
+def test_the_sql_evidence_excerpt_masks_patient_text_like_the_preview():
+    from agents.sql_agent import _evidence
+    from connectors.sql_connector import QueryResult
+    rows = [["MRN-1", "Jane Roe", "Cardiology"], ["MRN-2", "Jane Roe", "Cardiology"]]
+    res = QueryResult(columns=["mrn", "attending", "department"], rows=rows, truncated=False)
+    import inspect
+    params = inspect.signature(_evidence).parameters
+    kwargs = {k: None for k in params if k not in ("res", "sql")}
+    ev = _evidence(sql="select 1", res=res, **{k: v for k, v in kwargs.items()})
+    # a name that repeats is still a column of names: masked as a whole (2 rows < a category)
+    assert "Jane Roe" not in ev.result_excerpt and "MRN-1" not in ev.result_excerpt

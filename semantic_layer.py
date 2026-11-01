@@ -166,7 +166,10 @@ def file_layers() -> tuple[SemanticLayer, ...]:
     boot by the API and the worker (an invalid file stops either from starting)."""
     paths = sorted(SAMPLE_LAYERS.glob("*.yaml"))
     layers = [load(p) for p in paths]
-    return tuple(layers + ([configured] if (configured := configured_layer()) else []))
+    configured = configured_layer()
+    from api.config import settings   # a sample named as the configured layer counts once
+    same = configured and any(Path(settings.semantic_layer_path).resolve() == p.resolve() for p in paths)
+    return tuple(layers + ([configured] if configured and not same else []))
 
 
 def column_hints(columns: list[str]) -> tuple[dict[str, dict], str | None]:
@@ -193,9 +196,9 @@ def column_hints(columns: list[str]) -> tuple[dict[str, dict], str | None]:
         col = node.this.name
         h = hints.setdefault(col, {})
         nad = m.non_additive_dimension
-        if nad:
-            h.update(aggregation="last", time=nad.name,
-                     by=next(k for k in table.primary_key if k != nad.name))
+        if nad:   # a level: its window's row per entity (the key minus the time) per period
+            h.update(aggregation=nad.window, time=nad.name,
+                     by=[k for k in table.primary_key if k != nad.name])
         else:
             h["aggregation"] = "sum" if isinstance(node, exp.Sum) else "mean"
     return hints, f"Column meanings from the semantic layer table '{table.name}'."

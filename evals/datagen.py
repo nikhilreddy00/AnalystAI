@@ -227,6 +227,8 @@ def make_bank_balances(seed: int) -> tuple[pd.DataFrame, dict]:
         "balance_mom_pct": _mom(true), "naive_balance_mom_pct": _mom(naive),
         "business_balance_mom_pct": _mom(biz),
         "month_end_total_last": float(true.iloc[-1]), "naive_last_month_sum": float(naive.iloc[-1]),
+        # a breakdown by segment summing every snapshot: the trap a model finding can fall in
+        "naive_balance_by_segment": df.groupby("segment")["balance"].sum().to_dict(),
         "pii_columns": [],
     }
     assert abs(truth["naive_balance_mom_pct"] - truth["balance_mom_pct"]) > 10
@@ -442,6 +444,7 @@ def make_saas_accounts(seed: int) -> tuple[pd.DataFrame, dict]:
     truth = {
         "row_count": len(df), "mrr_mom_pct": _mom(totals), "pro_mrr_mom_pct": _mom(pro),
         "mrr_last_month_total": float(totals.iloc[-1]), "naive_total_mrr": float(df["mrr"].sum()),
+        "naive_mrr_by_plan": df.groupby("plan")["mrr"].sum().to_dict(),
         "corr_seats_users": float(df["seats"].corr(df["active_users"])), "pii_columns": [],
     }
     assert abs(truth["pro_mrr_mom_pct"] + 10) < 0.05

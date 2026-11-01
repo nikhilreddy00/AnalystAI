@@ -1,5 +1,5 @@
 import type { KPIRecipe } from "@/types";
-import { formatMoney, formatWithUnit } from "@/lib/formatUnit";
+import { formatMoney, formatWithUnit } from "./formatUnit.ts";
 
 const POSITIVE = new Set(["1", "true", "yes", "y", "t"]);
 const NEGATIVE = new Set(["0", "false", "no", "n", "f"]);
@@ -31,7 +31,7 @@ function formatValue(n: number, kind: KPIRecipe["format_kind"], currency?: strin
   switch (kind) {
     case "currency":
       // Reports from before Phase 5.5 carry no currency: they were USD.
-      return formatMoney(n, currency || "USD");
+      return formatMoney(n, currency);
     case "percent":
       return `${(n * 100).toFixed(1)}%`;
     case "count":

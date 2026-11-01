@@ -2,7 +2,7 @@
 
 // PROMPT-10 (3): "Descriptive statistics" — continuous columns only, with
 // skewness + currency formatting + a target-correlation row at the bottom.
-import { formatWithUnit } from "@/lib/formatUnit";
+import { formatMoney, formatWithUnit } from "@/lib/formatUnit";
 
 interface Stats {
   mean?: number;
@@ -30,9 +30,8 @@ function isCurrencyColumn(name: string): boolean {
 function fmt(v: unknown, currency: boolean, unit?: string): string {
   if (typeof v !== "number" || !Number.isFinite(v)) return "—";
   if (unit) return formatWithUnit(v, unit);   // a known unit decides; the name rule is the fallback
-  if (currency) return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (Math.abs(v) >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  return v.toFixed(2);
+  if (currency) return formatMoney(v, "USD");
+  return formatWithUnit(v, null);   // en-US throughout, as the money and unit cells
 }
 
 function getStat(stats: Stats | Record<string, unknown>, key: string): number | undefined {
@@ -92,7 +91,8 @@ export default function DescriptiveStatsTable({
             {cols.map((c, i) => {
               const stats = describe[c];
               const currency = isCurrencyColumn(c);
-              const unit = units[c];
+              const u = Object.hasOwn(units, c) ? units[c] : undefined;   // not "constructor"
+              const unit = typeof u === "string" && u ? u : undefined;
               const std = getStat(stats, "std");
               const sk = skewness[c];
               const skewedBadge = typeof sk === "number" && Math.abs(sk) > 2;

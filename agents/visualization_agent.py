@@ -27,8 +27,11 @@ from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
 from agents.utils import (
+    LevelUnavailable,
     aggregate,
     column_hint,
+    effective_agg,
+    latest_rows,
     looks_like_sequential_id,
     pandas_freq,
     partial_last_month,
@@ -742,8 +745,9 @@ def _detect_entity_singular(columns, query: str = "", df: pd.DataFrame | None = 
     from the entity-keyword table based on column names + the user's query."""
     if df is not None:
         for c in map(str, columns):
-            m = re.fullmatch(r"([a-z]+)_?id", c.lower())
-            if m and m[1] not in ("row", "record", "") and df[c].notna().all() and df[c].is_unique:
+            m = re.fullmatch(r"([a-z]{3,})_id", c.lower()) or re.fullmatch(r"([a-z]{3,})Id", c)
+            if m and m[1].lower() not in ("row", "record", "uuid", "guid") \
+                    and df[c].notna().all() and df[c].is_unique:
                 return m[1]
     blob = " ".join(str(c).lower() for c in columns)
     if query:
@@ -854,20 +858,68 @@ def _binary_phrase_pair(
     return f"were not {disp}", f"were {disp}"
 
 
-_CURRENCY_SYMBOL = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "INR": "₹", "CNY": "¥",
-                    "AUD": "A$", "CAD": "C$", "CHF": "CHF ", "BRL": "R$", "MXN": "MX$"}
-_ISO_CURRENCY = re.compile(r"^[A-Z]{3}$")
+# Each currency as the browser's Intl (en-US) writes it: (prefix, decimals). The frontend
+# (formatUnit.ts) formats with Intl, so a tile reads the same after a dashboard filter recomputes
+# it there; tests pin a few strings on both sides. Any other unit (°C, RPM) follows the number.
+_CURRENCY_FORMAT = {
+    "USD": ("$", 2),
+    "EUR": ("\u20ac", 2),
+    "GBP": ("\u00a3", 2),
+    "JPY": ("\u00a5", 0),
+    "INR": ("\u20b9", 2),
+    "CNY": ("CN\u00a5", 2),
+    "CAD": ("CA$", 2),
+    "AUD": ("A$", 2),
+    "CHF": ("CHF\u00a0", 2),
+    "BRL": ("R$", 2),
+    "MXN": ("MX$", 2),
+    "SEK": ("SEK\u00a0", 2),
+    "NOK": ("NOK\u00a0", 2),
+    "DKK": ("DKK\u00a0", 2),
+    "PLN": ("PLN\u00a0", 2),
+    "CZK": ("CZK\u00a0", 2),
+    "HUF": ("HUF\u00a0", 0),
+    "ZAR": ("ZAR\u00a0", 2),
+    "NZD": ("NZ$", 2),
+    "SGD": ("SGD\u00a0", 2),
+    "HKD": ("HK$", 2),
+    "KRW": ("\u20a9", 0),
+    "TRY": ("TRY\u00a0", 2),
+    "ILS": ("\u20aa", 2),
+    "AED": ("AED\u00a0", 2),
+    "SAR": ("SAR\u00a0", 2),
+    "THB": ("THB\u00a0", 2),
+    "MYR": ("MYR\u00a0", 2),
+    "IDR": ("IDR\u00a0", 0),
+    "PHP": ("\u20b1", 2),
+    "VND": ("\u20ab", 0),
+    "RUB": ("RUB\u00a0", 2),
+    "EGP": ("EGP\u00a0", 2),
+    "NGN": ("NGN\u00a0", 2),
+    "KES": ("KES\u00a0", 2),
+    "COP": ("COP\u00a0", 0),
+    "CLP": ("CLP\u00a0", 0),
+    "PEN": ("PEN\u00a0", 2),
+    "ARS": ("ARS\u00a0", 2),
+    "TWD": ("NT$", 2),
+}
+ISO_CURRENCIES = frozenset(_CURRENCY_FORMAT)
 
 
 def is_currency(unit: str | None) -> bool:
-    """A unit that is an ISO 4217 code (USD, EUR): money, formatted as such."""
-    return bool(unit and _ISO_CURRENCY.match(unit))
+    return unit in ISO_CURRENCIES
 
 
 def _format_currency(v: float, currency: str | None = None) -> str:
-    code = currency or "USD"
-    sym = _CURRENCY_SYMBOL.get(code, f"{code} ")
-    return f"{'-' if v < 0 else ''}{sym}{abs(v):,.2f}"
+    sym, digits = _CURRENCY_FORMAT.get(currency or "USD", _CURRENCY_FORMAT["USD"])
+    return f"{'-' if v < 0 else ''}{sym}{_half_up(abs(v), digits)}"
+
+
+def _half_up(v: float, digits: int) -> str:
+    """`v` with thousands commas, rounded half away from zero as Intl does (Python's format
+    rounds half to even: 1234.5 → '1,234', the browser's '1,235')."""
+    from decimal import ROUND_HALF_UP, Decimal
+    return f"{Decimal(repr(v)).quantize(Decimal(1).scaleb(-digits), ROUND_HALF_UP):,.{digits}f}"
 
 
 def _format_percent(v: float) -> str:
@@ -875,11 +927,11 @@ def _format_percent(v: float) -> str:
 
 
 def _format_count(v: float) -> str:
-    return f"{int(round(v)):,}"
+    return ("-" if v < 0 else "") + _half_up(abs(v), 0)
 
 
 def _format_number(v: float) -> str:
-    return f"{v:,.2f}"
+    return ("-" if v < 0 else "") + _half_up(abs(v), 2)
 
 
 def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str],
@@ -917,7 +969,7 @@ def _format_value(v: float, kind: str, unit: str | None = None) -> str:
         return _format_percent(v * 100)
     if kind == "count":
         return _format_count(v)
-    return _format_number(v) + (f" {unit}" if unit and not is_currency(unit) else "")
+    return _format_number(v) + (f"\u00a0{unit}" if unit and not is_currency(unit) else "")
 
 
 def _unit(col: str, contract) -> str | None:
@@ -1948,19 +2000,6 @@ def month_agg(s: pd.Series, contract: DataContract | None = None) -> str:
     return "mean" if len(v) and v.between(0, 1).all() else "sum"
 
 
-def latest_rows(df: pd.DataFrame, column: str, contract: DataContract | None) -> pd.DataFrame:
-    """For a level (a balance): each entity's latest snapshot, the rows a total by group adds up.
-    Anything else: the frame as it is."""
-    hint = column_hint(contract, column)
-    if hint is None or hint.aggregation != "last" or hint.aggregation_by not in df.columns:
-        return df
-    d = df
-    if hint.aggregation_time in df.columns:
-        order = pd.to_datetime(df[hint.aggregation_time], format="mixed", errors="coerce")
-        d = df.assign(_t=order).sort_values("_t", kind="stable").drop(columns="_t")
-    return d.groupby(hint.aggregation_by, sort=False).tail(1)
-
-
 def _is_flag(s: pd.Series) -> bool:
     v = pd.to_numeric(s, errors="coerce").dropna()
     return len(v) > 0 and set(v.unique()) <= {0, 1}
@@ -1987,7 +2026,10 @@ def _label(metric: str, agg: str, ctx: VizContext) -> str:
     disp = _display(metric, ctx.narrative)
     if agg == "mean" and _is_flag(ctx.df[metric]):
         return f"{_rate_label(metric, ctx.narrative)} (%)"
-    return f"{_AGG_WORD.get(agg, agg.title())} {disp.lower() if agg == 'count' else disp}"
+    unit = next((c.unit for c in (ctx.contract.columns if ctx.contract else []) if c.name == metric
+                 and c.unit), None)
+    label = f"{_AGG_WORD.get(agg, agg.title())} {disp.lower() if agg == 'count' else disp}"
+    return f"{label} ({unit})" if unit else label
 
 
 def _why(chart: ChartConfig, ctx: VizContext | None, rule: str, reason: str, x: str, y: str,
@@ -2024,8 +2066,11 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
-    if agg == "last":   # a balance by group: the latest snapshot of each account, added up
-        df, agg = latest_rows(df, metric, ctx.contract), "sum"
+    if agg in ("last", "first"):   # a balance by group: each account's latest snapshot, added up
+        try:
+            df, agg = latest_rows(df, metric, ctx.contract), "sum"
+        except LevelUnavailable:   # its account column is gone: no chart beats a wrong total
+            return None
     cols = [x, metric] + ([split] if split else [])
     if any(c not in df.columns for c in cols):
         return None
@@ -2078,8 +2123,8 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     if any(c not in df.columns for c in cols):
         return None
     agg = month_agg(df[metric], ctx.contract)
-    hint = column_hint(ctx.contract, metric) if agg == "last" else None
-    extra = [c for c in ((hint.aggregation_by, hint.aggregation_time) if hint else ())
+    hint = column_hint(ctx.contract, metric) if agg in ("last", "first") else None
+    extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
     sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
@@ -2099,8 +2144,11 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
     keys = [None] if not split else list(sub[split].value_counts().index[:_MAX_SERIES])
-    table = aggregate(sub, [period] + ([sub[split]] if split else []), metric, agg,
-                      ctx.contract) * scale
+    try:
+        table = aggregate(sub, [period] + ([sub[split]] if split else []), metric, agg,
+                          ctx.contract, over_time=True) * scale
+    except LevelUnavailable:
+        return None
     if split:
         table = table.unstack()[keys]
     if len(table) < 2:
@@ -2295,7 +2343,8 @@ def charts_for_findings(ctx: VizContext) -> list[ChartConfig]:
             continue
         x, sp = (parts[1], parts[0]) if len(parts) >= 2 else (parts[0], None)
         seen.add((parts[0], s.metric_column))
-        jobs["segment"].append(((x, s.metric_column, s.aggregation or "mean", sp),
+        agg = effective_agg(ctx.contract, s.metric_column, s.aggregation) or "mean"   # a level: current
+        jobs["segment"].append(((x, s.metric_column, agg, sp),
                                 [segment_id(s.segment_column, s.metric_column, s.aggregation)]))
     for i, t in enumerate(f.statistical_tests):
         if not task or not task.target_metrics or not task.segments:

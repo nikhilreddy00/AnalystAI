@@ -17,6 +17,15 @@ checks:
 - kind: must_not_number
   truth_key: naive_total_mrr
   rel_tol: 0.01
+- kind: must_not_number
+  truth_key: naive_mrr_by_plan.Starter
+  rel_tol: 0.01
+- kind: must_not_number
+  truth_key: naive_mrr_by_plan.Pro
+  rel_tol: 0.01
+- kind: must_not_number
+  truth_key: naive_mrr_by_plan.Scale
+  rel_tol: 0.01
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale

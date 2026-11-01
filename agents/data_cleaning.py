@@ -33,6 +33,8 @@ _ID_NAME_RE = re.compile(r"(?i)(_id$|^id_|^id$|_key$|_hash$|_uuid$|_code$)")
 # ── Layer 2 numeric patterns (order-dependent — comma stripping LAST) ─────────
 _CURRENCY_RE = re.compile(r"[₹¥₩₽₫฿$€£¢]|R\$|kr\.?|zł|CHF|AED|SAR|Rs\.?|USD|EUR|GBP|INR|JPY|CNY")
 _PCT_TAIL_RE = re.compile(r"\s*%\s*$")
+_EU_DECIMAL_RE = re.compile(r"-?\d{1,3}(?:\.\d{3})*,\d{1,2}|-?\d+,\d{1,2}")
+_US_DECIMAL_RE = re.compile(r"-?\d{1,3}(?:,\d{3})*\.\d+|-?\d+\.\d+")
 _RATING_RE = re.compile(r"\s*(?:out\s+of|/)\s*[\d.]+\s*$")
 _UNIT_RE = re.compile(
     r"(?i)\s*(?:kg|g|mg|ml|l|cm|mm|m|km|lb|oz|ft|in|sq\.?\s*ft|hrs?|mins?|secs?|pcs?|units?)\s*$"
@@ -115,9 +117,22 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
     cleaned = cleaned.replace({"nan": pd.NA, "None": pd.NA, "": pd.NA})
 
     transformations: list[str] = []
-    if cleaned.dropna().str.contains(_CURRENCY_RE, regex=True).any():
+    symbols = {m for v in cleaned.dropna() for m in _CURRENCY_RE.findall(v)}
+    if len(symbols) > 1:   # $ and € in one column: two currencies can't be added up
+        return None
+    if symbols:
         cleaned = cleaned.str.replace(_CURRENCY_RE, "", regex=True)
         transformations.append("currency symbol")
+    neg = cleaned.str.fullmatch(r"\(\s*([^()]+?)\s*\)").fillna(False).astype(bool)
+    if neg.any():   # accounting negatives: (3,000.00)
+        cleaned = cleaned.where(~neg, "-" + cleaned.str.slice(1, -1).str.strip())
+        transformations.append("parenthesised negatives")
+    filled = cleaned.dropna().str.strip()
+    if len(filled) and filled.str.fullmatch(_EU_DECIMAL_RE).mean() >= 0.8 \
+            and not filled.str.fullmatch(_US_DECIMAL_RE).any():
+        # 10,50 and 1.249,00: a decimal comma (Europe), not a thousands separator
+        cleaned = cleaned.str.strip().str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+        transformations.append("decimal comma")
     pct = cleaned.str.contains(_PCT_TAIL_RE, regex=True).fillna(False).astype(bool)
     if pct.any():
         cleaned = cleaned.str.replace(_PCT_TAIL_RE, "", regex=True)
