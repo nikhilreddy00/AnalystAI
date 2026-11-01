@@ -14,6 +14,7 @@ import re
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
@@ -436,7 +437,8 @@ Rules:
     )
 
 
-async def generate_proactive_questions(contract: DataContract, llm: LLMClient) -> list[str]:
+async def generate_proactive_questions(contract: DataContract, llm: LLMClient,
+                                       df: pd.DataFrame | None = None) -> list[str]:
     """
     FEAT-01: Generate contextual suggested questions based on the dataset schema.
     Called after data ingestion so the user sees relevant starting prompts.
@@ -469,7 +471,7 @@ Rules:
 - Questions should be immediately actionable (no setup needed)
 - Return a JSON array of 5 strings — no explanation, no markdown fences."""
     pack = pack_for(contract.domain)
-    firsts = first_questions(pack, contract.roles) if pack else []
+    firsts = first_questions(pack, contract.roles, df) if pack else []
     if firsts:   # 5.7: what a senior analyst of this domain asks first, that this data supports
         prompt += ("\n\nThis is " + pack.domain + " data. Questions a senior " + pack.domain +
                    " analyst asks first (adapt them to these columns):\n"

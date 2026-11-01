@@ -49,6 +49,7 @@ from scipy import stats
 
 from domain_pack import (
     additive,
+    money_rows,
     compute_kpi,
     computable,
     defaults_pack,
@@ -97,7 +98,9 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     pack = pack_for(contract.domain)
     conventions = defaults_pack(contract)   # strong match: the domain's defaults apply
     params = _asked_agg(params, contract, session.task_plan.raw_query)
-    named = {params.group_by, params.segment_column} & pii_columns(contract) if params else set()
+    ids = {c for r, c in contract.roles.items() if conventions and conventions.roles[r].kind == "id"}
+    # a pack id (Shopify's order number in 'Name') names no one, whatever the header rule says
+    named = {params.group_by, params.segment_column} & (pii_columns(contract) - ids) if params else set()
     if conventions and named:   # a sales report names no consumers ("top 10 customers by email")
         return _unanswerable(intent, f"{sorted(named)[0]} identifies people, so answers aren't "
                              "grouped by it", ["Ask by customer id, country or product instead"])
@@ -467,7 +470,9 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         hint = column_hint(contract, metric)
         extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
                  if c and c in df.columns and c not in (date, metric)]
-        s = df[[date, metric, *extra]].copy()
+        avg_week = ""
+        rows, kept = money_rows(df, contract, metric)   # a domain's money: the rows its chart counts
+        s = rows[[date, metric, *extra]].copy()
         s[date] = _local(pd.to_datetime(s[date], errors="coerce"))
         s = s.dropna(subset=[date, metric])
         if s.empty:
@@ -482,6 +487,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
                 # weekly flows asked by month: each month is its average week (4 or 5 weeks)
                 weeks = s[date].groupby(s[date].dt.to_period("M")).nunique()
                 series = series / weeks.reindex(series.index.to_period("M")).to_numpy()
+                avg_week = " (average week)"
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
@@ -509,9 +515,14 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     direction = "up" if last > first else ("down" if last < first else "flat")
     scope = f" for {params.segment_column} {group}" if group is not None else ""
     answer = (
-        f"{metric}{scope} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to "
+        f"{metric}{avg_week}{scope} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to "
         f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg, True)})."
-    )
+    ) if len(series) > 1 else (   # partial ends cut: one complete period is no trend
+        f"{metric}{avg_week}{scope} in {_period_name(series.index[-1], freq)} (freq={freq}, agg={_agg_name(agg, True)}): "
+        f"{_num(series.iloc[-1])}; there is no earlier complete period to compare with.")
+    if avg_week:
+        answer += " Weekly data: each month is its average week (months have 4 or 5 week-endings)."
+    answer += f" {kept}" if kept else ""
     if len(series) >= 2 and series.iloc[-2]:
         # "How did X change last month?" asks about the latest step, not the whole range.
         step = (series.iloc[-1] / series.iloc[-2] - 1) * 100
@@ -519,14 +530,21 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
                    f"{step:+.1f}% ({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
     answer += partial
     chart = _chart(
-        ChartType.LINE, f"{_of(agg, metric, True)} over time", chart_data,
-        x_key="period", y_keys=[metric], x_label="Period", y_label=_with_unit(_of(agg, metric, True), metric, contract),
+        ChartType.LINE, f"{_of(agg, metric, True)}{avg_week} over time", chart_data,
+        x_key="period", y_keys=[metric], x_label="Period",
+        y_label=_with_unit(_of(agg, metric, True), metric, contract) + avg_week,
         source="time_series",
     )
+    code = _code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
+                 agg, metric, contract, over=f"pd.Grouper(key={date!r}, freq={freq!r})")
+    if kept:
+        code = f"# rows: {kept}\n" + code
+    if avg_week:
+        code += (f"\n# each month ÷ its week-endings: "
+                 f"/ df.groupby(pd.to_datetime(df[{date!r}]).dt.to_period('M'))[{date!r}].nunique()")
     _why(chart, ctx, "targeted:time_series→line", f"{metric} over time, {agg} per period "
-         f"({freq}){scope}.", date, metric, agg, len(s),
-         code=_code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
-                    agg, metric, contract, over=f"pd.Grouper(key={date!r}, freq={freq!r})"))
+         f"({freq}){scope}{'; each month is its average week' if avg_week else ''}. {kept}".strip(), date, metric,
+         agg, len(s), code=code)
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
 
 
@@ -811,21 +829,34 @@ def _summed_kpi(pack, contract: DataContract, params: TargetedParams, df: pd.Dat
     return kpi if kinds - {"sale"} or main_currency(df, roles)[2] else None
 
 
-def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None) -> str:
-    """Growth with stores opening or closing inside the data is total growth, not like-for-like:
-    said whenever a store's first or last sale is more than four weeks inside the data's span
-    (opening dates inferred from first sales)."""
+def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
+                compared: tuple[pd.DataFrame, pd.DataFrame] | None = None) -> str:
+    """Growth with stores opening or closing between the compared periods is total growth, not
+    like-for-like: said when a store's first or last sale falls more than four weeks inside the
+    span compared (`compared`: the earlier and the later rows; default the whole data). Opening
+    dates are inferred from first sales."""
     store = contract.roles.get("store")
     if not (store and date and store in df.columns and date in df.columns):
         return ""
     t = _local(pd.to_datetime(df[date], errors="coerce"))
     span = t.groupby(df[store]).agg(["min", "max"])
     lo, hi = t.min(), t.max()
-    changed = int(((span["min"] > lo + pd.Timedelta(days=28)) | (span["max"] < hi - pd.Timedelta(days=28))).sum())
+    if compared:   # from the earlier window's start to the later one's end
+        lo = _local(pd.to_datetime(compared[0][date], errors="coerce")).min()
+        hi = _local(pd.to_datetime(compared[1][date], errors="coerce")).max()
+    month = pd.Timedelta(days=28)
+    opened = (span["min"] > lo + month) & (span["min"] <= hi)
+    closed = (span["max"] < hi - month) & (span["max"] >= lo)
+    changed = int((opened | closed).sum())
     if not changed:
         return ""
     return (f" {changed} of {len(span)} stores opened or closed within the data (opening dates "
             "inferred from first sales): this is total growth; like-for-like growth leaves them out.")
+
+
+def _period_name(stamp: pd.Timestamp, freq: str) -> str:
+    """2025-12-31 at Y → '2025', at Q → '2025Q4', at M → '2025-12'; a week by its ending date."""
+    return str(stamp.to_period(freq)) if freq in ("M", "Q", "Y") else f"week ending {stamp.date()}"
 
 
 def _cut_partial(series: pd.Series, t: pd.Series, freq: str, rule: str | None = None
@@ -857,7 +888,9 @@ def _cut_partial(series: pd.Series, t: pd.Series, freq: str, rule: str | None = 
     if last and d.max() < labels[-1].end_time.normalize():
         note += f" The last {unit} ({labels[-1]}) is left out: the data ends {d.max():%d %b %Y}."
         series, labels = series.iloc[:-1], labels[:-1]
-    if len(series) > 2 and thin(0) and d.min() > labels[0].start_time:   # never below 2 points
+    # a partial first bucket is never 'the period before' (a half year against a full one):
+    # cut even down to one point, which the answer says has nothing complete to compare with
+    if len(series) > 1 and thin(0) and d.min() > labels[0].start_time:
         note += f" The first {unit} ({labels[0]}) is left out: the data starts {d.min():%d %b %Y}."
         series = series.iloc[1:]
     return series, note
@@ -904,7 +937,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         if contract.domain_confidence == "weak" else []
     read = " " + lines[0] if lines else ""   # (a pack without that line says nothing)
     how = describe_kpi(pack, kpi.name, roles, present) + read + (
-        f" {currency} only: {other:,} rows in other currencies left out." if other and kind == "currency" else "")
+        f" {currency} only: {other:,} rows in other currencies left out." if other else "")   # counts too
     group = params.group_by or params.segment_column
     if group and group in df.columns:
         by = compute_kpi(df, roles, pack, kpi.name, by=group)
@@ -927,8 +960,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             elif lead in prior.index and lead in now.index and prior[lead]:
                 same = f" On the same days ({days}) {lead} was {fmt(now[lead])};" if cut else ""
                 answer += (f"{same} A year earlier ({prior_period}) {lead} was {fmt(prior[lead])} "
-                           f"({change(now[lead], prior[lead])}, same days).")
-            answer += stores_note(contract, full, date)
+                           f"({change(now[lead], prior[lead])}, same days)."
+                           + stores_note(contract, full, date, (prior_df, rows)))
         chart = _chart(ChartType.HORIZONTAL_BAR, f"{kpi.label} by {group}{where}",
                        [{group: str(k), kpi.label: float(v)} for k, v in by.items()],
                        x_key=group, y_keys=[kpi.label], x_label=group, y_label=kpi.label,
@@ -973,7 +1006,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
         if len(series) < 2:
             answer += "; there is no earlier complete period to compare with"
-        answer += "." + note + stores_note(contract, full, date)
+        answer += "." + note + (stores_note(contract, full, date) if len(series) > 1 else "")
         chart = _chart(ChartType.LINE, f"{kpi.label} over time{where}",
                        [{"period": f"{k.end_time:%Y-%m-%d}" if freq == "W" else str(k),
                          kpi.label: float(v)} for k, v in series.items()],
@@ -988,7 +1021,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         return _unanswerable(intent, f"{kpi.label.lower()} can't be computed from these rows",
                              ["Ask about a longer period"])
     answer = f"{kpi.label}{where}: {fmt(value)}."
-    if params.compare == "yoy" and date:
+    # one period asked on strong pack data: against the same period a year earlier when the data
+    # has it (seasonal sales: last January, never December), unasked, so silent when it can't
+    auto = params.compare is None and bool(params.period_start or params.period_end) \
+        and defaults_pack(contract) is not None
+    if (params.compare == "yoy" or auto) and date:
         prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                    weekly)
         prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name)
@@ -996,9 +1033,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         now = compute_kpi(rows, roles, pack, kpi.name)   # the same days as the year-earlier window
         same = f" On the same days ({days}): {fmt(now)}." if cut and prior and now else ""
         answer += same + (f" A year earlier ({prior_period}): {fmt(prior)} "
-                   f"({change(now, prior)} year over year, same days)." if prior and now
-                   else f" No year-earlier comparison: {why or 'nothing to compare'}.")
-        answer += stores_note(contract, full, date)
+                   f"({change(now, prior)} year over year, same days)."
+                   + stores_note(contract, full, date, (prior_df, rows)) if prior and now
+                   else "" if auto else f" No year-earlier comparison: {why or 'nothing to compare'}.")
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")
 
 

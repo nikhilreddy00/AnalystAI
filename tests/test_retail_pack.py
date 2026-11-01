@@ -1015,7 +1015,7 @@ def test_one_place_across_daylight_saving_is_local_and_places_are_utc_and_the_sc
     # UTC day); a per-pack "local clock" opt-in would fix it, stated as a known limit
 
 
-def test_complete_years_with_less_activity_are_kept_and_two_buckets_stay():
+def test_complete_years_with_less_activity_are_kept_and_stub_weeks_go():
     from agents.targeted_analysis_agent import _cut_partial
     days = pd.Series(list(pd.date_range("2022-01-01", "2022-12-31", freq="1D")) +
                      list(pd.date_range("2023-01-01", "2023-12-31", freq="2D")) +
@@ -1024,7 +1024,8 @@ def test_complete_years_with_less_activity_are_kept_and_two_buckets_stay():
     assert _cut_partial(years, days, "Y")[0].tolist() == [1.0, 2.0, 3.0]
     short = pd.Series(pd.date_range("2025-01-09", "2025-01-21"))
     weeks = pd.Series([1.0, 1.0, 1.0], index=pd.PeriodIndex(["2025-01-11", "2025-01-18", "2025-01-25"], freq="W-SAT"))
-    assert len(_cut_partial(weeks, short, "W", "W-SAT")[0]) >= 2
+    # both stub weeks (3 days each) are cut: one full week, nothing partial compared (audit pass 2)
+    assert _cut_partial(weeks, short, "W", "W-SAT")[0].index.astype(str).tolist() == ["2025-01-12/2025-01-18"]
 
 
 def test_two_buckets_of_month_start_data_keep_the_last_one():
@@ -1281,6 +1282,11 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     ("Sales in the promotion weeks grew 40% over the other weeks.", False),
     ("Units sold at a discount increased from 120 to 180.", False),
     ("The campaign weeks grew 8% but non-campaign weeks grew 10%.", False),
+    # audit pass 2 (M4): the trigger word's own change is a fact, not a cause (no object)
+    ("Discounts increased 15% year over year, to $4,210.", False),
+    ("Markdowns doubled in November.", False),
+    ("Total discount increased 12%.", False),
+    ("Promotions grew from 3 to 7 per month.", False),
 ])
 def test_promotions_given_credit_anywhere_in_the_claim(sentence, flagged):
     from guardrails import claim_causal_overreach
@@ -1306,6 +1312,10 @@ def test_profit_claims_need_a_cost_or_profit_column():
     assert claim_profit_without_cost("Sales may be up. Margin fell 3 points.", has_cost=False)
     # diff review: a capitalised name mid-sentence is a store or column value, not a claim
     assert claim_profit_without_cost("Net sales of the Profit Center store rose 4%.", has_cost=False) is None
+    # audit pass 2 (m3): asking for the missing cost data, or a name at the sentence start
+    assert claim_profit_without_cost("Add cost data to measure margin.", has_cost=False) is None
+    assert claim_profit_without_cost("Margin Street store leads net sales.", has_cost=False) is None
+    assert claim_profit_without_cost("Margin fell 3 points in March.", has_cost=False)
 
 
 def test_the_markdown_export_carries_how_the_numbers_were_counted():
@@ -1453,3 +1463,140 @@ def test_grouped_growth_says_stores_opened_too():
     s.__dict__["_df_parquet"] = buf.getvalue()
     text = run_targeted_analysis(s).answer_text
     assert "A year earlier" in text and "opened or closed" in text, text
+
+
+def _answer(df, intent, contract=None, **params):
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisSession, AnalysisTask, TargetedParams
+    buf = io.BytesIO()
+    df.to_parquet(buf)
+    s = AnalysisSession(session_id="x", data_contract=contract or _contract(df), task_plan=AnalysisTask(
+        raw_query="q", analysis_types=["eda"], target_metrics=[], question_intent=intent,
+        targeted_params=TargetedParams(**params)))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    return run_targeted_analysis(s)
+
+
+def test_a_partial_first_period_is_never_compared():
+    """Audit pass 2 (blocker): store_weeks starts 6 Jul 2024 and ends early in 2026; by year,
+    both 2024 and 2026 are partial, so there is no 'period before' for 2025 (it said +99.4%)."""
+    from orchestrator.state import QuestionIntent
+    text = _answer(_gen("store_weeks"), QuestionIntent.TIME_SERIES, kpi="net_sales",
+                frequency="Y").answer_text
+    assert "the period before" not in text and "first year (2024) is left out" in text, text
+    days = pd.date_range("2025-01-15", "2025-02-28")
+    csv = "Order ID,Order Date,SKU,Quantity,Unit Price\n" + "".join(
+        f"#{i},{d:%Y-%m-%d},SK-{i % 5},1,10\n" for i, d in enumerate(days))
+    text = _answer(_load(csv), QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="M").answer_text
+    assert "the period before" not in text and "no earlier complete period" in text, text
+
+
+def test_weekly_data_by_month_says_average_week_and_one_period_is_no_trend():
+    """Audit pass 2 (M1): the generic monthly answer on weekly data divides by the weeks, so its
+    answer, title and axis say 'average week'; with both partial years cut, one year is no trend."""
+    from orchestrator.state import QuestionIntent
+    r = _answer(_gen("store_weeks"), QuestionIntent.TIME_SERIES, metric_column="Net Sales",
+                frequency="M", aggregation="sum")
+    assert "average week" in r.answer_text and "average week" in r.chart_configs[0].y_label
+    assert "week-endings" in r.chart_configs[0].rationale.code
+    text = _answer(_gen("store_weeks"), QuestionIntent.TIME_SERIES, metric_column="Net Sales",
+                   frequency="Y", aggregation="sum").answer_text
+    assert text.startswith("Net Sales in 2025 ") and "no earlier complete period" in text, text
+
+
+def test_a_money_column_has_one_monthly_value_in_chart_and_answer():
+    """Audit pass 2 (M2): 'Total by month' on retail_lines counts the rows the trend chart counts
+    (sale and return rows in USD), and both say so; the chart's code names the filter."""
+    from agents.visualization_agent import build_context, month_line
+    from orchestrator.state import QuestionIntent
+    df = _gen("retail_lines")
+    c = _contract(df)
+    line = month_line(df, c.roles["date"], "Total", build_context(df, contract=c), monthly=True)
+    r = _answer(df, QuestionIntent.TIME_SERIES, contract=c, metric_column="Total", frequency="M",
+                aggregation="sum")
+    assert "Sale and return rows in USD only" in r.answer_text
+    assert "Sale and return rows" in line.rationale.reason and "# rows:" in line.rationale.code
+    answer = {d["period"][:7]: d["Total"] for d in r.chart_configs[0].data}
+    assert all(abs(answer[d["period"]] - d["Total"]) < 0.01 for d in line.data if d["period"] in answer)
+
+
+def test_shopifys_order_number_column_is_not_a_person():
+    """Audit pass 2 (M3): 'Name' in a Shopify export is the order number (#1001), the pack's
+    order id: grouping by it answers; Email still refuses."""
+    from orchestrator.state import QuestionIntent
+    df = _gen("retail_lines")
+    by_name = _answer(df, QuestionIntent.TOP_N, metric_column="Lineitem price", group_by="Name", n=5)
+    assert not by_name.unanswerable_reason, by_name.answer_text
+    by_email = _answer(df, QuestionIntent.TOP_N, metric_column="Lineitem price", group_by="Email", n=5)
+    assert "identifies people" in (by_email.unanswerable_reason or "")
+
+
+@pytest.mark.parametrize("question, briefed", [("Give me an overview of this dataset.", False),
+                                               ("What's the average order value by month?", True)])
+def test_a_weak_match_briefs_analysis_only_on_a_named_kpi(question, briefed):
+    """Audit pass 2 (M5): a weak match changes no default; the analysis brief (row rules,
+    currency, grain, tile KPIs) appears only for a KPI the user names."""
+    from agents.analysis_agent import _domain
+    from orchestrator.state import AnalysisTask
+    df = _gen("retail_lines")
+    c = _contract(df).model_copy(update={"domain_confidence": "weak"})
+    got = _domain(c, AnalysisTask(raw_query=question, analysis_types=["eda"], target_metrics=[]), None)
+    assert bool(got) is briefed
+    strong = _domain(c.model_copy(update={"domain_confidence": "strong"}),
+                     AnalysisTask(raw_query=question, analysis_types=["eda"], target_metrics=[]), None)
+    assert strong   # a strong match briefs both
+
+
+def test_the_stores_note_covers_only_the_periods_compared():
+    """Audit pass 2 (m2): store_weeks' 3 new stores open in 2026; Jul 2025 vs Jul 2024 compares
+    the same stores, so no note; Q1 2026 vs Q1 2025 does get it."""
+    from orchestrator.state import QuestionIntent
+    df = _gen("store_weeks")
+    ask = dict(kpi="net_sales", compare="yoy")
+    jul = _answer(df, QuestionIntent.SEGMENT_COMPARE, period_start="2025-07-01",
+                  period_end="2025-07-31", **ask).answer_text
+    q1 = _answer(df, QuestionIntent.SEGMENT_COMPARE, period_start="2026-01-01",
+                 period_end="2026-03-31", **ask).answer_text
+    assert "A year earlier" in jul and "opened or closed" not in jul, jul
+    assert "opened or closed" in q1, q1
+
+
+def test_a_count_kpi_says_other_currencies_were_left_out():
+    """Audit pass 2 (m4): Orders drops the CAD rows as the tile does, and says so as the tile does."""
+    from orchestrator.state import QuestionIntent
+    text = _answer(_gen("retail_lines"), QuestionIntent.TIME_SERIES, kpi="orders", frequency="M").answer_text
+    assert "USD only" in text and "other currencies left out" in text, text
+
+
+def test_first_questions_are_ones_this_data_answers():
+    """Audit pass 2 (m5): no returns question without return rows, no product question without a
+    product, no store question without stores, no last-year question under 13 months."""
+    from domain_pack import first_questions
+    lines, weeks = _gen("retail_lines"), _gen("store_weeks")
+    lq = first_questions(RETAIL, _contract(lines).roles, lines)
+    wq = first_questions(RETAIL, _contract(weeks).roles, weeks)
+    assert not any("stores" in q for q in lq) and any("returns" in q for q in lq)
+    assert not any("returns" in q or "products" in q for q in wq) and any("stores" in q for q in wq)
+    short = lines[pd.to_datetime(lines["Created at"], utc=True) >= pd.Timestamp("2025-06-01", tz="UTC")]
+    assert not any("last year" in q for q in first_questions(RETAIL, _contract(short).roles, short))
+
+
+def test_sales_returns_rate_is_the_return_rate():
+    """Audit pass 2 (m6): the consumed phrase 'sales returns' must not hide the KPI around it."""
+    from domain_pack import glossary_hits
+    assert [c for c, _ in glossary_hits(RETAIL, "sales returns rate by month", [])] == ["return_rate"]
+    assert [c for c, _ in glossary_hits(RETAIL, "total sales returns by month", [])] == []
+
+
+def test_one_month_asked_is_compared_with_the_same_month_last_year(shop):
+    """Plan trap M10 (audit pass 2, m7): 'net sales in January 2026' on strong retail data gets
+    January 2025 (+8%), never December (-30%); with no year earlier, no comparison is said."""
+    s, truth = shop
+    text = _ask(s, "net sales in January 2026", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+                period_start="2026-01-01", period_end="2026-01-31").answer_text
+    assert "year over year" in text and f"{truth['jan26_yoy_pct']:+.1f}%" in text, text
+    early = _ask(s, "net sales in March 2025", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+                 period_start="2025-03-01", period_end="2025-03-31").answer_text
+    assert "year" not in early.split("How:")[0], early

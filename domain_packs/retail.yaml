@@ -8,7 +8,8 @@ domain: retail
 # `price` or `invoice_no` + `total` alone are any domain's words (trades, claims, fuel, POs,
 # SaaS invoices).
 # Strong: shapes only retail data has. Carrying order fields down an order (a Shopify layout)
-# runs only on a strong match.
+# runs on any match whose own layout shows it (first-line-only values in most multi-line orders):
+# a real Shopify export can read as weak, and the evidence is the data's, not the domain's.
 strong:
   - {item: [sku], volume: [quantity], money: [unit_price, revenue, gross_revenue],
      order: [order_id]}                                              # order lines with SKUs
@@ -176,7 +177,7 @@ glossary:
         items in a typical basket]
   asp: [average selling price, avg selling price, asp, average unit price]
   gross_margin_pct: [gross margin, margin, gm%, margin rate]
-  return_rate: [return rate, returns rate, refund rate]
+  return_rate: [return rate, returns rate, refund rate, sales returns rate, sales return rate]
   comp: [like for like, like-for-like, lfl, comp sales, comparable sales, same store sales,
          same-store sales]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
@@ -210,9 +211,9 @@ causal_triggers: [discount, discounts, promo, promos, promotion, promotions, mar
                   campaign, campaigns, coupon, coupons, sale event, price cut, price cuts]
 
 first_questions:
-  - {q: "How are net sales trending, compared with the same period last year?", needs: [net_sales]}
-  - {q: "Which products make up most of net sales?", needs: [net_sales]}
+  - {q: "How are net sales trending, compared with the same period last year?", needs: [net_sales, year]}
+  - {q: "Which products make up most of net sales?", needs: [net_sales, sku|product]}
   - {q: "What is the average order value, and how has it changed?", needs: [aov]}
   - {q: "What is the gross margin, and which departments drive it?", needs: [gross_margin_pct]}
-  - {q: "How much of gross sales came back as returns?", needs: [return_rate]}
-  - {q: "Which stores or regions grew fastest?", needs: [net_sales]}
+  - {q: "How much of gross sales came back as returns?", needs: [return_rate, return|refunded]}
+  - {q: "Which stores or regions grew fastest?", needs: [net_sales, store]}

@@ -38,7 +38,7 @@ from agents.utils import (
     partial_last_month,
     weekly_cadence,
 )
-from domain_pack import compute_kpi, defaults_pack, describe_kpi, main_currency, row_kinds
+from domain_pack import compute_kpi, defaults_pack, describe_kpi, main_currency, money_rows, row_kinds
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -2214,13 +2214,7 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         monthly = True   # staggered snapshots: a day holds only some accounts, a month all
     extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
-    pack = defaults_pack(ctx.contract)
-    role = next((r for r, c in ctx.contract.roles.items() if c == metric), None) if pack else None
-    if role and pack.roles[role].kind == "money" and pack.roles[role].additive:
-        # a domain's money counts sale and return rows in the main currency, as its tiles do
-        roles = {r: c for r, c in ctx.contract.roles.items() if c in df.columns}
-        keep, _, _ = main_currency(df, roles)
-        df = df[keep & row_kinds(df, roles, pack).isin(["sale", "return"])]
+    df, kept = money_rows(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
     sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
@@ -2278,8 +2272,10 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         show_legend=bool(split), source_finding="time_series", split_key=split,
         value_format="percent" if rate else "number", layout_hint="full_width",
         rationale=ChartRationale(
-            rule="", reason=note, x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
-            code=f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
+            rule="", reason=" ".join(x for x in (note, kept) if x), x=date, y=metric, split=split,
+            aggregation=agg, n_rows=len(sub),
+            code=("# rows: " + kept + "\n" if kept else "")
+                 + f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
                  + (f"df.groupby({groupby})[{metric!r}].{agg}()" + (
                      f" / df.groupby(_period)[{date!r}].nunique()" if weekly else "") if not hint else
                     f"df.sort_values({date!r}).groupby([{groupby}, *{hint.aggregation_by!r}])"

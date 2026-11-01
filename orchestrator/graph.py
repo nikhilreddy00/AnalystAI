@@ -258,7 +258,9 @@ async def ingestion_node(state: AgentState) -> dict:
 
                 # FEAT-01: Auto-suggest questions after data connect
                 try:
-                    questions = await generate_proactive_questions(contract, get_client())
+                    raw = session.__dict__.get("_df_parquet")   # 5.7: questions this data answers
+                    frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(raw)) if raw else None
+                    questions = await generate_proactive_questions(contract, get_client(), frame)
                     if questions:
                         _emit(state, {
                             "type": "suggested_questions",

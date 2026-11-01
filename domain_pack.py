@@ -146,6 +146,10 @@ class Pack(_Strict):
         errors += [f"glossary {c}: neither a KPI, a definition nor unsupported" for c in self.glossary
                    if c not in names and c not in self.definitions and c not in self.unsupported]
         errors += [f"duplicate kpi {n}" for n in {n for n in names if names.count(n) > 1}]
+        errors += [f"first question needs {n}: not a KPI, a role, a row kind or 'year'"
+                   for q in self.first_questions if isinstance(q, dict)
+                   for need in q.get("needs", []) for n in need.split("|")   # "sku|product": either
+                   if n not in names and n not in self.roles and n not in ROW_KINDS and n != "year"]
         for k in self.kpis:
             for alt in [*k.num, *(k.den or [])]:
                 for t in alt:
@@ -615,6 +619,23 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     return df.assign(**{name: kinds.where(keep, "other_currency")}), name
 
 
+def money_rows(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, str]:
+    """(rows, how) for a strong-matched pack's additive money column: sale and return rows in the
+    main currency, as its tiles count them. The one filter every chart and answer of that column
+    uses (one number per name); anything else: every row, no note."""
+    pack = defaults_pack(contract)
+    role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
+    if not (role and pack.roles[role].kind == "money" and pack.roles[role].additive):
+        return df, ""
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    keep, currency, _ = main_currency(df, roles)
+    kept = keep & row_kinds(df, roles, pack).isin(["sale", "return"])
+    if kept.all():
+        return df, ""
+    return df[kept], (f"Sale and return rows{f' in {currency}' if currency else ''} only: "
+                      f"{int((~kept).sum()):,} other rows (test, cancelled, other currencies …) left out.")
+
+
 def defaults_pack(contract) -> Pack | None:
     """The pack whose conventions change default behaviour (tiles, sums by group, weekly months,
     partial weeks, follow-up checks): only on a strong match. A weak match changes nothing by
@@ -624,12 +645,24 @@ def defaults_pack(contract) -> Pack | None:
     return pack_for(contract.domain)
 
 
-def first_questions(pack: Pack, roles: dict[str, str]) -> list[str]:
-    """The pack's first questions this data can answer (no AOV question without order ids)."""
-    out = []
-    for q in pack.first_questions:
-        if isinstance(q, str):
-            out.append(q)
-        elif all(computable(pack, k, roles) for k in q.get("needs", [])):
-            out.append(str(q["q"]))
-    return out
+def first_questions(pack: Pack, roles: dict[str, str], df: pd.DataFrame | None = None) -> list[str]:
+    """The pack's first questions this data can answer. `needs` names KPIs (computable: no AOV
+    question without order ids), roles (a store column), row kinds (returns present) and "year"
+    (13 full months, for a same-period-last-year question); the last two need the frame.
+    "a|b" is either."""
+    kinds = set(row_kinds(df, roles, pack).unique()) if df is not None else None
+
+    def has(n: str) -> bool:
+        if pack.kpi(n):
+            return computable(pack, n, roles)
+        if n in pack.roles:
+            return n in roles
+        if df is None:
+            return True   # not knowable without the data: offered, as before
+        if n == "year":
+            t = pd.to_datetime(df[roles["date"]], errors="coerce").dropna() if "date" in roles else None
+            return t is not None and not t.empty and \
+                (t.max().to_period("M") - t.min().to_period("M")).n >= 13   # 13 full + a partial
+        return n in kinds
+    return [q if isinstance(q, str) else str(q["q"]) for q in pack.first_questions
+            if isinstance(q, str) or all(any(has(a) for a in n.split("|")) for n in q.get("needs", []))]

@@ -729,7 +729,11 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
 
 _SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
 _PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|over|across"
-_SUBJECT_VERB_RE = re.compile(r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b", re.I)
+# a verb with an object ('increased units'): 'Discounts increased 15%' is the discount's own change
+_SUBJECT_VERB_RE = re.compile(
+    r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b(?=\s+(?:the\s+|our\s+)?"
+    r"(?!(?:by|in|on|at|from|to|over|across|during|year|month|week|quarter|last|this|each|per|"
+    r"again|sharply|slightly|steadily|strongly|significantly|and|but)\b)[a-z])", re.I)
 
 
 def claim_causal_overreach(text: str, cited_kinds: list[str],
@@ -772,6 +776,7 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
     return None
 
 
+_COST_ASK_RE = re.compile(r"\b(?:costs?|cogs)\b", re.I)
 _PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
 
 
@@ -782,11 +787,12 @@ def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
     if has_cost:
         return None
     for sentence in _SENTENCE_RE.split(text):
-        if _HEDGE_RE.search(sentence):
-            continue
-        # 'the Profit Center store': a capital mid-sentence is a name, not a claim
+        if _HEDGE_RE.search(sentence) or _COST_ASK_RE.search(sentence):
+            continue   # hedged, or about the missing cost data ('Add cost data to measure margin')
+        # a name, not a claim: 'the Profit Center store', 'Margin Street store'
         if m := next((m for m in _PROFIT_RE.finditer(sentence)
-                      if m.start() == 0 or not m.group(0)[0].isupper()), None):
+                      if not m.group(0)[0].isupper()
+                      or (m.start() == 0 and not re.match(r"\s+[A-Z]", sentence[m.end():]))), None):
             return f"speaks of {m.group(0)} but the data has no cost or profit column"
     return None
 
