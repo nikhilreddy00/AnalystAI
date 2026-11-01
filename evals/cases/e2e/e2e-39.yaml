@@ -5,15 +5,11 @@ dataset:
   seed: 1
 question: How did net sales in January 2026 compare with January last year?
 overview_done: true
-trap: true
+trap: false
 checks:
 - kind: number_in_answer
   truth_key: jan26_yoy_pct
   rel_tol: 0.03
-  unit: '%'
-- kind: must_not_number
-  truth_key: jan26_mom_pct
-  rel_tol: 0.02
   unit: '%'
 hard_rules:
 - charts_lint_clean

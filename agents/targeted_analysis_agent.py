@@ -892,8 +892,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     where = f" ({period})" if period else ""
     present = set(row_kinds(df, roles, pack).unique())
     # every KPI answer on a weak match says how the file was read
-    read = (" " + pack_caveats(pack, None, roles, "weak", always=True)[0]
-            if contract.domain_confidence == "weak" else "")
+    lines = pack_caveats(pack, None, roles, "weak", always=True) \
+        if contract.domain_confidence == "weak" else []
+    read = " " + lines[0] if lines else ""   # (a pack without that line says nothing)
     how = describe_kpi(pack, kpi.name, roles, present) + read + (
         f" {currency} only: {other:,} rows in other currencies left out." if other and kind == "currency" else "")
     group = params.group_by or params.segment_column

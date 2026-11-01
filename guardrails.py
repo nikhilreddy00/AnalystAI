@@ -533,7 +533,7 @@ _MOM_RE = re.compile(r"\b(?:month[- ]over[- ]month|mom|month[- ]on[- ]month|last
                      r"monthly change|a month earlier)\b", re.I)
 _CAUSAL_RE = re.compile(r"\b(?:drives?|drove|driving|driven by|causes?|caused|causing|leads? to|"
                         r"led to|results? in|resulted in|resulting in|because of|thanks to|"
-                        r"boosts?|boosted|boosting|lifts?|lifted|lifting|fuel(?:s|ed|led|ing)?|"
+                        r"boosts?|boosted|boosting|lifts?|lifted|lifting|fuel(?:s|ed|led|ing)|"
                         r"pays? for (?:it|them)sel(?:f|ves)|makes? .{0,20}"
                         r"(?:rise|grow|increase))\b", re.I)
 _NOT_ASSERTED_RE = re.compile(r"\b(?:whether|if|test|experiment|validate|determine|isolate|"
@@ -727,22 +727,56 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
     return None
 
 
+_SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
+_SUBJECT_VERB_RE = re.compile(r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b", re.I)
+
+
 def claim_causal_overreach(text: str, cited_kinds: list[str],
                            triggers: list[str] | tuple = ()) -> str | None:
     """Cause asserted where every cited item is a correlation; or (Phase 5.7, a domain pack's
-    `causal_triggers`: discount, promo, campaign …) a cause given to one of those words in the
-    same asserted clause, whatever is cited, unless an experiment (a test) is cited: without a
-    control group a promotion's effect can't be told from the season or the mix."""
+    `causal_triggers`: discount, promo, campaign …) a cause given to one of those words,
+    whatever is cited, unless an experiment (a test) is cited: without a control group a
+    promotion's effect can't be told from the season or the mix. The trigger may sit anywhere in
+    the asserted span (up to the sentence's end or a contrast: '…, driven by the season and the
+    Black Friday promotions'), or be the subject ('The markdown increased units'); a hedged
+    span ('may', 'without a control group … unclear') is no claim."""
     for m in _CAUSAL_RE.finditer(text):
         clause = _clause_at(text, m.start(), m.end())
         if _NOT_ASSERTED_RE.search(clause):
             continue
         if cited_kinds and all(k == "correlation" for k in cited_kinds):
             return f"states a cause ('{m.group(0)}') from a correlation"
-        word = next((t for t in triggers if re.search(rf"\b{re.escape(t)}\b", clause, re.I)), None)
-        if word and "test" not in cited_kinds:
-            return (f"says the {word} caused a change ('{m.group(0)}'); without a control group "
-                    "that can't be told from the season or the mix")
+    if not triggers or "test" in cited_kinds:
+        return None
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        if _NOT_ASSERTED_RE.search(sentence) or re.search(r"\bunclear\b", sentence, re.I):
+            continue
+        verbs = [*_CAUSAL_RE.finditer(sentence), *_SUBJECT_VERB_RE.finditer(sentence)]
+        for v in verbs:
+            end = _SPAN_END_RE.search(sentence, v.end())
+            start = max((x.end() for x in _SPAN_END_RE.finditer(sentence, 0, v.start())), default=0)
+            span = sentence[start:end.start() if end else len(sentence)]
+            if _CAUSAL_RE.fullmatch(v.group(0)) is None:   # increased …: the trigger is the subject
+                span = sentence[start:v.start()]
+            word = next((t for t in triggers if re.search(rf"\b{re.escape(t)}\b", span, re.I)), None)
+            if word:
+                return (f"says the {word} caused a change ('{v.group(0)}'); without a control group "
+                        "that can't be told from the season or the mix")
+    return None
+
+
+_PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
+
+
+def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
+    """Profit or margin stated about data with no cost and no profit column (Phase 5.7): sales
+    alone say nothing about profit. Flagged, never removed (the user may have asked). A hedged
+    or negated sentence ('whether … a margin leak') states nothing, so it passes."""
+    if has_cost:
+        return None
+    for sentence in _SENTENCE_RE.split(text):
+        if (m := _PROFIT_RE.search(sentence)) and not _HEDGE_RE.search(sentence):
+            return f"speaks of {m.group(0)} but the data has no cost or profit column"
     return None
 
 

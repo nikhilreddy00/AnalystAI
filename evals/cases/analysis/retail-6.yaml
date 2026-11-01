@@ -19,7 +19,7 @@ checks:
   planted: true
   segment: Country
   truth_key: return_rate_by_country
-  abs_tol: 0.002
+  abs_tol: 0.0004
   scales:
   - 1
   - 100

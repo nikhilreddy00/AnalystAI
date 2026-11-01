@@ -24,6 +24,11 @@ checks:
   scope: report
 - kind: must_not_match
   pattern: \b(discount|promo\w*|markdown|campaign)s?\b[^.]{0,40}\b(drove|caused|boosted|lifted|fuell?ed)\b
+- kind: number_in_answer
+  truth_key: net_sales
+  rel_tol: 0.005
+- kind: must_match
+  pattern: How these numbers are counted
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale

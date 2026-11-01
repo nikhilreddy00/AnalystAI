@@ -5,7 +5,7 @@ pipeline: production
 dataset:
   name: b2b_invoices
   seed: 1
-question: What are net sales for each of our top-selling products (stock codes)?
+question: What are net sales for each of our 5 biggest products (stock codes) by sales value?
 task:
   analysis_types:
   - segmentation

@@ -1069,6 +1069,9 @@ def lint_case(case: dict) -> list[str]:
     checks = case.get("checks") or []
     if not checks:
         return ["no checks: all([]) would pass"]
+    known = ANALYSIS_CHECKS if "task" in case else E2E_CHECKS
+    problems += [f"unknown check kind {c['kind']!r}" for c in
+                 [*checks, *(x for t in case.get("turns", []) for x in t["checks"])] if c["kind"] not in known]
     df, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
     if all(c["kind"] in _NEGATIVE or c.get("check") in _NEGATIVE for c in checks):
         problems.append("only negative checks: a silent answer would pass")
@@ -1172,19 +1175,23 @@ def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | N
     kinds: dict = {}
     if suite == "e2e":
         cases = {c["id"]: c for c in load_cases("e2e", None)}
-        for r in paid[:1]:
-            for cid, rs in r["runs"].items():
+        # the newest FULL report: a smoke run (--only) has too few kinds (5.7: priced 2x low)
+        for r in [next((r for r in paid if not r["meta"].get("only")), None)] if paid else []:
+            for cid, rs in (r or {"runs": {}})["runs"].items():
                 if cid in cases:
                     kinds.setdefault(cases[cid].get("overview_done", False), []).extend(
                         x["cost_usd"] for x in rs)
     total = 0.0
+    by_id = {c["id"]: c for c in load_cases(suite, None)} if suite == "e2e" else {}
     for cid in case_ids:
         costs = next(([x["cost_usd"] for x in r["runs"][cid]] for r in paid if cid in r["runs"]), None)
+        case = by_id.get(cid, {})
         if not costs and kinds:
-            kind = next((c.get("overview_done", False) for c in load_cases("e2e", None)
-                         if c["id"] == cid), False)
-            costs = kinds.get(kind)
-        total += (statistics.mean(costs) if costs else average) * k
+            costs = kinds.get(case.get("overview_done", False))
+        cost = statistics.mean(costs) if costs else average
+        if case.get("turns") and not any(cid in r["runs"] for r in paid):   # each turn is a question
+            cost += len(case["turns"]) * statistics.mean(kinds.get(True) or [average])
+        total += cost * k
     return round(total, 2)
 
 

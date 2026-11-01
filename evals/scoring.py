@@ -439,6 +439,14 @@ def check_must_not_match(session: AnalysisSession, pattern: str,
     return m is None, f"matched forbidden '{m.group(0)}'" if m else "ok"
 
 
+def check_must_match(session: AnalysisSession, pattern: str,
+                     scope: str = "answer") -> tuple[bool, str]:
+    """Phase 5.7: what the report must say (a domain's 'how these numbers are counted')."""
+    m = re.search(pattern, report_text(session) if scope == "report" else answer_text(session),
+                  re.IGNORECASE)
+    return m is not None, f"said '{m.group(0)}'" if m else f"never says '{pattern}'"
+
+
 # ── Hard rules (recorded; gating starts in Phase 2/3) ─────────────────────────
 
 def _referenced_columns(f: AnalysisFindings) -> set[str]:
@@ -558,6 +566,7 @@ def check_findings(session: AnalysisSession, df: pd.DataFrame, truth: dict, chec
 E2E_CHECKS = {
     "number_in_answer": lambda s, df, truth, **kw: check_number_in_answer(s, truth, **kw),
     "must_not_match": lambda s, df, truth, **kw: check_must_not_match(s, **kw),
+    "must_match": lambda s, df, truth, **kw: check_must_match(s, **kw),
     "must_not_number": lambda s, df, truth, **kw: check_must_not_number(s, truth, **kw),
     "findings": lambda s, df, truth, **kw: check_findings(s, df, truth, **kw),
 }
@@ -635,6 +644,9 @@ INTAKE_SCALAR_FIELDS = ("metric_column", "date_column", "segment_column", "group
 
 
 def _intake_field(task: dict, field: str) -> Any:
+    if field == "by":   # Phase 5.7: the grouping column, however the intent holds it
+        p = task.get("targeted_params") or {}
+        return p.get("segment_column") or p.get("group_by")
     return task.get(field) if field in ("target_metrics", "segments") \
         else (task.get("targeted_params") or {}).get(field)
 

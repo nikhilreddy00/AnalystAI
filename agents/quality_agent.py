@@ -33,6 +33,7 @@ from guardrails import (
     UNTRUSTED_NOTE,
     check_columns,
     claim_causal_overreach,
+    claim_profit_without_cost,
     claim_direction_conflict,
     claim_group_conflict,
     claim_overstated_certainty,
@@ -166,6 +167,7 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     contract = session.data_contract
     pack = pack_for(contract.domain) if contract else None
     triggers = pack.causal_triggers if pack else ()
+    has_cost = not pack or bool({"cost", "unit_cost", "profit"} & set(contract.roles))
     flags: list[ReviewFlag] = []
     for i, c in enumerate(report_claims(report)):
         text, ids = c["text"], [x for x in c["ids"] if x in evidence]
@@ -200,6 +202,8 @@ def check_claims(session: AnalysisSession, report: InsightReport,
         elif r := claim_overstated_certainty(text, [e.confidence_reason for e in cited
                                                     if e.confidence == "low"]):
             found = ("certainty", "overstated", r)
+        elif r := claim_profit_without_cost(text, has_cost):
+            found = ("basis", "unsupported", r)
         if found:
             flags.append(ReviewFlag(index=i, section=c["section"], claim=text, kind=found[0],
                                     label=found[1], reason=str(mask_pii(found[2])),

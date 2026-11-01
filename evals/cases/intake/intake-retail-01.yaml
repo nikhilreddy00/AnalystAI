@@ -14,4 +14,6 @@ expect:
   - time_series
   params:
     kpi: aov
+  columns:
+    by: Shipping Country
 rationale: Basket size is the pack's AOV (net sales per distinct order), not a column's mean.

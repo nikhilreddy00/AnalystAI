@@ -168,6 +168,7 @@ kpis:
 
 glossary:
   net_sales: [net sales, revenue, turnover, takings, gmv, sales]
+  gross_sales: [gross sales, gross revenue]
   aov: [average order value, avg order value, aov, basket size, basket value, atv,
         average transaction value, average ticket]
   upt: [units per transaction, units per order, upt, items per basket, basket depth,
@@ -181,6 +182,9 @@ glossary:
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
   repeat_rate: [repeat rate, repeat customers, returning customers, repeat purchase rate]
   sell_through: [sell through, sell-through, sellthrough]
+# Phrases that contain a KPI's word but mean something else: they use up their words.
+consumed: [sales tax, cost of sales, sales rep, sales reps, sales per square foot, sales returns,
+           sales channel, sales team]
 definitions:
   comp: "Like-for-like (comp) growth counts only stores, channels or products selling through BOTH periods compared (a store that opened or closed in either period is left out); total growth includes them. Say which one a number is."
   yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
@@ -206,8 +210,9 @@ causal_triggers: [discount, discounts, promo, promos, promotion, promotions, mar
                   campaign, campaigns, coupon, coupons, sale event, price cut, price cuts]
 
 first_questions:
-  - How are net sales trending, compared with the same period last year?
-  - Which products make up most of net sales?
-  - What is the average order value, and how has it changed?
-  - Which country or region grew fastest?
-  - How much of gross sales came back as returns?
+  - {q: "How are net sales trending, compared with the same period last year?", needs: [net_sales]}
+  - {q: "Which products make up most of net sales?", needs: [net_sales]}
+  - {q: "What is the average order value, and how has it changed?", needs: [aov]}
+  - {q: "What is the gross margin, and which departments drive it?", needs: [gross_margin_pct]}
+  - {q: "How much of gross sales came back as returns?", needs: [return_rate]}
+  - {q: "Which stores or regions grew fastest?", needs: [net_sales]}

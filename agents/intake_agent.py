@@ -18,7 +18,7 @@ from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
-from domain_pack import computable, describe_kpi, glossary_hits, pack_for
+from domain_pack import computable, describe_kpi, first_questions, glossary_hits, kpi_roles, pack_for
 from guardrails import (
     PLAN_LIST_FIELDS,
     PLAN_SCALAR_FIELDS,
@@ -178,7 +178,11 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
         params["kpi"] = None
     kpis = [c for c, _ in glossary_hits(pack, message, [c.name for c in contract.columns])
             if pack.kpi(c)]
-    if not params.get("kpi") and len(kpis) == 1:
+    role = next((r for r, c in contract.roles.items() if c == params.get("metric_column")), None)
+    # the model's own column wins when it is not one of the KPI's ("sales tax" → the Tax column)
+    model_column = params.get("metric_column") and (role is None or role not in kpi_roles(pack, kpis[0])) \
+        if kpis else False
+    if not params.get("kpi") and len(kpis) == 1 and not model_column:
         params["kpi"] = kpis[0]
     for f in ("period_start", "period_end"):   # 2025-03-31, or a whole month / year: 2025-03, 2025
         if params.get(f):
@@ -468,10 +472,11 @@ Rules:
 - Questions should be immediately actionable (no setup needed)
 - Return a JSON array of 5 strings — no explanation, no markdown fences."""
     pack = pack_for(contract.domain)
-    if pack and pack.first_questions:   # 5.7: what a senior analyst of this domain asks first
+    firsts = first_questions(pack, contract.roles) if pack else []
+    if firsts:   # 5.7: what a senior analyst of this domain asks first, that this data supports
         prompt += ("\n\nThis is " + pack.domain + " data. Questions a senior " + pack.domain +
-                   " analyst asks first (adapt them to these columns; keep the ones it can answer):\n"
-                   + "\n".join(f"- {q}" for q in pack.first_questions))
+                   " analyst asks first (adapt them to these columns):\n"
+                   + "\n".join(f"- {q}" for q in firsts))
 
     try:
         response = await llm.complete(
@@ -486,8 +491,8 @@ Rules:
     except Exception as exc:
         logger.warning("intake: suggested questions fell back to defaults: %s", exc)
 
-    if pack and pack.first_questions:   # the domain's own first questions, as written
-        return pack.first_questions[:5]
+    if firsts:   # the domain's own first questions this data supports
+        return firsts[:5]
     # Fallback: generate generic but dataset-aware questions
     fallback = []
     if metric_cols:

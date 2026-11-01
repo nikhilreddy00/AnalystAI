@@ -53,7 +53,7 @@ export default function KPISection({ briefing }: Props) {
             label={kpi.label}
             value={kpi.value}
             sublabel={kpi.recipe?.kind === "pack" && hasActiveFilters
-              ? "Whole dataset: not recomputed for filters"
+              ? ["Whole dataset: not recomputed for filters", kpi.context].filter(Boolean).join(" · ")
               : kpi.context || undefined}
             filteredValue={filteredValue}
             hasActiveFilters={hasActiveFilters}

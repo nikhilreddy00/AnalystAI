@@ -14,4 +14,6 @@ expect:
   - time_series
   params:
     kpi: aov
+  columns:
+    by: Shipping Country
 rationale: ATV (average transaction value) is AOV.

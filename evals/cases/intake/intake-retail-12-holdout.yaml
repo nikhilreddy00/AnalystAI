@@ -5,7 +5,7 @@ source:
   dataset: b2b_invoices
   seed: 1
 overview_done: true
-question: How much did we sell in 2025 versus the year before?
+question: How much did we sell in January 2026 versus January the year before?
 expect:
   ask: false
   intent_any:
@@ -15,6 +15,6 @@ expect:
   params:
     compare: yoy
   period:
-  - '2025-01-01'
-  - '2025-12-31'
+  - '2026-01-01'
+  - '2026-01-31'
 rationale: 'A bare year against the year before: the year as the period, yoy.'

@@ -229,11 +229,13 @@ def test_lint_accepts_a_reversed_pair_and_a_year_in_the_question(monkeypatch):  
     import pandas as pd
     monkeypatch.setattr(datagen, "make", lambda n, s: (pd.DataFrame({"c": [datagen.INJECTION]}),
                                                        {"x": 47.0}))
-    case = {"dataset": {"name": "n", "seed": 1}, "question": "Compare 2012 with now",
+    # Two cases: analysis and E2E check kinds never mix in one (the lint rejects unknown kinds)
+    pair = {"dataset": {"name": "n", "seed": 1}, "task": {}, "question": "q",
             "checks": [{"kind": "correlation_absent", "a": "p", "b": "q"},
-                       {"kind": "pair_reported", "a": "q", "b": "p"},
-                       {"kind": "number_in_answer", "truth_key": "x"}]}
-    assert lint_case(case) == []
+                       {"kind": "pair_reported", "a": "q", "b": "p"}]}
+    year = {"dataset": {"name": "n", "seed": 1}, "question": "Compare 2012 with now",
+            "checks": [{"kind": "number_in_answer", "truth_key": "x"}]}
+    assert lint_case(pair) == [] and lint_case(year) == []
 
 
 # ── WP1 review findings ────────────────────────────────────────────────────────────────────

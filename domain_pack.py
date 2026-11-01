@@ -104,10 +104,12 @@ class Pack(_Strict):
     kpis: list[KPI] = Field(default_factory=list)
     glossary: dict[str, list[str]] = Field(default_factory=dict)   # KPI or concept → its words
     definitions: dict[str, str] = Field(default_factory=dict)      # a non-KPI concept → its rule
+    consumed: list[str] = Field(default_factory=list)   # "sales tax": uses its words, means none
     unsupported: dict[str, str] = Field(default_factory=dict)      # concept → what it needs
     caveats: dict[str, str] = Field(default_factory=dict)          # condition → text
     causal_triggers: list[str] = Field(default_factory=list)
-    first_questions: list[str] = Field(default_factory=list)
+    # Plain text, or {q, needs: [KPI…]}: offered only when the data supports what it needs
+    first_questions: list[str | dict[str, str | list[str]]] = Field(default_factory=list)
 
     def kpi(self, name: str) -> KPI | None:
         return next((k for k in self.kpis if k.name == name), None)
@@ -420,6 +422,16 @@ def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
     return kpi is not None and side(kpi.num) and (kpi.den is None or side(kpi.den))
 
 
+def kpi_roles(pack: Pack, name: str) -> set[str]:
+    """Every role a KPI can read, through the KPIs it refers to."""
+    kpi = pack.kpi(name)
+    out: set[str] = set()
+    for alt in [*kpi.num, *(kpi.den or [])]:
+        for t in alt:
+            out |= set(t.roles()) | (kpi_roles(pack, t.kpi) if t.kpi else set())
+    return out
+
+
 def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                  present: set[str] = frozenset(ROW_KINDS)) -> str:
     """How a KPI was computed on this data, in words, from the alternative that applied. Only
@@ -457,14 +469,19 @@ def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[s
     revenue column needs no glossary)."""
     q = question.lower()
     own = {normalize_header(c) for c in columns}
-    hits = []
-    for concept, words in pack.glossary.items():
-        for w in sorted(words, key=len, reverse=True):
-            if re.search(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q):
-                if normalize_header(w) not in own:
-                    hits.append((concept, w))
-                break
-    return hits
+    found = [(m.start(), m.end(), concept, w)
+             for concept, words in [*pack.glossary.items(), (None, pack.consumed)]
+             for w in words for m in re.finditer(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q)]
+    taken: list[tuple[int, int]] = []
+    hits: dict[str, str] = {}
+    # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales")
+    for start, end, concept, w in sorted(found, key=lambda f: f[0] - f[1]):
+        if any(start < e and s < end for s, e in taken):
+            continue
+        taken.append((start, end))
+        if concept and normalize_header(w) not in own and concept not in hits:
+            hits[concept] = w
+    return list(hits.items())
 
 
 def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(ROW_KINDS)) -> str:
@@ -588,3 +605,14 @@ def defaults_pack(contract) -> Pack | None:
     if contract is None or contract.domain_confidence != "strong":
         return None
     return pack_for(contract.domain)
+
+
+def first_questions(pack: Pack, roles: dict[str, str]) -> list[str]:
+    """The pack's first questions this data can answer (no AOV question without order ids)."""
+    out = []
+    for q in pack.first_questions:
+        if isinstance(q, str):
+            out.append(q)
+        elif all(computable(pack, k, roles) for k in q.get("needs", [])):
+            out.append(str(q["q"]))
+    return out

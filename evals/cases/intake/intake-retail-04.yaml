@@ -2,10 +2,10 @@ id: intake-retail-04
 category: clear
 pipeline: production
 source:
-  dataset: retail_lines
+  dataset: store_weeks
   seed: 1
 overview_done: true
-question: What were net sales in Q4 2025 compared with the same quarter the year before?
+question: What were net sales in Q1 2026 compared with the same quarter the year before?
 expect:
   ask: false
   intent_any:
@@ -16,6 +16,6 @@ expect:
     kpi: net_sales
     compare: yoy
   period:
-  - '2025-10-01'
-  - '2025-12-31'
+  - '2026-01-01'
+  - '2026-03-31'
 rationale: 'A quarter compared with the same quarter a year earlier: period + yoy, net sales.'

@@ -14,4 +14,6 @@ expect:
   - time_series
   params:
     kpi: net_sales
+  columns:
+    by: Region
 rationale: Turnover is net sales.
