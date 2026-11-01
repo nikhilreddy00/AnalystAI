@@ -18,6 +18,14 @@ Allowed operations, in order. Each change is one CleaningDecision:
 8. drop_column     only when the user chose it at the high-null gate
 9. flag            outliers (agents/anomaly_detector.py); never removed
 
+When the data matched a domain pack (Phase 5.7, domain_pack.py), the pack adds, with the same
+operations: its numeric sentinels (9999 units) → sentinel_null; ids written as whole floats
+(CustomerID 17850.0) → type_coerce; duplicates keyed by order + product → drop_duplicates;
+fields an export writes on an order's first line only → fill_within_order (the order's own
+value, never a guess: an order with two different values is left as it is); return, refunded,
+cancelled, test and non-product lines and out-of-range values → flag (kept: KPIs leave them out
+by rule). The audit records the grain: line, order or aggregate.
+
 Before returning, three guardrails re-check the result against the input: rows reconcile with
 the decisions, every changed column has a decision, protected columns gained no values.
 LangGraph routes on CleaningAudit.high_null_columns to the approval gate.
@@ -28,7 +36,7 @@ import io
 import json
 import re
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -39,8 +47,9 @@ from agents.data_cleaning import (
     try_numeric_conversion,
 )
 from agents.errors import GuardrailViolation
-from agents.utils import pii_columns
+from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
+from domain_pack import Pack, pack_for, row_kinds
 from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
 from llm.client import trace_verdict
 from orchestrator.state import (
@@ -74,7 +83,8 @@ CLEANING_CARD = AgentCard(
             "Label variants merge only when equal after trimming, collapsing spaces and ignoring "
             "case; the most common spelling wins.",
             "Targeted follow-up questions skip cleaning (they read the uploaded data as-is)."],
-    refusal_rules=["Never fill ID, date or target-metric columns.",
+    refusal_rules=["Never fill ID, date or target-metric columns (carrying an order's own value "
+                   "to its other lines is not a fill).",
                    "Never remove a row without a decision that counts it.",
                    "Never change a column's values without a decision that names it.",
                    "Never remove outliers: flag them only.",
@@ -108,6 +118,8 @@ class CleanContext:
     # PHI mode's working copy (5.5): withheld columns and pooled labels can make distinct records
     # look identical, so duplicates were judged on the raw rows already (prepare_frame).
     deidentified: bool = False
+    pack: Pack | None = None   # 5.7: the data's domain pack and its roles → columns
+    roles: dict[str, str] = field(default_factory=dict)
 
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
@@ -122,9 +134,11 @@ def build_context(session: AnalysisSession, drop_high_null: bool = False) -> Cle
     dates = {c.name for c in contract.columns if c.is_date} - ids
     task = session.task_plan
     targets = {m for m in (task.target_metrics if task else []) if m in df.columns}
+    pack = pack_for(contract.domain)
     return CleanContext(df=df, ids=ids, dates=dates, targets=targets,
                         drop_high_null=drop_high_null, pii=pii_columns(contract),
-                        deidentified=contract.deidentified)
+                        deidentified=contract.deidentified, pack=pack,
+                        roles={r: c for r, c in contract.roles.items() if c in df.columns} if pack else {})
 
 
 def _code_like(s: pd.Series) -> bool:
@@ -247,6 +261,28 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                               if lost else "")
         log(col, "type_coerce", strategy, reason, int(new.notna().sum()), pct, _null_pct(new))
 
+    # 3b. The domain pack: numeric codes for "unknown" (9999 units) and ids read as floats.
+    if ctx.pack:
+        for role, codes in ctx.pack.sentinels.items():
+            col = ctx.roles.get(role)
+            if col is None or not pd.api.types.is_numeric_dtype(df[col]):
+                continue
+            hit = df[col].isin(codes)
+            if n := int(hit.sum()):
+                pct, found = _null_pct(df[col]), sorted(df.loc[hit, col].unique())
+                df[col] = df[col].mask(hit)
+                log(col, "sentinel_null", "numeric_sentinel",
+                    f"{n} values coded {', '.join(f'{c:g}' for c in found)} (the export's 'unknown', "
+                    f"not a real {role.replace('_', ' ')}) read as missing.", n, pct, _null_pct(df[col]))
+        for role, col in ctx.roles.items():
+            s = df[col]
+            if ctx.pack.roles[role].kind == "id" and pd.api.types.is_float_dtype(s) and \
+                    s.notna().any() and (s.dropna() % 1 == 0).all():
+                df[col] = s.astype("Int64")
+                log(col, "type_coerce", "whole_number_id", "Identifiers read as decimals "
+                    "(17850.0, because some are blank) shown as whole numbers.", int(s.notna().sum()),
+                    _null_pct(s), _null_pct(s))
+
     # 4. Label variants: trim, and merge spellings equal up to case and spacing.
     for col in _text_cols(df, skip | ids):
         s = df[col]
@@ -278,6 +314,9 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     n_dup = int(dup.sum())
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
+    order, item = ctx.roles.get("order_id"), ctx.roles.get("sku") or ctx.roles.get("product")
+    if order and item and df[order].dropna().duplicated().any():   # an order line: its order and
+        keys = [f"{order} + {item}"]                               # product say what one is
     if n_dup and keys and not ctx.deidentified:
         df = df[~dup]
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
@@ -288,6 +327,30 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                "there is no ID column to tell a copy from a repeated record")
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
             f"{why}.", n_dup)
+
+    # 5b. Order-level fields on an order's first line only: carried down the order.
+    if ctx.pack and order:
+        by = df[order]
+        for role in ctx.pack.order_fields:
+            col = ctx.roles.get(role)
+            if col is None or col == order or not df[col].isna().any():
+                continue
+            values = df[col].groupby(by).transform("nunique")
+            gap = df[col].isna() & by.notna() & values.eq(1)
+            if n := int(gap.sum()):
+                pct = _null_pct(df[col])
+                df.loc[gap, col] = df[col].groupby(by).transform("first")[gap]
+                log(col, "fill_within_order", "order_value",
+                    f"{n} lines took their order's own {role.replace('_', ' ')} (the export writes it "
+                    "on an order's first line only).", n, pct, _null_pct(df[col]))
+            mixed = int(df[col].groupby(by).transform("nunique").gt(1).sum())
+            if mixed:
+                log(col, "flag", "order_conflict", f"{mixed} lines belong to orders with two "
+                    f"different {role.replace('_', ' ')} values; left as they are.", mixed)
+    grain = None
+    if ctx.pack:
+        grain = ("aggregate" if not order else
+                 "line" if df[order].dropna().duplicated().any() else "order")
 
     # 6. Rows with no value at all.
     n = len(df)
@@ -335,11 +398,38 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     _, anomaly_report = detect_anomalies(flat, classify_columns(flat))
     outliers = [f.message for f in anomaly_report.flags]
 
+    # 9b. The domain pack's row kinds and valid ranges: flagged and kept. KPIs leave them out
+    #     by rule (domain_pack.row_kinds); the rows stay for any other question.
+    if ctx.pack:
+        kinds = row_kinds(df, ctx.roles, ctx.pack).value_counts()
+        for kind, what in (("return", "return or credit lines (a negative quantity or amount, or "
+                                      "a credit note): netted in net sales"),
+                           ("refunded", "lines of refunded orders: left out of net sales"),
+                           ("cancel", "lines of cancelled or voided orders: left out of sales"),
+                           ("test", "test-order lines: left out of sales"),
+                           ("non_product", "postage, fee or adjustment lines: left out of product "
+                                           "and sales figures")):
+            if n := int(kinds.get(kind, 0)):
+                log("*", "flag", kind, f"{n} {what}; kept in the data.", n)
+        for role, bounds in ctx.pack.ranges.items():
+            col = ctx.roles.get(role)
+            if col is None or not pd.api.types.is_numeric_dtype(df[col]):
+                continue
+            s = df[col]
+            bad = pd.Series(False, index=df.index)
+            for op, v in bounds.items():
+                bad |= {"gt": s <= v, "ge": s < v, "lt": s >= v, "le": s > v}[op]
+            if n := int(bad.sum()):
+                log(col, "flag", "out_of_range", f"{n} values outside the valid range "
+                    f"({', '.join(f'{op} {v:g}' for op, v in bounds.items())}); kept, check them.", n)
+
     rows_before, rows_after = len(before), len(df)
     for rule, reason in (
             ("unreconciled_rows", unreconciled_rows(rows_before, rows_after, decisions)),
             ("unlogged_changes", unlogged_changes(before, df, {d.column for d in decisions})),
-            ("protected_filled", protected_filled(before, df, protected))):
+            # an order's own value carried down its lines is not a fill (5b): those columns only
+            ("protected_filled", protected_filled(before, df, protected - {
+                d.column for d in decisions if d.operation == "fill_within_order"}))):
         if reason:   # a bug in the rules above, never the user's data: fail loudly
             trace_verdict("cleaning", CLEANING_CARD.version, rule)
             raise GuardrailViolation("cleaning", reason,
@@ -359,6 +449,9 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
         date_ranges=_date_ranges(df, ctx.pii),
+        grain=grain,
+        partial_months={c: [str(df[c].max().to_period("M")), int(df[c].max().day)]
+                        for c in _date_ranges(df, ctx.pii) if partial_last_month(df[c])},
     )
     return df, audit
 

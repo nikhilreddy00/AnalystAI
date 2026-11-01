@@ -31,7 +31,7 @@ roles:
   profit:        {kind: money, headers: [profit, gross_profit, margin_amount, gross_margin_amount]}
   # An order / invoice / receipt number: "#1001", "536365", "C536379", "INV-0042", "O00017",
   # "CA-2025-152156" (Superstore). Never a person's name: it must carry digits.
-  order_id:      {kind: id, pattern: '#?[A-Za-z]{0,4}(-?\d{2,}){1,3}',
+  order_id:      {kind: id, pattern: '#?[A-Za-z]{0,4}-?\d{2,}(?:-\d{2,}){0,2}',
                   headers: [order_id, order_no, order_number, order, name, invoiceno, invoice_no,
                             invoice, invoice_number, invoice_id, receipt_no, receipt_id,
                             transaction_id, ticket_no]}
@@ -66,7 +66,10 @@ non_product: {sku: [POST, DOT, M, D, C2, BANK CHARGES, AMAZONFEE, CRUK, S, PADS]
 test_marker: '^test\b|^test@|@test\.'
 test_roles: [email, customer_id, order_id]
 sentinels: {unit_price: [-1, 9999, 99999], quantity: [9999, 99999], cost: [-1, 9999, 99999]}
-never_impute: [revenue, order_total, quantity, unit_price, discount, cost, unit_cost, profit]
+ranges: {unit_price: {ge: 0}, discount_rate: {le: 1}}
+# Shopify writes these on an order's first line only; the total stays there (summing it down an
+# order's lines would count it once per line).
+order_fields: [discount, status, email, customer_id, country, currency, channel]
 
 kpis:
   # Net sales: the revenue column if there is one, else quantity × price less order discounts.

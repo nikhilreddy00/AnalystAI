@@ -82,8 +82,10 @@ class Pack(_Strict):
     non_product: dict[str, list[str]] = Field(default_factory=dict)   # role → values (POST)
     test_marker: str | None = None  # regex on the raw order / customer / email values
     test_roles: list[str] = Field(default_factory=list)
-    sentinels: dict[str, list[float]] = Field(default_factory=dict)
-    never_impute: list[str] = Field(default_factory=list)
+    sentinels: dict[str, list[float]] = Field(default_factory=dict)   # role → codes for "unknown"
+    ranges: dict[str, dict[Literal["gt", "ge", "lt", "le"], float]] = Field(default_factory=dict)
+    # Fields an export writes on an order's first line only (Shopify): carried down the order.
+    order_fields: list[str] = Field(default_factory=list)
     kpis: list[KPI] = Field(default_factory=list)
     glossary: dict[str, list[str]] = Field(default_factory=dict)   # KPI or concept → its words
     unsupported: dict[str, str] = Field(default_factory=dict)      # concept → what it needs
@@ -106,7 +108,7 @@ class Pack(_Strict):
                 if (other := seen.get(h)) and self.roles[other].kind == r.kind:
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
-        refs = [*self.never_impute, *self.sentinels, *self.credit_prefix, *self.non_product,
+        refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
                 *self.test_roles, *(r for g in self.signals.values() for r in g)]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
         if len(self.signals) < 2:
@@ -157,8 +159,10 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
     vals = s.dropna()
     if vals.empty:
         return False
-    if role.pattern and vals.astype(str).str.fullmatch(role.pattern).mean() < 0.9:
-        return False
+    if role.pattern:   # a capped sample of short values: a pack regex never runs on a whole upload
+        text = vals.head(1000).astype(str)
+        if text.str.len().gt(40).any() or text.str.fullmatch(role.pattern).mean() < 0.9:
+            return False
     numeric = pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s)
     if not numeric and role.kind in ("money", "count", "rate"):
         # "£2.55": text at load, a number after Cleaning's type_coerce (the same converter)
@@ -330,3 +334,47 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if by:
         return value if len(value) else None
     return None if pd.isna(value) else float(value)
+
+
+_ROWS_TEXT = {"sale": "sales", "return": "returns", "refunded": "refunded orders",
+              "cancel": "cancelled orders", "test": "test orders", "non_product": "non-product lines"}
+
+
+def used_terms(pack: Pack, kpi: KPI, roles: dict[str, str], side: str = "num") -> list[Term]:
+    """The terms of the alternative compute_kpi uses for this data (the first whose roles exist)."""
+    for alt in getattr(kpi, side) or []:
+        usable = [t for t in alt if all(r in roles for r in t.roles())]
+        if all(t.optional or t in usable for t in alt):
+            return usable
+    return []
+
+
+def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
+                 present: set[str] = frozenset(ROW_KINDS)) -> str:
+    """How a KPI was computed on this data, in words, from the alternative that applied. Only
+    the row kinds the data has (`present`) are named as left out."""
+    kpi = pack.kpi(name)
+
+    def term(t: Term) -> str:
+        if t.kpi:
+            return pack.kpi(t.kpi).label.lower()
+        if t.nunique:
+            return f"distinct {roles[t.nunique]}"
+        expr = t.sum if t.sum is not None else t.sum_abs
+        cols = roles[expr] if isinstance(expr, str) else (
+            f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
+        once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
+            and "order_id" in roles else ""
+        return f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}"
+
+    def side(name_: str) -> str:
+        terms = used_terms(pack, kpi, roles, name_)
+        return " ".join(("less " if t.sign < 0 else ("plus " if i else "")) + term(t)
+                        for i, t in enumerate(terms))
+
+    text = side("num") + (f", divided by {side('den')}" if kpi.den else "")
+    if any(not t.kpi for t in used_terms(pack, kpi, roles)):   # a ratio of KPIs says it there
+        left_out = [_ROWS_TEXT[k] for k in ROW_KINDS if k not in kpi.rows and k in present]
+        text += f"; over {' and '.join(_ROWS_TEXT[k] for k in kpi.rows)}"
+        text += f" ({', '.join(left_out)} left out)" if left_out else ""
+    return text[0].upper() + text[1:] + "."

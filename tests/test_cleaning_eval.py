@@ -2,10 +2,12 @@
 fails every planted issue, and over-cleaning is caught (offline, no model)."""
 import pandas as pd
 
-from evals.run import cleaning_dataset, load_cases
-from evals.scoring import clean_cell, score_cleaning
+from evals.run import cleaning_dataset, cleaning_pack_frame, load_cases
+from evals.scoring import clean_cell, score_cleaning, score_cleaning_decisions
 
-CASES = load_cases("cleaning", None)
+ALL = load_cases("cleaning", None)
+CASES = [c for c in ALL if "schema" in c]          # cleangen's planted tables
+PACK_CASES = [c for c in ALL if "dataset" in c]    # 5.7: a domain pack on realistic data
 
 
 def _frame(df: pd.DataFrame, audit: dict) -> dict:
@@ -22,8 +24,8 @@ def _perfect(rec: pd.DataFrame, exp: pd.DataFrame) -> dict:
 
 
 def test_suite_shape():
-    assert len(CASES) == 25
-    assert len({c["id"] for c in CASES}) == 25
+    assert len(CASES) == 25 and len(PACK_CASES) == 8
+    assert len({c["id"] for c in ALL}) == 33
     assert sum(c["id"].endswith("holdout") for c in CASES) == 5
     assert all(c.get("label_note") for c in CASES)
 
@@ -85,3 +87,20 @@ def test_other_suites_never_run_cleaning():
                run.run_intake_case, run.intake_session, run.run_sql_case):
         src = inspect.getsource(fn)
         assert "cleaning" not in src, fn.__name__
+
+
+def test_pack_cases_fail_when_nothing_is_done_and_when_a_forbidden_rule_fires():
+    for case in PACK_CASES:
+        truth = cleaning_pack_frame(case)[1]
+        nothing = {"audit": {"decisions": [], "grain": "unknown"}}
+        checks, _ = score_cleaning_decisions(case, nothing, None, truth)
+        assert not all(c["ok"] for c in checks), case["id"]   # every case has a grain at least
+        for spec in case.get("expect_decisions", []):
+            assert any(not c["ok"] and c.get("spec") == spec for c in checks), (case["id"], spec)
+        for spec in case.get("forbid", []):
+            fired = {"audit": {"decisions": [{"column": spec.get("column", "x"), "operation":
+                                              spec.get("operation", "flag"), "strategy":
+                                              spec.get("strategy", "s"), "rows_affected": 1,
+                                              "reason": "r"}], "grain": case.get("expect_grain")}}
+            checks, _ = score_cleaning_decisions(case, fired, None, truth)
+            assert any(not c["ok"] and c["kind"] == "forbid" for c in checks), (case["id"], spec)

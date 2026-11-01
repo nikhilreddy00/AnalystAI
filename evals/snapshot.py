@@ -62,6 +62,10 @@ async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "
     return out
 
 
+def _set_only(d: dict, new_fields: tuple[str, ...]) -> dict:
+    return {k: v for k, v in d.items() if not (k in new_fields and not v)}
+
+
 async def deterministic(datasets: set[tuple[str, int]]) -> dict:
     """Phase 5.7: what the no-LLM stages make of each eval dataset, loaded as production loads it
     (connector → contract → cleaning → KPI tiles + briefing extras) under an overview plan. A
@@ -94,10 +98,10 @@ async def deterministic(datasets: set[tuple[str, int]]) -> dict:
         extras = compute_briefing_extras(clean_df, roles, contract)
         out[f"{name}-{seed}"] = {k: _sha(json.dumps(v, sort_keys=True, default=str)) for k, v in {
             # fields added since pre_5_7 count only when set (a new empty field is no change)
-            "contract": {k: v for k, v in contract.model_dump(mode="json").items()
-                         if not (k in ("domain", "roles") and not v)},
-            "audit": audit.model_dump(mode="json"),
-            "kpis": [k.model_dump(mode="json") for k in kpis],
+            "contract": _set_only(contract.model_dump(mode="json"), ("domain", "roles")),
+            "audit": _set_only(audit.model_dump(mode="json"), ("grain", "partial_months")),
+            "kpis": [{**k.model_dump(mode="json"), "recipe": _set_only(k.recipe.model_dump(
+                mode="json"), ("kpi",)) if k.recipe else None} for k in kpis],
             "extras": extras,
             "frame": pd.util.hash_pandas_object(clean_df, index=True).tolist()}.items()}
     return out

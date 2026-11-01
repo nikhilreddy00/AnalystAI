@@ -159,7 +159,7 @@ def test_an_explicit_mean_or_count_is_kept():
 def _kpi(df, contract):
     from agents.visualization_agent import classify_columns, generate_smart_kpis, kpi_mismatches
     kpis = generate_smart_kpis(df, classify_columns(df), contract=contract)
-    assert not kpi_mismatches(kpis, df)   # the recheck formats the same way as the tile
+    assert not kpi_mismatches(kpis, df, None, contract)   # the recheck formats like the tile
     return next((k for k in kpis if k.recipe and k.recipe.kind == "metric_avg"), None)
 
 
@@ -179,8 +179,12 @@ def test_a_currency_written_in_the_file_is_used():
 
 def test_no_unit_keeps_the_name_rule_so_sales_still_shows_dollars():
     df, _ = datagen.make("sales", 1)
-    k = _kpi(df, _contract(df))
-    assert k.value.startswith("$") and k.recipe.currency is None
+    c = _contract(df)
+    # 5.7: sales is retail, so its money tiles are the pack's (no "Avg revenue"), still dollars
+    from agents.visualization_agent import classify_columns, generate_smart_kpis, kpi_mismatches
+    tiles = generate_smart_kpis(df, classify_columns(df), contract=c)
+    assert tiles[0].label == "Net sales" and tiles[0].value.startswith("$")
+    assert kpi_mismatches(tiles, df, {}, c) == []
 
 
 def test_an_unknown_code_is_a_suffix_not_a_crash():

@@ -36,15 +36,22 @@ async def test_every_snapshotted_case_still_gets_the_same_inputs():
 # briefing extras, cleaned frame), from evals/snapshots/pre_5_7.json taken at ab05639. A domain
 # pack must not change another domain's data; a dataset listed here changed on purpose, and its
 # paid cases are re-measured at the domain's gate (named in its review note).
-CHANGED_ON_PURPOSE = {
-    # Domain 1, sales / retail: the old retail tables are retail (contract.domain + roles).
-    *(f"sales-{i}" for i in range(1, 6)), "mixed_dates-1", "mixed_dates-2",
+CHANGED_ON_PURPOSE: dict[str, set[str]] = {
+    # Domain 1, sales / retail: the old retail tables are retail (contract.domain + roles), their
+    # audit has a grain and their tiles are the pack's (net sales, orders, AOV …).
+    **{f"sales-{i}": {"contract", "audit", "kpis"} for i in range(1, 6)},
+    **{f"mixed_dates-{i}": {"contract", "audit", "kpis"} for i in (1, 2)},
+    # The cleaning audit now records a partial last month (insight's MoM months, 5.7 C3): HR's
+    # hire_date ends 2026-03-19, the encounters' discharge_date 2026-11-10. Only the audit changes;
+    # HR's E2E cases are re-run at the domain gate.
+    **{f"{d}-{i}": {"audit"} for d in ("employees", "encounters") for i in range(1, 4)},
 }
 
 
 async def test_no_llm_outputs_unchanged_outside_the_domain_being_built():
     before = json.loads((EVALS_DIR / "snapshots" / "pre_5_7.json").read_text())["deterministic"]
     now = (await snapshot(("deterministic",)))["deterministic"]
-    changed = sorted(d for d in before if now.get(d) != before[d] and d not in CHANGED_ON_PURPOSE)
-    assert not changed, [(d, {k for k in before[d] if now.get(d, {}).get(k) != before[d][k]})
-                         for d in changed]
+    changed = {d: {k for k in before[d] if now.get(d, {}).get(k) != before[d][k]}
+               for d in before}
+    unexpected = {d: keys - CHANGED_ON_PURPOSE.get(d, set()) for d, keys in changed.items()}
+    assert not {d: k for d, k in unexpected.items() if k}

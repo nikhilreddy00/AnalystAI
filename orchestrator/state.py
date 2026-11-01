@@ -148,6 +148,13 @@ class TargetedParams(BaseModel):
     test_type: str | None = None            # HYPOTHESIS_TEST: "ttest" | "chi2" | "anova"
     aggregation: str | None = None          # TOP_N / SEGMENT_COMPARE: sum/mean/count/median
     chart_type: ChartType | None = None     # CHART_REQUEST: bar/line/scatter/etc.
+    # Phase 5.7: a domain-pack KPI the question names ("basket size" → aov), the period it is
+    # asked for (ISO dates, inclusive; relative periods anchored on the data's last date) and a
+    # comparison ("yoy": the same period one year earlier).
+    kpi: str | None = None
+    period_start: str | None = None
+    period_end: str | None = None
+    compare: Literal["yoy"] | None = None
 
 
 class AnalysisTask(BaseModel):
@@ -215,6 +222,7 @@ class CleaningDecision(BaseModel):
     column: str
     operation: str                         # skip | sentinel_null | type_coerce | normalize |
                                            # drop_duplicates | drop_rows | fill_unknown | keep |
+                                           # fill_within_order (5.7: an order's own value) |
                                            # drop_column (agents/cleaning_agent.py)
     strategy: str
     reason: str                            # human-readable justification
@@ -265,6 +273,12 @@ class CleaningAudit(BaseModel):
     skipped_columns: list[str] = Field(default_factory=list)
     # Phase 5 Insight: per parsed date column, [first "YYYY-MM-DD", last, months spanned]
     date_ranges: dict[str, list] = Field(default_factory=dict)
+    # Phase 5.7: what one row is, decided after duplicates are removed (a domain pack's order id):
+    # "line" (an order spans rows), "order" (one row each) or "aggregate" (no order id); None: no pack.
+    grain: str | None = None
+    # Phase 5.7: date columns whose last month is partial (a mid-month export): {col: [month, days]}.
+    # Period comparisons leave that month out (utils.partial_last_month).
+    partial_months: dict[str, list] = Field(default_factory=dict)
 
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────
@@ -331,8 +345,10 @@ class KPIRecipe(BaseModel):
         "top_cat",
         "comparison_split",
         "highest_cv",
+        "pack",   # Phase 5.7: a domain-pack KPI (net sales, AOV …): the server's value
     ]
     column: str | None = None
+    kpi: str | None = None   # the pack KPI's name (kind "pack")
     target_column: str | None = None
     segment_column: str | None = None
     format_kind: str | None = None  # "currency" | "percent" | "count" | "number"

@@ -37,6 +37,7 @@ from agents.utils import (
     pandas_freq,
     partial_last_month,
 )
+from domain_pack import compute_kpi, describe_kpi, main_currency, pack_for, row_kinds
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -1138,6 +1139,42 @@ def _unit_fields(kind: str, unit: str | None) -> dict:
     return {"currency": unit} if kind == "currency" else {"unit": unit}
 
 
+def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
+    """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. A KPI the
+    data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
+    and the run goes on. Money is in the main currency; other currencies are left out, said in
+    the tile's context."""
+    pack = pack_for(contract.domain) if contract else None
+    if pack is None or df is None or df.empty:
+        return []
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    _, currency, other = main_currency(df, roles)
+    present = set(row_kinds(df, roles, pack).unique())
+    money = currency or next((c.unit for c in contract.columns if is_currency(c.unit) and c.name in {
+        roles.get("revenue"), roles.get("unit_price"), roles.get("order_total")}), None)
+    tiles = []
+    for k in pack.kpis:
+        if not k.tile:
+            continue
+        try:
+            v = compute_kpi(df, roles, pack, k.name)
+        except Exception:   # a pack/data mismatch is a missing tile, never a failed run
+            logger.warning("KPI %s failed", k.name, exc_info=True)
+            trace_verdict("visualization", VIZ_CARD.version, "kpi_failed")
+            continue
+        if v is None:
+            continue
+        kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
+        unit = money if kind == "currency" else None
+        context = (f"{currency} only; {other:,} rows in other currencies left out"
+                   if other and kind == "currency" else "")
+        tiles.append(KPI(label=k.label, value=_format_value(v, kind, unit), context=context,
+                         recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
+                                          **_unit_fields(kind, unit)),
+                         how=describe_kpi(pack, k.name, roles, present)))
+    return tiles[:5]
+
+
 def generate_smart_kpis(
     df: pd.DataFrame,
     column_roles: dict,
@@ -1167,7 +1204,11 @@ def generate_smart_kpis(
 
     entity_sg, entity_pl = _entity_pair(df.columns, narrative, query, df)
 
-    kpis: list[KPI] = []
+    # Phase 5.7: a domain's own KPIs (net sales, orders, AOV …) replace the generic tiles, which
+    # would count order lines as orders, average line amounts and call a share of rows a share
+    # of sales.
+    if kpis := pack_kpis(df, contract):
+        return kpis
 
     # KPI 1 — row count, labeled by the detected entity (column count belongs
     # in the briefing tables, not on the KPI strip)
@@ -1269,17 +1310,22 @@ def _kpi_how(r: KPIRecipe | None, n: int) -> str:
     }.get(r.kind, "")
 
 
-def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None) -> list[str]:
+def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None,
+                   contract: DataContract | None = None) -> list[str]:
     """Labels of tiles whose number doesn't match the data: each is recomputed from its recipe on
     this frame, and an average must also match the report's own statistics (eda_summary)."""
     bad = []
+    pack = ({t.recipe.kpi: t.value for t in pack_kpis(df, contract)}
+            if any(k.recipe and k.recipe.kind == "pack" for k in kpis) else {})
     for k in kpis:
         r = k.recipe
         if r is None:
             continue
         col = r.column
         try:
-            if r.kind == "row_count":
+            if r.kind == "pack":
+                ok = pack.get(r.kpi) == k.value
+            elif r.kind == "row_count":
                 ok = k.value == _format_count(len(df))
             elif r.kind == "target_rate":
                 ok = k.value == f"{float(_to_01(df[col]).mean()) * 100:.1f}%"

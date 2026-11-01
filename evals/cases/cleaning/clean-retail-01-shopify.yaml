@@ -1,0 +1,42 @@
+id: clean-retail-01-shopify
+dataset:
+  name: retail_lines
+  seed: 1
+category: retail
+expect_decisions:
+- column: '*'
+  operation: drop_duplicates
+  truth_key: duplicate_rows
+- column: Discount Amount
+  operation: fill_within_order
+  truth_key: first_line_blanks
+- column: Financial Status
+  operation: fill_within_order
+  truth_key: first_line_blanks
+- column: Email
+  operation: fill_within_order
+  truth_key: first_line_blanks
+- column: Shipping Country
+  operation: fill_within_order
+  truth_key: first_line_blanks
+- operation: flag
+  strategy: refunded
+  truth_key: flags.refunded
+- operation: flag
+  strategy: cancel
+  truth_key: flags.cancel
+- operation: flag
+  strategy: test
+  truth_key: flags.test
+forbid:
+- column: Total
+  operation: fill_within_order
+- column: Financial Status
+  operation: fill_unknown
+- column: Shipping Country
+  operation: fill_unknown
+- operation: flag
+  strategy: return
+expect_grain: line
+label_note: 'Shopify lines: order fields carried down each order (never the total), 40 export duplicates removed
+  by order + SKU, refunded / voided / test lines flagged and kept.'

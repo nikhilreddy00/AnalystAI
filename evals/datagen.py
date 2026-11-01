@@ -644,6 +644,11 @@ def make_retail_lines(seed: int) -> tuple[pd.DataFrame, dict]:
         "naive_aov_by_country_lines": (s.groupby("_country")["_net"].sum()
                                        / s.groupby("_country").size()).to_dict(),
         "naive_total_fanout": float(filled_total.sum()),
+        # what Cleaning flags, one kind per line (test > cancelled > refunded)
+        "flags": {"test": int(df["_order"].isin(test).sum()),
+                  "cancel": int((df["_status"].eq("voided") & ~df["_order"].isin(test)).sum()),
+                  "refunded": int((df["_status"].eq("refunded") & ~df["_order"].isin(test)).sum())},
+        "first_line_blanks": int((df["_line"] > 0).sum()),
         "refunded_lines": int(df["_status"].eq("refunded").sum()),
         "voided_lines": int(df["_status"].eq("voided").sum()),
         "cad_lines": int(df["_currency"].eq("CAD").sum()),
@@ -693,7 +698,6 @@ def make_store_weeks(seed: int) -> tuple[pd.DataFrame, dict]:
     k = df.loc[comp & y1, "Net Sales"].sum() * 1.02 / df.loc[comp & y2, "Net Sales"].sum()
     df.loc[comp & y2, ["Net Sales", "COGS"]] = (df.loc[comp & y2, ["Net Sales", "COGS"]] * k).round(2)
     sentinel = df[(df["Store_No"] == 105) & (df["Dept"] == "Home")].sample(6, random_state=seed).index
-    true_units = df["Units"].copy()
     df.loc[sentinel, "Units"] = 9999
     df.insert(1, "Wk_End_Dt", weeks[df["_w"]].strftime("%d/%m/%Y"))
 
@@ -710,7 +714,8 @@ def make_store_weeks(seed: int) -> tuple[pd.DataFrame, dict]:
         "naive_margin_mean_of_rows_pct": float(row_margin.mean() * 100),
         "margin_by_dept_pct": {d: float((1 - r["COGS"] / r["Net Sales"]) * 100)
                                for d, r in by_dept.iterrows()},
-        "units": int(true_units.sum()), "naive_units": int(df["Units"].sum()),
+        # the six 9999 weeks' real units are unknowable: the right total is the known weeks'
+        "units": int(df["Units"].drop(index=sentinel).sum()), "naive_units": int(df["Units"].sum()),
         "sentinel_rows": len(sentinel), "pii_columns": [],
     }
     df = df.drop(columns="_w")
@@ -784,6 +789,8 @@ def make_b2b_invoices(seed: int) -> tuple[pd.DataFrame, dict]:
         "return_rate_pct": float(-amt[credit].sum() / amt[sale].sum() * 100),
         "credit_lines": int(df["InvoiceNo"].str.startswith("C").sum()),
         "postage_lines": int(df["StockCode"].eq("POST").sum()),
+        "non_product_lines": int(df["StockCode"].isin(["POST", "M"]).sum()),
+        "whole_ids": int(df["CustomerID"].notna().sum()),
         "guest_invoices": int(df.loc[df["CustomerID"].isna(), "InvoiceNo"].nunique()),
         "customers": int(known["CustomerID"].nunique()),
         "repeat_rate_pct": float((inv_per_cust >= 2).mean() * 100),

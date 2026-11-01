@@ -167,6 +167,10 @@ def _values(e: Evidence, by_id: dict) -> str:
                                                                       if more > 0 else "")
 
 
+def _prev(ym: tuple[int, int]) -> tuple[int, int]:
+    return (ym[0], ym[1] - 1) if ym[1] > 1 else (ym[0] - 1, 12)
+
+
 def build_context(session: AnalysisSession, past: list[str] | None = None) -> InsightContext:
     findings, audit, contract = session.analysis_findings, session.cleaning_audit, session.data_contract
     narrative = session.narrative
@@ -189,9 +193,14 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         col, (lo, hi, months) = span
         first, last = (int(lo[:4]), int(lo[5:7])), (int(hi[:4]), int(hi[5:7]))
         facts.append(f"Date range ({col}): {lo} to {hi}, {months} month{'s' * (months != 1)}.")
-        if months > 1:
-            prev = (last[0], last[1] - 1) if last[1] > 1 else (last[0] - 1, 12)
-            facts.append(f"Month-over-month figures compare {_month(last)} with {_month(prev)}.")
+        partial = (audit.partial_months.get(col) if audit else None)
+        if partial and months > 2:   # a mid-month export: its last month is left out (5.7)
+            full = _prev(last)
+            facts.append(f"{_month(last)} is partial ({partial[1]} days of data) and is left out "
+                         f"of period comparisons: month-over-month figures compare {_month(full)} "
+                         f"with {_month(_prev(full))}.")
+        elif months > 1:
+            facts.append(f"Month-over-month figures compare {_month(last)} with {_month(_prev(last))}.")
         else:
             facts.append("There is one month of data: no month-over-month comparison exists.")
     else:

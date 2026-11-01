@@ -22,7 +22,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
-from agents.utils import pii_columns, safe_column_name, strip_markdown_fences
+from agents.utils import PARTIAL_MIN_DAYS, pii_columns, safe_column_name, strip_markdown_fences
 from guardrails import (
     pseudonym,
     is_phi_identifier,
@@ -236,7 +236,7 @@ try:
             if _d.empty:
                 return _mm
             _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
-            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
+            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[:-1].median() >= {PARTIAL_MIN_DAYS} and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
                 _mm = _mm.where(_mm != _days.index[-1])
             return _mm
         _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')

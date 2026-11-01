@@ -108,7 +108,18 @@ def build_context(session: AnalysisSession, message: str) -> IntakeContext:
         )
     return IntakeContext(
         message=message, schema_text=schema_text, history=conversation_context(session),
-        existing_task=session.task_plan.model_dump_json() if session.task_plan else "")
+        existing_task=_plan_json(session.task_plan) if session.task_plan else "")
+
+
+_NEW_PARAMS = ("kpi", "period_start", "period_end", "compare")   # Phase 5.7
+
+
+def _plan_json(task: AnalysisTask) -> str:
+    """The previous plan as the model reads it. The 5.7 parameters appear only when set (a KPI or a
+    period to carry into a follow-up), so a plan without them reads as it did before."""
+    p = task.targeted_params
+    unset = {f for f in _NEW_PARAMS if p is not None and getattr(p, f) is None}
+    return task.model_dump_json(exclude={"targeted_params": unset} if unset else None)
 
 
 # ── Agent ──────────────────────────────────────────────────────────────────────

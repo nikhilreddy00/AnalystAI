@@ -46,6 +46,7 @@ from evals.scoring import (
     hard_rule,
     result_matches,
     score_cleaning,
+    score_cleaning_decisions,
     score_ingestion,
     leaked,
     loaded_cell,
@@ -653,15 +654,24 @@ def cleaning_dataset(case: dict) -> tuple[pd.DataFrame, pd.DataFrame, list[dict]
     return received, expected, manifest, [roles["id"], roles["date"], roles["target"]]
 
 
+def cleaning_pack_frame(case: dict) -> tuple[pd.DataFrame, dict]:
+    """5.7: a realistic dataset as the product loads it (production reader), and its truth."""
+    from connectors.csv_connector import _read_bytes
+    raw, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
+    return _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0], truth
+
+
 async def run_cleaning_case(case: dict) -> dict:
     from agents.cleaning_agent import run_cleaning_agent
     from connectors.csv_connector import CSVConnector
 
-    received = cleaning_dataset(case)[0]
+    received = cleaning_pack_frame(case)[0] if "dataset" in case else cleaning_dataset(case)[0]
     session = AnalysisSession(session_id=str(uuid.uuid4()))
     session.data_contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(received)
-    session.task_plan = AnalysisTask(raw_query="Give me an overview", analysis_types=["eda"],
-                                     target_metrics=[cleangen.SCHEMAS[case["schema"]]["target"]])
+    session.task_plan = AnalysisTask(
+        raw_query="Give me an overview", analysis_types=["eda"],
+        target_metrics=(session.data_contract.metric_columns if "dataset" in case
+                        else [cleangen.SCHEMAS[case["schema"]]["target"]]))
     buf = io.BytesIO()
     received.to_parquet(buf, index=False)
     session.__dict__["_df_parquet"] = buf.getvalue()
@@ -677,6 +687,10 @@ async def run_cleaning_case(case: dict) -> dict:
 
 
 def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> dict:
+    if "dataset" in case:
+        checks, hard = score_cleaning_decisions(case, output, error, cleaning_pack_frame(case)[1])
+        return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+                "holdout": case["id"].endswith("holdout")}
     received, expected, manifest, protected = cleaning_dataset(case)
     checks, hard = score_cleaning(output, received, expected, manifest, protected, error)
     return {"checks": checks, "hard": hard, "error": error, "category": case["category"],

@@ -74,11 +74,17 @@ def conversation_context(session, n_turns: int = 6) -> str:
     return delimit_untrusted(pseudonymize("\n".join(lines))[0])
 
 
+# A month is judged partial only against months at least weekly-dense (median distinct dates):
+# weekly snapshots cut mid-month are partial (5.5); an 18-row sample's 1–3 dates a month are noise.
+PARTIAL_MIN_DAYS = 4
+
+
 def partial_last_month(dates) -> bool:
     """True when the data stops before the end of its last calendar month and that month has far
     fewer distinct days than the others (a mid-month export). A month-over-month change must not
-    compare such a month with a full one. Monthly-grain data (one date per month) is never partial.
-    Mirrored inside the analysis agent's sandbox code (`_partial` in _build_standard_code)."""
+    compare such a month with a full one. Monthly grain or sparse data (an 18-row sample: 1–3
+    dates a month) is never partial: there are too few dates to tell.
+    Mirrored inside the analysis agent's sandbox code (`_cut` in _build_standard_code)."""
     import pandas as pd
 
     d = pd.to_datetime(dates, format="mixed", errors="coerce").dropna()
@@ -88,7 +94,9 @@ def partial_last_month(dates) -> bool:
     if len(days) < 3:
         return False
     last = d.max().normalize()
-    return bool(last < last + pd.offsets.MonthEnd(0) and days.iloc[-1] < 0.9 * days.iloc[:-1].median())
+    full = days.iloc[:-1].median()
+    return bool(last < last + pd.offsets.MonthEnd(0) and full >= PARTIAL_MIN_DAYS
+                and days.iloc[-1] < 0.9 * full)
 
 
 def looks_like_sequential_id(s, n: int) -> bool:
@@ -224,3 +232,39 @@ def latest_rows(df, column: str, contract):
             # refresh lag, or weekday-only rows on a Saturday export, is still current)
             last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
     return last.drop(columns="_t")
+
+
+def filter_period(df, date: str | None, start: str | None, end: str | None):
+    """(rows in [start, end], a note, or an error) for a period the user named. Inclusive ISO
+    dates; reversed bounds are swapped; a period the data doesn't reach is an error to say, never
+    an empty answer. No period: the frame unchanged."""
+    import pandas as pd
+
+    if not (start or end):
+        return df, "", None
+    if not date or date not in df.columns:
+        return df, "", "the data has no date column to limit to that period"
+    t = pd.to_datetime(df[date], errors="coerce")
+    lo = pd.Timestamp(start) if start else t.min()
+    hi = pd.Timestamp(end) if end else t.max()
+    if lo > hi:
+        lo, hi = hi, lo
+    hi = hi + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1) if hi == hi.normalize() else hi
+    rows = df[(t >= lo) & (t <= hi)]
+    if rows.empty:
+        return rows, "", (f"the data covers {t.min():%d %b %Y} to {t.max():%d %b %Y}, not "
+                          f"{lo:%d %b %Y} to {hi:%d %b %Y}")
+    note = f"{lo:%d %b %Y} to {hi:%d %b %Y}"
+    if hi > t.max():
+        note += f" (the data ends {t.max():%d %b %Y}, so the period is incomplete)"
+    return rows, note, None
+
+
+def year_earlier(df, date: str, start: str | None, end: str | None):
+    """The same calendar window one year earlier, filtered from `df` (YoY)."""
+    import pandas as pd
+
+    t = pd.to_datetime(df[date], errors="coerce")
+    lo = (pd.Timestamp(start) if start else t.min()) - pd.DateOffset(years=1)
+    hi = (pd.Timestamp(end) if end else t.max()) - pd.DateOffset(years=1)
+    return filter_period(df, date, str(lo.date()), str(hi.date()))

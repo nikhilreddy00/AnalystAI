@@ -235,3 +235,263 @@ def test_kpis_match_the_planted_truth_once_cleaned(name, kpi, key):
     got = compute_kpi(df, c.roles, RETAIL, kpi)
     want = truth[key] / (100 if key.endswith("_pct") else 1)
     assert got == pytest.approx(want, rel=1e-6)
+
+
+def test_pack_patterns_stay_fast_on_adversarial_values():
+    """Pack regexes run on uploaded values (capped at 40 characters, 1000 values): every shipped
+    pattern must finish quickly on the worst inputs for backtracking."""
+    import re
+    import time
+    from domain_pack import load_packs
+    hostile = ["1" * 40, "1-" * 20, "#" + "1" * 39, "a" * 40, "-1" * 20 + "x", "1" * 39 + "x"]
+    for pack in load_packs():
+        for role in pack.roles.values():
+            if role.pattern:
+                start = time.perf_counter()
+                for v in hostile * 50:
+                    re.fullmatch(role.pattern, v)
+                assert time.perf_counter() - start < 0.05, role.pattern
+
+
+# ── Cleaning under the pack (state × event: each cell once) ─────────────────────────────────
+from agents.cleaning_agent import CleanContext, clean  # noqa: E402
+
+
+def _clean(df: pd.DataFrame, roles: dict, targets=()) -> tuple[pd.DataFrame, list]:
+    ids = {c for r, c in roles.items() if RETAIL.roles[r].kind == "id"}
+    out, audit = clean(CleanContext(df=df, ids=ids, dates=set(), targets=set(targets),
+                                    drop_high_null=False, pack=RETAIL, roles=roles))
+    return out, audit
+
+
+def test_order_fields_are_carried_within_their_order_only():
+    df = pd.DataFrame({"o": ["#1", "#1", "#2", "#2", "#3", "#3"], "k": list("ABABAB"),
+                       "q": [1] * 6, "p": [5.0] * 6,
+                       "s": ["paid", None, None, "refunded", "paid", "refunded"],
+                       "t": [10.0, None, 10.0, None, 10.0, None]})
+    roles = {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p", "status": "s",
+             "order_total": "t"}
+    out, audit = _clean(df, roles, targets=["t"])
+    # #1: first line carries it down; #2: a blank FIRST line takes the order's one value;
+    # #3: two different statuses: left as they are, flagged
+    assert out["s"].tolist() == ["paid", "paid", "refunded", "refunded", "paid", "refunded"]
+    assert pd.isna(out["t"].iloc[1])   # an order total stays on its first line only
+    ops = {(d.column, d.operation, d.strategy): d.rows_affected for d in audit.decisions}
+    assert ops[("s", "fill_within_order", "order_value")] == 2
+    assert ops[("s", "flag", "order_conflict")] == 2
+    assert not any(d.column == "t" and d.operation == "fill_within_order" for d in audit.decisions)
+    assert audit.grain == "line"
+
+
+def test_no_order_id_means_no_carrying_and_an_aggregate_grain():
+    df = pd.DataFrame({"k": ["A", "B"], "q": [1, 2], "p": [9999.0, 5.0], "s": ["paid", None]})
+    out, audit = _clean(df, {"sku": "k", "quantity": "q", "unit_price": "p", "status": "s"})
+    assert audit.grain == "aggregate"
+    assert not any(d.operation == "fill_within_order" for d in audit.decisions)
+    assert pd.isna(out["p"].iloc[0])   # 9999 is the export's "unknown"
+
+
+def test_exact_duplicate_lines_go_by_order_and_product_and_real_repeats_stay():
+    df = pd.DataFrame({"o": ["#1", "#1", "#1", "#2"], "k": ["A", "A", "B", "A"],
+                       "q": [1, 1, 1, 2], "p": [5.0, 5.0, 5.0, 5.0]})
+    out, audit = _clean(df, {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p"})
+    assert len(out) == 3 and audit.duplicates_removed == 1
+
+
+def test_without_a_pack_none_of_it_happens():
+    df = pd.DataFrame({"o": ["#1", "#1"], "s": ["paid", None], "p": [9999.0, 5.0]})
+    out, audit = clean(CleanContext(df=df, ids={"o"}, dates=set(), targets=set(),
+                                    drop_high_null=False))
+    assert audit.grain is None and out["p"].iloc[0] == 9999.0
+    assert not any(d.operation == "fill_within_order" for d in audit.decisions)
+
+
+def test_a_kpi_that_fails_is_a_dropped_tile_and_a_trace_never_a_failed_run(monkeypatch):
+    from agents import visualization_agent as viz
+    traced = []
+    monkeypatch.setattr(viz, "trace_verdict", lambda agent, version, rule: traced.append(rule))
+    real = viz.compute_kpi
+
+    def boom(df, roles, pack, name, by=None):
+        if name == "aov":
+            raise ZeroDivisionError("planted")
+        return real(df, roles, pack, name, by)
+
+    monkeypatch.setattr(viz, "compute_kpi", boom)
+    df = _gen("sales").drop_duplicates()
+    tiles = viz.pack_kpis(df, _contract(df))
+    assert [t.recipe.kpi for t in tiles] == ["net_sales", "orders", "units"]
+    assert traced == ["kpi_failed"]
+
+
+def test_tiles_say_how_they_were_made_and_recheck_against_the_data():
+    from agents.visualization_agent import classify_columns, generate_smart_kpis, kpi_mismatches
+    df = _gen("b2b_invoices")
+    c = _contract(df)
+    df["UnitPrice"] = df["UnitPrice"].str.lstrip("£").astype(float)
+    tiles = generate_smart_kpis(df, classify_columns(df), contract=c)
+    assert [t.label for t in tiles] == ["Net sales", "Orders", "Avg order value", "Units sold",
+                                        "Return rate"]
+    assert tiles[0].value.startswith("£") and "non-product lines left out" in tiles[0].how
+    assert kpi_mismatches(tiles, df, {}, c) == []
+    tiles[1].value = "1"
+    assert kpi_mismatches(tiles, df, {}, c) == ["Orders"]
+
+
+# ── One partial-month rule, in the app and in the analysis sandbox ──────────────────────────
+def _months(dates: pd.Series) -> dict:
+    """The months the analysis sandbox's MoM uses (`_cut`), by running its generated code."""
+    from agents.analysis_agent import _build_standard_code
+    from orchestrator.state import AnalysisTask
+    df = pd.DataFrame({"d": dates.dt.strftime("%Y-%m-%d"), "v": range(len(dates))})
+    contract = _contract(_load(df.to_csv(index=False)))
+    code = _build_standard_code(contract, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                                       target_metrics=["v"]))
+    g = {"df": df, "pd": pd, "result": {"trends": [], "builtin": [], "segments": [],
+                                        "correlations": {}, "assumptions": []}}
+    exec(code, g)
+    return g
+
+
+@pytest.mark.parametrize("dates, partial", [
+    (pd.Series(pd.date_range("2025-01-01", "2025-06-12", freq="D")), True),    # mid-month export
+    (pd.Series(pd.date_range("2025-01-01", "2025-06-30", freq="D")), False),   # full months
+    (pd.Series(pd.date_range("2025-01-04", periods=26, freq="7D")), False),    # weekly, full
+    (pd.Series(pd.date_range("2025-01-03", "2025-06-06", freq="7D")), True),   # weekly, cut mid-June
+    # an 18-row sample: 3 dates a month, then 1 in the last month: too sparse to call partial
+    (pd.Series(pd.to_datetime([f"2025-{m:02d}-{d:02d}" for m in range(1, 6) for d in (3, 14, 25)]
+                              + ["2025-06-07"])), False),
+])
+def test_the_partial_month_rule_is_one_rule_in_the_app_and_the_sandbox(dates, partial):
+    from agents.utils import partial_last_month
+    assert partial_last_month(dates) is partial
+    g = _months(dates)
+    last = pd.Period(dates.max(), "M")
+    used = {str(m) for m in g["_month"].dropna().unique()} if "_month" in g else set()
+    assert (str(last) not in used) is partial, used
+
+
+def test_insight_names_the_last_two_full_months_when_the_last_is_partial():
+    from agents.insight_agent import build_context
+    from orchestrator.state import AnalysisSession, CleaningAudit
+
+    def facts(partial: dict) -> str:
+        audit = CleaningAudit(decisions=[], rows_before=1, rows_after=1, columns_coerced=[],
+                              duplicates_removed=0, outliers_flagged=[], high_null_columns=[],
+                              summary="", date_ranges={"d": ["2025-01-01", "2026-02-12", 14]},
+                              partial_months=partial)
+        return build_context(AnalysisSession(session_id="t", cleaning_audit=audit)).facts
+
+    text = facts({"d": ["2026-02", 12]})
+    assert "Feb 2026 is partial (12 days of data)" in text
+    assert "compare Jan 2026 with Dec 2025" in text
+    assert "compare Feb 2026 with Jan 2026" in facts({})   # a full last month: as before
+
+
+# ── Targeted answers: KPIs, periods, YoY, the retail sum default ────────────────────────────
+from orchestrator.state import (AnalysisSession, AnalysisTask, QuestionIntent,  # noqa: E402
+                                TargetedParams)
+
+
+def _session(name: str) -> tuple[AnalysisSession, dict]:
+    import asyncio
+    import io
+    from agents.cleaning_agent import run_cleaning_agent
+    raw = _gen(name)
+    s = AnalysisSession(session_id="t", data_contract=_contract(raw),
+                        task_plan=AnalysisTask(raw_query="o", analysis_types=["eda"], target_metrics=[]))
+    buf = io.BytesIO()
+    raw.to_parquet(buf, index=False)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    asyncio.run(run_cleaning_agent(s))
+    return s, datagen.make(name, 1)[1]
+
+
+def _ask(s: AnalysisSession, q: str, intent: QuestionIntent, **p):
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    s.task_plan = AnalysisTask(raw_query=q, analysis_types=["eda"], target_metrics=[],
+                               question_intent=intent, targeted_params=TargetedParams(**p))
+    return run_targeted_analysis(s)
+
+
+@pytest.fixture(scope="module")
+def shop():
+    return _session("retail_lines")
+
+
+def test_a_kpi_by_group_is_the_pack_kpi_per_group(shop):
+    s, truth = shop
+    r = _ask(s, "basket size by country?", QuestionIntent.SEGMENT_COMPARE, kpi="aov",
+             segment_column="Shipping Country")
+    top = max(truth["aov_by_country"], key=truth["aov_by_country"].get)
+    assert f"{top} leads at ${truth['aov_by_country'][top]:,.2f}" in r.answer_text
+    naive = truth["naive_aov_by_country_lines"][top]
+    assert f"${naive:,.2f}" not in r.answer_text and r.chart_configs
+
+
+def test_a_period_and_its_year_earlier(shop):
+    s, truth = shop
+    r = _ask(s, "January vs last year", QuestionIntent.TIME_SERIES, kpi="net_sales",
+             period_start="2026-01-01", period_end="2026-01-31", compare="yoy")
+    assert f"${truth['net_sales_by_month']['2026-01']:,.2f}" in r.answer_text
+    assert f"{truth['jan26_yoy_pct']:+.1f}% year over year" in r.answer_text
+
+
+def test_the_trend_leaves_the_partial_month_out_and_gives_mom_and_yoy(shop):
+    s, truth = shop
+    r = _ask(s, "net sales trend", QuestionIntent.TIME_SERIES, kpi="net_sales")
+    assert f"({truth['jan26_mom_pct']:+.1f}%)" in r.answer_text
+    assert f"{truth['jan26_yoy_pct']:+.1f}% year over year" in r.answer_text
+    assert "2026-02 is left out" in r.answer_text
+
+
+@pytest.mark.parametrize("start, end, said", [
+    ("2024-10-01", "2024-12-31", "the data covers 01 Jan 2025 to 12 Feb 2026"),   # out of range
+    ("2026-02-01", "2026-02-28", None),                                            # partial: noted
+    ("2025-03-31", "2025-03-01", None),                                            # reversed
+])
+def test_periods_out_of_range_reversed_or_partial(shop, start, end, said):
+    s, _ = shop
+    r = _ask(s, "net sales then", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+             period_start=start, period_end=end)
+    if said:
+        assert r.unanswerable_reason and said in r.unanswerable_reason
+    else:
+        assert not r.unanswerable_reason
+        if start.startswith("2026-02"):
+            assert "the data ends 12 Feb 2026, so the period is incomplete" in r.answer_text
+        else:
+            assert "01 Mar 2025 to 31 Mar 2025" in r.answer_text
+
+
+def test_no_year_earlier_data_is_said_not_invented(shop):
+    s, _ = shop
+    r = _ask(s, "March 2025 vs last year", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+             period_start="2025-03-01", period_end="2025-03-31", compare="yoy")
+    assert "No year-earlier comparison: the data covers 01 Jan 2025" in r.answer_text
+
+
+def test_retail_money_by_group_is_a_total_unless_an_average_is_asked():
+    s, _ = _session("store_weeks")
+    total = _ask(s, "Sales by department", QuestionIntent.SEGMENT_COMPARE,
+                 metric_column="Net Sales", segment_column="Dept", aggregation="mean")
+    avg = _ask(s, "Average sales by department", QuestionIntent.SEGMENT_COMPARE,
+               metric_column="Net Sales", segment_column="Dept", aggregation="mean")
+    assert total.answer_text.startswith("sum(Net Sales)") and avg.answer_text.startswith("mean(")
+    weekly = _ask(s, "sales trend", QuestionIntent.TIME_SERIES, metric_column="Net Sales")
+    assert "freq=W" in weekly.answer_text and "2026-06-27" in weekly.answer_text   # a Saturday
+
+
+def test_another_domains_comparison_keeps_its_mean():
+    s, _ = _session("employees")
+    r = _ask(s, "salary by department", QuestionIntent.SEGMENT_COMPARE, metric_column="salary",
+             segment_column="department", aggregation="mean")
+    assert r.answer_text.startswith("mean(salary)")
+
+
+def test_weekly_levels_stay_monthly_only_weekly_flows_stay_weekly():
+    from agents.targeted_analysis_agent import _default_freq
+    weeks = pd.Series(pd.date_range("2025-01-03", periods=20, freq="7D"))
+    assert _default_freq(weeks, "sum") == "W" and _default_freq(weeks, "count") == "W"
+    assert _default_freq(weeks, "last") == "M" and _default_freq(weeks, "mean") == "M"
+    assert _default_freq(pd.Series(pd.date_range("2025-01-01", periods=60)), "sum") == "M"

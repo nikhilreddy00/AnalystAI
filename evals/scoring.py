@@ -1377,3 +1377,38 @@ def score_ingestion(truth: dict, output: dict | None, error: str | None
          "detail": "ok" if src else "no source evidence"},
     ]
     return checks, hard
+
+
+def score_cleaning_decisions(case: dict, output: dict | None, error: str | None, truth: dict
+                             ) -> tuple[list[dict], list[dict]]:
+    """Phase 5.7: a domain pack's cleaning on a realistic table, scored on the audit's decisions.
+    `expect_decisions`: {column, operation, strategy, rows | truth_key} that must be there with
+    exactly that many rows; `forbid`: decisions that must not be there (the over-cleaning traps:
+    a test-order rule firing on real customers, an order total carried down its lines, a pack
+    rule on another domain's data); `expect_grain`. Hard: the run's own guardrails (a violation
+    is an error)."""
+    if output is None:
+        return ([{"kind": "load", "ok": False, "detail": error or "no output"}],
+                [{"rule": "cleaning_guardrails", "ok": False, "detail": error or "no output"}])
+    got = output["audit"]["decisions"]
+
+    def match(spec: dict, d: dict) -> bool:
+        return all(d.get(k) == spec[k] for k in ("column", "operation", "strategy") if k in spec)
+
+    checks = []
+    for spec in case.get("expect_decisions", []):
+        want = _truth_value(truth, spec["truth_key"]) if "truth_key" in spec else spec.get("rows")
+        hits = [d for d in got if match(spec, d)]
+        rows = sum(d["rows_affected"] for d in hits)
+        ok = bool(hits) and (want is None or rows == want)
+        checks.append({"kind": "decision", "ok": ok, "spec": spec,
+                       "detail": f"{len(hits)} decisions, {rows} rows" + ("" if ok else f" (want {want})")})
+    for spec in case.get("forbid", []):
+        hits = [d for d in got if match(spec, d)]
+        checks.append({"kind": "forbid", "ok": not hits, "spec": spec,
+                       "detail": "absent" if not hits else f"{hits[0]['column']}: {hits[0]['reason'][:80]}"})
+    if "expect_grain" in case:
+        g = output["audit"].get("grain")
+        checks.append({"kind": "grain", "ok": g == case["expect_grain"],
+                       "detail": f"{g}" + ("" if g == case["expect_grain"] else f" (want {case['expect_grain']})")})
+    return checks, [{"rule": "cleaning_guardrails", "ok": not error, "detail": error or "ok"}]
