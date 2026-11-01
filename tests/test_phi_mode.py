@@ -98,8 +98,9 @@ def test_pool_counts_case_variants_together_and_missing_stays_missing():
 
 
 def test_a_single_small_group_stays_pooled_and_a_lone_group_is_untouched():
-    assert _pooled(["Rad"] * 6 + ["X"] * 30).count(POOLED_LABEL) == 6   # "Other" < 11: stated limit
+    assert _pooled(["Rad"] * 6 + ["X"] * 30 + ["Y"] * 30).count(POOLED_LABEL) == 6   # "Other" < 11
     assert set(_pooled(["X"] * 30)) == {"X"}
+    assert _pooled(["Yes"] * 9 + ["No"] * 291).count("Yes") == 9   # a yes/no outcome: never pooled
 
 
 def test_too_specific_text_is_withheld_dates_and_metrics_kept():

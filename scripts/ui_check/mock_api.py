@@ -25,7 +25,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 D = sys.argv[1]
 PORT = int(sys.argv[2])
-SCEN = D + "/scenario"  # file holding full|error|final|approval|slow|insight|drop|trickle|units
+SCEN = D + "/scenario"  # file holding full|error|final|changed|approval|slow|insight|drop|trickle|units
 QUESTION = "Give me an overview of this sales data"
 lock = threading.Lock()
 state = {"connections": [], "served": set(), "posts": 0}   # seqs sent, per connection
@@ -150,6 +150,7 @@ class H(BaseHTTPRequestHandler):
                 "status": "failed" if err else thread_status(sid),
                 "error": err["message"] if err else None,
                 "retryable": (err or {}).get("retryable", True) is not False,   # as api/lib/report.turn
+                "reask": (err or {}).get("reask", True) is not False,
                 "last_seq": len(events),
                 "report": report, "report_sha256": "f" * 64, "intact": True,
                 "stale": state["stale"],

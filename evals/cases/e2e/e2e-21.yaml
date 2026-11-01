@@ -24,9 +24,11 @@ checks:
 - kind: must_not_number
   truth_key: naive_balance_by_segment.business
   rel_tol: 0.01
+  scope: report
 - kind: must_not_number
   truth_key: naive_balance_by_segment.retail
   rel_tol: 0.01
+  scope: report
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale

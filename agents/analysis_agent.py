@@ -441,19 +441,27 @@ def run_tool(name: str, args: dict, df: pd.DataFrame, pii: set[str] = frozenset(
     return f"unknown tool: {name}", True
 
 
-def e2b_frame(df_parquet: bytes, pii: Iterable[str], scope: str = "") -> tuple[bytes, dict]:
+def e2b_frame(df_parquet: bytes, pii: Iterable[str], scope: str = "",
+              years: Iterable[str] = ()) -> tuple[bytes, dict]:
     """(the frame E2B, a third party, receives, {pseudonym: original}). Every value of a personal
     column becomes its one-way pseudonym and emails, phones, SSNs, cards and IPs inside other
     text are masked; columns and headers are unchanged, so counts and group-bys still work and
     no code that names a column breaks. The map stays here: it puts names back in the results.
     Nothing personal anywhere: the same bytes."""
     df = pd.read_parquet(io.BytesIO(df_parquet))
-    cols = [c for c in pii if c in df.columns]
+    years = [c for c in years if c in df.columns]
+    for c in years:   # a birth date reaches E2B as its year: ages stay computable, the day doesn't
+        df[c] = pd.to_datetime(df[c], format="mixed", errors="coerce").dt.year.astype("Int64")
+    cols = [c for c in pii if c in df.columns and c not in years]
+    # Patterns are masked in text with words (a note with an email, however rare): a code column
+    # without spaces (a firmware 2.1.0.15, a SKU 123-456-7890) keeps its values, or group-bys
+    # would merge them.
     text = [c for c in df.columns if c not in cols and (pd.api.types.is_string_dtype(df[c])
-                                                        or df[c].dtype == object)]
+                                                        or df[c].dtype == object)
+            and df[c].dropna().astype(str).str.contains(r"\s", regex=True).any()]
     masked = {c: df[c].map(lambda v: v if not isinstance(v, str) else mask_pii(v)) for c in text}
     changed = [c for c in text if not masked[c].equals(df[c])]
-    if not cols and not changed:
+    if not cols and not changed and not years:
         return df_parquet, {}
     back: dict = {}
     df = pseudonymize_columns(df.assign(**{c: masked[c] for c in changed}), cols,
@@ -493,24 +501,31 @@ _NUM_LITERAL = re.compile(r"(?<![\w.])\d{4,}(?![\w.])")
 
 
 def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes) -> str:
-    """Patient data: the frame holds record numbers as pseudonyms. A literal in the code that is
-    a record number (the user named 'MRN-100005') becomes its pseudonym, so E2B never gets it and
-    the filter matches. Only literals whose pseudonym is in the data are touched."""
+    """Patient data: the frame holds record numbers as pseudonyms. A literal compared against a
+    pseudonymised id column on the same line (`df['mrn'] == 'MRN-100005'`, `df.id == 4501`)
+    becomes its pseudonym, so E2B never gets it and the filter matches. A year, a threshold or a
+    date elsewhere is left alone, and digits inside another string are never touched."""
     if not present:
         return code
 
-    def find(v: str) -> str | None:
-        return next((p for col, vals in present.items() if (p := pseudonym(v, key, col)) in vals),
-                    None)
+    def find(v: str, cols: list[str]) -> str | None:
+        return next((p for col in cols if (p := pseudonym(v, key, col)) in present[col]), None)
 
-    def sub(m: re.Match) -> str:
-        p = find(m["s"])
-        return f"{m['q']}{p}{m['q']}" if p else m[0]
-
-    def num(m: re.Match) -> str:
-        p = find(m[0])
-        return f"'{p}'" if p else m[0]
-    return _NUM_LITERAL.sub(num, _STRING_LITERAL.sub(sub, code))
+    def line(text: str) -> str:
+        cols = [c for c in present if f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text]
+        if not cols:
+            return text
+        out, pos = [], 0
+        for m in _STRING_LITERAL.finditer(text):
+            out.append(_NUM_LITERAL.sub(lambda n: f"'{p}'" if (p := find(n[0], cols)) else n[0],
+                                        text[pos:m.start()]))
+            p = find(m["s"], cols)
+            out.append(f"{m['q']}{p}{m['q']}" if p else m[0])
+            pos = m.end()
+        out.append(_NUM_LITERAL.sub(lambda n: f"'{p}'" if (p := find(n[0], cols)) else n[0],
+                                    text[pos:]))
+        return "".join(out)
+    return "\n".join(line(t) for t in code.split("\n"))
 
 
 def restore_pseudonyms(obj, back: dict):
@@ -584,9 +599,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 # from before PHI mode still holds raw MRNs.
                 raw_ids = [] if contract.deidentified else [
                     c.name for c in contract.columns if is_phi_identifier(c.name) and not c.pii]
-                upload, back = await asyncio.to_thread(e2b_frame, df_parquet,
-                                                       [*pii_columns(contract), *raw_ids],
-                                                       session.user_id)
+                upload, back = await asyncio.to_thread(
+                    e2b_frame, df_parquet, [*pii_columns(contract), *raw_ids], session.user_id,
+                    [c.name for c in contract.columns if c.pii == "dob"])
             code = pseudonymize_literals(full_code, back, [*pii_columns(contract), *raw_ids])
             if contract.deidentified:   # record numbers the user named → their pseudonyms
                 ids = [d.column for d in contract.deidentification if d.operation == "pseudonymize"]
@@ -610,7 +625,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                            "SandboxTimeout": "The analysis took too long in the sandbox and was "
                                              "stopped. Try a narrower question."}.get(
                     kind, f"The analysis code failed in the sandbox ({kind}).")
-                raise SandboxError("analysis", detail, message) from None
+                raise SandboxError("analysis", detail, message) from None   # retryable: new code
             raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
             levels = any(c.aggregation in ("last", "first") for c in contract.columns)
@@ -692,6 +707,13 @@ def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
                 or (s.aggregation or "").lower() not in ("sum", "total"):
             continue
         cols = [c for c in s.segment_column.split("|") if c]
+        if hint.aggregation_time in cols:   # by its own snapshot time: a total per date, right
+            totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+            s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
+                          "value": round(float(v), 4)} for k, v in totals.items()]
+            s.aggregation = hint.aggregation
+            notes.append(f"{s.metric_column} by {s.segment_column} recomputed per snapshot")
+            continue
         if timeframe and timeframe.strip().lower() not in ("full dataset", "all", ""):
             # A breakdown for a stated period: the current total would answer another question.
             f.segments.remove(s)

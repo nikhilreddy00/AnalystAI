@@ -9,6 +9,9 @@ class AgentError(Exception):
     # Whether "retry from where it stopped" can help: a model or sandbox hiccup can pass on a
     # retry; data that can't be read or de-identified fails the same way every time.
     retryable = True
+    # Whether asking the question again can help: no for a source that can't be read or
+    # de-identified (the message says what to fix first).
+    reask = True
 
     def __init__(self, agent: str, detail: str, user_message: str | None = None):
         super().__init__(f"{agent}: {detail}")
@@ -47,6 +50,7 @@ class SandboxError(AgentError):
 class IngestionError(AgentError):
     """The source can't be loaded as a table (empty, not text, unreadable layout, no rows)."""
     retryable = False
+    reask = False
 
     def __init__(self, detail: str, user_message: str):
         super().__init__("ingestion", detail, user_message)

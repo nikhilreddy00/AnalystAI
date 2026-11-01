@@ -745,11 +745,14 @@ def _detect_entity_singular(columns, query: str = "", df: pd.DataFrame | None = 
     names what one row is (claim_id → claim; a sensor_id repeats, so it doesn't); else a noun
     from the entity-keyword table based on column names + the user's query."""
     if df is not None:
+        found = []
         for c in map(str, columns):
             m = re.fullmatch(r"([a-z]{3,})_id", c.lower()) or re.fullmatch(r"([a-z]{3,})Id", c)
             if m and m[1].lower() not in ("row", "record", "uuid", "guid") \
                     and df[c].notna().all() and df[c].is_unique:
-                return m[1]
+                found.append(m[1].lower())
+        if len(found) == 1:   # two unique ids (customer and order once each): ambiguous
+            return found[0]
     blob = " ".join(str(c).lower() for c in columns)
     if query:
         blob = f"{blob} {query.lower()}"
@@ -920,7 +923,10 @@ def _half_up(v: float, digits: int) -> str:
     """`v` with thousands commas, rounded half away from zero as Intl does (Python's format
     rounds half to even: 1234.5 → '1,234', the browser's '1,235')."""
     from decimal import ROUND_HALF_UP, Decimal
-    return f"{Decimal(repr(v)).quantize(Decimal(1).scaleb(-digits), ROUND_HALF_UP):,.{digits}f}"
+    v = float(v)   # numpy scalars repr as np.float64(…)
+    if not math.isfinite(v):
+        return "—"
+    return f"{Decimal(str(v)).quantize(Decimal(1).scaleb(-digits), ROUND_HALF_UP):,.{digits}f}"
 
 
 def _format_percent(v: float) -> str:
@@ -1856,6 +1862,9 @@ def compute_briefing_extras(
     out["sample_values_per_col"] = sample_values
     # Phase 5.5: units from the semantic layer or the file ($ → USD), so the UI never guesses money.
     out["column_units"] = {c.name: c.unit for c in (contract.columns if contract else []) if c.unit}
+    for c in (contract.columns if contract else []):   # the KPI name rule, sent: one decision
+        if c.is_metric and c.name not in out["column_units"] and _KPI_CURRENCY_RE.search(c.name):
+            out["column_units"][c.name] = "USD"
 
     # Skewness per numeric column
     skew: dict[str, float] = {}
@@ -2074,7 +2083,11 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
+    level = None
     if agg in ("last", "first"):   # a balance by group: each account's latest snapshot, added up
+        hint = level = column_hint(ctx.contract, metric)
+        if hint and x == hint.aggregation_time:
+            return None   # a level over its own time is a line's job (month_line), not bars
         try:
             df, agg = latest_rows(df, metric, ctx.contract), "sum"
         except LevelUnavailable:   # its account column is gone: no chart beats a wrong total
@@ -2119,7 +2132,10 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
         source_finding="group_bars", value_format="percent" if rate else "number",
         error_key="__ci" if any_ci else None, split_key=split,
         rationale=ChartRationale(rule="", reason="", x=x, y=metric, split=split, aggregation=agg,
-                                 n_rows=len(sub), code=f"df.groupby({groupby})[{metric!r}].{agg}()"),
+                                 n_rows=len(sub), code=(f"df.groupby({groupby})[{metric!r}].{agg}()" if not level else
+                                       f"# each {', '.join(level.aggregation_by)}'s latest snapshot (newest "
+                                       f"period), then summed\nlatest_rows(df, {metric!r}).groupby({groupby})"
+                                       f"[{metric!r}].sum()")),
     )
 
 
@@ -2133,6 +2149,8 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         return None
     agg = month_agg(df[metric], ctx.contract)
     hint = column_hint(ctx.contract, metric) if agg in ("last", "first") else None
+    if hint:
+        monthly = True   # staggered snapshots: a day holds only some accounts, a month all
     extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
     sub = df[cols + extra].copy()
@@ -2184,7 +2202,9 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         rationale=ChartRationale(
             rule="", reason=note, x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
             code=f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
-                 f"df.groupby({groupby})[{metric!r}].{agg}()"),
+                 + (f"df.groupby({groupby})[{metric!r}].{agg}()" if not hint else
+                    f"df.sort_values({date!r}).groupby([{groupby}, *{hint.aggregation_by!r}])"
+                    f"[{metric!r}].{agg}().groupby(level=0).sum()   # each entity's {agg}, summed")),
     )
 
 

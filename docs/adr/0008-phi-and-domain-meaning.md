@@ -9,7 +9,7 @@ included; and every numeric column was summed by month, so balances, MRR and sen
 out wrong.
 
 ## Decision
-1. **E2B never receives a personal value.** Every value of a personal column is replaced by a
+1. **E2B never receives a detected personal value.** Every value of a column detected as personal is replaced by a
    one-way pseudonym, `ID-` + 64 bits of HMAC-SHA256 keyed from `ENCRYPTION_KEY`, the user and the
    column (`guardrails.pseudonym`). Columns and headers stay, so counts and group-bys still work.
    E2B's results get the names back on our side only.
@@ -46,6 +46,16 @@ out wrong.
   - Identifiers written as column headers (a pivot) aren't masked.
 - **Pseudonyms change when `ENCRYPTION_KEY` rotates**, and in-flight runs then fail closed.
   `01001` and `1001` are different values. There is no reverse map outside a run.
+- **Detection outside patient data** is by name and by value: a name under an unrecognised header
+  (`Resident`) or a phone stored as a bare integer isn't detected there, so it reaches E2B and the
+  model as written (patient data withholds such columns).
+- **Record numbers under 6 digits** aren't put in the guard (they would tokenise every year and
+  count in a prompt): a short MRN the user types reaches the model as written.
+- **Dates of birth outside patient data** reach E2B as birth years (ages computable, the day not);
+  on patient data they are withheld. Yes/no outcome columns are never pooled (pooling the rare
+  side would erase it), so a rare outcome can be a one-way cell under 11.
+- **One-way small cells**: ZIP3 groups and a cleaning "Unknown" group created after pooling can be
+  under 11.
 - **The literal rewrite before E2B** maps whole literals compared against a personal column only.
   A partial match (`str.contains('Smi')`) reaches E2B as written.
 - **Vector memory (Qdrant)** stores the question and the summary as text, unencrypted. On patient
@@ -59,6 +69,15 @@ out wrong.
 - **Upgrading** changes the fingerprint of some uploads (leading zeros now kept, PHI mode on).
   A run checkpointed before the upgrade fails closed on resume (`DataChanged`); ask it again.
 - **`SEMANTIC_LAYER_PATH`** must be mounted into both containers; an unreadable path stops boot.
+  A layer with a `non_additive_dimension` metric whose primary key has no entity column besides
+  the time column (valid before 5.5) now fails validation: add the entity to the key.
+- **Trends run over the data's first time axis** unless a layer names a level's own time: HR data
+  with `hire_date` first trends over hires. A `window: first` level is the first snapshot per
+  period over time, and each entity's first ever across groups.
+- **On patient data, exact duplicates are judged on the raw rows** before cleaning normalises
+  whitespace and case, so near-duplicates differing only in those survive there.
+- **KPI entity names** fall back to a keyword in the headers ("users" from `active_users` on
+  account-month rows) when no single row-unique id names what a row is.
 
 ## Consequences
 - The 46 retail analysis contexts are byte-identical (`tests/test_suite_inputs_unchanged.py`).

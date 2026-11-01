@@ -626,6 +626,7 @@ class AnalysisSession(BaseModel):
     # every later run's LLM guard is seeded with them (stored with the history, which holds them).
     prior_pii: list[str] = Field(default_factory=list)
     error_retryable: bool = True   # error_message's failure can pass on a retry (5.5)
+    error_reask: bool = True       # asking the question again can help (5.5)
     overview_done: bool = False            # Phase 3: True after first comprehensive analysis ships; resets when connector_config changes
     dataset_name: str | None = None
     file_hash: str | None = None

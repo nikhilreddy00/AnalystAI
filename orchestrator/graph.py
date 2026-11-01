@@ -18,6 +18,7 @@ Conditional branches:
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import hashlib
@@ -32,8 +33,12 @@ from langgraph.types import interrupt
 from agents.analysis_agent import run_analysis_agent
 from agents.cleaning_agent import build_evidence as build_cleaning_evidence
 from agents.cleaning_agent import run_cleaning_agent
-from agents.ingestion_agent import remember_pii, run_ingestion_agent, seed_phi_guard
-from guardrails import is_phi_identifier
+from agents.ingestion_agent import (
+    looks_like_patient_data,
+    remember_pii,
+    run_ingestion_agent,
+    seed_phi_guard,
+)
 from agents.insight_agent import run_insight_agent
 from agents.intake_agent import (
     generate_data_narrative,
@@ -137,6 +142,7 @@ def _fail(session: AnalysisSession, stage: str, exc: Exception) -> None:
              "keeps failing, ask a different question."
     )
     session.error_retryable = getattr(exc, "retryable", True)
+    session.error_reask = getattr(exc, "reask", True)
 
 
 async def _save(state: AgentState) -> None:
@@ -200,7 +206,7 @@ async def ingestion_node(state: AgentState) -> dict:
     session: AnalysisSession = state["session"]
     # BUG-09: Clear error_message at the start of every graph run
     session.error_message = None
-    session.error_retryable = True
+    session.error_retryable, session.error_reask = True, True
     # FEAT-02: reset quality-retry budget for each run (counts entries into quality_check)
     session.quality_check_attempts = 0
     session.status = "in_progress"
@@ -212,7 +218,7 @@ async def ingestion_node(state: AgentState) -> dict:
     cached_used = False
     dc = session.data_contract
     # A patient-data thread from before PHI mode cached the raw frame: re-ingest it (de-identified).
-    legacy_phi = bool(dc and not dc.phi and any(is_phi_identifier(c.name) for c in dc.columns))
+    legacy_phi = bool(dc and not dc.phi and looks_like_patient_data(dc))
     if is_resuming and session.cleaned_data_path and not legacy_phi:
         # Try the on-disk cache before re-loading from the connector. Cuts a full
         # connector round-trip on every follow-up question and detaches the
@@ -221,7 +227,8 @@ async def ingestion_node(state: AgentState) -> dict:
             payload = read_cleaned_parquet(session.session_id)
             if payload is not None:
                 if session.data_contract:   # this run's LLM guard needs the PII values again
-                    remember_pii(pd.read_parquet(io.BytesIO(payload)), session.data_contract)
+                    await asyncio.to_thread(lambda: remember_pii(
+                        pd.read_parquet(io.BytesIO(payload)), session.data_contract))
                     # Patient data: the cache holds no names, so the guard reads the source too.
                     await seed_phi_guard(session, get_client())
                 session.__dict__["_df_parquet"] = payload
@@ -737,7 +744,8 @@ async def error_node(state: AgentState) -> dict:
     session: AnalysisSession = state["session"]
     session.status = "failed"
     msg = session.error_message or "An unexpected error occurred."
-    _emit(state, {"type": "error", "message": msg, "retryable": session.error_retryable})
+    _emit(state, {"type": "error", "message": msg, "retryable": session.error_retryable,
+                  "reask": session.error_reask})
     _emit(state, {"type": "done"})
     await _save(state)
     return {"session": session}

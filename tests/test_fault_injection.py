@@ -271,7 +271,7 @@ async def test_typed_error_surfaces_as_sse_error_event(monkeypatch, run_env):
 
     events = [queue.get_nowait() for _ in range(queue.qsize())]
     assert {"type": "error", "message": "The analysis code failed in the sandbox: Timeout",
-            "retryable": True} in events
+            "retryable": True, "reask": True} in events
     assert events[-1] == {"type": "done"}
 
 

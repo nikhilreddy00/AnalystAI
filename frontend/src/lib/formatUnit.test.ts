@@ -42,3 +42,8 @@ test("a filtered comparison tile reads like the backend's", () => {
   assert.equal(evaluateKPI({ kind: "comparison_split", segment_column: "g", target_column: "y" },
                            rows).value, "50.0% vs 0.0%");
 });
+
+test("a filtered variability tile reads like the backend's", () => {
+  const rows = [{ x: 1 }, { x: 2 }, { x: 3 }];
+  assert.equal(evaluateKPI({ kind: "highest_cv", column: "x" }, rows).value, "CV 0.50");
+});

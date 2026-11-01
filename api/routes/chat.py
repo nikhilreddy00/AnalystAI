@@ -122,7 +122,12 @@ def _last_turn_pii(session: AnalysisSession) -> set[str]:
         path = session.connector_config.file_path if session.connector_config else None
         if not path or not Path(path).is_file():   # ponytail: uploaded files only
             return set()
-        raw, _ = _read_bytes(Path(path).read_bytes(), Path(path).suffix.lower())
+        try:
+            raw, _ = _read_bytes(Path(path).read_bytes(), Path(path).suffix.lower())
+        except Exception as exc:   # its patient names can't be guarded: don't switch blind
+            raise HTTPException(status_code=409, detail="The earlier version of this dataset "
+                                "can't be read, so this conversation can't switch to a new one. "
+                                "Start a new analysis instead.") from exc
         return known_pii_values(raw, build_contract(raw, session.connector_config.type, {}))
     cached = read_cleaned_parquet(session.session_id)
     return known_pii_values(pd.read_parquet(io.BytesIO(cached)), session.data_contract) \

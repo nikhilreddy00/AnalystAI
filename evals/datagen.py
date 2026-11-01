@@ -217,7 +217,7 @@ def make_bank_balances(seed: int) -> tuple[pd.DataFrame, dict]:
         }))
     df = pd.concat(rows, ignore_index=True)
     anomaly_rows = sorted(rng.choice(len(df), size=5, replace=False).tolist())
-    df.loc[anomaly_rows, "deposits"] = (df.loc[anomaly_rows, "deposits"] * 40).round(2)
+    df.loc[anomaly_rows, "deposits"] = (df.loc[anomaly_rows, "deposits"] * 400).round(2)   # unmistakable
 
     true = _month_end_totals(df, "account_id", "snapshot_date", "balance")
     naive = _monthly_totals(df, "snapshot_date", "balance")

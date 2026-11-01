@@ -12,7 +12,7 @@ data: {"type": "agent_start", "agent": "cleaning", "message": "Cleaning data..."
 
 data: {"type": "agent_complete", "agent": "cleaning", "message": "Dropped 25 duplicates; imputed 1 column"}
 
-data: {"type": "error", "message": "The file behind this dataset is no longer available. Upload it again to continue.", "retryable": false}
+data: {"type": "error", "message": "The file behind this dataset is no longer available. Upload it again to continue.", "retryable": false, "reask": false}
 
 data: {"type": "done"}
 

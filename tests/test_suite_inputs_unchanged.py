@@ -25,4 +25,4 @@ async def test_every_snapshotted_case_still_gets_the_same_inputs():
         assert not changed, (suite, changed, [(now[suite].get(c), before[suite][c]) for c in changed[:2]])
     assert {c: now["e2e"][c]["roles"] for c in before["e2e"]} == \
         {c: v["roles"] for c, v in before["e2e"].items()}
-    assert len(now["analysis"]) == 67 and len(now["e2e"]) == 34   # the 5.5 cases are in it
+    assert len(now["analysis"]) == 68 and len(now["e2e"]) == 34   # the 5.5 cases are in it

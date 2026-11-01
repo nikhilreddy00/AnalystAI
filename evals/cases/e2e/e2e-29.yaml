@@ -20,12 +20,15 @@ checks:
 - kind: must_not_number
   truth_key: naive_mrr_by_plan.Starter
   rel_tol: 0.01
+  scope: report
 - kind: must_not_number
   truth_key: naive_mrr_by_plan.Pro
   rel_tol: 0.01
+  scope: report
 - kind: must_not_number
   truth_key: naive_mrr_by_plan.Scale
   rel_tol: 0.01
+  scope: report
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale

@@ -116,6 +116,9 @@ async def open_deps(app_env: str, database_url: str, *, vector: bool = True) -> 
         await runs.init()
         pool = AsyncConnectionPool(database_url.replace("+asyncpg", "").replace("+psycopg", ""),
                                    open=False, max_size=10,
+                                   # a connection dropped by a Postgres restart or a pooler is
+                                   # replaced before use, as the stores' pre-ping does (5.5)
+                                   check=AsyncConnectionPool.check_connection,
                                    kwargs={"autocommit": True, "prepare_threshold": 0,
                                            "row_factory": dict_row})
         await pool.open(wait=True, timeout=10)
@@ -179,14 +182,15 @@ async def _restore_frame(env: RunEnv, session: AnalysisSession, ref: str | None)
         frame = read_cleaned_parquet(session.session_id)
         if frame is None or hashlib.sha256(frame).hexdigest() != want:
             raise DataChanged("the cleaned data saved for this analysis is gone or was replaced")
-        remember_pii(pd.read_parquet(io.BytesIO(frame)), session.data_contract)
+        await asyncio.to_thread(lambda: remember_pii(pd.read_parquet(io.BytesIO(frame)),
+                                                     session.data_contract))
         await seed_phi_guard(session, get_client())   # patient data: the cache holds no names
     else:
         probe = session.model_copy(deep=True)
         question = session.task_plan.raw_query if session.task_plan else None
+        # seed_last stays on: intake re-runs and its memory quotes the previous turn's answer
         contract = await run_ingestion_agent(probe, get_client(), question,
-                                             session.data_contract.source_query,
-                                             seed_last=False)   # this load seeds the guard itself
+                                             session.data_contract.source_query)
         if contract.fingerprint != want:
             raise DataChanged("the data source returns different rows than when this run started")
         frame = probe.__dict__.pop("_df_parquet")
@@ -268,7 +272,7 @@ async def execute(run: Run, deps: Deps) -> str:
         return "lost"
     except AgentError as exc:   # e.g. the source behind a patient-data resume is unreachable
         logger.error("run %s failed", run.id, exc_info=exc)
-        return await _fail(store, run, exc.user_message, retryable=exc.retryable)
+        return await _fail(store, run, exc.user_message, retryable=exc.retryable, reask=exc.reask)
     except DataChanged as exc:
         return await _fail(store, run, f"This analysis can't continue: {exc}. Ask the question "
                                        "again to analyse the current data.", retryable=False)
@@ -291,9 +295,10 @@ async def execute(run: Run, deps: Deps) -> str:
     return status
 
 
-async def _fail(store, run: Run, message: str, retryable: bool = True) -> str:
+async def _fail(store, run: Run, message: str, retryable: bool = True, reask: bool = True) -> str:
     await store.finish(run.id, "failed", attempt=run.attempt, error=message,
-                       events=[{"type": "error", "message": message, "retryable": retryable},
+                       events=[{"type": "error", "message": message, "retryable": retryable,
+                                "reask": reask},
                                {"type": "done"}])
     return "failed"
 

@@ -167,7 +167,7 @@ async def test_error_node_says_whether_a_retry_can_help(run_env):
     _fail(s, "Data ingestion", IngestionError("x", "Upload it again."))
     await error_node({"session": s})
     events = [run_env.events.get_nowait() for _ in range(run_env.events.qsize())]
-    assert {"type": "error", "message": "Upload it again.", "retryable": False} in events
+    assert {"type": "error", "message": "Upload it again.", "retryable": False, "reask": False} in events
 
 
 async def test_sandbox_unavailable_and_timeout_read_as_such(monkeypatch, recorded_llm):
@@ -277,7 +277,7 @@ async def test_a_typed_failure_at_resume_keeps_its_message(monkeypatch):
     assert await runner.execute(await deps.run_store.claim(), deps) == "failed"
     events = [e for _, e in await deps.run_store.events_after(run.id, 0)]
     assert {"type": "error", "message": "The file behind this dataset is no longer available.",
-            "retryable": False} in events
+            "retryable": False, "reask": False} in events
 
 
 # ── prod parity (d) ──────────────────────────────────────────────────────────────────────────
@@ -491,3 +491,181 @@ async def test_a_retry_is_refused_for_a_final_failure():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
         r = await c.post(f"/runs/{run.id}/retry")
     assert r.status_code == 409 and "can't" in r.json()["detail"]
+
+
+# ── audit pass 2 (security) ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("name, values, dob", [
+    ("birth", ["1950-01-01"], True), ("birth_dt", ["1950-01-01"], True), ("BirthDt", ["1950-01-01"], True),
+    ("birth_year", [1950, 1961], True), ("dod", ["2020-01-01"], True), ("deceased_date", ["2020-01-01"], True),
+    ("births", [120, 98], False), ("birth_weight_g", [3200.0, 2900.0], False), ("birth_rate", [12.1], False)])
+def test_birth_and_death_dates_are_personal_but_counts_are_not(name, values, dob):
+    from guardrails import pii_kind
+    assert bool(pii_kind(name, values)) is dob
+
+
+def test_a_dob_under_birth_dt_is_withheld_and_never_a_time_axis():
+    df = pd.DataFrame({"mrn": [f"M{i}" for i in range(30)], "birth_dt": ["1950-01-0" + str(1 + i % 9) for i in range(30)],
+                       "visit_date": ["2026-01-02"] * 30, "cost": range(30)})
+    c = _contract(df)
+    assert "birth_dt" not in c.date_columns
+    out, _ = prepare_frame(df, c, ConnectorType.CSV)
+    assert "birth_dt" not in out.columns
+
+
+def test_a_few_names_under_an_unknown_header_are_withheld():
+    df = pd.DataFrame({"Pt": [f"{a} Smith" for a in ["Hal", "Ana", "Bo", "Cy", "Di"]] * 60,
+                       "dx_code": ["I10", "E11.9"] * 150, "cost": range(300)})
+    c = _contract(df)
+    assert c.phi
+    out, _ = prepare_frame(df, c, ConnectorType.CSV)
+    assert "Pt" not in out.columns
+
+
+def test_departments_named_like_people_are_kept():
+    df = pd.DataFrame({"mrn": [f"M{i % 50}" for i in range(300)],
+                       "department": ["Critical Care", "General Medicine", "Internal Medicine"] * 100,
+                       "cost": range(300)})
+    out, _ = prepare_frame(df, _contract(df), ConnectorType.CSV)
+    assert "department" in out.columns
+
+
+def test_years_thresholds_and_dates_in_code_are_never_rewritten():
+    from agents.analysis_agent import pseudonymize_id_literals
+    from guardrails import pseudonym, pseudonym_key
+    key = pseudonym_key("u")
+    present = {"encounter_id": {pseudonym(v, key, "encounter_id") for v in range(1, 3001)}}
+    code = ("x = df[df.admit_date.dt.year == 2025]\ny = df[df['charge'] > 1500]\n"
+            "z = df[df['admit_date'] >= '2025-06-01']\nw = df[df['encounter_id'] == 2025]")
+    out = pseudonymize_id_literals(code, present, key).split("\n")
+    assert out[:3] == code.split("\n")[:3] and "2025" not in out[3]
+
+
+def test_sandbox_failures_can_be_retried():   # a retry writes new code, or the sandbox is back
+    import asyncio
+
+    import agents.analysis_agent as aa
+    from agents.errors import SandboxError
+    from orchestrator.state import AnalysisTask
+    from sandbox.executor import ExecutionResult
+    from llm.client import RecordedClient
+    df, _ = datagen.make("claims", 1)
+
+    async def down(code, df_parquet=None):
+        return ExecutionResult(stdout="", stderr="", error="x", error_name="SandboxUnavailable")
+    aa_run, aa.run_code = aa.run_code, down
+    try:
+        s = AnalysisSession(session_id="e", data_contract=_contract(df), task_plan=AnalysisTask(
+            raw_query="q", analysis_types=["eda"], target_metrics=["claim_amount"]))
+        s.__dict__["_df_parquet"] = _parquet(df)
+        with pytest.raises(SandboxError) as err:
+            asyncio.run(aa.run_analysis_agent(s, RecordedClient(["result['x'] = 1"])))
+        assert err.value.retryable is True
+    finally:
+        aa.run_code = aa_run
+
+
+def test_an_old_thread_with_icd_codes_is_treated_as_patient_data():
+    from agents.ingestion_agent import looks_like_patient_data
+    df = pd.DataFrame({"dx_code": ["I10", "E11.9"] * 20, "notes": ["a b c d"] * 40, "cost": range(40)})
+    old = _contract(df).model_copy(update={"phi": False})
+    assert looks_like_patient_data(old)
+
+
+def test_a_measure_named_births_is_not_pseudonymised_for_e2b():
+    from agents.utils import pii_columns
+    df = pd.DataFrame({"county": ["a", "b"] * 10, "births": [120, 98, 143, 101, 99] * 4})
+    assert "births" not in pii_columns(_contract(df))
+
+
+# ── audit pass 2 (analytics, failures, eval) ────────────────────────────────────────────────
+
+def test_codes_without_spaces_keep_their_values_in_e2b():
+    from agents.analysis_agent import e2b_frame
+    df = pd.DataFrame({"firmware": ["2.1.0.15", "2.1.0.16"] * 5, "sku": ["123-456-7890"] * 10})
+    up, _ = e2b_frame(_parquet(df), [])
+    assert pd.read_parquet(io.BytesIO(up))["firmware"].tolist() == df["firmware"].tolist()
+
+
+def test_birth_dates_reach_e2b_as_years_outside_patient_data():
+    from agents.analysis_agent import e2b_frame
+    df = pd.DataFrame({"birth_date": pd.to_datetime(["1950-06-01", "1980-02-03"]), "x": [1, 2]})
+    up, _ = e2b_frame(_parquet(df), ["birth_date"], years=["birth_date"])
+    assert pd.read_parquet(io.BytesIO(up))["birth_date"].tolist() == [1950, 1980]
+
+
+def test_a_patient_file_with_nothing_left_says_so(tmp_path, monkeypatch):
+    df = pd.DataFrame({"mrn": ["M1"] * 3, "patient": ["Ana Ito"] * 3}).drop(columns="mrn")
+    df["dob"] = "1950-01-01"
+    df["diagnosis"] = ["Seen today for a long complicated visit", "b c d e f g", "x y z w v u"]
+    c = _contract(df)
+    assert c.phi
+    if c.phi:
+        with pytest.raises(IngestionError) as err:
+            prepare_frame(df, c, ConnectorType.CSV)
+        assert "nothing is left" in err.value.user_message
+
+
+def test_numpy_and_infinite_numbers_format():
+    from agents.visualization_agent import _format_value
+    assert _format_value(np.float64(1234.5), "currency", "USD") == "$1,234.50"
+    assert _format_value(float("inf"), "number") == "—"
+
+
+def test_the_checkpointer_pool_checks_connections():
+    import inspect
+
+    import orchestrator.runner as r
+    assert "check=AsyncConnectionPool.check_connection" in inspect.getsource(r.open_deps)
+
+
+def test_eval_pseudonyms_use_the_sessions_scope_like_production():
+    from evals.run import load_cases, working_frame
+    from guardrails import pseudonym, pseudonym_key
+    case = next(c for c in load_cases("analysis", None) if c["dataset"]["name"] == "encounters")
+    df, _ = working_frame(case)
+    raw = datagen.make("encounters", case["dataset"]["seed"])[0]
+    assert pseudonym(raw["mrn"].iloc[0], pseudonym_key(AnalysisSession(session_id="x").user_id),
+                     "mrn") in set(df["mrn"])
+
+
+def test_a_level_over_its_own_snapshot_time_is_a_total_per_date():
+    from agents.utils import aggregate
+    df, truth = datagen.make("bank_balances", 1)
+    c = _contract(df)
+    per = aggregate(df, ["snapshot_date"], "balance", "last", c)
+    assert len(per) == df["snapshot_date"].nunique()
+
+
+def test_decimal_comma_with_a_suffix():
+    from agents.data_cleaning import try_numeric_conversion
+    got = try_numeric_conversion(pd.Series(["12,5 %", "7,25 %"]))[0].tolist()
+    assert got == pytest.approx([0.125, 0.0725])
+    assert try_numeric_conversion(pd.Series(["1,5 kg", "2,25 kg"]))[0].tolist() == [1.5, 2.25]
+
+
+def test_a_level_metric_wins_over_another_metric_on_the_column(monkeypatch):
+    import semantic_layer
+    layer = semantic_layer.SemanticLayer.model_validate({"tables": [
+        {"name": "t", "source": "f.t", "primary_key": ["a", "d"],
+         "columns": [{"name": "a", "type": "id"}, {"name": "d", "type": "time"},
+                     {"name": "b", "type": "fact"}]}],
+        "metrics": [{"name": "m", "table": "t", "expr": "SUM(t.b)",
+                     "non_additive_dimension": {"name": "d", "window": "last"}},
+                    {"name": "avg_b", "table": "t", "expr": "AVG(t.b)"}]})
+    monkeypatch.setattr(semantic_layer, "file_layers", lambda: (layer,))
+    assert semantic_layer.column_hints(["a", "d", "b"])[0]["b"]["aggregation"] == "last"
+
+
+def test_two_unique_ids_make_the_entity_ambiguous():
+    from agents.visualization_agent import _detect_entity_singular
+    df = pd.DataFrame({"customer_id": range(5), "order_id": range(10, 15), "amount": range(5)})
+    assert _detect_entity_singular(df.columns, "", df) != "customer"
+
+
+def test_a_crash_resume_seeds_the_guard_from_the_previous_turn():
+    import inspect
+
+    import orchestrator.runner as r
+    src = inspect.getsource(r._restore_frame)
+    assert "seed_last=False" not in src

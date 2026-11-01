@@ -763,8 +763,8 @@ def executive_jargon(text: str) -> list[str]:
 # ── PII ────────────────────────────────────────────────────────────────────────
 
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|dob|"
-    r"(?:date_of_)?birth_?(?:date|day)|date_of_birth|born_(?:on|date)|bday|date_of_death|death_date|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|dob|dod|"
+    r"birth\w*|(?:year|date)_of_(?:birth|death)|born\w*|bday|death\w*|deceased\w*|"
     r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
@@ -784,6 +784,12 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                # insurance and health plans (Phase 5.5): people, named by their role
                "policyholder", "insured", "beneficiary", "subscriber", "guarantor", "claimant",
                "dependent", "caregiver", "guardian"}
+# Department / unit names read like people ("Critical Care"): these words mark a thing, not a person.
+_PLACE_WORDS = re.compile(r"\b(?:medicine|care|surgery|surgical|unit|clinic|center|centre|department|"
+                          r"service|services|therapy|health|practice|ward|room|lab|laboratory|imaging|"
+                          r"radiology|\w+ology|\w+ics|\w+iatry|emergency|outpatient|inpatient|"
+                          r"pharmacy|hospital|nursing|rehab\w*|office|team|group|plan|insurance|"
+                          r"shield|cross|mutual|medicaid|medicare|street|road|avenue)\b", re.I)
 _PERSON_RE = re.compile(r"^[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*){1,3}$")
 # "Acme Corp" is capitalized words too: a B2B `client` column keeps its "revenue by client".
 _ORG_RE = re.compile(r"\b(?:inc|corp|corporation|co|company|ltd|limited|llc|llp|plc|gmbh|ag|sa|"
@@ -835,6 +841,18 @@ def _intl_phone(m: re.Match) -> str:
     return MASK if 8 <= len(re.sub(r"\D", "", m.group())) <= 15 else m.group()
 
 
+def _is_measure(values: Iterable[Any]) -> bool:
+    """Numbers that aren't dates or years (a count of births, a weight at birth): a birth- or
+    death-named column holding them is a measure, not a person's date."""
+    nums = [v for v in values if isinstance(v, numbers.Number) and not isinstance(v, bool)
+            and not (isinstance(v, float) and math.isnan(v))]
+    if not nums or len(nums) < 0.9 * sum(1 for v in values if v is not None):
+        return False
+    years = all(float(v).is_integer() and 1880 <= v <= 2100 for v in nums)
+    yyyymmdd = all(float(v).is_integer() and 18800101 <= v <= 21001231 for v in nums)
+    return not (years or yyyymmdd)
+
+
 def mask_pii(value: Any) -> Any:
     """Mask PII patterns inside a single value. Integers are checked as text too (a card
     number stored as int); other non-strings pass through."""
@@ -862,8 +880,8 @@ def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
 
 
 _NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
-               ("address", r"address|street"), ("dob", r"dob|(?:date_of_)?birth_?(?:date|day)|date_of_birth|born_(?:on|date)|bday|"
-                                         r"date_of_death|death_date"),
+               ("address", r"address|street"), ("dob", r"dob|dod|birth\w*|(?:year|date)_of_(?:birth|death)|born\w*|bday|"
+                                         r"death\w*|deceased\w*"),
                ("passport", r"passport"))
 
 
@@ -877,6 +895,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
+        if kind == "dob" and _is_measure(values):   # births = 120, birth_weight_g = 3200
+            return None
         return kind, f"the column name '{name}' marks personal data"
     vals = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
     if not vals:
@@ -1119,3 +1139,13 @@ _CLOSE_TAG_RE = re.compile(r"<\s*/\s*untrusted_data\s*>", re.I)
 def delimit_untrusted(text: str) -> str:
     safe = _CLOSE_TAG_RE.sub("</untrusted_data_>", str(text))   # every spelling of the close tag
     return f"<untrusted_data>\n{safe}\n</untrusted_data>"
+
+
+def person_shaped(values: Iterable[Any]) -> float:
+    """Share of distinct text values that read as a person's name ("Ana Ito"), not an
+    organisation or a department ("Critical Care", "Blue Cross Blue Shield")."""
+    v = {str(x).strip() for x in values if isinstance(x, str) and x.strip()}
+    if not v:
+        return 0.0
+    return sum(bool(_PERSON_RE.match(x)) and not _ORG_RE.search(x) and not _PLACE_WORDS.search(x)
+               for x in v) / len(v)

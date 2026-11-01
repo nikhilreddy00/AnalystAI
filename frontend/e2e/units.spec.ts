@@ -75,3 +75,21 @@ test("a final error offers no retry, live or reopened", async ({ page }) => {
   await expect(alert).toBeVisible({ timeout: 30_000 });
   await expect(alert.getByRole("button")).toHaveCount(0);
 });
+
+test("data that changed offers 'Try again' but not a resume", async ({ page }) => {
+  writeFileSync(SCENARIO, "changed\n");
+  await page.goto("/chat");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
+  });
+  const input = page.getByLabel("Ask a question about your data");
+  await expect(input).toBeEnabled();
+  await input.fill("Give me an overview of this sales data");
+  await input.press("Enter");
+  const alert = page.getByRole("alert").filter({ hasText: "Ask the question again" });
+  await expect(alert).toBeVisible({ timeout: 30_000 });
+  await expect(alert.getByRole("button", { name: "Try again" })).toBeVisible();
+  await page.reload();
+  await expect(alert.getByRole("button", { name: "Try again" })).toBeVisible({ timeout: 30_000 });
+  await expect(alert.getByRole("button", { name: /Retry from where/ })).toHaveCount(0);
+});

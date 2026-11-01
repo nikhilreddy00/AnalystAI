@@ -226,7 +226,9 @@ Diagnosis codes and visit dates are kept, because they are what you analyse. **T
 de-identification**, and AnalystAI makes no HIPAA claim. The limits are listed in
 `docs/adr/0008-phi-and-domain-meaning.md`.
 
-The code sandbox (E2B) never receives a personal value: they are sent as one-way pseudonyms.
+The code sandbox (E2B) receives the values of columns detected as personal (by name or by value)
+only as one-way pseudonyms, and emails, phones, SSNs, cards and IPs inside other text are masked.
+Detection has limits (listed in the ADR); on patient data the stricter rules above apply.
 
 ## Security
 

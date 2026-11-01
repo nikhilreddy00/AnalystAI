@@ -214,7 +214,7 @@ export function useAnalysis() {
       case "error":
         patchLast((m) => ({ ...m, content: `Error: ${event.message}`, isStreaming: false,
                             runId: event.retryable === false ? undefined : run.current.id ?? undefined,
-                            final: event.retryable === false }));
+                            final: event.reask === false }));
         break;
       case "done":
         finish();
@@ -386,7 +386,7 @@ export function useAnalysis() {
         // A final error (retryable: false) offers no "retry from where it stopped".
         const retry = t === last && t.retryable !== false ? t.run_id : undefined;
         patchLast((m) => ({ ...m, content: `Error: ${t.error ?? "This question has no report."}`, runId: retry,
-                            final: t === last && t.retryable === false }));
+                            final: t.reask === false }));
       } else if (!t.report.length) {
         patchLast((m) => ({ ...m, content: "This question has no report." }));
       }

@@ -56,6 +56,8 @@ def turn(run: Run, events: list[dict], latest_version_id: str | None) -> dict:
         # whether "retry from where it stopped" can help (the run's last error says)
         "retryable": next((e.get("retryable", True) is not False for e in reversed(events)
                            if e.get("type") == "error"), True),
+        "reask": next((e.get("reask", True) is not False for e in reversed(events)
+                       if e.get("type") == "error"), True),
         # A stored seal that doesn't match the events means something rewrote them.
         "intact": run.report_sha256 is None or run.report_sha256 == sha,
         "stale": bool(vid and latest_version_id and vid != latest_version_id),

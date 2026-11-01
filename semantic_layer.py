@@ -196,6 +196,8 @@ def column_hints(columns: list[str]) -> tuple[dict[str, dict], str | None]:
         col = node.this.name
         h = hints.setdefault(col, {})
         nad = m.non_additive_dimension
+        if not nad and h.get("aggregation") in ("last", "first"):
+            continue   # a level stays a level whatever other metric reads the column
         if nad:   # a level: its window's row per entity (the key minus the time) per period
             h.update(aggregation=nad.window, time=nad.name,
                      by=[k for k in table.primary_key if k != nad.name])

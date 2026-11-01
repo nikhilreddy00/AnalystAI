@@ -127,15 +127,6 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
     if neg.any():   # accounting negatives: (3,000.00)
         cleaned = cleaned.where(~neg, "-" + cleaned.str.slice(1, -1).str.strip())
         transformations.append("parenthesised negatives")
-    filled = cleaned.dropna().str.strip()
-    sep = filled[filled.str.contains(r"[.,]", regex=True)]   # bare integers say nothing
-    eu_comma = sep.str.contains(r"\d,\d{1,2}$", regex=True)       # 10,50  1.249,5
-    us_dot = sep.str.contains(r"\d\.\d{1,2}$", regex=True) | sep.str.contains(r"\d,\d{3}\.", regex=True)
-    eu_like = sep.str.fullmatch(_EU_DECIMAL_RE) | sep.str.fullmatch(r"-?\d{1,3}(?:\.\d{3})+")
-    if len(sep) and eu_comma.any() and not us_dot.any() and eu_like.mean() >= 0.8:
-        # 10,50 and 1.249,00: a decimal comma (Europe), not a thousands separator
-        cleaned = cleaned.str.strip().str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-        transformations.append("decimal comma")
     pct = cleaned.str.contains(_PCT_TAIL_RE, regex=True).fillna(False).astype(bool)
     if pct.any():
         cleaned = cleaned.str.replace(_PCT_TAIL_RE, "", regex=True)
@@ -146,6 +137,15 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
     if cleaned.dropna().str.contains(_UNIT_RE, regex=True).any():
         cleaned = cleaned.str.replace(_UNIT_RE, "", regex=True)
         transformations.append("unit suffix")
+    filled = cleaned.dropna().str.strip()
+    sep = filled[filled.str.contains(r"[.,]", regex=True)]   # bare integers say nothing
+    eu_comma = sep.str.contains(r"\d,\d{1,2}$", regex=True)       # 10,50  1.249,5
+    us_dot = sep.str.contains(r"\d\.\d{1,2}$", regex=True) | sep.str.contains(r"\d,\d{3}\.", regex=True)
+    eu_like = sep.str.fullmatch(_EU_DECIMAL_RE) | sep.str.fullmatch(r"-?\d{1,3}(?:\.\d{3})+")
+    if len(sep) and eu_comma.any() and not us_dot.any() and eu_like.mean() >= 0.8:
+        # 10,50 and 1.249,00: a decimal comma (Europe), not a thousands separator
+        cleaned = cleaned.str.strip().str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+        transformations.append("decimal comma")
     if cleaned.dropna().str.contains(_COMMA_NUM_RE, regex=True).any():
         cleaned = cleaned.str.replace(",", "", regex=False)
         transformations.append("comma formatting")

@@ -101,7 +101,8 @@ def working_frame(case: dict, guard: bool = False):
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
     if guard:
         remember_pii(df, contract)
-    return prepare_frame(df, contract, ConnectorType.CSV, {})
+    # The scope production uses: the session's user (an eval session's user is "default").
+    return prepare_frame(df, contract, ConnectorType.CSV, {}, AnalysisSession(session_id="x").user_id)
 
 
 async def run_analysis_case(case: dict) -> dict:
@@ -137,7 +138,37 @@ async def run_analysis_case(case: dict) -> dict:
             "output": findings.model_dump(mode="json") if findings else None}
 
 
-def score_analysis(case: dict, findings, error: str | None) -> dict:
+_BUILTIN: dict[str, bool] = {}
+
+
+def builtin_only(case: dict) -> bool:
+    """Does the case pass on the deterministic built-in code alone (an empty model body), run
+    locally on the frame E2B would get? Such a case measures that code, not the model: the
+    domain claim rests on the others. $0, cached per case."""
+    if case["id"] in _BUILTIN:
+        return _BUILTIN[case["id"]]
+    from agents.analysis_agent import (_CODE_HEADER, _build_guaranteed_code,
+                                       _build_standard_code, _parse_findings, e2b_frame)
+    from agents.utils import pii_columns
+    df, contract = working_frame(case)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    upload, _ = e2b_frame(buf.getvalue(), pii_columns(contract))
+    task = AnalysisTask(raw_query=case["question"], **case["task"])
+    code = (_CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "") +
+            _build_standard_code(contract, task) + _build_guaranteed_code(contract))
+    g = {"df": pd.read_csv(io.StringIO(pd.read_parquet(io.BytesIO(upload)).to_csv(index=False)))}
+    try:
+        exec(code, g)
+        findings = _parse_findings(json.loads(json.dumps(g["result"], default=str)), "", [])
+        out = passed(score_analysis(case, findings, None, baseline=False)["checks"])
+    except Exception:
+        out = False
+    _BUILTIN[case["id"]] = out
+    return out
+
+
+def score_analysis(case: dict, findings, error: str | None, baseline: bool = True) -> dict:
     """Scores one analysis run from its stored output (so `rescore` costs nothing), against the
     frame the agent was given (PHI mode's working copy on patient data)."""
     _, truth, _ = dataset(case)
@@ -152,7 +183,8 @@ def score_analysis(case: dict, findings, error: str | None) -> dict:
                                                                 truth=truth))))
             for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
-            "false_findings": false_findings(findings, df, truth) if findings else None}
+            "false_findings": false_findings(findings, df, truth) if findings else None,
+            **({"builtin_only": builtin_only(case)} if baseline and "domain" in case else {})}
 
 
 _DEPS = None
@@ -844,7 +876,7 @@ def phi_output(df: pd.DataFrame, contract) -> dict:
         got, raw = out[col].dropna().astype(str), df[col].dropna().astype(str)
         if len(got) and got.str.match(_PSEUDONYM).all():
             status[col] = "pseudonymized"
-        elif got.equals(raw):
+        elif len(got) and got.isin(set(raw)).all() and set(got) == set(raw):
             status[col] = "kept"
         elif len(got) and (got.str.len() <= 3).all() and not got.isin(raw).any():
             status[col] = "generalized"
@@ -1201,6 +1233,8 @@ def summarize(runs: dict[str, list[dict]]) -> dict:
             sum(sum(r["passed"] for r in rs) * 2 > len(rs) for rs in runs.values()) / len(runs), 4),
         "flip_rate": round(sum(len({r["passed"] for r in rs}) > 1 for rs in runs.values()) / len(runs), 4),
         "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
+        # a canary or exit scan with nothing planted measures nothing: counted apart, not a pass
+        "hard_rules_na": sum(bool(h.get("na")) for r in flat for h in r["hard"]),
         "errors": sum(bool(r["error"]) for r in flat),
         "runs_with_truncated_llm_output": sum(r.get("truncated_calls", 0) > 0 for r in flat),
         # Refusals and read-only blocks end the run; they are never retried.
@@ -1242,6 +1276,13 @@ def _by_domain(runs: dict[str, list[dict]]) -> dict:
                   "cases_passed_all_runs": sum(all(r["passed"] for r in rs) for rs in sub.values()),
                   "pass_rate": round(sum(r["passed"] for r in flat) / len(flat), 4),
                   "hard_rule_violations": sum(not h["ok"] for r in flat for h in r["hard"]),
+                  "hard_rules_na": sum(bool(h.get("na")) for r in flat for h in r["hard"]),
+                  # cases the deterministic built-in code passes with no model code at all:
+                  # the domain claim rests on the others (model_dependent)
+                  "builtin_only_cases": sorted(c for c, rs in sub.items() if rs[0].get("builtin_only")),
+                  "model_dependent_passed": sum(all(r["passed"] for r in rs) for rs in sub.values()
+                                                if rs[0].get("builtin_only") is False),
+                  "model_dependent_cases": sum(rs[0].get("builtin_only") is False for rs in sub.values()),
                   **_quality(flat)}
     return {"by_domain": out}
 

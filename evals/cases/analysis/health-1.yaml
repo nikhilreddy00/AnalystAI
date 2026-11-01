@@ -5,7 +5,8 @@ dataset:
   name: encounters
   seed: 1
 question: What is the 30-day readmission rate by department (the share of discharges
-  followed by another admission within 30 days)?
+  followed by another admission within 30 days, counting only discharges whose 30-day
+  window has ended)?
 task:
   analysis_types:
   - segmentation

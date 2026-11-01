@@ -197,7 +197,7 @@ def test_numbers_grounded_hard_rule(sales):
 def test_every_case_is_well_formed():
     for suite, kinds in (("analysis", ANALYSIS_CHECKS), ("e2e", E2E_CHECKS)):
         cases = load_cases(suite, None)
-        assert len(cases) == {"analysis": 67, "e2e": 34}[suite]   # 5.5: +21 analysis, +14 E2E
+        assert len(cases) == {"analysis": 68, "e2e": 34}[suite]   # 5.5: +22 analysis, +14 E2E
         assert len({c["id"] for c in cases}) == len(cases)
         for c in cases:
             _, truth = datagen.make(c["dataset"]["name"], c["dataset"]["seed"])

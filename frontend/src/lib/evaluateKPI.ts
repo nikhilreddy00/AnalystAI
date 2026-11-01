@@ -146,10 +146,11 @@ export function evaluateKPI(
       if (vals.length < 2) return { value: "—", ok: false };
       const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
       if (Math.abs(mean) < 1e-12) return { value: "—", ok: false };
+      // As the backend writes it: sample std (n - 1), "CV 0.59".
       const variance =
-        vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length;
+        vals.reduce((s, v) => s + (v - mean) ** 2, 0) / (vals.length - 1);
       const cv = Math.sqrt(variance) / Math.abs(mean);
-      return { value: formatValue(cv, "percent"), ok: true };
+      return { value: `CV ${cv.toFixed(2)}`, ok: true };
     }
   }
 }

@@ -336,7 +336,8 @@ def test_decimal_commas_are_read_as_decimals(vals, want):
                                        ("date_of_birth", True), ("birth_date", True), ("dob", True)])
 def test_only_birth_dates_are_dates_of_birth(name, dob):
     from guardrails import pii_kind
-    assert bool(pii_kind(name, [120, 98])) is dob
+    values = ["1950-01-02", "1961-03-04"] if dob else [120, 98]
+    assert bool(pii_kind(name, values)) is dob
 
 
 def test_json_keeps_codes_as_written():
@@ -363,7 +364,7 @@ def test_the_shown_code_for_a_level_takes_the_latest_snapshot_first():
     df, _ = datagen.make("bank_balances", 1)
     r = ta.handle_top_n(df, TargetedParams(metric_column="balance", group_by="segment"), _bank_contract())
     code = r.chart_configs[0].rationale.code
-    assert "tail(1)" in code and ".sum()" in code and "(USD)" in r.chart_configs[0].y_label
+    assert "latest_rows" in code and ".sum()" in code and "(USD)" in r.chart_configs[0].y_label
 
 
 def test_user_errors_name_a_step_not_an_exception():

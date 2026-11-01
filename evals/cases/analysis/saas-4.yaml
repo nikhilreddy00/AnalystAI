@@ -1,0 +1,23 @@
+id: saas-4
+domain: saas
+category: segment
+dataset:
+  name: saas_accounts
+  seed: 1
+question: How do seats per account differ by plan?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - seats
+  segments:
+  - plan
+checks:
+- kind: segment_value
+  planted: true
+  segment: plan
+  metric: seats
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

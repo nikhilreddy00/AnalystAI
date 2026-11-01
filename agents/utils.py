@@ -119,7 +119,8 @@ def pii_columns(contract) -> set[str]:
     values, e.g. `sales_rep` holding names) plus the name rule. Every mask reads this set."""
     if contract is None:
         return set()
-    return {c.name for c in contract.columns if c.pii or is_pii_column(c.name)}
+    # The name rule alone never takes a measure (births = 120 is a count, not a birth date).
+    return {c.name for c in contract.columns if c.pii or (is_pii_column(c.name) and not c.is_metric)}
 
 
 # ── Aggregation from the semantic layer (Phase 5.5) ───────────────────────────────────────────
@@ -184,7 +185,8 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
     hint = column_hint(contract, column)
     if agg not in _LEVEL or hint is None:
         return df.groupby(keys)[column].agg("sum" if agg in _LEVEL else agg)
-    if not over_time:
+    names = [k for k in (keys if isinstance(keys, list) else [keys]) if isinstance(k, str)]
+    if not over_time and hint.aggregation_time not in names:
         return latest_rows(df, column, contract).groupby(keys)[column].sum()
     keys = keys if isinstance(keys, list) else [keys]
     d = _snapshots(df.dropna(subset=[column]), hint)

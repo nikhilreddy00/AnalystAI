@@ -277,7 +277,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     direction = "Bottom" if asc else "Top"
     answer = (
         f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}. "
-        f"Leader: {grouped.index[0]} = {grouped.iloc[0]:,.2f}."
+        f"Leader: {grouped.index[0]} = {_num(grouped.iloc[0])}."
     )
     chart = _chart(
         ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}",
@@ -298,19 +298,28 @@ def _why_failed(exc: Exception) -> str:
     return str(exc) if isinstance(exc, LevelUnavailable) else type(exc).__name__
 
 
+def _num(v: float) -> str:
+    """An answer's number: 2 decimals, 4 under 1 (a rate of 0.0743 isn't 0.07)."""
+    return f"{v:,.4f}" if abs(v) < 1 else f"{v:,.2f}"
+
+
 def _with_unit(label: str, metric: str, contract) -> str:
     unit = next((c.unit for c in (contract.columns if contract else []) if c.name == metric and c.unit),
                 None)
     return f"{label} ({unit})" if unit else label
 
 
-def _code(base: str, agg: str, metric: str, contract) -> str:
-    """The pandas that reproduces the number: a level takes each entity's latest snapshot first."""
+def _code(base: str, agg: str, metric: str, contract, over: str | None = None) -> str:
+    """The pandas that reproduces the number. A level: over time, each entity's snapshot per
+    period then summed; by group, each entity's latest snapshot in the newest period, summed."""
     hint = column_hint(contract, metric)
     if agg in ("last", "first") and hint:
         by = hint.aggregation_by
-        return (f"# {agg} snapshot per {by} (by {hint.aggregation_time}), then summed\n"
-                f"{base.replace('df', f'df.sort_values({hint.aggregation_time!r}).groupby({by!r}).tail(1)', 1)}.sum()")
+        if over:   # base = the period grouper
+            return (f"df.sort_values({hint.aggregation_time!r}).groupby([{over}, *{by!r}])"
+                    f"[{metric!r}].{agg}().groupby(level=0).sum()")
+        return (f"# each {', '.join(by)}'s latest snapshot (newest period), then summed\n"
+                f"latest_rows(df, {metric!r}){base[2:]}.sum()")
     return f"{base}.{agg}()"
 
 
@@ -364,6 +373,8 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     asked = (params.aggregation or "").lower() or None
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "sum"   # "balance at month end": each account's last
+    if agg in ("last", "first") and freq == "D":
+        freq = "W"   # staggered snapshots: a day holds only some accounts, a week each once
 
     group = _named_group(df, params)
     if group is not None:
@@ -415,7 +426,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         # "How did X change last month?" asks about the latest step, not the whole range.
         step = (series.iloc[-1] / series.iloc[-2] - 1) * 100
         answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
-                   f"{step:+.1f}% ({series.iloc[-2]:,.2f} → {series.iloc[-1]:,.2f}).")
+                   f"{step:+.1f}% ({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
     answer += partial
     chart = _chart(
         ChartType.LINE, f"{_of(agg, metric, True)} over time", chart_data,
@@ -425,7 +436,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     _why(chart, ctx, "targeted:time_series→line", f"{metric} over time, {agg} per period "
          f"({freq}){scope}.", date, metric, agg, len(s),
          code=_code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
-                    agg, metric, contract))
+                    agg, metric, contract, over=f"pd.Grouper(key={date!r}, freq={freq!r})"))
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
 
 
@@ -467,14 +478,14 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     top_seg, top_val = grouped.index[0], grouped.iloc[0]
     bottom_seg, bottom_val = grouped.index[-1], grouped.iloc[-1]
     answer = (
-        f"{_of(agg, metric, False)} by {segment}: '{top_seg}' leads at {top_val:,.2f}, "
-        f"'{bottom_seg}' trails at {bottom_val:,.2f}."
+        f"{_of(agg, metric, False)} by {segment}: '{top_seg}' leads at {_num(top_val)}, "
+        f"'{bottom_seg}' trails at {_num(bottom_val)}."
     )
     group = _named_group(df, params)
     if group is not None:
         # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
         value = float(full[full.index.astype(str) == group].sum())
-        answer = f"{_of(agg, metric, False)} for {segment} '{group}': {value:,.2f}. " + answer
+        answer = f"{_of(agg, metric, False)} for {segment} '{group}': {_num(value)}. " + answer
     ctx = ctx or build_context(df)
     chart = group_bars(df, segment, metric, agg, ctx, top=20)
     if chart and chart.rationale:

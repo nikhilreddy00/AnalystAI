@@ -29,8 +29,6 @@ from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from semantic_layer import column_hints
 from guardrails import (
-    _ORG_RE,
-    _PERSON_RE,
     AGE_CAP,
     CALENDAR_WORDS,
     MASK,
@@ -43,6 +41,7 @@ from guardrails import (
     is_zip_column,
     mask_pii,
     mask_row,
+    person_shaped,
     pii_kind,
     pii_strings,
     pseudonym_key,
@@ -235,7 +234,7 @@ def _summary(df: pd.DataFrame, cols: list[ColumnInfo]) -> str:
     return " ".join(parts)
 
 
-_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₹": "INR"}
+_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP", "₹": "INR"}   # ¥ is JPY or CNY: not guessed
 
 
 def _written_currency(s: pd.Series) -> str | None:
@@ -300,6 +299,20 @@ def source_evidence(df: pd.DataFrame, cols: list[ColumnInfo], source_type: Conne
         assumptions=notes)
 
 
+def _patient_signal(cols: list[ColumnInfo], values) -> bool:
+    """Patient records: an MRN / patient id, ICD-10 codes in a diagnosis column, or health
+    vocabulary in the headers next to personal data. One rule for new loads and old threads."""
+    return (any(is_phi_identifier(c.name) for c in cols)
+            or any(is_diagnosis_column(c.name, values(c.name)) for c in cols)
+            or (any(is_health_column(c.name) for c in cols) and any(c.pii for c in cols)))
+
+
+def looks_like_patient_data(contract: DataContract) -> bool:
+    """For a contract stored before PHI mode: the same rule, on its column samples."""
+    return _patient_signal(contract.columns, lambda n: next(
+        (c.sample_values for c in contract.columns if c.name == n), []))
+
+
 def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | None = None
                    ) -> DataContract:
     """The DataContract every downstream agent reads. Deterministic: the same frame gives the
@@ -333,11 +346,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     head = df.head(5).astype(object)
     rows = head.where(head.notna(), None).to_dict(orient="records")
     fp = fingerprint(df)
-    phi = (any(is_phi_identifier(c.name) for c in cols)
-           or any(is_diagnosis_column(str(n), _profiled(df[n]).dropna().head(_SAMPLE).tolist())
-                  for n in df.columns)
-           # health vocabulary in the headers next to a person or an identifier: patient records
-           or (any(is_health_column(c.name) for c in cols) and any(c.pii for c in cols)))
+    phi = _patient_signal(cols, lambda n: _profiled(df[n]).dropna().head(_SAMPLE).tolist())
     return DataContract(
         source_type=source_type, row_count=len(df), column_count=df.shape[1], columns=cols,
         sample_rows=[mask_row(r, pii) for r in rows],
@@ -430,7 +439,7 @@ def _is_free_text(s: pd.Series, name: str = "") -> bool:
     v = v[v != ""]
     counts = v.value_counts()
     if (len(counts) <= 50 and counts.min() >= 2 and not _NOTE_NAME_RE.search(name)
-            and not any(_PERSON_RE.match(x) and not _ORG_RE.search(x) for x in counts.index)):
+            and not person_shaped(counts.index)):
         return False   # a few repeated labels ("Obstetrics and Gynecology"): a category
     words = v.str.split().str.len()
     return len(v) > 0 and ((words >= 3).mean() >= 0.3 or bool((words >= 6).any()))
@@ -448,8 +457,7 @@ _ID_HEADER_RE = re.compile(r"(?:^|_)(?:member|account|acct|policy|subscriber|ins
 
 
 def _person_share(s: pd.Series) -> float:
-    v = s.dropna().astype(str).str.strip().unique()
-    return sum(bool(_PERSON_RE.match(x)) and not _ORG_RE.search(x) for x in v) / len(v) if len(v) else 0.0
+    return person_shaped(s.dropna().unique())
 
 
 def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[str]]:
@@ -478,8 +486,8 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
             continue   # the clinical content analysed (not an identifier); generalised later
         elif _is_free_text(s, n) or s.nunique() > 50:
             withheld.append(n)   # notes, places: anything too specific to be a category
-        elif s.nunique() >= 20 and _person_share(s) >= 0.5:
-            withheld.append(n)   # people's names under any header ("Pt", "Resident")
+        elif _person_share(s) >= 0.5:
+            withheld.append(n)   # people's names under any header ("Pt", "Resident"), however few
         elif patient and n_patients >= SMALL_CELL and s.nunique() >= 0.5 * n_patients \
                 and df.groupby(patient)[n].nunique().max() <= 1:
             withheld.append(n)   # one value per patient: it identifies them like a name
@@ -517,6 +525,10 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
         decisions.append(_decision(col, "withhold", "drop_column", "personal, free text or too "
                                    "specific to be a category: withheld from analysis", len(df), df))
     out = df.drop(columns=withheld)
+    if out.shape[1] == 0:
+        raise IngestionError("nothing left after de-identification",
+                             "Every column of this patient data is personal or free text, so "
+                             "nothing is left to analyse once those are withheld.")
     out = pseudonymize_columns(out, ids, pseudonym_key(scope))
     for col in ids:
         decisions.append(_decision(col, "pseudonymize", "keyed_hash", "identifier replaced by "
@@ -548,7 +560,10 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
         key = out[col].astype(str).str.strip().str.casefold().where(out[col].notna(), "\x00missing")
         counts = key.map(key.value_counts())
         small = (counts < SMALL_CELL) & out[col].notna()   # missing stays missing, never a group
-        if key.nunique() > 50 or not small.any():
+        dx = is_diagnosis_column(col, _profiled(out[col]).dropna().head(_SAMPLE).tolist())
+        # A yes/no outcome is never pooled: pooling its rare side would erase it (readmitted
+        # 9 of 300 → 0%); diagnosis codes are pooled however many categories they have.
+        if out[col].nunique() <= 2 or (key.nunique() > 50 and not dx) or not small.any():
             continue
         out[col] = out[col].astype(object).where(~small, POOLED_LABEL)
         decisions.append(_decision(col, "pool", "small_cells", f"groups under {SMALL_CELL} records "
@@ -679,6 +694,8 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
         try:
             df, contract = await asyncio.to_thread(prepare_frame, df, contract, ctx.config.type,
                                                    info, session.user_id)
+        except IngestionError:
+            raise
         except Exception as exc:   # fail closed: never continue on the raw patient data
             raise IngestionError(f"de-identification failed: {type(exc).__name__}",
                                  "This data holds patient records and couldn't be de-identified, "

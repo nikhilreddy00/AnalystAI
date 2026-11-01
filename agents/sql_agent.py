@@ -26,6 +26,7 @@ from guardrails import (
     is_health_column,
     is_phi_identifier,
     mask_pii,
+    person_shaped,
     mask_row,
     pii_kind,
     sql_fanout,
@@ -186,7 +187,8 @@ def _non_category_text(res: QueryResult) -> set[str]:
             continue
         counts = Counter(vals)
         if (len(vals) < 5 or len(counts) > 20 or len(counts) > len(vals) / 2
-                or min(counts.values()) < 2 or any(len(v.split()) > 2 for v in counts)):
+                or min(counts.values()) < 2 or any(len(v.split()) > 2 for v in counts)
+                or person_shaped(counts) > 0):
             hidden.add(c)
     return hidden
 

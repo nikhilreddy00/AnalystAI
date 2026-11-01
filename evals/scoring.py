@@ -193,7 +193,9 @@ def check_simpson_reversal(f: AnalysisFindings, truth: dict, metric: str = "conv
         missing = sorted(set(want) - set(got))
         if missing:
             return False, f"stratified breakdown lacks {missing}"
-        wrong = [k for k in want if not _close(got[k], want[k], 0, abs_tol)]
+        # the same scale rule as check_segment_value: a rate may be written as 0.95 or 95 (%)
+        wrong = min(([k for k in want if not _close(got[k], want[k] * sc, 0, abs_tol * sc)]
+                     for sc in (1, 100)), key=len)
         return (not wrong), f"cells off: {wrong}" if wrong else "ok"
     return False, f"no {outer}×{inner} breakdown of {metric}"
 
@@ -225,9 +227,10 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         agg = seg.aggregation
         want = df.groupby(cols)[seg.metric_column].agg(agg)
         want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in want.index]
+        sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
         for row in seg.results:
             name = "|".join(_strata(str(row.get("name")))) if len(cols) > 1 else str(row.get("name"))
-            ok = name in want.index and _close(row.get("value"), want[name], 0.01)
+            ok = name in want.index and any(_close(row.get("value"), want[name] * k, 0.01) for k in sc)
             claims.append((f"{agg} {seg.metric_column}[{name}]", not ok))
     for a, b in truth.get("null_pairs", []):
         for t in f.statistical_tests:
@@ -277,20 +280,21 @@ _SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6, "b": 1
           "billion": 1e9}
 _MAGNITUDE = re.compile(r"(?:(k|mn|m|bn|b)\b|[ \u00a0](thousand|million|billion)\b)", re.I)
 _ISO_TIME = re.compile(r"\d{4}-\d\d-\d\d[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?Z?")
-_MONTH_DAY = re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}"
+_MONTHS = r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
+_MONTH_DAY = re.compile(r"\b" + _MONTHS + r"\b\.?\s+\d{1,2}"
                         r"(?:st|nd|rd|th)?\b(?![.,]\d|\s*(?:%|percent))", re.I)
 _UNIT_WORDS = {"%": r"(?:%|percent\b|per cent\b|pct\b)"}
-_SLASH_DATE = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b")
-_DAY_MONTH = re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|"
-                        r"Nov|Dec)[a-z]*\.?\s+\d{4}\b", re.I)
+_SLASH_DATE = re.compile(r"\b(?:\d{1,2}/\d{1,2}/\d{2,4}|\d{4}/\d{1,2}/\d{1,2})\b")
+_DAY_MONTH = re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?\s+" + _MONTHS + r"\b\.?\s+\d{4}\b", re.I)
 
 
-def answer_numbers(session: AnalysisSession, unit: str | None = None) -> list[float]:
+def answer_numbers(session: AnalysisSession, unit: str | None = None,
+                   report: bool = False) -> list[float]:
     """Absolute values of the numbers in the answer, dates removed first (2026-01-22 is not 22),
     with magnitudes applied ('$4.1M' is 4,100,000). With `unit`, only numbers written with it
     ('12.6%', '12.6 percent', '**12.6**%')."""
     text = _MONTH_DAY.sub(" ", _ISO_TIME.sub(" ", _SLASH_DATE.sub(" ", _DAY_MONTH.sub(
-        " ", answer_text(session)))))
+        " ", report_text(session) if report else answer_text(session)))))
     text = without_dates(text, True).replace("\u2212", "-")
     unit_re = None if unit is None else re.compile(
         r"\**\s?" + _UNIT_WORDS.get(unit, re.escape(unit)), re.I)
@@ -313,9 +317,11 @@ def scale_units(scales, unit: str | None) -> list[tuple[float, str | None]]:
     return [(float(s[0]), s[1]) if isinstance(s, (list, tuple)) else (float(s), unit) for s in scales]
 
 
-def _number_hit(session, base: float, rel_tol: float, scales, unit) -> float | None:
+def _number_hit(session, base: float, rel_tol: float, scales, unit, report: bool = False
+                ) -> float | None:
     for sc, u in scale_units(scales, unit):
-        hit = next((n for n in answer_numbers(session, u) if _close(n, base * sc, rel_tol)), None)
+        hit = next((n for n in answer_numbers(session, u, report) if _close(n, base * sc, rel_tol)),
+                   None)
         if hit is not None:
             return hit
     return None
@@ -335,10 +341,11 @@ def check_number_in_answer(session: AnalysisSession, truth: dict, truth_key: str
 
 def check_must_not_number(session: AnalysisSession, truth: dict, truth_key: str,
                           rel_tol: float = 0.02, scales: tuple = (1,),
-                          unit: str | None = None) -> tuple[bool, str]:
-    """The trap's naive answer (e.g. a semi-additive balance summed over weeks) must not appear."""
+                          unit: str | None = None, scope: str = "answer") -> tuple[bool, str]:
+    """The trap's naive answer (e.g. a semi-additive balance summed over weeks) must not appear;
+    `scope: report` also reads charts and evidence (a finding's bars can carry it)."""
     base = abs(float(_truth_value(truth, truth_key)))
-    hit = _number_hit(session, base, rel_tol, scales, unit)
+    hit = _number_hit(session, base, rel_tol, scales, unit, report=scope == "report")
     return hit is None, f"naive value {hit} (≈{base:.4g}) in answer" if hit is not None else "ok"
 
 
