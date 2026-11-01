@@ -86,13 +86,31 @@ def dataset(case: dict) -> tuple[pd.DataFrame, dict, str]:
     return pd.read_csv(io.StringIO(csv)), truth, csv
 
 
+def working_frame(case: dict, guard: bool = False):
+    """(frame, contract) as production's ingestion hands them on: the contract from the raw load,
+    the guard seeded with the raw PII (`guard`), then PHI mode's working copy (a no-op off patient
+    data). The analysis suite runs and is scored on this, never on the raw table."""
+    from agents.ingestion_agent import prepare_frame, remember_pii
+    from connectors.csv_connector import CSVConnector
+    df, _, _ = dataset(case)
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    if guard:
+        remember_pii(df, contract)
+    return prepare_frame(df, contract, ConnectorType.CSV, {})
+
+
 async def run_analysis_case(case: dict) -> dict:
     from agents.analysis_agent import run_analysis_agent
-    from connectors.csv_connector import CSVConnector
 
-    df, truth, _ = dataset(case)
+    sent: list[str] = []
+    LLM_REQUESTS.set(sent)   # the canary scans every request, as in the E2E suite
+    LLM_SENT.set([])
+    uploads: list[str] = []
+    E2B_UPLOADS.set(uploads)
+    pii_values.set(set())    # this case's guard, as the runner sets one per run
+    df, contract = working_frame(case, guard=True)
     session = AnalysisSession(session_id=str(uuid.uuid4()))
-    session.data_contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    session.data_contract = contract
     session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
@@ -104,13 +122,21 @@ async def run_analysis_case(case: dict) -> dict:
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
 
-    return {**score_analysis(case, findings, error),
+    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
+    hits = len(leaked("\n".join(sent), literals))
+    model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
+    scored = score_analysis(case, findings, error)
+    exits = exits_rule(literals, uploads, None)
+    return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals)), exits],
+            "pii_exits": exits, "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
             "output": findings.model_dump(mode="json") if findings else None}
 
 
 def score_analysis(case: dict, findings, error: str | None) -> dict:
-    """Scores one analysis run from its stored output (so `rescore` costs nothing)."""
-    df, truth, _ = dataset(case)
+    """Scores one analysis run from its stored output (so `rescore` costs nothing), against the
+    frame the agent was given (PHI mode's working copy on patient data)."""
+    _, truth, _ = dataset(case)
+    df = working_frame(case)[0]
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}
@@ -152,7 +178,9 @@ async def run_e2e_case(case: dict) -> dict:
     await deps.session_store.create(session)   # as POST /chat does: save() never inserts
     sent: list[str] = []
     LLM_REQUESTS.set(sent)   # the canary scans every request this case makes…
-    LLM_SENT.set([])         # …and what the client's guard let through
+    LLM_SENT.set([])         # …and what the client's guard let through…
+    uploads: list[str] = []
+    E2B_UPLOADS.set(uploads)  # …and every frame sent to E2B
     error, approvals, seen = None, [], 0
     run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
                                          input={"message": case["question"]})
@@ -173,11 +201,17 @@ async def run_e2e_case(case: dict) -> dict:
     if approvals and approvals[-1] != "high_null" and not error:
         error = f"stopped at approval_required ({approvals[-1]})"
 
-    literals = e2e_pii_literals(datagen.make(case["dataset"]["name"], case["dataset"]["seed"])[0], truth)
+    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
     hits = len(leaked("\n".join(sent), literals))
     model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
+    shown = None
+    if session.data_contract and session.data_contract.phi:
+        every = [e for _, e in await deps.run_store.events_after(run.id, 0)]
+        shown = json.dumps(every, default=str) + session.model_dump_json(exclude={"prior_pii"})
+    exits = exits_rule(literals, uploads, shown, case["question"])
     scored = score_e2e(case, session, error)
-    return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals))],
+    return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals)), exits],
+            "pii_exits": exits,
             "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
             "approvals": approvals, "output": session.model_dump(mode="json")}
 
@@ -617,6 +651,38 @@ def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> di
 # The text of every LLM request a run makes (system + messages), for the PII canary scan.
 LLM_REQUESTS: ContextVar[list | None] = ContextVar("llm_requests", default=None)
 LLM_SENT: ContextVar[list | None] = ContextVar("llm_sent", default=None)
+E2B_UPLOADS: ContextVar[list | None] = ContextVar("e2b_uploads", default=None)
+
+
+def record_e2b_uploads() -> None:
+    """Evals only: keep each frame the analysis agent uploads to E2B (per case, via E2B_UPLOADS),
+    so the exit scan can prove no planted PII left for the sandbox."""
+    from agents import analysis_agent
+    inner = analysis_agent.run_code
+    if getattr(inner, "records_uploads", False):
+        return
+
+    async def run_code(code, df_parquet=None):
+        if (log := E2B_UPLOADS.get()) is not None and df_parquet:
+            log.append(pd.read_parquet(io.BytesIO(df_parquet)).to_csv(index=False))
+        return await inner(code, df_parquet)
+    run_code.records_uploads = True
+    analysis_agent.run_code = run_code
+
+
+def exits_rule(literals: list[str], uploads: list[str], shown: str | None,
+               exempt: str = "") -> dict:
+    """No planted PII in what left for E2B; on patient data (`shown` given), none in what the
+    user is shown or stored either (the run's events and its session). The user's own question
+    is exempt: they typed it."""
+    if not literals:
+        return {"rule": "pii_exits", "ok": True, "na": True, "detail": "n/a: no planted PII"}
+    lits = [x for x in literals if x.lower() not in exempt.lower()]
+    e2b = leaked("\n".join(uploads), lits)
+    out = leaked(shown, lits) if shown is not None else []
+    detail = (f"E2B upload {len(e2b)}" + (f", events/session {len(out)}" if shown is not None else "")
+              if e2b or out else "ok")
+    return {"rule": "pii_exits", "ok": not e2b and not out, "detail": detail}
 
 
 class RecordingClient:
@@ -686,6 +752,7 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
         df, generated = ingestgen.build(case)
         data, ext = ingestgen.to_bytes(df, case["format"])
         cols = {c.name: {"roles": list(c.roles), "pii": c.pii, "literals": c.literals,
+                         "phi": c.phi, "phi_trap": c.phi_trap,
                          "trap": c.trap, "dayfirst": ingestgen.TEXT_DATES.get(c.kind)}
                 for c in generated}
         cells = None
@@ -711,7 +778,7 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
         cells = [[int(r), names[i % len(names)], loaded_cell(df[names[i % len(names)]].iloc[int(r)])]
                  for i, r in enumerate(rng.integers(0, len(df), 20))]
     expect = case.get("expect", {})
-    truth = {"expect_error": False, "columns": cols, "order": expect.get("columns", [str(c) for c in df.columns]),
+    truth = {"expect_error": False, "phi": bool(case.get("phi")), "columns": cols, "order": expect.get("columns", [str(c) for c in df.columns]),
              "rows": expect.get("rows", len(df)), "cells": cells,
              "facts": _ingestion_facts(df, {c: t["roles"] for c, t in cols.items()}),
              "date_span": _date_span(df, cols)}
@@ -735,7 +802,8 @@ async def run_ingestion_case(case: dict) -> dict:
     pii_values.set(set())   # as api/routes/chat.py does for every run
     output, error = None, None
     try:
-        contract = await run_ingestion_agent(session, get_client())
+        # The raw load is what this suite scores; PHI mode's working copy is scored apart below.
+        contract = await run_ingestion_agent(session, get_client(), prepare=False)
         df = pd.read_parquet(io.BytesIO(session.__dict__.pop("_df_parquet")))
         dump = contract.model_dump(mode="json")
         cells = [[r, c, loaded_cell(df[c].iloc[r]) if c in df.columns and r < len(df) else "<missing>"]
@@ -743,10 +811,40 @@ async def run_ingestion_case(case: dict) -> dict:
         output = {"contract": dump, "requests": sent,
                   "loaded": {"columns": [str(c) for c in df.columns], "rows": len(df), "cells": cells},
                   "contract_sha": hashlib.sha256(json.dumps(dump, sort_keys=True, default=str)
-                                                 .encode()).hexdigest()[:16]}
+                                                 .encode()).hexdigest()[:16],
+                  "phi": phi_output(df, contract)}
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
     return {**score_ingestion_run(case, output, error), "output": output}
+
+
+_PSEUDONYM = re.compile(r"^ID-[0-9a-f]{16}$")
+
+
+def phi_output(df: pd.DataFrame, contract) -> dict:
+    """What PHI mode makes of the loaded frame: the flag, each column's fate (withheld,
+    pseudonymized, generalized, kept, changed) and the working contract the prompts read."""
+    from agents.ingestion_agent import prepare_frame
+    try:
+        out, prepared = prepare_frame(df, contract, ConnectorType.CSV, {})
+    except Exception as exc:
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    status = {}
+    for col in map(str, df.columns):
+        if col not in out.columns:
+            status[col] = "withheld"
+            continue
+        got, raw = out[col].dropna().astype(str), df[col].dropna().astype(str)
+        if len(got) and got.str.match(_PSEUDONYM).all():
+            status[col] = "pseudonymized"
+        elif got.equals(raw):
+            status[col] = "kept"
+        elif len(got) and (got.str.len() <= 3).all() and not got.isin(raw).any():
+            status[col] = "generalized"
+        else:
+            status[col] = "changed"
+    return {"flag": prepared.phi, "status": status,
+            "contract": prepared.model_dump(mode="json") if prepared.phi else None}
 
 
 def score_ingestion_run(case: dict, output: dict | None, error: str | None) -> dict:
@@ -989,6 +1087,8 @@ def rescore(path: Path) -> Path:
             if "pii_canary_hits" in r:   # scanned at run time: requests aren't stored
                 r["hard"].append(_canary_rule(r["pii_canary_hits"], r.get("pii_model_hits"),
                                               r.get("pii_planted")))
+            if "pii_exits" in r:   # scanned at run time: uploads and events aren't stored
+                r["hard"].append(r["pii_exits"])
             r["passed"] = passed(r["checks"])
     report["summary"] = summarize(report["runs"])
     report["meta"]["rescored_from"] = report["meta"]["report"]
@@ -1228,6 +1328,7 @@ def _ingestion_quality(flat: list[dict]) -> dict:
         if r.get("contract_sha"):
             shas.setdefault(r["case"], set()).add(r["contract_sha"])
     traps = share("overmask")
+    keep = share("phi_keep")
     hold = [r["passed"] for r in flat if r["holdout"]]
     return {
         "type_inference": share("role"),
@@ -1240,6 +1341,13 @@ def _ingestion_quality(flat: list[dict]) -> dict:
         "nondeterministic_cases": sum(len(v) > 1 for v in shas.values()),
         "holdout_pass_rate": round(sum(hold) / len(hold), 4) if hold else None,
         "pii_recall_by_kind": {k: round(sum(v) / len(v), 4) for k, v in sorted(by_kind.items())},
+        # Phase 5.5: planted patient identifiers PHI mode withheld / all planted; look-alikes and
+        # non-patient data changed / all kept; the flag right on every case.
+        "phi_recall": share("phi"),
+        "phi_planted_columns": len({(r["case"], c["column"]) for r in flat for c in r["checks"]
+                                    if c["kind"] == "phi"}),
+        "phi_over_masking": round(1 - keep, 4) if keep is not None else None,
+        "phi_flag_accuracy": share("phi_flag"),
     }
 
 
@@ -1452,8 +1560,16 @@ def to_markdown(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+# Pseudonyms need a key; evals don't boot the API, so they use a fixed one (pseudonyms are then
+# reproducible across eval runs, never comparable with production's).
+EVAL_ENCRYPTION_KEY = "ZXZhbHMtZml4ZWQta2V5LWZvci1wc2V1ZG9ueW1zLTEyMzQ="
+
+
 async def main() -> None:
     import sys
+
+    if not settings.encryption_key:
+        settings.encryption_key = EVAL_ENCRYPTION_KEY
     if sys.argv[1:2] == ["rescore"]:
         print(f"→ {rescore(Path(sys.argv[2]))}")
         return
@@ -1489,8 +1605,10 @@ async def main() -> None:
     _budget["max"] = args.max_usd
     if args.suite == "sql":
         _sql_setup()
-    if args.suite in ("ingestion", "e2e"):   # the PII canary scans every request
+    if args.suite in ("ingestion", "e2e", "analysis"):   # the PII canary scans every request
         set_client(RecordingClient(get_client()))
+    if args.suite in ("e2e", "analysis"):   # …and every frame uploaded to E2B
+        record_e2b_uploads()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     print(f"{args.suite}: {len(cases)} cases × k={args.k}", flush=True)

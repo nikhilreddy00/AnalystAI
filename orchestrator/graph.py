@@ -32,7 +32,7 @@ from langgraph.types import interrupt
 from agents.analysis_agent import run_analysis_agent
 from agents.cleaning_agent import build_evidence as build_cleaning_evidence
 from agents.cleaning_agent import run_cleaning_agent
-from agents.ingestion_agent import remember_pii, run_ingestion_agent
+from agents.ingestion_agent import remember_pii, run_ingestion_agent, seed_phi_guard
 from agents.insight_agent import run_insight_agent
 from agents.intake_agent import (
     generate_data_narrative,
@@ -122,9 +122,11 @@ def _emit(state: AgentState, event: dict) -> None:
 
 def _fail(session: AnalysisSession, stage: str, exc: Exception) -> None:
     """Route a node failure to error_node. Typed errors carry their own user message."""
-    logger.error("%s failed", stage, exc_info=exc)
+    logger.error("%s failed", stage, exc_info=exc)   # the log is scrubbed (api/logging_scrub.py)
+    # An exception's text can quote cell values: the user (and run_events) get its type only.
     session.error_message = (
-        exc.user_message if isinstance(exc, AgentError) else f"{stage} failed: {exc}"
+        exc.user_message if isinstance(exc, AgentError)
+        else f"{stage} failed ({type(exc).__name__}). Try again, or ask a narrower question."
     )
 
 
@@ -151,16 +153,9 @@ async def intake_node(state: AgentState) -> dict:
         task = await run_intake_agent(session, state["user_message"], get_client(),
                                       is_overview_request=is_overview)
         session.task_plan = task
-        logger.info(
-            "Intent classified as: %s for query: %s",
-            task.question_intent.value if task.question_intent else None,
-            task.raw_query,
-        )
-        logger.info(
-            "Intake: raw_query='%s', intent=%s",
-            session.task_plan.raw_query,
-            session.task_plan.question_intent,
-        )
+        # Never the question's text: it can name a patient or a customer.
+        logger.info("intent classified as %s",
+                    task.question_intent.value if task.question_intent else None)
         session.add_message(MessageRole.USER, state["user_message"])
 
         if task.clarification_needed:
@@ -212,10 +207,12 @@ async def ingestion_node(state: AgentState) -> dict:
         try:
             payload = read_cleaned_parquet(session.session_id)
             if payload is not None:
-                session.__dict__["_df_parquet"] = payload
-                cached_used = True
                 if session.data_contract:   # this run's LLM guard needs the PII values again
                     remember_pii(pd.read_parquet(io.BytesIO(payload)), session.data_contract)
+                    # Patient data: the cache holds no names, so the guard reads the source too.
+                    await seed_phi_guard(session, get_client())
+                session.__dict__["_df_parquet"] = payload
+                cached_used = True
                 logger.info("loaded cached parquet for session %s", session.session_id)
         except Exception as exc:
             logger.warning("cached parquet read failed for %s: %s", session.session_id, exc)

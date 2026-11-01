@@ -11,10 +11,11 @@ fails completely, distributions are always populated from DataContract column na
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import pandas as pd
 from pydantic import BaseModel
@@ -31,14 +32,16 @@ from guardrails import (
     is_pii_column,
     mask_pii,
     mask_row,
+    pseudonym_key,
+    pseudonymize_columns,
     ungrounded_numbers,
 )
 from llm.client import LLMClient, trace_verdict
 from orchestrator.state import (
     AgentCard,
     AnalysisFindings,
-    AnalysisTask,
     AnalysisSession,
+    AnalysisTask,
     AnomalyRecord,
     CleaningAudit,
     DataContract,
@@ -389,6 +392,19 @@ def run_tool(name: str, args: dict, df: pd.DataFrame, pii: set[str] = frozenset(
     return f"unknown tool: {name}", True
 
 
+def e2b_frame(df_parquet: bytes, pii: Iterable[str]) -> bytes:
+    """The frame E2B (a third party) receives: every personal value replaced by its one-way
+    pseudonym, columns and headers unchanged, so counts and group-bys still work and no code that
+    names a column breaks. No personal columns: the same bytes."""
+    cols = [c for c in pii]
+    if not cols:
+        return df_parquet
+    df = pseudonymize_columns(pd.read_parquet(io.BytesIO(df_parquet)), cols, pseudonym_key())
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    return buf.getvalue()
+
+
 async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> AnalysisFindings:
     """Write analysis code (tools allowed), guard it, run it in E2B, and return findings with
     evidence. One guided retry covers every rejection: code guard, empty or ungrounded output."""
@@ -399,6 +415,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     contract = session.data_contract
     known = [c.name for c in contract.columns]
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
+    upload: bytes | None = None      # what E2B receives: personal values pseudonymised
 
     messages: list[dict] = [{"role": "user", "content": ctx.render()}]
     for attempt in range(2):
@@ -433,14 +450,19 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             standard = _build_standard_code(contract, session.task_plan)
             full_code = (_CODE_HEADER + "\n" + body + "\n" + standard + "\n"
                          + _build_guaranteed_code(contract) + _CODE_FOOTER)
-            execution = await run_code(full_code, df_parquet)
+            if upload is None:   # once per run: the guided retry uploads the same frame
+                upload = await asyncio.to_thread(e2b_frame, df_parquet, pii_columns(contract))
+            execution = await run_code(full_code, upload)
             # Never return empty findings for a failed run: no JSON on stdout means the code died.
             try:
                 raw = json.loads(execution.output_json or "")
             except json.JSONDecodeError:
                 detail = (execution.error or "no JSON output").strip()
+                # The sandbox's traceback can quote cell values: it goes to the log (scrubbed),
+                # never to the user's error or the run's events.
+                kind = (execution.error or "").split(":", 1)[0].strip()[:40] or "no output"
                 raise SandboxError("analysis", detail,
-                                   f"The analysis code failed in the sandbox: {detail[:200]}") from None
+                                   f"The analysis code failed in the sandbox ({kind}).") from None
             findings = _parse_findings(raw, full_code, execution.figures_base64)
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:

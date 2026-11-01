@@ -9,6 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from api.config import settings
+from api.logging_scrub import install as _scrub_logs
 from api.rate_limit import limiter
 
 # Surface application INFO logs (intent classification, status changes, etc.).
@@ -18,6 +19,8 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+_scrub_logs()   # every log line is scrubbed of PII before it is written
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

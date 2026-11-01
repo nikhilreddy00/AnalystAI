@@ -1,0 +1,15 @@
+id: phi-05-registry
+category: phi
+phi: true
+seed: 55
+rows: 300
+format: {type: csv}
+columns:
+- [mrn, mrn]
+- [home_address, street]
+- [ssn, ssn]
+- [dob, dob]
+- [payment_card, card]
+- [dx, icd10]
+- [enrolled, date_iso]
+label_note: 'A disease registry: MRN, address, SSN, DOB, card.'

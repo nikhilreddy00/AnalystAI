@@ -31,11 +31,9 @@ async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "
     from agents import analysis_agent, insight_agent, intake_agent
     from connectors.csv_connector import CSVConnector
 
-    build = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract
     out: dict[str, dict] = {s: {} for s in suites}
     for case in harness.load_cases("analysis", None) if "analysis" in suites else []:
-        df = harness.dataset(case)[0]
-        session = AnalysisSession(session_id="snap", data_contract=build(df),
+        session = AnalysisSession(session_id="snap", data_contract=harness.working_frame(case)[1],
                                   task_plan=AnalysisTask(raw_query=case["question"], **case["task"]))
         out["analysis"][case["id"]] = {"roles": _roles(session.data_contract),
                                        "context": _sha(analysis_agent.build_context(session).render())}

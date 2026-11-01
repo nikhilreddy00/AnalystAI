@@ -170,7 +170,7 @@ def _drain(q: asyncio.Queue) -> list[dict]:
 
 async def _restore_frame(env: RunEnv, session: AnalysisSession, ref: str | None) -> None:
     """Reload the frame a resumed run was using; this also refills the PII guard."""
-    from agents.ingestion_agent import remember_pii, run_ingestion_agent
+    from agents.ingestion_agent import remember_pii, run_ingestion_agent, seed_phi_guard
     if not ref or session.data_contract is None:
         return
     kind, _, want = ref.partition(":")
@@ -179,6 +179,7 @@ async def _restore_frame(env: RunEnv, session: AnalysisSession, ref: str | None)
         if frame is None or hashlib.sha256(frame).hexdigest() != want:
             raise DataChanged("the cleaned data saved for this analysis is gone or was replaced")
         remember_pii(pd.read_parquet(io.BytesIO(frame)), session.data_contract)
+        await seed_phi_guard(session, get_client())   # patient data: the cache holds no names
     else:
         probe = session.model_copy(deep=True)
         question = session.task_plan.raw_query if session.task_plan else None
@@ -267,8 +268,9 @@ async def execute(run: Run, deps: Deps) -> str:
         return await _fail(store, run, f"This analysis can't continue: {exc}. Ask the question "
                                        "again to analyse the current data.", retryable=False)
     except Exception as exc:
-        logger.error("run %s crashed", run.id, exc_info=exc)
-        return await _fail(store, run, f"The analysis stopped unexpectedly: {exc}")
+        logger.error("run %s crashed", run.id, exc_info=exc)   # scrubbed log; events get the type
+        return await _fail(store, run, f"The analysis stopped unexpectedly ({type(exc).__name__}). "
+                                       "Retry it, or ask the question again.")
     finally:
         run_meter.reset(meter_token)
         run_env.reset(token)

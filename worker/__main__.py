@@ -9,9 +9,11 @@ import logging
 import signal
 
 from api.config import settings
+from api.logging_scrub import install as install_log_scrub
 from orchestrator.runner import open_deps, work
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+install_log_scrub()   # every log line is scrubbed of PII before it is written
 
 
 async def main() -> None:

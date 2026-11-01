@@ -147,6 +147,17 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
         raise IngestionError("no columns", "The file is empty.") from exc
     info = {"format": suffix.lstrip("."), "encoding": encoding, "delimiter": sep,
             "decimal": decimal, "header_line": header + 1, "notes": []}
+    # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
+    # lose the zero for good. Only when the file has one, re-read those columns as text.
+    if re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
+        as_text = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, index_col=False,
+                              dtype=str, low_memory=False)
+        zeros = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])
+                 and as_text[c].dropna().str.strip().str.match(r"0\d").any()]
+        for col in zeros:
+            df[col] = as_text[col].str.strip()
+        if zeros:
+            info["notes"].append(f"Kept as text (leading zeros): {', '.join(map(str, zeros[:5]))}.")
     if header:
         info["notes"].append(f"Skipped {header} line{'s' * (header != 1)} above the header "
                              "(a report title).")

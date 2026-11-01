@@ -44,6 +44,8 @@ class Column:
     literals: list[str] = field(default_factory=list)   # PII strings that must stay out of prompts
     trap: bool = False              # looks PII-ish but isn't: must not be masked
     kind: str = ""
+    phi: str | None = None          # Phase 5.5: a patient identifier PHI mode must withhold
+    phi_trap: bool = False          # looks like a patient identifier but isn't: kept as is
 
 
 def _dates(rng, n, lo="2024-01-01", hi="2025-12-31"):
@@ -171,6 +173,39 @@ def make_column(name: str, kind: str, rng: np.random.Generator, n: int) -> Colum
     if kind == "ip":
         v = [f"203.0.{rng.integers(0, 255)}.{rng.integers(1, 254)}" for _ in range(n)]
         return Column(name, v, ("category", "id"), "ip", sorted(set(v)))
+    # ── PHI (Phase 5.5) ──
+    if kind == "mrn":
+        v = [f"MRN-{int(i):06d}" for i in rng.integers(1, 400_000, n)]
+        return Column(name, v, ("id", "category"), literals=sorted(set(v)), phi="mrn")
+    if kind == "patient_id":
+        v = [int(i) for i in rng.choice(np.arange(700_000, 790_000), n, replace=False)]
+        return Column(name, v, ("id",), literals=sorted({str(x) for x in v}), phi="mrn")
+    if kind == "zip5":   # text with leading zeros kept (a careful export)
+        v = [f"{int(z):05d}" for z in rng.choice([2134, 10001, 30301, 60614, 94103, 8540, 98101,
+                                                   3601, 59301], n)]
+        return Column(name, v, ("category", "id"), literals=sorted(set(v)), phi="zip")
+    if kind == "icd10":
+        return Column(name, pick(["I50.9", "E11.9", "J18.9", "M17.11", "C34.90", "N39.0"]),
+                      ("category",))
+    if kind == "patient_note":   # free text that names the patient
+        v, lits = [], []
+        for _ in range(n):
+            who = _name(rng)
+            v.append(f"Patient {who} reports {rng.choice(_WORDS)}")
+            lits.append(who)
+        return Column(name, v, ("category",), literals=sorted(set(lits)), phi="notes")
+    if kind == "npi":   # a provider's number: not the patient's
+        return Column(name, [int(v) for v in rng.integers(1_000_000_000, 1_999_999_999, n)],
+                      ("id", "category", "metric"), phi_trap=True)
+    if kind == "visit_id":
+        return Column(name, [f"V{int(i):07d}" for i in rng.permutation(n) + 1], ("id",),
+                      phi_trap=True)
+    if kind == "member_id":   # insurers and retailers have members too
+        return Column(name, [f"M{int(i):07d}" for i in rng.integers(1, 9_000_000, n)],
+                      ("id", "category"), phi_trap=True)
+    if kind == "sku_icd":   # a SKU shaped like an ICD-10 code
+        return Column(name, pick(["B07.1", "A12.4", "C03.9", "K22.0"]), ("category", "id"),
+                      phi_trap=True)
     if kind == "notes_pii":   # free text; ~40% of notes carry an email or phone
         vals, lits = [], []
         for _ in range(n):

@@ -778,7 +778,10 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                "seller", "buyer", "manager", "physician", "doctor", "nurse", "clinician",
                "technician", "driver", "author", "recipient", "sender", "customer", "client",
                "patient", "employee", "member", "guest", "student", "contact", "cashier",
-               "reviewer", "approver", "requester", "submitter"}
+               "reviewer", "approver", "requester", "submitter",
+               # insurance and health plans (Phase 5.5): people, named by their role
+               "policyholder", "insured", "beneficiary", "subscriber", "guarantor", "claimant",
+               "dependent", "caregiver", "guardian"}
 _PERSON_RE = re.compile(r"^[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*){1,3}$")
 # "Acme Corp" is capitalized words too: a B2B `client` column keeps its "revenue by client".
 _ORG_RE = re.compile(r"\b(?:inc|corp|corporation|co|company|ltd|limited|llc|llp|plc|gmbh|ag|sa|"

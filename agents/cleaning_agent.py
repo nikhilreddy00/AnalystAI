@@ -155,6 +155,12 @@ async def run_cleaning_agent(session: AnalysisSession, drop_high_null: bool = Fa
     parquet back on the session. The frame keeps the input's row labels."""
     ctx = build_context(session, drop_high_null)
     df, audit = clean(ctx)
+    if session.data_contract and session.data_contract.deidentification:
+        # Patient data: ingestion's de-identification steps head the audit (Phase 5.5).
+        deid = session.data_contract.deidentification
+        audit.decisions = [*deid, *audit.decisions]
+        audit.summary = (f"Patient data de-identified first ({len(deid)} steps: identifiers "
+                         f"withheld or pseudonymised, small groups pooled). " + audit.summary)
     dropped = {d.column for d in audit.decisions if d.operation == "drop_column"}
     if dropped and session.data_contract:   # downstream agents read columns from the contract
         c = session.data_contract
@@ -344,17 +350,18 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                anomaly_report.methodology_note),
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
-        date_ranges=_date_ranges(df),
+        date_ranges=_date_ranges(df, ctx.pii),
     )
     return df, audit
 
 
-def _date_ranges(df: pd.DataFrame) -> dict[str, list]:
+def _date_ranges(df: pd.DataFrame, pii: set[str] = frozenset()) -> dict[str, list]:
     """[first, last, months spanned] per parsed date column: the data's period, computed, so the
-    report never has to guess it from a few sample rows."""
+    report never has to guess it from a few sample rows. Not a birth date: it is no period, and
+    its ends are two people's birthdays."""
     out: dict[str, list] = {}
     for col in df.columns:
-        if not pd.api.types.is_datetime64_any_dtype(df[col]):
+        if col in pii or not pd.api.types.is_datetime64_any_dtype(df[col]):
             continue
         s = df[col].dropna()
         if s.empty:

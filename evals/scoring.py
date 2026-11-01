@@ -1150,6 +1150,37 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
     return False
 
 
+def _phi_checks(truth: dict, phi: dict | None) -> list[dict]:
+    """Phase 5.5 PHI mode on the loaded frame. The flag must match the case; on patient data every
+    planted identifier (PII or PHI kind) must be withheld, pseudonymized or generalized and none
+    of its values may reach the working contract; look-alikes (NPI, visit ids, members, SKUs)
+    must be kept as they are. Off patient data, nothing may change."""
+    if phi is None:   # a report from before PHI mode: nothing to score
+        return []
+    if "error" in phi:
+        return [{"kind": "phi_flag", "ok": False, "detail": phi["error"]}]
+    want = truth.get("phi", False)
+    checks = [{"kind": "phi_flag", "ok": phi["flag"] == want,
+               "detail": f"phi={phi['flag']}" + ("" if phi["flag"] == want else f" (want {want})")}]
+    status, cols = phi["status"], truth["columns"]
+    text = json.dumps(phi.get("contract") or {}, ensure_ascii=False, default=str)
+    for name, t in cols.items():
+        fate = status.get(name, "missing")
+        if want and (t.get("phi") or t.get("pii")):
+            hits = leaked(text, t["literals"]) if fate != "withheld" else []
+            ok = fate in ("withheld", "pseudonymized", "generalized") and not hits
+            checks.append({"kind": "phi", "column": name, "phi": t.get("phi") or t.get("pii"),
+                           "ok": ok, "detail": fate + (f", {len(hits)} values in the contract"
+                                                       if hits else "")})
+        elif t.get("phi_trap") or not want:
+            checks.append({"kind": "phi_keep", "column": name, "ok": fate == "kept",
+                           "detail": fate})
+        else:   # patient data's other columns: may be pooled or capped, never withheld
+            checks.append({"kind": "phi_keep", "column": name, "ok": fate != "withheld",
+                           "detail": fate})
+    return checks
+
+
 def score_ingestion(truth: dict, output: dict | None, error: str | None
                     ) -> tuple[list[dict], list[dict]]:
     """(checks, hard). `truth` comes from the case (evals.run.ingestion_truth), never from the
@@ -1193,7 +1224,10 @@ def score_ingestion(truth: dict, output: dict | None, error: str | None
         checks.append({"kind": "role", "column": name, "ok": got in t["roles"],
                        "detail": f"{got}" + ("" if got in t["roles"] else f" (want {'/'.join(t['roles'])})")})
 
-    prompt_text = json.dumps(contract, ensure_ascii=False, default=str)
+    # Patient data: the prompts read PHI mode's working contract, not the raw load.
+    phi = output.get("phi") or {}
+    prompt_text = json.dumps(phi["contract"] if truth.get("phi") and phi.get("contract") else contract,
+                             ensure_ascii=False, default=str)
     sent = prompt_text + "\n".join(output.get("requests", []))
     for name, t in cols.items():
         if t["pii"]:
@@ -1205,6 +1239,7 @@ def score_ingestion(truth: dict, output: dict | None, error: str | None
             checks.append({"kind": "overmask", "column": name, "ok": not masked,
                            "detail": "masked although not PII" if masked else "kept"})
 
+    checks += _phi_checks(truth, output.get("phi"))
     all_lits = [lit for t in cols.values() for lit in t["literals"]]
     canary = leaked(sent, all_lits)
     summary = contract.get("schema_summary", "")

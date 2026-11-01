@@ -199,12 +199,10 @@ def test_a_paid_run_refuses_a_case_that_cant_measure(monkeypatch):
 
 def _targeted(cid: str, handler: str, **params):
     from agents import targeted_analysis_agent as ta
-    from connectors.csv_connector import CSVConnector
-    from evals.run import dataset
-    from orchestrator.state import ConnectorConfig, ConnectorType, TargetedParams
+    from evals.run import working_frame
+    from orchestrator.state import TargetedParams
     case = next(c for c in load_cases("e2e", None) if c["id"] == cid)
-    df, _, _ = dataset(case)
-    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    df, contract = working_frame(case)   # as ingestion hands it on (PHI mode on patient data)
     s = AnalysisSession(session_id="t")
     s.targeted_response = getattr(ta, handler)(df, TargetedParams(**params), contract)
     return score_e2e({**case, "hard_rules": []}, s, None)["checks"]
@@ -223,9 +221,8 @@ def _targeted(cid: str, handler: str, **params):
     pytest.param("e2e-22", "handle_time_series", dict(metric_column="balance", aggregation="sum",
                                                       frequency="M"),
                  marks=pytest.mark.xfail(strict=True, reason="WP3: month-end level hint")),
-    pytest.param("e2e-24", "handle_segment_compare", dict(
-        metric_column="encounter_id", segment_column="department", aggregation="count"),
-        marks=pytest.mark.xfail(strict=True, reason="WP2: PHI pooling of the 6-row department")),
+    ("e2e-24", "handle_segment_compare", dict(metric_column="encounter_id",
+                                              segment_column="department", aggregation="count")),
 ])
 def test_deterministic_handlers_answer_the_targeted_domain_cases(cid, handler, params):
     checks = _targeted(cid, handler, **params)

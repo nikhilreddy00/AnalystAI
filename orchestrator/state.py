@@ -191,6 +191,10 @@ class DataContract(BaseModel):
     source_evidence: "Evidence | None" = None
     fingerprint: str = ""
     pii_columns: list[str] = Field(default_factory=list)
+    # Phase 5.5: the data holds patient records (an MRN / patient id, or ICD-10 diagnosis codes):
+    # the working frame is a de-identified copy, and these are the steps that made it.
+    phi: bool = False
+    deidentification: list["CleaningDecision"] = Field(default_factory=list)
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────

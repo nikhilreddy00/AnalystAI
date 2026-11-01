@@ -10,6 +10,7 @@ environment does not include pyarrow or fastparquet.
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import os
 from dataclasses import dataclass, field
@@ -62,7 +63,7 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
 
     try:
         if df_parquet:
-            csv_bytes = _parquet_to_csv_bytes(df_parquet)
+            csv_bytes = await asyncio.to_thread(_parquet_to_csv_bytes, df_parquet)
             await sandbox.files.write("/data/df.csv", csv_bytes)
 
         # BUG-40: Add timeout to prevent infinite loops in LLM-generated code

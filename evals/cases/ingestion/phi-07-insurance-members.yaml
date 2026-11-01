@@ -1,0 +1,12 @@
+id: phi-07-insurance-members
+category: phi
+seed: 57
+rows: 300
+format: {type: csv}
+columns:
+- [member_id, member_id]
+- [policyholder, full_name]
+- [premium, money]
+- [region, region]
+- [start_date, date_iso]
+label_note: 'Auto insurance: a policyholder name is PII, not PHI; no patient data here.'

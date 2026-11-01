@@ -23,6 +23,7 @@ from guardrails import (
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
+    is_phi_identifier,
     mask_row,
     pii_kind,
     sql_fanout,
@@ -161,7 +162,7 @@ def _pii_columns(res: QueryResult) -> set[str]:
     """Result columns holding personal data, by name or by value (`sales_rep` holding names): the
     query runs before ingestion has registered the run's PII values with the client guard."""
     return {c for i, c in enumerate(res.columns)
-            if pii_kind(c, [r[i] for r in res.rows[:200]])}
+            if pii_kind(c, [r[i] for r in res.rows[:200]]) or is_phi_identifier(c)}
 
 
 def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:

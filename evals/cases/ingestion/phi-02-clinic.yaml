@@ -1,0 +1,17 @@
+id: phi-02-clinic
+category: phi
+phi: true
+seed: 52
+rows: 300
+format: {type: csv}
+columns:
+- [patient_id, patient_id]
+- [first_name, first_name]
+- [email, email]
+- [street_address, street]
+- [ssn, ssn]
+- [dx_code, icd10]
+- [visit_notes, patient_note]
+- [visit_date, date_us]
+- [copay, money]
+label_note: 'Clinic visits: patient id, first name, email, address, SSN, notes naming the patient.'

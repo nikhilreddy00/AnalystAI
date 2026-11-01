@@ -1,0 +1,18 @@
+id: phi-03-health-claims
+category: phi
+phi: true
+seed: 53
+rows: 300
+format: {type: csv}
+columns:
+- [member_id, member_id]
+- [medical_record_number, mrn]
+- [patient_full_name, full_name]
+- [dob, dob]
+- [postal_code, zip5]
+- [icd10, icd10]
+- [provider_npi, npi]
+- [contact_phone, phone_intl]
+- [claim_amount, money]
+- [service_date, date_iso]
+label_note: 'Health insurance claims: member ids are the insurer''s; MRN, name, DOB, ZIP, phone are PHI.'

@@ -276,3 +276,19 @@ async def test_a_chart_id_pinned_by_another_user_is_not_taken_over(store):
     assert [c["id"] for c in await store.get_dashboard("u1")] == ["c1"]
     assert await store.get_dashboard("u2") == []
     assert await store.pin_chart("u1", "s1", chart.model_dump()) is True   # re-pin: still yours
+
+
+async def test_a_phi_contract_round_trips_through_the_store(store):
+    """Phase 5.5: `phi` and the de-identification decisions live on the stored contract (a
+    resume and the cleaning audit read them back), on psycopg and on asyncpg."""
+    import pandas as pd
+
+    from agents.ingestion_agent import build_contract, prepare_frame
+    from evals import datagen
+    df, _ = datagen.make("encounters", 1)
+    _, contract = prepare_frame(df, build_contract(df, ConnectorType.CSV, {}), ConnectorType.CSV)
+    s = _session(data_contract=contract)
+    await store.create(s)
+    back = await store.load("s1")
+    assert back.data_contract.phi and back.data_contract.deidentification == contract.deidentification
+    assert isinstance(pd.DataFrame(back.data_contract.sample_rows), pd.DataFrame)
