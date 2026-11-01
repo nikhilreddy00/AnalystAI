@@ -23,7 +23,7 @@ from guardrails import (
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
-    is_health_column,
+    health_signal,
     is_phi_identifier,
     mask_pii,
     person_shaped,
@@ -170,7 +170,7 @@ def _pii_columns(res: QueryResult) -> set[str]:
 
 
 def _patient_rows(res: QueryResult) -> bool:
-    return any(is_health_column(c) or is_phi_identifier(c) for c in res.columns)
+    return health_signal(res.columns) or any(is_phi_identifier(c) for c in res.columns)
 
 
 def _non_category_text(res: QueryResult) -> set[str]:

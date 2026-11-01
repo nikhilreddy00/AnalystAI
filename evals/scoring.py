@@ -63,9 +63,12 @@ def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
     count): each entity's latest value, summed, as production computes it (agents.utils)."""
     if agg in ("last", "first"):
         from agents.ingestion_agent import build_contract
-        from agents.utils import aggregate
+        from agents.utils import aggregate, column_hint
         from orchestrator.state import ConnectorType
-        return aggregate(df, by, metric, agg, build_contract(df, ConnectorType.CSV, {}))
+        contract = build_contract(df, ConnectorType.CSV, {})
+        hint = column_hint(contract, metric)
+        if hint is not None and hint.aggregation in ("last", "first"):   # else pandas' last()
+            return aggregate(df, by, metric, agg, contract)
     return df.groupby(by)[metric].agg(agg)
 
 

@@ -499,7 +499,9 @@ def pseudonymize_literals(code: str, back: dict, pii: Iterable[str] = ()) -> str
 
 
 _NUM_LITERAL = re.compile(r"(?<![\w.])\d{4,}(?![\w.])")
-_ID_SHAPED = re.compile(r"(?=.*\d)(?:\d{6,}|.*[A-Za-z].*)")   # MRN-100005, 4500123; never 2025
+_ID_SHAPED = re.compile(r"(?=.*\d)(?:\d{6,}|(?=.{5,}).*[A-Za-z].*)")   # MRN-100005, 4500123; not 2025, Q1
+# `df.total_charges > 100000`, `df['quarter'] == 'Q1'`: compared to another column, not an id.
+_COMPARED_TO = re.compile(r"""(?:\[['"]([^'"]+)['"]\]|\.(\w+))\s*(?:[<>]=?|[!=]=)\s*$""")
 
 
 def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes) -> str:
@@ -515,20 +517,28 @@ def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes
 
     def line(text: str) -> str:
         # An id-shaped literal (MRN-100005, 4500123) is rewritten anywhere (`ids = [...]`, used
-        # two lines later); a short number only right after its column (`df.id == 4501`), so a
-        # year or threshold on the same line (`& (df.year == 2025)`) is left alone.
+        # two lines later) except right after another column (`df.charges > 100000`); a short
+        # number only right after its column (`df.id == 4501`), so a year or threshold on the
+        # same line (`& (df.year == 2025)`) is left alone.
         named = [c for c in present if f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text]
         spans = {n.span(1) for c in named for n in re.finditer(
             rf"""(?:\[['"]{re.escape(c)}['"]\]|\.{re.escape(c)})\s*[!=]=\s*(\d{{4,5}})\b""", text)}
 
+        def other_column(start: int) -> bool:
+            m = _COMPARED_TO.search(text[:start])
+            return bool(m) and (m[1] or m[2]) not in present
+
         def num(n: re.Match) -> str:
             v = n[0]
-            ok = _ID_SHAPED.fullmatch(v) or (n.start() + base, n.end() + base) in spans
+            ok = (_ID_SHAPED.fullmatch(v) and not other_column(n.start() + base)) \
+                or (n.start() + base, n.end() + base) in spans
             return f"'{p}'" if ok and (p := find(v, named if not _ID_SHAPED.fullmatch(v)
                                                   else list(present))) else v
 
         def lit(m: re.Match) -> str:
             v = m["s"].strip()
+            if other_column(m.start()):
+                return m[0]
             p = find(v, named) if named else None
             p = p or (find(v, list(present)) if _ID_SHAPED.fullmatch(v) else None)
             return f"{m['q']}{p}{m['q']}" if p else m[0]

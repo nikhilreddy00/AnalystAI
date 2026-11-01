@@ -699,6 +699,16 @@ _TIME_KEYWORDS = ("trend", "over time", "weekly", "monthly", "yearly", "quarterl
 # decision for "is this money" (`spending_score`, `coffee_cups` are not).
 _KPI_CURRENCY_RE = re.compile(r"(?i)(?:^|_|\s)(price|cost|fare|revenue|amount|salary|income|spend|"
                               r"budget|fee|total|usd|sales|profit)(?:$|_|\s)")
+_KPI_NOT_MONEY_RE = re.compile(r"(?i)(?:^|_)(?:qty|quantity|count|calls|num|volume|visits|"
+                               r"orders|leads|reps|headcount)(?:$|_)")
+
+
+def _money_name(col: str) -> bool:
+    """The KPI name rule for money: `TotalAmount`, `unit_price`, `sales`; not `sales_qty`."""
+    snake = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", str(col))
+    return bool(_KPI_CURRENCY_RE.search(snake)) and not _KPI_NOT_MONEY_RE.search(snake)
+
+
 _KPI_PERCENT_RE = re.compile(r"(?i)(rate|pct|percent|ratio|share|proportion)")
 _KPI_COUNT_RE = re.compile(r"(?i)(count|num|qty|quantity|total|volume)")
 _KPI_PRIMARY_RE = re.compile(r"(?i)(revenue|sales|amount|score|value|total|profit)")
@@ -953,7 +963,7 @@ def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str],
         return "percent"
     if unit:
         return "currency" if is_currency(unit) else "number"
-    if _KPI_CURRENCY_RE.search(col):
+    if _money_name(col):
         return "currency"
     if _KPI_PERCENT_RE.search(col):
         return "percent"
@@ -1868,7 +1878,7 @@ def compute_briefing_extras(
     # Phase 5.5: units from the semantic layer or the file ($ → USD), so the UI never guesses money.
     out["column_units"] = {c.name: c.unit for c in (contract.columns if contract else []) if c.unit}
     for c in (contract.columns if contract else []):   # the KPI name rule, sent: one decision
-        if c.is_metric and c.name not in out["column_units"] and _KPI_CURRENCY_RE.search(c.name):
+        if c.is_metric and c.name not in out["column_units"] and _money_name(c.name):
             out["column_units"][c.name] = "USD"
 
     # Skewness per numeric column

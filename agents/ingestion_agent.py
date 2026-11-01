@@ -36,7 +36,7 @@ from guardrails import (
     SMALL_CELL,
     is_age_column,
     is_diagnosis_column,
-    is_health_column,
+    health_signal,
     is_phi_identifier,
     is_zip_column,
     mask_pii,
@@ -302,9 +302,10 @@ def source_evidence(df: pd.DataFrame, cols: list[ColumnInfo], source_type: Conne
 def _patient_signal(cols: list[ColumnInfo], values) -> bool:
     """Patient records: an MRN / patient id, ICD-10 codes in a diagnosis column, or health
     vocabulary in the headers next to personal data. One rule for new loads and old threads."""
-    health = any(is_health_column(c.name) for c in cols)
+    health = health_signal(c.name for c in cols)
     dx = any(is_diagnosis_column(c.name, values(c.name)) for c in cols)
-    return (any(is_phi_identifier(c.name, strong=not (health or dx)) for c in cols) or dx
+    near = health or dx or health_signal((c.name for c in cols), weak_ok=True)
+    return (any(is_phi_identifier(c.name, strong=not near) for c in cols) or dx
             or (health and any(c.pii for c in cols)))
 
 
@@ -454,12 +455,23 @@ def _decision(column: str, op: str, strategy: str, reason: str, rows: int, df: p
 
 
 _ID_HEADER_RE = re.compile(r"(?:^|_)(?:member|account|acct|policy|subscriber|insured|beneficiary|"
-                           r"claim|case|chart|pat|pt|enrol\w*|client|person|resident|mbr)"
-                           r"(?:_?(?:id|no|nr|num|number|ref|key))?$|(?:^|_)(?:no|nr|ref|key)$", re.I)
+                           r"claim|case|chart|pat|pt|enrol(?:l?ee)|client|person|resident|mbr)"
+                           r"(?:_?(?:id|no|nr|num|number|ref|key))?$", re.I)
+# Any `…_no` / `…_ref`: a record number when it holds text or big numbers; `cycle_no` = 1..6 is a
+# count kept for analysis (the stems above are identifiers whatever they hold).
+_ID_SUFFIX_RE = re.compile(r"(?:^|_)(?:no|nr|ref|key)$", re.I)
 
 
-def _person_share(s: pd.Series) -> float:
-    return person_shaped(s.dropna().unique(), any_case=True)
+def _person_share(s: pd.Series, people: pd.Series | None) -> float:
+    """Names under any header, "Lee, Ana" included. Lowercase names count only when each value
+    follows one patient (or, with no patient column, most rows differ): a lowercase category
+    ("north east") repeats across many people."""
+    v = s.dropna()
+    if people is not None:
+        own = people.loc[v.index].groupby(v).nunique().le(1).mean() >= 0.8
+    else:
+        own = v.nunique() >= 0.3 * len(v)
+    return person_shaped(v.unique(), last_first=True, lowercase=bool(own))
 
 
 def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[str]]:
@@ -476,9 +488,11 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
         s = _profiled(df[n])
         if c is None or c.pii:
             withheld.append(n)
-        elif not c.is_metric and _person_share(s) >= 0.5:
+        elif not c.is_metric and _person_share(s, df[patient] if patient else None) >= 0.5:
             withheld.append(n)   # people's names under any header ("Pt", "Resident"), however few
-        elif c.is_id or is_phi_identifier(n) or _ID_HEADER_RE.search(_norm(n)):
+        elif c.is_id or is_phi_identifier(n) or _ID_HEADER_RE.search(_norm(n)) or (
+                _ID_SUFFIX_RE.search(_norm(n)) and not (
+                    c.is_metric and pd.to_numeric(s, errors="coerce").abs().max() < 100_000)):
             ids.append(n)
         elif c.is_date or is_zip_column(n):
             continue

@@ -6,6 +6,7 @@ or a soft one (lower confidence / tell the critic).
 from __future__ import annotations
 
 import ast
+import datetime
 import math
 import numbers
 import re
@@ -798,6 +799,18 @@ _PLACE_WORDS = re.compile(r"\b(?:medicine|care|surgery|surgical|unit|clinic|cent
 _PERSON_RE = re.compile(r"^[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*){1,3}$")
 # "Lee, Ana", "LEE,ANA", "Lee, Ana M." — but not a place with its state ("Boston, MA").
 _LAST_FIRST_RE = re.compile(r"^[^\W\d_][\w'’.-]+ ?, ?(?![A-Z]{2}$)[^\W\d_][\w'’.-]+(?: [^\W\d_]\.?)?$")
+# ponytail: US states + common countries; a "City, Region" outside the list reads as a name.
+_PLACE_NAMES = frozenset("""alabama alaska arizona arkansas california colorado connecticut delaware
+florida georgia hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland
+massachusetts michigan minnesota mississippi missouri montana nebraska nevada ohio oklahoma oregon
+pennsylvania tennessee texas utah vermont virginia washington wisconsin wyoming usa us uk canada
+mexico france germany spain italy portugal ireland england scotland wales india china japan brazil
+australia netherlands belgium sweden norway denmark finland poland austria switzerland ontario
+quebec al ak az ar ca co ct de fl ga hi id il in ia ks ky la me md ma mi mn ms mo mt ne nv nh nj
+nm ny nc nd oh ok or pa ri sc sd tn tx ut vt va wa wv wi wy""".split()) | {"new hampshire", "new jersey", "new mexico", "new york", "north carolina",
+                     "north dakota", "rhode island", "south carolina", "south dakota",
+                     "west virginia", "british columbia", "united states", "united kingdom",
+                     "new zealand", "south africa", "district of columbia", "d.c.", "dc"}
 # "Acme Corp" is capitalized words too: a B2B `client` column keeps its "revenue by client".
 _ORG_RE = re.compile(r"\b(?:inc|corp|corporation|co|company|ltd|limited|llc|llp|plc|gmbh|ag|sa|"
                      r"sas|bv|nv|pty|group|holdings|partners|associates|solutions|services|"
@@ -869,6 +882,14 @@ def _is_measure(values: Iterable[Any]) -> bool:
     return not (years or yyyymmdd)
 
 
+# Named as the date itself (`dob`, `birth_date`), not something measured at birth (`birth_order`).
+_DATE_NAME_RE = re.compile(r"(?:^|_)(?:dob|dod|bday|birth_?(?:date|dt|day|year|yr)|born\w*|"
+                           r"(?:year|date|day)_of_(?:birth|death)|death_?(?:date|dt|day)|"
+                           r"deceased_?(?:date|dt|on)|date_?(?:born|deceased))(?:$|_)", re.I)
+_DEATH_NAME_RE = re.compile(r"(?:^|_)(?:death|deceased|died|dod)(?:$|_)", re.I)
+_DATE_TEXT_RE = re.compile(r"^\s*(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})")
+
+
 def mask_pii(value: Any) -> Any:
     """Mask PII patterns inside a single value. Integers are checked as text too (a card
     number stored as int); other non-strings pass through."""
@@ -910,12 +931,18 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
-        if kind == "dob" and _MEASURE_NAME_RE.search(norm) and _is_measure(values):
-            return None   # births = 120, birth_weight_g = 3200; a dob of 25204 stays a date
+        if kind == "dob" and _is_measure(values) and (_MEASURE_NAME_RE.search(norm)
+                                                      or not _DATE_NAME_RE.search(norm)):
+            return None   # births = 120, birth_order = 2, birth_length_cm = 50.5; a `dob` of
+            # 25204 (a spreadsheet date) stays a date
         return kind, f"the column name '{name}' marks personal data"
     vals = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
     if not vals:
         return None
+    if _DEATH_NAME_RE.search(norm) and all(isinstance(v, (datetime.date, str)) and
+                                           (not isinstance(v, str) or _DATE_TEXT_RE.match(v))
+                                           for v in vals):
+        return "dob", f"'{name}' holds dates of death"   # `deceased` = 2021-03-04, not a flag
     text = [v.strip() for v in vals if isinstance(v, str)]
     last = norm.lower().split("_")[-1] if norm else ""
     if (last in _ROLE_NOUNS or norm.lower() in _ROLE_NOUNS) and text \
@@ -955,9 +982,26 @@ _WEAK_PHI_ID_RE = re.compile(r"(?:^|_)(?:chart_?(?:no|nr|num|number|id)|"
 _HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|"
                         r"medications?|prescriptions?|hospital(?!ity)\w*|physician|encounters?|"
                         r"lab_?results?|allerg\w*|vaccin\w*|adverse_?events?|ae_\w+|"
-                        r"treatment_?arm|arm|doses?|dosage|dosing|hospitaliz\w*|discharge\w*|"
-                        r"vitals?|bmi|blood_?pressure|systolic|diastolic|heart_?rate|symptoms?|"
-                        r"triage|ward|clinic\w*|trial)(?:$|_)", re.I)
+                        r"treatment_?arm|hospitaliz\w*|vitals?|bmi|blood_?pressure|systolic|"
+                        r"diastolic|heart_?rate|symptoms?|triage|sbp|dbp|los|drg|hba1c|"
+                        r"ecog|crp|inpatient|outpatient)(?:$|_)", re.I)
+# Words other domains use too (a SaaS `is_trial`, an A/B `arm`, a port of `discharge`, an
+# election `ward`): health only when two different ones appear together.
+_WEAK_HEALTH = (r"trial", r"arm", r"dos(?:es?|age|ing)", r"discharge\w*", r"ward", r"clinic\w*",
+                r"admi(?:t|ssion)\w*")
+
+
+def health_signal(names: Iterable[str], weak_ok: bool = False) -> bool:
+    """Headers that together read as health data: one health-only word, or two different
+    shared ones (`arm` + `dose`). `weak_ok`: one shared word is enough (next to a `subject_id`,
+    which is already half the signal)."""
+    names = [_norm_name(n) for n in names]
+    if any(_HEALTH_RE.search(n) for n in names):
+        return True
+    return sum(any(re.search(rf"(?:^|_){rx}(?:$|_)", n, re.I) for n in names)
+               for rx in _WEAK_HEALTH) >= (1 if weak_ok else 2)
+
+
 _DX_NAME_RE = re.compile(r"(?:^|_)(?:icd(?:_?10)?|diagnos[ie]s|diag|dx)(?:_?codes?)?(?:$|_)", re.I)
 _ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
 # HIPAA Safe Harbor: 3-digit ZIPs covering ≤ 20,000 people (2000 census) become 000.
@@ -981,10 +1025,6 @@ def is_diagnosis_column(name: str, values: Iterable[Any]) -> bool:
         return False
     text = [str(v).strip().upper() for v in values if isinstance(v, str) and v.strip()]
     return bool(text) and sum(bool(_ICD10_RE.match(t)) for t in text) >= 0.5 * len(text)
-
-
-def is_health_column(name: str) -> bool:
-    return bool(_HEALTH_RE.search(_norm_name(name)))
 
 
 def is_zip_column(name: str) -> bool:
@@ -1164,13 +1204,16 @@ def delimit_untrusted(text: str) -> str:
     return f"<untrusted_data>\n{safe}\n</untrusted_data>"
 
 
-def person_shaped(values: Iterable[Any], any_case: bool = False) -> float:
-    """Share of distinct text values that read as a person's name ("Ana Ito", "Lee, Ana"), not an
-    organisation or a department ("Critical Care", "Blue Cross Blue Shield"). `any_case`: "ana
-    ito" counts too (patient data, where a lowercase category is withheld rather than risked)."""
+def person_shaped(values: Iterable[Any], last_first: bool = False,
+                  lowercase: bool = False) -> float:
+    """Share of distinct text values that read as a person's name ("Ana Ito"), not an
+    organisation or a department ("Critical Care", "Blue Cross Blue Shield"). `last_first`:
+    "Lee, Ana" too, but not "Seattle, Washington"; `lowercase`: "ana ito" too (a shape categories
+    share: "north east"), for values known to follow one person each."""
     v = {str(x).strip() for x in values if isinstance(x, str) and x.strip()}
     if not v:
         return 0.0
-    return sum((bool(_PERSON_RE.match(x.title() if any_case and x.islower() else x))
-                or bool(_LAST_FIRST_RE.match(x)))
+    return sum((bool(_PERSON_RE.match(x.title() if lowercase and x.islower() else x))
+                or (last_first and bool(_LAST_FIRST_RE.match(x))
+                    and x.split(",")[-1].strip().lower() not in _PLACE_NAMES))
                and not _ORG_RE.search(x) and not _PLACE_WORDS.search(x) for x in v) / len(v)
