@@ -344,10 +344,14 @@ def test_no_magnitude_across_lines_and_no_numbers_from_dates(text, wrong):
     assert wrong not in answer_numbers(_answer(text))
 
 
-def test_unseen_e2e_cases_are_priced_by_their_kind():
+def test_unseen_e2e_cases_are_priced_by_their_kind(tmp_path):
+    import shutil
     from pathlib import Path
 
     from evals.run import estimate_usd
     cases = [c["id"] for c in load_cases("e2e", None) if int(c["id"].split("-")[1]) >= 21]
-    assert estimate_usd("e2e", len(cases), Path(__file__).parent.parent / "evals" / "reports",
-                        cases, 1) > 0.8   # 7 overviews + 7 targeted, not 14 × the average
+    for p in (Path(__file__).parent.parent / "evals" / "reports").glob("e2e-*.json"):
+        if not set(cases) & set(json.loads(p.read_text())["runs"]):   # reports from before they ran
+            shutil.copy(p, tmp_path)
+    assert estimate_usd("e2e", len(cases), tmp_path, cases, 1) > 0.8   # 7 overviews + 7 targeted,
+    # not 14 × the average

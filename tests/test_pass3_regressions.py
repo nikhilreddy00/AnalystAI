@@ -220,9 +220,52 @@ def test_an_attrition_rate_filed_as_a_ratio_is_scored_as_the_flags_mean():
     from agents.analysis_agent import _parse_findings
     from evals.scoring import check_segment_value
     df = pd.DataFrame({"department": ["a"] * 10 + ["b"] * 10, "left": [1] * 3 + [0] * 7 + [1] + [0] * 9})
-    seg = lambda a, b: {"segment_column": "department", "metric_column": "left", "aggregation": "ratio",
-                        "label": "attrition_rate", "results": [{"name": "a", "value": a}, {"name": "b", "value": b}]}
+    def seg(a, b):
+        return {"segment_column": "department", "metric_column": "left", "aggregation": "ratio",
+                "label": "attrition_rate", "results": [{"name": "a", "value": a}, {"name": "b", "value": b}]}
     assert check_segment_value(_parse_findings({"segments": [seg(0.3, 0.1)]}, "", []), df, "department", "left",
                                aggregation="mean")[0]
     assert not check_segment_value(_parse_findings({"segments": [seg(0.5, 0.1)]}, "", []), df, "department",
                                    "left", aggregation="mean")[0]
+
+
+# ── analysis k=3 on the domain cases: labels that contradict the aggregation, names, ratios ────
+
+def test_a_label_naming_another_statistic_corrects_the_aggregation_and_col_eq_names_are_values():
+    from agents.analysis_agent import _parse_findings
+    f = _parse_findings({"segments": [
+        {"segment_column": "plan", "metric_column": "seats", "aggregation": "mean",
+         "label": "median_seats_per_account", "results": [{"name": "Pro", "value": 37.5}]},
+        {"segment_column": "line", "metric_column": "vibration", "aggregation": "mean",
+         "label": "vibration_std_by_line", "results": [{"name": "A", "value": 1.0}]},
+        {"segment_column": "failure", "metric_column": "vibration", "aggregation": "mean",
+         "label": "admin_count", "results": [{"name": "failure=1", "value": 3.9}]}]}, "", [])
+    assert [s.aggregation for s in f.segments] == ["median", "std", "mean"]
+    assert f.segments[2].results[0]["name"] == "1"
+
+
+def test_an_unpinned_check_ignores_a_derived_share_and_a_count_of_ids_is_entities():
+    from agents.analysis_agent import _parse_findings
+    from evals.scoring import check_segment_value, false_findings
+    df = pd.DataFrame({"region": ["a"] * 4 + ["b"] * 4, "claim_amount": [1.0, 3.0, 2.0, 2.0] * 2,
+                       "account_id": [1, 1, 2, 2, 3, 3, 3, 4]})
+    f = _parse_findings({"segments": [
+        {"segment_column": "region", "metric_column": "claim_amount", "aggregation": "mean",
+         "results": [{"name": "a", "value": 2.0}, {"name": "b", "value": 2.0}]},
+        {"segment_column": "region", "metric_column": "claim_amount", "aggregation": "ratio",
+         "label": "claim_share", "results": [{"name": "a", "value": 0.5}, {"name": "b", "value": 0.5}]},
+        {"segment_column": "region", "metric_column": "account_id", "aggregation": "count",
+         "results": [{"name": "a", "value": 2}, {"name": "b", "value": 2}]}]}, "", [])
+    assert check_segment_value(f, df, "region", "claim_amount")[0]
+    assert false_findings(f, df, {})["false"] == 0
+
+
+def test_an_unpinned_conversion_rate_filed_as_a_ratio_is_scored():
+    from agents.analysis_agent import _parse_findings
+    from evals.scoring import check_segment_value
+    df = pd.DataFrame({"group": ["a"] * 10 + ["b"] * 10, "converted": [1] * 3 + [0] * 7 + [1] + [0] * 9})
+    f = _parse_findings({"segments": [{"segment_column": "group", "metric_column": "converted",
+                                       "aggregation": "ratio", "label": "conversion_rate",
+                                       "results": [{"name": "a", "value": 0.3}, {"name": "b", "value": 0.1}]}]},
+                        "", [])
+    assert check_segment_value(f, df, "group", "converted")[0]

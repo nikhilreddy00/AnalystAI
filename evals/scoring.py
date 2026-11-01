@@ -19,7 +19,7 @@ from evals.datagen import INJECTION
 from guardrails import ungrounded_dates, ungrounded_numbers, without_dates
 from orchestrator.state import AnalysisFindings, AnalysisSession
 
-_AGGS = {"mean", "sum", "count", "median", "min", "max"}
+_AGGS = {"mean", "sum", "count", "median", "min", "max", "std"}
 
 
 def _close(got: Any, want: float, rel_tol: float, abs_tol: float = 1e-6) -> bool:
@@ -106,10 +106,16 @@ def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, met
     pandas under the aggregation the agent reported. The agent picks the aggregation, since
     it never sees the user's wording; correctness of the number is what's scored. `aggregation`
     pins it where only one answers the question (attrition is a rate: a headcount isn't it)."""
-    # A rate of a 0/1 flag (attrition) filed as a "ratio" is its mean: scored as one, by value.
+    flag = metric in df.columns and set(pd.to_numeric(df[metric], errors="coerce").dropna()) <= {0, 1}
+
+    def scored(s) -> bool:
+        # A rate of a 0/1 flag (attrition, conversion) filed as a "ratio" is its mean: scored as
+        # one, by value. Any other ratio (a claim share) isn't an aggregation of the column.
+        if s.aggregation == "ratio":
+            return flag and aggregation in (None, "mean")
+        return aggregation is None or s.aggregation == aggregation
     matches = [s for s in f.segments if s.segment_column == segment and s.metric_column == metric
-               and (aggregation is None or s.aggregation == aggregation
-                    or (aggregation == "mean" and s.aggregation == "ratio"))]
+               and scored(s)]
     if not matches:
         return False, f"no {aggregation or ''} segment result for {metric} by {segment}"
     for seg in matches:
@@ -288,10 +294,15 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                           for i in want.index]
             wants.append(want)
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
+        distinct = df.groupby(cols)[seg.metric_column].nunique() if agg == "count" else pd.Series()
+        distinct.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
+                          for i in distinct.index]
         for row in seg.results:
             name = "|".join(_strata(str(row.get("name")))) if len(cols) > 1 else str(row.get("name"))
             ok = any(name in w.index and any(_close(row.get("value"), w[name] * k, 0.01) for k in sc)
                      for w in wants)
+            if not ok and agg == "count" and name in distinct.index:   # "count account_id": accounts
+                ok = _close(row.get("value"), distinct[name], 0.01)
             claims.append((f"{agg} {seg.metric_column}[{name}]", not ok))
     for a, b in truth.get("null_pairs", []):
         for t in f.statistical_tests:

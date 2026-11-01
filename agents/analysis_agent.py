@@ -919,6 +919,31 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     return out
 
 
+_STAT_IN_LABEL = (("median", r"median"), ("std", r"std|stdev|sd|std_dev"), ("min", r"min|minimum"),
+                  ("max", r"max|maximum"))
+
+
+def _stated_aggregation(s: dict) -> str:
+    """The aggregation, corrected by the segment's own label: "median_seats" filed as "mean" is a
+    median (the report would call medians averages)."""
+    agg = s.get("aggregation", "mean")
+    label = s.get("label")
+    if agg == "ratio" or not isinstance(label, str):
+        return agg
+    words = set(label.lower().split("_"))
+    return next((name for name, rx in _STAT_IN_LABEL if words & set(rx.split("|"))), agg)
+
+
+def _plain_names(s: dict) -> list:
+    """Group names as values: "failure=1" under segment_column "failure" is "1"."""
+    col, rows = s.get("segment_column", ""), s.get("results", [])
+    if not isinstance(rows, list) or not col or "|" in col:
+        return rows
+    prefix = f"{col}="
+    return [{**r, "name": r["name"][len(prefix):]} if isinstance(r, dict) and isinstance(
+        r.get("name"), str) and r["name"].startswith(prefix) else r for r in rows]
+
+
 def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) -> AnalysisFindings:
     """Parse the JSON output from E2B into an AnalysisFindings object."""
 
@@ -938,12 +963,12 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
         SegmentResult(
             segment_column=s.get("segment_column", ""),
             metric_column=s.get("metric_column", ""),
-            aggregation=s.get("aggregation", "mean"),
+            aggregation=_stated_aggregation(s),
             label=s["label"] if isinstance(s.get("label"), str)   # a name, never prose
             and re.fullmatch(r"[a-z][a-z0-9_]{0,40}", s["label"]) else None,
-            results=s.get("results", []),
+            results=_plain_names(s),
         )
-        for s in raw.get("segments", [])
+        for s in raw.get("segments", []) if isinstance(s, dict)
     ]
 
     statistical_tests = [
