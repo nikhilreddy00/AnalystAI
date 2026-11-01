@@ -127,21 +127,17 @@ export function evaluateKPI(
         segs.set(k, e);
       }
       if (segs.size === 0) return { value: "—", ok: false };
-      let topKey = "";
       let topRate = -1;
-      for (const [k, e] of segs) {
+      let lowRate = 2;
+      for (const [, e] of segs) {
         if (e.tot === 0) continue;
         const rate = e.pos / e.tot;
-        if (rate > topRate) {
-          topKey = k;
-          topRate = rate;
-        }
+        topRate = Math.max(topRate, rate);
+        lowRate = Math.min(lowRate, rate);
       }
       if (topRate < 0) return { value: "—", ok: false };
-      return {
-        value: `${topKey}: ${(topRate * 100).toFixed(1)}%`,
-        ok: true,
-      };
+      // As the backend writes the tile ("45.0% vs 30.0%"), so an unchanged filter shows no change.
+      return { value: `${(topRate * 100).toFixed(1)}% vs ${(lowRate * 100).toFixed(1)}%`, ok: true };
     }
 
     case "highest_cv": {

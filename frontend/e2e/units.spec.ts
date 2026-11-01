@@ -32,6 +32,7 @@ test("descriptive statistics show each column in its own unit", async ({ page })
   await input.fill("Give me an overview of this sales data");
   await input.press("Enter");
   await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByText("€102.82").first()).toBeVisible();   // the KPI tile, Summary tab
   await page.getByRole("tab", { name: /^Data/ }).click();
   const table = page.locator("table", { hasText: "Skewness" });
   const row = (col: string) => table.locator("tr", { hasText: col }).first();
@@ -55,4 +56,22 @@ test("a column without a unit keeps the old name rule", async ({ page }) => {
   await page.getByRole("tab", { name: /^Data/ }).click();
   const table = page.locator("table", { hasText: "Skewness" });
   await expect(table.locator("tr", { hasText: "revenue" }).first()).toContainText("$102.82");
+});
+
+test("a final error offers no retry, live or reopened", async ({ page }) => {
+  writeFileSync(SCENARIO, "final\n");
+  await page.goto("/chat");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
+  });
+  const input = page.getByLabel("Ask a question about your data");
+  await expect(input).toBeEnabled();
+  await input.fill("Give me an overview of this sales data");
+  await input.press("Enter");
+  const alert = page.getByRole("alert").filter({ hasText: "Upload it again" });
+  await expect(alert).toBeVisible({ timeout: 30_000 });
+  await expect(alert.getByRole("button")).toHaveCount(0);
+  await page.reload();   // reopened from the stored thread
+  await expect(alert).toBeVisible({ timeout: 30_000 });
+  await expect(alert.getByRole("button")).toHaveCount(0);
 });

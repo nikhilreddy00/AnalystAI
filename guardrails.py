@@ -763,8 +763,9 @@ def executive_jargon(text: str) -> list[str]:
 # ── PII ────────────────────────────────────────────────────────────────────────
 
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|dob|birth\w*|"
-    r"born\w*|passport|surname|maiden_?name|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|dob|"
+    r"(?:date_of_)?birth_?(?:date|day)|date_of_birth|born_(?:on|date)|bday|date_of_death|death_date|"
+    r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
@@ -861,7 +862,8 @@ def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
 
 
 _NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
-               ("address", r"address|street"), ("dob", r"dob|birth\w*|date_of_birth|born\w*"),
+               ("address", r"address|street"), ("dob", r"dob|(?:date_of_)?birth_?(?:date|day)|date_of_birth|born_(?:on|date)|bday|"
+                                         r"date_of_death|death_date"),
                ("passport", r"passport"))
 
 
@@ -912,17 +914,16 @@ _PHI_ID_RE = re.compile(r"(?:^|_)(?:mrn|medical_?record(?:_?(?:no|nr|num|number|
                         r"(?:patient|pt|subject)_?(?:id|no|nr|num|number))(?:$|_)", re.I)
 # Words that only health data uses in a header: with a personal or identifier column next to
 # them they mark patient records even without an MRN (a 'patient' name + a 'diagnosis' text).
-_HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|condition|"
-                        r"medications?|prescriptions?|procedures?|admissions?|admit\w*|"
-                        r"discharg\w*|clinic\w*|hospital\w*|physician|encounters?|symptoms?|"
-                        r"treatments?|ward|lab_?results?|allerg\w*|vaccin\w*)(?:$|_)", re.I)
+_HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|"
+                        r"medications?|prescriptions?|hospital\w*|physician|encounters?|"
+                        r"lab_?results?|allerg\w*|vaccin\w*)(?:$|_)", re.I)
 _DX_NAME_RE = re.compile(r"(?:^|_)(?:icd(?:_?10)?|diagnos[ie]s|diag|dx)(?:_?codes?)?(?:$|_)", re.I)
 _ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
 # HIPAA Safe Harbor: 3-digit ZIPs covering ≤ 20,000 people (2000 census) become 000.
 RESTRICTED_ZIP3 = frozenset({"036", "059", "063", "102", "203", "556", "692", "790", "821", "823",
                              "830", "831", "878", "879", "884", "890", "893"})
-_ZIP_NAME_RE = re.compile(r"(?:^|_)(?:zip\d?|zipcode|postal|postcode)(?:_?code)?$", re.I)
-_AGE_NAME_RE = re.compile(r"(?:^|_)age(?:_?(?:years|yrs|at_\w+))?$", re.I)
+_ZIP_NAME_RE = re.compile(r"(?:^|_)(?:zip\d?|zipcode|postal|postcode|plz)(?:_?code)?$", re.I)
+_AGE_NAME_RE = re.compile(r"(?:^|_)(?:age(?:_?(?:years|yrs|at_\w+))?|years_old)$", re.I)
 AGE_CAP = 90
 
 
@@ -972,12 +973,14 @@ def _canonical_value(value: Any) -> str:
     return str(value).strip()
 
 
-def pseudonym(value: Any, key: bytes) -> str:
-    """One-way, keyed, stable: 'ID-' + 64 bits of HMAC-SHA256 over the canonical value (1001,
-    1001.0 and ' 1001 ' are one value). E2B and the LLM can't reverse it; a resume gets the same."""
+def pseudonym(value: Any, key: bytes, column: str = "") -> str:
+    """One-way, keyed, stable: 'ID-' + 64 bits of HMAC-SHA256 over the column and the canonical
+    value (1001, 1001.0 and ' 1001 ' are one value; visit 2 and patient 2 are not). E2B and the
+    LLM can't reverse it; a resume gets the same."""
     import hashlib
     import hmac
-    return "ID-" + hmac.new(key, _canonical_value(value).encode(), hashlib.sha256).hexdigest()[:16]
+    msg = f"{column}\x00{_canonical_value(value)}".encode()
+    return "ID-" + hmac.new(key, msg, hashlib.sha256).hexdigest()[:16]
 
 
 def pseudonymize_columns(df, columns: Iterable[str], key: bytes, back: dict | None = None):
@@ -990,7 +993,7 @@ def pseudonymize_columns(df, columns: Iterable[str], key: bytes, back: dict | No
         if col not in out.columns:
             continue
         values = out[col].dropna().map(_canonical_value).unique()
-        mapping = {v: pseudonym(v, key) for v in values}
+        mapping = {v: pseudonym(v, key, col) for v in values}
         if len(set(mapping.values())) != len(mapping):
             raise ValueError(f"pseudonym collision in '{col}'")
         out[col] = out[col].map(lambda v, m=mapping: v if pd.isna(v) else m[_canonical_value(v)])

@@ -26,6 +26,7 @@ from agents.utils import (
     effective_agg,
     pandas_freq,
     partial_last_month,
+    time_axis,
 )
 from agents.visualization_agent import (
     VizContext,
@@ -275,18 +276,19 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     chart_data = [{group: str(k), metric: float(v)} for k, v in grouped.items()]
     direction = "Bottom" if asc else "Top"
     answer = (
-        f"{direction} {len(grouped)} {group} by {_agg_name(agg)}({metric}). "
+        f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}. "
         f"Leader: {grouped.index[0]} = {grouped.iloc[0]:,.2f}."
     )
     chart = _chart(
-        ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_agg_name(agg)}({metric})",
-        chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=f"{_agg_name(agg)}({metric})",
+        ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}",
+        chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=_with_unit(_of(agg, metric, False), metric, contract),
         source="top_n",
     )
     _why(chart, ctx, "targeted:top_n→ranked bars", f"Ranks {group} by {_agg_name(agg)} {metric}, "
          f"{'lowest' if asc else 'highest'} first.", group, metric, agg,
          int(df[[group, metric]].dropna().shape[0]),
-         code=f"df.groupby({group!r})[{metric!r}].{agg}().sort_values(ascending={asc}).head({n})")
+         code=_code(f"df.groupby({group!r})[{metric!r}]", agg, metric, contract)
+         + f".sort_values(ascending={asc}).head({n})")
     return TargetedResponse(intent=QuestionIntent.TOP_N, answer_text=answer, chart_configs=[chart])
 
 
@@ -296,9 +298,35 @@ def _why_failed(exc: Exception) -> str:
     return str(exc) if isinstance(exc, LevelUnavailable) else type(exc).__name__
 
 
-def _agg_name(agg: str) -> str:
-    """How an aggregation reads in an answer: a level's 'last' is the period-end total."""
-    return {"last": "period-end total", "first": "period-start total"}.get(agg, agg)
+def _with_unit(label: str, metric: str, contract) -> str:
+    unit = next((c.unit for c in (contract.columns if contract else []) if c.name == metric and c.unit),
+                None)
+    return f"{label} ({unit})" if unit else label
+
+
+def _code(base: str, agg: str, metric: str, contract) -> str:
+    """The pandas that reproduces the number: a level takes each entity's latest snapshot first."""
+    hint = column_hint(contract, metric)
+    if agg in ("last", "first") and hint:
+        by = hint.aggregation_by
+        return (f"# {agg} snapshot per {by} (by {hint.aggregation_time}), then summed\n"
+                f"{base.replace('df', f'df.sort_values({hint.aggregation_time!r}).groupby({by!r}).tail(1)', 1)}.sum()")
+    return f"{base}.{agg}()"
+
+
+def _agg_name(agg: str, over_time: bool = False) -> str:
+    """How an aggregation reads in an answer. A level's 'last' over time is each period's end
+    total; by group it is the latest total (each entity's latest snapshot)."""
+    if agg == "last":
+        return "period-end total" if over_time else "latest total"
+    return "period-start total" if agg == "first" else agg
+
+
+def _of(agg: str, metric: str, over_time: bool = False) -> str:
+    """'sum(revenue)', or for a level 'latest total of balance' (the old form kept for the rest)."""
+    if agg in ("last", "first"):
+        return f"{_agg_name(agg, over_time)} of {metric}"
+    return f"{agg}({metric})"
 
 
 def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
@@ -316,7 +344,7 @@ def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
 def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        ctx: VizContext | None = None) -> TargetedResponse:
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
-    date = params.date_column or (contract.date_columns[0] if contract.date_columns else None)
+    date = params.date_column or time_axis(contract, metric, df)
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
@@ -381,7 +409,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     scope = f" for {params.segment_column} {group}" if group is not None else ""
     answer = (
         f"{metric}{scope} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to "
-        f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg)})."
+        f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg, True)})."
     )
     if len(series) >= 2 and series.iloc[-2]:
         # "How did X change last month?" asks about the latest step, not the whole range.
@@ -390,13 +418,14 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
                    f"{step:+.1f}% ({series.iloc[-2]:,.2f} → {series.iloc[-1]:,.2f}).")
     answer += partial
     chart = _chart(
-        ChartType.LINE, f"{_agg_name(agg)}({metric}) over time", chart_data,
-        x_key="period", y_keys=[metric], x_label="Period", y_label=f"{_agg_name(agg)}({metric})",
+        ChartType.LINE, f"{_of(agg, metric, True)} over time", chart_data,
+        x_key="period", y_keys=[metric], x_label="Period", y_label=_with_unit(_of(agg, metric, True), metric, contract),
         source="time_series",
     )
     _why(chart, ctx, "targeted:time_series→line", f"{metric} over time, {agg} per period "
          f"({freq}){scope}.", date, metric, agg, len(s),
-         code=f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r}).{agg}()")
+         code=_code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
+                    agg, metric, contract))
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
 
 
@@ -423,7 +452,8 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     agg = effective_agg(contract, metric, asked) or "mean"
 
     try:
-        grouped = aggregate(df, [segment], metric, agg, contract).sort_values(ascending=False).head(20)
+        full = aggregate(df, [segment], metric, agg, contract)
+        grouped = full.sort_values(ascending=False).head(20)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.SEGMENT_COMPARE,
@@ -437,14 +467,14 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     top_seg, top_val = grouped.index[0], grouped.iloc[0]
     bottom_seg, bottom_val = grouped.index[-1], grouped.iloc[-1]
     answer = (
-        f"{_agg_name(agg)}({metric}) by {segment}: '{top_seg}' leads at {top_val:,.2f}, "
+        f"{_of(agg, metric, False)} by {segment}: '{top_seg}' leads at {top_val:,.2f}, "
         f"'{bottom_seg}' trails at {bottom_val:,.2f}."
     )
     group = _named_group(df, params)
     if group is not None:
-        value = aggregate(df[df[segment].astype(str) == group], [segment], metric, agg,
-                          contract).iloc[0]
-        answer = f"{_agg_name(agg)}({metric}) for {segment} '{group}': {value:,.2f}. " + answer
+        # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
+        value = float(full[full.index.astype(str) == group].sum())
+        answer = f"{_of(agg, metric, False)} for {segment} '{group}': {value:,.2f}. " + answer
     ctx = ctx or build_context(df)
     chart = group_bars(df, segment, metric, agg, ctx, top=20)
     if chart and chart.rationale:

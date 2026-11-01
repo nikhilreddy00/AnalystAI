@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import pii_columns, safe_column_name, strip_markdown_fences
 from guardrails import (
+    pseudonym,
     is_phi_identifier,
     MASK,
     UNTRUSTED_NOTE,
@@ -226,13 +227,20 @@ try:
 except Exception:
     pass
 try:
-    if _date and {bool(types & {"trend", "forecasting"})!r}:
-        _month = pd.to_datetime(df[_date], errors='coerce').dt.to_period('M')
+    if (_date or _hints) and {bool(types & {"trend", "forecasting"})!r}:
         # A mid-month export compares the last two complete months (agents.utils.partial_last_month).
-        _d = pd.to_datetime(df[_date], errors='coerce').dropna()
-        _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
-        if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
-            _month = _month.where(_month != _days.index[-1])
+        def _cut(_t):
+            _mm = _t.dt.to_period('M')
+            _d = _t.dropna()
+            if _d.empty:
+                return _mm
+            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
+            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
+                _mm = _mm.where(_mm != _days.index[-1])
+            return _mm
+        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')
+        def _level_months(_tc):
+            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))
         # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
         result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
         # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else
@@ -242,18 +250,20 @@ try:
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
+            _mon = _month
             if _agg in ('last', 'first'):
                 if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:
                     return None, 0   # its account (or time) column is gone: no total, never a sum
-                _t = pd.to_datetime(_frame[_h[2]], errors='coerce')
-                _f = _frame.assign(_t=_t, _m=_t.dt.to_period('M'))   # the level's own months
-                _f = _f.dropna(subset=['_m', '_t']).sort_values('_t', kind='stable')
+                _mon = _level_months(_h[2])   # the level's own months, partial last month out
+                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),
+                                   _m=_mon.loc[_frame.index])
+                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')
                 _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
             else:
                 _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
                 return None, 0
-            _last2 = _month.loc[_frame.index].isin(_tot.index[-2:])
+            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])
             _n = int(_frame.loc[_last2, _col].notna().sum())
             return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n
         for _c in _targets:
@@ -364,8 +374,10 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         timeframe=task.timeframe or "full dataset",
         cleaning_notes=notes[:_MAX_NOTES],
         samples={c.name: (c.sample_values or [])[:3] for c in contract.columns[:_MAX_COLUMNS]},
+        # Only what the semantic layer matched (its column names are the operator's, equal to the
+        # file's): a unit read from the file alone would put a file-written header out here.
         aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
-                      for c in contract.columns if c.aggregation or c.unit],
+                      for c in contract.columns if c.aggregation],
     )
 
 
@@ -455,18 +467,50 @@ _STRING_LITERAL = re.compile(r"""(?P<q>'|")(?P<s>(?:\\.|(?!(?P=q)).){1,200})(?P=
 _PSEUDONYM_RE = re.compile(r"ID-[0-9a-f]{16}")
 
 
-def pseudonymize_literals(code: str, back: dict) -> str:
-    """The model's code, with each string literal that is a personal value (the user typed it;
-    the client restored it in the reply) replaced by that value's pseudonym: E2B never gets the
-    value, and the filter matches the pseudonymised frame. Case and spaces don't matter."""
+def pseudonymize_literals(code: str, back: dict, pii: Iterable[str] = ()) -> str:
+    """The model's code, with each string literal compared against a personal column
+    (`df['customer_name'] == 'Ana Ito'`, `.isin([...])`, `.str.contains(...)`) replaced by that
+    value's pseudonym: E2B never gets the value, and the filter matches the pseudonymised frame.
+    A literal elsewhere ('Unknown' in a region filter) is left alone. Case and spaces don't matter.
+    ponytail: a statement-level check (the column named on the same line), not a full dataflow."""
     if not back:
         return code
     fwd = {str(v).strip().casefold(): p for p, v in back.items()}
+    cols = [c for c in pii]
+
+    def line(text: str) -> str:
+        if not any(f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text for c in cols):
+            return text
+
+        def sub(m: re.Match) -> str:
+            p = fwd.get(m["s"].strip().casefold())
+            return f"{m['q']}{p}{m['q']}" if p else m[0]
+        return _STRING_LITERAL.sub(sub, text)
+    return "\n".join(line(t) for t in code.split("\n"))
+
+
+_NUM_LITERAL = re.compile(r"(?<![\w.])\d{4,}(?![\w.])")
+
+
+def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes) -> str:
+    """Patient data: the frame holds record numbers as pseudonyms. A literal in the code that is
+    a record number (the user named 'MRN-100005') becomes its pseudonym, so E2B never gets it and
+    the filter matches. Only literals whose pseudonym is in the data are touched."""
+    if not present:
+        return code
+
+    def find(v: str) -> str | None:
+        return next((p for col, vals in present.items() if (p := pseudonym(v, key, col)) in vals),
+                    None)
 
     def sub(m: re.Match) -> str:
-        p = fwd.get(m["s"].strip().casefold())
+        p = find(m["s"])
         return f"{m['q']}{p}{m['q']}" if p else m[0]
-    return _STRING_LITERAL.sub(sub, code)
+
+    def num(m: re.Match) -> str:
+        p = find(m[0])
+        return f"'{p}'" if p else m[0]
+    return _NUM_LITERAL.sub(num, _STRING_LITERAL.sub(sub, code))
 
 
 def restore_pseudonyms(obj, back: dict):
@@ -500,6 +544,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
     back: dict = {}                  # {pseudonym: value}, never leaves this process
+    raw_ids: list[str] = []
 
     messages: list[dict] = [{"role": "user", "content": ctx.render()}]
     for attempt in range(2):
@@ -542,7 +587,14 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 upload, back = await asyncio.to_thread(e2b_frame, df_parquet,
                                                        [*pii_columns(contract), *raw_ids],
                                                        session.user_id)
-            execution = await run_code(pseudonymize_literals(full_code, back), upload)
+            code = pseudonymize_literals(full_code, back, [*pii_columns(contract), *raw_ids])
+            if contract.deidentified:   # record numbers the user named → their pseudonyms
+                ids = [d.column for d in contract.deidentification if d.operation == "pseudonymize"]
+                frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(df_parquet),
+                                                columns=ids) if ids else None
+                present = {c: {str(v) for v in frame[c].dropna().unique()} for c in ids} if ids else {}
+                code = pseudonymize_id_literals(code, present, pseudonym_key(session.user_id))
+            execution = await run_code(code, upload)
             # Never return empty findings for a failed run: no JSON on stdout means the code died.
             try:
                 raw = json.loads(execution.output_json or "")
@@ -561,9 +613,12 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 raise SandboxError("analysis", detail, message) from None
             raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
-            if fixed := repair_levels(findings, pd.read_parquet(io.BytesIO(df_parquet)), contract):
+            levels = any(c.aggregation in ("last", "first") for c in contract.columns)
+            if levels and (fixed := await asyncio.to_thread(
+                    repair_levels, findings, pd.read_parquet(io.BytesIO(df_parquet)), contract,
+                    session.task_plan.timeframe if session.task_plan else None)):
                 trace_verdict("analysis", PROMPT_VERSION, "level_recomputed")
-                raw["assumptions"] = [*(raw.get("assumptions") or []), *fixed]
+                raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
                 if repaired := ground_prose(findings, raw):
@@ -624,7 +679,8 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
     return None
 
 
-def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract) -> list[str]:
+def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
+                  timeframe: str | None = None) -> list[str]:
     """A breakdown that summed a level (balance, MRR) over every snapshot: recomputed here as its
     period-end total, the same rule as charts and answers, instead of failing the run (5.5 live
     run: the model did it twice on the guided retry). Returns notes for the evidence."""
@@ -636,6 +692,12 @@ def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract)
                 or (s.aggregation or "").lower() not in ("sum", "total"):
             continue
         cols = [c for c in s.segment_column.split("|") if c]
+        if timeframe and timeframe.strip().lower() not in ("full dataset", "all", ""):
+            # A breakdown for a stated period: the current total would answer another question.
+            f.segments.remove(s)
+            notes.append(f"{s.metric_column} by {s.segment_column} for {timeframe} removed: it "
+                         "summed a balance-like value over every snapshot")
+            continue
         try:
             totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
         except (LevelUnavailable, KeyError):
@@ -645,7 +707,7 @@ def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract)
         s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                       "value": round(float(v), 4)} for k, v in totals.items()]
         s.aggregation = hint.aggregation
-        notes.append(f"{s.metric_column} by {s.segment_column} recomputed as the period-end total "
+        notes.append(f"{s.metric_column} by {s.segment_column} recomputed as the latest total "
                      f"(each {', '.join(hint.aggregation_by)}'s latest value), not a sum of every row")
     return notes
 

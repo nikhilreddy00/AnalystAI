@@ -32,6 +32,7 @@ from agents.utils import (
     column_hint,
     effective_agg,
     latest_rows,
+    time_axis,
     looks_like_sequential_id,
     pandas_freq,
     partial_last_month,
@@ -1172,6 +1173,9 @@ def generate_smart_kpis(
             ))
 
     # KPI 3 — primary continuous metric
+    # A level (a balance) averaged over every snapshot row is no one's balance: not a tile.
+    levels = {c.name for c in (contract.columns if contract else []) if c.aggregation in ("last", "first")}
+    continuous = [c for c in continuous if c not in levels]
     primary = _pick_primary_metric(df, continuous, id_cols)
     if primary:
         s = pd.to_numeric(df[primary], errors="coerce").dropna()
@@ -1937,7 +1941,8 @@ _GENERIC_COLORS = {c.lower() for c in _PALETTE} | {_NEUTRAL_TEAL.lower(), "#6366
 _MAX_SUMMARY = 6
 _MAX_SERIES = 8
 _AGG_WORD = {"sum": "Total", "mean": "Average", "count": "Number of", "median": "Median",
-             "min": "Minimum", "max": "Maximum"}
+             "min": "Minimum", "max": "Maximum", "last": "Period-end total",
+             "first": "Period-start total"}
 _LINT_NOTE = {
     "pie_non_additive": "A pie shows parts of a whole, and an average is not one; bars compare "
                         "these values more accurately.",
@@ -1984,8 +1989,11 @@ def build_context(df: pd.DataFrame, task: AnalysisTask | None = None,
                   contract: DataContract | None = None) -> VizContext:
     roles = classify_columns(df)
     dates = list(roles.get("datetime_cols") or [])
+    # With a contract, its time axis (never a birth date; one rule with answers and the trend);
+    # without one, the first datetime column.
+    date = time_axis(contract, None, df) if contract is not None else (dates[0] if dates else None)
     return VizContext(df=df, roles=roles, measures=measure_columns(df, roles),
-                      date=dates[0] if dates else None, task=task, findings=findings,
+                      date=date, task=task, findings=findings,
                       evidence={e.id: e for e in (findings.evidence if findings else [])},
                       narrative=narrative, contract=contract)
 
@@ -2119,6 +2127,7 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
                split: str | None = None, monthly: bool | None = None) -> ChartConfig | None:
     """agg(metric) per calendar month (per day under ~3 months), one line per split value (top 8
     by rows). Months match the analysis agent's MoM, so the chart shows the reported change."""
+    date = time_axis(ctx.contract, metric, df) or date   # a level over its own snapshot time
     cols = [date, metric] + ([split] if split else [])
     if any(c not in df.columns for c in cols):
         return None

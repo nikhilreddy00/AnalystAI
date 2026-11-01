@@ -60,7 +60,7 @@ def test_empty_key_refuses_to_make_pseudonyms(monkeypatch):
 
 def test_pseudonym_collision_fails_closed(monkeypatch):
     import guardrails
-    monkeypatch.setattr(guardrails, "pseudonym", lambda v, k: "ID-same")
+    monkeypatch.setattr(guardrails, "pseudonym", lambda v, k, c="": "ID-same")
     with pytest.raises(ValueError, match="collision"):
         pseudonymize_columns(pd.DataFrame({"a": ["x", "y"]}), ["a"], b"k")
 
@@ -90,10 +90,11 @@ def test_pool_boundary_10_pooled_11_kept():
     assert got.count("A") == 11 and got.count("B") == 0 and got.count(POOLED_LABEL) == 10
 
 
-def test_pool_counts_case_variants_together_and_pools_small_unknowns():
-    got = _pooled(["Cardio"] * 6 + ["cardio "] * 6 + [None] * 3 + ["X"] * 20)
-    assert got.count(POOLED_LABEL) == 3            # the 3 missing labels, not the 12 cardios
+def test_pool_counts_case_variants_together_and_missing_stays_missing():
+    got = _pooled(["Cardio"] * 6 + ["cardio "] * 6 + [None] * 3 + ["unknown"] * 2 + ["X"] * 20)
+    assert got.count(POOLED_LABEL) == 2            # the 2 "unknown" labels, not the 12 cardios
     assert got.count("Cardio") == 6 and got.count("cardio ") == 6
+    assert sum(v is None or v != v for v in got) == 3   # missing is not a category
 
 
 def test_a_single_small_group_stays_pooled_and_a_lone_group_is_untouched():
@@ -371,7 +372,7 @@ def test_node_failures_show_the_type_not_the_text():
     from orchestrator.graph import _fail
     s = AnalysisSession(session_id="f")
     _fail(s, "Analysis", KeyError("Ana Ito"))
-    assert "Ana Ito" not in s.error_message and "KeyError" in s.error_message
+    assert "Ana Ito" not in s.error_message and "KeyError" not in s.error_message
 
 
 def test_csv_keeps_leading_zero_codes_as_text():

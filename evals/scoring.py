@@ -52,8 +52,14 @@ def check_eda_stat(f: AnalysisFindings, df: pd.DataFrame, column: str, stats: li
     return True, "ok"
 
 
+def _is_rate(s: pd.Series) -> bool:
+    """A 0/1 flag or a 0-1 rate: its mean may be written as 0.25 or 25 (%)."""
+    v = pd.to_numeric(s, errors="coerce").dropna()
+    return len(v) > 0 and v.between(0, 1).all()
+
+
 def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, metric: str,
-                        rel_tol: float = 0.01) -> tuple[bool, str]:
+                        rel_tol: float = 0.01, scales: tuple = (1, 100)) -> tuple[bool, str]:
     """Passes if a segment result for (segment, metric) exists and every group value matches
     pandas under the aggregation the agent reported. The agent picks the aggregation, since
     it never sees the user's wording; correctness of the number is what's scored."""
@@ -68,7 +74,8 @@ def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, met
             name = str(row.get("name"))
             if name not in want.index:
                 return False, f"invented group '{name}' in {metric} by {segment}"
-            if not _close(row.get("value"), want[name], rel_tol):
+            if not any(_close(row.get("value"), want[name] * sc, rel_tol) for sc in
+                       (scales if _is_rate(df[metric]) else (1,))):
                 return False, f"{agg} {metric}[{name}]: got {row.get('value')}, want {want[name]:.4f}"
         if not seg.results:
             return False, f"empty results for {metric} by {segment}"
@@ -209,9 +216,13 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                     claims.append((f"{col}.{stat}", not _close(stats[stat], want, 0.01)))
     for seg in f.segments:
         cols = _strata(seg.segment_column)
-        if not set(cols) <= set(df.columns) or seg.metric_column not in df.columns:
+        if not set(cols) <= set(df.columns) or seg.metric_column not in numeric:
             continue
-        agg = seg.aggregation if seg.aggregation in _AGGS else "mean"
+        # A derived metric (a loss ratio, a readmission rate) can't be recomputed from one
+        # column: not verifiable here (segment_value_truth scores it), never "false".
+        if seg.aggregation not in _AGGS:
+            continue
+        agg = seg.aggregation
         want = df.groupby(cols)[seg.metric_column].agg(agg)
         want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in want.index]
         for row in seg.results:
@@ -230,6 +241,8 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
 # ── E2E checks (on the final session) ──────────────────────────────────────────
 
 def answer_text(session: AnalysisSession) -> str:
+    """Everything the report says in words: the answer, the summary, every finding bullet,
+    action, alert, caveat and analyst note (a trap's naive number can sit in any of them)."""
     parts: list[str] = []
     if session.targeted_response:
         parts.append(session.targeted_response.answer_text)
@@ -238,7 +251,23 @@ def answer_text(session: AnalysisSession) -> str:
     if session.insight_report:
         r = session.insight_report
         parts += [r.executive_summary, r.methodology_notes, *r.technical_findings]
+        parts += [json.dumps(a.model_dump(mode="json"), default=str) for a in r.recommended_actions]
+        parts += [json.dumps(a.model_dump(mode="json"), default=str) for a in r.anomaly_alerts]
+        for view in (r.executive_view, r.analyst_view):
+            if view is not None:
+                parts.append(_text_of(view.model_dump(mode="json")))
     return "\n".join(p for p in parts if p)
+
+
+def _text_of(obj) -> str:
+    """The strings inside a dumped model (not its keys or ids), one per line."""
+    if isinstance(obj, str):
+        return obj
+    if isinstance(obj, dict):
+        return "\n".join(_text_of(v) for k, v in obj.items() if k != "evidence_ids")
+    if isinstance(obj, list):
+        return "\n".join(_text_of(v) for v in obj)
+    return ""
 
 
 _NUM = re.compile(r"-?\d[\d,]*\.?\d*")
@@ -246,18 +275,22 @@ _NUM = re.compile(r"-?\d[\d,]*\.?\d*")
 
 _SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6, "b": 1e9, "bn": 1e9,
           "billion": 1e9}
-_MAGNITUDE = re.compile(r"\s?(k|mn|m|bn|b|thousand|million|billion)\b", re.I)
+_MAGNITUDE = re.compile(r"(?:(k|mn|m|bn|b)\b|[ \u00a0](thousand|million|billion)\b)", re.I)
 _ISO_TIME = re.compile(r"\d{4}-\d\d-\d\d[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?Z?")
 _MONTH_DAY = re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}"
                         r"(?:st|nd|rd|th)?\b(?![.,]\d|\s*(?:%|percent))", re.I)
 _UNIT_WORDS = {"%": r"(?:%|percent\b|per cent\b|pct\b)"}
+_SLASH_DATE = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b")
+_DAY_MONTH = re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|"
+                        r"Nov|Dec)[a-z]*\.?\s+\d{4}\b", re.I)
 
 
 def answer_numbers(session: AnalysisSession, unit: str | None = None) -> list[float]:
     """Absolute values of the numbers in the answer, dates removed first (2026-01-22 is not 22),
     with magnitudes applied ('$4.1M' is 4,100,000). With `unit`, only numbers written with it
     ('12.6%', '12.6 percent', '**12.6**%')."""
-    text = _MONTH_DAY.sub(" ", _ISO_TIME.sub(" ", answer_text(session)))
+    text = _MONTH_DAY.sub(" ", _ISO_TIME.sub(" ", _SLASH_DATE.sub(" ", _DAY_MONTH.sub(
+        " ", answer_text(session)))))
     text = without_dates(text, True).replace("\u2212", "-")
     unit_re = None if unit is None else re.compile(
         r"\**\s?" + _UNIT_WORDS.get(unit, re.escape(unit)), re.I)
@@ -268,7 +301,7 @@ def answer_numbers(session: AnalysisSession, unit: str | None = None) -> list[fl
             continue
         rest = text[m.end():]
         mag = _MAGNITUDE.match(rest)
-        value = abs(float(raw)) * (_SCALE[mag.group(1).lower()] if mag else 1)
+        value = abs(float(raw)) * (_SCALE[(mag.group(1) or mag.group(2)).lower()] if mag else 1)
         if unit_re is None or unit_re.match(rest[mag.end() if mag else 0:]):
             out.append(value)
     return out

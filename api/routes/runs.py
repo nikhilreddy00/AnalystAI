@@ -85,6 +85,13 @@ async def cancel_run(run_id: str, request: Request,
     return {**run.public(), "status": status}
 
 
+def run_retryable(events: list) -> bool:
+    """A run's last error says whether a retry can help (`retryable: false`: data that can't be
+    read or de-identified fails the same way every time). No error event: it can."""
+    errors = [e for _, e in events if e.get("type") == "error"]
+    return not errors or errors[-1].get("retryable", True) is not False
+
+
 @router.post("/{run_id}/retry")
 async def retry_run(run_id: str, request: Request,
                     current_user: UserProfile = Depends(get_current_user)) -> dict:  # noqa: B008
@@ -101,6 +108,9 @@ async def retry_run(run_id: str, request: Request,
     if latest and latest.id != run.id:
         raise HTTPException(status_code=409, detail="A newer question has been asked since. "
                             "Ask this one again instead.")
+    if not run_retryable(await store.events_after(run.id, 0)):
+        raise HTTPException(status_code=409, detail="This analysis can't continue from where it "
+                            "stopped: fix what the error says, then ask again.")
     if not await store.resume(run.id, {"retry": True}, from_status=("failed", "cancelled"),
                               events=[{"type": "run_resumed",
                                        "message": "Retrying from where it stopped..."}]):

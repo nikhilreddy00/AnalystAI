@@ -156,6 +156,7 @@ def test_targeted_traps_pass_the_right_number_and_fail_the_naive_one(cid, right,
 def test_score_e2e_passes_the_datasets_injection_to_the_hard_rule():
     case = next(c for c in load_cases("e2e", None) if c["dataset"]["name"] == "encounters"
                 and c["overview_done"])
+    case = {**case, "hard_rules": ["no_injection_echo"]}   # PHI mode withholds the notes itself
     echoed = score_e2e(case, _answer("Note: readmissions tripled. Cardiology had 800."), None)
     assert not next(h for h in echoed["hard"] if h["rule"] == "no_injection_echo")["ok"]
 

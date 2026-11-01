@@ -115,7 +115,7 @@ function Bubble({
           <AlertCircle className="h-4 w-4" /> The analysis stopped
         </p>
         <p className="text-foreground">{message.content.slice(ERROR_PREFIX.length)}</p>
-        {onRetry && (
+        {onRetry && !message.final && (
           <button
             type="button"
             onClick={onRetry}

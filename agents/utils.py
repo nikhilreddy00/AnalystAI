@@ -165,6 +165,16 @@ def _snapshots(df, hint):
     return df.loc[t.notna()].assign(_t=t[t.notna()]).sort_values("_t", kind="stable")
 
 
+def time_axis(contract, metric: str | None = None, df=None) -> str | None:
+    """The date a metric is plotted and trended over: a level's own snapshot time when the layer
+    names one, else the data's first time axis (never a birth date). One rule for charts,
+    answers and the built-in trend."""
+    hint = column_hint(contract, metric) if metric else None
+    cands = [hint.aggregation_time] if hint and hint.aggregation_time else []
+    cands += list(contract.date_columns) if contract is not None else []
+    return next((c for c in cands if c and (df is None or c in df.columns)), None)
+
+
 def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = False):
     """`df.groupby(keys)[column].agg(agg)`, except a level ('last' / 'first'): over time (a key
     is a period) each entity's window value within each period, summed; across groups (no
@@ -184,14 +194,27 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
 
 
 def latest_rows(df, column: str, contract):
-    """For a level by group (bars): each entity's window snapshot (its latest, or its first),
-    the rows a total by group adds up. Anything else: the frame as it is."""
+    """For a level by group (bars, answers): each entity's latest snapshot (or first, for a
+    'first' window), the rows a current total adds up. An entity whose latest snapshot is a full
+    usual gap older than the newest one has stopped (a closed account) and is left out (monthly
+    data: not in the newest month); staggered snapshots (each account on its own day) all count. Anything else: the
+    frame as it is."""
+    import pandas as pd
     hint = column_hint(contract, column)
     if hint is None or hint.aggregation not in _LEVEL:
         return df
     d = _snapshots(df.dropna(subset=[column]), hint)
-    month = d["_t"].dt.to_period("M")
-    edge = month.max() if hint.aggregation == "last" else month.min()
-    d = d[month == edge].drop(columns="_t")   # a closed account isn't in the latest period
     g = d.groupby(hint.aggregation_by, sort=False)
-    return g.tail(1) if hint.aggregation == "last" else g.head(1)
+    if hint.aggregation == "first":
+        return g.head(1).drop(columns="_t")
+    gaps = g["_t"].diff().dt.total_seconds().dropna()
+    cadence = gaps.groupby([d.loc[gaps.index, e] for e in hint.aggregation_by]).median().median() \
+        if len(gaps) else 0.0
+    last = g.tail(1)
+    newest = d["_t"].max()
+    if cadence and cadence == cadence:
+        if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month
+            last = last[last["_t"].dt.to_period("M") == newest.to_period("M")]
+        else:   # daily / weekly, staggered or not: within one usual gap of the newest snapshot
+            last = last[last["_t"] > newest - pd.Timedelta(seconds=cadence)]
+    return last.drop(columns="_t")

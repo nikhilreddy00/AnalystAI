@@ -134,7 +134,7 @@ def test_an_explicit_sum_of_a_level_becomes_its_period_end_total(handler, params
     from agents import targeted_analysis_agent as ta
     df, truth = datagen.make("bank_balances", 1)
     r = getattr(ta, handler)(df, TargetedParams(**params), _contract(df))
-    assert "period-end total" in r.answer_text
+    assert ("period-end total" if handler == "handle_time_series" else "latest total") in r.answer_text
     naive = f"{truth['naive_last_month_sum']:,.2f}"
     assert naive not in r.answer_text
 

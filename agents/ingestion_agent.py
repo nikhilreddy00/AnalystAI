@@ -29,6 +29,8 @@ from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from semantic_layer import column_hints
 from guardrails import (
+    _ORG_RE,
+    _PERSON_RE,
     AGE_CAP,
     CALENDAR_WORDS,
     MASK,
@@ -335,7 +337,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
            or any(is_diagnosis_column(str(n), _profiled(df[n]).dropna().head(_SAMPLE).tolist())
                   for n in df.columns)
            # health vocabulary in the headers next to a person or an identifier: patient records
-           or (any(is_health_column(c.name) for c in cols) and any(c.pii or c.is_id for c in cols)))
+           or (any(is_health_column(c.name) for c in cols) and any(c.pii for c in cols)))
     return DataContract(
         source_type=source_type, row_count=len(df), column_count=df.shape[1], columns=cols,
         sample_rows=[mask_row(r, pii) for r in rows],
@@ -357,11 +359,13 @@ def known_pii_values(df: pd.DataFrame, contract: DataContract) -> set[str]:
     found: set[str] = set()
     pii_kinds = {c.name: c.pii for c in contract.columns}
     guarded = [c for c in contract.pii_columns if not (contract.phi and pii_kinds.get(c) == "dob")]
-    if contract.phi and not contract.deidentified:   # raw identifiers (the working copy holds
-        # their pseudonyms, which need no guarding)
-        ids = {c.name for c in contract.columns if c.is_id} | {
-            str(c) for c in df.columns if is_phi_identifier(str(c))}
-        guarded += [c for c in df.columns if c in ids and c not in guarded]
+    numeric_ids: set[str] = set()
+    if contract.phi and not contract.deidentified:   # the raw patient data: whatever PHI mode
+        # withholds or pseudonymises (the working copy holds none of it)
+        withheld, ids = phi_plan(df, contract)
+        dates = {c.name for c in contract.columns if c.is_date or c.pii == "dob"}
+        guarded += [c for c in [*withheld, *ids] if c not in guarded and c not in dates]
+        numeric_ids = set(ids)
     for col in guarded:
         if col not in df.columns:
             continue
@@ -370,6 +374,8 @@ def known_pii_values(df: pd.DataFrame, contract: DataContract) -> set[str]:
                 found.update({f"{v:%Y-%m-%d}", str(v)})
                 continue
             t = str(int(v)) if isinstance(v, float) and v.is_integer() else str(v).strip()
+            if col in numeric_ids and t.isdigit() and len(t) < 6:
+                continue   # visit 2025 would tokenize every year 2025 in a prompt
             found.update({t, *pii_strings(t)})   # the cell, and an email inside a longer note
     for col in df.columns:
         found.update(pii_strings(col))   # a pivoted export's headers can be emails
@@ -387,8 +393,10 @@ def remember_pii(df: pd.DataFrame, contract: DataContract) -> None:
         found = known_pii_values(df, contract)
         # Fail closed: past the cap, every request is also pattern-masked (emails, phones, SSNs,
         # cards, IPs). Names past the cap are a stated limit.
-        guard.update(sorted(found)[:_PII_CAP] if len(found) <= _PII_CAP else
-                     [*sorted(found)[:_PII_CAP], OVERFLOW])
+        # Names first: past the cap, words (names, emails) are kept before bare numbers (ids),
+        # which the working copy holds as pseudonyms anyway.
+        ranked = sorted(found, key=lambda v: (v.replace("-", "").isdigit(), v))
+        guard.update(ranked if len(ranked) <= _PII_CAP else [*ranked[:_PII_CAP], OVERFLOW])
 
 
 async def _seed_guard_from_last_turn(session: AnalysisSession, llm: LLMClient) -> None:
@@ -407,7 +415,11 @@ async def _seed_guard_from_last_turn(session: AnalysisSession, llm: LLMClient) -
 
 # ── PHI mode (Phase 5.5): a de-identified working copy ──────────────────────────
 
-def _is_free_text(s: pd.Series) -> bool:
+_NOTE_NAME_RE = re.compile(r"(?:^|_)(?:notes?|comments?|remarks?|descr\w*|text|memo|narrative|"
+                           r"messages?|summary|observations?)(?:$|_)", re.I)
+
+
+def _is_free_text(s: pd.Series, name: str = "") -> bool:
     """Notes and comments: phrases, not labels (3+ words in 30% of non-empty values, or any
     value of 6+). They can name anyone, so PHI mode withholds them; categories and codes are
     1-2 words ("General Medicine"). Fail closed: a 3-word diagnosis text is withheld too (its
@@ -416,6 +428,10 @@ def _is_free_text(s: pd.Series) -> bool:
         return False
     v = s.dropna().astype(str).str.strip()
     v = v[v != ""]
+    counts = v.value_counts()
+    if (len(counts) <= 50 and counts.min() >= 2 and not _NOTE_NAME_RE.search(name)
+            and not any(_PERSON_RE.match(x) and not _ORG_RE.search(x) for x in counts.index)):
+        return False   # a few repeated labels ("Obstetrics and Gynecology"): a category
     words = v.str.split().str.len()
     return len(v) > 0 and ((words >= 3).mean() >= 0.3 or bool((words >= 6).any()))
 
@@ -425,6 +441,49 @@ def _decision(column: str, op: str, strategy: str, reason: str, rows: int, df: p
     pct = round(float(df[column].isna().mean()) * 100, 1) if column in df.columns else 0.0
     return CleaningDecision(column=column, operation=op, strategy=strategy, reason=reason,
                             rows_affected=rows, before_null_pct=pct, after_null_pct=pct)
+
+
+_ID_HEADER_RE = re.compile(r"(?:^|_)(?:member|account|acct|policy|subscriber|insured|beneficiary|"
+                           r"claim|case|chart)(?:_?(?:id|no|nr|num|number))?$", re.I)
+
+
+def _person_share(s: pd.Series) -> float:
+    v = s.dropna().astype(str).str.strip().unique()
+    return sum(bool(_PERSON_RE.match(x)) and not _ORG_RE.search(x) for x in v) / len(v) if len(v) else 0.0
+
+
+def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[str]]:
+    """(withheld, pseudonymised) for patient data: one decision, used by prepare_frame and by the
+    guard (whatever is withheld must also never reach a model through the user's own words).
+    Fail closed: kept are only numbers, non-personal dates, ZIPs (generalised), diagnosis codes
+    and short categories that neither look like people's names nor follow the patient 1:1."""
+    roles = {c.name: c for c in contract.columns}
+    patient = next((str(n) for n in df.columns if is_phi_identifier(str(n))), None)
+    n_patients = df[patient].nunique() if patient else 0
+    withheld, ids = [], []
+    for n in map(str, df.columns):
+        c = roles.get(n)
+        s = _profiled(df[n])
+        if c is None or c.pii:
+            withheld.append(n)
+        elif c.is_id or is_phi_identifier(n) or _ID_HEADER_RE.search(_norm(n)):
+            ids.append(n)
+        elif c.is_date or is_zip_column(n):
+            continue
+        elif c.is_metric:   # a 9-digit member number read as a quantity is an identifier
+            v = pd.to_numeric(s, errors="coerce").dropna()
+            if len(v) and (v % 1 == 0).all() and v.abs().min() >= 100_000 and v.nunique() >= 0.5 * len(v):
+                ids.append(n)
+        elif is_diagnosis_column(n, s.dropna().head(_SAMPLE).tolist()):
+            continue   # the clinical content analysed (not an identifier); generalised later
+        elif _is_free_text(s, n) or s.nunique() > 50:
+            withheld.append(n)   # notes, places: anything too specific to be a category
+        elif s.nunique() >= 20 and _person_share(s) >= 0.5:
+            withheld.append(n)   # people's names under any header ("Pt", "Resident")
+        elif patient and n_patients >= SMALL_CELL and s.nunique() >= 0.5 * n_patients \
+                and df.groupby(patient)[n].nunique().max() <= 1:
+            withheld.append(n)   # one value per patient: it identifies them like a name
+    return withheld, ids
 
 
 def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: ConnectorType,
@@ -453,18 +512,7 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
                                    f"duplicate rows (same {keys[0]} and every other value), "
                                    "before de-identification", n_dup, df))
         decisions[-1].rows_removed = n_dup
-    roles = {c.name: c for c in contract.columns}
-    withheld, ids = [], []
-    for n in map(str, df.columns):
-        c = roles.get(n)
-        if c is None or c.pii:
-            withheld.append(n)
-        elif c.is_id or is_phi_identifier(n):
-            ids.append(n)
-        elif c.is_date or c.is_metric or is_zip_column(n):
-            continue
-        elif _is_free_text(_profiled(df[n])) or df[n].nunique() > 50:
-            withheld.append(n)   # names, notes, places: anything too specific to be a category
+    withheld, ids = phi_plan(df, contract)
     for col in withheld:
         decisions.append(_decision(col, "withhold", "drop_column", "personal, free text or too "
                                    "specific to be a category: withheld from analysis", len(df), df))
@@ -478,6 +526,14 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
         out[col] = out[col].map(zip3)
         decisions.append(_decision(col, "generalize", "zip3", "ZIP reduced to its first 3 digits "
                                    "(000 for sparsely populated areas)", int(out[col].notna().sum()), out))
+    for col in (str(n) for n in out.columns if is_diagnosis_column(
+            str(n), _profiled(out[n]).dropna().head(_SAMPLE).tolist())):
+        if out[col].nunique() > 50:   # hundreds of codes: their 3-character category, so the
+            cat = out[col].astype(str).str.strip().str.upper().str[:3]   # groups can be pooled
+            out[col] = cat.where(out[col].notna())
+            decisions.append(_decision(col, "generalize", "icd_category", "diagnosis codes "
+                                       "reduced to their 3-character ICD-10 category",
+                                       int(out[col].notna().sum()), out))
     for col in (str(n) for n in out.columns if is_age_column(str(n))):
         s = pd.to_numeric(out[col], errors="coerce")
         if s.notna().any() and (high := int((s > AGE_CAP).sum())):
@@ -489,9 +545,10 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
         c = roles.get(col)
         if c is None or c.is_date or c.is_id or c.is_metric or col in ids or is_zip_column(col):
             continue
-        key = out[col].astype(str).str.strip().str.casefold().where(out[col].notna(), "unknown")
+        key = out[col].astype(str).str.strip().str.casefold().where(out[col].notna(), "\x00missing")
         counts = key.map(key.value_counts())
-        if key.nunique() > 50 or not (small := counts < SMALL_CELL).any():
+        small = (counts < SMALL_CELL) & out[col].notna()   # missing stays missing, never a group
+        if key.nunique() > 50 or not small.any():
             continue
         out[col] = out[col].astype(object).where(~small, POOLED_LABEL)
         decisions.append(_decision(col, "pool", "small_cells", f"groups under {SMALL_CELL} records "
@@ -509,6 +566,15 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
     rebuilt.date_columns = [d for d in rebuilt.date_columns if d not in ids]
     rebuilt.pii_columns = [c.name for c in rebuilt.columns if c.pii]
     rebuilt.phi, rebuilt.deidentification, rebuilt.deidentified = True, decisions, True
+    raw_cols = {c.name: c for c in contract.columns}
+    for c in rebuilt.columns:   # the layer matched the raw upload: its meanings carry over
+        r = raw_cols.get(c.name)
+        if r and not c.aggregation and r.aggregation and all(
+                x in out.columns for x in [*r.aggregation_by, r.aggregation_time] if x):
+            c.aggregation, c.aggregation_by, c.aggregation_time = (
+                r.aggregation, r.aggregation_by, r.aggregation_time)
+        if r and not c.unit and r.unit:
+            c.unit = r.unit
     rebuilt.schema_summary = _summary(out, rebuilt.columns) + (
         f" Patient data: identifiers withheld ({', '.join(withheld)}), record numbers "
         f"pseudonymised; groups under {SMALL_CELL} records appear as '{POOLED_LABEL}'.")

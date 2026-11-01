@@ -159,8 +159,13 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
             as_text = pd.DataFrame(columns=df.columns)
         def code_like(t: pd.Series) -> bool:   # 00731, 02134: one width, 1 in 10 zero-padded
             t = t.dropna().str.strip()
-            return (len(t) > 0 and t.str.fullmatch(r"\d+").all() and t.str.len().nunique() == 1
-                    and t.str.match(r"0\d").mean() >= 0.1)
+            if not (len(t) > 0 and t.str.fullmatch(r"\d+").all() and t.str.len().nunique() == 1
+                    and t.str.match(r"0\d").mean() >= 0.1):
+                return False
+            # 01..12 months, 00..31 days and 0930 / 1400 times are numbers written padded
+            return not (t.str.len().iloc[0] == 2 and t.astype(int).max() <= 31) and not (
+                t.str.len().iloc[0] == 4 and (t.astype(int) % 100 < 60).all()
+                and (t.astype(int) // 100 < 24).all())
         zeros = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])
                  and code_like(as_text[c])]
         for col in zeros:
@@ -215,10 +220,11 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
         info = {"format": "parquet", "notes": []}
     elif suffix == ".json":
         try:
-            df = pd.read_json(io.BytesIO(content))
+            # dtype=False: values keep the type they were written with ("02134" stays text).
+            df = pd.read_json(io.BytesIO(content), dtype=False)
         except ValueError:
             try:
-                df = pd.read_json(io.BytesIO(content), lines=True)
+                df = pd.read_json(io.BytesIO(content), lines=True, dtype=False)
             except ValueError as exc:
                 raise IngestionError("json", "The JSON isn't a list of records (one object per "
                                      "row, or one per line).") from exc

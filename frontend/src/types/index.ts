@@ -348,6 +348,7 @@ export interface ChatMessage {
   evidence?: Evidence[];       // Phase 3: one item per analysis finding
   isStreaming?: boolean;
   runId?: string;              // Phase 5.6a: an error bubble's run, for "retry from where it stopped"
+  final?: boolean;             // Phase 5.5: the error says what to fix; no retry button
   delivered?: DeliveredMeta;   // Phase 5.6b: a reopened report: its run, seal and provenance
 }
 
@@ -385,6 +386,7 @@ export interface ThreadTurn {
   stale: boolean;
   provenance: Provenance;
   last_seq: number;
+  retryable?: boolean;   // Phase 5.5: false when retrying would fail the same way
 }
 
 export type SessionStatus = "in_progress" | "completed" | "failed";

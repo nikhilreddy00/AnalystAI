@@ -185,7 +185,8 @@ async def _restore_frame(env: RunEnv, session: AnalysisSession, ref: str | None)
         probe = session.model_copy(deep=True)
         question = session.task_plan.raw_query if session.task_plan else None
         contract = await run_ingestion_agent(probe, get_client(), question,
-                                             session.data_contract.source_query)
+                                             session.data_contract.source_query,
+                                             seed_last=False)   # this load seeds the guard itself
         if contract.fingerprint != want:
             raise DataChanged("the data source returns different rows than when this run started")
         frame = probe.__dict__.pop("_df_parquet")
@@ -273,8 +274,8 @@ async def execute(run: Run, deps: Deps) -> str:
                                        "again to analyse the current data.", retryable=False)
     except Exception as exc:
         logger.error("run %s crashed", run.id, exc_info=exc)   # scrubbed log; events get the type
-        return await _fail(store, run, f"The analysis stopped unexpectedly ({type(exc).__name__}). "
-                                       "Retry it, or ask the question again.")
+        return await _fail(store, run, "The analysis stopped unexpectedly. Retry it, or ask the "
+                                       "question again.")
     finally:
         run_meter.reset(meter_token)
         run_env.reset(token)

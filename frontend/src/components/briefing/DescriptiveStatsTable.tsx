@@ -2,7 +2,7 @@
 
 // PROMPT-10 (3): "Descriptive statistics" — continuous columns only, with
 // skewness + currency formatting + a target-correlation row at the bottom.
-import { formatMoney, formatWithUnit } from "@/lib/formatUnit";
+import { formatWithUnit } from "@/lib/formatUnit";
 
 interface Stats {
   mean?: number;
@@ -30,8 +30,10 @@ function isCurrencyColumn(name: string): boolean {
 function fmt(v: unknown, currency: boolean, unit?: string): string {
   if (typeof v !== "number" || !Number.isFinite(v)) return "—";
   if (unit) return formatWithUnit(v, unit);   // a known unit decides; the name rule is the fallback
-  if (currency) return formatMoney(v, "USD");
-  return formatWithUnit(v, null);   // en-US throughout, as the money and unit cells
+  // Without a unit, exactly as before Phase 5.5, so a reopened old report reads as delivered.
+  if (currency) return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (Math.abs(v) >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return v.toFixed(2);
 }
 
 function getStat(stats: Stats | Record<string, unknown>, key: string): number | undefined {

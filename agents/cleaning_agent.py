@@ -124,7 +124,7 @@ def build_context(session: AnalysisSession, drop_high_null: bool = False) -> Cle
     targets = {m for m in (task.target_metrics if task else []) if m in df.columns}
     return CleanContext(df=df, ids=ids, dates=dates, targets=targets,
                         drop_high_null=drop_high_null, pii=pii_columns(contract),
-                        deidentified=bool(contract.deidentification))
+                        deidentified=contract.deidentified)
 
 
 def _code_like(s: pd.Series) -> bool:

@@ -975,9 +975,14 @@ def lint_case(case: dict) -> list[str]:
                             "(days, counts and years collide)")
     if case.get("hard_rules") and set(case["hard_rules"]) & set(_INSIGHT_RULES) and "task" in case:
         problems.append("insight rules on an analysis case: there is no report to check")
-    if "no_injection_echo" in case.get("hard_rules", []) and "injection" not in truth and not (
-            df.astype(str).apply(lambda col: col.str.contains(INJECTION, regex=False)).any().any()):
-        problems.append("no_injection_echo on a dataset with no planted injection: it can't fail")
+    if "no_injection_echo" in case.get("hard_rules", []):
+        planted = truth.get("injection", INJECTION)
+        try:   # what the agents see: PHI mode withholds free text, injection and all
+            seen = working_frame(case)[0]
+        except Exception:
+            seen = df
+        if not seen.astype(str).apply(lambda col: col.str.contains(planted, regex=False)).any().any():
+            problems.append("no_injection_echo, but no agent sees the planted injection: it can't fail")
     if case.get("trap"):
         naive = [c for c in checks if c["kind"] in ("must_not_number", "must_not_match")]
         if not naive:
@@ -1034,9 +1039,23 @@ def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | N
                     if not r["meta"].get("only") and not r["meta"].get("exclude")), 0.0)
     if case_ids is None:
         return round(average * n_runs, 2)
+    # A case never run is priced like the runs of its kind (E2E: an overview costs ~9× a
+    # targeted question), not at the suite average.
+    kinds: dict = {}
+    if suite == "e2e":
+        cases = {c["id"]: c for c in load_cases("e2e", None)}
+        for r in paid[:1]:
+            for cid, rs in r["runs"].items():
+                if cid in cases:
+                    kinds.setdefault(cases[cid].get("overview_done", False), []).extend(
+                        x["cost_usd"] for x in rs)
     total = 0.0
     for cid in case_ids:
         costs = next(([x["cost_usd"] for x in r["runs"][cid]] for r in paid if cid in r["runs"]), None)
+        if not costs and kinds:
+            kind = next((c.get("overview_done", False) for c in load_cases("e2e", None)
+                         if c["id"] == cid), False)
+            costs = kinds.get(kind)
         total += (statistics.mean(costs) if costs else average) * k
     return round(total, 2)
 
@@ -1052,7 +1071,12 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
                   "intake": run_intake_case, "visualization": run_visualization_case,
                   "cleaning": run_cleaning_case, "insight": run_insight_case,
                   "quality": run_quality_case, "ingestion": run_ingestion_case}[suite]
-        out = await runner(case)
+        try:
+            out = await runner(case)
+        except Exception as exc:   # a scorer or harness bug fails this run, never the report
+            out = {"checks": [{"kind": "harness", "ok": False,
+                               "detail": f"{type(exc).__name__}: {exc}"[:300]}],
+                   "hard": [], "error": f"harness: {type(exc).__name__}: {exc}"[:300], "output": None}
         if "domain" in case:
             out["domain"] = case["domain"]
         out["latency_s"] = round(time.perf_counter() - start, 2)
@@ -1090,7 +1114,11 @@ def rescore(path: Path) -> Path:
         for r in rs:
             if "output" not in r:
                 raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
-            r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+            try:
+                r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+            except Exception as exc:   # one unscoreable run, not a lost report
+                r.update({"checks": [{"kind": "harness", "ok": False,
+                                      "detail": f"{type(exc).__name__}: {exc}"[:300]}], "hard": []})
             if "pii_canary_hits" in r:   # scanned at run time: requests aren't stored
                 r["hard"].append(_canary_rule(r["pii_canary_hits"], r.get("pii_model_hits"),
                                               r.get("pii_planted")))

@@ -215,7 +215,7 @@ def test_table_keys_are_not_numbers():   # review #11
     ({"checks": [{"kind": "eda_stat", "column": "c", "stats": ["mean"]}], "task": {},
       "hard_rules": ["insight_grounded"]}, "insight rules on an analysis case"),
     ({"checks": [{"kind": "eda_stat", "column": "c", "stats": ["mean"]}],
-      "hard_rules": ["no_injection_echo"]}, "no planted injection"),
+      "hard_rules": ["no_injection_echo"]}, "no agent sees the planted injection"),
 ])
 def test_lint_review_cases(monkeypatch, case, problem):   # review #2, #3c, #6, #7, #10
     import pandas as pd
@@ -297,3 +297,57 @@ def test_e2e_runs_without_a_domain_get_none():
     run = {"passed": True, "checks": [{"kind": "x", "ok": True}], "hard": [], "error": None,
            "cost_usd": 0, "latency_s": 1}
     assert "by_domain" not in summarize({"a": [run]})
+
+
+# ── final audit 1 (eval) ────────────────────────────────────────────────────────────────────
+
+def test_a_derived_metric_on_a_text_column_neither_crashes_nor_counts_false():
+    import pandas as pd
+
+    from evals.scoring import false_findings
+    df = pd.DataFrame({"department": ["A", "B"] * 10, "mrn": [f"ID-{i}" for i in range(20)],
+                       "claim_amount": range(20)})
+    seg = SegmentResult(segment_column="department", metric_column="mrn",
+                        aggregation="readmission_rate", results=[{"name": "A", "value": 0.2}])
+    ratio = SegmentResult(segment_column="department", metric_column="claim_amount",
+                          aggregation="loss_ratio", results=[{"name": "A", "value": 0.9}])
+    assert false_findings(_findings(segments=[seg, ratio]), df, {})["false"] == 0
+
+
+async def test_a_harness_exception_fails_one_run_not_the_report(monkeypatch):
+    import asyncio
+
+    import evals.run as harness
+
+    async def boom(case):
+        raise TypeError("scorer broke")
+    monkeypatch.setitem(harness.__dict__, "run_analysis_case", boom)
+    out = await harness.run_once("analysis", {"id": "x", "domain": "hr"}, asyncio.Semaphore(1))
+    assert out["passed"] is False and "TypeError" in out["error"]
+
+
+def test_trap_numbers_in_finding_bullets_are_seen():
+    from orchestrator.state import Claim, ExecutiveSummary, InsightReport
+    s = AnalysisSession(session_id="t")
+    s.insight_report = InsightReport(
+        executive_summary="Balances rose.", technical_findings=[], recommended_actions=[],
+        anomaly_alerts=[], proactive_questions=[], methodology_notes="",
+        executive_view=ExecutiveSummary(headline="Up", findings=[Claim(
+            text="Business balances total $113,217,218.45", evidence_ids=["x"])]))
+    assert not check_must_not_number(s, {"n": 113_217_218.45}, "n", rel_tol=0.01)[0]
+
+
+@pytest.mark.parametrize("text, wrong", [("A 69.95\nB 70.62", 69.95e9), ("10/31/2026", 31.0),
+                                         ("on 31 Oct 2026", 31.0)])
+def test_no_magnitude_across_lines_and_no_numbers_from_dates(text, wrong):
+    from evals.scoring import answer_numbers
+    assert wrong not in answer_numbers(_answer(text))
+
+
+def test_unseen_e2e_cases_are_priced_by_their_kind():
+    from pathlib import Path
+
+    from evals.run import estimate_usd
+    cases = [c["id"] for c in load_cases("e2e", None) if int(c["id"].split("-")[1]) >= 21]
+    assert estimate_usd("e2e", len(cases), Path(__file__).parent.parent / "evals" / "reports",
+                        cases, 1) > 0.8   # 7 overviews + 7 targeted, not 14 × the average

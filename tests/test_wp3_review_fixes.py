@@ -253,3 +253,122 @@ def test_chart_axes_name_the_unit():
     df, _ = datagen.make("sensor_readings", 1)
     line = month_line(df, "reading_time", "temperature", build_context(df, contract=_contract(df)))
     assert "(°C)" in line.y_label
+
+
+def test_staggered_weekly_snapshots_all_count_in_the_current_total():
+    """Audit 1: 70 accounts, each snapshotted weekly on its own weekday, data ending early in a
+    month: every account's latest balance counts (70,000, not the 30,000 of one month's slice)."""
+    from agents.utils import aggregate
+    rows = []
+    for a in range(70):
+        start = pd.Timestamp("2024-09-02") + pd.Timedelta(days=a % 7)
+        for w in range(9):
+            d = start + pd.Timedelta(weeks=w)
+            if d <= pd.Timestamp("2024-11-03"):
+                rows.append([a, d.strftime("%Y-%m-%d"), ["retail", "business"][a % 2], "B", 1000.0, 0])
+    got = aggregate(_balances(rows), ["segment"], "balance", "last", _bank_contract())
+    assert got.sum() == 70_000
+
+
+def test_charts_answers_and_the_trend_share_the_levels_time_axis():
+    from agents import targeted_analysis_agent as ta
+    from agents.visualization_agent import build_context, month_line
+    df, truth = datagen.make("bank_balances", 1)
+    df.insert(1, "open_date", "2015-03-01")
+    c = _contract(df)
+    line = month_line(df, build_context(df, contract=c).date, "balance", build_context(df, contract=c))
+    assert abs(line.data[-1]["balance"] - truth["month_end_total_last"]) < 0.01
+    r = ta.handle_time_series(df, TargetedParams(metric_column="balance"), c)
+    assert "2026-10-31" in r.answer_text and "2015" not in r.answer_text
+
+
+def test_a_birth_date_never_becomes_the_charts_time_axis():
+    from agents.visualization_agent import build_context
+    df = pd.DataFrame({"date_of_birth": pd.date_range("1950-01-01", periods=10, freq="400D"),
+                       "order_date": pd.date_range("2026-01-01", periods=10), "amount": range(10)})
+    assert build_context(df, contract=_contract(df)).date == "order_date"
+
+
+def test_a_breakdown_for_a_stated_period_is_dropped_not_replaced_by_today():
+    from agents.analysis_agent import repair_levels
+    from orchestrator.state import SegmentResult
+    df, _ = datagen.make("bank_balances", 1)
+    f = _findings(segments=[SegmentResult(segment_column="segment", metric_column="balance",
+                                          aggregation="sum", results=[{"name": "b", "value": 1.0}])])
+    notes = repair_levels(f, df, _bank_contract(), timeframe="2026-Q2")
+    assert not f.segments and "2026-Q2" in notes[0]
+
+
+def test_the_level_mom_drops_a_partial_last_month_like_its_chart():
+    import json
+
+    from agents.analysis_agent import _build_standard_code
+    from orchestrator.state import AnalysisTask
+    df, _ = datagen.make("bank_balances", 1)
+    df = df[df.snapshot_date <= "2026-10-09"]   # one Friday of October
+    c = _bank_contract()
+    result = {"trends": [], "correlations": {}, "segments": []}
+    exec(_build_standard_code(c, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                              target_metrics=["balance"])),
+         {"df": df, "pd": pd, "np": np, "result": result, "json": json})
+    from agents.utils import aggregate
+    m = pd.to_datetime(df.snapshot_date).dt.to_period("M")
+    tot = aggregate(df.assign(_m=m), ["_m"], "balance", "last", c, over_time=True)
+    want = round((tot.iloc[-2] / tot.iloc[-3] - 1) * 100, 2)   # Sep vs Aug: October is partial
+    got = [t for t in result["trends"] if not t.get("segment")]
+    assert got and got[0]["pct_change"] == want and got[0]["n"] > 0
+
+
+# ── final audit 1: parsing ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("vals, want", [
+    (["1.249,50", "980,00", "2.000", "15,25", "3,10"], [1249.5, 980.0, 2000.0, 15.25, 3.1]),
+    (["1,5", "2,25", "10", "3"], [1.5, 2.25, 10.0, 3.0]),
+    (["1,250", "2,500", "10"], [1250, 2500, 10]),          # US thousands stay thousands
+])
+def test_decimal_commas_are_read_as_decimals(vals, want):
+    from agents.data_cleaning import try_numeric_conversion
+    assert try_numeric_conversion(pd.Series(vals))[0].tolist() == want
+
+
+@pytest.mark.parametrize("name, dob", [("births", False), ("birth_rate", False),
+                                       ("birth_weight_g", False), ("birth_year", False),
+                                       ("date_of_birth", True), ("birth_date", True), ("dob", True)])
+def test_only_birth_dates_are_dates_of_birth(name, dob):
+    from guardrails import pii_kind
+    assert bool(pii_kind(name, [120, 98])) is dob
+
+
+def test_json_keeps_codes_as_written():
+    from connectors.csv_connector import _read_bytes
+    df, _ = _read_bytes(b'[{"zip": "02134", "id": "00731", "amt": 1.5}]', ".json")
+    assert df.loc[0, "zip"] == "02134" and df.loc[0, "id"] == "00731" and df.loc[0, "amt"] == 1.5
+
+
+@pytest.mark.parametrize("csv", [b"month,x\n01,1\n12,2\n", b"hhmm,x\n0930,1\n1400,2\n"])
+def test_padded_months_and_times_stay_numbers(csv):
+    from connectors.csv_connector import _read_bytes
+    assert pd.api.types.is_numeric_dtype(_read_bytes(csv, ".csv")[0].iloc[:, 0])
+
+
+def test_no_kpi_tile_averages_a_level_over_its_snapshots():
+    from agents.visualization_agent import classify_columns, generate_smart_kpis
+    df, _ = datagen.make("bank_balances", 1)
+    kpis = generate_smart_kpis(df, classify_columns(df), contract=_bank_contract())
+    assert not any(k.recipe and k.recipe.column == "balance" for k in kpis)
+
+
+def test_the_shown_code_for_a_level_takes_the_latest_snapshot_first():
+    from agents import targeted_analysis_agent as ta
+    df, _ = datagen.make("bank_balances", 1)
+    r = ta.handle_top_n(df, TargetedParams(metric_column="balance", group_by="segment"), _bank_contract())
+    code = r.chart_configs[0].rationale.code
+    assert "tail(1)" in code and ".sum()" in code and "(USD)" in r.chart_configs[0].y_label
+
+
+def test_user_errors_name_a_step_not_an_exception():
+    from orchestrator.graph import _fail
+    from orchestrator.state import AnalysisSession
+    s = AnalysisSession(session_id="f")
+    _fail(s, "Intake agent", KeyError("x"))
+    assert "KeyError" not in s.error_message and "question-reading" in s.error_message

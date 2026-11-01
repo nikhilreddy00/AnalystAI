@@ -3,7 +3,7 @@ domain: insurance
 dataset:
   name: claims
   seed: 1
-question: What are the total claims for each line of business?
+question: What is the total claim amount for each line of business?
 overview_done: true
 checks:
 - kind: number_in_answer

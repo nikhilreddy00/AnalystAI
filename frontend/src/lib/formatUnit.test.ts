@@ -36,3 +36,9 @@ test("a filtered KPI tile keeps its currency and unit", () => {
   assert.equal(evaluateKPI({ kind: "metric_avg", column: "fee", format_kind: "currency" },
                            rows).value, "$15.00");   // a report from before Phase 5.5
 });
+
+test("a filtered comparison tile reads like the backend's", () => {
+  const rows = [{ g: "A", y: 1 }, { g: "A", y: 0 }, { g: "B", y: 0 }, { g: "B", y: 0 }];
+  assert.equal(evaluateKPI({ kind: "comparison_split", segment_column: "g", target_column: "y" },
+                           rows).value, "50.0% vs 0.0%");
+});
