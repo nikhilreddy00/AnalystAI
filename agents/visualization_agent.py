@@ -695,7 +695,10 @@ _TIME_KEYWORDS = ("trend", "over time", "weekly", "monthly", "yearly", "quarterl
 
 # ── PROMPT-2: smart KPI selector ─────────────────────────────────────────────
 
-_KPI_CURRENCY_RE = re.compile(r"(?i)(price|cost|fare|revenue|amount|salary|income|spend|budget|fee|total)")
+# Word-bounded, the same list as the Data tab's old-report rule (DescriptiveStatsTable): one
+# decision for "is this money" (`spending_score`, `coffee_cups` are not).
+_KPI_CURRENCY_RE = re.compile(r"(?i)(?:^|_|\s)(price|cost|fare|revenue|amount|salary|income|spend|"
+                              r"budget|fee|total|usd|sales|profit)(?:$|_|\s)")
 _KPI_PERCENT_RE = re.compile(r"(?i)(rate|pct|percent|ratio|share|proportion)")
 _KPI_COUNT_RE = re.compile(r"(?i)(count|num|qty|quantity|total|volume)")
 _KPI_PRIMARY_RE = re.compile(r"(?i)(revenue|sales|amount|score|value|total|profit)")
@@ -1146,8 +1149,10 @@ def generate_smart_kpis(
     binary_cols: set[str] = set(column_roles.get("binary_cols") or [])
     target_col: str | None = column_roles.get("target_col")  # type: ignore[assignment]
     continuous: list[str] = list(column_roles.get("continuous") or [])
-    low_card_cat: list[str] = list(column_roles.get("low_card_cat") or [])
-    high_card_cat: list[str] = list(column_roles.get("high_card_cat") or [])
+    # A measure the layer aggregates (delivery days, a balance) is never a category to split by.
+    hinted = {c.name for c in contract.columns if c.aggregation} if contract is not None else set()
+    low_card_cat: list[str] = [c for c in column_roles.get("low_card_cat") or [] if c not in hinted]
+    high_card_cat: list[str] = [c for c in column_roles.get("high_card_cat") or [] if c not in hinted]
     ordinal_cols: set[str] = set(column_roles.get("ordinal_cols") or [])
 
     entity_sg, entity_pl = _entity_pair(df.columns, narrative, query, df)

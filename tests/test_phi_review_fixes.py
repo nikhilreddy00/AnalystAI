@@ -3,6 +3,7 @@ parity). Each fails on commit 0ed5060, the code the reviewers read."""
 from __future__ import annotations
 
 import io
+import json
 import logging
 import logging.config
 
@@ -63,8 +64,9 @@ def test_a_typed_value_reaches_e2b_as_its_pseudonym_and_names_come_back():
     upload, back = e2b_frame(_parquet(df), ["customer_email"], "u1")
     code = pseudonymize_literals("total = df[df.customer_email == 'jane.doe@x.com'].amount.sum()",
                                  back, ["customer_email"])
-    assert pseudonymize_literals("df[df['region'] != 'bo@x.com']", back, ["customer_email"]) \
-        == "df[df['region'] != 'bo@x.com']"   # a literal against another column is left alone
+    assert pseudonymize_literals("df[df['region'] != 'North']", back, ["customer_email"]) \
+        == "df[df['region'] != 'North']"   # a literal against another column is left alone
+    assert "bo@x.com" not in pseudonymize_literals("x = 'bo@x.com'", back, [])   # an email never
     assert "jane.doe" not in code.lower()
     frame = pd.read_parquet(io.BytesIO(upload))
     assert frame[frame.customer_email == code.split("'")[1]].amount.sum() == 5.0   # filter matches
@@ -669,3 +671,120 @@ def test_a_crash_resume_seeds_the_guard_from_the_previous_turn():
     import orchestrator.runner as r
     src = inspect.getsource(r._restore_frame)
     assert "seed_last=False" not in src
+
+
+# ── audit pass 3 (automated security review) ────────────────────────────────────────────────
+
+def test_an_email_in_a_code_column_never_reaches_e2b():
+    from agents.analysis_agent import e2b_frame
+    df = pd.DataFrame({"ref": ["A-1", "ana.ito@mail.com"] + ["B-2"] * 18, "x": range(20)})
+    up, _ = e2b_frame(_parquet(df), [])
+    got = pd.read_parquet(io.BytesIO(up))["ref"].tolist()
+    assert "ana.ito@mail.com" not in got and got[0] == "A-1"
+
+
+def test_a_record_number_on_another_line_still_reaches_e2b_as_its_pseudonym():
+    from agents.analysis_agent import pseudonymize_id_literals
+    from guardrails import pseudonym, pseudonym_key
+    key = pseudonym_key("u")
+    present = {"mrn": {pseudonym("MRN-100005", key, "mrn"), pseudonym("4500123", key, "mrn")}}
+    code = "ids = ['MRN-100005', 4500123]\nn = 1500\nprint(df[df.mrn.isin(ids)])"
+    out = pseudonymize_id_literals(code, present, key)
+    assert "MRN-100005" not in out and "4500123" not in out and "n = 1500" in out
+
+
+@pytest.mark.parametrize("name, values", [("dob", [25204, 30411]), ("date_of_birth", [-631152000]),
+                                          ("birth_date", [19500101.5])])
+def test_a_birth_date_stored_as_a_number_stays_personal(name, values):
+    from guardrails import pii_kind
+    assert pii_kind(name, values * 10)
+
+
+# ── audit pass 3 (security auditor) ─────────────────────────────────────────────────────────
+
+_LAST_FIRST = ["Lee, Ana", "Ito, Bo", "Kim, Cy", "Diaz, Di", "Ng, Ed", "Roy, Fay", "Fox, Gus", "Hale, Ivy"]
+
+
+@pytest.mark.parametrize("names", [_LAST_FIRST, [n.upper().replace(" ", "") for n in _LAST_FIRST],
+                                   [n.split(", ")[1].lower() + " " + n.split(",")[0].lower()
+                                    for n in _LAST_FIRST]])
+def test_names_written_last_first_or_lowercase_are_withheld(names):
+    from agents.ingestion_agent import known_pii_values
+    df = pd.DataFrame([{"mrn": f"MRN-{100000 + i}", "patient": n, "kt_v": 1.0 + v / 40}
+                       for i, n in enumerate(names) for v in range(20)])
+    c = _contract(df)
+    out, c2 = prepare_frame(df, c, ConnectorType.CSV)
+    assert "patient" not in out.columns and names[0] in known_pii_values(df, c)
+    assert names[0] not in json.dumps([r for r in c2.sample_rows], default=str)
+
+
+def test_names_without_a_patient_key_are_withheld():
+    df = pd.DataFrame([{"attending": n, "dx_code": "I10", "cost": i} for i, n in enumerate(_LAST_FIRST * 30)])
+    out, _ = prepare_frame(df, _contract(df), ConnectorType.CSV)
+    assert "attending" not in out.columns
+
+
+def test_places_with_a_state_stay():
+    df = pd.DataFrame([{"mrn": f"M{i % 60}", "site": s, "cost": i}
+                       for i, s in enumerate(["Boston, MA", "Albany, NY", "Austin, TX"] * 100)])
+    out, _ = prepare_frame(df, _contract(df), ConnectorType.CSV)
+    assert "site" in out.columns
+
+
+@pytest.mark.parametrize("header", ["PatNo", "pat_no", "enrollee", "client_ref", "pt_num"])
+def test_a_repeated_patient_number_under_a_common_header_is_pseudonymised(header):
+    from agents.analysis_agent import e2b_frame
+    from agents.ingestion_agent import known_pii_values
+    rng = np.random.default_rng(1)
+    ids = rng.choice(np.arange(10**6, 10**7), 60, replace=False)
+    df = pd.DataFrame([{header: int(p), "icd10": "I10", "visit_date": "2025-01-10", "cost": 100}
+                       for p in ids for _ in range(3)])
+    c = _contract(df)
+    out, _ = prepare_frame(df, c, ConnectorType.CSV)
+    assert str(ids[0]) not in out[header].astype(str).tolist()
+    assert str(ids[0]) in known_pii_values(df, c)
+    up, _ = e2b_frame(_parquet(out), [])
+    assert str(ids[0]) not in pd.read_parquet(io.BytesIO(up))[header].astype(str).tolist()
+
+
+def test_a_missing_earlier_patient_file_refuses_the_switch(tmp_path):
+    from fastapi import HTTPException
+
+    from api.routes.chat import _last_turn_pii
+    df, _ = datagen.make("encounters", 1)
+    _, c = prepare_frame(df, _contract(df), ConnectorType.CSV)
+    s = AnalysisSession(session_id="s", cleaned_data_path="x", data_contract=c, connector_config=ConnectorConfig(
+        type=ConnectorType.CSV, file_path=str(tmp_path / "purged.csv")))
+    with pytest.raises(HTTPException) as err:
+        _last_turn_pii(s)
+    assert err.value.status_code == 409
+
+
+def test_a_year_on_a_line_naming_the_id_column_is_kept():
+    from agents.analysis_agent import pseudonymize_id_literals
+    from guardrails import pseudonym, pseudonym_key
+    key = pseudonym_key("u")
+    present = {"patient_id": {pseudonym(v, key, "patient_id") for v in range(2000, 2100)}}
+    code = "x = df[(df['patient_id'] == 2042) & (df.year == 2025)]"
+    out = pseudonymize_id_literals(code, present, key)
+    assert "2025" in out and "2042" not in out
+
+
+def test_a_name_held_in_a_variable_reaches_e2b_as_its_pseudonym():
+    from agents.analysis_agent import pseudonymize_literals
+    back = {"ID-00000000000000aa": "Ana Ito"}
+    out = pseudonymize_literals("t = 'Ana Ito'\nprint(df[df.customer_name == t])", back, ["customer_name"])
+    assert "Ana Ito" not in out
+
+
+async def test_a_resume_onto_a_legacy_patient_cache_fails_closed(monkeypatch, run_env):
+    import hashlib
+
+    import orchestrator.runner as r
+    df, _ = datagen.make("encounters", 1)
+    raw = _parquet(df)
+    monkeypatch.setattr(r, "read_cleaned_parquet", lambda sid: raw)
+    s = AnalysisSession(session_id="s", data_contract=_contract(df).model_copy(update={"phi": False}))
+    with pytest.raises(r.DataChanged):
+        await r._restore_frame(run_env, s, f"cleaned:{hashlib.sha256(raw).hexdigest()}")
+    assert run_env.frame is None

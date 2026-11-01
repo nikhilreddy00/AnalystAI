@@ -95,11 +95,13 @@ function Bubble({
   selected,
   onView,
   onRetry,
+  onNewAnalysis,
 }: {
   message: ChatMessage;
   selected: boolean;
   onView?: () => void;
   onRetry?: () => void;
+  onNewAnalysis?: () => void;
 }) {
   if (message.role === "user") {
     return (
@@ -115,13 +117,23 @@ function Bubble({
           <AlertCircle className="h-4 w-4" /> The analysis stopped
         </p>
         <p className="text-foreground">{message.content.slice(ERROR_PREFIX.length)}</p>
-        {onRetry && !message.final && (
+        {/* `final` means asking again can't help; a stored run can still resume */}
+        {onRetry && (message.runId || !message.final) && (
           <button
             type="button"
             onClick={onRetry}
             className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             {message.runId ? "Retry from where it stopped" : "Try again"}
+          </button>
+        )}
+        {message.final && !message.runId && onNewAnalysis && (
+          <button
+            type="button"
+            onClick={onNewAnalysis}
+            className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent"
+          >
+            New analysis
           </button>
         )}
       </div>
@@ -577,6 +589,7 @@ export default function ChatInterface() {
                     ? () => (m.runId ? void retryRun(m.runId) : ask(questionFor(i)))
                     : undefined
                 }
+                onNewAnalysis={isLoading ? undefined : handleNewAnalysis}
               />
             ))}
 

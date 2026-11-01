@@ -32,6 +32,7 @@ _ID_NAME_RE = re.compile(r"(?i)(_id$|^id_|^id$|_key$|_hash$|_uuid$|_code$)")
 
 # ── Layer 2 numeric patterns (order-dependent — comma stripping LAST) ─────────
 _CURRENCY_RE = re.compile(r"[₹¥₩₽₫฿$€£¢]|R\$|kr\.?|zł|CHF|AED|SAR|Rs\.?|USD|EUR|GBP|INR|JPY|CNY")
+_SAME_CURRENCY = {"$": "USD", "€": "EUR", "£": "GBP", "₹": "INR", "Rs": "INR"}
 _PCT_TAIL_RE = re.compile(r"\s*%\s*$")
 _EU_DECIMAL_RE = re.compile(r"-?\d{1,3}(?:\.\d{3})*,\d{1,2}|-?\d+,\d{1,2}")
 _US_DECIMAL_RE = re.compile(r"-?\d{1,3}(?:,\d{3})*\.\d+|-?\d+\.\d+")
@@ -117,7 +118,9 @@ def try_numeric_conversion(series: pd.Series) -> tuple[pd.Series, list[str]] | N
     cleaned = cleaned.replace({"nan": pd.NA, "None": pd.NA, "": pd.NA})
 
     transformations: list[str] = []
-    symbols = {m for v in cleaned.dropna() for m in _CURRENCY_RE.findall(v)}
+    # "$1,249.50 USD" is one currency written twice; "$" and "€" in one column are two
+    symbols = {_SAME_CURRENCY.get(m.rstrip("."), m) for v in cleaned.dropna()
+               for m in _CURRENCY_RE.findall(v)}
     if len(symbols) > 1:   # $ and € in one column: two currencies can't be added up
         return None
     if symbols:

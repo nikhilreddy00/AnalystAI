@@ -58,17 +58,31 @@ def _is_rate(s: pd.Series) -> bool:
     return len(v) > 0 and v.between(0, 1).all()
 
 
+def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
+    """pandas' groupby, except a level ('last' / 'first', a semantic-layer balance or seat
+    count): each entity's latest value, summed, as production computes it (agents.utils)."""
+    if agg in ("last", "first"):
+        from agents.ingestion_agent import build_contract
+        from agents.utils import aggregate
+        from orchestrator.state import ConnectorType
+        return aggregate(df, by, metric, agg, build_contract(df, ConnectorType.CSV, {}))
+    return df.groupby(by)[metric].agg(agg)
+
+
 def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, metric: str,
-                        rel_tol: float = 0.01, scales: tuple = (1, 100)) -> tuple[bool, str]:
+                        rel_tol: float = 0.01, scales: tuple = (1, 100),
+                        aggregation: str | None = None) -> tuple[bool, str]:
     """Passes if a segment result for (segment, metric) exists and every group value matches
     pandas under the aggregation the agent reported. The agent picks the aggregation, since
-    it never sees the user's wording; correctness of the number is what's scored."""
-    matches = [s for s in f.segments if s.segment_column == segment and s.metric_column == metric]
+    it never sees the user's wording; correctness of the number is what's scored. `aggregation`
+    pins it where only one answers the question (attrition is a rate: a headcount isn't it)."""
+    matches = [s for s in f.segments if s.segment_column == segment and s.metric_column == metric
+               and (aggregation is None or s.aggregation == aggregation)]
     if not matches:
-        return False, f"no segment result for {metric} by {segment}"
+        return False, f"no {aggregation or ''} segment result for {metric} by {segment}"
     for seg in matches:
-        agg = seg.aggregation if seg.aggregation in _AGGS else "mean"
-        want = df.groupby(segment)[metric].agg(agg)
+        agg = seg.aggregation if seg.aggregation in (*_AGGS, "last", "first") else "mean"
+        want = _grouped(df, segment, metric, agg)
         want.index = want.index.astype(str)
         for row in seg.results:
             name = str(row.get("name"))
@@ -200,6 +214,18 @@ def check_simpson_reversal(f: AnalysisFindings, truth: dict, metric: str = "conv
     return False, f"no {outer}×{inner} breakdown of {metric}"
 
 
+def _derived_truth(seg, truth: dict) -> bool:
+    """The segment's values are a planted derived metric (truth: {group: value}) — right."""
+    got = {str(r.get("name")): r.get("value") for r in seg.results}
+    for v in truth.values():
+        want = {str(k): x for k, x in v.items()} if isinstance(v, dict) else {}
+        if got and want and set(got) <= set(want) and all(
+                isinstance(x, (int, float)) for x in want.values()) and any(
+                all(_close(got[k], want[k] * sc, 0, 0.02 * sc) for k in got) for sc in (1, 100)):
+            return True
+    return False
+
+
 def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
     """Recompute every claim that can be checked against the data. A claim is false when the
     number is wrong, or when a test calls a planted null pair significant."""
@@ -221,11 +247,12 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         if not set(cols) <= set(df.columns) or seg.metric_column not in numeric:
             continue
         # A derived metric (a loss ratio, a readmission rate) can't be recomputed from one
-        # column: not verifiable here (segment_value_truth scores it), never "false".
-        if seg.aggregation not in _AGGS:
+        # column: not verifiable here (segment_value_truth scores it), never "false", whatever
+        # column and aggregation the agent filed it under.
+        if seg.aggregation not in (*_AGGS, "last", "first") or _derived_truth(seg, truth):
             continue
         agg = seg.aggregation
-        want = df.groupby(cols)[seg.metric_column].agg(agg)
+        want = _grouped(df, cols, seg.metric_column, agg)
         want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in want.index]
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
         for row in seg.results:

@@ -302,9 +302,10 @@ def source_evidence(df: pd.DataFrame, cols: list[ColumnInfo], source_type: Conne
 def _patient_signal(cols: list[ColumnInfo], values) -> bool:
     """Patient records: an MRN / patient id, ICD-10 codes in a diagnosis column, or health
     vocabulary in the headers next to personal data. One rule for new loads and old threads."""
-    return (any(is_phi_identifier(c.name) for c in cols)
-            or any(is_diagnosis_column(c.name, values(c.name)) for c in cols)
-            or (any(is_health_column(c.name) for c in cols) and any(c.pii for c in cols)))
+    health = any(is_health_column(c.name) for c in cols)
+    dx = any(is_diagnosis_column(c.name, values(c.name)) for c in cols)
+    return (any(is_phi_identifier(c.name, strong=not (health or dx)) for c in cols) or dx
+            or (health and any(c.pii for c in cols)))
 
 
 def looks_like_patient_data(contract: DataContract) -> bool:
@@ -453,11 +454,12 @@ def _decision(column: str, op: str, strategy: str, reason: str, rows: int, df: p
 
 
 _ID_HEADER_RE = re.compile(r"(?:^|_)(?:member|account|acct|policy|subscriber|insured|beneficiary|"
-                           r"claim|case|chart)(?:_?(?:id|no|nr|num|number))?$", re.I)
+                           r"claim|case|chart|pat|pt|enrol\w*|client|person|resident|mbr)"
+                           r"(?:_?(?:id|no|nr|num|number|ref|key))?$|(?:^|_)(?:no|nr|ref|key)$", re.I)
 
 
 def _person_share(s: pd.Series) -> float:
-    return person_shaped(s.dropna().unique())
+    return person_shaped(s.dropna().unique(), any_case=True)
 
 
 def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[str]]:
@@ -474,6 +476,8 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
         s = _profiled(df[n])
         if c is None or c.pii:
             withheld.append(n)
+        elif not c.is_metric and _person_share(s) >= 0.5:
+            withheld.append(n)   # people's names under any header ("Pt", "Resident"), however few
         elif c.is_id or is_phi_identifier(n) or _ID_HEADER_RE.search(_norm(n)):
             ids.append(n)
         elif c.is_date or is_zip_column(n):
@@ -486,11 +490,10 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
             continue   # the clinical content analysed (not an identifier); generalised later
         elif _is_free_text(s, n) or s.nunique() > 50:
             withheld.append(n)   # notes, places: anything too specific to be a category
-        elif _person_share(s) >= 0.5:
-            withheld.append(n)   # people's names under any header ("Pt", "Resident"), however few
-        elif patient and n_patients >= SMALL_CELL and s.nunique() >= 0.5 * n_patients \
+        elif patient and n_patients >= 2 and s.nunique() >= 0.5 * n_patients \
                 and df.groupby(patient)[n].nunique().max() <= 1:
-            withheld.append(n)   # one value per patient: it identifies them like a name
+            withheld.append(n)   # one value per patient: it identifies them like a name (the
+            # fewer the patients, the more so)
     return withheld, ids
 
 
@@ -706,7 +709,11 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
                 "result_excerpt": "Patient data: result rows are not quoted."})
         contract.source_query = source_query
 
+    session.__dict__["_df_parquet"] = await asyncio.to_thread(_to_parquet, df)
+    return contract
+
+
+def _to_parquet(df: pd.DataFrame) -> bytes:
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
-    session.__dict__["_df_parquet"] = buf.getvalue()
-    return contract
+    return buf.getvalue()

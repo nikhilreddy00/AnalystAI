@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { evaluateKPI } from "./evaluateKPI.ts";
-import { formatMoney, formatWithUnit, isCurrency } from "./formatUnit.ts";
+import { columnUnit, formatMoney, formatWithUnit, isCurrency } from "./formatUnit.ts";
 
 const NB = " ";
 
@@ -46,4 +46,13 @@ test("a filtered comparison tile reads like the backend's", () => {
 test("a filtered variability tile reads like the backend's", () => {
   const rows = [{ x: 1 }, { x: 2 }, { x: 3 }];
   assert.equal(evaluateKPI({ kind: "highest_cv", column: "x" }, rows).value, "CV 0.50");
+});
+
+test("the Data tab follows the backend's units on new reports, the name rule only on old ones", () => {
+  // audit pass 3: `sales` was "$" in the table but a plain number on the KPI tile
+  assert.deepEqual(columnUnit("sales", { revenue: "USD" }), { currency: false, unit: undefined });
+  assert.deepEqual(columnUnit("revenue", { revenue: "USD" }), { currency: false, unit: "USD" });
+  assert.deepEqual(columnUnit("sales", undefined), { currency: true });
+  assert.deepEqual(columnUnit("spending_score", undefined), { currency: false });
+  assert.deepEqual(columnUnit("constructor", {}), { currency: false, unit: undefined });
 });

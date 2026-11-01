@@ -120,9 +120,9 @@ def _last_turn_pii(session: AnalysisSession) -> set[str]:
 
         from connectors.csv_connector import _read_bytes
         path = session.connector_config.file_path if session.connector_config else None
-        if not path or not Path(path).is_file():   # ponytail: uploaded files only
+        if not path:   # ponytail: uploaded files only (a SQL source has none)
             return set()
-        try:
+        try:   # a purged file is as unreadable as a corrupt one
             raw, _ = _read_bytes(Path(path).read_bytes(), Path(path).suffix.lower())
         except Exception as exc:   # its patient names can't be guarded: don't switch blind
             raise HTTPException(status_code=409, detail="The earlier version of this dataset "

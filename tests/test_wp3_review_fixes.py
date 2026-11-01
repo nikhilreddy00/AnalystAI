@@ -332,7 +332,7 @@ def test_decimal_commas_are_read_as_decimals(vals, want):
 
 
 @pytest.mark.parametrize("name, dob", [("births", False), ("birth_rate", False),
-                                       ("birth_weight_g", False), ("birth_year", False),
+                                       ("birth_weight_g", False), ("birth_year", True),   # fail closed
                                        ("date_of_birth", True), ("birth_date", True), ("dob", True)])
 def test_only_birth_dates_are_dates_of_birth(name, dob):
     from guardrails import pii_kind

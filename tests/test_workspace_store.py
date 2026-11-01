@@ -3,6 +3,7 @@
 (when TEST_PG_URL is set)."""
 import asyncio
 import os
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -303,3 +304,14 @@ async def test_the_guard_values_are_encrypted_at_rest(store):
         async with store._engine.connect() as conn:
             raw = (await conn.execute(text("SELECT data::text FROM analysis_sessions"))).scalar()
         assert "Jane Doe" not in raw and "jane@x.io" not in raw
+
+
+async def test_the_same_bytes_again_restore_a_lost_file(store, uploads):
+    """Audit pass 3: a moved uploads volume left every thread on the dataset failing; uploading
+    the identical file again must put it back where the version points."""
+    (_, v, _), _ = await _upload(store, uploads, "H")
+    Path(v.file_path).unlink()
+    (_, again, status), calls = await _upload(store, uploads, "H")
+    assert status == "existing" and again.id == v.id and Path(v.file_path).is_file()
+    (_, _, _), calls = await _upload(store, uploads, "H")
+    assert calls == []   # present: nothing is written

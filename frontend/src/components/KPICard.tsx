@@ -23,7 +23,7 @@ export default function KPICard({ label, value, sublabel, filteredValue, hasActi
     <div className="bg-card px-4 py-3 flex flex-col gap-0.5 min-w-0">
       <span className="text-xs text-muted-foreground truncate">{label}</span>
       <span title={typeof primary === "string" ? primary : undefined}
-        className={`font-mono font-medium tabular-nums tracking-tight text-foreground whitespace-nowrap ${
+        className={`font-mono font-medium tabular-nums tracking-tight text-foreground truncate ${
           String(primary).length > 15 ? "text-sm" : String(primary).length > 11 ? "text-base" : "text-xl"}`}>
         {primary}
       </span>

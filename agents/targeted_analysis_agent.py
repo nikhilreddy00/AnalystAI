@@ -13,6 +13,7 @@ when task.question_intent is anything other than OVERVIEW or DRILL_DOWN.
 from __future__ import annotations
 
 import io
+import re
 from typing import Callable
 from uuid import uuid4
 
@@ -85,12 +86,29 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     ctx = build_context(df, session.task_plan, narrative=session.narrative,
                         contract=session.data_contract)
     extra = {"strata": session.task_plan.segments} if intent == QuestionIntent.AB_SIGNIFICANCE else {}
-    response = handler(df, params, contract, ctx=ctx, **extra)
+    response = handler(df, _asked_agg(params, contract, session.task_plan.raw_query), contract,
+                       ctx=ctx, **extra)
     response.chart_configs = finalize_charts(response.chart_configs, ctx)
     return response
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+_TOTAL_WORDS = re.compile(r"\b(?:total|sum|summed|combined|altogether|overall amount|payroll|"
+                          r"bed[- ]?days|how much)\b", re.I)
+
+
+def _asked_agg(params: TargetedParams | None, contract: DataContract, question: str):
+    """Intake fills top-N's aggregation with "sum" by default, which would rank lines by their
+    number of temperature readings: for a column the layer averages, a "sum" the question
+    never asked for ("total payroll" does) is left to the layer."""
+    if params is None or (params.aggregation or "").lower() != "sum" or not params.metric_column:
+        return params
+    hint = column_hint(contract, params.metric_column)
+    if hint is None or hint.aggregation != "mean" or _TOTAL_WORDS.search(question or ""):
+        return params
+    return params.model_copy(update={"aggregation": None})
+
 
 def _unanswerable(intent: QuestionIntent, reason: str, suggestions: list[str]) -> TargetedResponse:
     return TargetedResponse(

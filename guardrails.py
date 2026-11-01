@@ -762,9 +762,14 @@ def executive_jargon(text: str) -> list[str]:
 
 # ── PII ────────────────────────────────────────────────────────────────────────
 
+# A date of birth or death, not a measure about births or deaths (`births`, `birthweight`,
+# `total_deaths`, `is_deceased`, `country_of_birth`, `cost_borne_by`).
+_DOB_NAME = (r"dob|dod|bday|(?<!of_)birth(?:_?(?:date|dt|day|year|yr))?|"
+             r"(?:year|date|day)_of_(?:birth|death)|born(?:_?(?:on|date|dt))?|"
+             r"death_?(?:date|dt|day)|deceased_?(?:date|dt|on)|date_?(?:born|deceased)")
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|dob|dod|"
-    r"birth\w*|(?:year|date)_of_(?:birth|death)|born\w*|bday|death\w*|deceased\w*|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|"
+    rf"{_DOB_NAME}|"
     r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
@@ -791,6 +796,8 @@ _PLACE_WORDS = re.compile(r"\b(?:medicine|care|surgery|surgical|unit|clinic|cent
                           r"pharmacy|hospital|nursing|rehab\w*|office|team|group|plan|insurance|"
                           r"shield|cross|mutual|medicaid|medicare|street|road|avenue)\b", re.I)
 _PERSON_RE = re.compile(r"^[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*){1,3}$")
+# "Lee, Ana", "LEE,ANA", "Lee, Ana M." — but not a place with its state ("Boston, MA").
+_LAST_FIRST_RE = re.compile(r"^[^\W\d_][\w'’.-]+ ?, ?(?![A-Z]{2}$)[^\W\d_][\w'’.-]+(?: [^\W\d_]\.?)?$")
 # "Acme Corp" is capitalized words too: a B2B `client` column keeps its "revenue by client".
 _ORG_RE = re.compile(r"\b(?:inc|corp|corporation|co|company|ltd|limited|llc|llp|plc|gmbh|ag|sa|"
                      r"sas|bv|nv|pty|group|holdings|partners|associates|solutions|services|"
@@ -841,6 +848,15 @@ def _intl_phone(m: re.Match) -> str:
     return MASK if 8 <= len(re.sub(r"\D", "", m.group())) <= 15 else m.group()
 
 
+_MEASURE_NAME_RE = re.compile(r"(?:^|_)(?:births|deaths|weight\w*|rate|count|n|num|number|total|"
+                              r"pct|percent|per)(?:$|_)", re.I)
+
+
+def mask_emails(value: Any) -> Any:
+    """Emails only: safe on code-like text, where the phone and IP patterns would misfire."""
+    return _EMAIL_RE.sub(MASK, value) if isinstance(value, str) else value
+
+
 def _is_measure(values: Iterable[Any]) -> bool:
     """Numbers that aren't dates or years (a count of births, a weight at birth): a birth- or
     death-named column holding them is a measure, not a person's date."""
@@ -880,8 +896,7 @@ def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
 
 
 _NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
-               ("address", r"address|street"), ("dob", r"dob|dod|birth\w*|(?:year|date)_of_(?:birth|death)|born\w*|bday|"
-                                         r"death\w*|deceased\w*"),
+               ("address", r"address|street"), ("dob", _DOB_NAME),
                ("passport", r"passport"))
 
 
@@ -895,8 +910,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
-        if kind == "dob" and _is_measure(values):   # births = 120, birth_weight_g = 3200
-            return None
+        if kind == "dob" and _MEASURE_NAME_RE.search(norm) and _is_measure(values):
+            return None   # births = 120, birth_weight_g = 3200; a dob of 25204 stays a date
         return kind, f"the column name '{name}' marks personal data"
     vals = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
     if not vals:
@@ -930,12 +945,15 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
 # ── PHI (Phase 5.5): patient records, pseudonyms, Safe Harbor generalisations ──────────────────
 
 _PHI_ID_RE = re.compile(r"(?:^|_)(?:mrn|medical_?record(?:_?(?:no|nr|num|number|id))?|"
-                        r"health_?record(?:_?(?:no|nr|num|number|id))?|chart_?(?:no|nr|num|number|id)|"
-                        r"(?:patient|pt|subject)_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+                        r"health_?record(?:_?(?:no|nr|num|number|id))?|"
+                        r"patient_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+# A school's `subject_id`, a `chart_id`, a `pt_no` are patient numbers only next to health data.
+_WEAK_PHI_ID_RE = re.compile(r"(?:^|_)(?:chart_?(?:no|nr|num|number|id)|"
+                             r"(?:pt|subject)_?(?:id|no|nr|num|number))(?:$|_)", re.I)
 # Words that only health data uses in a header: with a personal or identifier column next to
 # them they mark patient records even without an MRN (a 'patient' name + a 'diagnosis' text).
 _HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|"
-                        r"medications?|prescriptions?|hospital\w*|physician|encounters?|"
+                        r"medications?|prescriptions?|hospitals?|hospital_\w+|physician|encounters?|"
                         r"lab_?results?|allerg\w*|vaccin\w*)(?:$|_)", re.I)
 _DX_NAME_RE = re.compile(r"(?:^|_)(?:icd(?:_?10)?|diagnos[ie]s|diag|dx)(?:_?codes?)?(?:$|_)", re.I)
 _ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
@@ -943,13 +961,15 @@ _ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
 RESTRICTED_ZIP3 = frozenset({"036", "059", "063", "102", "203", "556", "692", "790", "821", "823",
                              "830", "831", "878", "879", "884", "890", "893"})
 _ZIP_NAME_RE = re.compile(r"(?:^|_)(?:zip\d?|zipcode|postal|postcode|plz)(?:_?code)?$", re.I)
-_AGE_NAME_RE = re.compile(r"(?:^|_)(?:age(?:_?(?:years|yrs|at_\w+))?|years_old)$", re.I)
+_AGE_NAME_RE = re.compile(r"(?:^|_)(?:age(?:_?(?:years|yrs|at_\w+?))?|years_old)"
+                          r"(?<!_days)(?<!_weeks)(?<!_months)$", re.I)   # age_at_admission_days: no cap
 AGE_CAP = 90
 
 
-def is_phi_identifier(name: str) -> bool:
-    """A medical record number or patient id: identifies a patient (Safe Harbor #8)."""
-    return bool(_PHI_ID_RE.search(_norm_name(name)))
+def is_phi_identifier(name: str, strong: bool = False) -> bool:
+    """A patient's record number. `strong`: on its own, without other health columns."""
+    n = _norm_name(name)
+    return bool(_PHI_ID_RE.search(n) or (not strong and _WEAK_PHI_ID_RE.search(n)))
 
 
 def is_diagnosis_column(name: str, values: Iterable[Any]) -> bool:
@@ -1141,11 +1161,13 @@ def delimit_untrusted(text: str) -> str:
     return f"<untrusted_data>\n{safe}\n</untrusted_data>"
 
 
-def person_shaped(values: Iterable[Any]) -> float:
-    """Share of distinct text values that read as a person's name ("Ana Ito"), not an
-    organisation or a department ("Critical Care", "Blue Cross Blue Shield")."""
+def person_shaped(values: Iterable[Any], any_case: bool = False) -> float:
+    """Share of distinct text values that read as a person's name ("Ana Ito", "Lee, Ana"), not an
+    organisation or a department ("Critical Care", "Blue Cross Blue Shield"). `any_case`: "ana
+    ito" counts too (patient data, where a lowercase category is withheld rather than risked)."""
     v = {str(x).strip() for x in values if isinstance(x, str) and x.strip()}
     if not v:
         return 0.0
-    return sum(bool(_PERSON_RE.match(x)) and not _ORG_RE.search(x) and not _PLACE_WORDS.search(x)
-               for x in v) / len(v)
+    return sum((bool(_PERSON_RE.match(x.title() if any_case and x.islower() else x))
+                or bool(_LAST_FIRST_RE.match(x)))
+               and not _ORG_RE.search(x) and not _PLACE_WORDS.search(x) for x in v) / len(v)

@@ -17,6 +17,7 @@ checks:
   planted: true
   segment: department
   metric: left
+  aggregation: mean
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error

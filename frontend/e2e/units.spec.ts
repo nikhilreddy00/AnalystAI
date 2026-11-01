@@ -58,7 +58,7 @@ test("a column without a unit keeps the old name rule", async ({ page }) => {
   await expect(table.locator("tr", { hasText: "revenue" }).first()).toContainText("$102.82");
 });
 
-test("a final error offers no retry, live or reopened", async ({ page }) => {
+test("a final error offers no retry but a new analysis, live or reopened", async ({ page }) => {
   writeFileSync(SCENARIO, "final\n");
   await page.goto("/chat");
   await page.locator('input[type="file"]').setInputFiles({
@@ -70,10 +70,14 @@ test("a final error offers no retry, live or reopened", async ({ page }) => {
   await input.press("Enter");
   const alert = page.getByRole("alert").filter({ hasText: "Upload it again" });
   await expect(alert).toBeVisible({ timeout: 30_000 });
-  await expect(alert.getByRole("button")).toHaveCount(0);
+  await expect(alert.getByRole("button", { name: /Retry|Try again/ })).toHaveCount(0);
   await page.reload();   // reopened from the stored thread
   await expect(alert).toBeVisible({ timeout: 30_000 });
-  await expect(alert.getByRole("button")).toHaveCount(0);
+  await expect(alert.getByRole("button", { name: /Retry|Try again/ })).toHaveCount(0);
+  // "Upload it again" needs a way to do it from here (audit pass 3)
+  await alert.getByRole("button", { name: "New analysis" }).click();
+  await expect(page.locator('input[type="file"]')).toBeAttached();
+  await expect(alert).toHaveCount(0);
 });
 
 test("data that changed offers 'Try again' but not a resume", async ({ page }) => {
@@ -92,4 +96,20 @@ test("data that changed offers 'Try again' but not a resume", async ({ page }) =
   await page.reload();
   await expect(alert.getByRole("button", { name: "Try again" })).toBeVisible({ timeout: 30_000 });
   await expect(alert.getByRole("button", { name: /Retry from where/ })).toHaveCount(0);
+});
+
+test("a long KPI value ends in an ellipsis at phone width", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/chat");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
+  });
+  const input = page.getByLabel("Ask a question about your data");
+  await expect(input).toBeEnabled();
+  await input.fill("Give me an overview of this sales data");
+  await input.press("Enter");
+  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });
+  const value = page.getByText("€102.82").first();
+  await expect(value).toHaveCSS("text-overflow", "ellipsis");   // clipped mid-word before
+  await expect(value).toHaveCSS("overflow-x", "hidden");
 });

@@ -2,7 +2,7 @@
 
 // PROMPT-10 (3): "Descriptive statistics" — continuous columns only, with
 // skewness + currency formatting + a target-correlation row at the bottom.
-import { formatWithUnit } from "@/lib/formatUnit";
+import { columnUnit, formatWithUnit } from "@/lib/formatUnit";
 
 interface Stats {
   mean?: number;
@@ -21,11 +21,6 @@ interface Props {
   units?: Record<string, string>;   // Phase 5.5: from the semantic layer or the file
 }
 
-const _CURRENCY_RE = /(?:^|_|\s)(price|cost|fare|revenue|amount|salary|income|spend|budget|fee|total|usd|sales|profit)(?:$|_|\s)/i;
-
-function isCurrencyColumn(name: string): boolean {
-  return _CURRENCY_RE.test(name);
-}
 
 function fmt(v: unknown, currency: boolean, unit?: string): string {
   if (typeof v !== "number" || !Number.isFinite(v)) return "—";
@@ -51,7 +46,7 @@ export default function DescriptiveStatsTable({
   columnRoles = {},
   targetCorrelations = {},
   targetCol,
-  units = {},
+  units,
 }: Props) {
   // Only include columns the role classifier flagged as continuous. Fallback
   // to "any column with mean/std" when role info is absent (older sessions).
@@ -92,9 +87,7 @@ export default function DescriptiveStatsTable({
           <tbody>
             {cols.map((c, i) => {
               const stats = describe[c];
-              const currency = isCurrencyColumn(c);
-              const u = Object.hasOwn(units, c) ? units[c] : undefined;   // not "constructor"
-              const unit = typeof u === "string" && u ? u : undefined;
+              const { currency, unit } = columnUnit(c, units);
               const std = getStat(stats, "std");
               const sk = skewness[c];
               const skewedBadge = typeof sk === "number" && Math.abs(sk) > 2;

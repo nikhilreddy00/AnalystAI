@@ -2,12 +2,15 @@
 values become their tokens (llm.client.pseudonymize) and email/phone/SSN/card/IP patterns are
 masked, in the message and in a traceback, which can quote a cell. Installed at import time by the
 API and the worker on every root handler and on uvicorn's own handlers (they don't propagate).
-ponytail: costs one guard pass per emitted record; IPs in access logs are masked too."""
+ponytail: costs one guard pass per emitted record (~10 ms at 200k guard values); the access
+log's client address is kept, IPs anywhere else are masked."""
 from __future__ import annotations
 
 import logging
+import re
 
 SCRUB_FAILED = "[log scrub failed]"
+_ADDR = re.compile(r"\[?[0-9a-fA-F.:]+\]?:\d{1,5}")   # uvicorn's "203.0.113.5:54866"
 
 
 def scrub(text: str) -> str:
@@ -24,8 +27,10 @@ class ScrubFilter(logging.Filter):
             if record.name == "uvicorn.access" and isinstance(record.args, tuple) and record.args:
                 # uvicorn's access formatter unpacks the args (client, method, path, version,
                 # status): keep them, each scrubbed; the status code stays a number.
-                record.args = tuple(a if isinstance(a, int) and not isinstance(a, bool)
-                                    and 100 <= a <= 599 else scrub(str(a)) for a in record.args)
+                # The client address (first) is kept: operators need it against abuse.
+                record.args = tuple(a if (isinstance(a, int) and not isinstance(a, bool)
+                                          and 100 <= a <= 599) or (i == 0 and _ADDR.fullmatch(str(a)))
+                                    else scrub(str(a)) for i, a in enumerate(record.args))
             else:   # anything else: formatted first, then scrubbed as text (a number can be a phone)
                 record.msg, record.args = scrub(record.getMessage()), None
                 record.__dict__.pop("color_message", None)   # uvicorn's coloured copy, unscrubbed

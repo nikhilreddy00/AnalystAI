@@ -174,11 +174,19 @@ def _drain(q: asyncio.Queue) -> list[dict]:
 
 async def _restore_frame(env: RunEnv, session: AnalysisSession, ref: str | None) -> None:
     """Reload the frame a resumed run was using; this also refills the PII guard."""
-    from agents.ingestion_agent import remember_pii, run_ingestion_agent, seed_phi_guard
+    from agents.ingestion_agent import (
+        looks_like_patient_data,
+        remember_pii,
+        run_ingestion_agent,
+        seed_phi_guard,
+    )
     if not ref or session.data_contract is None:
         return
     kind, _, want = ref.partition(":")
     if kind == "cleaned":
+        dc = session.data_contract
+        if not dc.phi and looks_like_patient_data(dc):   # cached before PHI mode: not de-identified
+            raise DataChanged("this analysis started before patient data was de-identified")
         frame = read_cleaned_parquet(session.session_id)
         if frame is None or hashlib.sha256(frame).hexdigest() != want:
             raise DataChanged("the cleaned data saved for this analysis is gone or was replaced")

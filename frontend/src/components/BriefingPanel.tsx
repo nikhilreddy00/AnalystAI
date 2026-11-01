@@ -67,7 +67,7 @@ export default function BriefingPanel({ data }: Props) {
           columnRoles={column_roles_summary}
           targetCorrelations={target_correlations}
           targetCol={target_col || undefined}
-          units={data.column_units ?? {}}
+          units={data.column_units}
         />
       )}
     </div>

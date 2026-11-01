@@ -50,6 +50,9 @@ async def run_code(code: str, df_parquet: bytes | None = None) -> ExecutionResul
     If df_parquet is provided, the DataFrame is available via pd.read_csv('/data/df.csv').
     """
     _ensure_api_key()
+    if not os.environ.get("E2B_API_KEY"):
+        return ExecutionResult(stdout="", stderr="", error="E2B_API_KEY is not set",
+                               error_name="SandboxNotConfigured")
 
     # BUG-25: Wrap sandbox creation in try/except with clear error message
     try:

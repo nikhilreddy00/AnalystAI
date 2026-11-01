@@ -61,6 +61,9 @@ _DELIMITERS = (",", ";", "\t", "|")
 _EU_NUMBER_RE = re.compile(r"^-?\d{1,3}(?:\.\d{3})+,\d+$|^-?\d+,\d{1,2}$")
 _US_DECIMAL_RE = re.compile(r"^-?\d+\.\d+$")
 _FOOTER_RE = re.compile(r"^\s*(?:grand\s+)?totals?\b", re.I)
+# A padded quantity ("050" units) is a number, never a code: the leading-zero rule skips it.
+_MEASURE_HEADER_RE = re.compile(r"(?:^|[^a-z])(?:qty|quantity|units?|amount|count|total|price|cost|"
+                                r"score|weight|hours|days|minutes|sales|revenue)(?:$|[^a-z])", re.I)
 _SAMPLE_LINES = 200
 
 
@@ -167,7 +170,7 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                 t.str.len().iloc[0] == 4 and (t.astype(int) % 100 < 60).all()
                 and (t.astype(int) // 100 < 24).all())
         zeros = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])
-                 and code_like(as_text[c])]
+                 and not _MEASURE_HEADER_RE.search(str(c)) and code_like(as_text[c])]
         for col in zeros:
             df[col] = as_text[col].str.strip()
         if zeros:

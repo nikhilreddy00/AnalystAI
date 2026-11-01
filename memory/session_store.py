@@ -18,6 +18,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -118,6 +119,16 @@ def conn_key(cfg: ConnectorConfig) -> str:
              cfg.sheet_name, cfg.url]
     return hmac.new(settings.encryption_key.encode(), "|".join(str(w or "") for w in where).encode(),
                     hashlib.sha256).hexdigest()[:32]
+
+
+def _restore_file(path: str | None, write_file: Callable[[], str]) -> None:
+    """The same bytes uploaded again after the file was lost (a moved uploads volume): put them
+    back where the version and its threads expect them, or nothing on it could ever run again."""
+    if not path or Path(path).is_file():
+        return
+    new = Path(write_file())
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    os.replace(new, path)
 
 
 def _same_columns(a: list[str], b: list[str]) -> bool:
@@ -475,6 +486,7 @@ class InMemorySessionStore:
             for v in self._versions.values():
                 if v.dataset_id in ([dataset_id] if dataset_id else live) \
                         and v.content_hash == content_hash:
+                    await asyncio.to_thread(_restore_file, v.file_path, write_file)
                     return self._dataset(v.dataset_id), v, "existing"
             target = dataset_id or next(
                 (did for did in sorted(live, key=lambda d: self._datasets[d]["created_at"],
@@ -882,6 +894,7 @@ class SessionStore:
             for d in ([by_id[dataset_id]] if dataset_id else live):   # explicit: only itself
                 for v in d.versions:
                     if v.content_hash == content_hash:
+                        await asyncio.to_thread(_restore_file, v.file_path, write_file)
                         return d, v, "existing"
             target = by_id.get(dataset_id) if dataset_id else next(
                 (d for d in live if d.kind == "upload" and d.name.lower() == name.lower()

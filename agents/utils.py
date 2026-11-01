@@ -198,9 +198,9 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
 def latest_rows(df, column: str, contract):
     """For a level by group (bars, answers): each entity's latest snapshot (or first, for a
     'first' window), the rows a current total adds up. An entity whose latest snapshot is a full
-    usual gap older than the newest one has stopped (a closed account) and is left out (monthly
-    data: not in the newest month); staggered snapshots (each account on its own day) all count. Anything else: the
-    frame as it is."""
+    usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
+    data: not in the newest complete month); staggered snapshots (each account on its own day)
+    all count. Anything else: the frame as it is."""
     import pandas as pd
     hint = column_hint(contract, column)
     if hint is None or hint.aggregation not in _LEVEL:
@@ -215,8 +215,12 @@ def latest_rows(df, column: str, contract):
     last = g.tail(1)
     newest = d["_t"].max()
     if cadence and cadence == cadence:
-        if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month
-            last = last[last["_t"].dt.to_period("M") == newest.to_period("M")]
-        else:   # daily / weekly, staggered or not: within one usual gap of the newest snapshot
-            last = last[last["_t"] > newest - pd.Timedelta(seconds=cadence)]
+        if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month,
+            # or the one before while the newest is still partial (a 4 Nov export of accounts
+            # billed on their own day: most have only October so far)
+            months = 2 if partial_last_month(d["_t"]) else 1
+            last = last[last["_t"].dt.to_period("M") > newest.to_period("M") - months]
+        else:   # daily / weekly, staggered or not: stopped = missed two usual gaps (a day's
+            # refresh lag, or weekday-only rows on a Saturday export, is still current)
+            last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
     return last.drop(columns="_t")

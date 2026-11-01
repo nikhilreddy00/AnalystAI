@@ -1040,6 +1040,15 @@ def passed(checks: list[dict]) -> bool:
     return bool(checks) and all(c["ok"] for c in checks)
 
 
+def run_passed(suite: str, case: dict, out: dict) -> bool:
+    """`passed`, and for a domain's E2E case its hard rules too: an overview's only positive
+    check is a built-in statistic, so without them an empty or ungrounded report would pass."""
+    ok = passed(out["checks"])
+    if suite == "e2e" and case.get("domain", "retail") != "retail":
+        ok = ok and all(h["ok"] for h in out.get("hard") or [])
+    return ok
+
+
 def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
     """A surfaced error or question is not a *silent* empty result, and a run that stopped with
     an explicit error has no report to ground (its checks fail instead)."""
@@ -1117,7 +1126,7 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         out["llm_calls"] = len(calls)
         out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
         out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
-        out["passed"] = passed(out["checks"])
+        out["passed"] = run_passed(suite, case, out)
         _budget["spent"] += out["cost_usd"]
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
         return out
@@ -1156,7 +1165,7 @@ def rescore(path: Path) -> Path:
                                               r.get("pii_planted")))
             if "pii_exits" in r:   # scanned at run time: uploads and events aren't stored
                 r["hard"].append(r["pii_exits"])
-            r["passed"] = passed(r["checks"])
+            r["passed"] = run_passed(suite, cases[cid], r)
     report["summary"] = summarize(report["runs"])
     report["meta"]["rescored_from"] = report["meta"]["report"]
     report["meta"]["report"] = name = f"{report['meta']['report']}-rescored"
@@ -1268,9 +1277,12 @@ def _by_domain(runs: dict[str, list[dict]]) -> dict:
             domains.setdefault(rs[0]["domain"], {})[cid] = rs
     if not domains:
         return {}
+    def builtin(rs: list[dict]):   # any run that recorded it (run 1 may have been a harness error)
+        return next((r["builtin_only"] for r in rs if "builtin_only" in r), None)
     out = {}
     for d, sub in sorted(domains.items()):
         flat = [r for rs in sub.values() for r in rs]
+        model = [r for rs in sub.values() if builtin(rs) is False for r in rs]
         out[d] = {"cases": len(sub), "k_min": min(len(rs) for rs in sub.values()),
                   "k_max": max(len(rs) for rs in sub.values()),
                   "cases_passed_all_runs": sum(all(r["passed"] for r in rs) for rs in sub.values()),
@@ -1279,11 +1291,13 @@ def _by_domain(runs: dict[str, list[dict]]) -> dict:
                   "hard_rules_na": sum(bool(h.get("na")) for r in flat for h in r["hard"]),
                   # cases the deterministic built-in code passes with no model code at all:
                   # the domain claim rests on the others (model_dependent)
-                  "builtin_only_cases": sorted(c for c, rs in sub.items() if rs[0].get("builtin_only")),
+                  "builtin_only_cases": sorted(c for c, rs in sub.items() if builtin(rs)),
                   "model_dependent_passed": sum(all(r["passed"] for r in rs) for rs in sub.values()
-                                                if rs[0].get("builtin_only") is False),
-                  "model_dependent_cases": sum(rs[0].get("builtin_only") is False for rs in sub.values()),
-                  **_quality(flat)}
+                                                if builtin(rs) is False),
+                  "model_dependent_cases": sum(builtin(rs) is False for rs in sub.values()),
+                  **_quality(flat),
+                  # the model's own numbers: built-in claims would dilute recall and false findings
+                  **({"model_dependent_quality": _quality(model)} if model else {})}
     return {"by_domain": out}
 
 

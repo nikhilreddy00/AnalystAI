@@ -26,7 +26,7 @@ out wrong.
      patient one-to-one.
 
    Each step is an audited decision at the head of the cleaning audit. The guard (the client's
-   tokenizer) holds every withheld value, so a name the user types never reaches a model.
+   tokenizer) holds every whole value of a withheld or pseudonymised column, so a name the user types as written in the data never reaches a model. A value only inside withheld notes, or a pooled category label, is not guarded.
 3. **Domain meaning lives in YAML** (`semantic_layers/`, plus `SEMANTIC_LAYER_PATH`). A layer
    table whose columns are all in an upload gives that upload its aggregations:
    - `SUM` means a sum, `AVG` means a mean.
@@ -60,7 +60,7 @@ out wrong.
   A partial match (`str.contains('Smi')`) reaches E2B as written.
 - **Vector memory (Qdrant)** stores the question and the summary as text, unencrypted. On patient
   data these hold no record values, but the user's own words are stored.
-- **Logs** are scrubbed of the run's guard values and PII patterns, at about 5 ms per line with a
+- **Logs** are scrubbed of the run's guard values and PII patterns, at about 10 ms per line with a
   200k-value guard. In the API process outside a run, only patterns are scrubbed.
 - **A level** needs its entity and time columns. If cleaning drops one, its total is withheld,
   never summed.

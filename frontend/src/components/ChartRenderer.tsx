@@ -63,6 +63,9 @@ export function swapOptions(c: ChartConfig): ChartType[] {
 }
 
 // Bars always start at zero (a truncated baseline exaggerates differences); negatives still show.
+// A level (a balance) is added up at each period's end, as the y-label says (backend _AGG_WORD).
+const AGG_WORD: Record<string, string> = { last: "the period-end total", first: "the period-start total" };
+
 const ZERO_BASE = [(min: number) => Math.min(0, min), "auto"] as [(min: number) => number, "auto"];
 
 // Phase 3.5: the categorical slots live in globals.css (--chart-1..8, validated for both
@@ -496,7 +499,7 @@ export default function ChartRenderer({ config: original, height = 260, action, 
           <div className="mt-2 space-y-1.5 text-foreground">
             <p>{why.reason}</p>
             <p className="text-muted-foreground">
-              Shows {why.aggregation === "none" ? "" : `${why.aggregation} of `}
+              Shows {why.aggregation === "none" ? "" : `${AGG_WORD[why.aggregation] ?? why.aggregation} of `}
               <span className="font-mono">{why.y}</span> by <span className="font-mono">{why.x}</span>
               {why.split && <> per <span className="font-mono">{why.split}</span></>} · {why.n_rows.toLocaleString()} rows ·
               rule <span className="font-mono">{why.rule}</span>

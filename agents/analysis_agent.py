@@ -33,6 +33,7 @@ from guardrails import (
     code_column_refs,
     delimit_untrusted,
     is_pii_column,
+    mask_emails,
     mask_pii,
     mask_row,
     pseudonym_key,
@@ -453,13 +454,13 @@ def e2b_frame(df_parquet: bytes, pii: Iterable[str], scope: str = "",
     for c in years:   # a birth date reaches E2B as its year: ages stay computable, the day doesn't
         df[c] = pd.to_datetime(df[c], format="mixed", errors="coerce").dt.year.astype("Int64")
     cols = [c for c in pii if c in df.columns and c not in years]
-    # Patterns are masked in text with words (a note with an email, however rare): a code column
-    # without spaces (a firmware 2.1.0.15, a SKU 123-456-7890) keeps its values, or group-bys
-    # would merge them.
+    # Every pattern is masked in text with words (a note with an email, however rare); a code
+    # column without spaces (a firmware 2.1.0.15, a SKU 123-456-7890) gets the email pattern only,
+    # or group-bys would merge its values.
     text = [c for c in df.columns if c not in cols and (pd.api.types.is_string_dtype(df[c])
-                                                        or df[c].dtype == object)
-            and df[c].dropna().astype(str).str.contains(r"\s", regex=True).any()]
-    masked = {c: df[c].map(lambda v: v if not isinstance(v, str) else mask_pii(v)) for c in text}
+                                                        or df[c].dtype == object)]
+    words = {c for c in text if df[c].dropna().astype(str).str.contains(r"\s", regex=True).any()}
+    masked = {c: df[c].map(mask_pii if c in words else mask_emails) for c in text}
     changed = [c for c in text if not masked[c].equals(df[c])]
     if not cols and not changed and not years:
         return df_parquet, {}
@@ -487,17 +488,18 @@ def pseudonymize_literals(code: str, back: dict, pii: Iterable[str] = ()) -> str
     cols = [c for c in pii]
 
     def line(text: str) -> str:
-        if not any(f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text for c in cols):
-            return text
+        named = any(f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text for c in cols)
 
-        def sub(m: re.Match) -> str:
-            p = fwd.get(m["s"].strip().casefold())
+        def sub(m: re.Match) -> str:   # elsewhere (`t = 'Ana Ito'`, used on the next line):
+            v = m["s"].strip()          # only values no category would have (words, an email)
+            p = fwd.get(v.casefold()) if named or " " in v or "@" in v else None
             return f"{m['q']}{p}{m['q']}" if p else m[0]
         return _STRING_LITERAL.sub(sub, text)
     return "\n".join(line(t) for t in code.split("\n"))
 
 
 _NUM_LITERAL = re.compile(r"(?<![\w.])\d{4,}(?![\w.])")
+_ID_SHAPED = re.compile(r"(?=.*\d)(?:\d{6,}|.*[A-Za-z].*)")   # MRN-100005, 4500123; never 2025
 
 
 def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes) -> str:
@@ -512,18 +514,32 @@ def pseudonymize_id_literals(code: str, present: dict[str, set[str]], key: bytes
         return next((p for col in cols if (p := pseudonym(v, key, col)) in present[col]), None)
 
     def line(text: str) -> str:
-        cols = [c for c in present if f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text]
-        if not cols:
-            return text
+        # An id-shaped literal (MRN-100005, 4500123) is rewritten anywhere (`ids = [...]`, used
+        # two lines later); a short number only right after its column (`df.id == 4501`), so a
+        # year or threshold on the same line (`& (df.year == 2025)`) is left alone.
+        named = [c for c in present if f"'{c}'" in text or f'"{c}"' in text or f".{c}" in text]
+        spans = {n.span(1) for c in named for n in re.finditer(
+            rf"""(?:\[['"]{re.escape(c)}['"]\]|\.{re.escape(c)})\s*[!=]=\s*(\d{{4,5}})\b""", text)}
+
+        def num(n: re.Match) -> str:
+            v = n[0]
+            ok = _ID_SHAPED.fullmatch(v) or (n.start() + base, n.end() + base) in spans
+            return f"'{p}'" if ok and (p := find(v, named if not _ID_SHAPED.fullmatch(v)
+                                                  else list(present))) else v
+
+        def lit(m: re.Match) -> str:
+            v = m["s"].strip()
+            p = find(v, named) if named else None
+            p = p or (find(v, list(present)) if _ID_SHAPED.fullmatch(v) else None)
+            return f"{m['q']}{p}{m['q']}" if p else m[0]
         out, pos = [], 0
-        for m in _STRING_LITERAL.finditer(text):
-            out.append(_NUM_LITERAL.sub(lambda n: f"'{p}'" if (p := find(n[0], cols)) else n[0],
-                                        text[pos:m.start()]))
-            p = find(m["s"], cols)
-            out.append(f"{m['q']}{p}{m['q']}" if p else m[0])
-            pos = m.end()
-        out.append(_NUM_LITERAL.sub(lambda n: f"'{p}'" if (p := find(n[0], cols)) else n[0],
-                                    text[pos:]))
+        for m in [*_STRING_LITERAL.finditer(text), None]:
+            end = m.start() if m else len(text)
+            base = pos
+            out.append(_NUM_LITERAL.sub(num, text[pos:end]))
+            if m:
+                out.append(lit(m))
+                pos = m.end()
         return "".join(out)
     return "\n".join(line(t) for t in code.split("\n"))
 
@@ -620,18 +636,24 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 kind = (getattr(execution, "error_name", None)
                         or (execution.error or "").split(":", 1)[0].strip()[:40] or "no output")
                 kind = kind if kind.isidentifier() else "error"   # a type name, never a value
-                message = {"SandboxUnavailable": "The code sandbox is unavailable right now. "
+                message = {"SandboxNotConfigured": "The code sandbox isn't set up on this "
+                                                   "server (no E2B key). Ask your administrator.",
+                           "SandboxUnavailable": "The code sandbox is unavailable right now. "
                                                  "Try again in a few minutes.",
                            "SandboxTimeout": "The analysis took too long in the sandbox and was "
                                              "stopped. Try a narrower question."}.get(
                     kind, f"The analysis code failed in the sandbox ({kind}).")
-                raise SandboxError("analysis", detail, message) from None   # retryable: new code
+                err = SandboxError("analysis", detail, message)   # retryable: new code
+                if kind == "SandboxNotConfigured":   # a setup problem: no retry can fix it
+                    err.retryable = err.reask = False
+                raise err from None
             raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
             levels = any(c.aggregation in ("last", "first") for c in contract.columns)
             if levels and (fixed := await asyncio.to_thread(
-                    repair_levels, findings, pd.read_parquet(io.BytesIO(df_parquet)), contract,
-                    session.task_plan.timeframe if session.task_plan else None)):
+                    lambda: repair_levels(findings, pd.read_parquet(io.BytesIO(df_parquet)),
+                                          contract, session.task_plan.timeframe
+                                          if session.task_plan else None))):
                 trace_verdict("analysis", PROMPT_VERSION, "level_recomputed")
                 raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
