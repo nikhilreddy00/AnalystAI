@@ -1099,3 +1099,15 @@ def test_a_weak_match_never_rewrites_rows_and_says_how_it_read_the_file():
     weak = pack_caveats(RETAIL, audit, roles, "weak")[0]
     assert weak.startswith("Read as retail sales data from its column names (order id, sku")
     assert pack_caveats(RETAIL, audit, roles, "strong")[0].startswith("Read as retail sales data (")
+
+
+def test_analysis_code_gets_each_rows_kind_as_a_column():
+    from domain_pack import with_row_kind
+    df = _gen("retail_lines")
+    framed, col = with_row_kind(df, _contract(df))
+    assert col == "row_kind" and set(framed[col]) >= {"sale", "refunded", "cancel", "test"}
+    other = _gen("employees")
+    assert with_row_kind(other, _contract(other)) == (other, None)
+    clash = df.assign(row_kind="mine")   # a user's own row_kind column is never replaced
+    framed, col = with_row_kind(clash, _contract(clash))
+    assert col == "_row_kind" and set(framed["row_kind"]) == {"mine"}

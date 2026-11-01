@@ -5,8 +5,8 @@ pipeline: production
 dataset:
   name: store_weeks
   seed: 1
-question: What was like-for-like (comparable store) sales growth by region, the second year against the
-  first?
+question: What was like-for-like (comparable store) sales growth by region, the last 52 weeks against
+  the 52 weeks before?
 task:
   analysis_types:
   - segmentation

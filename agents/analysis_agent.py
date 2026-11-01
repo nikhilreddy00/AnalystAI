@@ -23,7 +23,7 @@ from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
-from domain_pack import ROW_KINDS, glossary_hits, pack_brief, pack_for, used_terms
+from domain_pack import ROW_KINDS, glossary_hits, pack_brief, pack_for, used_terms, with_row_kind
 from guardrails import (
     pseudonym,
     is_phi_identifier,
@@ -637,6 +637,12 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     ctx = build_context(session)
     contract = session.data_contract
     known = [c.name for c in contract.columns]
+    if ctx.domain:   # 5.7: a domain pack's row kinds as a column the code filters on
+        framed, kind_col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
+        if kind_col:
+            buf = io.BytesIO()
+            framed.to_parquet(buf, index=False)
+            df_parquet, known = buf.getvalue(), known + [kind_col]
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
     back: dict = {}                  # {pseudonym: value}, never leaves this process

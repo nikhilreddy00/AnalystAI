@@ -761,6 +761,9 @@ def make_b2b_invoices(seed: int) -> tuple[pd.DataFrame, dict]:
     products = [(f"{rng.integers(20000, 90000)}{'' if i % 3 else 'A'}", f"PRODUCT {i:02d}",
                  round(float(rng.uniform(0.85, 12.0)), 2)) for i in range(40)]
     customers = rng.choice(np.arange(12346, 18288), 150, replace=False)
+    # a customer has one country (a B2B account); guests' countries vary per invoice
+    home = {int(c): ("United Kingdom" if rng.random() < 0.85 else
+                     str(rng.choice(["France", "Germany", "EIRE", "Netherlands"]))) for c in customers}
     weight = rng.pareto(1.2, len(customers)) + 0.05
     weight = weight / weight.sum()
     rows, inv = [], 536365
@@ -771,8 +774,9 @@ def make_b2b_invoices(seed: int) -> tuple[pd.DataFrame, dict]:
             guest = rng.random() < 0.20
             cust = None if guest else int(rng.choice(customers, p=weight))
             scale = 1.0 if guest else 1 + 40 * weight[list(customers).index(cust)]
-            country = "United Kingdom" if rng.random() < 0.85 else rng.choice(
-                ["France", "Germany", "EIRE", "Netherlands"])
+            country = home[cust] if cust is not None else (
+                "United Kingdom" if rng.random() < 0.85 else str(rng.choice(
+                    ["France", "Germany", "EIRE", "Netherlands"])))
             stamp = day + pd.Timedelta(minutes=int(rng.integers(8 * 60, 18 * 60)))
             for k in rng.choice(len(products), int(rng.integers(1, 5)), replace=False):
                 code, desc, price = products[k]

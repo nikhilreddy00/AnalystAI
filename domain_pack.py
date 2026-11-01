@@ -478,6 +478,10 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     names: the caller shows the role → column map inside its untrusted-data block."""
     named = {r: r for r in roles}
     lines = []
+    if present - {"sale"} or concepts:   # rows to leave out, or a KPI to compute
+        lines.append(f"Each row's kind is in the column '{ROW_KIND_COLUMN}' (sale, return, refunded, "
+                     "cancel, test, non_product), computed by these rules: filter on it, never "
+                     "re-derive it. Sales figures use sale rows; net figures sale and return rows.")
     if rules := row_rules(pack, roles, present):
         lines.append(f"Row kinds: {rules}.")
     if currency and "currency" in roles:
@@ -527,3 +531,19 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}
     return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
+
+
+ROW_KIND_COLUMN = "row_kind"
+
+
+def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]:
+    """The frame with each row's kind as a column (sale, return, refunded, cancel, test,
+    non_product), for code the model writes: it filters on the column, never re-derives the
+    rules (the analysis smoke run kept 12 test orders it had been told to leave out). The name
+    never replaces a column of the user's; no pack: the frame unchanged."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack is None:
+        return df, None
+    name = ROW_KIND_COLUMN if ROW_KIND_COLUMN not in df.columns else f"_{ROW_KIND_COLUMN}"
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    return df.assign(**{name: row_kinds(df, roles, pack)}), name
