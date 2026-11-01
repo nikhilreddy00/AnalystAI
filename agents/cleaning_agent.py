@@ -150,16 +150,17 @@ def _code_like(s: pd.Series) -> bool:
     return len(v) > 0 and v.str.match(_LEADING_ZERO_RE).mean() >= 0.1
 
 
-def _whole_orders(df: pd.DataFrame, dup: pd.Series, order: str) -> bool:
-    """Every order with an exact duplicate row is repeated whole (each of its lines the same
-    number of times): an export overlap, not a second scan of one item on a receipt."""
-    hit = df.loc[dup, order].dropna().unique()
-    if not len(hit):
-        return False
-    rows = df[df[order].isin(hit)]
+def _whole_orders(flat: pd.DataFrame, dup: pd.Series, order: str) -> set:
+    """The orders with exact duplicate rows that are repeated whole (each of their lines the
+    same number of times, at least twice): an export overlap, not a second scan of one item.
+    `flat` has nested values as text, so rows can be compared."""
+    hit = flat.loc[dup, order].dropna().unique()
+    rows = flat[flat[order].isin(hit)]
+    if rows.empty:
+        return set()
     counts = rows.groupby(list(rows.columns), dropna=False).size()
-    return bool(counts.groupby(level=list(rows.columns).index(order)).nunique().eq(1).all()
-                and counts.min() >= 2)
+    per = counts.groupby(level=list(rows.columns).index(order)).agg(["nunique", "min"])
+    return set(per.index[(per["nunique"] == 1) & (per["min"] >= 2)])
 
 
 def _null_pct(s: pd.Series) -> float:
@@ -326,15 +327,27 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
 
     # 5. Exact duplicate rows, when a row key says what one record is. Without one, identical
     #    rows can be real repeats (two equal purchases, two equal survey answers): kept, flagged.
-    dup = df.assign(**{c: df[c].map(repr) for c in nested}).duplicated()
+    flat = df.assign(**{c: df[c].map(repr) for c in nested})
+    dup = flat.duplicated()
     n_dup = int(dup.sum())
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
     order, item = ctx.roles.get("order_id"), ctx.roles.get("sku") or ctx.roles.get("product")
-    if order and item and df[order].dropna().duplicated().any() and _whole_orders(df, dup, order):
-        # an order line: its order and product say what one is. An export overlap repeats whole
-        # orders; one line repeated inside an order is a second scan of the item: then kept.
-        keys = [f"{order} + {item}"]
+    if n_dup and not keys and order and item and not ctx.deidentified:
+        # Order lines: an export overlap repeats whole orders (their copies go); one line
+        # repeated inside an order is a second scan of the item (kept, flagged). Per order.
+        whole = _whole_orders(flat, dup, order)
+        overlap = dup & flat[order].isin(whole)
+        if n := int(overlap.sum()):
+            df, flat, dup = df[~overlap], flat[~overlap], dup[~overlap]
+            log("*", "drop_duplicates", "exact", f"Removed {n} exact duplicate rows: "
+                f"{len(whole)} orders exported twice (same {order} + {item} and every other "
+                "value).", n, removed=n)
+            n_dup = int(dup.sum())
+        if n_dup:
+            log("*", "flag", "repeated_rows", f"{n_dup} order lines repeat another line of the "
+                "same order exactly; kept, as a second scan of an item is a real sale.", n_dup)
+            n_dup = 0
     if n_dup and keys and not ctx.deidentified:
         df = df[~dup]
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "

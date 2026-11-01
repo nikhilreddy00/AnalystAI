@@ -1259,8 +1259,12 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
             # an offset after a time (" -0500") is dropped: the load keeps local time
             if got.tzinfo is not None:
                 got = got.tz_localize(None)
-            return got == pd.to_datetime(re.sub(r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$",
-                                                r"\1", str(want)), dayfirst=dayfirst)
+            local = re.sub(r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$", r"\1", str(want))
+            if got == pd.to_datetime(local, dayfirst=dayfirst):
+                return True   # the loader keeps one region's local time …
+            if local != str(want):   # … and reads places far apart in UTC (connectors.base)
+                return got == pd.Timestamp(str(want)).tz_convert("UTC").tz_localize(None)
+            return False
         except (TypeError, ValueError):
             return False
     return False

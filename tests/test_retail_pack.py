@@ -718,7 +718,8 @@ def test_year_over_year_compares_the_same_days():
              period_start="2024", period_end="2024")
     assert "the data starts 15 Mar 2024" in r.answer_text
     r = _ask(s, "net sales by quarter", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="Q")
-    assert "2025Q1 is left out" in r.answer_text
+    assert "latest 2024Q4" in r.answer_text and "The last quarter is left out" in r.answer_text
+    assert "The first quarter is left out: the data starts 15 Mar 2024" in r.answer_text
 
 
 def test_a_missing_period_is_not_the_period_before():
@@ -876,3 +877,131 @@ async def test_first_questions_are_the_domains_when_the_model_fails(recorded_llm
     recorded_llm.responses.append("not json")
     qs = await generate_proactive_questions(_contract(_gen("retail_lines")), get_client())
     assert qs == RETAIL.first_questions[:5]
+
+
+# ── Diff review of fix round 1: one test per finding ────────────────────────────────────────
+@pytest.mark.parametrize("csv", [
+    # Shopify's full orders export carries Vendor, Employee, Device ID; Square names a device
+    "Name,Email,Financial Status,Created at,Lineitem quantity,Lineitem name,Lineitem price,"
+    "Lineitem sku,Vendor,Employee,Device ID,Currency,Total\n"
+    "#1001,a@x.com,paid,2025-01-02 10:00:00 -0500,1,Tee,20,T-1,Acme,Ann,123,USD,20\n"
+    "#1002,b@x.com,paid,2025-01-03 10:00:00 -0500,2,Cap,15,C-1,Acme,Ann,123,USD,30\n",
+    "Date,Time,Category,Item,Qty,Gross Sales,Discounts,Net Sales,Device Name\n"
+    "2025-01-02,09:00,Coffee,Latte,1,5,0,5,iPad 1\n2025-01-02,09:05,Food,Muffin,2,6,0,6,iPad 1\n",
+    "order_id,purchase_date,product,quantity,price,shipping_carrier,bin,premium_member\n"
+    "O1001,2025-01-02,Tee,1,20,UPS,A1,yes\nO1002,2025-01-03,Cap,2,15,FedEx,A2,no\n",
+    # eBay orders report
+    "Order Number,Item Title,Quantity,Sold For,Total Price,Buyer Email,Sale Date\n"
+    "100-1,Lamp,1,40,45,a@x.com,2025-01-02\n100-2,Rug,2,60,125,b@x.com,2025-01-03\n",
+    # gross-sales-only lines
+    "Date,Item,Qty,Gross Sales\n2025-01-02,Tee,1,20\n2025-01-03,Cap,2,30\n",
+])
+def test_real_retail_exports_with_their_own_words_are_retail(csv):
+    assert _contract(_load(csv)).domain == "retail"
+
+
+@pytest.mark.parametrize("csv", [
+    "Branch No,Date,Revenue,Deposits,Loans Issued\n101,2025-01-31,5000,90000,3\n102,2025-01-31,4000,70000,2\n",
+    "Location ID,Month,Revenue,Members\nL1,2025-01,9000,300\nL2,2025-01,7000,250\n",
+    "Shop,Date,Revenue,Occupancy\nH1,2025-01-02,12000,0.8\nH2,2025-01-02,9000,0.7\n",
+    "Account ID,Product,Sales,Date\nA1,Pro,99,2025-01-02\nA2,Team,49,2025-01-03\n",
+    "po_number,vendor,item_code,quantity,unit_price,order_date\nPO-1001,Acme,IC-1,10,2.5,2025-01-02\n"
+    "PO-1002,Acme,IC-2,10,4.0,2025-01-03\n",
+])
+def test_branches_gyms_hotels_saas_and_purchase_orders_are_not_retail(csv):
+    assert _contract(_load(csv)).domain is None
+
+
+def test_a_net_sales_column_is_not_reduced_by_its_refunds_column():
+    df = _load("Date,Store,Gross Sales,Refunds,Net Sales,Qty\n" + "".join(
+        f"2025-01-{d:02d},S1,1100,100,1000,10\n" for d in range(1, 31)))
+    c = _contract(df)
+    assert c.domain == "retail" and compute_kpi(df, c.roles, RETAIL, "net_sales") == 30_000
+
+
+def _flat_daily(end: str) -> AnalysisSession:
+    import io
+    days = pd.date_range("2025-09-01", end)
+    df = pd.DataFrame({"Order": [f"#{i}" for i in range(len(days))], "Created at": days,
+                       "Lineitem name": "Tee", "Lineitem quantity": 1, "Lineitem price": 100.0})
+    s = AnalysisSession(session_id="t", data_contract=_contract(df),
+                        task_plan=AnalysisTask(raw_query="o", analysis_types=["eda"], target_metrics=[]))
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    return s
+
+
+def test_daily_data_cut_mid_week_shows_no_false_weekly_drop():
+    s = _flat_daily("2025-11-26")   # a Wednesday
+    r = _ask(s, "net sales by week", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="W")
+    assert "(+0.0%)" in r.answer_text and "The last week is left out" in r.answer_text
+    g = _ask(s, "sales by week", QuestionIntent.TIME_SERIES, metric_column="Lineitem price",
+             frequency="W", aggregation="sum")
+    assert "flat 0.0%" in g.answer_text or "trended flat" in g.answer_text, g.answer_text
+
+
+def test_complete_quarters_and_years_of_month_start_data_are_kept():
+    from agents.targeted_analysis_agent import handle_time_series
+    from orchestrator.state import TargetedParams
+    months = pd.date_range("2023-01-01", "2025-12-01", freq="MS")
+    df = pd.DataFrame({"month": months, "visits": 100})
+    c = _contract(df)
+    for freq, last in (("Q", "2025-12-31"), ("Y", "2025-12-31")):
+        r = handle_time_series(df, TargetedParams(metric_column="visits", frequency=freq,
+                                                  aggregation="sum"), c)
+        assert last in r.answer_text and "left out" not in r.answer_text, r.answer_text
+
+
+def test_distributions_stay_histograms_and_mean_is_an_average(shop):
+    s, _ = shop
+    r = _ask(s, "show the distribution of order totals", QuestionIntent.DISTRIBUTION,
+             metric_column="Total")
+    assert r.chart_configs and not r.answer_text.startswith("Net sales")
+    m = _ask(s, "What is the mean price by country?", QuestionIntent.SEGMENT_COMPARE,
+             metric_column="Lineitem quantity", segment_column="Shipping Country", aggregation="mean")
+    assert m.answer_text.startswith("mean(")
+
+
+def test_skus_and_customer_numbers_stay_ids():
+    rows = "".join(f"O{i},{'85123A' if i % 7 else '22423'}{i % 80},C{i % 40},{i % 5 + 1},2.5,2025-01-0{i % 9 + 1}\n"
+                   for i in range(1000))
+    c = _contract(_load("InvoiceNo,StockCode,Customer No,Quantity,UnitPrice,InvoiceDate\n" + rows))
+    ids = {x.name for x in c.columns if x.is_id}
+    assert {"StockCode", "Customer No"} <= ids
+
+
+def test_overlap_orders_go_and_a_scan_elsewhere_stays_with_nested_values():
+    roles = {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p"}
+    base = pd.DataFrame({"o": [f"#{i}" for i in range(10) for _ in (0, 1)],
+                         "k": ["SKU-A", "SKU-B"] * 10, "q": 1, "p": 5.0,
+                         "tags": [["a"]] * 20})
+    df = pd.concat([base, base[base["o"].isin(["#1", "#2"])], base[base["o"] == "#5"].head(1)],
+                   ignore_index=True)
+    out, audit = _clean(df, roles)
+    assert len(out) == 21   # the 4 overlap rows of #1 and #2 went; #5's second scan stayed
+    assert any(d.strategy == "repeated_rows" and d.rows_affected == 1 for d in audit.decisions)
+
+
+def test_swapped_whole_periods_keep_their_width():
+    from agents.utils import filter_period
+    df = pd.DataFrame({"d": pd.date_range("2024-01-01", "2025-12-31"), "v": 1})
+    rows, note, _ = filter_period(df, "d", "2025", "2024")
+    assert len(rows) == 731 and note.startswith("01 Jan 2024 to 31 Dec 2025")
+
+
+def test_a_chain_across_us_zones_keeps_its_local_day_and_the_scorer_agrees():
+    from evals.scoring import _same_loaded
+    vals = ["2025-01-31 21:00 -0500", "2025-01-31 20:00 -0600", "2025-07-31 21:00 -0400"]
+    got = parse_text_dates(pd.Series(vals))
+    assert [g.day for g in got] == [31, 31, 31]
+    assert all(_same_loaded(v, g, False) for v, g in zip(vals, got))
+    far = ["2025-01-05 10:00 -05:00", "2025-01-05 16:30 +01:00"]
+    assert all(_same_loaded(v, g, False) for v, g in zip(far, parse_text_dates(pd.Series(far))))
+
+
+@pytest.mark.parametrize("email, kind", [("TEST-1001", "test"), ("test 1", "test"),
+                                          ("test+1@shop.com", "test"), ("test.smith@gmail.com", "sale")])
+def test_test_orders_in_their_usual_shapes(email, kind):
+    df = _lines(o=["1"], q=[1], p=[1.0], e=[email])
+    assert row_kinds(df, _r(df), RETAIL).tolist() == [kind]

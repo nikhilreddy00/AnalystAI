@@ -86,7 +86,7 @@ class Pack(_Strict):
     # (independent signals: a product AND a money column, or an orders export's own shape) and
     # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).
     signals: list[dict[str, list[str]]]
-    exclude_headers: list[str] = Field(default_factory=list)
+    exclude_headers: list[list[str]] = Field(default_factory=list)   # whole headers, all present
     week_ends: str = "SUN"          # a calendar week's last day for weekly buckets of daily data
     roles: dict[str, Role]
     status_values: dict[Literal["ok", "return", "cancel"], list[str]] = Field(default_factory=dict)
@@ -219,9 +219,9 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
     one role; personal-data columns are never an id role (a `customer` column of names)."""
     found = []
     norm = {str(c): normalize_header(c) for c in df.columns}
-    tokens = {t for n in norm.values() for t in n.split("_")} | set(norm.values())
+    headers = set(norm.values())
     for pack in load_packs():
-        if tokens & set(pack.exclude_headers):
+        if any(set(veto) <= headers for veto in pack.exclude_headers):
             continue
         roles: dict[str, str] = {}
         for role, r in pack.roles.items():

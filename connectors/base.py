@@ -62,9 +62,9 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
     except ValueError:   # mixed UTC offsets
         text = s.astype("string").str.strip()
         offsets = {_minutes(m) for m in text.str.extract(_OFFSET_RE)[0].dropna().unique()}
-        if len(offsets) == 2 and abs(max(offsets) - min(offsets)) == 60:
-            # a daylight-saving change: each value's local time, the clock the shop reports by
-            # (Shopify's `Created at`: -0500 in winter, -0400 in summer)
+        if offsets and max(offsets) - min(offsets) <= 240:
+            # one region (daylight saving, a chain across US time zones): each value's local
+            # time, the clock the shop reports its day by (an ET evening sale stays on its day)
             parsed = pd.to_datetime(text.str.replace(_OFFSET_RE, "", regex=True), format="mixed",
                                     dayfirst=dayfirst, errors="coerce")
         else:   # different places (pickup -05:00, delivery +01:00): one clock, UTC, keeps order

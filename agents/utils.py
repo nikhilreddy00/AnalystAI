@@ -277,12 +277,12 @@ def period_window(df, date: str | None, start: str | None, end: str | None):
         return None, None, None, None, "the data has no date column to limit to that period"
     t = _local(pd.to_datetime(df[date], errors="coerce"))
     try:
+        if start and end and _bound(start, False) > _bound(end, False):
+            start, end = end, start   # "2025 to 2024": swapped whole, widths kept
         lo = _bound(start, False) if start else t.min()
         hi = _bound(end, True) if end else t.max()
     except (ValueError, TypeError):
         return None, None, None, None, f"I couldn't read the period ({start} to {end}) as dates"
-    if lo > hi:
-        lo, hi = _bound(str(hi.date()), False), _bound(str(lo.date()), True)
     return lo, hi, t.min(), t.max(), None
 
 

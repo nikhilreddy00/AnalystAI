@@ -84,7 +84,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     handler = _HANDLERS.get(intent)
     pack = pack_for(contract.domain)
     params = _asked_agg(params, contract, session.task_plan.raw_query)
-    if params and pack and intent in _KPI_INTENTS and not params.kpi and \
+    if params and pack and intent in _KPI_INTENTS and not params.kpi and (
+            intent != QuestionIntent.TOP_N or params.group_by) and \
             (params.aggregation or "sum").lower() == "sum" and (kpi := _summed_kpi(pack, contract, params, df)):
         params = params.model_copy(update={"kpi": kpi})   # "sales by country": the pack's net sales
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS:
@@ -121,8 +122,10 @@ _TOTAL_WORDS = re.compile(r"\b(?:total|sum|summed|combined|altogether|overall am
                           r"bed[- ]?days|how much)\b", re.I)
 
 
-_AVERAGE_WORDS = re.compile(r"\b(?:average|avg|mean (?:of|per|value)|typical|per (?:order|line|row|"
-                            r"customer|transaction|unit|item))\b", re.I)
+_AVERAGE_WORDS = re.compile(r"\b(?:average|avg|mean|typical|per (?:order|line|row|customer|"
+                            r"transaction|unit|item))\b", re.I)
+_MEANING = re.compile(r"\b(?:do|does|did) (?:that|this|it|you|they|these) mean\b|\bmean(?:s)? that\b",
+                      re.I)   # "what does that mean": no average asked
 
 
 def _asked_agg(params: TargetedParams | None, contract: DataContract, question: str):
@@ -137,7 +140,7 @@ def _asked_agg(params: TargetedParams | None, contract: DataContract, question: 
     role = next((r for r, c in contract.roles.items() if c == params.metric_column), None)
     if pack and role and pack.roles[role].kind in ("money", "count") and pack.roles[role].additive \
             and pack.roles[role].level == "row" and (params.aggregation or "mean").lower() == "mean" \
-            and not _AVERAGE_WORDS.search(question or ""):
+            and not _AVERAGE_WORDS.search(_MEANING.sub(" ", question or "")):
         return params.model_copy(update={"aggregation": "sum"})
     if (params.aggregation or "").lower() != "sum":
         return params
@@ -468,10 +471,9 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         partial = (f" {series.index[-1]:%b %Y} is left out: the data ends {s[date].max():%d %b %Y}, "
                    "so that month is incomplete.")
         series = series.iloc[:-1]
-    elif freq in ("Q", "Y") and len(series) >= 3 and _cut_partial(series, s[date], freq)[1]:
-        partial = (f" The last {'quarter' if freq == 'Q' else 'year'} is left out: the data ends "
-                   f"{s[date].max():%d %b %Y}, so it is incomplete.")
-        series = series.iloc[:-1]
+    elif freq in ("W", "Q", "Y"):
+        series, partial = _cut_partial(series, s[date], freq,
+                                       _week_anchor(s[date], contract) if freq == "W" else None)
     chart_data = [{"period": idx.strftime("%Y-%m-%d"), metric: float(v)} for idx, v in series.items()]
     first, last = series.iloc[0], series.iloc[-1]
     pct = (last - first) / first * 100 if first not in (0, None) else float("nan")
@@ -770,30 +772,43 @@ def _summed_kpi(pack, contract: DataContract, params: TargetedParams, df: pd.Dat
     return kpi if kinds - {"sale"} or main_currency(df, roles)[2] else None
 
 
-def _cut_partial(series: pd.Series, t: pd.Series, freq: str) -> tuple[pd.Series, str]:
-    """Leave out a last period the data stops inside (a month by the shared rule; a quarter or a
-    year when the data ends before its last day)."""
+def _cut_partial(series: pd.Series, t: pd.Series, freq: str, rule: str | None = None
+                 ) -> tuple[pd.Series, str]:
+    """Leave out a first or last bucket the data only partly covers. A month: the shared rule
+    (utils.partial_last_month, also in the sandbox). A week, quarter or year: by the data's own
+    density, as that rule does: fewer distinct dates than 0.9 × the median bucket (monthly data
+    dated on the 1st keeps its last quarter; daily data cut mid-week loses the stub weeks)."""
     if len(series) < 3:
         return series, ""
-    last = t.max()
     if freq == "M":
-        cut = partial_last_month(t)
-    elif freq in ("Q", "Y"):
-        end = pd.Period(last, freq).end_time.normalize()
-        cut = last.normalize() < end
-    else:
-        cut = False
-    if not cut:
+        if not partial_last_month(t):
+            return series, ""
+        return series.iloc[:-1], f" {series.index[-1]} is left out: the data ends {t.max():%d %b %Y}."
+    if freq not in ("W", "Q", "Y"):
         return series, ""
-    return series.iloc[:-1], f" {series.index[-1]} is left out: the data ends {last:%d %b %Y}."
+    d = pd.to_datetime(t, errors="coerce").dropna().dt.normalize().drop_duplicates()
+    days = d.groupby(d.dt.to_period(rule or freq)).size().sort_index()
+    if len(days) < 3 or len(days) != len(series):
+        return series, ""
+    full = days.iloc[1:-1].median()
+    note = ""
+    if days.iloc[-1] < 0.9 * full:
+        note += f" The last {_UNIT[freq]} is left out: the data ends {d.max():%d %b %Y}."
+        series = series.iloc[:-1]
+    if days.iloc[0] < 0.9 * full:
+        note += f" The first {_UNIT[freq]} is left out: the data starts {d.min():%d %b %Y}."
+        series = series.iloc[1:]
+    return series, note
+
+
+_UNIT = {"W": "week", "Q": "quarter", "Y": "year"}
 
 
 def _date_of(contract: DataContract, params: TargetedParams, df: pd.DataFrame) -> str | None:
     return params.date_column or contract.roles.get("date") or time_axis(contract, params.metric_column, df)
 
 
-_KPI_INTENTS = {QuestionIntent.TOP_N, QuestionIntent.SEGMENT_COMPARE, QuestionIntent.TIME_SERIES,
-                QuestionIntent.DISTRIBUTION}
+_KPI_INTENTS = {QuestionIntent.TOP_N, QuestionIntent.SEGMENT_COMPARE, QuestionIntent.TIME_SERIES}
 
 
 def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
@@ -859,7 +874,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         if series is None or series.empty:
             return _unanswerable(intent, f"{kpi.label.lower()} can't be computed over time here",
                                  [f"{kpi.label} overall"])
-        series, note = _cut_partial(series.sort_index(), t, freq)
+        series, note = _cut_partial(series.sort_index(), t, freq,
+                                    _week_anchor(t, contract) if freq == "W" else None)
         latest = series.index[-1]
 
         def name(p) -> str:   # a week is named by its week-ending date

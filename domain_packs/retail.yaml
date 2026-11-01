@@ -8,14 +8,19 @@ domain: retail
 # domain's words (trades, claims, fuel, POs, SaaS invoices); a header token of another domain
 # vetoes the pack.
 signals:
-  - {item: [sku, product], money: [revenue, unit_price], when: [order_id, date]}   # sold lines
+  - {item: [sku, product], money: [revenue, unit_price, gross_revenue], order: [order_id]}
+  - {item: [sku, product], money: [revenue, unit_price, gross_revenue], volume: [quantity], when: [date]}
   - {order: [order_id], money: [revenue], volume: [quantity]}       # orders with revenue and units
-  - {store: [store], money: [revenue]}                               # store / POS sales
+  - {store: [store], money: [revenue], what: [quantity, product, category]}   # store / POS sales
   - {order: [order_id], money: [order_total], contact: [email], currency: [currency]}   # orders CSV
-exclude_headers: [patient, claim, cpt, ndc, rx, prescription, ticker, symbol, isin, cusip, po,
-                  purchase, vendor, supplier, policy, policyholder, premium, employee, payroll,
-                  meter, sensor, device, shipment, freight, carrier, on_hand, onhand, bin,
-                  warehouse_qty, deal, opportunity, stage, tariff, kwh]
+# Whole headers (or header combinations) only another domain has: one vetoes the pack. Never a
+# word retail exports use themselves (Shopify's Vendor, Employee, Device ID; Bin; Shipping Carrier).
+exclude_headers: [[patient_id], [patient], [patient_name], [mrn], [claim_id], [claim_number],
+                  [cpt_code], [cpt], [icd10], [diagnosis_code], [ndc], [rx_number],
+                  [ticker], [symbol], [isin], [cusip], [policy_id], [policy_number],
+                  [earned_premium], [written_premium], [meter_id], [sensor_id], [shipment_id],
+                  [qty_on_hand], [quantity_on_hand], [on_hand], [stock_on_hand],
+                  [po_number, vendor], [po_number, supplier], [purchase_order, vendor]]
 week_ends: SAT
 
 roles:
@@ -31,7 +36,8 @@ roles:
                                          qty_sold, quantity_sold, unit_sales, pieces]}
   unit_price:    {kind: money, additive: false, headers: [unit_price, unitprice, lineitem_price,
                                                           price, selling_price, sale_price,
-                                                          retail_price, price_each, sales_price]}
+                                                          retail_price, price_each, sales_price,
+                                                          sold_for]}
   # A rate first: 0.1 is a rate; 12.50 is an amount (both headers can be `discount`).
   discount_rate: {kind: rate, headers: [discount, discount_rate, discount_pct, discount_percent,
                                         markdown_pct]}
@@ -54,11 +60,10 @@ roles:
                                       item_code, product_code, upc, ean, article_no, style_code]}
   product:       {kind: category, headers: [product, product_name, item, item_name, description,
                                             lineitem_name, product_title, item_description,
-                                            memo_description]}
+                                            memo_description, item_title]}
   category:      {kind: category, headers: [category, product_category, product_type, dept,
                                             department, sub_category, subcategory]}
-  store:         {kind: id, headers: [store, store_id, store_no, store_number, store_code, shop,
-                                      location_id, branch_no]}
+  store:         {kind: id, headers: [store, store_id, store_no, store_number, store_code, shop]}
   channel:       {kind: category, headers: [channel, sales_channel, source_name, order_channel]}
   status:        {kind: status, headers: [financial_status, status, order_status, payment_status]}
   currency:      {kind: currency, headers: [currency, currency_code]}
@@ -77,7 +82,7 @@ status_values:
 credit_prefix: {order_id: C}
 non_product: {sku: [POST, DOT, M, D, C2, B, BANK CHARGES, AMAZONFEE, CRUK, S, PADS]}
 # "test@shop.dev", "TEST", "test-order": never a real customer like test.smith@gmail.com
-test_marker: '^test(?:@|$|[-_ ]?order)|@test\.'
+test_marker: '^test(?:@|\+|$|[-_ ]?(?:order|\d))|@test\.'
 test_roles: [email, customer_id, order_id]
 # Codes an export writes for "unknown". Read as missing only where they stand apart from the real
 # values (Cleaning: at least twice the largest other value). 9,999 is no price code: a ₹9,999 TV
@@ -98,11 +103,12 @@ kpis:
     tile: true
     rows: [sale, return]
     num:
-      - [{sum: revenue}, {sum: refunded_amount, sign: -1, optional: true}]
+      - [{sum: revenue}]   # already net: a refunds column beside it is not taken off again
       - [{sum: [quantity, "*", unit_price], net_of: discount_rate}]
       - [{sum: [quantity, "*", unit_price]}, {sum: discount, sign: -1, optional: true},
          {sum: refunded_amount, sign: -1, optional: true}]
       - [{sum: order_total}, {sum: refunded_amount, sign: -1, optional: true}]
+      - [{sum: gross_revenue}]   # gross sales only: said in the tile's "how"
   - name: gross_sales
     label: Gross sales
     unit: money
