@@ -560,7 +560,8 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
 def _pack_caveats(session: AnalysisSession) -> list[str]:
     contract = session.data_contract
     pack = pack_for(contract.domain) if contract else None
-    return pack_caveats(pack, session.cleaning_audit, contract.roles) if pack else []
+    return pack_caveats(pack, session.cleaning_audit, contract.roles,
+                        contract.domain_confidence) if pack else []
 
 
 # ── Alert ordering, executive sanitizer, legacy text ───────────────────────────

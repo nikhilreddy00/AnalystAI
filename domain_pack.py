@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
-CONDITIONS = ("partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
+CONDITIONS = ("read_as_domain", "read_as_domain_weak", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded")
 
 
@@ -86,6 +86,7 @@ class Pack(_Strict):
     # (independent signals: a product AND a money column, or an orders export's own shape) and
     # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).
     signals: list[dict[str, list[str]]]
+    strong: list[dict[str, list[str]]] = Field(default_factory=list)   # shapes only this domain has
     exclude_headers: list[list[str]] = Field(default_factory=list)   # header words, all present
     week_ends: str = "SUN"          # a calendar week's last day for weekly buckets of daily data
     roles: dict[str, Role]
@@ -122,9 +123,10 @@ class Pack(_Strict):
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
-                *self.test_roles, *(r for alt in self.signals for g in alt.values() for r in g)]
+                *self.test_roles,
+                *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g)]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
-        if not self.signals or any(len(alt) < 2 for alt in self.signals):
+        if not self.signals or any(len(alt) < 2 for alt in [*self.signals, *self.strong]):
             errors.append("each signals alternative needs two groups (two independent signals)")
         for where, rx in [*((f"role {r}", x.pattern) for r, x in self.roles.items()),
                           ("test_marker", self.test_marker)]:
@@ -211,9 +213,14 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
     return True   # id
 
 
+def _matches(alts: list[dict[str, list[str]]], roles: dict[str, str]) -> bool:
+    return any(all(any(x in roles for x in group) for group in alt.values()) for alt in alts)
+
+
 def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
-           pii_columns: set[str] = frozenset()) -> tuple[str | None, dict[str, str]]:
-    """(domain, {role: column}) when exactly one pack matches (see Pack.signals); else (None, {}).
+           pii_columns: set[str] = frozenset()) -> tuple[str | None, dict[str, str], str | None]:
+    """(domain, {role: column}, "strong" | "weak") when exactly one pack matches (Pack.strong:
+    shapes only that domain has; Pack.signals: weaker ones); else (None, {}, None).
     Roles are filled in the pack's order, each by the column whose header comes earliest in the
     role's list (Square's `Net Sales` over `Gross Sales`) and whose values fit; a column serves
     one role; personal-data columns are never an id role (a `customer` column of names)."""
@@ -232,9 +239,11 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                 if col is not None:
                     roles[role] = col
                     break
-        if any(all(any(x in roles for x in group) for group in alt.values()) for alt in pack.signals):
-            found.append((pack.domain, roles))
-    return found[0] if len(found) == 1 else (None, {})
+        if _matches(pack.strong, roles):
+            found.append((pack.domain, roles, "strong"))
+        elif _matches(pack.signals, roles):
+            found.append((pack.domain, roles, "weak"))
+    return found[0] if len(found) == 1 else (None, {}, None)
 
 
 # ── Row kinds and KPIs ────────────────────────────────────────────────────────────────────────
@@ -491,15 +500,20 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     return lines
 
 
-def pack_caveats(pack: Pack, audit, roles: dict[str, str]) -> list[str]:
+def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | None = None) -> list[str]:
     """What the report must say, from the cleaning audit (the data's own facts): each caveat
     whose condition holds, in the pack's words. Deterministic: never left to the model."""
     if audit is None:
         return []
     flags = {d.strategy: d for d in audit.decisions if d.operation == "flag"}
+    shown = ", ".join(r.replace("_", " ") for r in list(roles)[:6])   # plain words, no headers
     date = roles.get("date")
     span = audit.date_ranges.get(date) if date else None
     facts: dict[str, dict] = {}
+    if confidence == "weak":
+        facts["read_as_domain_weak"] = {"roles": shown}
+    elif confidence == "strong":
+        facts["read_as_domain"] = {}
     if date and (p := audit.partial_months.get(date)):
         facts["partial_last_period"] = {"label": pd.Period(p[0], "M").strftime("%b %Y"), "days": p[1]}
     for cond, kind in (("returns_present", "return"), ("refunded_excluded", "refunded"),

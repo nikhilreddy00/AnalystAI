@@ -258,10 +258,10 @@ def test_pack_patterns_stay_fast_on_adversarial_values():
 from agents.cleaning_agent import CleanContext, clean  # noqa: E402
 
 
-def _clean(df: pd.DataFrame, roles: dict, targets=()) -> tuple[pd.DataFrame, list]:
+def _clean(df: pd.DataFrame, roles: dict, targets=(), strong: bool = True) -> tuple[pd.DataFrame, list]:
     ids = {c for r, c in roles.items() if RETAIL.roles[r].kind == "id"}
     out, audit = clean(CleanContext(df=df, ids=ids, dates=set(), targets=set(targets),
-                                    drop_high_null=False, pack=RETAIL, roles=roles))
+                                    drop_high_null=False, pack=RETAIL, roles=roles, strong=strong))
     return out, audit
 
 
@@ -1079,3 +1079,23 @@ def test_a_few_numbered_stores_stay_a_category():
     c = _contract(_load("store,sku,qty,price,date\n" + "".join(
         f"Store {s},A-{i},1,5,2025-01-0{i}\n" for i in range(1, 4) for s in (1, 2, 3))))
     assert "store" not in c.id_columns
+
+
+
+# ── Confirm when unsure: strong vs weak detection ──────────────────────────────────────────
+@pytest.mark.parametrize("name, confidence", [("retail_lines", "strong"), ("store_weeks", "strong"),
+                                              ("b2b_invoices", "strong"), ("sales", "weak")])
+def test_retail_only_shapes_are_strong_and_generic_ones_weak(name, confidence):
+    assert _contract(_gen(name)).domain_confidence == confidence
+
+
+def test_a_weak_match_never_rewrites_rows_and_says_how_it_read_the_file():
+    from domain_pack import pack_caveats
+    df = pd.DataFrame({"o": ["#1", "#1", "#2", "#1", "#1"], "k": ["A", "B", "A", "A", "B"],
+                       "q": [1, 1, 2, 1, 1], "p": [5.0] * 5, "s": ["paid", None, "paid", "paid", None]})
+    roles = {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p", "status": "s"}
+    out, audit = _clean(df, roles, strong=False)
+    assert len(out) == 5 and not any(d.operation == "fill_within_order" for d in audit.decisions)
+    weak = pack_caveats(RETAIL, audit, roles, "weak")[0]
+    assert weak.startswith("Read as retail sales data from its column names (order id, sku")
+    assert pack_caveats(RETAIL, audit, roles, "strong")[0].startswith("Read as retail sales data (")

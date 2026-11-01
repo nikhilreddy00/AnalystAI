@@ -351,7 +351,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     rows = head.where(head.notna(), None).to_dict(orient="records")
     fp = fingerprint(df)
     phi = _patient_signal(cols, lambda n: _profiled(df[n]).dropna().head(_SAMPLE).tolist())
-    domain, roles = detect_domain(df, {c.name for c in cols if c.is_date}, set(pii))
+    domain, roles, confidence = detect_domain(df, {c.name for c in cols if c.is_date}, set(pii))
     if pack := pack_for(domain):   # the pack knows a store number is a label, not a quantity
         for c in cols:
             role = next((r for r, col in roles.items() if col == c.name), None)
@@ -375,7 +375,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
         metric_columns=[c.name for c in cols if c.is_metric],
         schema_summary=_summary(df, cols), fingerprint=fp, pii_columns=pii,
         source_evidence=source_evidence(df, cols, source_type, info, fp),
-        domain=domain, roles=roles)
+        domain=domain, roles=roles, domain_confidence=confidence)
 
 
 # ── PII guard ──────────────────────────────────────────────────────────────────

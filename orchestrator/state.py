@@ -214,6 +214,7 @@ class DataContract(BaseModel):
     # and its roles → column names (column names only, never values).
     domain: str | None = None
     roles: dict[str, str] = Field(default_factory=dict)
+    domain_confidence: str | None = None   # "strong": a shape only that domain has; "weak"
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────

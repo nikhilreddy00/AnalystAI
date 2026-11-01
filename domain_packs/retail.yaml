@@ -7,6 +7,14 @@ domain: retail
 # number, an order total, a customer email and a currency: Shopify's orders CSV). `quantity` + `price`, `invoice_no` + `total` alone are any
 # domain's words (trades, claims, fuel, POs, SaaS invoices); a header token of another domain
 # vetoes the pack.
+# Strong: shapes only retail data has. The pack's rewrites of the rows (carrying order fields
+# down an order, removing an export's repeated orders) run only on a strong match.
+strong:
+  - {item: [sku, product], volume: [quantity], money: [unit_price, revenue, gross_revenue],
+     order: [order_id]}                                              # order lines
+  - {order: [order_id], money: [order_total], contact: [email], currency: [currency]}   # orders CSV
+  - {store: [store], money: [revenue], volume: [quantity]}           # POS sales with units
+# Weak: read as retail, and the report says so in one line ("from its column names").
 signals:
   - {item: [sku, product], money: [revenue, unit_price, gross_revenue], order: [order_id]}
   - {item: [sku, product], money: [revenue, unit_price, gross_revenue], volume: [quantity], when: [date]}
@@ -181,6 +189,8 @@ unsupported:
 
 # What a report must say, each when its condition holds (condition names: domain_pack.CONDITIONS).
 caveats:
+  read_as_domain: "Read as retail sales data (net sales, orders, average order value) from its columns."
+  read_as_domain_weak: "Read as retail sales data from its column names ({roles}); if these are not sales, the sales figures here don't apply."
   partial_last_period: "{label} is partial ({days} days of data) and is left out of period comparisons."
   returns_present: "Net sales are after {n} return or credit lines (netted, not left out)."
   refunded_excluded: "{n} lines of refunded orders are left out of net sales."

@@ -120,6 +120,7 @@ class CleanContext:
     deidentified: bool = False
     pack: Pack | None = None   # 5.7: the data's domain pack and its roles → columns
     roles: dict[str, str] = field(default_factory=dict)
+    strong: bool = False       # a shape only that domain has: the pack may rewrite rows
 
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
@@ -138,6 +139,7 @@ def build_context(session: AnalysisSession, drop_high_null: bool = False) -> Cle
     return CleanContext(df=df, ids=ids, dates=dates, targets=targets,
                         drop_high_null=drop_high_null, pii=pii_columns(contract),
                         deidentified=contract.deidentified, pack=pack,
+                        strong=contract.domain_confidence == "strong",
                         roles={r: c for r, c in contract.roles.items() if c in df.columns} if pack else {})
 
 
@@ -333,7 +335,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
     order, item = ctx.roles.get("order_id"), ctx.roles.get("sku") or ctx.roles.get("product")
-    if n_dup and not keys and order and item and not ctx.deidentified:
+    if n_dup and not keys and order and item and ctx.strong and not ctx.deidentified:
         # Order lines: an export overlap repeats whole orders (their copies go); one line
         # repeated inside an order is a second scan of the item (kept, flagged). Per order.
         whole = _whole_orders(flat, dup, order)
@@ -360,7 +362,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             f"{why}.", n_dup)
 
     # 5b. Order-level fields on an order's first line only: carried down the order.
-    if ctx.pack and order:
+    if ctx.pack and ctx.strong and order:
         by = df[order]
         for role in ctx.pack.order_fields:
             col = ctx.roles.get(role)
