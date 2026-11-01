@@ -23,7 +23,7 @@ from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
-from domain_pack import ROW_KINDS, glossary_hits, pack_brief, pack_for, used_terms, with_row_kind
+from domain_pack import ROW_KINDS, computable, glossary_hits, pack_brief, pack_for, with_row_kind
 from guardrails import (
     pseudonym,
     is_phi_identifier,
@@ -425,7 +425,7 @@ def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
     concepts = [c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns])]
     roles = dict(contract.roles)
     if _OVERVIEW_WORDS.search(question):
-        concepts = [k.name for k in pack.kpis if k.tile and used_terms(pack, k, roles)] + concepts
+        concepts = [k.name for k in pack.kpis if k.tile and computable(pack, k.name, roles)] + concepts
     present = {d.strategy for d in (audit.decisions if audit else [])
                if d.operation == "flag" and d.strategy in ROW_KINDS}
     grain = audit.grain if audit else None

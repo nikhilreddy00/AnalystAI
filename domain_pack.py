@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
-CONDITIONS = ("read_as_domain", "read_as_domain_weak", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
+CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded")
 
 
@@ -87,7 +87,8 @@ class Pack(_Strict):
     # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).
     signals: list[dict[str, list[str]]]
     strong: list[dict[str, list[str]]] = Field(default_factory=list)   # shapes only this domain has
-    exclude_headers: list[list[str]] = Field(default_factory=list)   # header words, all present
+    exclude_headers: list[list[str]] = Field(default_factory=list)   # words, all in one header
+    exclude_pairs: list[list[str]] = Field(default_factory=list)     # words, each in any header
     week_ends: str = "SUN"          # a calendar week's last day for weekly buckets of daily data
     roles: dict[str, Role]
     status_values: dict[Literal["ok", "return", "cancel"], list[str]] = Field(default_factory=dict)
@@ -226,9 +227,11 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
     one role; personal-data columns are never an id role (a `customer` column of names)."""
     found = []
     norm = {str(c): normalize_header(c) for c in df.columns}
-    words = {w for n in norm.values() for w in n.split("_")}
+    per_header = [set(n.split("_")) for n in norm.values()]
+    words = set().union(*per_header) if per_header else set()
     for pack in load_packs():
-        if any(set(veto) <= words for veto in pack.exclude_headers):
+        if any(set(v) <= h for v in pack.exclude_headers for h in per_header) or \
+                any(set(v) <= words for v in pack.exclude_pairs):
             continue
         roles: dict[str, str] = {}
         for role, r in pack.roles.items():
@@ -402,6 +405,18 @@ def used_terms(pack: Pack, kpi: KPI, roles: dict[str, str], side: str = "num") -
     return []
 
 
+def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
+    """The data has what this KPI needs, through every KPI it refers to (AOV needs orders, which
+    needs an order id)."""
+    kpi = pack.kpi(name)
+
+    def side(alts) -> bool:
+        return any(all(t.optional or (all(r in roles for r in t.roles())
+                                      and (not t.kpi or computable(pack, t.kpi, roles)))
+                       for t in alt) for alt in alts)
+    return kpi is not None and side(kpi.num) and (kpi.den is None or side(kpi.den))
+
+
 def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                  present: set[str] = frozenset(ROW_KINDS)) -> str:
     """How a KPI was computed on this data, in words, from the alternative that applied. Only
@@ -492,7 +507,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
                      "an average per order divides by orders.")
     for c in dict.fromkeys(concepts):
         if kpi := pack.kpi(c):
-            if used_terms(pack, kpi, roles) and (kpi.den is None or used_terms(pack, kpi, roles, "den")):
+            if computable(pack, c, roles):
                 lines.append(f"{kpi.label} ({c}): {describe_kpi(pack, c, named, present)}")
             else:
                 lines.append(f"{kpi.label} ({c}): this data lacks the columns it needs; say so, "
@@ -504,21 +519,32 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     return lines
 
 
-def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | None = None) -> list[str]:
+def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | None = None,
+                 always: bool = False) -> list[str]:
     """What the report must say, from the cleaning audit (the data's own facts): each caveat
     whose condition holds, in the pack's words. Deterministic: never left to the model."""
-    if audit is None:
+    if audit is None and not always:
         return []
-    flags = {d.strategy: d for d in audit.decisions if d.operation == "flag"}
-    shown = ", ".join(r.replace("_", " ") for r in list(roles)[:6])   # plain words, no headers
+    flags = {d.strategy: d for d in (audit.decisions if audit else []) if d.operation == "flag"}
+    # the roles that made the match first (an order id, a date), in plain words, no headers
+    deciding = [r for alt in [*pack.strong, *pack.signals] for g in alt.values() for r in g]
+    ordered = sorted(roles, key=lambda r: deciding.index(r) if r in deciding else len(deciding))
+    words = [r.replace("_", " ") for r in ordered[:5]]
+    shown = ", ".join(words[:-1]) + (" and " if len(words) > 1 else "") + words[-1] if words else ""
+    # as the tiles show them: a KPI of non-sale rows only (return rate) when the data has some
+    kinds = {s for s in flags if s in ROW_KINDS}
+    kpis = ", ".join(k.label.lower() for k in pack.kpis if k.tile and computable(pack, k.name, roles)
+                     and ("sale" in k.rows or set(k.rows) & kinds))
     date = roles.get("date")
-    span = audit.date_ranges.get(date) if date else None
+    span = audit.date_ranges.get(date) if date and audit else None
     facts: dict[str, dict] = {}
     if confidence == "weak":
         facts["read_as_domain_weak"] = {"roles": shown}
     elif confidence == "strong":
-        facts["read_as_domain"] = {}
-    if date and (p := audit.partial_months.get(date)):
+        facts["read_as_domain"] = {"kpis": kpis or "its sales columns"}
+    if "repeated_rows" in flags:
+        facts["repeated_rows_kept"] = {"n": f"{flags['repeated_rows'].rows_affected:,}"}
+    if audit and date and (p := audit.partial_months.get(date)):
         facts["partial_last_period"] = {"label": pd.Period(p[0], "M").strftime("%b %Y"), "days": p[1]}
     for cond, kind in (("returns_present", "return"), ("refunded_excluded", "refunded"),
                        ("cancelled_excluded", "cancel"), ("test_excluded", "test"),
@@ -527,7 +553,7 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
             facts[cond] = {"n": f"{flags[kind].rows_affected:,}"}
     if span and 1 < span[2] < 13:
         facts["months_lt_13"] = {"months": span[2]}
-    if "other_currency" in flags and audit.main_currency:
+    if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}
     return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]

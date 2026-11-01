@@ -18,7 +18,7 @@ from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
-from domain_pack import describe_kpi, glossary_hits, pack_for, used_terms
+from domain_pack import computable, describe_kpi, glossary_hits, pack_for
 from guardrails import (
     PLAN_LIST_FIELDS,
     PLAN_SCALAR_FIELDS,
@@ -146,8 +146,7 @@ def domain_notes(contract: DataContract | None, message: str) -> str:
              + delimit_untrusted("\n".join(f"{r} = {c}" for r, c in roles.items()))]
     for concept, words in hits:
         if kpi := pack.kpi(concept):
-            usable = used_terms(pack, kpi, roles)
-            if usable and (kpi.den is None or used_terms(pack, kpi, roles, "den")):
+            if computable(pack, concept, roles):
                 lines.append(f'- "{words}" is the KPI {concept} ({kpi.label}): '
                              f"{describe_kpi(pack, concept, named)} To answer it set "
                              f'targeted_params.kpi = "{concept}" (with top_n, segment_compare or '

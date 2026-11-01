@@ -261,10 +261,13 @@ async def run_e2e_case(case: dict) -> dict:
         error = session.error_message or (await deps.run_store.get(run.id)).error
         if approvals and approvals[-1] != "high_null" and not error:
             error = f"stopped at approval_required ({approvals[-1]})"
+        runs.append(run)
         return session, error, approvals, run
 
+    runs: list = []
     session, error, approvals, run = await ask(case["question"], session)
-    first_checks = score_e2e(case, session, error)["checks"]   # the first question's own checks
+    first = score_e2e(case, session, error)   # the first question's own checks and hard rules
+    first_checks, turn_hard = first["checks"], []
     # Phase 5.7: a conversation. Each later turn is a follow-up on the same thread; its checks
     # are scored on its own answer, and every turn must end without an error.
     turn_checks = []
@@ -274,8 +277,10 @@ async def run_e2e_case(case: dict) -> dict:
             break
         session, error, more, run = await ask(turn["question"], session)
         approvals += more
-        scored_turn = score_e2e({**case, "checks": turn["checks"], "hard_rules": []}, session, error)
+        scored_turn = score_e2e({**case, "checks": turn["checks"], "hard_rules": TURN_HARD_RULES},
+                                turn_view(session), error)
         turn_checks += [{**c, "detail": f"turn {n}: {c['detail']}"} for c in scored_turn["checks"]]
+        turn_hard += [{**h, "detail": f"turn {n}: {h['detail']}"} for h in scored_turn["hard"]]
         turn_checks.append({"kind": "turn", "ok": not error, "detail": f"turn {n}: {error or 'answered'}"})
 
     literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
@@ -283,15 +288,29 @@ async def run_e2e_case(case: dict) -> dict:
     model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
     shown = None
     if session.data_contract and session.data_contract.phi:
-        every = [e for _, e in await deps.run_store.events_after(run.id, 0)]
+        every = [e for r in runs for _, e in await deps.run_store.events_after(r.id, 0)]
         shown = json.dumps(every, default=str) + session.model_dump_json(exclude={"prior_pii"})
-    exits = exits_rule(literals, uploads, shown, case["question"])
-    scored = score_e2e(case if not case.get("turns") else {**case, "checks": []}, session, error)
-    scored["checks"] = (scored["checks"] if not case.get("turns") else first_checks) + turn_checks
+    exits = exits_rule(literals, uploads, shown,
+                       " ".join([case["question"], *(t["question"] for t in case.get("turns", []))]))
+    scored = first if not case.get("turns") else {**score_e2e({**case, "checks": []}, session, error),
+                                                  "checks": first_checks + turn_checks}
+    if case.get("turns"):   # turn 1's hard rules on turn 1, each later turn's on its own
+        scored["hard"] = first["hard"] + turn_hard
     return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals)), exits],
             "pii_exits": exits,
             "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
             "approvals": approvals, "output": session.model_dump(mode="json")}
+
+
+def turn_view(session: AnalysisSession) -> AnalysisSession:
+    """A follow-up turn as its own answer: the thread keeps the earlier report, whose numbers
+    must not answer (or pass) a later question. A turn that ran a new overview keeps its own."""
+    return session.model_copy(update={"insight_report": None}) if session.targeted_response \
+        else session
+
+
+# What every follow-up turn's answer must hold to (its charts; an answer, or an explicit error).
+TURN_HARD_RULES = ["charts_lint_clean", "charts_have_rationale", "non_empty_or_error"]
 
 
 def e2e_pii_literals(df: pd.DataFrame, truth: dict | None = None) -> list[str]:

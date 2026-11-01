@@ -45,7 +45,7 @@ from agents.visualization_agent import (
 )
 from scipy import stats
 
-from domain_pack import compute_kpi, describe_kpi, main_currency, pack_for, row_kinds
+from domain_pack import compute_kpi, describe_kpi, main_currency, pack_caveats, pack_for, row_kinds
 from orchestrator.state import (
     AnalysisSession,
     ChartConfig,
@@ -792,7 +792,7 @@ def _cut_partial(series: pd.Series, t: pd.Series, freq: str, rule: str | None = 
     labels = series.index if isinstance(series.index, pd.PeriodIndex) else series.index.to_period(period)
     # by label: an empty bucket (a closed week) counts 0 dates, never shifts the others
     days = d.groupby(d.dt.to_period(period)).size().reindex(labels, fill_value=0)
-    if len(days) < 4:
+    if len(days) < 3:
         return series, ""
     full = days.iloc[1:-1].median()
     note = ""
@@ -838,7 +838,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     period = filter_period(full, date, params.period_start, params.period_end)[1]
     where = f" ({period})" if period else ""
     present = set(row_kinds(df, roles, pack).unique())
-    how = describe_kpi(pack, kpi.name, roles, present) + (
+    # every KPI answer on a weak match says how the file was read
+    read = (" " + pack_caveats(pack, None, roles, "weak", always=True)[0]
+            if contract.domain_confidence == "weak" else "")
+    how = describe_kpi(pack, kpi.name, roles, present) + read + (
         f" {currency} only: {other:,} rows in other currencies left out." if other and kind == "currency" else "")
     group = params.group_by or params.segment_column
     if group and group in df.columns:

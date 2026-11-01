@@ -335,7 +335,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
     order, item = ctx.roles.get("order_id"), ctx.roles.get("sku") or ctx.roles.get("product")
-    if n_dup and not keys and order and item and ctx.strong and not ctx.deidentified:
+    if n_dup and not keys and order and item and not ctx.deidentified:   # whole orders: any match
         # Order lines: an export overlap repeats whole orders (their copies go); one line
         # repeated inside an order is a second scan of the item (kept, flagged). Per order.
         whole = _whole_orders(flat, dup, order)

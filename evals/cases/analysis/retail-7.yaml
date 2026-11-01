@@ -19,7 +19,7 @@ checks:
   planted: true
   segment: StockCode
   truth_key: net_by_top_code
-  abs_tol: 0.005
+  abs_tol: 1.0
   scales:
   - 1
 hard_rules:

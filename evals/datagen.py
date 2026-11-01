@@ -705,7 +705,12 @@ def make_store_weeks(seed: int) -> tuple[pd.DataFrame, dict]:
                              "Net Sales": round(sales, 2),
                              "Units": int(sales / {"Grocery": 6, "Apparel": 30, "Home": 25,
                                                    "Electronics": 180}[dept]),
-                             "COGS": round(sales * (1 - margin) * rng.normal(1, 0.02), 2),
+                             # the December peak sells on promotion: margins fall when sales
+                             # rise, so a sales-weighted margin is below the mean of row margins
+                             # and big stores sell at thinner margins (volume pricing)
+                             "COGS": round(sales * (1 - (margin - 0.4 * (season - 1)
+                                                         - 0.5 * (size - 1)))
+                                           * rng.normal(1, 0.02), 2),
                              "Region": regions[store]})
     df = pd.DataFrame(rows)
     # Comp exactly +2%: scale the comp stores' year-2 sales and costs.

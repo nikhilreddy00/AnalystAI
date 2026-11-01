@@ -1089,16 +1089,20 @@ def test_retail_only_shapes_are_strong_and_generic_ones_weak(name, confidence):
     assert _contract(_gen(name)).domain_confidence == confidence
 
 
-def test_a_weak_match_never_rewrites_rows_and_says_how_it_read_the_file():
+def test_a_weak_match_never_carries_order_fields_and_says_how_it_read_the_file():
     from domain_pack import pack_caveats
     df = pd.DataFrame({"o": ["#1", "#1", "#2", "#1", "#1"], "k": ["A", "B", "A", "A", "B"],
                        "q": [1, 1, 2, 1, 1], "p": [5.0] * 5, "s": ["paid", None, "paid", "paid", None]})
     roles = {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p", "status": "s"}
     out, audit = _clean(df, roles, strong=False)
-    assert len(out) == 5 and not any(d.operation == "fill_within_order" for d in audit.decisions)
+    # an export's repeated whole orders go on any match (they inflate net sales); carrying an
+    # order's fields down its lines (a Shopify layout) only on a strong one
+    assert len(out) == 3 and not any(d.operation == "fill_within_order" for d in audit.decisions)
     weak = pack_caveats(RETAIL, audit, roles, "weak")[0]
-    assert weak.startswith("Read as retail sales data from its column names (order id, sku")
-    assert pack_caveats(RETAIL, audit, roles, "strong")[0].startswith("Read as retail sales data (")
+    assert weak.startswith("Read as retail sales data because it has sku, quantity, unit price, order id "
+                           "and status columns")
+    strong = pack_caveats(RETAIL, audit, roles, "strong")[0]
+    assert strong == "Read as retail sales data (net sales, orders, avg order value, units sold)."
 
 
 def test_analysis_code_gets_each_rows_kind_as_a_column():
@@ -1111,3 +1115,80 @@ def test_analysis_code_gets_each_rows_kind_as_a_column():
     clash = df.assign(row_kind="mine")   # a user's own row_kind column is never replaced
     framed, col = with_row_kind(clash, _contract(clash))
     assert col == "_row_kind" and set(framed["row_kind"]) == {"mine"}
+
+
+# ── Diff review of rounds 3–4: one test per finding ─────────────────────────────────────────
+def test_three_buckets_still_lose_a_partial_last_one():
+    from agents.targeted_analysis_agent import _cut_partial
+    days = pd.Series(pd.date_range("2023-01-01", "2025-03-15"))
+    years = pd.Series([365.0, 366.0, 74.0], index=pd.PeriodIndex(["2023", "2024", "2025"], freq="Y"))
+    out, note = _cut_partial(years, days, "Y")
+    assert out.index[-1] == pd.Period("2024", "Y") and "last year is left out" in note
+
+
+@pytest.mark.parametrize("csv", [
+    "Order ID,Purchase Date,Product,Vendor,Qty,Price\nO1001,2025-01-02,Tee,Acme,1,20\nO1002,2025-01-03,Cap,Acme,2,15\n",
+    "Invoice No,Date,Product,Qty,Unit Price,Shipment Date,Freight\n1001,2025-01-02,Tee,1,20,2025-01-03,5\n"
+    "1002,2025-01-03,Cap,2,15,2025-01-04,5\n",
+    "Invoice No,Stock Code,Description,Quantity,Unit Price,Invoice Date,Currency Symbol\n"
+    "1001,A-1,Tee,1,20,2025-01-02,$\n1002,A-2,Cap,2,15,2025-01-03,$\n",
+    "Order ID,Date,Product,Qty,Price,Points Earned,Premium Member\nO1,2025-01-02,Tee,1,20,10,yes\n"
+    "O2,2025-01-03,Cap,2,15,5,no\n",
+    "Order ID,Date,Product,Qty,Price,Deal Price,Tariff Code,Price per Meter,Return Policy,Warranty Claim\n"
+    "O1,2025-01-02,Tee,1,20,18,6109,2,30d,no\nO2,2025-01-03,Cap,2,15,12,6505,1,30d,no\n",
+])
+def test_retail_files_with_words_other_domains_also_use_stay_retail(csv):
+    assert _contract(_load(csv)).domain == "retail"
+
+
+@pytest.mark.parametrize("csv", [
+    "Invoice No,Date,Client,Item,Qty,Unit Price,Total\n1001,2025-01-02,Ann,Consult,1,120,120\n"
+    "1002,2025-01-03,Ben,Lab,2,40,80\n",
+    "Invoice Number,Customer,Product,Quantity,Unit Price,Amount,Invoice Date,Currency\n"
+    "INV-1,Acme,Pro,5,99,495,2025-01-02,USD\nINV-2,Beta,Team,3,49,147,2025-01-03,USD\n",
+    "Invoice Number,Customer Email,Currency,Total,Date,Status\nINV-1001,a@x.com,USD,99,2025-01-02,paid\n"
+    "INV-1002,b@x.com,USD,49,2025-01-03,paid\n",
+])
+def test_invoicing_shapes_are_never_a_strong_retail_match(csv):
+    assert _contract(_load(csv)).domain_confidence != "strong"
+
+
+def test_a_3pl_shipment_file_is_not_retail():
+    csv = ("Shipment ID,Order ID,SKU,Quantity,Unit Price,Ship Date,Carrier\n"
+           "S1,O1,A-1,1,20,2025-01-02,UPS\nS2,O2,A-2,2,15,2025-01-03,UPS\n")
+    assert _contract(_load(csv)).domain is None
+
+
+def test_kpi_answers_on_a_weak_match_say_how_the_file_was_read():
+    import io
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    df = _load("Store,Date,Revenue,Visitors\n" + "".join(
+        f"S{s},2025-01-{d:02d},{100 + d},{d}\n" for s in (1, 2) for d in range(1, 29)))
+    s = AnalysisSession(session_id="t", data_contract=_contract(df))
+    assert s.data_contract.domain_confidence == "weak"
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    s.task_plan = AnalysisTask(raw_query="net sales by store", analysis_types=["eda"], target_metrics=[],
+                               question_intent=QuestionIntent.SEGMENT_COMPARE,
+                               targeted_params=TargetedParams(kpi="net_sales", segment_column="Store"))
+    assert "Read as retail sales data because it has" in run_targeted_analysis(s).answer_text
+
+
+def test_the_strong_line_names_only_the_kpis_the_data_supports():
+    from domain_pack import pack_caveats
+    s = _audited("store_weeks")
+    line = pack_caveats(RETAIL, s.cleaning_audit, s.data_contract.roles, "strong")[0]
+    assert line == "Read as retail sales data (net sales, units sold, gross margin)."
+
+
+def test_a_follow_up_turn_is_scored_on_its_own_answer():
+    from evals.run import turn_view
+    from orchestrator.state import InsightReport, TargetedResponse
+    s = AnalysisSession(session_id="t")
+    s.insight_report = InsightReport(executive_summary="Germany's basket is 160.88.", technical_findings=[],
+                                     recommended_actions=[], anomaly_alerts=[], proactive_questions=[],
+                                     methodology_notes="")
+    s.targeted_response = TargetedResponse(intent=QuestionIntent.SEGMENT_COMPARE, answer_text="No data.")
+    from evals.scoring import answer_text
+    assert "160.88" in answer_text(s) and "160.88" not in answer_text(turn_view(s))
