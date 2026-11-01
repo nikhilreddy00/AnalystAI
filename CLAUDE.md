@@ -27,7 +27,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 3.5 | UI & layout redesign (added 2026-10-28; no API spend) | ✅ done (2026-10-28) — `docs/baselines/phase3_5.md` (signed off; phone width, light/dark, a11y basics, lint 0) |
 | 4 | SQL path + YAML semantic layer | ✅ done (2026-10-27) — `docs/baselines/phase4.md` (execution 100%, metric use 100%, attacks blocked 100%, fan-out 8/8; k=3, 50 cases retail + banking; e2e 100%) |
 | 5 | Roll the contract out: Intake → Visualization → Cleaning → Insight → Quality check → Ingestion | ✅ done (2026-10-30) — **Intake ✅ (2026-10-28)** `docs/baselines/phase5_intake.md` (intent 97.4%, columns 98.2%, asks 100%, no-ask 100%, invented 0; SQL follow-ups 100%; e2e 100%; $4.39); **Visualization ✅ (2026-10-28)** `docs/baselines/phase5_visualization.md` (right chart 100%, headline coverage 100%, lint 0, no-rationale 0; 27 cases, $0; e2e 100%; $1.87); **Cleaning ✅ (2026-10-28)** `docs/baselines/phase5_cleaning.md` (recall 100%, over-cleaning 0%, hard 0; 25 cases k=3, $0; e2e 100%; $0.98); **Insight ✅ (2026-10-29)** `docs/baselines/phase5_insight.md` (grounding 100%, dates 100%, citations 100%, jargon 0, judge faithfulness 96.3%; 40 bundles k=3; e2e 100%, 0 hard; $4.35); **Quality check ✅ (2026-10-29)** `docs/baselines/phase5_quality.md` (defect recall 97.1%, false alarms 0.67%, hard 0; 40 reports k=3, 102 seeded defects; e2e 100%; $4.05); **Ingestion ✅ (2026-10-30)** `docs/baselines/phase5_ingestion.md` (type inference 100%, PII recall 100%, load fidelity 100%, PII canary 0, no LLM; 31 cases k=3 at $0; intake 100%, e2e 100%; $2.09) |
-| 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | **5.6a durable runs ✅ (2026-10-30)** `docs/baselines/phase5_6a.md` (kill at all 11 checkpoints → identical report, memory + Postgres; post-phase audit fixed 9 bugs; reconnect replay exact; approval after restart; prod refuses without PG; e2e 100%; $0.90; ADR-0006); 5.6b workspace pending |
+| 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | **5.6a durable runs ✅ (2026-10-30)** `docs/baselines/phase5_6a.md` (kill at all 11 checkpoints → identical report, memory + Postgres; post-phase audit fixed 9 bugs; reconnect replay exact; approval after restart; prod refuses without PG; e2e 100%; $0.90; ADR-0006); **5.6b workspace ✅ (2026-10-31)** `docs/baselines/phase5_6b.md` (reopened report = delivered (sha256 + DOM); delete leaves 0 in every store, memory + Postgres; sidebar list p95 5.4 ms at 200 threads, 390 px; plan red-team + 2 independent reviews + confirmation before done; e2e 100%; $0.82; ADR-0007) |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -116,6 +116,20 @@ where it failed" are `POST /runs/{id}/cancel|retry`.
   replays after `Last-Event-ID`. Audit B4: production API and the worker refuse to start without
   Postgres; dev falls back to memory and `/health` says `persistent: false` (UI: "Not saved").
 
+### Workspace (Phase 5.6b, ADR-0007)
+- **One dataset per thread.** Uploads are dataset versions (`datasets`, `dataset_versions`): same
+  bytes → that version, same name + columns → new version, else a new dataset; live sources are
+  one dataset per connection, no versions. `POST /chat` names data by `dataset_version_id` /
+  `dataset_id` (never a file path); other data on an existing thread is a 409.
+- **A report is its run's own report events** (`run_store.report_events`, segmented as the UI
+  does), sealed in `runs.report_sha256` at every terminal transition; never rebuilt from the
+  session. Provenance = the run's `provenance` + `usage` events (`llm.client.run_meter`).
+  `/api/sessions/{id}/thread` returns them; the UI replays them through `handle()`.
+- **Only `POST /chat` creates a thread** (`session_store.create`); `save` is update-only and a
+  no-op on a deleted thread. Seed tests with `create`.
+- **Deletion = tombstone + purge** (`memory/retention.py`, in the worker loop): every table with
+  user data is in `PURGE_TABLES` (a test checks); `RETENTION_DAYS` (0 = forever).
+
 ### Human Approval Gates
 - **Clarification**: intake detects ambiguous query → `human_approval` node → SSE `approval_required` event
 - **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend;
@@ -200,9 +214,13 @@ connectors/
   api_connector.py         — httpx + pagination + auth
 
 memory/
-  session_store.py         — PostgreSQL + InMemorySessionStore fallback
-  vector_store.py          — Qdrant + Ollama embedding
-  run_store.py             — runs + run_events (Postgres queue, InMemoryRunStore twin)
+  session_store.py         — threads (create/save fence, title, pin, archive, tombstone), pinned
+                             charts, datasets + versions (upload rules, split, live sources);
+                             Postgres + InMemorySessionStore twin
+  vector_store.py          — Qdrant + Ollama embedding; memory_key = dataset id; delete by thread
+  run_store.py             — runs + run_events (Postgres queue, InMemoryRunStore twin);
+                             report_events / report_hash (the seal)
+  retention.py             — purge sweep: tombstoned threads/datasets, orphans, retention
 
 sandbox/
   executor.py              — E2B wrapper: parquet→CSV, run code, parse output
@@ -215,15 +233,23 @@ api/
                              POST /runs/{id}/cancel, /runs/{id}/retry
   routes/dashboard.py      — GET/POST/DELETE pinned charts; POST /chart-feedback (user's chart-type
                              switch: owner only, swap_options re-checked, saved, label-only trace)
-  routes/connectors.py     — POST /connectors/test, /connectors/upload
+  routes/connectors.py     — POST /connectors/test, /connectors/upload (→ dataset version)
+  routes/sessions.py       — threads: list (columns + run status), PATCH, DELETE (tombstone),
+                             /thread (reports as delivered), /export.md
+  routes/datasets.py       — datasets: list, page, rename, delete (cascade), version split
+  lib/report.py            — a run's report: fold, provenance, Markdown, PPTX input
 
 frontend/src/
   app/page.tsx             — Landing page
-  app/chat/page.tsx        — Chat view (wraps ChatInterface)
+  app/chat/page.tsx        — Chat view (wraps ChatInterface; ?t=<thread>, ?dataset=<id>)
+  app/datasets/page.tsx    — Datasets view (DatasetsView; ?d=<id>)
   app/dashboard/page.tsx   — Dashboard view (AppHeader + AutoDashboard)
   components/
-    ChatInterface.tsx      — /chat "Workbench": chat column (left) drives ReportCanvas (right);
-                             Chat/Report tabs below lg; history in a <dialog> drawer
+    ChatInterface.tsx      — /chat "Workbench": sidebar (collapsible at lg, <dialog> drawer below),
+                             chat column drives ReportCanvas; thread in the URL
+    SessionSidebar.tsx     — threads by date, search, status dot, rename / pin / archive / delete
+    DatasetsView.tsx       — datasets list + page (versions, analyses, pinned charts)
+    ConfirmDialog.tsx      — native <dialog> confirm
     ReportCanvas.tsx       — one answer as a report: Summary / Evidence / Data / Review tabs
     AppHeader.tsx          — header shared by /chat and /dashboard (nav, theme toggle, sign out)
     ThemeToggle.tsx        — flips the `dark` class set pre-paint in layout.tsx (localStorage "theme")
@@ -234,7 +260,7 @@ frontend/src/
     ApprovalModal.tsx      — Human approval gate modal
     AutoDashboard.tsx      — dashboard: KPI strip, filters, cross-filtered chart grid, edit mode
     EvidencePanel.tsx      — Evidence list + <dialog> drawer (code, rows, confidence, assumptions)
-  hooks/useAnalysis.ts     — SSE stream consumer, state management
+  hooks/useAnalysis.ts     — SSE stream consumer, state management; hydrateThread (reopen)
   types/index.ts           — TypeScript mirrors of Python Pydantic models
   lib/api.ts               — fetch wrappers for dashboard endpoints
 ```
@@ -269,6 +295,8 @@ quality_retry     → {type: "quality_retry", message: "<reason>; Re-running ana
 expert_review     → {type: "expert_review", data: ExpertReview}  // every full run; Phase 5: + flags: ReviewFlag[] {index, section, claim, label, kind, reason, evidence_ids, source}; critic on the first run only
 error             → {type: "error", message: "<user-readable>", retryable?}
 done              → {type: "done"}  // ends a run (a retry can add more after it); a gate waits without one
+provenance        → {type: "provenance", model, fast_model, cards}  // Phase 5.6b: first, on a fresh start
+usage             → {type: "usage", calls: [{agent, prompt_version, model, tokens…, cost_usd}]}  // per node; the UI ignores both
 ```
 
 ---
@@ -293,7 +321,7 @@ done              → {type: "done"}  // ends a run (a retry can add more after 
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
   Phase 4 cost $15.44 (two checker bugs forced k=3 re-runs). Phases 0–3 cost ~$59 (2026-10-27), mostly
-  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case); Phase 5 Quality $4.05 (checks iterated at $0; one E2E overview re-gate ran 132% over its estimate); Phase 5 Ingestion $2.09 (deterministic suite at $0; one E2E re-gate after review fixes; insight + analysis proven unaffected by snapshot, `evals/snapshot.py`); Phase 5.6a $0.90 (one recorded fixture run replays the kill tests at $0; one E2E gate). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  repeated full k=3 rounds. Phase 5 Intake cost $4.39 (caching + rescore + this order); Phase 5 Visualization $1.87 (deterministic suite at $0; two E2E gates); Phase 5 Cleaning $0.98 (deterministic, one E2E gate); Phase 5 Insight $4.35 (stratified baseline, judge on run 1 per case); Phase 5 Quality $4.05 (checks iterated at $0; one E2E overview re-gate ran 132% over its estimate); Phase 5 Ingestion $2.09 (deterministic suite at $0; one E2E re-gate after review fixes; insight + analysis proven unaffected by snapshot, `evals/snapshot.py`); Phase 5.6a $0.90 (one recorded fixture run replays the kill tests at $0; one E2E gate); Phase 5.6b $0.82 (everything offline on the recording; one E2E gate on the final run path). **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,

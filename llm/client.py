@@ -33,6 +33,18 @@ _PRICES = {
 
 # When set (eval runner), every trace record of the current task is appended here too.
 trace_meter: ContextVar[list[dict] | None] = ContextVar("trace_meter", default=None)
+# When set (orchestrator/runner.py, one list per run), each model call's usage is appended here:
+# the run's provenance and cost. Its own variable, so a run inside the eval harness doesn't hide
+# the harness's meter (and its --max-usd guard).
+run_meter: ContextVar[list[dict] | None] = ContextVar("run_meter", default=None)
+_USAGE = ("input_tokens", "output_tokens", "cache_write_tokens", "cache_read_tokens", "cost_usd")
+
+
+def _meter_run(agent: str, prompt_version: str, model: str, result: "LLMResult") -> None:
+    meter = run_meter.get()
+    if meter is not None:
+        meter.append({"agent": agent, "prompt_version": prompt_version, "model": model,
+                      **{k: getattr(result, k) for k in _USAGE}})
 
 # Hard rule (Phase 5 Ingestion): unmasked PII from the user's data never reaches an LLM. A run's
 # entry point sets an empty set (api/routes/chat.py, the eval harness); ingestion fills it in place
@@ -266,6 +278,7 @@ class ClaudeClient:
             "ts": datetime.now(timezone.utc).isoformat(),
             "agent": agent, "prompt_version": prompt_version, "model": model, **record,
         })
+        _meter_run(agent, prompt_version, model, result)
         return _check(_restore_result(result, mapping), agent)
 
 
@@ -287,7 +300,10 @@ class RecordedClient:
         if not self.responses:
             raise LLMError(agent, "RecordedClient has no recorded response left")
         r = self.responses.pop(0)
-        return _check(_restore_result(LLMResult(text=r) if isinstance(r, str) else r, mapping), agent)
+        r = LLMResult(text=r) if isinstance(r, str) else r
+        # Metered like a real call (a replay asserts the run's cost), but no trace file written.
+        _meter_run(agent, prompt_version, model or settings.llm_model, r)
+        return _check(_restore_result(r, mapping), agent)
 
 
 _client: LLMClient | None = None

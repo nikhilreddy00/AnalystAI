@@ -13,6 +13,7 @@ import httpx
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
+    FilterSelector,
     PointStruct,
     VectorParams,
     Filter,
@@ -20,15 +21,21 @@ from qdrant_client.models import (
     MatchValue,
 )
 
-from orchestrator.state import ConnectorConfig, InsightReport
+from orchestrator.state import AnalysisSession, ConnectorConfig, InsightReport
 
 VECTOR_DIM = 768          # nomic-embed-text output dimension
 COLLECTION = "analyst_memory"
 
 
-def dataset_key(cfg: ConnectorConfig | None) -> str:
+def memory_key(session: AnalysisSession) -> str:
     """Which dataset a memory belongs to (ROADMAP: past insights are scoped to user + dataset).
-    A digest of where the data comes from, never the credentials."""
+    Phase 5.6b: the dataset id, so memory follows the dataset across re-uploads and versions.
+    A thread with no dataset (a legacy CSV path) keeps the old per-source key."""
+    return session.dataset_id or dataset_key(session.connector_config)
+
+
+def dataset_key(cfg: ConnectorConfig | None) -> str:
+    """A digest of where the data comes from, never the credentials (pre-5.6b memory key)."""
     if cfg is None:
         return ""
     where = [cfg.type.value, cfg.file_path, cfg.table_name, cfg.spreadsheet_id, cfg.sheet_name,
@@ -96,8 +103,10 @@ class VectorStore:
         user_id: str,
         dataset: str,
         top_k: int = 3,
+        exclude_session: str | None = None,
     ) -> list[dict]:
-        """Earlier insights by this user on this dataset. Points stored before the dataset key
+        """Earlier insights by this user on this dataset, from other threads (a thread's own
+        earlier report isn't "an earlier analysis"). Points stored before the dataset key
         existed don't match: another dataset's numbers must never read as this one's."""
         if not dataset:
             return []
@@ -107,7 +116,9 @@ class VectorStore:
             query_vector=vector,
             query_filter=Filter(
                 must=[FieldCondition(key="user_id", match=MatchValue(value=user_id)),
-                      FieldCondition(key="dataset_key", match=MatchValue(value=dataset))]
+                      FieldCondition(key="dataset_key", match=MatchValue(value=dataset))],
+                must_not=[FieldCondition(key="session_id", match=MatchValue(value=exclude_session))]
+                if exclude_session else None,
             ),
             limit=top_k,
             with_payload=True,
@@ -123,3 +134,27 @@ class VectorStore:
             for r in results
             if r.score > 0.6      # only return meaningfully similar results
         ]
+
+    # ── Deletion (Phase 5.6b) ──────────────────────────────────────────────────
+
+    async def _delete(self, key: str, value: str) -> None:
+        await self._client.delete(collection_name=COLLECTION, points_selector=FilterSelector(
+            filter=Filter(must=[FieldCondition(key=key, match=MatchValue(value=value))])))
+
+    async def delete_session(self, session_id: str) -> None:
+        await self._delete("session_id", session_id)
+
+    async def delete_dataset(self, dataset: str) -> None:
+        await self._delete("dataset_key", dataset)
+
+    async def session_ids(self) -> set[str]:
+        """Every thread that has a memory point (the orphan sweep).
+        ponytail: scrolls the whole collection; page by user if it ever gets large."""
+        out, offset = set(), None
+        while True:
+            points, offset = await self._client.scroll(
+                collection_name=COLLECTION, limit=1000, offset=offset, with_payload=["session_id"],
+                with_vectors=False)
+            out |= {p.payload["session_id"] for p in points}
+            if offset is None:
+                return out

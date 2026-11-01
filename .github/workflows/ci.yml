@@ -36,6 +36,11 @@ jobs:
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check .
       - run: uv run pytest -q   # no secrets: the autouse RecordedClient makes model calls impossible
+      # The stores again on asyncpg, production's driver (docker-compose): it rejects an aware
+      # datetime for a naive column, which psycopg accepts silently.
+      - run: uv run pytest -q tests/test_deletion.py tests/test_workspace_store.py tests/test_run_store.py tests/test_durable_runs.py tests/test_workspace_perf.py
+        env:
+          TEST_PG_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/analystai_eval
 
   frontend:
     runs-on: ubuntu-latest

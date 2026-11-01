@@ -3,18 +3,82 @@
 // Phase 3.5 "Workbench" layout: the chat column (left) drives a report canvas (right).
 // Below lg the two halves become Chat / Report tabs. Pipeline logic stays in useAnalysis.
 
-import { useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowUp, Database, History, X } from "lucide-react";
-import { useAnalysis } from "@/hooks/useAnalysis";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { AlertCircle, ArrowUp, Database, PanelLeft, X } from "lucide-react";
+import { forgetRun, getRun, recalledRun, useAnalysis } from "@/hooks/useAnalysis";
 import { useSessions } from "@/hooks/useSessions";
 import AgentProgressStream from "./AgentProgressStream";
 import AppHeader from "./AppHeader";
 import ApprovalModal from "./ApprovalModal";
 import ConnectorSetup from "./ConnectorSetup";
 import ReportCanvas, { hasReport } from "./ReportCanvas";
-import { SessionSidebar } from "@/components/SessionSidebar";
-import { getSessionResults } from "@/lib/api";
-import type { ChatMessage } from "@/types";
+import { SessionSidebar, titleOf } from "@/components/SessionSidebar";
+import { getDataset, getSessionResults, getThread, splitVersion } from "@/lib/api";
+import type { ChatMessage, DataSource, UploadResponse } from "@/types";
+
+const SIDEBAR_KEY = "analystai:sidebarCollapsed";
+const wide = () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+
+// The desktop sidebar's collapsed state, kept in localStorage (memory if storage is blocked).
+// An external store: the server renders it open, the browser reads storage, no mismatch.
+let collapsedMem: boolean | null = null;
+const collapsedSubs = new Set<() => void>();
+function readCollapsed(): boolean {
+  if (collapsedMem !== null) return collapsedMem;
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeCollapsed(v: boolean) {
+  collapsedMem = v;
+  try {
+    localStorage.setItem(SIDEBAR_KEY, v ? "1" : "0");
+  } catch {
+    // storage blocked: the choice lasts until reload
+  }
+  collapsedSubs.forEach((f) => f());
+}
+const subscribeCollapsed = (f: () => void) => {
+  collapsedSubs.add(f);
+  return () => {
+    collapsedSubs.delete(f);
+  };
+};
+
+// The thread's address, with the browser's history API (Next.js keeps useSearchParams in sync).
+const setUrl = (path: string, push = false) =>
+  push ? window.history.pushState(null, "", path) : window.history.replaceState(null, "", path);
+
+/** How an upload was filed: a new version can be undone while it has no analyses (D2). */
+function UploadNotice({ upload, onSplit }: { upload: UploadResponse; onSplit: () => void }) {
+  if (upload.status === "new_dataset") return null;
+  return (
+    <div role="status" className="space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm">
+      {upload.status === "existing" ? (
+        <p className="text-foreground">
+          Same file as version {upload.version} of <span className="font-medium">{upload.dataset_name}</span>
+          {upload.dataset.analyses > 0 && <> ({upload.dataset.analyses} earlier {upload.dataset.analyses === 1 ? "analysis" : "analyses"})</>}.{" "}
+          <Link href={`/datasets?d=${upload.dataset_id}`} className="text-primary underline-offset-2 hover:underline">
+            Open dataset
+          </Link>
+        </p>
+      ) : (
+        <>
+          <p className="text-foreground">
+            Saved as version {upload.version} of <span className="font-medium">{upload.dataset_name}</span> (same name and columns).
+          </p>
+          <button type="button" onClick={onSplit} className="rounded-md border border-border px-2.5 py-1 text-xs text-foreground hover:bg-accent">
+            Keep as a separate dataset
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 const QUICK_PROMPTS = [
   "Give me a complete overview of this dataset",
@@ -96,18 +160,27 @@ export default function ChatInterface() {
     sendMessage,
     cancelRun,
     retryRun,
-    resumed,
-    setConnectorConfig,
-    setUploadMeta,
+    runsStarted,
+    detach,
+    setSource,
+    hydrateThread,
     hydrateFromSnapshot,
     resetWorkspace,
   } = useAnalysis();
-  const { sessions, loading: sessionsLoading, refresh: refreshSessions, deleteSession } = useSessions();
+  const { sessions, loading: sessionsLoading, failed: sessionsFailed, refresh: refreshSessions, deleteSession, updateSession } = useSessions();
+  const params = useSearchParams();
+  const threadParam = params.get("t");
+  const datasetParam = params.get("dataset");
+  // The thread in memory: the URL loads a thread only when it names another one.
+  const loaded = useRef<string | null>(null);
+  const [threadDataset, setThreadDataset] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);   // "that analysis is gone", a failed load or delete
+  const [upload, setUpload] = useState<UploadResponse | null>(null);
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
 
   const [input, setInput] = useState("");
   const [connectedSource, setConnected] = useState(false);
-  // A reopened tab reattached to its run: the conversation continues where it was.
-  const connected = connectedSource || resumed;
+  const connected = connectedSource;
   const [datasetName, setDatasetName] = useState<string | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [pane, setPane] = useState<"chat" | "report">("report");
@@ -124,6 +197,117 @@ export default function ChatInterface() {
   useEffect(() => {
     if (!isLoading && sessionId) void refreshSessions();
   }, [isLoading, sessionId, refreshSessions]);
+
+  // A run just started (its thread may be new): the sidebar shows it, with its "running" dot.
+  useEffect(() => {
+    if (runsStarted) void refreshSessions();
+  }, [runsStarted, refreshSessions]);
+
+  // A tab closed mid-run and reopened on plain /chat: open that run's thread (all of it).
+  useEffect(() => {
+    const runId = recalledRun();
+    const q = new URLSearchParams(window.location.search);
+    if (!runId || q.has("t") || q.has("dataset")) return;
+    let live = true;
+    void getRun(runId).then((r) => {
+      if (!r) forgetRun();   // purged: stop asking for it on every visit
+      else if (live && !loaded.current) setUrl(`/chat?t=${r.session_id}`);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // A new thread gets its URL as soon as the server names it, so a refresh or a shared tab
+  // reopens it. `loaded` is set first: the URL change must not reload what is on screen.
+  useEffect(() => {
+    if (sessionId && sessionId !== threadParam) {
+      loaded.current = sessionId;
+      setUrl(`/chat?t=${sessionId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
+
+  const openThread = useCallback(async (id: string) => {
+    detach();   // the click wins over a stream or a POST still answering for the old screen
+    loaded.current = id;
+    setNotice(null);
+    setUpload(null);
+    setSource(null);   // a reopened thread has its data; an earlier upload is not its
+    let view;
+    try {
+      view = await getThread(id);
+    } catch {
+      // The server is down, not the thread gone: keep the link, so a retry (or a reload) opens it.
+      if (loaded.current !== id) return;
+      loaded.current = null;
+      resetWorkspace();
+      setConnected(false);
+      setNotice("That analysis couldn't be loaded. Check your connection and try again.");
+      return;
+    }
+    if (loaded.current !== id) return;   // another thread was opened meanwhile
+    if (!view) {
+      loaded.current = null;
+      resetWorkspace();
+      setConnected(false);
+      setNotice("That analysis no longer exists. It may have been deleted.");
+      setUrl("/chat");
+      return;
+    }
+    setSelectedIdx(null);
+    setPane("report");
+    setDatasetName(view.dataset_name);
+    setThreadDataset(view.dataset_id);
+    setViewingHistory(true);
+    setConnected(true);   // a reopened thread takes follow-up questions
+    if (view.turns.length) {
+      hydrateThread(view);
+    } else {
+      const snapshot = await getSessionResults(id);   // a thread from before Phase 5.6b
+      if (snapshot && loaded.current === id) hydrateFromSnapshot(snapshot);
+    }
+  }, [hydrateThread, hydrateFromSnapshot, resetWorkspace, setSource, detach]);
+
+  // On a change of the URL's thread only (never on a re-render: a new thread has its id a moment
+  // before its URL). Back to plain /chat (the browser's back button) clears the screen; our own
+  // moves to /chat clear `loaded` first.
+  const prevParam = useRef(threadParam);
+  useEffect(() => {
+    const was = prevParam.current;
+    prevParam.current = threadParam;
+    if (threadParam && threadParam !== loaded.current) void openThread(threadParam);
+    else if (!threadParam && was && loaded.current) clearWorkspace();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadParam]);
+
+  // /chat?dataset=<id> (the Datasets page's "New analysis"): a new thread on it, no upload.
+  useEffect(() => {
+    if (!datasetParam) return;
+    detach();
+    let live = true;
+    void getDataset(datasetParam).catch(() => undefined).then((ds) => {
+      if (!live) return;
+      setUrl("/chat");
+      if (!ds) {
+        setNotice(ds === null ? "That dataset no longer exists." : "That dataset couldn't be loaded. Try again.");
+        return;
+      }
+      loaded.current = null;
+      resetWorkspace();
+      setSource({ dataset_id: ds.id, dataset_name: ds.name });
+      setDatasetName(ds.name);
+      setThreadDataset(ds.id);
+      setConnected(true);
+      setViewingHistory(false);
+      setUpload(null);
+      setPane("chat");
+    });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetParam]);
 
 
   // The canvas shows the chosen report, else the newest one.
@@ -150,55 +334,113 @@ export default function ChatInterface() {
     setInput("");
   }
 
-  const handleLoadSession = async (id: string) => {
-    historyRef.current?.close();
-    const snapshot = await getSessionResults(id);
-    if (snapshot) {
-      setSelectedIdx(null);
-      setViewingHistory(true);
+  const closeDrawer = () => historyRef.current?.close();
+
+  const handleLoadSession = (id: string) => {
+    closeDrawer();
+    if (id === loaded.current && id === sessionId) {
       setPane("report");
-      setDatasetName(sessions.find((s) => s.session_id === id)?.dataset_name ?? null);
-      hydrateFromSnapshot(snapshot);
+      return;
     }
+    if (id === threadParam) {   // the URL already names it (its load failed): open it again
+      void openThread(id);
+      return;
+    }
+    setUrl(`/chat?t=${id}`, true);
   };
 
-  const handleNewAnalysis = () => {
-    historyRef.current?.close();
+  function clearWorkspace() {
+    loaded.current = null;
     resetWorkspace();
     setConnected(false);
     setDatasetName(null);
+    setThreadDataset(null);
     setSelectedIdx(null);
     setViewingHistory(false);
+    setUpload(null);
+    setNotice(null);
     setPane("report");
+  }
+
+  const handleNewAnalysis = () => {
+    closeDrawer();
+    clearWorkspace();
+    setUrl("/chat");
   };
 
-  const handleConnectorReady = (payload: {
-    connector_config: Record<string, unknown>;
-    file_hash: string;
-    dataset_name: string;
-  }) => {
-    setConnectorConfig(payload.connector_config);
-    setUploadMeta(payload.file_hash, payload.dataset_name);
-    setDatasetName(payload.dataset_name);
+  const handleConnectorReady = (source: DataSource, filed?: UploadResponse) => {
+    // One dataset per thread: new data always starts a new analysis.
+    loaded.current = null;
+    resetWorkspace();
+    setSource(source);
+    setDatasetName(source.dataset_name);
+    setThreadDataset(filed?.dataset_id ?? null);
+    setUpload(filed ?? null);
     setConnected(true);
     setViewingHistory(false);
+    setNotice(null);
     setPane("chat");
+    setUrl("/chat");
+  };
+
+  const handleSplit = async () => {
+    if (!upload) return;
+    const ds = await splitVersion(upload.dataset_version_id);
+    if (ds) {
+      setThreadDataset(ds.id);
+      setUpload(null);
+    }
   };
 
   const handleDeleteSession = async (id: string) => {
     const ok = await deleteSession(id);
-    if (ok && sessionId === id) {
-      resetWorkspace();
-      setConnected(false);
-    }
+    if (!ok) setNotice("That analysis couldn't be deleted. Try again.");
+    else if (sessionId === id || loaded.current === id) handleNewAnalysis();
   };
 
-  const handleLoadPrevious = async () => {
-    if (sessionId) {
-      const snapshot = await getSessionResults(sessionId);
-      if (snapshot) hydrateFromSnapshot(snapshot);
+  /** "Re-run on current data": the same question on the dataset's newest version, as a new
+   *  report beside the old one (which never changes). */
+  const handleRerun = (question: string) => {
+    if (!threadDataset || isLoading) return;
+    setSelectedIdx(null);
+    setPane("chat");
+    void sendMessage(question, false, null, { dataset_id: threadDataset });
+  };
+
+  const toggleSidebar = () => {
+    if (!wide()) {
+      historyRef.current?.showModal();
+      return;
     }
+    writeCollapsed(!collapsed);
+  };
+
+  /** null: deleted; undefined: not known (the list is loading, or could not be read). */
+  const titleFor = (sid: string) => {
+    const s = sessions.find((x) => x.session_id === sid);
+    return s ? titleOf(s) : sessionsLoading || sessionsFailed ? undefined : null;
+  };
+
+  const sidebar = (
+    <SessionSidebar
+      sessions={sessions}
+      activeSessionId={sessionId ?? threadParam}
+      loading={sessionsLoading}
+      failed={sessionsFailed}
+      onRetry={() => void refreshSessions()}
+      onLoadSession={handleLoadSession}
+      onDeleteSession={(id) => void handleDeleteSession(id)}
+      onUpdateSession={(id, patch) => void updateSession(id, patch)}
+      onNewAnalysis={handleNewAnalysis}
+    />
+  );
+
+  const handleLoadPrevious = async () => {
     setPendingApproval(null);
+    if (sessionId) {
+      loaded.current = null;
+      await openThread(sessionId);
+    }
   };
 
   const handleRunFresh = () => {
@@ -234,12 +476,12 @@ export default function ChatInterface() {
         start={
           <button
             type="button"
-            onClick={() => historyRef.current?.showModal()}
-            aria-label="Open history"
-            title="History"
+            onClick={toggleSidebar}
+            aria-label="Analyses"
+            title="Analyses"
             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            <History className="h-4 w-4" />
+            <PanelLeft className="h-4 w-4" />
           </button>
         }
       >
@@ -256,7 +498,13 @@ export default function ChatInterface() {
         {paneTab("report", report ? "Report" : connected ? "Report" : "Data")}
       </div>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(320px,380px)_1fr]">
+      <div className={`grid min-h-0 flex-1 ${collapsed ? "lg:grid-cols-[minmax(320px,380px)_1fr]" : "lg:grid-cols-[260px_minmax(320px,380px)_1fr]"}`}>
+        {/* Phase 5.6b: the threads, always there on desktop (collapsible); a drawer on phones. */}
+        {!collapsed && (
+          <aside aria-label="Analyses sidebar" className="hidden min-h-0 overflow-y-auto border-r border-border bg-sidebar p-3 lg:block">
+            {sidebar}
+          </aside>
+        )}
         {/* Chat column */}
         <section
           aria-label="Chat"
@@ -269,11 +517,8 @@ export default function ChatInterface() {
             </span>
             <button
               type="button"
-              onClick={() => {
-                setConnected(false);
-                setViewingHistory(false);
-                setPane("report");
-              }}
+              onClick={handleNewAnalysis}
+              title={connected ? "Other data starts a new analysis" : undefined}
               className="flex-shrink-0 rounded px-1.5 py-0.5 text-primary hover:bg-accent"
             >
               {connected ? "Change" : "Connect"}
@@ -281,6 +526,12 @@ export default function ChatInterface() {
           </div>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
+            {notice && (
+              <p role="status" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+                {notice}
+              </p>
+            )}
+            {upload && messages.length === 0 && <UploadNotice upload={upload} onSplit={() => void handleSplit()} />}
             {messages.length === 0 && !isLoading && (
               <div className="space-y-3 pt-6 text-sm">
                 <p className="font-medium text-foreground">
@@ -402,10 +653,7 @@ export default function ChatInterface() {
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-4">
-                <ConnectorSetup
-                  onConnectorReady={handleConnectorReady}
-                  onLoadExistingSession={(id) => void handleLoadSession(id)}
-                />
+                <ConnectorSetup onConnectorReady={handleConnectorReady} />
               </div>
             </div>
           ) : report ? (
@@ -416,6 +664,8 @@ export default function ChatInterface() {
               sessionId={sessionId}
               isLatest={reportIdx === latestReport}
               onFollowUp={ask}
+              onRerun={threadDataset && !isLoading ? () => handleRerun(questionFor(reportIdx)) : undefined}
+              titleFor={titleFor}
               onDraft={(q) => {
                 setInput(q);
                 setPane("chat");
@@ -439,32 +689,23 @@ export default function ChatInterface() {
 
       <dialog
         ref={historyRef}
-        aria-label="History"
-        onClick={(e) => e.target === historyRef.current && historyRef.current?.close()}
+        aria-label="Analyses"
+        onClick={(e) => e.target === historyRef.current && closeDrawer()}
         className="m-0 h-dvh max-h-dvh w-full max-w-sm bg-sidebar p-0 text-foreground shadow-2xl backdrop:bg-black/40"
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">History</h2>
+            <h2 className="text-sm font-semibold">Analyses</h2>
             <button
               type="button"
-              onClick={() => historyRef.current?.close()}
-              aria-label="Close history"
+              onClick={closeDrawer}
+              aria-label="Close analyses"
               className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
-            <SessionSidebar
-              sessions={sessions}
-              activeSessionId={sessionId}
-              loading={sessionsLoading}
-              onLoadSession={handleLoadSession}
-              onDeleteSession={handleDeleteSession}
-              onNewAnalysis={handleNewAnalysis}
-            />
-          </div>
+          <div className="flex-1 overflow-y-auto p-3">{sidebar}</div>
         </div>
       </dialog>
 

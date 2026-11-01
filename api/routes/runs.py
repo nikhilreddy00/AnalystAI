@@ -14,7 +14,7 @@ import json
 from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from api.auth import UserProfile, get_current_user
 from memory.run_store import Run, cancel_events
@@ -26,8 +26,10 @@ KEEPALIVE_S = 15.0
 
 
 async def _owned(request: Request, run_id: str, user: UserProfile) -> Run:
+    """The caller's run on a thread that still exists (a deleted thread's runs are gone)."""
     run = await request.app.state.run_store.get(run_id)
-    if run is None or run.user_id != user.uid:
+    if run is None or run.user_id != user.uid or not await \
+            request.app.state.session_store.get_summary(run.session_id, user.uid):
         raise HTTPException(status_code=404, detail="Run not found.")
     return run
 
@@ -104,3 +106,20 @@ async def retry_run(run_id: str, request: Request,
                                        "message": "Retrying from where it stopped..."}]):
         raise HTTPException(status_code=409, detail="Only a failed or stopped run can be retried.")
     return {**run.public(), "status": "queued"}
+
+
+@router.get("/{run_id}/report.pptx")
+async def report_pptx(run_id: str, request: Request,
+                      current_user: UserProfile = Depends(get_current_user)) -> Response:  # noqa: B008
+    """This report as a PowerPoint, built from what it delivered (not the thread's latest)."""
+    from api.lib.report import as_session, fold, report_of
+    from api.lib.report_pptx import build_pptx
+    run = await _owned(request, run_id, current_user)
+    report = report_of([e for _, e in await request.app.state.run_store.events_after(run.id, 0)])
+    if not fold(report).get("insight"):
+        raise HTTPException(status_code=404, detail="This answer has no report to export.")
+    base = await request.app.state.session_store.load(run.session_id)
+    pptx = await asyncio.to_thread(build_pptx, as_session(base, report))
+    return Response(content=pptx, headers={
+        "Content-Disposition": f'attachment; filename="analystai_report_{run.id[:8]}.pptx"'},
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation")

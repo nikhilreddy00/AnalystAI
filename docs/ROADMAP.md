@@ -393,7 +393,8 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   5. **Fail loud (B4).** With `APP_ENV=production` the API and worker refuse to start without
      Postgres. In development the in-memory store stays, behind a visible "not saved" banner.
 
-- **Work, part B: the analysis workspace (5.6b).**
+- **Work, part B: the analysis workspace (5.6b).** ✅ done 2026-10-31, `docs/baselines/phase5_6b.md`,
+  ADR-0007. Deviation: no snapshot table (a report is its run's sealed report events).
   1. **A persistent left sidebar.** It is collapsible on desktop and a drawer on phones, and it
      lists every analysis thread:
      - grouped by date (Today, Previous 7 days, Older), with the dataset's name on each;

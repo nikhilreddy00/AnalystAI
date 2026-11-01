@@ -16,7 +16,8 @@ from connectors import csv_connector
 from evals.run import dataset, e2e_pii_literals, load_cases
 from llm.client import LLMResult, pii_values
 from memory import session_data
-from memory.run_store import InMemoryRunStore
+from api.lib.report import provenance
+from memory.run_store import InMemoryRunStore, report_hash
 from memory.session_store import InMemorySessionStore
 from orchestrator.graph import build_graph
 from api.config import settings
@@ -26,6 +27,7 @@ from sandbox.executor import ExecutionResult
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures/runs/e2e-01.json").read_text())
 CASE = load_cases("e2e", "e2e-01")[0]
+WANT_COST = round(sum(r["cost_usd"] for r in FIXTURE["replies"]), 6)
 ANSWER = "Continue with imputation"
 
 
@@ -67,12 +69,12 @@ def replay(recorded_llm, monkeypatch, tmp_path):
     return path, e2e_pii_literals(df)
 
 
-async def _start(deps: Deps, path: Path) -> str:
-    session = AnalysisSession(session_id="s-1", user_id="u1",
+async def _start(deps: Deps, path: Path, sid: str = "s-1") -> str:
+    session = AnalysisSession(session_id=sid, user_id="u1",
                               connector_config=ConnectorConfig(type=ConnectorType.CSV,
                                                                file_path=str(path)))
-    await deps.session_store.save(session)
-    run, _ = await deps.run_store.create(session_id="s-1", user_id="u1",
+    await deps.session_store.create(session)
+    run, _ = await deps.run_store.create(session_id=sid, user_id="u1",
                                          input={"message": CASE["question"]})
     return run.id
 
@@ -158,6 +160,15 @@ async def test_uninterrupted_replay_completes(replay, recorded_llm):
     types = [e["type"] for e in events]
     assert types.count("approval_required") == 1 and types.count("done") == 1
     assert types[-1] == "done"
+    # Phase 5.6b: the report is sealed, and the run knows what it ran under and what it cost.
+    run = await deps.run_store.get(run_id)
+    assert run.report_sha256 and run.report_sha256 == report_hash(events)
+    assert types[0] == "provenance" and types.count("provenance") == 1
+    prov = provenance(run, events)
+    assert prov["llm_calls"] == len(FIXTURE["replies"])
+    assert prov["cost_usd"] == WANT_COST > 0
+    assert {p["agent"] for p in prov["prompts"]} >= {"intake", "analysis", "insight"}
+    assert prov["cards"]["analysis"] and prov["model"]
 
 
 async def test_kill_at_every_node_boundary_resumes_to_the_same_report(
@@ -181,6 +192,9 @@ async def test_kill_at_every_node_boundary_resumes_to_the_same_report(
         assert _stable(_report(_result(deps, run_id))) == _stable(want), f"kill at {k}: report"
         events = [e for _, e in await deps.run_store.events_after(run_id, 0)]
         assert _stable([e for e in events if e["type"] != "run_resumed"]) == _stable(want_events), k
+        run = await deps.run_store.get(run_id)   # one seal, over what this run delivered
+        assert run.report_sha256 == report_hash(events) and run.report_sha256, k
+        assert provenance(run, events)["cost_usd"] == WANT_COST, f"kill at {k}: cost"
         sent = json.dumps([c["messages"] for c in recorded_llm.calls])
         assert not [v for v in pii if v in sent], f"kill at {k}: PII reached the model"
 
@@ -261,7 +275,7 @@ async def test_postgres_kill_at_every_boundary_with_a_new_process_each_time(
         deps = await fresh()
         async with deps.run_store._engine.begin() as conn:
             await conn.execute(text("TRUNCATE runs, run_events, checkpoints, checkpoint_blobs, "
-                                    "checkpoint_writes"))
+                                    "checkpoint_writes, analysis_sessions"))
         run_id = await _start(deps, path)
         assert await _drive(deps, run_id) == ("completed", 0)
         want = _stable(_report(await _pg_session(deps, run_id)))
@@ -274,7 +288,7 @@ async def test_postgres_kill_at_every_boundary_with_a_new_process_each_time(
             monkeypatch.setattr(analysis_agent, "run_code", _sandbox())
             deps = await fresh()
             _arm(deps.graph.checkpointer, k)
-            run_id = await _start(deps, path)
+            run_id = await _start(deps, path, sid=f"s-kill-{k}")
             status, kills = await _drive(deps, run_id, restart=fresh)
             deps = opened[-1]   # the worker that finished it
             assert (status, kills) == ("completed", 1), k
@@ -282,6 +296,9 @@ async def test_postgres_kill_at_every_boundary_with_a_new_process_each_time(
             assert _stable(_report(await _pg_session(deps, run_id))) == want, k
             events = [e for _, e in await deps.run_store.events_after(run_id, 0)]
             assert _stable([e for e in events if e["type"] != "run_resumed"]) == want_events, k
+            run = await deps.run_store.get(run_id)
+            assert run.report_sha256 == report_hash(events) and run.report_sha256, k
+            assert provenance(run, events)["cost_usd"] == WANT_COST, k
             assert not [v for v in pii if v in json.dumps([c["messages"]
                                                            for c in recorded_llm.calls])], k
 
@@ -352,3 +369,15 @@ async def test_a_database_blip_does_not_kill_the_worker(replay, recorded_llm):
     stop.set()
     await task
     assert len(calls) > 1 and (await deps.run_store.get(run_id)).status == "waiting_approval"
+
+
+async def test_the_e2e_eval_path_runs_offline(replay, recorded_llm, monkeypatch, tmp_path):
+    """The paid E2E gate's own code path (evals.run.run_e2e_case), on the recorded run at $0:
+    a change that breaks it (5.6b: save() stopped inserting) fails here, not in a paid run."""
+    import evals.run as er
+    monkeypatch.setattr(er, "UPLOADS", tmp_path.resolve() / "evals")
+    monkeypatch.setattr(er, "_DEPS", None)
+    out = await er.run_e2e_case(CASE)
+    assert out["error"] is None and out["approvals"] == ["high_null"]
+    assert not recorded_llm.responses and out["pii_canary_hits"] == 0
+    assert out["output"]["insight_report"]
