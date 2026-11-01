@@ -203,6 +203,31 @@ docker compose up postgres qdrant ollama -d
 
 ---
 
+## Domains and patient data
+
+Domains with a passing eval (Phase 5.5; per-domain numbers are in `docs/baselines/phase5_5.md`):
+<!-- domains:start -->
+_pending the Phase 5.5 gate_
+<!-- domains:end -->
+
+Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one
+gets its meaning, for example that a balance is a level (its latest snapshot, never summed over
+weeks). A file with other column names doesn't, and you can write your own layer
+(`SEMANTIC_LAYER_PATH`).
+
+**Patient data** (an MRN or patient id, ICD-10 codes, or health columns next to personal data) is
+analysed as a de-identified copy:
+- names, contacts, DOB, notes and patient-level attributes are withheld;
+- identifiers are pseudonymised;
+- ZIP is cut to ZIP3 and ages over 90 are shown as 90;
+- groups under 11 rows are pooled.
+
+Diagnosis codes and visit dates are kept, because they are what you analyse. **This is not HIPAA
+de-identification**, and AnalystAI makes no HIPAA claim. The limits are listed in
+`docs/adr/0008-phi-and-domain-meaning.md`.
+
+The code sandbox (E2B) never receives a personal value: they are sent as one-way pseudonyms.
+
 ## Security
 
 - **E2B sandbox** — LLM-generated Python runs in an isolated VM, never in the FastAPI process
