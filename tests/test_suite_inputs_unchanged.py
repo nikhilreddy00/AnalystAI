@@ -19,7 +19,11 @@ PLATFORM_FLOATS = {"ins-15-gap-not-significant", "ins-39-region-null", "ins-40-m
 # Phase 5.7 (retail pack): contexts that changed on purpose, re-measured at the domain's gate.
 # "Show profit margin by region" on sales data now carries the pack's note that margin needs a
 # cost or profit column (the case expects the ask).
-CONTEXT_CHANGED = {"intake-oos-csv-01"}
+CONTEXT_CHANGED = {"intake-oos-csv-01",
+                   # overviews of the sales data now get its KPI tiles as facts (the harness builds
+                   # the tiles as analysis_node does: before, it never did) and the must-say lines
+                   "ins-01-sales-overview", "ins-25-mixed-dates", "ins-27-twelve-months-bad-summary",
+                   "ins-28-one-month", "ins-35-jargon-columns"}
 
 
 async def test_every_snapshotted_case_still_gets_the_same_inputs():

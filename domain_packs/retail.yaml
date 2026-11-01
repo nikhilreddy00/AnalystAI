@@ -169,15 +169,16 @@ definitions:
 unsupported:
   sell_through: inventory on hand (units received), which this data does not have
 
+# What a report must say, each when its condition holds (condition names: domain_pack.CONDITIONS).
 caveats:
-  partial_last_period: "The last {period} ({label}) is partial ({days} days of data) and was left out of period comparisons."
-  returns_present: "Net sales are after {n} return or credit lines ({value})."
-  refunded_excluded: "{n} refunded order lines are left out of net sales."
+  partial_last_period: "{label} is partial ({days} days of data) and is left out of period comparisons."
+  returns_present: "Net sales are after {n} return or credit lines (netted, not left out)."
+  refunded_excluded: "{n} lines of refunded orders are left out of net sales."
+  cancelled_excluded: "{n} lines of cancelled or voided orders are left out of sales."
   months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
   mixed_currency: "{n} rows in currencies other than {currency} are left out of money totals."
-  test_excluded: "{n} test order lines are left out."
+  test_excluded: "{n} test-order lines are left out."
   non_product_excluded: "{n} postage, fee or adjustment lines are left out of product and sales figures."
-  guests_excluded: "{n} orders with no customer id count in sales but not in customer metrics."
 
 causal_triggers: [discount, discounts, promo, promos, promotion, promotions, markdown, markdowns,
                   campaign, campaigns, coupon, coupons, sale event, price cut, price cuts]

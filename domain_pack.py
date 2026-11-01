@@ -18,6 +18,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
+# The caveat conditions code can check (pack_caveats); a pack writes the words for each.
+CONDITIONS = ("partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
+              "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded")
 
 
 class _Strict(BaseModel):
@@ -129,6 +132,8 @@ class Pack(_Strict):
                 re.compile(rx or "")
             except re.error as exc:
                 errors.append(f"{where}: invalid regex {rx!r}: {exc}")
+        errors += [f"caveat {c}: no such condition (one of {CONDITIONS})" for c in self.caveats
+                   if c not in CONDITIONS]
         names = [k.name for k in self.kpis]
         errors += [f"glossary {c}: neither a KPI, a definition nor unsupported" for c in self.glossary
                    if c not in names and c not in self.definitions and c not in self.unsupported]
@@ -481,3 +486,27 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
         elif c in pack.unsupported:
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
     return lines
+
+
+def pack_caveats(pack: Pack, audit, roles: dict[str, str]) -> list[str]:
+    """What the report must say, from the cleaning audit (the data's own facts): each caveat
+    whose condition holds, in the pack's words. Deterministic: never left to the model."""
+    if audit is None:
+        return []
+    flags = {d.strategy: d for d in audit.decisions if d.operation == "flag"}
+    date = roles.get("date")
+    span = audit.date_ranges.get(date) if date else None
+    facts: dict[str, dict] = {}
+    if date and (p := audit.partial_months.get(date)):
+        facts["partial_last_period"] = {"label": pd.Period(p[0], "M").strftime("%b %Y"), "days": p[1]}
+    for cond, kind in (("returns_present", "return"), ("refunded_excluded", "refunded"),
+                       ("cancelled_excluded", "cancel"), ("test_excluded", "test"),
+                       ("non_product_excluded", "non_product")):
+        if kind in flags:
+            facts[cond] = {"n": f"{flags[kind].rows_affected:,}"}
+    if span and 1 < span[2] < 13:
+        facts["months_lt_13"] = {"months": span[2]}
+    if "other_currency" in flags and audit.main_currency:
+        facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
+                                   "currency": audit.main_currency}
+    return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]

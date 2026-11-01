@@ -111,7 +111,7 @@ async def deterministic(datasets: set[tuple[str, int]]) -> dict:
         out[f"{name}-{seed}"] = {k: _sha(json.dumps(_rounded(v), sort_keys=True, default=str)) for k, v in {
             # fields added since pre_5_7 count only when set (a new empty field is no change)
             "contract": _set_only(contract.model_dump(mode="json"), ("domain", "roles")),
-            "audit": _set_only(audit.model_dump(mode="json"), ("grain", "partial_months")),
+            "audit": _set_only(audit.model_dump(mode="json"), ("grain", "partial_months", "main_currency")),
             "kpis": [{**k.model_dump(mode="json"), "recipe": _set_only(k.recipe.model_dump(
                 mode="json"), ("kpi",)) if k.recipe else None} for k in kpis],
             "extras": extras,

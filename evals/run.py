@@ -531,6 +531,12 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     findings.missing_pct = {str(c): round(float(clean_df[c].isna().mean() * 100), 2)
                             for c in clean_df.columns}
     findings.evidence.insert(0, cleaning_evidence(audit))
+    # the tiles analysis_node computes (and keeps only when they recheck), as production does
+    from agents.visualization_agent import classify_columns, generate_smart_kpis, kpi_mismatches
+    findings.kpis = generate_smart_kpis(clean_df, classify_columns(clean_df), case["question"],
+                                        narrative=session.narrative, contract=session.data_contract)
+    wrong = set(kpi_mismatches(findings.kpis, clean_df, findings.eda_summary, session.data_contract))
+    findings.kpis = [k for k in findings.kpis if k.label not in wrong]
     session.analysis_findings = findings
     session.chart_configs = await run_visualization_agent(session)
     session.__dict__.pop("_df_parquet", None)

@@ -467,6 +467,11 @@ Rules:
 - Mix question types: overview, trend, comparison, anomaly, correlation
 - Questions should be immediately actionable (no setup needed)
 - Return a JSON array of 5 strings — no explanation, no markdown fences."""
+    pack = pack_for(contract.domain)
+    if pack and pack.first_questions:   # 5.7: what a senior analyst of this domain asks first
+        prompt += ("\n\nThis is " + pack.domain + " data. Questions a senior " + pack.domain +
+                   " analyst asks first (adapt them to these columns; keep the ones it can answer):\n"
+                   + "\n".join(f"- {q}" for q in pack.first_questions))
 
     try:
         response = await llm.complete(
@@ -481,6 +486,8 @@ Rules:
     except Exception as exc:
         logger.warning("intake: suggested questions fell back to defaults: %s", exc)
 
+    if pack and pack.first_questions:   # the domain's own first questions, as written
+        return pack.first_questions[:5]
     # Fallback: generate generic but dataset-aware questions
     fallback = []
     if metric_cols:

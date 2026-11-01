@@ -49,7 +49,7 @@ from agents.data_cleaning import (
 from agents.errors import GuardrailViolation
 from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
-from domain_pack import Pack, pack_for, row_kinds
+from domain_pack import Pack, main_currency, pack_for, row_kinds
 from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
 from llm.client import trace_verdict
 from orchestrator.state import (
@@ -420,6 +420,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     #     by rule (domain_pack.row_kinds); the rows stay for any other question. Roles of a
     #     column dropped at the high-null gate are gone.
     roles = {r: c for r, c in ctx.roles.items() if c in df.columns}
+    currency, other = None, 0
     if ctx.pack:
         kinds = row_kinds(df, roles, ctx.pack).value_counts()
         for kind, what in (("return", "return or credit lines (a negative quantity or amount, or "
@@ -431,6 +432,10 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                            "and sales figures")):
             if n := int(kinds.get(kind, 0)):
                 log("*", "flag", kind, f"{n} {what}; kept in the data.", n)
+        _, currency, other = main_currency(df, roles)
+        if other:
+            log(roles["currency"], "flag", "other_currency", f"{other} rows in other currencies "
+                f"than {currency}; kept, left out of money totals.", other)
         for role, bounds in ctx.pack.ranges.items():
             col = roles.get(role)
             if col is None or not pd.api.types.is_numeric_dtype(df[col]):
@@ -472,6 +477,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         grain=grain,
         partial_months={c: [str(df[c].max().to_period("M")), int(df[c].max().day)]
                         for c in _date_ranges(df, ctx.pii) if partial_last_month(df[c])},
+        main_currency=currency if ctx.pack and other else None,
     )
     return df, audit
 

@@ -26,9 +26,10 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents.analysis_agent import ANALYSIS_CARD, findings_by_id, segment_id
+from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
 from agents.utils import pii_columns, strip_markdown_fences
+from domain_pack import glossary_hits, pack_caveats, pack_for
 from guardrails import (
     UNTRUSTED_NOTE,
     delimit_untrusted,
@@ -36,6 +37,7 @@ from guardrails import (
     mask_pii,
     ungrounded_dates,
     ungrounded_numbers,
+    claim_causal_overreach,
     claim_rank_conflict,
     without_dates,
 )
@@ -205,6 +207,16 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
             facts.append("There is one month of data: no month-over-month comparison exists.")
     else:
         facts.append("There is no date column: name no period.")
+    # 5.7: the domain's KPI tiles, as computed (a number here is grounded), and what must be said:
+    # for an overview of the data or a question naming one of its KPIs (as analysis's notes).
+    tiles = [k for k in (findings.kpis if findings else []) if k.recipe and k.recipe.kind == "pack"]
+    question = session.task_plan.raw_query if session.task_plan else ""
+    pack = pack_for(contract.domain) if contract else None
+    named = {c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns])} if pack else set()
+    tiles = [k for k in tiles if _OVERVIEW_WORDS.search(question) or k.recipe.kpi in named]
+    facts += [f"{k.label}: {k.value}" + (f" ({k.context})" if k.context else "") for k in tiles]
+    if tiles:
+        facts += [f"Stated with the report (do not contradict): {c}" for c in _pack_caveats(session)]
 
     chart_of: dict[str, str] = {}
     chart_lines = []
@@ -281,7 +293,11 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     narrative = session.narrative
     evidence = {e.id: e for e in findings.evidence}
     pool, has_dates = ctx.pool(), ctx.first is not None
-    removed = {"sentences": 0, "uncited": 0, "ranks": 0}
+    removed = {"sentences": 0, "uncited": 0, "ranks": 0, "causal": 0}
+    contract = session.data_contract
+    pack = pack_for(contract.domain) if contract else None
+    # 5.7: "the discount drove sales" with no experiment cited is removed, as quality flags it
+    triggers = pack.causal_triggers if pack and not any(e.kind == "test" for e in findings.evidence) else ()
     # The quality check's rank rule as a repair: "B has the lowest average (98.06)" when C does
     # (ins-02, in all 3 runs) is removed before the report ships.
     groups = [{"id": i, "values": [(str(r.get("name")), r.get("value")) for r in f.results]}
@@ -294,7 +310,10 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
         removed["sentences"] += bool(bad)
         misranked = not bad and claim_rank_conflict(sentence, groups) is not None
         removed["ranks"] += misranked
-        return not bad and not misranked
+        causal = not bad and not misranked and bool(triggers) and \
+            claim_causal_overreach(sentence, [], triggers) is not None
+        removed["causal"] += causal
+        return not bad and not misranked and not causal
 
     def fix(text, executive: bool = True) -> str:
         text = _clean_for_executive(str(text or ""), narrative) if executive else str(text or "")
@@ -356,6 +375,10 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     if removed["ranks"]:
         caveats.append(f"{removed['ranks']} sentence(s) ranking a group differently from its "
                        "breakdown were removed.")
+    if removed["causal"]:
+        trace_verdict("insight", PROMPT_VERSION, "causal_removed")
+        caveats.append(f"{removed['causal']} sentence(s) saying a promotion or discount caused a "
+                       "change were removed: without a control group that can't be shown.")
 
     executive = ExecutiveSummary(headline=headline, headline_evidence_ids=head_ids,
                                  paragraphs=summary, findings=claims, action_items=actions)
@@ -469,7 +492,7 @@ def _analyst_view(session: AnalysisSession, model_caveats: list[str]) -> Analyst
     low = [f"{e.claim}: low confidence ({e.confidence_reason})" for e in evidence
            if e.confidence == "low"]
     assumptions = [a for e in evidence for a in e.assumptions]
-    caveats = list(dict.fromkeys([*model_caveats, *low, *assumptions]))[:12]
+    caveats = list(dict.fromkeys([*model_caveats, *_pack_caveats(session), *low, *assumptions]))[:12]
     code = [c.rationale.code for c in session.chart_configs if c.rationale and c.rationale.code]
     return AnalystDetail(methodology=methodology, statistical_notes=notes, caveats=caveats,
                          code_references=list(dict.fromkeys(code))[:3])
@@ -526,7 +549,18 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
         alert(Severity.LOW, "", f"Duplicates: {audit.duplicates_removed} rows removed",
               f"{audit.duplicates_removed} duplicate records (the same ID twice) were removed "
               "before the analysis.", "Find where duplicate records enter the export.")
-    return _compress_alerts(out)
+    kept, overflow = _compress_alerts(out)
+    if lines := _pack_caveats(session):   # 5.7: how the domain's numbers are counted, always shown
+        kept.append(AnomalyAlert(title="How these numbers are counted", severity=Severity.LOW,
+                                 description=" ".join(lines), affected_metric="",
+                                 suggested_investigation=""))
+    return kept, overflow
+
+
+def _pack_caveats(session: AnalysisSession) -> list[str]:
+    contract = session.data_contract
+    pack = pack_for(contract.domain) if contract else None
+    return pack_caveats(pack, session.cleaning_audit, contract.roles) if pack else []
 
 
 # ── Alert ordering, executive sanitizer, legacy text ───────────────────────────

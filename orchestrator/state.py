@@ -279,6 +279,7 @@ class CleaningAudit(BaseModel):
     # Phase 5.7: date columns whose last month is partial (a mid-month export): {col: [month, days]}.
     # Period comparisons leave that month out (utils.partial_last_month).
     partial_months: dict[str, list] = Field(default_factory=dict)
+    main_currency: str | None = None   # 5.7: money totals' currency when rows carry several
 
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────

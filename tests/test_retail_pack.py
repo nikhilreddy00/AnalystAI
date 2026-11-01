@@ -414,7 +414,7 @@ def _session(name: str) -> tuple[AnalysisSession, dict]:
     buf = io.BytesIO()
     raw.to_parquet(buf, index=False)
     s.__dict__["_df_parquet"] = buf.getvalue()
-    asyncio.run(run_cleaning_agent(s))
+    s.cleaning_audit = asyncio.run(run_cleaning_agent(s))[1]
     return s, datagen.make(name, 1)[1]
 
 
@@ -803,3 +803,76 @@ def test_a_kpi_series_by_week_names_weeks_by_their_end(shop):
     r = _ask(s, "net sales by week", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="W")
     assert "latest week ending 2026-02-" in r.answer_text   # retail weeks end on Saturday
     assert pd.Timestamp(r.chart_configs[0].data[-1]["period"]).weekday() == 5
+
+
+# ── WP3: what must be said, causal claims, follow-ups, first questions ──────────────────────
+def _audited(name: str):
+    s, _ = _session(name)
+    return s
+
+
+@pytest.mark.parametrize("name, says", [
+    ("retail_lines", ["Feb 2026 is partial (12 days of data)", "lines of refunded orders are left out",
+                      "lines of cancelled or voided orders are left out", "test-order lines are left out",
+                      "rows in currencies other than USD are left out"]),
+    ("b2b_invoices", ["Net sales are after 119 return or credit lines", "postage, fee or adjustment lines"]),
+    ("store_weeks", []),
+    ("sales", ["The data covers 12 months, so month-over-month changes may be seasonal"]),
+])
+def test_the_report_must_say_what_the_data_makes_true(name, says):
+    from domain_pack import pack_caveats
+    s = _audited(name)
+    got = " ".join(pack_caveats(RETAIL, s.cleaning_audit, s.data_contract.roles))
+    assert all(x in got for x in says), got
+    if name == "store_weeks":
+        assert "partial" not in got and "return" not in got
+
+
+def test_must_say_lines_reach_the_summary_alerts_and_the_analyst_view():
+    from agents.insight_agent import _alerts, _analyst_view
+    from orchestrator.state import AnalysisFindings
+    s = _audited("retail_lines")
+    s.analysis_findings = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[],
+                                           anomalies=[], statistical_tests=[], forecast_points=[],
+                                           distributions={}, code_executed="")
+    alerts, _ = _alerts(s)
+    assert any("Feb 2026 is partial" in a.description for a in alerts)
+    assert any("refunded" in c for c in _analyst_view(s, []).caveats)
+    other = _audited("employees")
+    other.analysis_findings = s.analysis_findings
+    assert not any(a.title == "How these numbers are counted" for a in _alerts(other)[0])
+
+
+@pytest.mark.parametrize("sentence, flagged", [
+    ("The discount drove a 12% rise in sales.", True), ("Markdowns boosted unit sales.", True),
+    ("Higher discounts lifted order counts.", True),
+    ("Discount levels were flat while seasonality drove the rise.", False),
+    ("Sales rose 12%; the promotion may have contributed.", False),
+    ("The campaign did not cause the increase.", False),
+    ("Net sales grew 8% year over year, driven by the North region.", False),
+    ("Readmissions fell, driven by the discharge program.", False),   # another domain's words
+])
+def test_promotions_are_not_credited_with_a_change_without_a_control(sentence, flagged):
+    from guardrails import claim_causal_overreach
+    assert bool(claim_causal_overreach(sentence, ["segment"], RETAIL.causal_triggers)) is flagged
+    assert claim_causal_overreach(sentence, ["test"], RETAIL.causal_triggers) is None   # an A/B test
+
+
+def test_a_drill_down_answer_keeps_only_what_the_analysis_supports():
+    from agents.drill_down_agent import checked_answer
+    s = _audited("retail_lines")
+    shown = ["Net sales were $310,635.46 over 2,272 orders."]
+    out = checked_answer("Net sales were $310,635.46. The discount drove that. It was $999,999.",
+                         s, shown)
+    assert out.startswith("Net sales were $310,635.46.") and "discount" not in out
+    assert "2 sentence(s)" in out
+    assert checked_answer("It was $999,999.", s, shown).startswith("I couldn't answer")
+    assert checked_answer("", s, shown) == ""
+
+
+async def test_first_questions_are_the_domains_when_the_model_fails(recorded_llm):
+    from agents.intake_agent import generate_proactive_questions
+    from llm.client import get_client
+    recorded_llm.responses.append("not json")
+    qs = await generate_proactive_questions(_contract(_gen("retail_lines")), get_client())
+    assert qs == RETAIL.first_questions[:5]

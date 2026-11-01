@@ -8,15 +8,23 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import uuid
 
 import pandas as pd
 
 from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
-from guardrails import UNTRUSTED_NOTE, delimit_untrusted
+from domain_pack import pack_for
+from guardrails import (
+    UNTRUSTED_NOTE,
+    claim_causal_overreach,
+    delimit_untrusted,
+    ungrounded_numbers,
+    without_dates,
+)
 from agents.visualization_agent import _why, build_context, finalize_charts
-from llm.client import get_client
+from llm.client import get_client, trace_verdict
 from orchestrator.state import (
     AnalysisSession,
     ChartConfig,
@@ -153,7 +161,10 @@ Answer in JSON as specified.
                 "I had trouble formatting an answer. Try rephrasing your question.",
             ) from exc
 
-    answer = payload.get("answer_text", "").strip()
+    answer = checked_answer(str(payload.get("answer_text") or "").strip(), session,
+                            [report.executive_summary, report.technical_findings,
+                             json.dumps(findings.eda_summary, default=str) if findings else "",
+                             contract.row_count if contract else 0])
     chart_configs: list[ChartConfig] = []
     spec = payload.get("chart_spec")
     if spec and isinstance(spec, dict):
@@ -201,6 +212,31 @@ Answer in JSON as specified.
         answer_text=answer or "I couldn't formulate a direct answer to that.",
         chart_configs=chart_configs,
     )
+
+
+def checked_answer(answer: str, session: AnalysisSession, shown: list) -> str:
+    """The follow-up answer, sentence by sentence, through the report's own checks (Phase 5.7):
+    a number not in what the model was shown, or a promotion credited with a change (a domain
+    pack's causal words, no experiment cited), is removed and counted. Nothing left: a fixed
+    reply, never an unchecked one."""
+    contract = session.data_contract
+    pack = pack_for(contract.domain) if contract else None
+    triggers = pack.causal_triggers if pack else ()
+    has_dates = bool(contract and contract.date_columns)
+    kept, dropped = [], 0
+    for s in (x for x in re.split(r"(?<=[.!?])\s+", answer) if x.strip()):
+        if ungrounded_numbers(without_dates(s, has_dates), shown) or (
+                triggers and claim_causal_overreach(s, [], triggers)):
+            dropped += 1
+        else:
+            kept.append(s)
+    if dropped:
+        trace_verdict("drill_down", "v0", "sentence_removed")
+    if not kept:
+        return ("I couldn't answer that from the analysis already done without stating numbers "
+                "it doesn't hold. Ask it as a new question and I'll compute it.") if dropped else ""
+    return " ".join(kept) + (f" ({dropped} sentence(s) that the analysis can't support were "
+                             "removed.)" if dropped else "")
 
 
 def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str) -> list[dict]:
