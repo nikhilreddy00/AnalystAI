@@ -121,11 +121,25 @@ def test_dataset_helpers_send_no_pii(helper):
 def test_client_guard_tokenizes_and_restores():
     """The backstop: a question naming a customer still works; the model never sees the name."""
     _session()   # fills the guard
-    llm = RecordedClient(['{"filter": "[PII_%s]"}' % __import__("hashlib").sha1(b"Jane Doe").hexdigest()[:8]])
+    from llm.client import pii_token
+    llm = RecordedClient(['{"filter": "%s"}' % pii_token("Jane Doe")])
     out = asyncio.run(llm.complete(messages=[{"role": "user", "content": "What did Jane Doe buy?"}],
                                    max_tokens=10, agent="t", prompt_version="v0"))
     assert "Jane Doe" not in json.dumps(llm.calls) and "[PII_" in json.dumps(llm.calls)
     assert out.text == '{"filter": "Jane Doe"}'   # restored for the code that reads it
+
+
+def test_tokens_are_keyed_not_a_plain_hash(monkeypatch):
+    """Phase 5.5: an unkeyed hash of a 7-digit MRN can be reversed by trying every number."""
+    import hashlib
+
+    from api.config import settings
+    from llm.client import pii_token
+    plain = "[PII_%s]" % hashlib.sha1(b"1234567").hexdigest()[:8]
+    assert pii_token("1234567") != plain
+    a = pii_token("1234567")
+    monkeypatch.setattr(settings, "encryption_key", "another")
+    assert pii_token("1234567") != a
 
 
 def test_guard_leaves_calendar_words_and_short_values():

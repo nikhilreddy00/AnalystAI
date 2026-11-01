@@ -101,13 +101,14 @@ def test_a_single_small_group_stays_pooled_and_a_lone_group_is_untouched():
     assert set(_pooled(["X"] * 30)) == {"X"}
 
 
-def test_high_cardinality_ids_dates_and_metrics_are_never_pooled():
+def test_too_specific_text_is_withheld_dates_and_metrics_kept():
     n = 60
-    df = _patients(n, code=[f"C{i}" for i in range(n)],                  # > 50 distinct
-                   visit_date=pd.date_range("2026-01-01", periods=n).strftime("%Y-%m-%d"))
+    df = _patients(n, pharmacy=[f"Pharmacy {i % 55}" for i in range(n)],   # > 50 distinct
+                   visit_date=pd.date_range("2026-01-01", periods=n).strftime("%Y-%m-%d"),
+                   amount=np.linspace(10.5, 99.5, n))
     out, _ = prepare_frame(df, _contract(df), ConnectorType.CSV)
-    assert POOLED_LABEL not in set(out["code"]) and POOLED_LABEL not in set(out["visit_date"])
-    assert out["cost"].equals(df["cost"])
+    assert "pharmacy" not in out.columns            # fail closed: too specific to be a category
+    assert POOLED_LABEL not in set(out["visit_date"]) and out["amount"].equals(df["amount"])
 
 
 def test_non_patient_data_passes_unchanged():
@@ -246,14 +247,14 @@ async def test_cleaning_audit_starts_with_the_deidentification(encounters_file):
 def test_e2b_no_pii_unchanged():
     from agents.analysis_agent import e2b_frame
     payload = _parquet(datagen.make("claims", 1)[0])
-    assert e2b_frame(payload, []) is payload
+    assert e2b_frame(payload, []) == (payload, {})
 
 
 def test_e2b_pseudonymises_pii():
     from agents.analysis_agent import e2b_frame
     df = pd.DataFrame({"customer_name": ["Ana Ito", None, "Ben Moss"], "phone": [5551234567, 1.0, 2.0],
                        "dob": pd.to_datetime(["1950-01-02", None, "1960-03-04"]), "x": [1, 2, 3]})
-    out = pd.read_parquet(io.BytesIO(e2b_frame(_parquet(df), ["customer_name", "phone", "dob"])))
+    out = pd.read_parquet(io.BytesIO(e2b_frame(_parquet(df), ["customer_name", "phone", "dob"])[0]))
     text = out.to_csv(index=False)
     assert list(out.columns) == list(df.columns) and out["x"].tolist() == [1, 2, 3]
     assert not any(v in text for v in ("Ana Ito", "5551234567", "1950-01-02"))
@@ -286,7 +287,7 @@ def test_old_cases_unaffected_by_pseudonyms():
         seen.add(key)
         df = dataset(case)[0]
         pii = pii_columns(_contract(df))
-        masked = pd.read_parquet(io.BytesIO(e2b_frame(_parquet(df), pii)))
+        masked = pd.read_parquet(io.BytesIO(e2b_frame(_parquet(df), pii)[0]))
         a, b = _builtins(df, case), _builtins(masked, case)
         for field in ("eda_summary", "correlations", "segments", "trends", "anomalies",
                       "statistical_tests"):

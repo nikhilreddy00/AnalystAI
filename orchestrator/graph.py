@@ -33,6 +33,7 @@ from agents.analysis_agent import run_analysis_agent
 from agents.cleaning_agent import build_evidence as build_cleaning_evidence
 from agents.cleaning_agent import run_cleaning_agent
 from agents.ingestion_agent import remember_pii, run_ingestion_agent, seed_phi_guard
+from guardrails import is_phi_identifier
 from agents.insight_agent import run_insight_agent
 from agents.intake_agent import (
     generate_data_narrative,
@@ -126,8 +127,10 @@ def _fail(session: AnalysisSession, stage: str, exc: Exception) -> None:
     # An exception's text can quote cell values: the user (and run_events) get its type only.
     session.error_message = (
         exc.user_message if isinstance(exc, AgentError)
-        else f"{stage} failed ({type(exc).__name__}). Try again, or ask a narrower question."
+        else f"{stage} failed ({type(exc).__name__}). Try again; if it keeps failing, ask a "
+             "different question."
     )
+    session.error_retryable = getattr(exc, "retryable", True)
 
 
 async def _save(state: AgentState) -> None:
@@ -200,7 +203,10 @@ async def ingestion_node(state: AgentState) -> dict:
         _emit(state, {"type": "agent_start", "agent": "ingestion", "message": "Loading your data..."})
 
     cached_used = False
-    if is_resuming and session.cleaned_data_path:
+    dc = session.data_contract
+    # A patient-data thread from before PHI mode cached the raw frame: re-ingest it (de-identified).
+    legacy_phi = bool(dc and not dc.phi and any(is_phi_identifier(c.name) for c in dc.columns))
+    if is_resuming and session.cleaned_data_path and not legacy_phi:
         # Try the on-disk cache before re-loading from the connector. Cuts a full
         # connector round-trip on every follow-up question and detaches the
         # follow-up from connector drift (a re-queried SQL table won't surprise us).
@@ -253,6 +259,10 @@ async def ingestion_node(state: AgentState) -> dict:
                         session.narrative = await generate_data_narrative(contract, get_client())
                     except Exception:
                         logger.warning("data narrative skipped", exc_info=True)
+            elif contract.phi or (session.data_contract and session.data_contract.phi):
+                # Patient data: the frame was just de-identified, so the stored contract (maybe
+                # from before PHI mode, or before a column crossed a threshold) can't describe it.
+                session.data_contract = contract
             # On resume without cache: data_contract already set from prior session; df_parquet just restored.
         except Exception as exc:
             _fail(session, "Data ingestion", exc)
@@ -379,7 +389,7 @@ async def analysis_node(state: AgentState) -> dict:
                 roles = classify_columns(df)
                 query = session.task_plan.raw_query if session.task_plan else ""
                 findings.kpis = generate_smart_kpis(
-                    df, roles, query, narrative=session.narrative
+                    df, roles, query, narrative=session.narrative, contract=session.data_contract
                 )
                 # Phase 5: a tile whose number doesn't match the data or the report is dropped.
                 wrong = set(kpi_mismatches(findings.kpis, df, findings.eda_summary))
@@ -596,7 +606,7 @@ async def quality_check_node(state: AgentState) -> dict:
         except Exception as exc:
             # The user already has the insight; the review is an add-on.
             logger.warning("quality review skipped", exc_info=True)
-            msg = exc.user_message if isinstance(exc, AgentError) else str(exc)
+            msg = exc.user_message if isinstance(exc, AgentError) else type(exc).__name__
             _emit(state, {"type": "agent_complete", "agent": "quality_check",
                           "message": f"Review skipped: {msg}"})
         # Flip after the first full run so the next turn becomes targeted Q&A.
@@ -718,7 +728,7 @@ async def error_node(state: AgentState) -> dict:
     session: AnalysisSession = state["session"]
     session.status = "failed"
     msg = session.error_message or "An unexpected error occurred."
-    _emit(state, {"type": "error", "message": msg})
+    _emit(state, {"type": "error", "message": msg, "retryable": session.error_retryable})
     _emit(state, {"type": "done"})
     await _save(state)
     return {"session": session}

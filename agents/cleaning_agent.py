@@ -105,6 +105,9 @@ class CleanContext:
     targets: set[str]       # the plan's metrics: never filled
     drop_high_null: bool    # the user chose "Drop those columns" at the high-null gate
     pii: set[str] = frozenset()   # personal-data columns: the audit never quotes their values
+    # PHI mode's working copy (5.5): withheld columns and pooled labels can make distinct records
+    # look identical, so duplicates were judged on the raw rows already (prepare_frame).
+    deidentified: bool = False
 
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
@@ -120,7 +123,8 @@ def build_context(session: AnalysisSession, drop_high_null: bool = False) -> Cle
     task = session.task_plan
     targets = {m for m in (task.target_metrics if task else []) if m in df.columns}
     return CleanContext(df=df, ids=ids, dates=dates, targets=targets,
-                        drop_high_null=drop_high_null, pii=pii_columns(contract))
+                        drop_high_null=drop_high_null, pii=pii_columns(contract),
+                        deidentified=bool(contract.deidentification))
 
 
 def _code_like(s: pd.Series) -> bool:
@@ -159,6 +163,7 @@ async def run_cleaning_agent(session: AnalysisSession, drop_high_null: bool = Fa
         # Patient data: ingestion's de-identification steps head the audit (Phase 5.5).
         deid = session.data_contract.deidentification
         audit.decisions = [*deid, *audit.decisions]
+        audit.duplicates_removed += sum(d.rows_removed for d in deid if d.operation == "drop_duplicates")
         audit.summary = (f"Patient data de-identified first ({len(deid)} steps: identifiers "
                          f"withheld or pseudonymised, small groups pooled). " + audit.summary)
     dropped = {d.column for d in audit.decisions if d.operation == "drop_column"}
@@ -273,13 +278,16 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     n_dup = int(dup.sum())
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
-    if n_dup and keys:
+    if n_dup and keys and not ctx.deidentified:
         df = df[~dup]
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
             f"(same {keys[0]} and every other value).", n_dup, removed=n_dup)
     elif n_dup:
+        why = ("the patient data was de-identified first, and duplicates were judged on the "
+               "original rows" if ctx.deidentified else
+               "there is no ID column to tell a copy from a repeated record")
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
-            "there is no ID column to tell a copy from a repeated record.", n_dup)
+            f"{why}.", n_dup)
 
     # 6. Rows with no value at all.
     n = len(df)

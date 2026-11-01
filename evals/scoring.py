@@ -1173,8 +1173,10 @@ def _phi_checks(truth: dict, phi: dict | None) -> list[dict]:
                            "ok": ok, "detail": fate + (f", {len(hits)} values in the contract"
                                                        if hits else "")})
         elif t.get("phi_trap") or not want:
-            checks.append({"kind": "phi_keep", "column": name, "ok": fate == "kept",
-                           "detail": fate})
+            # On patient data every identifier is pseudonymised (fail closed): a look-alike id
+            # keeps its counts. Off patient data nothing may change.
+            ok = fate == "kept" or (want and fate == "pseudonymized")
+            checks.append({"kind": "phi_keep", "column": name, "ok": ok, "detail": fate})
         else:   # patient data's other columns: may be pooled or capped, never withheld
             checks.append({"kind": "phi_keep", "column": name, "ok": fate != "withheld",
                            "detail": fate})

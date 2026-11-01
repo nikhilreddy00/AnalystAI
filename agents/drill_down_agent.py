@@ -187,7 +187,8 @@ Answer in JSON as specified.
             frame = pd.read_parquet(io.BytesIO(df_parquet))
             agg = "none" if chart_type == ChartType.SCATTER else (
                 "mean" if pd.api.types.is_numeric_dtype(frame[y]) and x != y else "count")
-            ctx = build_context(frame, session.task_plan, narrative=session.narrative)
+            ctx = build_context(frame, session.task_plan, narrative=session.narrative,
+                                contract=session.data_contract)
             _why(chart_configs[-1], ctx, "drill_down:model_suggested",
                  f"Suggested by the drill-down model for this follow-up; {agg} {y} per {x}"
                  if agg != "none" else "Suggested by the drill-down model: raw points.",

@@ -1,0 +1,26 @@
+# Employees as of a snapshot date. Attrition is the share who left; tenure of current staff is
+# censored (they haven't left yet), so their tenure is a lower bound.
+tables:
+  - name: employees
+    source: file.employees
+    primary_key: [employee_id]
+    columns:
+      - {name: employee_id, type: id}
+      - {name: department, type: dimension}
+      - {name: hire_date, type: time}
+      - {name: termination_date, type: time}
+      - {name: left, type: fact, description: 1 if the employee left}
+      - {name: tenure_months, type: fact, unit: months}
+      - {name: salary, type: fact, unit: USD}
+      - {name: performance_score, type: dimension}
+metrics:
+  - name: attrition_rate
+    table: employees
+    expr: AVG(employees.left)
+    synonyms: [turnover]
+  - name: average_salary
+    table: employees
+    expr: AVG(employees.salary)
+  - name: average_tenure
+    table: employees
+    expr: AVG(employees.tenure_months)

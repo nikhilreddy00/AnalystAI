@@ -763,7 +763,8 @@ def executive_jargon(text: str) -> list[str]:
 # ── PII ────────────────────────────────────────────────────────────────────────
 
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|address|street|dob|birth|passport|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|dob|birth\w*|"
+    r"born\w*|passport|surname|maiden_?name|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
@@ -860,7 +861,8 @@ def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
 
 
 _NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
-               ("address", r"address|street"), ("dob", r"dob|birth"), ("passport", r"passport"))
+               ("address", r"address|street"), ("dob", r"dob|birth\w*|date_of_birth|born\w*"),
+               ("passport", r"passport"))
 
 
 def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
@@ -906,13 +908,20 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
 # ── PHI (Phase 5.5): patient records, pseudonyms, Safe Harbor generalisations ──────────────────
 
 _PHI_ID_RE = re.compile(r"(?:^|_)(?:mrn|medical_?record(?:_?(?:no|nr|num|number|id))?|"
-                        r"patient_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+                        r"health_?record(?:_?(?:no|nr|num|number|id))?|chart_?(?:no|nr|num|number|id)|"
+                        r"(?:patient|pt|subject)_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+# Words that only health data uses in a header: with a personal or identifier column next to
+# them they mark patient records even without an MRN (a 'patient' name + a 'diagnosis' text).
+_HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|condition|"
+                        r"medications?|prescriptions?|procedures?|admissions?|admit\w*|"
+                        r"discharg\w*|clinic\w*|hospital\w*|physician|encounters?|symptoms?|"
+                        r"treatments?|ward|lab_?results?|allerg\w*|vaccin\w*)(?:$|_)", re.I)
 _DX_NAME_RE = re.compile(r"(?:^|_)(?:icd(?:_?10)?|diagnos[ie]s|diag|dx)(?:_?codes?)?(?:$|_)", re.I)
 _ICD10_RE = re.compile(r"^[A-TV-Z]\d[0-9A-Z](?:\.[0-9A-Z]{1,4})?$")
 # HIPAA Safe Harbor: 3-digit ZIPs covering ≤ 20,000 people (2000 census) become 000.
 RESTRICTED_ZIP3 = frozenset({"036", "059", "063", "102", "203", "556", "692", "790", "821", "823",
                              "830", "831", "878", "879", "884", "890", "893"})
-_ZIP_NAME_RE = re.compile(r"(?:^|_)(?:zip|zipcode|postal|postcode)(?:_?code)?$", re.I)
+_ZIP_NAME_RE = re.compile(r"(?:^|_)(?:zip\d?|zipcode|postal|postcode)(?:_?code)?$", re.I)
 _AGE_NAME_RE = re.compile(r"(?:^|_)age(?:_?(?:years|yrs|at_\w+))?$", re.I)
 AGE_CAP = 90
 
@@ -930,6 +939,10 @@ def is_diagnosis_column(name: str, values: Iterable[Any]) -> bool:
     return bool(text) and sum(bool(_ICD10_RE.match(t)) for t in text) >= 0.5 * len(text)
 
 
+def is_health_column(name: str) -> bool:
+    return bool(_HEALTH_RE.search(_norm_name(name)))
+
+
 def is_zip_column(name: str) -> bool:
     return bool(_ZIP_NAME_RE.search(_norm_name(name)))
 
@@ -938,16 +951,19 @@ def is_age_column(name: str) -> bool:
     return bool(_AGE_NAME_RE.search(_norm_name(name)))
 
 
-def pseudonym_key() -> bytes:
+def pseudonym_key(scope: str = "") -> bytes:
     """The key for one-way pseudonyms, derived from ENCRYPTION_KEY (never the key itself, which
-    also encrypts checkpoints). Empty key = anyone could recompute the pseudonyms: refuse."""
+    also encrypts checkpoints) and `scope` (the user: the same patient gets different IDs in two
+    accounts). Empty key = anyone could recompute the pseudonyms: refuse. Rotating
+    ENCRYPTION_KEY changes every pseudonym (stated in ADR-0008)."""
     import hashlib
     import hmac
 
     from api.config import settings
     if not settings.encryption_key:
         raise ValueError("ENCRYPTION_KEY is not set: pseudonyms would be reversible")
-    return hmac.new(settings.encryption_key.encode(), b"phi-pseudonym-v1", hashlib.sha256).digest()
+    return hmac.new(settings.encryption_key.encode(), b"phi-pseudonym-v1|" + scope.encode(),
+                    hashlib.sha256).digest()
 
 
 def _canonical_value(value: Any) -> str:
@@ -964,9 +980,10 @@ def pseudonym(value: Any, key: bytes) -> str:
     return "ID-" + hmac.new(key, _canonical_value(value).encode(), hashlib.sha256).hexdigest()[:16]
 
 
-def pseudonymize_columns(df, columns: Iterable[str], key: bytes):
+def pseudonymize_columns(df, columns: Iterable[str], key: bytes, back: dict | None = None):
     """A copy of `df` with every value of `columns` replaced by its pseudonym (missing stays
-    missing). Two values with one pseudonym would merge two people: that fails closed."""
+    missing). Two values with one pseudonym would merge two people: that fails closed.
+    `back`, if given, collects {pseudonym: original} (kept server-side, never sent)."""
     import pandas as pd
     out = df.copy()
     for col in columns:
@@ -976,7 +993,9 @@ def pseudonymize_columns(df, columns: Iterable[str], key: bytes):
         mapping = {v: pseudonym(v, key) for v in values}
         if len(set(mapping.values())) != len(mapping):
             raise ValueError(f"pseudonym collision in '{col}'")
-        out[col] = out[col].map(lambda v: v if pd.isna(v) else mapping[_canonical_value(v)])
+        out[col] = out[col].map(lambda v, m=mapping: v if pd.isna(v) else m[_canonical_value(v)])
+        if back is not None:
+            back.update({p: v for v, p in mapping.items()})
     return out
 
 

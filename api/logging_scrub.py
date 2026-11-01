@@ -21,9 +21,18 @@ class ScrubFilter(logging.Filter):
         try:
             if record.exc_info and not record.exc_text:
                 record.exc_text = logging.Formatter().formatException(record.exc_info)
-            record.msg, record.args = scrub(record.getMessage()), None
+            if isinstance(record.args, tuple) and record.args:
+                # Keep the args: uvicorn's access formatter unpacks them. Scrub each one.
+                record.msg = scrub(str(record.msg))
+                # Numbers stay numbers (%d needs them); anything else is scrubbed as its text
+                # (an exception or a dict passed as an arg can carry a value).
+                record.args = tuple(a if isinstance(a, (int, float)) else scrub(str(a))
+                                    for a in record.args)
+            else:
+                record.msg, record.args = scrub(record.getMessage()), None
             if record.exc_text:
                 record.exc_text = scrub(record.exc_text)
+                record.exc_info = None   # a formatter re-reading exc_info would get the raw one
             if record.stack_info:
                 record.stack_info = scrub(record.stack_info)
         except Exception:   # never drop a log line, never let it through unscrubbed

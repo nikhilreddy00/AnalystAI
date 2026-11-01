@@ -23,7 +23,9 @@ from guardrails import (
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
+    is_health_column,
     is_phi_identifier,
+    mask_pii,
     mask_row,
     pii_kind,
     sql_fanout,
@@ -161,8 +163,16 @@ def build_context(question: str, layer, dialect: str, introspected_schema: str =
 def _pii_columns(res: QueryResult) -> set[str]:
     """Result columns holding personal data, by name or by value (`sales_rep` holding names): the
     query runs before ingestion has registered the run's PII values with the client guard."""
-    return {c for i, c in enumerate(res.columns)
-            if pii_kind(c, [r[i] for r in res.rows[:200]]) or is_phi_identifier(c)}
+    pii = {c for i, c in enumerate(res.columns)
+           if pii_kind(c, [r[i] for r in res.rows[:200]]) or is_phi_identifier(c)}
+    if any(is_health_column(c) or is_phi_identifier(c) for c in res.columns):
+        # Patient data, before PHI mode has seen it: only short category text is shown (a name
+        # or a note under any header stays out); numbers and dates are kept.
+        for i, c in enumerate(res.columns):
+            vals = [r[i] for r in res.rows[:200] if isinstance(r[i], str)]
+            if vals and len(set(vals)) > 20:
+                pii.add(c)
+    return pii
 
 
 def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:
@@ -177,7 +187,7 @@ def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:
 def _db_error(exc: Exception) -> str:
     """First line of a database error. It can quote data, so it is delimited."""
     msg = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
-    return delimit_untrusted(msg)
+    return delimit_untrusted(mask_pii(msg))
 
 
 async def run_tool(name: str, args: dict, layer, connector: SQLConnector) -> tuple[str, bool]:

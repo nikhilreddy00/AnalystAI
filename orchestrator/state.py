@@ -100,6 +100,13 @@ class ColumnInfo(BaseModel):
     # sessions loadable.
     role_reason: str = ""
     pii: str | None = None
+    # Phase 5.5, from a semantic-layer table matching the upload (semantic_layer.column_hints):
+    # how the column aggregates over time and groups (sum | mean | last: each `aggregation_by`
+    # entity's last value per period, then summed), and its unit (ISO currency or °C, days…).
+    aggregation: str | None = None
+    aggregation_by: str | None = None
+    aggregation_time: str | None = None   # the level's time column (its snapshots' order)
+    unit: str | None = None
 
 
 class ConnectorConfig(BaseModel):
@@ -195,6 +202,7 @@ class DataContract(BaseModel):
     # the working frame is a de-identified copy, and these are the steps that made it.
     phi: bool = False
     deidentification: list["CleaningDecision"] = Field(default_factory=list)
+    deidentified: bool = False   # this contract describes PHI mode's working copy, not the raw rows
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────
@@ -323,6 +331,10 @@ class KPIRecipe(BaseModel):
     target_column: str | None = None
     segment_column: str | None = None
     format_kind: str | None = None  # "currency" | "percent" | "count" | "number"
+    # Phase 5.5: an ISO currency (format_kind "currency") or a unit shown after a number ("°C").
+    # Absent: a currency tile is USD, as before.
+    currency: str | None = None
+    unit: str | None = None
 
 
 class KPI(BaseModel):
@@ -612,6 +624,7 @@ class AnalysisSession(BaseModel):
     # PII values of data this session switched away from: its conversation still quotes them, so
     # every later run's LLM guard is seeded with them (stored with the history, which holds them).
     prior_pii: list[str] = Field(default_factory=list)
+    error_retryable: bool = True   # error_message's failure can pass on a retry (5.5)
     overview_done: bool = False            # Phase 3: True after first comprehensive analysis ships; resets when connector_config changes
     dataset_name: str | None = None
     file_hash: str | None = None

@@ -31,6 +31,7 @@ from langgraph.types import Command
 from llm.client import get_client, pii_values, run_meter
 from memory.run_store import (CANCELLED, HEARTBEAT_S, InMemoryRunStore, Run, RunStore,
                               cancel_events)
+from agents.errors import AgentError
 from memory.session_data import read_cleaned_parquet
 from orchestrator.graph import RunEnv, build_graph, run_env
 from orchestrator.state import AnalysisSession
@@ -242,8 +243,8 @@ async def execute(run: Run, deps: Deps) -> str:
             inp = _FINISHED
         else:
             session = await deps.session_store.load(run.session_id)
-            if session is None:
-                raise RuntimeError("the conversation for this run was not found")
+            if session is None:   # deleted while the run waited: a retry can't bring it back
+                raise DataChanged("the conversation for this run was deleted")
             inp = {"session": session, "user_message": run.input["message"],
                    "is_approval": run.input.get("is_approval", False),
                    "approval_context": run.input.get("approval_context"),
@@ -264,6 +265,9 @@ async def execute(run: Run, deps: Deps) -> str:
     except LeaseLost:
         logger.warning("run %s: lease lost, another worker has it", run.id)
         return "lost"
+    except AgentError as exc:   # e.g. the source behind a patient-data resume is unreachable
+        logger.error("run %s failed", run.id, exc_info=exc)
+        return await _fail(store, run, exc.user_message, retryable=exc.retryable)
     except DataChanged as exc:
         return await _fail(store, run, f"This analysis can't continue: {exc}. Ask the question "
                                        "again to analyse the current data.", retryable=False)

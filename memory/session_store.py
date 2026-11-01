@@ -61,17 +61,23 @@ def _dec_config(cfg: ConnectorConfig) -> ConnectorConfig:
 
 
 def _dump(session: AnalysisSession) -> str:
-    """Serialize with connector secrets Fernet-encrypted (never plaintext at rest)."""
-    cfg = session.connector_config
-    if cfg is None:
-        return session.model_dump_json()
-    return session.model_copy(update={"connector_config": _enc_config(cfg)}).model_dump_json()
+    """Serialize with connector secrets and the PII guard's values Fernet-encrypted (never
+    plaintext at rest: `prior_pii` holds every personal value of the thread's earlier data)."""
+    update: dict = {}
+    if session.connector_config is not None:
+        update["connector_config"] = _enc_config(session.connector_config)
+    if session.prior_pii:
+        update["prior_pii"] = [_ENC_PREFIX + _fernet().encrypt(
+            json.dumps(session.prior_pii).encode()).decode()]
+    return (session.model_copy(update=update) if update else session).model_dump_json()
 
 
 def _load(data: str) -> AnalysisSession:
     s = AnalysisSession.model_validate_json(data)
     if s.connector_config is not None:
         _dec_config(s.connector_config)
+    if len(s.prior_pii) == 1 and s.prior_pii[0].startswith(_ENC_PREFIX):
+        s.prior_pii = json.loads(_fernet().decrypt(s.prior_pii[0][len(_ENC_PREFIX):].encode()))
     return s
 
 

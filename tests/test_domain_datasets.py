@@ -218,9 +218,8 @@ def _targeted(cid: str, handler: str, **params):
                                               aggregation="mean")),
     ("e2e-34", "handle_segment_compare", dict(metric_column="on_time", segment_column="carrier",
                                               aggregation="mean")),
-    pytest.param("e2e-22", "handle_time_series", dict(metric_column="balance", aggregation="sum",
-                                                      frequency="M"),
-                 marks=pytest.mark.xfail(strict=True, reason="WP3: month-end level hint")),
+    ("e2e-22", "handle_time_series", dict(metric_column="balance", aggregation="sum",
+                                          frequency="M")),   # "sum" asked: the level hint wins
     ("e2e-24", "handle_segment_compare", dict(metric_column="encounter_id",
                                               segment_column="department", aggregation="count")),
 ])

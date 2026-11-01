@@ -27,6 +27,7 @@ from agents.data_cleaning import try_numeric_conversion
 from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
+from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
     CALENDAR_WORDS,
@@ -35,6 +36,7 @@ from guardrails import (
     SMALL_CELL,
     is_age_column,
     is_diagnosis_column,
+    is_health_column,
     is_phi_identifier,
     is_zip_column,
     mask_pii,
@@ -231,6 +233,22 @@ def _summary(df: pd.DataFrame, cols: list[ColumnInfo]) -> str:
     return " ".join(parts)
 
 
+_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₹": "INR"}
+
+
+def _written_currency(s: pd.Series) -> str | None:
+    """The ISO code of the currency symbol most values are written with ('$' read as USD, a
+    stated assumption); None for numbers, mixed symbols or plain text."""
+    if not pd.api.types.is_string_dtype(s) and s.dtype != object:
+        return None
+    v = s.dropna().astype(str).str.strip().head(_SAMPLE)
+    if v.empty:
+        return None
+    lead = v.str.lstrip("-(+ ").str[:1]
+    sym = lead.mode().iloc[0]
+    return _SYMBOLS.get(sym) if sym in _SYMBOLS and (lead == sym).mean() >= 0.8 else None
+
+
 def _role(c: ColumnInfo) -> str:
     return "date" if c.is_date else "id" if c.is_id else "metric" if c.is_metric else "category"
 
@@ -299,12 +317,24 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
             sample_values=[MASK] * len(shown) if found else [mask_pii(v) for v in shown],
             is_date=role == "date", is_id=role == "id", is_metric=role == "metric",
             null_pct=null_pct, role_reason=why, pii=found[0] if found else None))
+    hints, layer_note = column_hints([c.name for c in cols])
+    for c in cols:
+        h = hints.get(c.name, {})
+        c.aggregation, c.aggregation_by, c.unit = h.get("aggregation"), h.get("by"), h.get("unit")
+        c.aggregation_time = h.get("time")
+        if c.unit is None and c.is_metric:   # "$1,249.00" in the file: the money's currency
+            c.unit = _written_currency(df[c.name])
+    if layer_note:
+        info = {**info, "notes": [*info.get("notes", []), layer_note]}
     pii = [c.name for c in cols if c.pii]
     head = df.head(5).astype(object)
     rows = head.where(head.notna(), None).to_dict(orient="records")
     fp = fingerprint(df)
-    phi = any(is_phi_identifier(c.name) for c in cols) or any(
-        is_diagnosis_column(str(n), _profiled(df[n]).dropna().head(_SAMPLE).tolist()) for n in df.columns)
+    phi = (any(is_phi_identifier(c.name) for c in cols)
+           or any(is_diagnosis_column(str(n), _profiled(df[n]).dropna().head(_SAMPLE).tolist())
+                  for n in df.columns)
+           # health vocabulary in the headers next to a person or an identifier: patient records
+           or (any(is_health_column(c.name) for c in cols) and any(c.pii or c.is_id for c in cols)))
     return DataContract(
         source_type=source_type, row_count=len(df), column_count=df.shape[1], columns=cols,
         sample_rows=[mask_row(r, pii) for r in rows],
@@ -326,9 +356,11 @@ def known_pii_values(df: pd.DataFrame, contract: DataContract) -> set[str]:
     found: set[str] = set()
     pii_kinds = {c.name: c.pii for c in contract.columns}
     guarded = [c for c in contract.pii_columns if not (contract.phi and pii_kinds.get(c) == "dob")]
-    if contract.phi and not contract.deidentification:   # raw MRNs / patient ids (the working
-        # copy holds their pseudonyms, which need no guarding)
-        guarded += [c for c in df.columns if is_phi_identifier(str(c)) and c not in guarded]
+    if contract.phi and not contract.deidentified:   # raw identifiers (the working copy holds
+        # their pseudonyms, which need no guarding)
+        ids = {c.name for c in contract.columns if c.is_id} | {
+            str(c) for c in df.columns if is_phi_identifier(str(c))}
+        guarded += [c for c in df.columns if c in ids and c not in guarded]
     for col in guarded:
         if col not in df.columns:
             continue
@@ -358,26 +390,33 @@ def remember_pii(df: pd.DataFrame, contract: DataContract) -> None:
                      [*sorted(found)[:_PII_CAP], OVERFLOW])
 
 
-def _seed_guard_from_last_turn(session: AnalysisSession) -> None:
+async def _seed_guard_from_last_turn(session: AnalysisSession, llm: LLMClient) -> None:
     """A follow-up on a database is answered by the SQL agent before this turn's rows exist, and
-    its memory quotes the last answer: register the last turn's PII values first."""
+    its memory quotes the last answer: register the last turn's PII values first. Patient data:
+    the cached copy holds no names, so the raw source is read too (seed_phi_guard)."""
     if pii_values.get() is None or not (session.data_contract and session.cleaned_data_path):
         return
     from memory.session_data import read_cleaned_parquet
-    if (cached := read_cleaned_parquet(session.session_id)) is not None:
-        remember_pii(pd.read_parquet(io.BytesIO(cached)), session.data_contract)
+    cached = await asyncio.to_thread(read_cleaned_parquet, session.session_id)
+    if cached is not None:
+        await asyncio.to_thread(lambda: remember_pii(pd.read_parquet(io.BytesIO(cached)),
+                                                     session.data_contract))
+    await seed_phi_guard(session, llm)
 
 
 # ── PHI mode (Phase 5.5): a de-identified working copy ──────────────────────────
 
 def _is_free_text(s: pd.Series) -> bool:
-    """Notes and comments: most non-empty values are sentences (4+ words). They can name anyone,
-    so PHI mode withholds them; categories and codes are 1-3 words."""
-    if not pd.api.types.is_string_dtype(s):
+    """Notes and comments: phrases, not labels (3+ words in 30% of non-empty values, or any
+    value of 6+). They can name anyone, so PHI mode withholds them; categories and codes are
+    1-2 words ("General Medicine"). Fail closed: a 3-word diagnosis text is withheld too (its
+    ICD code stays)."""
+    if not pd.api.types.is_string_dtype(s) and s.dtype != object:
         return False
     v = s.dropna().astype(str).str.strip()
     v = v[v != ""]
-    return len(v) > 0 and (v.str.split().str.len() >= 4).mean() >= 0.5
+    words = v.str.split().str.len()
+    return len(v) > 0 and ((words >= 3).mean() >= 0.3 or bool((words >= 6).any()))
 
 
 def _decision(column: str, op: str, strategy: str, reason: str, rows: int, df: pd.DataFrame
@@ -388,26 +427,50 @@ def _decision(column: str, op: str, strategy: str, reason: str, rows: int, df: p
 
 
 def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: ConnectorType,
-                  info: dict | None = None) -> tuple[pd.DataFrame, DataContract]:
-    """The frame every agent works on. For patient data (`contract.phi`) a de-identified copy:
-    personal columns and free text withheld, MRN / patient ids pseudonymised (one-way, keyed),
-    ZIP → ZIP3, ages ≥ 90 → 90, categories under 11 rows pooled. The contract is rebuilt from
-    that copy and carries each step as an audited decision. Other data passes unchanged.
+                  info: dict | None = None, scope: str = "") -> tuple[pd.DataFrame, DataContract]:
+    """The frame every agent works on. For patient data (`contract.phi`) a de-identified copy,
+    built from an allowlist (fail closed: what isn't known safe is withheld):
+    - kept: numbers (ages ≥ 90 → 90), dates that aren't personal, and short category columns
+      (≤ 50 values, not free text; groups under 11 rows pooled);
+    - pseudonymised (one-way, keyed per `scope`, the user): every identifier column;
+    - generalised: ZIP → ZIP3;
+    - withheld: personal columns and every other text column (names under any header, notes).
+    The contract is rebuilt from the copy and carries each step as an audited decision. Other
+    data passes unchanged. Not HIPAA de-identification: exact admit/discharge dates stay, and
     ponytail: two-way and month × group cells can still be < 11 (stated in the README)."""
     if not contract.phi:
         return df, contract
     decisions: list[CleaningDecision] = []
-    withheld = [c.name for c in contract.columns if c.pii]
-    withheld += [str(n) for n in df.columns if n not in withheld and not is_phi_identifier(str(n))
-                 and _is_free_text(_profiled(df[n]))]
+    # Exact duplicates are judged on the raw rows (cleaning's rule: only with a row key), since
+    # withholding names or pooling labels can make two real records identical afterwards.
+    dup = df.duplicated()
+    keys = [c.name for c in contract.columns if c.is_id and c.name in df.columns
+            and df[c.name].nunique() >= 0.9 * max(int(df[c.name].notna().sum()), 1)]
+    if (n_dup := int(dup.sum())) and keys:
+        df = df[~dup]
+        decisions.append(_decision("*", "drop_duplicates", "exact", f"Removed {n_dup} exact "
+                                   f"duplicate rows (same {keys[0]} and every other value), "
+                                   "before de-identification", n_dup, df))
+        decisions[-1].rows_removed = n_dup
+    roles = {c.name: c for c in contract.columns}
+    withheld, ids = [], []
+    for n in map(str, df.columns):
+        c = roles.get(n)
+        if c is None or c.pii:
+            withheld.append(n)
+        elif c.is_id or is_phi_identifier(n):
+            ids.append(n)
+        elif c.is_date or c.is_metric or is_zip_column(n):
+            continue
+        elif _is_free_text(_profiled(df[n])) or df[n].nunique() > 50:
+            withheld.append(n)   # names, notes, places: anything too specific to be a category
     for col in withheld:
-        decisions.append(_decision(col, "withhold", "drop_column", "patient identifier or free "
-                                   "text: withheld from analysis", len(df), df))
+        decisions.append(_decision(col, "withhold", "drop_column", "personal, free text or too "
+                                   "specific to be a category: withheld from analysis", len(df), df))
     out = df.drop(columns=withheld)
-    ids = [str(n) for n in out.columns if is_phi_identifier(str(n))]
-    out = pseudonymize_columns(out, ids, pseudonym_key())
+    out = pseudonymize_columns(out, ids, pseudonym_key(scope))
     for col in ids:
-        decisions.append(_decision(col, "pseudonymize", "keyed_hash", "record number replaced by "
+        decisions.append(_decision(col, "pseudonymize", "keyed_hash", "identifier replaced by "
                                    "a one-way pseudonym (counts and repeat visits still work)",
                                    int(out[col].notna().sum()), out))
     for col in (str(n) for n in out.columns if is_zip_column(str(n))):
@@ -444,7 +507,7 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
     rebuilt.metric_columns = [c.name for c in rebuilt.columns if c.is_metric]
     rebuilt.date_columns = [d for d in rebuilt.date_columns if d not in ids]
     rebuilt.pii_columns = [c.name for c in rebuilt.columns if c.pii]
-    rebuilt.phi, rebuilt.deidentification = True, decisions
+    rebuilt.phi, rebuilt.deidentification, rebuilt.deidentified = True, decisions, True
     rebuilt.schema_summary = _summary(out, rebuilt.columns) + (
         f" Patient data: identifiers withheld ({', '.join(withheld)}), record numbers "
         f"pseudonymised; groups under {SMALL_CELL} records appear as '{POOLED_LABEL}'.")
@@ -461,7 +524,7 @@ async def seed_phi_guard(session: AnalysisSession, llm: LLMClient) -> None:
     probe = session.model_copy(deep=True)
     question = session.task_plan.raw_query if session.task_plan else None
     await run_ingestion_agent(probe, llm, question, session.data_contract.source_query,
-                              prepare=False)
+                              prepare=False, seed_last=False)
     probe.__dict__.pop("_df_parquet", None)
 
 
@@ -502,12 +565,13 @@ def unique_names(columns) -> list[str]:
 async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
                               question: str | None = None,
                               reuse_query: Evidence | None = None,
-                              prepare: bool = True) -> DataContract:
+                              prepare: bool = True, seed_last: bool = True) -> DataContract:
     """Load the source and return its DataContract; the frame goes on the session as parquet.
     A SQL connector without a table answers `question` with one read-only query (Phase 4);
     `reuse_query` re-runs an earlier answer's query instead (approval answers, follow-ups), so
     the same question never silently gets different rows."""
-    _seed_guard_from_last_turn(session)   # before the memory is built: it quotes earlier answers
+    if seed_last:   # before the memory is built: it quotes earlier answers
+        await _seed_guard_from_last_turn(session, llm)
     ctx = build_context(session, question, reuse_query)
     connector = get_connector(ctx.config)
 
@@ -540,17 +604,22 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
     if mixed := _mixed_as_text(df):
         info["notes"] = [*info.get("notes", []), f"Columns mixing numbers and text were read as "
                          f"text (Cleaning parses them, with an audit entry): {', '.join(mixed[:5])}."]
-    contract = build_contract(df, ctx.config.type, info)
+    contract = await asyncio.to_thread(build_contract, df, ctx.config.type, info)
     contract.source_query = source_query
-    remember_pii(df, contract)   # the raw values: the guard must know what PHI mode withholds
+    # The raw values: the guard must know what PHI mode withholds (in place: same set object).
+    await asyncio.to_thread(remember_pii, df, contract)
     if prepare:   # every production path; only the ingestion eval scores the raw load
         try:
             df, contract = await asyncio.to_thread(prepare_frame, df, contract, ctx.config.type,
-                                                   info)
+                                                   info, session.user_id)
         except Exception as exc:   # fail closed: never continue on the raw patient data
             raise IngestionError(f"de-identification failed: {type(exc).__name__}",
                                  "This data holds patient records and couldn't be de-identified, "
-                                 "so it wasn't analysed.") from exc
+                                 "so it wasn't analysed. Check the file opens as a plain table and "
+                                 "upload it again; if it keeps failing, ask your administrator.") from exc
+        if contract.phi and source_query is not None:   # its excerpt quotes raw result rows
+            source_query = source_query.model_copy(update={
+                "result_excerpt": "Patient data: result rows are not quoted."})
         contract.source_query = source_query
 
     buf = io.BytesIO()

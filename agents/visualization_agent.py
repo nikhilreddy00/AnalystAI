@@ -26,7 +26,13 @@ import pandas as pd
 from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
-from agents.utils import looks_like_sequential_id, pandas_freq, partial_last_month
+from agents.utils import (
+    aggregate,
+    column_hint,
+    looks_like_sequential_id,
+    pandas_freq,
+    partial_last_month,
+)
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -842,8 +848,20 @@ def _binary_phrase_pair(
     return f"were not {disp}", f"were {disp}"
 
 
-def _format_currency(v: float) -> str:
-    return f"${v:,.2f}"
+_CURRENCY_SYMBOL = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "INR": "₹", "CNY": "¥",
+                    "AUD": "A$", "CAD": "C$", "CHF": "CHF ", "BRL": "R$", "MXN": "MX$"}
+_ISO_CURRENCY = re.compile(r"^[A-Z]{3}$")
+
+
+def is_currency(unit: str | None) -> bool:
+    """A unit that is an ISO 4217 code (USD, EUR): money, formatted as such."""
+    return bool(unit and _ISO_CURRENCY.match(unit))
+
+
+def _format_currency(v: float, currency: str | None = None) -> str:
+    code = currency or "USD"
+    sym = _CURRENCY_SYMBOL.get(code, f"{code} ")
+    return f"{'-' if v < 0 else ''}{sym}{abs(v):,.2f}"
 
 
 def _format_percent(v: float) -> str:
@@ -858,11 +876,15 @@ def _format_number(v: float) -> str:
     return f"{v:,.2f}"
 
 
-def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str]) -> str:
+def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str],
+                     unit: str | None = None) -> str:
     """Pick a formatter for a numeric column. Returns one of:
-    'currency' | 'percent' | 'count' | 'number'."""
+    'currency' | 'percent' | 'count' | 'number'. A known unit decides first (semantic layer or a
+    symbol in the file): money is currency, °C or days a number; the name rule is the fallback."""
     if col in binary_cols:
         return "percent"
+    if unit:
+        return "currency" if is_currency(unit) else "number"
     if _KPI_CURRENCY_RE.search(col):
         return "currency"
     if _KPI_PERCENT_RE.search(col):
@@ -879,16 +901,21 @@ def _kpi_format_kind(col: str, s: pd.Series, binary_cols: set[str]) -> str:
     return "number"
 
 
-def _format_value(v: float, kind: str) -> str:
+def _format_value(v: float, kind: str, unit: str | None = None) -> str:
     """Format a raw number per the inferred kind. Percent assumes the value is
-    already on a 0–1 scale and multiplies by 100."""
+    already on a 0–1 scale and multiplies by 100. `unit`: the currency for a currency, else a
+    suffix ('70.62 °C')."""
     if kind == "currency":
-        return _format_currency(v)
+        return _format_currency(v, unit if is_currency(unit) else None)
     if kind == "percent":
         return _format_percent(v * 100)
     if kind == "count":
         return _format_count(v)
-    return _format_number(v)
+    return _format_number(v) + (f" {unit}" if unit and not is_currency(unit) else "")
+
+
+def _unit(col: str, contract) -> str | None:
+    return next((c.unit for c in (contract.columns if contract else []) if c.name == col), None)
 
 
 def _pick_primary_metric(
@@ -990,6 +1017,7 @@ def _highest_cv_kpi(
     id_cols: set[str],
     binary_cols: set[str],
     narrative: DataNarrative | None,
+    contract: DataContract | None = None,
 ) -> KPI | None:
     """Continuous column with the highest coefficient of variation (std / |mean|).
     Used as the 5th KPI when there's no target to compare against."""
@@ -1014,15 +1042,22 @@ def _highest_cv_kpi(
     if best is None:
         return None
     s = pd.to_numeric(df[best], errors="coerce").dropna()
-    kind = _kpi_format_kind(best, s, binary_cols)
+    unit = _unit(best, contract)
+    kind = _kpi_format_kind(best, s, binary_cols, unit)
     mean = float(s.mean())
     std = float(s.std())
     return KPI(
         label=f"{_display(best, narrative)} Variability",
         value=f"CV {best_cv:.2f}",
-        context=f"Mean {_format_value(mean, kind)} ± {_format_value(std, kind)}",
-        recipe=KPIRecipe(kind="highest_cv", column=best, format_kind=kind),
+        context=f"Mean {_format_value(mean, kind, unit)} ± {_format_value(std, kind, unit)}",
+        recipe=KPIRecipe(kind="highest_cv", column=best, format_kind=kind, **_unit_fields(kind, unit)),
     )
+
+
+def _unit_fields(kind: str, unit: str | None) -> dict:
+    if not unit:
+        return {}
+    return {"currency": unit} if kind == "currency" else {"unit": unit}
 
 
 def generate_smart_kpis(
@@ -1030,6 +1065,7 @@ def generate_smart_kpis(
     column_roles: dict,
     query: str = "",
     narrative: DataNarrative | None = None,
+    contract: DataContract | None = None,
 ) -> list[KPI]:
     """Build up to 5 hero KPIs from a DataFrame and the visualization agent's
     column roles. Works on any dataset: row count + (optional) target rate +
@@ -1082,15 +1118,17 @@ def generate_smart_kpis(
     if primary:
         s = pd.to_numeric(df[primary], errors="coerce").dropna()
         if len(s) >= 2:
-            kind = _kpi_format_kind(primary, df[primary], binary_cols)
+            unit = _unit(primary, contract)
+            kind = _kpi_format_kind(primary, df[primary], binary_cols, unit)
             mean = float(s.mean())
             mn = float(s.min())
             mx = float(s.max())
             kpis.append(KPI(
                 label=f"Avg {_display(primary, narrative)}",
-                value=_format_value(mean, kind),
-                context=f"Range {_format_value(mn, kind)} – {_format_value(mx, kind)}",
-                recipe=KPIRecipe(kind="metric_avg", column=primary, format_kind=kind),
+                value=_format_value(mean, kind, unit),
+                context=f"Range {_format_value(mn, kind, unit)} – {_format_value(mx, kind, unit)}",
+                recipe=KPIRecipe(kind="metric_avg", column=primary, format_kind=kind,
+                                 **_unit_fields(kind, unit)),
             ))
 
     # KPI 4 — top category (humanize ordinal numerics: 3 → "Class 3" or "3rd")
@@ -1115,7 +1153,7 @@ def generate_smart_kpis(
         if comp:
             kpis.append(comp)
     else:
-        cv = _highest_cv_kpi(df, continuous, id_cols, binary_cols, narrative)
+        cv = _highest_cv_kpi(df, continuous, id_cols, binary_cols, narrative, contract)
         if cv:
             kpis.append(cv)
 
@@ -1164,7 +1202,7 @@ def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None) -
                 ok = k.value == f"{float(_to_01(df[col]).mean()) * 100:.1f}%"
             elif r.kind == "metric_avg":
                 mean = float(pd.to_numeric(df[col], errors="coerce").dropna().mean())
-                ok = k.value == _format_value(mean, r.format_kind or "number")
+                ok = k.value == _format_value(mean, r.format_kind or "number", r.currency or r.unit)
                 stated = ((eda or {}).get(col) or {}).get("mean")
                 if ok and isinstance(stated, (int, float)) and mean:
                     ok = abs(float(stated) - mean) <= 0.005 * abs(mean)
@@ -1868,6 +1906,7 @@ class VizContext:
     findings: AnalysisFindings | None = None
     evidence: dict[str, Evidence] = field(default_factory=dict)
     narrative: DataNarrative | None = None
+    contract: DataContract | None = None   # semantic-layer hints: how a column aggregates (5.5)
 
 
 def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
@@ -1881,19 +1920,37 @@ def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
 
 def build_context(df: pd.DataFrame, task: AnalysisTask | None = None,
                   findings: AnalysisFindings | None = None,
-                  narrative: DataNarrative | None = None) -> VizContext:
+                  narrative: DataNarrative | None = None,
+                  contract: DataContract | None = None) -> VizContext:
     roles = classify_columns(df)
     dates = list(roles.get("datetime_cols") or [])
     return VizContext(df=df, roles=roles, measures=measure_columns(df, roles),
                       date=dates[0] if dates else None, task=task, findings=findings,
                       evidence={e.id: e for e in (findings.evidence if findings else [])},
-                      narrative=narrative)
+                      narrative=narrative, contract=contract)
 
 
-def month_agg(s: pd.Series) -> str:
-    """The analysis agent's MoM rule: values within 0-1 (rates, flags) by mean, else by total."""
+def month_agg(s: pd.Series, contract: DataContract | None = None) -> str:
+    """The analysis agent's MoM rule: the semantic layer's aggregation when it names the column
+    (a balance's last, a reading's mean), else values within 0-1 (rates, flags) by mean, else by
+    total."""
+    if hint := column_hint(contract, str(s.name)):
+        return hint.aggregation
     v = pd.to_numeric(s, errors="coerce").dropna()
     return "mean" if len(v) and v.between(0, 1).all() else "sum"
+
+
+def latest_rows(df: pd.DataFrame, column: str, contract: DataContract | None) -> pd.DataFrame:
+    """For a level (a balance): each entity's latest snapshot, the rows a total by group adds up.
+    Anything else: the frame as it is."""
+    hint = column_hint(contract, column)
+    if hint is None or hint.aggregation != "last" or hint.aggregation_by not in df.columns:
+        return df
+    d = df
+    if hint.aggregation_time in df.columns:
+        order = pd.to_datetime(df[hint.aggregation_time], format="mixed", errors="coerce")
+        d = df.assign(_t=order).sort_values("_t", kind="stable").drop(columns="_t")
+    return d.groupby(hint.aggregation_by, sort=False).tail(1)
 
 
 def _is_flag(s: pd.Series) -> bool:
@@ -1959,6 +2016,8 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
+    if agg == "last":   # a balance by group: the latest snapshot of each account, added up
+        df, agg = latest_rows(df, metric, ctx.contract), "sum"
     cols = [x, metric] + ([split] if split else [])
     if any(c not in df.columns for c in cols):
         return None
@@ -2010,13 +2069,16 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     cols = [date, metric] + ([split] if split else [])
     if any(c not in df.columns for c in cols):
         return None
-    sub = df[cols].copy()
+    agg = month_agg(df[metric], ctx.contract)
+    hint = column_hint(ctx.contract, metric) if agg == "last" else None
+    extra = [c for c in ((hint.aggregation_by, hint.aggregation_time) if hint else ())
+             if c and c in df.columns and c not in cols]
+    sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
-    sub = sub.dropna()
+    sub = sub.dropna(subset=cols)
     if sub.empty:
         return None
-    agg = month_agg(df[metric])
     if monthly is None:   # a month-over-month finding always gets months
         monthly = (sub[date].max() - sub[date].min()).days >= 90
     note = ""
@@ -2029,7 +2091,8 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
     keys = [None] if not split else list(sub[split].value_counts().index[:_MAX_SERIES])
-    table = (sub.groupby([period] + ([sub[split]] if split else []))[metric].agg(agg) * scale)
+    table = aggregate(sub, [period] + ([sub[split]] if split else []), metric, agg,
+                      ctx.contract) * scale
     if split:
         table = table.unstack()[keys]
     if len(table) < 2:
@@ -2389,7 +2452,8 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
     if df.empty:
         return _contract_fallback_charts(contract)
 
-    ctx = build_context(df, session.task_plan, session.analysis_findings, session.narrative)
+    ctx = build_context(df, session.task_plan, session.analysis_findings, session.narrative,
+                        session.data_contract)
     charts = charts_for_findings(ctx)
     if len(charts) < 4:
         query = session.task_plan.raw_query if session.task_plan else ""
@@ -2408,6 +2472,7 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
 def build_single_chart(
     df: "pd.DataFrame",
     params: "TargetedParams",
+    contract: "DataContract | None" = None,
 ) -> "ChartConfig":
     """One chart the user asked for (CHART_REQUEST). Deterministic; drawn as asked, with a lint
     note when the choice misleads. Bars and pies aggregate the analysis way: totals for additive
@@ -2424,7 +2489,7 @@ def build_single_chart(
         elif col not in y_keys:
             y_keys.append(col)
 
-    ctx = build_context(df)
+    ctx = build_context(df, contract=contract)
     if x_key is None or not y_keys:
         # Last resort: first non-id column on x, first measure on y.
         id_cols = set(ctx.roles.get("id_cols") or [])
@@ -2433,7 +2498,7 @@ def build_single_chart(
                                  available[1] if len(available) > 1 else x_key)]
     y = y_keys[0]
     numeric_y = y in df.columns and pd.api.types.is_numeric_dtype(df[y])
-    agg = month_agg(df[y]) if numeric_y else "count"
+    agg = month_agg(df[y], contract) if numeric_y else "count"
 
     chart: ChartConfig | None = None
     if chart_type == ChartType.SCATTER and numeric_y:

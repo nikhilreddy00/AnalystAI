@@ -11,12 +11,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from agents.errors import IngestionError
-from connectors.csv_connector import _read_bytes, user_upload_dir
+from connectors.csv_connector import _read_bytes, check_upload_owner, user_upload_dir
 from api.auth import get_current_user, UserProfile
 from pydantic import BaseModel
 
 from connectors.base import get_connector
-from orchestrator.state import ConnectorConfig
+from guardrails import mask_pii
+from orchestrator.state import ConnectorConfig, ConnectorType
 
 router = APIRouter()
 
@@ -31,12 +32,16 @@ async def test_connection(
     config: ConnectorConfig,
     current_user: UserProfile = Depends(get_current_user)
 ) -> TestConnectionResponse:
+    # A file is tested only inside the caller's own upload folder: never say whether a path
+    # exists in another user's (5.5 review).
+    if config.type == ConnectorType.CSV and check_upload_owner(config.file_path, current_user.uid):
+        return TestConnectionResponse(success=False, message="File not found.")
     try:
         connector = get_connector(config)
         success, message = await connector.test_connection()
-        return TestConnectionResponse(success=success, message=message)
+        return TestConnectionResponse(success=success, message=mask_pii(message))
     except Exception as e:
-        return TestConnectionResponse(success=False, message=str(e))
+        return TestConnectionResponse(success=False, message=mask_pii(str(e)))
 
 
 @router.post("/upload")

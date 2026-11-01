@@ -292,3 +292,14 @@ async def test_a_phi_contract_round_trips_through_the_store(store):
     back = await store.load("s1")
     assert back.data_contract.phi and back.data_contract.deidentification == contract.deidentification
     assert isinstance(pd.DataFrame(back.data_contract.sample_rows), pd.DataFrame)
+
+
+async def test_the_guard_values_are_encrypted_at_rest(store):
+    """`prior_pii` holds every personal value of a thread's earlier data: Fernet at rest (5.5)."""
+    s = _session(prior_pii=["Jane Doe", "jane@x.io"])
+    await store.create(s)
+    assert (await store.load("s1")).prior_pii == ["Jane Doe", "jane@x.io"]
+    if isinstance(store, SessionStore):
+        async with store._engine.connect() as conn:
+            raw = (await conn.execute(text("SELECT data::text FROM analysis_sessions"))).scalar()
+        assert "Jane Doe" not in raw and "jane@x.io" not in raw

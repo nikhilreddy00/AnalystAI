@@ -91,8 +91,13 @@ def working_frame(case: dict, guard: bool = False):
     the guard seeded with the raw PII (`guard`), then PHI mode's working copy (a no-op off patient
     data). The analysis suite runs and is scored on this, never on the raw table."""
     from agents.ingestion_agent import prepare_frame, remember_pii
-    from connectors.csv_connector import CSVConnector
-    df, _, _ = dataset(case)
+    from connectors.csv_connector import CSVConnector, _read_bytes
+    df, _, csv = dataset(case)
+    if case.get("domain", "retail") != "retail":
+        # Production's reader (dates parsed, leading zeros kept), so E2B gets the frame it would
+        # in the product. ponytail: the 46 retail cases keep read_csv: their inputs are pinned
+        # (evals/snapshots/pre_5_5.json) and changing them buys a paid re-run.
+        df = _read_bytes(csv.encode(), ".csv")[0]
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
     if guard:
         remember_pii(df, contract)
@@ -663,8 +668,10 @@ def record_e2b_uploads() -> None:
         return
 
     async def run_code(code, df_parquet=None):
-        if (log := E2B_UPLOADS.get()) is not None and df_parquet:
-            log.append(pd.read_parquet(io.BytesIO(df_parquet)).to_csv(index=False))
+        if (log := E2B_UPLOADS.get()) is not None:   # the code goes to E2B too
+            log.append(code)
+            if df_parquet:
+                log.append(pd.read_parquet(io.BytesIO(df_parquet)).to_csv(index=False))
         return await inner(code, df_parquet)
     run_code.records_uploads = True
     analysis_agent.run_code = run_code

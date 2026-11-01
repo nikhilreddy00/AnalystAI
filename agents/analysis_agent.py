@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -23,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import pii_columns, safe_column_name, strip_markdown_fences
 from guardrails import (
+    is_phi_identifier,
     MASK,
     UNTRUSTED_NOTE,
     check_code,
@@ -206,10 +208,12 @@ def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
     targets = [c for c in task.target_metrics if c in contract.metric_columns]
     segments = [c for c in task.segments if c in names]
     date = next(iter(contract.date_columns), None)
+    hints = {c.name: [c.aggregation, c.aggregation_by, c.aggregation_time]
+             for c in contract.columns if c.name in targets and c.aggregation}
     return f"""
 # ─── Standard statistics (deterministic) ───
 result['builtin'] = []
-_targets, _segs, _date = {targets!r}, {segments!r}, {date!r}
+_targets, _segs, _date, _hints = {targets!r}, {segments!r}, {date!r}, {hints!r}
 try:
     if {bool(types & {"correlation", "hypothesis"})!r}:
         for _i, _a in enumerate(_targets):
@@ -233,9 +237,18 @@ try:
         result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
         # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else
         # by month total. A semantic layer (Phase 4) can declare the aggregation instead.
+        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's
+        # last value in the month, summed; a reading is a mean.
         def _mom(_frame, _col):
-            _agg = 'mean' if df[_col].dropna().between(0, 1).all() else 'sum'
-            _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
+            _h = _hints.get(_col)
+            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
+            if _agg == 'last' and _h[1] in df.columns:
+                _f = _frame.assign(_m=_month.loc[_frame.index]).dropna(subset=['_m'])
+                if _h[2] in df.columns:
+                    _f = _f.assign(_t=pd.to_datetime(_f[_h[2]], errors='coerce')).sort_values('_t', kind='stable')
+                _tot = _f.groupby(['_m', _h[1]])[_col].last().groupby(level=0).sum().sort_index()
+            else:
+                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg('sum' if _agg == 'last' else _agg).sort_index()
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
                 return None, 0
             _last2 = _month.loc[_frame.index].isin(_tot.index[-2:])
@@ -283,6 +296,7 @@ class AnalysisContext(BaseModel):
     timeframe: str
     cleaning_notes: list[str]
     samples: dict[str, list[Any]]      # 3 masked values per column (from the DataContract)
+    aggregations: list[str] = []       # semantic-layer meanings (Phase 5.5); empty: none matched
 
     def render(self) -> str:
         # Column names come from the user's file, so the whole schema block is delimited.
@@ -295,6 +309,8 @@ class AnalysisContext(BaseModel):
             f"Segment columns: {self.segments}\n"
             f"Target metrics from task: {self.target_metrics}\n"
             f"Sample values (PII masked): {json.dumps(self.samples, default=str)}"
+            + ("\nHow columns aggregate (semantic layer): " + "; ".join(self.aggregations)
+               if self.aggregations else "")
         )
         cleaning = ("\n\nCleaning already applied:\n" + delimit_untrusted(
             "\n".join(self.cleaning_notes))) if self.cleaning_notes else ""
@@ -344,7 +360,18 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         timeframe=task.timeframe or "full dataset",
         cleaning_notes=notes[:_MAX_NOTES],
         samples={c.name: (c.sample_values or [])[:3] for c in contract.columns[:_MAX_COLUMNS]},
+        aggregations=[_aggregation_line(c) for c in contract.columns if c.aggregation or c.unit],
     )
+
+
+def _aggregation_line(c) -> str:
+    unit = f" ({c.unit})" if c.unit else ""
+    if c.aggregation == "last":
+        return (f"{c.name}{unit} is a level: per period take each {c.aggregation_by}'s last value"
+                f" (by {c.aggregation_time}), then sum; never sum it across dates")
+    if c.aggregation == "mean":
+        return f"{c.name}{unit} averages (never sum it across rows or dates)"
+    return f"{c.name}{unit} adds up" if c.aggregation == "sum" else f"{c.name}{unit}"
 
 
 # ── Tools (ADR-0001 §4): read-only lookups on the local DataFrame, PII-masked ──────────────
@@ -392,17 +419,63 @@ def run_tool(name: str, args: dict, df: pd.DataFrame, pii: set[str] = frozenset(
     return f"unknown tool: {name}", True
 
 
-def e2b_frame(df_parquet: bytes, pii: Iterable[str]) -> bytes:
-    """The frame E2B (a third party) receives: every personal value replaced by its one-way
-    pseudonym, columns and headers unchanged, so counts and group-bys still work and no code that
-    names a column breaks. No personal columns: the same bytes."""
-    cols = [c for c in pii]
-    if not cols:
-        return df_parquet
-    df = pseudonymize_columns(pd.read_parquet(io.BytesIO(df_parquet)), cols, pseudonym_key())
+def e2b_frame(df_parquet: bytes, pii: Iterable[str], scope: str = "") -> tuple[bytes, dict]:
+    """(the frame E2B, a third party, receives, {pseudonym: original}). Every value of a personal
+    column becomes its one-way pseudonym and emails, phones, SSNs, cards and IPs inside other
+    text are masked; columns and headers are unchanged, so counts and group-bys still work and
+    no code that names a column breaks. The map stays here: it puts names back in the results.
+    Nothing personal anywhere: the same bytes."""
+    df = pd.read_parquet(io.BytesIO(df_parquet))
+    cols = [c for c in pii if c in df.columns]
+    text = [c for c in df.columns if c not in cols and (pd.api.types.is_string_dtype(df[c])
+                                                        or df[c].dtype == object)]
+    masked = {c: df[c].map(lambda v: v if not isinstance(v, str) else mask_pii(v)) for c in text}
+    changed = [c for c in text if not masked[c].equals(df[c])]
+    if not cols and not changed:
+        return df_parquet, {}
+    back: dict = {}
+    df = pseudonymize_columns(df.assign(**{c: masked[c] for c in changed}), cols,
+                              pseudonym_key(scope), back)
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
-    return buf.getvalue()
+    return buf.getvalue(), back
+
+
+_STRING_LITERAL = re.compile(r"""(?P<q>'|")(?P<s>(?:\\.|(?!(?P=q)).){1,200})(?P=q)""")
+_PSEUDONYM_RE = re.compile(r"ID-[0-9a-f]{16}")
+
+
+def pseudonymize_literals(code: str, back: dict) -> str:
+    """The model's code, with each string literal that is a personal value (the user typed it;
+    the client restored it in the reply) replaced by that value's pseudonym: E2B never gets the
+    value, and the filter matches the pseudonymised frame. Case and spaces don't matter."""
+    if not back:
+        return code
+    fwd = {str(v).strip().casefold(): p for p, v in back.items()}
+
+    def sub(m: re.Match) -> str:
+        p = fwd.get(m["s"].strip().casefold())
+        return f"{m['q']}{p}{m['q']}" if p else m[0]
+    return _STRING_LITERAL.sub(sub, code)
+
+
+def restore_pseudonyms(obj, back: dict):
+    """E2B's output with pseudonyms turned back into the original values, in keys and values
+    alike (a breakdown by person is keyed by the person), for the data's owner. Only this run's
+    own pseudonyms; PHI mode's are not in `back` and stay."""
+    if not back:
+        return obj
+
+    def text(s: str) -> str:
+        return _PSEUDONYM_RE.sub(lambda m: str(back.get(m[0], m[0])), s)
+    if isinstance(obj, str):
+        return text(obj)
+    if isinstance(obj, dict):
+        return {restore_pseudonyms(k, back) if isinstance(k, str) else k: restore_pseudonyms(v, back)
+                for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [restore_pseudonyms(v, back) for v in obj]
+    return obj
 
 
 async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> AnalysisFindings:
@@ -416,6 +489,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     known = [c.name for c in contract.columns]
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
+    back: dict = {}                  # {pseudonym: value}, never leaves this process
 
     messages: list[dict] = [{"role": "user", "content": ctx.render()}]
     for attempt in range(2):
@@ -451,8 +525,14 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             full_code = (_CODE_HEADER + "\n" + body + "\n" + standard + "\n"
                          + _build_guaranteed_code(contract) + _CODE_FOOTER)
             if upload is None:   # once per run: the guided retry uploads the same frame
-                upload = await asyncio.to_thread(e2b_frame, df_parquet, pii_columns(contract))
-            execution = await run_code(full_code, upload)
+                # Record numbers by name too, unless PHI mode already pseudonymised them: a thread
+                # from before PHI mode still holds raw MRNs.
+                raw_ids = [] if contract.deidentified else [
+                    c.name for c in contract.columns if is_phi_identifier(c.name) and not c.pii]
+                upload, back = await asyncio.to_thread(e2b_frame, df_parquet,
+                                                       [*pii_columns(contract), *raw_ids],
+                                                       session.user_id)
+            execution = await run_code(pseudonymize_literals(full_code, back), upload)
             # Never return empty findings for a failed run: no JSON on stdout means the code died.
             try:
                 raw = json.loads(execution.output_json or "")
@@ -460,9 +540,16 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 detail = (execution.error or "no JSON output").strip()
                 # The sandbox's traceback can quote cell values: it goes to the log (scrubbed),
                 # never to the user's error or the run's events.
-                kind = (execution.error or "").split(":", 1)[0].strip()[:40] or "no output"
-                raise SandboxError("analysis", detail,
-                                   f"The analysis code failed in the sandbox ({kind}).") from None
+                kind = (getattr(execution, "error_name", None)
+                        or (execution.error or "").split(":", 1)[0].strip()[:40] or "no output")
+                kind = kind if kind.isidentifier() else "error"   # a type name, never a value
+                message = {"SandboxUnavailable": "The code sandbox is unavailable right now. "
+                                                 "Try again in a few minutes.",
+                           "SandboxTimeout": "The analysis took too long in the sandbox and was "
+                                             "stopped. Try a narrower question."}.get(
+                    kind, f"The analysis code failed in the sandbox ({kind}).")
+                raise SandboxError("analysis", detail, message) from None
+            raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:

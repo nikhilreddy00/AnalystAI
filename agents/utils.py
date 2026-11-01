@@ -120,3 +120,40 @@ def pii_columns(contract) -> set[str]:
     if contract is None:
         return set()
     return {c.name for c in contract.columns if c.pii or is_pii_column(c.name)}
+
+
+# ── Aggregation from the semantic layer (Phase 5.5) ───────────────────────────────────────────
+
+def column_hint(contract, column: str):
+    """The contract's ColumnInfo for `column` when it carries a semantic-layer hint, else None."""
+    if contract is None:
+        return None
+    return next((c for c in contract.columns if c.name == column and c.aggregation), None)
+
+
+def effective_agg(contract, column: str, requested: str | None = None) -> str | None:
+    """How `column` aggregates. A level ('last': a balance, MRR) or a reading ('mean': a
+    temperature) overrides a sum, asked for or defaulted: summing them over time or rows is
+    wrong whatever the wording. An explicit mean, count, min, max or median is kept."""
+    hint = column_hint(contract, column)
+    if hint is None or requested not in (None, "sum"):
+        return requested
+    return hint.aggregation
+
+
+def aggregate(df, keys, column: str, agg: str, contract=None):
+    """`df.groupby(keys)[column].agg(agg)`, except a level ('last'): each entity's last value
+    (by the level's time column) within each key, summed over entities."""
+    import pandas as pd
+    hint = column_hint(contract, column)
+    if agg != "last" or hint is None or hint.aggregation_by not in df.columns:
+        return df.groupby(keys)[column].agg("sum" if agg == "last" else agg)
+    keys = keys if isinstance(keys, list) else [keys]
+    d = df
+    if hint.aggregation_time in df.columns:
+        order = pd.to_datetime(df[hint.aggregation_time], format="mixed", errors="coerce")
+        d = df.assign(_t=order).sort_values("_t", kind="stable")
+    ent = d[hint.aggregation_by]
+    per = d.groupby([*(k.loc[d.index] if isinstance(k, pd.Series) else k for k in keys), ent]
+                    )[column].last()
+    return per.groupby(level=list(range(len(keys)))).sum()

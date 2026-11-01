@@ -1,0 +1,23 @@
+# Weekly account balance snapshots (a flat export). A balance is a level: summing it over weeks
+# counts the same money several times; the month's balance is each account's last snapshot.
+tables:
+  - name: balances
+    source: file.balances
+    primary_key: [account_id, snapshot_date]
+    description: One row per account per weekly snapshot.
+    columns:
+      - {name: account_id, type: id}
+      - {name: snapshot_date, type: time}
+      - {name: segment, type: dimension, description: retail or business}
+      - {name: branch, type: dimension}
+      - {name: balance, type: fact, unit: USD, description: balance at the snapshot}
+      - {name: deposits, type: fact, unit: USD, description: deposits during the week}
+metrics:
+  - name: total_balance
+    table: balances
+    expr: SUM(balances.balance)
+    non_additive_dimension: {name: snapshot_date, window: last}
+    synonyms: [ending balance, month-end balance]
+  - name: total_deposits
+    table: balances
+    expr: SUM(balances.deposits)

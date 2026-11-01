@@ -28,6 +28,7 @@ class Column(_Strict):
     description: str = ""
     synonyms: list[str] = Field(default_factory=list)
     sample_values: list[str | int | float | bool] = Field(default_factory=list)
+    unit: str | None = None           # ISO currency (USD, EUR) or a unit (°C, days, kg)
 
 
 class Table(_Strict):
@@ -137,6 +138,9 @@ class SemanticLayer(_Strict):
                            for s in scope):
             errors.append(f"metric {m.name}: non_additive_dimension {nad.name} is not a time "
                           "column of its tables")
+        elif nad and (t := self.table(m.table)) and not [k for k in t.primary_key if k != nad.name]:
+            errors.append(f"metric {m.name}: a level needs an entity: {m.table}'s primary key "
+                          f"must name a column besides {nad.name} (e.g. [account_id, {nad.name}])")
         return errors
 
 
@@ -149,6 +153,52 @@ def _duplicates(what: str, names: list[str]) -> list[str]:
 
 def load(path: str | Path) -> SemanticLayer:
     return SemanticLayer.model_validate(yaml.safe_load(Path(path).read_text()))
+
+
+# ── Flat files (Phase 5.5): a table whose columns an upload has gives its columns' meaning ────
+
+SAMPLE_LAYERS = Path(__file__).parent / "semantic_layers"
+
+
+@cache
+def file_layers() -> tuple[SemanticLayer, ...]:
+    """The sample layers shipped in semantic_layers/ and the configured one: loaded once, at
+    boot by the API and the worker (an invalid file stops either from starting)."""
+    paths = sorted(SAMPLE_LAYERS.glob("*.yaml"))
+    layers = [load(p) for p in paths]
+    return tuple(layers + ([configured] if (configured := configured_layer()) else []))
+
+
+def column_hints(columns: list[str]) -> tuple[dict[str, dict], str | None]:
+    """({column: {aggregation, by, time, unit}}, note) for an upload's columns. A layer table
+    matches when the upload has all its columns; one match gives the hints, several give none
+    (and a note: the meaning would be a guess). Aggregations come from the table's metrics:
+    SUM(col) → sum, AVG(col) → mean, a non_additive_dimension → each entity's last value per
+    period, then summed (a balance, MRR)."""
+    have = set(columns)
+    tables = [(layer, t) for layer in file_layers() for t in layer.tables
+              if {c.name for c in t.columns} <= have]
+    if len(tables) != 1:
+        return {}, (f"Several semantic-layer tables fit these columns "
+                    f"({', '.join(t.name for _, t in tables)}); none was applied."
+                    if tables else None)
+    layer, table = tables[0]
+    hints: dict[str, dict] = {c.name: {"unit": c.unit} for c in table.columns if c.unit}
+    for m in layer.metrics:
+        if m.table != table.name or m.joins:
+            continue
+        node = m.parsed
+        if not isinstance(node, (exp.Sum, exp.Avg)) or not isinstance(node.this, exp.Column):
+            continue
+        col = node.this.name
+        h = hints.setdefault(col, {})
+        nad = m.non_additive_dimension
+        if nad:
+            h.update(aggregation="last", time=nad.name,
+                     by=next(k for k in table.primary_key if k != nad.name))
+        else:
+            h["aggregation"] = "sum" if isinstance(node, exp.Sum) else "mean"
+    return hints, f"Column meanings from the semantic layer table '{table.name}'."
 
 
 @cache

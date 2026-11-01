@@ -8,7 +8,9 @@ evidence. A file that can't be read as a table raises IngestionError, never load
 from __future__ import annotations
 
 import csv
+import asyncio
 import io
+import json
 import re
 from collections import Counter
 from pathlib import Path
@@ -150,10 +152,17 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
     # lose the zero for good. Only when the file has one, re-read those columns as text.
     if re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
-        as_text = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, index_col=False,
-                              dtype=str, low_memory=False)
+        try:
+            as_text = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, index_col=False,
+                                  dtype=str, low_memory=False)
+        except (pd.errors.ParserError, ValueError):   # the first read worked: keep its types
+            as_text = pd.DataFrame(columns=df.columns)
+        def code_like(t: pd.Series) -> bool:   # 00731, 02134: one width, 1 in 10 zero-padded
+            t = t.dropna().str.strip()
+            return (len(t) > 0 and t.str.fullmatch(r"\d+").all() and t.str.len().nunique() == 1
+                    and t.str.match(r"0\d").mean() >= 0.1)
         zeros = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])
-                 and as_text[c].dropna().str.strip().str.match(r"0\d").any()]
+                 and code_like(as_text[c])]
         for col in zeros:
             df[col] = as_text[col].str.strip()
         if zeros:
@@ -214,6 +223,14 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                 raise IngestionError("json", "The JSON isn't a list of records (one object per "
                                      "row, or one per line).") from exc
         info = {"format": "json", "notes": []}
+        # Nested records ({"holder": {"name": ...}}) become columns (holder_name), so every value
+        # is profiled and masked like any other; lists become JSON text.
+        if any(df[c].map(lambda v: isinstance(v, dict)).any() for c in df.columns):
+            df = pd.json_normalize(df.to_dict(orient="records"), sep="_")
+            info["notes"].append("Nested fields were flattened into columns (a_b for a.b).")
+        for c in df.columns:
+            if df[c].map(lambda v: isinstance(v, list)).any():
+                df[c] = df[c].map(lambda v: json.dumps(v, default=str) if isinstance(v, list) else v)
     else:
         df, info = _read_text_table(content, suffix)
     if df.shape[1] == 1 and any(d in str(df.columns[0]) for d in _DELIMITERS if d != " "):
@@ -234,7 +251,12 @@ class CSVConnector(DataConnector):
         if not raw_path:
             raise ValueError("file_path is required for CSV connector")
         path = _validate_upload_path(raw_path)
-        df, self.read_info = _read_bytes(path.read_bytes(), path.suffix.lower())
+        try:
+            content = await asyncio.to_thread(path.read_bytes)
+        except FileNotFoundError as exc:   # purged, or the disk was replaced
+            raise IngestionError("missing upload", "The file behind this dataset is no longer "
+                                 "available. Upload it again to continue.") from exc
+        df, self.read_info = await asyncio.to_thread(_read_bytes, content, path.suffix.lower())
         return df
 
     async def test_connection(self) -> tuple[bool, str]:

@@ -7,6 +7,7 @@ Shared LLM client (ADR-0005). Every agent calls Claude through `get_client().com
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import re
@@ -55,8 +56,21 @@ pii_values: ContextVar[set[str] | None] = ContextVar("pii_values", default=None)
 _TOKEN_RE = re.compile(r"\[PII_[0-9a-f]{8}\]")
 
 
+@functools.cache
+def _token_key(secret: str) -> bytes:
+    """Tokens are keyed (5.5): an unkeyed hash of an MRN or phone could be reversed by trying
+    every number. Without ENCRYPTION_KEY (tests, a bare script) a per-process random key: tokens
+    only need to agree within one request, where restore maps them back."""
+    import hmac
+    import os
+    return hmac.new(secret.encode(), b"llm-token-v1", hashlib.sha256).digest() if secret \
+        else os.urandom(32)
+
+
 def pii_token(value: str) -> str:
-    return f"[PII_{hashlib.sha1(value.encode()).hexdigest()[:8]}]"
+    import hmac
+    from api.config import settings
+    return f"[PII_{hmac.new(_token_key(settings.encryption_key), value.encode(), hashlib.sha256).hexdigest()[:8]}]"
 
 
 def _walk(obj, fn):
