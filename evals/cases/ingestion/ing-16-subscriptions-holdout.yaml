@@ -22,3 +22,4 @@ columns:
 - - first_name
   - first_name
 label_note: 'SaaS accounts: zip and account number are not metrics; first names include ''May'' and ''June''.'
+expect_domain: null

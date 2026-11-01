@@ -203,6 +203,10 @@ class DataContract(BaseModel):
     phi: bool = False
     deidentification: list["CleaningDecision"] = Field(default_factory=list)
     deidentified: bool = False   # this contract describes PHI mode's working copy, not the raw rows
+    # Phase 5.7: the domain pack the data matched (domain_pack.detect: two independent signals)
+    # and its roles → column names (column names only, never values).
+    domain: str | None = None
+    roles: dict[str, str] = Field(default_factory=dict)
 
 
 # ── Agent 3 output: CleaningAudit ─────────────────────────────────────────────

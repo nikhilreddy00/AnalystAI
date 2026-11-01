@@ -1,0 +1,33 @@
+id: dom-superstore
+category: domain
+file: superstore.csv
+truth_read: {}
+roles:
+  Row ID:
+  - id
+  - metric
+  Order ID: id
+  Order Date: date
+  Ship Mode: category
+  Segment: category
+  Region: category
+  Category: category
+  Sub-Category: category
+  Product Name: category
+  Sales: metric
+  Quantity: metric
+  Discount: metric
+  Profit: metric
+traps:
+- Product Name
+expect_domain: retail
+expect_roles:
+  order_id: Order ID
+  date: Order Date
+  category: Category
+  product: Product Name
+  revenue: Sales
+  quantity: Quantity
+  discount_rate: Discount
+  profit: Profit
+label_note: 'The ''Superstore'' shape: a profit column and no cost; Discount is a rate (0-0.45).'

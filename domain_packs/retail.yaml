@@ -1,0 +1,163 @@
+# Sales / retail (Phase 5.7, domain 1): e-commerce order lines, store/POS sales, wholesale invoices.
+# Headers are normalized (domain_pack.normalize_header): lower case, "_" for spaces, units dropped.
+domain: retail
+
+# Retail needs a commerce column (a SKU, a quantity or an order number) AND a money column
+# (revenue, a unit price or an order total): `amount` + `transaction_id` (a bank file) or `price`
+# alone (SaaS) is not retail; a Shopify orders export (`Name` #1001 + `Total`) is.
+signals:
+  specific: [sku, quantity, order_id]
+  money: [revenue, unit_price, order_total]
+
+roles:
+  revenue:       {kind: money, headers: [revenue, net_sales, sales, sales_amount, turnover, gmv,
+                                          net_revenue, gross_sales, sales_value, total_sales,
+                                          sales_usd, line_total, lineitem_total, extended_price,
+                                          ext_price]}
+  order_total:   {kind: money, level: order, headers: [total, order_total, total_price, grand_total,
+                                                       order_value, subtotal]}
+  quantity:      {kind: count, headers: [qty, quantity, units, units_sold, lineitem_quantity,
+                                         qty_sold, quantity_sold, unit_sales, pieces]}
+  unit_price:    {kind: money, headers: [price, unit_price, unitprice, lineitem_price, selling_price,
+                                         sale_price, retail_price, price_each, sales_price]}
+  # A rate first: 0.1 is a rate; 12.50 is an amount (both headers can be `discount`).
+  discount_rate: {kind: rate, headers: [discount, discount_rate, discount_pct, discount_percent,
+                                        markdown_pct]}
+  discount:      {kind: money, level: order, headers: [discount, discount_amount, discounts, markdown,
+                                                       discount_value, markdown_amount]}
+  cost:          {kind: money, headers: [cogs, cost, cost_of_goods, cost_of_goods_sold, total_cost,
+                                         cost_of_sales]}
+  unit_cost:     {kind: money, headers: [unit_cost, cost_price, unitcost, cost_each]}
+  profit:        {kind: money, headers: [profit, gross_profit, margin_amount, gross_margin_amount]}
+  # An order / invoice / receipt number: "#1001", "536365", "C536379", "INV-0042", "O00017",
+  # "CA-2025-152156" (Superstore). Never a person's name: it must carry digits.
+  order_id:      {kind: id, pattern: '#?[A-Za-z]{0,4}(-?\d{2,}){1,3}',
+                  headers: [order_id, order_no, order_number, order, name, invoiceno, invoice_no,
+                            invoice, invoice_number, invoice_id, receipt_no, receipt_id,
+                            transaction_id, ticket_no]}
+  customer_id:   {kind: id, headers: [customer_id, customerid, customer_no, customer_number,
+                                      client_id, account_id, customer_code, buyer_id]}
+  email:         {kind: text, headers: [email, customer_email, billing_email, buyer_email]}
+  sku:           {kind: id, headers: [sku, lineitem_sku, stockcode, stock_code, product_id, item_id,
+                                      item_code, product_code, upc, ean, article_no, style_code]}
+  product:       {kind: category, headers: [product, product_name, item, item_name, description,
+                                            lineitem_name, product_title, item_description]}
+  category:      {kind: category, headers: [category, product_category, product_type, dept,
+                                            department, sub_category, subcategory]}
+  store:         {kind: id, headers: [store, store_id, store_no, store_number, store_code, shop,
+                                      location_id, branch_no]}
+  channel:       {kind: category, headers: [channel, sales_channel, source_name, order_channel]}
+  status:        {kind: status, headers: [financial_status, status, order_status, payment_status]}
+  currency:      {kind: currency, headers: [currency, currency_code]}
+  country:       {kind: category, headers: [country, shipping_country, billing_country,
+                                            ship_country]}
+  date:          {kind: date, headers: [order_date, created_at, invoicedate, invoice_date, date,
+                                        transaction_date, sale_date, wk_end_dt, week_ending,
+                                        week_end_date, week_end, paid_at, txn_date, sold_at,
+                                        order_created_at]}
+
+status_values:
+  ok: [paid, completed, complete, fulfilled, authorized, pending, shipped, delivered,
+       partially_refunded, partially_paid, open, closed]
+  return: [refunded, returned]
+  cancel: [cancelled, canceled, voided, void]
+credit_prefix: {order_id: C}
+non_product: {sku: [POST, DOT, M, D, C2, BANK CHARGES, AMAZONFEE, CRUK, S, PADS]}
+test_marker: '^test\b|^test@|@test\.'
+test_roles: [email, customer_id, order_id]
+sentinels: {unit_price: [-1, 9999, 99999], quantity: [9999, 99999], cost: [-1, 9999, 99999]}
+never_impute: [revenue, order_total, quantity, unit_price, discount, cost, unit_cost, profit]
+
+kpis:
+  # Net sales: the revenue column if there is one, else quantity × price less order discounts.
+  # Returns (negative lines, credit notes) are netted; refunded, cancelled, test and non-product
+  # rows are left out.
+  - name: net_sales
+    label: Net sales
+    unit: money
+    tile: true
+    rows: [sale, return]
+    num:
+      - [{sum: revenue}]
+      - [{sum: [quantity, "*", unit_price]}, {sum: discount, sign: -1, optional: true}]
+      - [{sum: order_total}]   # an orders export: one total per order (after discounts)
+  - name: gross_sales
+    label: Gross sales
+    unit: money
+    rows: [sale, refunded]
+    num:
+      - [{sum: revenue}]
+      - [{sum: [quantity, "*", unit_price]}]
+  - {name: orders, label: Orders, unit: count, tile: true, num: [[{nunique: order_id}]]}
+  - name: aov
+    label: Avg order value
+    unit: money
+    tile: true
+    num: [[{kpi: net_sales}]]
+    den: [[{kpi: orders}]]
+  - {name: units, label: Units sold, unit: count, tile: true, num: [[{sum: quantity}]]}
+  - name: upt
+    label: Units per order
+    num: [[{kpi: units}]]
+    den: [[{kpi: orders}]]
+  - name: asp
+    label: Avg selling price
+    unit: money
+    num: [[{kpi: net_sales}]]
+    den: [[{kpi: units}]]
+  - name: gross_margin_pct
+    label: Gross margin
+    unit: percent
+    tile: true
+    rows: [sale, return]
+    num:
+      - [{sum: profit}]
+      - [{sum: [revenue, "-", cost]}]
+      - [{kpi: net_sales}, {sum: [quantity, "*", unit_cost], sign: -1}]
+    den: [[{kpi: net_sales}]]
+  - name: return_rate
+    label: Return rate
+    unit: percent
+    tile: true
+    rows: [return, refunded]
+    num:
+      - [{sum_abs: revenue}]
+      - [{sum_abs: [quantity, "*", unit_price]}]
+    den: [[{kpi: gross_sales}]]
+  - {name: customers, label: Customers, unit: count, num: [[{nunique: customer_id}]]}
+
+glossary:
+  net_sales: [net sales, revenue, turnover, takings, gmv, sales]
+  aov: [average order value, avg order value, aov, basket size, basket value, atv,
+        average transaction value, average ticket]
+  upt: [units per transaction, units per order, upt, items per basket, basket depth]
+  asp: [average selling price, avg selling price, asp, average unit price]
+  gross_margin_pct: [gross margin, margin, gm%, margin rate]
+  return_rate: [return rate, returns rate, refund rate]
+  comp: [like for like, like-for-like, lfl, comp sales, comparable sales, same store sales,
+         same-store sales]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+  repeat_rate: [repeat rate, repeat customers, returning customers, repeat purchase rate]
+  sell_through: [sell through, sell-through, sellthrough]
+unsupported:
+  sell_through: inventory on hand (units received), which this data does not have
+
+caveats:
+  partial_last_period: "The last {period} ({label}) is partial ({days} days of data) and was left out of period comparisons."
+  returns_present: "Net sales are after {n} return or credit lines ({value})."
+  refunded_excluded: "{n} refunded order lines are left out of net sales."
+  months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+  mixed_currency: "{n} rows in currencies other than {currency} are left out of money totals."
+  test_excluded: "{n} test order lines are left out."
+  non_product_excluded: "{n} postage, fee or adjustment lines are left out of product and sales figures."
+  guests_excluded: "{n} orders with no customer id count in sales but not in customer metrics."
+
+causal_triggers: [discount, discounts, promo, promos, promotion, promotions, markdown, markdowns,
+                  campaign, campaigns, coupon, coupons, sale event, price cut, price cuts]
+
+first_questions:
+  - How are net sales trending, compared with the same period last year?
+  - Which products make up most of net sales?
+  - What is the average order value, and how has it changed?
+  - Which country or region grew fastest?
+  - How much of gross sales came back as returns?

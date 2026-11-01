@@ -15,12 +15,13 @@ import pandas as pd
 from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
 
 
-# Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00), US (1/31/2025), European
-# (31.01.2025), "Jan 31, 2025".
+# Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00, … -0500), US (1/31/2025),
+# European (31.01.2025), either with a time (31/01/2025 14:30), "Jan 31, 2025".
 _DATE_TEXT_RE = re.compile(
-    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+(Z|[+-]\d{2}:?\d{2})?)?|\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4}"
+    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+( ?(Z|[+-]\d{2}:?\d{2}))?)?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
     r"|[A-Za-z]{3,9} \d{1,2}, \d{4})$")
 _FIRST_PART_RE = re.compile(r"^(\d{1,2})[/.]\d{1,2}[/.]\d{2,4}")
+_OFFSET_RE = re.compile(r" ?(Z|[+-]\d{2}:?\d{2})$")
 
 
 def _looks_like_dates(s: pd.Series, share: float = 1.0) -> bool:
@@ -47,8 +48,13 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
     text = s.dropna().astype(str).str.strip()
     first = text.str.extract(_FIRST_PART_RE)[0].dropna().astype(int)
     dayfirst = bool(text.str.contains(r"^\d{1,2}\.\d", regex=True).any() or (first > 12).any())
-    parsed = pd.to_datetime(s.astype("string"), format="mixed",
-                            dayfirst=dayfirst, errors="coerce")
+    try:
+        parsed = pd.to_datetime(s.astype("string"), format="mixed",
+                                dayfirst=dayfirst, errors="coerce")
+    except ValueError:   # mixed UTC offsets (a daylight-saving change): each value's local time,
+        # the clock the shop reports by (Shopify's `Created at`: -0500 in winter, -0400 in summer)
+        parsed = pd.to_datetime(s.astype("string").str.strip().str.replace(_OFFSET_RE, "", regex=True),
+                                format="mixed", dayfirst=dayfirst, errors="coerce")
     return parsed if parsed.notna().sum() >= share * s.notna().sum() else None
 
 

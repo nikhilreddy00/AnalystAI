@@ -1,0 +1,6 @@
+account_id,plan,price,seats,billing_period,mrr,signup_date
+ACC-001,Pro,99,5,monthly,495,2025-03-01
+ACC-002,Team,49,3,monthly,147,2025-04-11
+ACC-003,Pro,99,2,annual,198,2025-05-20
+ACC-004,Enterprise,499,40,annual,19960,2025-06-02
+ACC-005,Team,49,8,monthly,392,2025-07-15

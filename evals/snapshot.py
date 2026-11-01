@@ -93,7 +93,9 @@ async def deterministic(datasets: set[tuple[str, int]]) -> dict:
         kpis = generate_smart_kpis(clean_df, roles, session.task_plan.raw_query, contract=contract)
         extras = compute_briefing_extras(clean_df, roles, contract)
         out[f"{name}-{seed}"] = {k: _sha(json.dumps(v, sort_keys=True, default=str)) for k, v in {
-            "contract": contract.model_dump(mode="json"),
+            # fields added since pre_5_7 count only when set (a new empty field is no change)
+            "contract": {k: v for k, v in contract.model_dump(mode="json").items()
+                         if not (k in ("domain", "roles") and not v)},
             "audit": audit.model_dump(mode="json"),
             "kpis": [k.model_dump(mode="json") for k in kpis],
             "extras": extras,

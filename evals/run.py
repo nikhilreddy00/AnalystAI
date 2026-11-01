@@ -766,8 +766,9 @@ def _date_span(df: pd.DataFrame, cols: dict) -> list:
         s = df[name]
         if not pd.api.types.is_datetime64_any_dtype(s):
             s = (pd.to_datetime(s, unit="s", errors="coerce") if pd.api.types.is_numeric_dtype(s)
-                 else pd.to_datetime(s.astype("string"), format="mixed",
-                                     dayfirst=bool(t.get("dayfirst")), errors="coerce"))
+                 # a UTC offset off: each value's local time (a Shopify export's -0500 / -0400)
+                 else pd.to_datetime(s.astype("string").str.replace(r" ?[+-]\d{2}:?\d{2}$", "", regex=True),
+                                     format="mixed", dayfirst=bool(t.get("dayfirst")), errors="coerce"))
         stamps += [s.min(), s.max()]
     stamps = [x for x in stamps if not pd.isna(x)]
     if not stamps:
@@ -808,7 +809,8 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
                     "literals": sorted({str(v) for v in df[c].dropna()}
                                        - ingestgen.CALENDAR_WORDS) if case.get("pii", {}).get(c) else [],
                     "trap": c in case.get("traps", []),
-                    "dayfirst": (case.get("truth_read", {}).get("sep") == ";") if "date" in rs[:1] else None}
+                    "dayfirst": case.get("dayfirst", case.get("truth_read", {}).get("sep") == ";")
+                    if "date" in rs[:1] else None}
                 for c, rs in roles.items()}
         cells = case.get("expect", {}).get("cells")
     if cells is None:   # 20 sampled cells of the canonical frame
@@ -821,6 +823,8 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
              "rows": expect.get("rows", len(df)), "cells": cells,
              "facts": _ingestion_facts(df, {c: t["roles"] for c, t in cols.items()}),
              "date_span": _date_span(df, cols)}
+    if "expect_domain" in case:   # Phase 5.7: the domain pack it matches (null: none) and its roles
+        truth["pack"] = {"domain": case["expect_domain"], "roles": case.get("expect_roles", {})}
     return data, ext, truth
 
 
@@ -1117,7 +1121,10 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         except Exception as exc:   # a scorer or harness bug fails this run, never the report
             out = {"checks": [{"kind": "harness", "ok": False,
                                "detail": f"{type(exc).__name__}: {exc}"[:300]}],
-                   "hard": [], "error": f"harness: {type(exc).__name__}: {exc}"[:300], "output": None}
+                   "hard": [], "error": f"harness: {type(exc).__name__}: {exc}"[:300], "output": None,
+                   # what every scorer adds, so the summaries count the failure, not crash on it
+                   "category": case.get("category"), "case": case["id"],
+                   "holdout": case["id"].endswith("holdout")}
         if "domain" in case:
             out["domain"] = case["domain"]
         out["latency_s"] = round(time.perf_counter() - start, 2)
@@ -1438,6 +1445,7 @@ def _ingestion_quality(flat: list[dict]) -> dict:
                                     if c["kind"] == "phi"}),
         "phi_over_masking": round(1 - keep, 4) if keep is not None else None,
         "phi_flag_accuracy": share("phi_flag"),
+        "domain_accuracy": share("domain"),   # Phase 5.7: domain + every pack role exact
     }
 
 

@@ -1256,7 +1256,9 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
         return got.strip() == str(want).strip()
     if isinstance(got, pd.Timestamp) and dayfirst is not None:   # a parsed date column
         try:
-            return got == pd.to_datetime(str(want), dayfirst=dayfirst)
+            # an offset (" -0500") is dropped: the load keeps each value's local time
+            return got == pd.to_datetime(re.sub(r" ?[+-]\d{2}:?\d{2}$", "", str(want)),
+                                         dayfirst=dayfirst)
         except (TypeError, ValueError):
             return False
     return False
@@ -1354,6 +1356,10 @@ def score_ingestion(truth: dict, output: dict | None, error: str | None
                            "detail": "masked although not PII" if masked else "kept"})
 
     checks += _phi_checks(truth, output.get("phi"))
+    if (pack := truth.get("pack")) is not None:
+        got = {"domain": contract.get("domain"), "roles": contract.get("roles") or {}}
+        checks.append({"kind": "domain", "ok": got == pack,
+                       "detail": "ok" if got == pack else f"{got} (want {pack})"})
     all_lits = [lit for t in cols.values() for lit in t["literals"]]
     canary = leaked(sent, all_lits)
     summary = contract.get("schema_summary", "")

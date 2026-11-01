@@ -11,3 +11,5 @@ expect:
   cells: [[0, Customer, Jane Doe], [5, Qty, -1], [4, Amount, "1,150.00"], [11, Num, 1012]]
 label_note: 'Hand-written accounting report: 4 title lines above the header, quoted thousands, and a
   TOTAL footer row that must not be loaded as a sale (it would double every sum).'
+expect_domain: retail
+expect_roles: {date: Date, quantity: Qty, unit_price: Sales Price}

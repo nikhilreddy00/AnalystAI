@@ -27,6 +27,8 @@ from agents.data_cleaning import try_numeric_conversion
 from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
+from domain_pack import detect as detect_domain
+from domain_pack import pack_for
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -349,6 +351,13 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     rows = head.where(head.notna(), None).to_dict(orient="records")
     fp = fingerprint(df)
     phi = _patient_signal(cols, lambda n: _profiled(df[n]).dropna().head(_SAMPLE).tolist())
+    domain, roles = detect_domain(df, {c.name for c in cols if c.is_date}, set(pii))
+    if pack := pack_for(domain):   # the pack knows a store number is a label, not a quantity
+        for c in cols:
+            role = next((r for r, col in roles.items() if col == c.name), None)
+            if role and pack.roles[role].kind == "id" and not c.is_id:
+                c.is_id, c.is_metric, c.is_date = True, False, False
+                c.role_reason = f"id: the {domain} {role.replace('_', ' ')}"
     return DataContract(
         source_type=source_type, row_count=len(df), column_count=df.shape[1], columns=cols,
         sample_rows=[mask_row(r, pii) for r in rows],
@@ -358,7 +367,8 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
         id_columns=[c.name for c in cols if c.is_id],
         metric_columns=[c.name for c in cols if c.is_metric],
         schema_summary=_summary(df, cols), fingerprint=fp, pii_columns=pii,
-        source_evidence=source_evidence(df, cols, source_type, info, fp))
+        source_evidence=source_evidence(df, cols, source_type, info, fp),
+        domain=domain, roles=roles)
 
 
 # ── PII guard ──────────────────────────────────────────────────────────────────

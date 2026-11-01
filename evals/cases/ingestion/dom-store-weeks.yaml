@@ -1,0 +1,24 @@
+id: dom-store-weeks
+category: domain
+dataset:
+  name: store_weeks
+  seed: 1
+roles:
+  Store_No: id
+  Wk_End_Dt: date
+  Dept: category
+  Net Sales: metric
+  Units: metric
+  COGS: metric
+  Region: category
+expect_domain: retail
+expect_roles:
+  store: Store_No
+  date: Wk_End_Dt
+  category: Dept
+  revenue: Net Sales
+  quantity: Units
+  cost: COGS
+label_note: 'POS weekly store x department sales, dd/mm/yyyy week endings: Store_No 101-112 is a store,
+  not a quantity.'
+dayfirst: true

@@ -1,0 +1,7 @@
+transaction_id,posted_date,account_id,merchant,category,amount,balance_after
+T100001,2026-01-02,A-1001,Blue Bottle Cafe,Dining,-4.50,1295.50
+T100002,2026-01-02,A-1002,Payroll ACME,Income,2400.00,5120.00
+T100003,2026-01-03,A-1001,City Grocer,Groceries,-61.20,1234.30
+T100004,2026-01-04,A-1003,Shell,Fuel,-40.00,880.00
+T100005,2026-01-05,A-1002,Rent Co,Housing,-1500.00,3620.00
+T100006,2026-01-06,A-1001,Refund City Grocer,Groceries,12.00,1246.30

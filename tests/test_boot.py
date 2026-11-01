@@ -89,3 +89,39 @@ def test_the_shipped_layers_are_valid_and_found_from_any_directory(tmp_path, mon
     monkeypatch.chdir(tmp_path)   # the worker's cwd needn't be the repo
     semantic_layer.file_layers.cache_clear()
     assert len(semantic_layer.file_layers()) == 7
+
+
+@pytest.fixture
+def bad_pack(tmp_path, monkeypatch):
+    import domain_pack
+    (tmp_path / "broken.yaml").write_text("domain: x\nsignals: {a: [r]}\nroles: {r: {kind: money, "
+                                          "headers: [Revenue]}}\n")
+    monkeypatch.setattr(domain_pack, "PACKS", tmp_path)
+    domain_pack.load_packs.cache_clear()
+    yield
+    domain_pack.load_packs.cache_clear()
+
+
+async def test_an_invalid_domain_pack_stops_the_api(prod, bad_pack):
+    from api.main import app, lifespan
+    with pytest.raises(ValueError, match="invalid domain pack"):
+        async with lifespan(app):
+            pass
+
+
+async def test_an_invalid_domain_pack_stops_the_worker(prod, bad_pack):
+    from worker.__main__ import main
+    with pytest.raises(ValueError, match="invalid domain pack"):
+        await main()
+
+
+def test_the_shipped_packs_are_valid_found_from_any_directory_and_in_the_image(tmp_path, monkeypatch):
+    import domain_pack
+    from pathlib import Path
+    root = Path(__file__).parent.parent
+    monkeypatch.chdir(tmp_path)
+    domain_pack.load_packs.cache_clear()
+    assert [p.domain for p in domain_pack.load_packs()] == ["retail"]
+    ignored = (root / ".dockerignore").read_text().split()
+    assert not {"domain_packs", "domain_packs/", "*.yaml", "domain_pack.py"} & set(ignored)
+    assert "COPY . ." in (root / "Dockerfile").read_text()

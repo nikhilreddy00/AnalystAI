@@ -21,6 +21,8 @@ async def main() -> None:
         raise SystemExit("ENCRYPTION_KEY is not set: checkpoints can't be stored safely.")
     from semantic_layer import file_layers
     file_layers()   # an invalid semantic layer stops the worker too, before it claims a run
+    from domain_pack import load_packs
+    load_packs()    # …and an invalid domain pack
     deps = await open_deps("production", settings.database_url)   # no in-memory fallback
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

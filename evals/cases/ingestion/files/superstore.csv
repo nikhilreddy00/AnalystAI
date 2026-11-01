@@ -1,0 +1,13 @@
+Row ID,Order ID,Order Date,Ship Mode,Segment,Region,Category,Sub-Category,Product Name,Sales,Quantity,Discount,Profit
+1,CA-2025-152156,08/11/2025,Second Class,Consumer,South,Furniture,Bookcases,Bush Somerset Collection Bookcase,261.96,2,0,41.91
+2,CA-2025-152156,08/11/2025,Second Class,Consumer,South,Furniture,Chairs,Hon Deluxe Fabric Upholstered Stacking Chairs,731.94,3,0,219.58
+3,CA-2025-138688,06/12/2025,Second Class,Corporate,West,Office Supplies,Labels,Self-Adhesive Address Labels,14.62,2,0,6.87
+4,US-2025-108966,10/11/2025,Standard Class,Consumer,South,Furniture,Tables,Bretford CR4500 Series Slim Rectangular Table,957.58,5,0.45,-383.03
+5,US-2025-108966,10/11/2025,Standard Class,Consumer,South,Office Supplies,Storage,Eldon Fold 'N Roll Cart System,22.37,2,0.2,2.52
+6,CA-2025-115812,06/09/2025,Standard Class,Consumer,West,Furniture,Furnishings,Eldon Expressions Wood Desk Accessory,48.86,7,0,14.17
+7,CA-2025-115812,06/09/2025,Standard Class,Consumer,West,Office Supplies,Art,Newell 322,7.28,4,0,1.97
+8,CA-2025-115812,06/09/2025,Standard Class,Consumer,West,Technology,Phones,Mitel 5320 IP Phone VoIP phone,907.15,6,0.2,90.72
+9,CA-2025-115812,06/09/2025,Standard Class,Consumer,West,Office Supplies,Binders,DXL Angle-View Binders,18.50,3,0.2,5.78
+10,CA-2025-115812,06/09/2025,Standard Class,Consumer,West,Office Supplies,Appliances,Belkin Surge Protector,114.90,5,0,34.47
+11,CA-2025-114412,04/15/2025,Standard Class,Consumer,South,Office Supplies,Paper,Xerox 1967,15.55,3,0.2,5.44
+12,CA-2025-161389,12/05/2025,Standard Class,Consumer,West,Office Supplies,Binders,Fellowes PB200 Binding Machine,407.98,3,0.2,132.59

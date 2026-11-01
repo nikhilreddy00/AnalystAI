@@ -1,0 +1,47 @@
+id: dom-retail-lines
+category: domain
+dataset:
+  name: retail_lines
+  seed: 1
+roles:
+  Name: id
+  Created at: date
+  Lineitem name: category
+  Lineitem sku:
+  - id
+  - category
+  Lineitem quantity: metric
+  Lineitem price: metric
+  Discount Amount: metric
+  Financial Status: category
+  Email:
+  - category
+  - id
+  Billing Name:
+  - category
+  - id
+  Shipping Country: category
+  Total: metric
+  Currency: category
+pii:
+  Email: email
+  Billing Name: name
+traps:
+- Name
+- Lineitem name
+expect_domain: retail
+expect_roles:
+  order_id: Name
+  date: Created at
+  product: Lineitem name
+  sku: Lineitem sku
+  quantity: Lineitem quantity
+  unit_price: Lineitem price
+  discount: Discount Amount
+  status: Financial Status
+  email: Email
+  country: Shipping Country
+  order_total: Total
+  currency: Currency
+label_note: 'Shopify order-line export: `Name` is the order number (#1001), not a person; product names
+  are not people; `Created at` has -0500/-0400 offsets (daylight saving).'

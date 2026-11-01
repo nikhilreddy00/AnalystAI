@@ -1,0 +1,29 @@
+id: dom-b2b-invoices
+category: domain
+dataset:
+  name: b2b_invoices
+  seed: 1
+roles:
+  InvoiceNo: id
+  InvoiceDate: date
+  StockCode:
+  - id
+  - category
+  Description: category
+  Quantity: metric
+  UnitPrice: metric
+  CustomerID: id
+  Country: category
+expect_domain: retail
+expect_roles:
+  order_id: InvoiceNo
+  date: InvoiceDate
+  sku: StockCode
+  product: Description
+  quantity: Quantity
+  unit_price: UnitPrice
+  customer_id: CustomerID
+  country: Country
+label_note: 'Wholesale invoice lines: C-prefixed credit notes, £ prices as text, dd/mm/yyyy HH:MM dates,
+  CustomerID blank on guest invoices (an id, not a measure).'
+dayfirst: true

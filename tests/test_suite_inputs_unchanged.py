@@ -36,7 +36,10 @@ async def test_every_snapshotted_case_still_gets_the_same_inputs():
 # briefing extras, cleaned frame), from evals/snapshots/pre_5_7.json taken at ab05639. A domain
 # pack must not change another domain's data; a dataset listed here changed on purpose, and its
 # paid cases are re-measured at the domain's gate (named in its review note).
-CHANGED_ON_PURPOSE: set[str] = set()
+CHANGED_ON_PURPOSE = {
+    # Domain 1, sales / retail: the old retail tables are retail (contract.domain + roles).
+    *(f"sales-{i}" for i in range(1, 6)), "mixed_dates-1", "mixed_dates-2",
+}
 
 
 async def test_no_llm_outputs_unchanged_outside_the_domain_being_built():

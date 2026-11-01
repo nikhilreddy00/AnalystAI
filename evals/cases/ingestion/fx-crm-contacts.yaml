@@ -14,3 +14,4 @@ expect:
   cells: [[3, Annual Revenue, 5600000], [6, Phone Number, "+91 98765 43210"], [8, Company Name, Sato Robotics]]
 label_note: 'Hand-written CRM contact export: owner, first/last names, international phones; company
   names are not people.'
+expect_domain: null

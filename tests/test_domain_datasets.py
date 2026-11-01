@@ -28,7 +28,7 @@ from orchestrator.state import (
 )
 
 DOMAINS = ("bank_balances", "encounters", "claims", "employees", "saas_accounts",
-           "sensor_readings", "shipments")
+           "sensor_readings", "shipments", "retail_lines", "store_weeks", "b2b_invoices")
 
 
 def _findings(**kw) -> AnalysisFindings:

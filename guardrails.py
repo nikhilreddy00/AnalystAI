@@ -778,8 +778,8 @@ _PII_COL_RE = re.compile(
 _THING_NAME_RE = re.compile(
     r"(?:^|_)(?:product|company|file|brand|category|item|sku|host|table|column|field|sheet|"
     r"store|shop|city|country|state|region|department|dept|team|project|campaign|vendor|"
-    r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment)"
-    r"_names?$", re.I)
+    r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment|"
+    r"lineitem|line_item)_names?$", re.I)
 # A column named for a person's role (`sales_rep`, `contact_owner`, `assigned_to`): PII only when
 # its values read as people (pii_kind checks), so `new_customer` (Yes/No) keeps its breakdowns.
 _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "agent", "salesperson",
@@ -874,6 +874,13 @@ def mask_emails(value: Any) -> Any:
     return _EMAIL_RE.sub(MASK, value) if isinstance(value, str) else value
 
 
+def _numbered(values: Iterable[Any]) -> bool:
+    """≥ 90% of the values carry a digit ("#1001", "INV-0042"): numbers, not people's names,
+    whatever their case or convention ("Smith, Ann", "ann smith" have none)."""
+    vals = [str(v) for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
+    return bool(vals) and sum(any(ch.isdigit() for ch in v) for v in vals) >= 0.9 * len(vals)
+
+
 def _is_measure(values: Iterable[Any]) -> bool:
     """Numbers that aren't dates or years (a count of births, a weight at birth): a birth- or
     death-named column holding them is a measure, not a person's date."""
@@ -948,6 +955,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 _DATE_NAME_RE.search(norm) or _serial_dates(values))):
             return None   # births = 120, birth_order = 2, birth_length_cm = 50.5; a `dob` of
             # 25204 (a spreadsheet date) stays a date
+        if kind == "name" and norm.lower() == "name" and _numbered(values):
+            return None   # Shopify's `Name` is the order number (#1001), not a person
         return kind, f"the column name '{name}' marks personal data"
     vals = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
     if not vals:

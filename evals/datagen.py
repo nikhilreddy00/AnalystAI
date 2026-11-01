@@ -519,12 +519,295 @@ def make_shipments(seed: int) -> tuple[pd.DataFrame, dict]:
     assert truth["pooled_ontime"]["X"] < truth["pooled_ontime"]["Y"]
     return df, truth
 
+# ── Phase 5.7, domain 1: sales / retail ─────────────────────────────────────────────────────────
+# Truths are computed here with plain pandas, never through domain_pack (a check that reuses the
+# code under test measures nothing).
+
+_SKUS = [(f"SKU-{i:03d}", n, p) for i, (n, p) in enumerate([
+    ("Linen Shirt", 48.0), ("Wool Scarf", 32.0), ("Canvas Tote", 24.0), ("Leather Belt", 55.0),
+    ("Cotton Tee", 18.0), ("Rain Jacket", 120.0), ("Denim Jeans", 78.0), ("Silk Tie", 40.0),
+    ("Sun Hat", 28.0), ("Sneakers", 95.0), ("Socks 3-pack", 12.0), ("Beanie", 22.0)], 1)]
+# Orders per month, Jan 2025 .. Jan 2026 (+ 12 days of Feb 2026): a Nov–Dec peak.
+_SEASON = [180, 150, 160, 165, 170, 160, 155, 160, 170, 185, 260, 330, 190]
+
+
+def _month_net(lines: pd.DataFrame) -> pd.Series:
+    month = pd.to_datetime(lines["_local"]).dt.to_period("M")
+    return lines.groupby(month)["_net"].sum().sort_index()
+
+
+def make_retail_lines(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A Shopify-style order-line export, Jan 2025 .. Feb 12 2026 (Feb is partial).
+
+    Order-level fields (Discount Amount, Financial Status, Email, Billing Name, Shipping Country,
+    Total) are on an order's first line only, as Shopify exports them. Planted:
+    - AOV is per order (~1.8 lines each), not per line;
+    - refunded and voided orders are not sales; 12 test orders (test@…); 3% of orders in CAD;
+    - Jan 2026 net sales are −30% vs Dec 2025 (the season) but +8% vs Jan 2025;
+    - `Total` summed over lines after carrying it down an order is fan-out;
+    - 40 duplicate export rows; `Created at` offsets −0500 / −0400 (daylight saving)."""
+    rng = np.random.default_rng(seed)
+    countries = ["United States", "United Kingdom", "Canada", "Germany", "Australia"]
+    c_weights = [0.55, 0.15, 0.12, 0.10, 0.08]
+    aov_lift = {"United States": 1.0, "United Kingdom": 1.15, "Canada": 0.9, "Germany": 1.3,
+                "Australia": 1.05}
+    rows, order_no = [], 1001
+    months = pd.period_range("2025-01", "2026-02", freq="M")
+    for m, month in enumerate(months):
+        n_orders = _SEASON[m] if m < 13 else 75
+        last_day = 12 if m == 13 else month.days_in_month
+        for _ in range(n_orders):
+            local = (month.start_time + pd.Timedelta(days=int(rng.integers(0, last_day)))
+                     + pd.Timedelta(minutes=int(rng.integers(8 * 60, 23 * 60))))
+            country = rng.choice(countries, p=c_weights)
+            status = rng.choice(["paid", "refunded", "partially_refunded", "voided", "pending"],
+                                p=[0.90, 0.04, 0.02, 0.02, 0.02])
+            n_lines = int(rng.choice([1, 2, 3, 4], p=[0.45, 0.35, 0.15, 0.05]))
+            picks = rng.choice(len(_SKUS), n_lines, replace=False)
+            first, last = _FIRST[rng.integers(len(_FIRST))], _LAST[rng.integers(len(_LAST))]
+            for j, k in enumerate(picks):
+                sku, name, price = _SKUS[k]
+                rows.append({"_order": order_no, "_local": local, "_line": j, "_country": country,
+                             "_status": status, "sku": sku, "item": name,
+                             "qty": int(rng.choice([1, 1, 1, 2, 3])),
+                             "price": round(price * aov_lift[country], 2),
+                             "_name": f"{first} {last}",
+                             "_email": f"{first.lower()}.{last.lower()}{order_no}@example.com"})
+            order_no += 1
+    df = pd.DataFrame(rows)
+    orders = df["_order"].unique()
+    cad = set(rng.choice(orders, round(len(orders) * 0.03), replace=False))
+    test = set(rng.choice(sorted(set(orders) - cad), 12, replace=False))
+    df["_currency"] = np.where(df["_order"].isin(cad), "CAD", "USD")
+    df.loc[df["_order"].isin(test), "_email"] = "test@" + df["_order"].astype(str) + ".dev"
+    # A 10% code on ~30% of orders: one order-level amount.
+    gross = (df["qty"] * df["price"]).groupby(df["_order"]).sum()
+    disc = pd.Series(np.where(rng.random(len(gross)) < 0.3, (gross * 0.10).round(2), 0.0),
+                     index=gross.index)
+    df["_disc"] = df["_order"].map(disc)
+
+    def sale(d):   # what counts in net sales
+        return (d["_currency"].eq("USD") & ~d["_order"].isin(test)
+                & ~d["_status"].isin(["refunded", "voided"]))
+
+    def net(d):    # line amount less its order's discount (on the first line)
+        return d["qty"] * d["price"] - np.where(d["_line"].eq(0), d["_disc"], 0.0)
+
+    # Plant Jan 2026: +8% vs Jan 2025 and −30% vs Dec 2025, by scaling those months' prices.
+    for _ in range(3):
+        s = df[sale(df)].assign(_net=lambda d: net(d))
+        mn = _month_net(s)
+        p = pd.to_datetime(df["_local"]).dt.to_period("M")
+        jan26 = mn[pd.Period("2025-01")] * 1.08
+        df.loc[p == pd.Period("2026-01"), ["price", "_disc"]] *= jan26 / mn[pd.Period("2026-01")]
+        df.loc[p == pd.Period("2025-12"), ["price", "_disc"]] *= (jan26 / 0.70) / mn[pd.Period("2025-12")]
+    df["price"] = df["price"].round(2)
+    df["_disc"] = df["_disc"].round(2)
+    order_total = ((df["qty"] * df["price"]).groupby(df["_order"]).sum()
+                   - df.groupby("_order")["_disc"].first()).round(2)
+
+    stamps = pd.to_datetime(df["_local"]).dt.tz_localize("America/New_York")
+    first_line = df["_line"].eq(0)
+    out = pd.DataFrame({
+        "Name": "#" + df["_order"].astype(str),
+        "Created at": stamps.dt.strftime("%Y-%m-%d %H:%M:%S %z"),
+        "Lineitem name": df["item"], "Lineitem sku": df["sku"],
+        "Lineitem quantity": df["qty"], "Lineitem price": df["price"],
+        "Discount Amount": df["_disc"].where(first_line),
+        "Financial Status": df["_status"].where(first_line),
+        "Email": df["_email"].where(first_line),
+        "Billing Name": df["_name"].where(first_line),
+        "Shipping Country": df["_country"].where(first_line),
+        "Total": df["_order"].map(order_total).where(first_line),
+        "Currency": df["_currency"],
+    })
+    dups = out.sample(40, random_state=seed)
+    out = pd.concat([out, dups]).sort_index(kind="stable").reset_index(drop=True)
+
+    s = df[sale(df)].assign(_net=lambda d: net(d))
+    mn = _month_net(s)
+    full = s[pd.to_datetime(s["_local"]) < pd.Timestamp("2026-02-01")]
+    n_orders = s["_order"].nunique()
+    net_total = float(s["_net"].sum())
+    by_country = s.groupby("_country").agg(net=("_net", "sum"), orders=("_order", "nunique"))
+    filled_total = out["Total"].groupby(out["Name"]).transform("first")
+    usd_lines = s.assign(_amt=s["qty"] * s["price"])
+    truth = {
+        "row_count": len(out), "orders": n_orders, "net_sales": net_total,
+        "aov": net_total / n_orders, "naive_aov_per_line": net_total / len(s),
+        "units": int(s["qty"].sum()),
+        "net_sales_by_month": {str(k): float(v) for k, v in mn.items()},
+        "jan26_mom_pct": float((mn[pd.Period("2026-01")] / mn[pd.Period("2025-12")] - 1) * 100),
+        "jan26_yoy_pct": float((mn[pd.Period("2026-01")] / mn[pd.Period("2025-01")] - 1) * 100),
+        "net_sales_full_months": float(full["_net"].sum()),
+        "aov_by_country": (by_country["net"] / by_country["orders"]).to_dict(),
+        "naive_aov_by_country_lines": (s.groupby("_country")["_net"].sum()
+                                       / s.groupby("_country").size()).to_dict(),
+        "naive_total_fanout": float(filled_total.sum()),
+        "refunded_lines": int(df["_status"].eq("refunded").sum()),
+        "voided_lines": int(df["_status"].eq("voided").sum()),
+        "cad_lines": int(df["_currency"].eq("CAD").sum()),
+        "test_lines": int(df["_order"].isin(test).sum()),
+        "duplicate_rows": 40, "partial_month": "2026-02", "partial_days": 12,
+        "top_sku_by_net": usd_lines.groupby("sku")["_amt"].sum().idxmax(),
+        "pii_columns": ["Email", "Billing Name"],
+    }
+    assert abs(truth["jan26_yoy_pct"] - 8) < 0.5 and abs(truth["jan26_mom_pct"] + 30) < 0.5
+    assert truth["naive_aov_per_line"] < truth["aov"] * 0.8
+    return out, truth
+
+
+_STORE_DEPTS = {"Grocery": (0.28, 18000), "Apparel": (0.55, 6000), "Home": (0.45, 5000),
+          "Electronics": (0.12, 9000)}   # (gross margin, weekly net sales of a store)
+
+
+def make_store_weeks(seed: int) -> tuple[pd.DataFrame, dict]:
+    """POS sales by store × week (ending Saturday) × department, 104 weeks from 2024-07-06.
+
+    Planted: 9 stores trade all 104 weeks and grow +2% year over year (comp / like-for-like);
+    3 new stores open late in year 2, so total sales grow ~+10%. Gross margin is a ratio of sums
+    (Electronics sells a lot at a low margin), not the mean of each row's margin. Store 105's
+    POS writes Units = 9999 for six weeks it could not count (a sentinel, not a sale)."""
+    rng = np.random.default_rng(seed)
+    weeks = pd.date_range("2024-07-06", periods=104, freq="7D")
+    stores = {s: 0 for s in range(101, 110)} | {110: 84, 111: 92, 112: 98}   # first week index
+    regions = {s: ["North", "South", "East"][s % 3] for s in stores}
+    rows = []
+    for store, start in stores.items():
+        size = rng.uniform(0.8, 1.2)
+        for w in range(start, 104):
+            year2 = w >= 52
+            season = 1 + 0.25 * np.exp(-((w % 52) - 24) ** 2 / 8)   # a December peak
+            for dept, (margin, base) in _STORE_DEPTS.items():
+                sales = base * size * season * (1.02 if year2 else 1.0) * rng.normal(1, 0.04)
+                rows.append({"Store_No": store, "_w": w, "Dept": dept,
+                             "Net Sales": round(sales, 2),
+                             "Units": int(sales / {"Grocery": 6, "Apparel": 30, "Home": 25,
+                                                   "Electronics": 180}[dept]),
+                             "COGS": round(sales * (1 - margin) * rng.normal(1, 0.02), 2),
+                             "Region": regions[store]})
+    df = pd.DataFrame(rows)
+    # Comp exactly +2%: scale the comp stores' year-2 sales and costs.
+    comp = df["Store_No"] < 110
+    y1, y2 = df["_w"] < 52, df["_w"] >= 52
+    k = df.loc[comp & y1, "Net Sales"].sum() * 1.02 / df.loc[comp & y2, "Net Sales"].sum()
+    df.loc[comp & y2, ["Net Sales", "COGS"]] = (df.loc[comp & y2, ["Net Sales", "COGS"]] * k).round(2)
+    sentinel = df[(df["Store_No"] == 105) & (df["Dept"] == "Home")].sample(6, random_state=seed).index
+    true_units = df["Units"].copy()
+    df.loc[sentinel, "Units"] = 9999
+    df.insert(1, "Wk_End_Dt", weeks[df["_w"]].strftime("%d/%m/%Y"))
+
+    total1, total2 = df.loc[y1, "Net Sales"].sum(), df.loc[y2, "Net Sales"].sum()
+    comp1, comp2 = df.loc[comp & y1, "Net Sales"].sum(), df.loc[comp & y2, "Net Sales"].sum()
+    by_dept = df.groupby("Dept")[["Net Sales", "COGS"]].sum()
+    row_margin = (df["Net Sales"] - df["COGS"]) / df["Net Sales"]
+    truth = {
+        "row_count": len(df), "net_sales": float(df["Net Sales"].sum()),
+        "total_growth_pct": float((total2 / total1 - 1) * 100),
+        "comp_growth_pct": float((comp2 / comp1 - 1) * 100),
+        "comp_stores": sorted(s for s in stores if s < 110), "new_stores": [110, 111, 112],
+        "gross_margin_pct": float((1 - df["COGS"].sum() / df["Net Sales"].sum()) * 100),
+        "naive_margin_mean_of_rows_pct": float(row_margin.mean() * 100),
+        "margin_by_dept_pct": {d: float((1 - r["COGS"] / r["Net Sales"]) * 100)
+                               for d, r in by_dept.iterrows()},
+        "units": int(true_units.sum()), "naive_units": int(df["Units"].sum()),
+        "sentinel_rows": len(sentinel), "pii_columns": [],
+    }
+    df = df.drop(columns="_w")
+    assert truth["total_growth_pct"] - truth["comp_growth_pct"] > 5
+    assert abs(truth["gross_margin_pct"] - truth["naive_margin_mean_of_rows_pct"]) > 3
+    return df, truth
+
+
+def make_b2b_invoices(seed: int) -> tuple[pd.DataFrame, dict]:
+    """Wholesale invoice lines in GBP ("£2.55"), Jan 2025 .. Jan 2026 (13 full months).
+
+    Planted: credit notes ("C…", negative quantities) are netted; POST (postage) and M (manual)
+    lines are not products; 20% of invoices have no CustomerID (guests: in sales, not in customer
+    metrics); two 99999 price sentinels; the top 20% of customers make most of net sales; the
+    repeat rate counts invoices, not lines."""
+    rng = np.random.default_rng(seed)
+    products = [(f"{rng.integers(20000, 90000)}{'' if i % 3 else 'A'}", f"PRODUCT {i:02d}",
+                 round(float(rng.uniform(0.85, 12.0)), 2)) for i in range(40)]
+    customers = rng.choice(np.arange(12346, 18288), 150, replace=False)
+    weight = rng.pareto(1.2, len(customers)) + 0.05
+    weight = weight / weight.sum()
+    rows, inv = [], 536365
+    for day in pd.date_range("2025-01-02", "2026-01-31", freq="D"):
+        if day.weekday() == 5:
+            continue
+        for _ in range(int(rng.poisson(3))):
+            guest = rng.random() < 0.20
+            cust = None if guest else int(rng.choice(customers, p=weight))
+            scale = 1.0 if guest else 1 + 40 * weight[list(customers).index(cust)]
+            country = "United Kingdom" if rng.random() < 0.85 else rng.choice(
+                ["France", "Germany", "EIRE", "Netherlands"])
+            stamp = day + pd.Timedelta(minutes=int(rng.integers(8 * 60, 18 * 60)))
+            for k in rng.choice(len(products), int(rng.integers(1, 5)), replace=False):
+                code, desc, price = products[k]
+                rows.append({"InvoiceNo": str(inv), "_t": stamp, "StockCode": code,
+                             "Description": desc, "Quantity": int(rng.integers(1, 13) * scale),
+                             "UnitPrice": price, "CustomerID": cust, "Country": country})
+            if rng.random() < 0.25:   # postage, priced like a product line
+                rows.append({"InvoiceNo": str(inv), "_t": stamp, "StockCode": "POST",
+                             "Description": "POSTAGE", "Quantity": int(rng.integers(1, 4)),
+                             "UnitPrice": 40.0, "CustomerID": cust, "Country": country})
+            inv += 1
+    df = pd.DataFrame(rows)
+    # Credit notes: 120 lines reversing earlier sales, at the same price, negative quantity.
+    src = df[df["StockCode"] != "POST"].sample(120, random_state=seed)
+    credits = src.assign(InvoiceNo=["C" + str(inv + i) for i in range(len(src))],
+                         Quantity=-np.maximum(1, (src["Quantity"] * 0.5).astype(int)),
+                         _t=src["_t"] + pd.Timedelta(days=9))
+    credits = credits[credits["_t"] < pd.Timestamp("2026-02-01")]
+    manual = df.sample(8, random_state=seed + 1).assign(StockCode="M", Description="Manual",
+                                                        Quantity=1, UnitPrice=150.0)
+    df = pd.concat([df, credits, manual]).sort_values("_t", kind="stable").reset_index(drop=True)
+    sentinel = df[df["StockCode"].str.match(r"\d")].sample(2, random_state=seed + 2).index
+    df.loc[sentinel, "UnitPrice"] = 99999.0
+
+    product = ~df["StockCode"].isin(["POST", "M"]) & ~df.index.isin(sentinel)
+    amt = df["Quantity"] * df["UnitPrice"]
+    sale, credit = product & ~df["InvoiceNo"].str.startswith("C"), product & df["InvoiceNo"].str.startswith("C")
+    net = float(amt[product].sum())
+    known = df[sale & df["CustomerID"].notna()]
+    inv_per_cust = known.groupby("CustomerID")["InvoiceNo"].nunique()
+    lines_per_cust = known.groupby("CustomerID").size()
+    cust_net = amt[product & df["CustomerID"].notna()].groupby(df["CustomerID"]).sum().sort_values(ascending=False)
+    top = cust_net.head(max(1, round(len(cust_net) * 0.2)))
+    by_code = amt[sale].groupby(df["StockCode"]).sum().sort_values(ascending=False)
+    naive_code = amt.groupby(df["StockCode"]).sum().sort_values(ascending=False)
+    truth = {
+        "row_count": len(df), "net_sales": net,
+        "naive_net_sales": float(amt.sum()),
+        "gross_sales": float(amt[sale].sum()), "credit_value": float(-amt[credit].sum()),
+        "return_rate_pct": float(-amt[credit].sum() / amt[sale].sum() * 100),
+        "credit_lines": int(df["InvoiceNo"].str.startswith("C").sum()),
+        "postage_lines": int(df["StockCode"].eq("POST").sum()),
+        "guest_invoices": int(df.loc[df["CustomerID"].isna(), "InvoiceNo"].nunique()),
+        "customers": int(known["CustomerID"].nunique()),
+        "repeat_rate_pct": float((inv_per_cust >= 2).mean() * 100),
+        "naive_repeat_rate_lines_pct": float((lines_per_cust >= 2).mean() * 100),
+        "top20_customer_share_pct": float(top.sum() / cust_net.sum() * 100),
+        "top_products": by_code.head(5).index.tolist(),
+        "naive_top_products": naive_code.head(5).index.tolist(),
+        "sentinel_rows": len(sentinel), "pii_columns": [],
+    }
+    out = df.drop(columns="_t")
+    out.insert(1, "InvoiceDate", df["_t"].dt.strftime("%d/%m/%Y %H:%M"))
+    out["UnitPrice"] = "£" + out["UnitPrice"].map("{:.2f}".format)
+    assert "POST" in truth["naive_top_products"][:3] and "POST" not in truth["top_products"]
+    assert truth["naive_repeat_rate_lines_pct"] - truth["repeat_rate_pct"] > 10
+    assert 55 < truth["top20_customer_share_pct"] < 90
+    return out, truth
+
 
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
             "saas_accounts": make_saas_accounts, "sensor_readings": make_sensor_readings,
-            "shipments": make_shipments}
+            "shipments": make_shipments, "retail_lines": make_retail_lines,
+            "store_weeks": make_store_weeks, "b2b_invoices": make_b2b_invoices}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

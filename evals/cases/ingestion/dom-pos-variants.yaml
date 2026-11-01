@@ -1,0 +1,25 @@
+id: dom-pos-variants
+category: domain
+file: pos_variants.csv
+truth_read: {}
+roles:
+  Receipt No: id
+  Txn Date: date
+  'Store #':
+  - category
+  - id
+  SKU: id
+  QTY: metric
+  Unit Price ($): metric
+  NET_SALES: metric
+expect_domain: retail
+expect_roles:
+  order_id: Receipt No
+  date: Txn Date
+  store: 'Store #'
+  sku: SKU
+  quantity: QTY
+  unit_price: Unit Price ($)
+  revenue: NET_SALES
+label_note: 'POS export header conventions: upper case, units in brackets, ''#''; a return line has QTY
+  -1.'

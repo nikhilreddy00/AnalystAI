@@ -16,3 +16,4 @@ columns:
 - [claim_amount, money]
 - [service_date, date_iso]
 label_note: 'Health insurance claims: member ids are the insurer''s; MRN, name, DOB, ZIP, phone are PHI.'
+expect_domain: null

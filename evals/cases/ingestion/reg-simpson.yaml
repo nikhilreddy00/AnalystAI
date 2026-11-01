@@ -13,3 +13,4 @@ roles:
   session_minutes: metric
 pii: {}
 label_note: 'An existing eval dataset: roles every other suite depends on must not regress.'
+expect_domain: null

@@ -1,0 +1,14 @@
+id: neg-saas-pricing
+category: domain
+file: saas_pricing.csv
+truth_read: {}
+roles:
+  account_id: id
+  plan: category
+  price: metric
+  seats: metric
+  billing_period: category
+  mrr: metric
+  signup_date: date
+expect_domain: null
+label_note: 'SaaS plans: a price alone is one signal, not retail.'
