@@ -11,16 +11,19 @@ signals:
   - {item: [sku, product], money: [revenue, unit_price, gross_revenue], order: [order_id]}
   - {item: [sku, product], money: [revenue, unit_price, gross_revenue], volume: [quantity], when: [date]}
   - {order: [order_id], money: [revenue], volume: [quantity]}       # orders with revenue and units
-  - {store: [store], money: [revenue], what: [quantity, product, category]}   # store / POS sales
+  - {store: [store], money: [revenue]}                               # store / POS sales
   - {order: [order_id], money: [order_total], contact: [email], currency: [currency]}   # orders CSV
-# Whole headers (or header combinations) only another domain has: one vetoes the pack. Never a
-# word retail exports use themselves (Shopify's Vendor, Employee, Device ID; Bin; Shipping Carrier).
-exclude_headers: [[patient_id], [patient], [patient_name], [mrn], [claim_id], [claim_number],
-                  [cpt_code], [cpt], [icd10], [diagnosis_code], [ndc], [rx_number],
-                  [ticker], [symbol], [isin], [cusip], [policy_id], [policy_number],
-                  [earned_premium], [written_premium], [meter_id], [sensor_id], [shipment_id],
-                  [qty_on_hand], [quantity_on_hand], [on_hand], [stock_on_hand],
-                  [po_number, vendor], [po_number, supplier], [purchase_order, vendor]]
+# Header words of another domain: every word of one entry anywhere in the headers vetoes the
+# pack. A single word only where no retail sales export uses it; a word retail does use (vendor,
+# supplier, employee, device, carrier, bin, purchase, premium, freight) only beside another
+# (PO # + Vendor Name is a purchase order; Shopify's Vendor beside its orders is retail).
+exclude_headers: [[patient], [mrn], [prescription], [prescriber], [rx], [claim], [cpt], [ndc],
+                  [icd10], [diagnosis], [ticker], [cusip], [isin], [policy], [policyholder],
+                  [payroll], [meter], [sensor], [tariff], [kwh], [opportunity], [deal],
+                  [occupancy], [revpar],
+                  ["on", hand], [stock, symbol], [earned, premium], [written, premium],
+                  [po, vendor], [po, supplier], [purchase, order, vendor],
+                  [purchase, order, supplier], [shipment, freight], [action, symbol]]
 week_ends: SAT
 
 roles:
@@ -63,7 +66,7 @@ roles:
                                             memo_description, item_title]}
   category:      {kind: category, headers: [category, product_category, product_type, dept,
                                             department, sub_category, subcategory]}
-  store:         {kind: id, headers: [store, store_id, store_no, store_number, store_code, shop]}
+  store:         {kind: id, headers: [store, store_id, store_no, store_number, store_code]}
   channel:       {kind: category, headers: [channel, sales_channel, source_name, order_channel]}
   status:        {kind: status, headers: [financial_status, status, order_status, payment_status]}
   currency:      {kind: currency, headers: [currency, currency_code]}
@@ -108,7 +111,6 @@ kpis:
       - [{sum: [quantity, "*", unit_price]}, {sum: discount, sign: -1, optional: true},
          {sum: refunded_amount, sign: -1, optional: true}]
       - [{sum: order_total}, {sum: refunded_amount, sign: -1, optional: true}]
-      - [{sum: gross_revenue}]   # gross sales only: said in the tile's "how"
   - name: gross_sales
     label: Gross sales
     unit: money
@@ -159,7 +161,9 @@ glossary:
   net_sales: [net sales, revenue, turnover, takings, gmv, sales]
   aov: [average order value, avg order value, aov, basket size, basket value, atv,
         average transaction value, average ticket]
-  upt: [units per transaction, units per order, upt, items per basket, basket depth]
+  upt: [units per transaction, units per order, upt, items per basket, basket depth,
+        items per order, items per transaction, items in an order, items in a typical order,
+        items in a typical basket]
   asp: [average selling price, avg selling price, asp, average unit price]
   gross_margin_pct: [gross margin, margin, gm%, margin rate]
   return_rate: [return rate, returns rate, refund rate]

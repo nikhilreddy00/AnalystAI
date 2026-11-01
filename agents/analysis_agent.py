@@ -429,7 +429,7 @@ def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
     present = {d.strategy for d in (audit.decisions if audit else [])
                if d.operation == "flag" and d.strategy in ROW_KINDS}
     grain = audit.grain if audit else None
-    brief = pack_brief(pack, roles, concepts, grain, present)
+    brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None)
     if not brief:
         return {}
     return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}

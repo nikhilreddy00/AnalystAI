@@ -1,0 +1,21 @@
+id: intake-retail-04
+category: clear
+pipeline: production
+source:
+  dataset: retail_lines
+  seed: 1
+overview_done: true
+question: What were net sales in Q4 2025 compared with the same quarter the year before?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: net_sales
+    compare: yoy
+  period:
+  - '2025-10-01'
+  - '2025-12-31'
+rationale: 'A quarter compared with the same quarter a year earlier: period + yoy, net sales.'

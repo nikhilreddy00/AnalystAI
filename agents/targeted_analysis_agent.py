@@ -88,7 +88,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
             intent != QuestionIntent.TOP_N or params.group_by) and \
             (params.aggregation or "sum").lower() == "sum" and (kpi := _summed_kpi(pack, contract, params, df)):
         params = params.model_copy(update={"kpi": kpi})   # "sales by country": the pack's net sales
-    if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS:
+    if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS and (
+            intent != QuestionIntent.TOP_N or params.group_by):   # "top 5 lines": rows, not a KPI
         handler = handle_kpi   # "basket size by country": the pack's AOV, not a column's mean
     if handler is None:
         return _unanswerable(
@@ -124,8 +125,8 @@ _TOTAL_WORDS = re.compile(r"\b(?:total|sum|summed|combined|altogether|overall am
 
 _AVERAGE_WORDS = re.compile(r"\b(?:average|avg|mean|typical|per (?:order|line|row|customer|"
                             r"transaction|unit|item))\b", re.I)
-_MEANING = re.compile(r"\b(?:do|does|did) (?:that|this|it|you|they|these) mean\b|\bmean(?:s)? that\b",
-                      re.I)   # "what does that mean": no average asked
+_MEANING = re.compile(r"\b(?:do|does|did) (?:that|this|it|you|they|these) mean\b|\bmean(?:s)? that\b|"
+                      r"\bi mean\b|\bwhat i mean\b", re.I)   # "what does that mean", "I mean": no average
 
 
 def _asked_agg(params: TargetedParams | None, contract: DataContract, question: str):
@@ -787,15 +788,19 @@ def _cut_partial(series: pd.Series, t: pd.Series, freq: str, rule: str | None = 
     if freq not in ("W", "Q", "Y"):
         return series, ""
     d = pd.to_datetime(t, errors="coerce").dropna().dt.normalize().drop_duplicates()
-    days = d.groupby(d.dt.to_period(rule or freq)).size().sort_index()
-    if len(days) < 3 or len(days) != len(series):
+    period = rule or freq
+    labels = series.index if isinstance(series.index, pd.PeriodIndex) else series.index.to_period(period)
+    # by label: an empty bucket (a closed week) counts 0 dates, never shifts the others
+    days = d.groupby(d.dt.to_period(period)).size().reindex(labels, fill_value=0)
+    if len(days) < 4:
         return series, ""
     full = days.iloc[1:-1].median()
     note = ""
-    if days.iloc[-1] < 0.9 * full:
+    # cut only where the data stops inside the bucket (fewer active days alone is a fact to show)
+    if days.iloc[-1] < 0.9 * full and d.max() < labels[-1].end_time.normalize():
         note += f" The last {_UNIT[freq]} is left out: the data ends {d.max():%d %b %Y}."
         series = series.iloc[:-1]
-    if days.iloc[0] < 0.9 * full:
+    if days.iloc[0] < 0.9 * full and d.min() > labels[0].start_time and len(series) > 2:
         note += f" The first {_UNIT[freq]} is left out: the data starts {d.min():%d %b %Y}."
         series = series.iloc[1:]
     return series, note
@@ -863,7 +868,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked. {how}",
              group, kpi.label, "sum" if kpi.den is None else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
-                                chart_configs=[chart])
+                                chart_configs=[chart],   # every group's value, not only the ends
+                                table_data=[{group: str(k), kpi.label: fmt(v)} for k, v in by.items()])
     one_period = params.compare == "yoy" and (params.period_start or params.period_end)
     if intent == QuestionIntent.TIME_SERIES and date and not one_period:
         freq = (params.frequency or _default_freq(df[date], "sum" if kpi.den is None else "ratio")).upper()

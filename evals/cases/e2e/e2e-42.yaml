@@ -1,0 +1,35 @@
+id: e2e-42
+domain: retail
+dataset:
+  name: retail_lines
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+checks:
+- kind: findings
+  check: eda_stat
+  column: Lineitem quantity
+  stats:
+  - mean
+  - median
+  rel_tol: 0.02
+turns:
+- question: What's the basket size by country?
+  checks:
+  - kind: number_in_answer
+    truth_key: aov_by_country.Germany
+    rel_tol: 0.003
+- question: And overall, what was it in January 2026 compared with January last year?
+  checks:
+  - kind: number_in_answer
+    truth_key: aov_jan26_yoy_pct
+    rel_tol: 0.05
+    unit: '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence

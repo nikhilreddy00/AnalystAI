@@ -83,10 +83,16 @@ def test_other_suites_never_run_cleaning():
     import inspect
 
     from evals import run
-    for fn in (run.run_analysis_case, run.run_visualization_case, run.viz_session,
+    for fn in (run.run_visualization_case, run.viz_session,
                run.run_intake_case, run.intake_session, run.run_sql_case):
         src = inspect.getsource(fn)
         assert "cleaning" not in src, fn.__name__
+    # Phase 5.7: analysis cleans only `pipeline: production` cases (the new retail ones); every
+    # older case gets its frame unchanged and no audit, as before.
+    frame = object()
+    for case in run.load_cases("analysis", None):
+        if case.get("pipeline") != "production":
+            assert run.cleaned_for_analysis(case, frame, None) == (frame, None), case["id"]
 
 
 def test_pack_cases_fail_when_nothing_is_done_and_when_a_forbidden_rule_fires():

@@ -341,12 +341,12 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         if n := int(overlap.sum()):
             df, flat, dup = df[~overlap], flat[~overlap], dup[~overlap]
             log("*", "drop_duplicates", "exact", f"Removed {n} exact duplicate rows: "
-                f"{len(whole)} orders exported twice (same {order} + {item} and every other "
-                "value).", n, removed=n)
+                f"{len(whole)} orders exported more than once (same {order} + {item} and every "
+                "other value).", n, removed=n)
             n_dup = int(dup.sum())
         if n_dup:
-            log("*", "flag", "repeated_rows", f"{n_dup} order lines repeat another line of the "
-                "same order exactly; kept, as a second scan of an item is a real sale.", n_dup)
+            log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
+                "a second scan of an item is a real sale.", n_dup)
             n_dup = 0
     if n_dup and keys and not ctx.deidentified:
         df = df[~dup]

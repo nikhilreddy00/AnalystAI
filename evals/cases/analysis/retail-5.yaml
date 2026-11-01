@@ -1,0 +1,28 @@
+id: retail-5
+domain: retail
+category: ratio
+pipeline: production
+dataset:
+  name: b2b_invoices
+  seed: 1
+question: What share of customers ordered more than once, by country?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Quantity
+  segments:
+  - Country
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Country
+  truth_key: repeat_rate_by_country
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

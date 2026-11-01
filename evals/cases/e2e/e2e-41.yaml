@@ -1,0 +1,18 @@
+id: e2e-41
+domain: retail
+dataset:
+  name: b2b_invoices
+  seed: 1
+question: What's our return rate in each country?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: return_rate_by_country.United Kingdom
+  rel_tol: 0.05
+  scales:
+  - 100
+  unit: '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

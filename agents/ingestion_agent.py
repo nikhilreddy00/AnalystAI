@@ -358,7 +358,8 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
             s = df[c.name].dropna()
             shaped = bool(role) and bool(pack.roles[role].pattern) and \
                 s.head(1000).astype(str).str.fullmatch(pack.roles[role].pattern).mean() >= 0.9
-            coded = s.head(1000).astype(str).str.contains(r"\d").mean() >= 0.9   # SKU 85123A
+            # many digit-bearing codes (SKU 85123A, customer numbers); "Store 1".."Store 3" are labels
+            coded = s.nunique() > 20 and s.head(1000).astype(str).str.contains(r"\d").mean() >= 0.9
             if role and pack.roles[role].kind == "id" and not c.is_id and (
                     c.is_metric or shaped or coded or s.nunique() >= 0.5 * max(len(s), 1)):   # a store number, an
                 # order number ("#1001"); a store named "Downtown" (few values) stays a category

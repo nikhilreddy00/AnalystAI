@@ -1,0 +1,28 @@
+id: retail-7
+domain: retail
+category: ratio
+pipeline: production
+dataset:
+  name: b2b_invoices
+  seed: 1
+question: What are net sales for each of our top-selling products (stock codes)?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Quantity
+  - UnitPrice
+  segments:
+  - StockCode
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: StockCode
+  truth_key: net_by_top_code
+  abs_tol: 0.005
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

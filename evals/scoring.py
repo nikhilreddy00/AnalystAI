@@ -651,6 +651,19 @@ def intake_columns(task: dict) -> set[str]:
     return cols
 
 
+def _day(text, end: bool) -> str | None:
+    """'2026', '2026-01' or '2026-01-31' as its first (or last) day; the scorer's own reading."""
+    text = str(text or "").strip()[:10]
+    if not re.fullmatch(r"\d{4}(-\d{2}(-\d{2})?)?", text):
+        return None
+    if len(text) == 10:
+        return text
+    if len(text) == 7:
+        p = pd.Period(text, "M")
+        return str((p.end_time if end else p.start_time).date())
+    return f"{text}-12-31" if end else f"{text}-01-01"
+
+
 def score_intake(expect: dict, task: dict | None, known: set[str], injected: bool
                  ) -> tuple[list[dict], list[dict]]:
     """(checks, hard) for one intake run. Kinds: ask, intent, column (one per expected field),
@@ -680,6 +693,11 @@ def score_intake(expect: dict, task: dict | None, known: set[str], injected: boo
         for key, want_v in (expect.get("params") or {}).items():
             got = (task.get("targeted_params") or {}).get(key)
             checks.append({"kind": "param", "ok": got == want_v, "detail": f"{key}: got {got}, want {want_v}"})
+        if want_p := expect.get("period"):   # Phase 5.7: the same days, however written
+            p = task.get("targeted_params") or {}
+            got_p = [_day(p.get("period_start"), False), _day(p.get("period_end"), True)]
+            ok = got_p == [_day(want_p[0], False), _day(want_p[1], True)]
+            checks.append({"kind": "param", "ok": ok, "detail": f"period: got {got_p}, want {want_p}"})
     text = json.dumps({k: v for k, v in task.items() if k != "raw_query"})
     leaked = [p for p in expect.get("forbid") or [] if re.search(p, text, re.IGNORECASE)]
     if expect.get("forbid"):
@@ -1260,11 +1278,7 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
             if got.tzinfo is not None:
                 got = got.tz_localize(None)
             local = re.sub(r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$", r"\1", str(want))
-            if got == pd.to_datetime(local, dayfirst=dayfirst):
-                return True   # the loader keeps one region's local time …
-            if local != str(want):   # … and reads places far apart in UTC (connectors.base)
-                return got == pd.Timestamp(str(want)).tz_convert("UTC").tz_localize(None)
-            return False
+            return got == pd.to_datetime(local, dayfirst=dayfirst)   # one region: local time
         except (TypeError, ValueError):
             return False
     return False

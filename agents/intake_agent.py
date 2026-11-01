@@ -123,6 +123,7 @@ def build_context(session: AnalysisSession, message: str) -> IntakeContext:
 # A calendar period the targeted path can filter to (not "last month": the built-in MoM has it).
 _PERIOD_RE = re.compile(r"\b(?:q[1-4]|quarter|ytd|year[- ]to[- ]date|year[- ]over[- ]year|yoy|"
                         r"(?:last|this|previous|prior|same \w+ last) year|vs\.? last year|"
+                        r"(?:the )?year before|(?:19|20)\d{2}|"
                         r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{4}|"
                         r"\d{4}-\d{2}(?:-\d{2})?|week \d{1,2})\b", re.I)
 

@@ -536,6 +536,15 @@ def _month_net(lines: pd.DataFrame) -> pd.Series:
     return lines.groupby(month)["_net"].sum().sort_index()
 
 
+def _aov_yoy(s: pd.DataFrame) -> dict:
+    """AOV (net per distinct order) in Jan 2026 vs Jan 2025, from the sale lines `s`."""
+    m = pd.to_datetime(s["_local"]).dt.to_period("M")
+    aov = {p: float(s.loc[m == pd.Period(p), "_net"].sum() / s.loc[m == pd.Period(p), "_order"].nunique())
+           for p in ("2025-01", "2026-01")}
+    return {"aov_jan25": aov["2025-01"], "aov_jan26": aov["2026-01"],
+            "aov_jan26_yoy_pct": (aov["2026-01"] / aov["2025-01"] - 1) * 100}
+
+
 def make_retail_lines(seed: int) -> tuple[pd.DataFrame, dict]:
     """A Shopify-style order-line export, Jan 2025 .. Feb 12 2026 (Feb is partial).
 
@@ -659,6 +668,9 @@ def make_retail_lines(seed: int) -> tuple[pd.DataFrame, dict]:
         "test_lines": int(df["_order"].isin(test).sum()),
         "duplicate_rows": len(dups), "partial_month": "2026-02", "partial_days": 12,
         "top_sku_by_net": usd_lines.groupby("sku")["_amt"].sum().idxmax(),
+        "upt_by_country": (s.groupby("_country")["qty"].sum() / by_country["orders"]).to_dict(),
+        "naive_upt_by_country_lines": s.groupby("_country")["qty"].mean().to_dict(),
+        **_aov_yoy(s),
         "pii_columns": ["Email", "Billing Name"],
     }
     assert abs(truth["jan26_yoy_pct"] - 8) < 0.5 and abs(truth["jan26_mom_pct"] + 30) < 0.5
@@ -718,6 +730,16 @@ def make_store_weeks(seed: int) -> tuple[pd.DataFrame, dict]:
         "naive_margin_mean_of_rows_pct": float(row_margin.mean() * 100),
         "margin_by_dept_pct": {d: float((1 - r["COGS"] / r["Net Sales"]) * 100)
                                for d, r in by_dept.iterrows()},
+        "margin_by_dept": {d: float(1 - r["COGS"] / r["Net Sales"]) for d, r in by_dept.iterrows()},
+        "naive_margin_by_dept_rows": row_margin.groupby(df["Dept"]).mean().to_dict(),
+        "comp_growth_by_region": {
+            r: float(df.loc[comp & y2 & (df["Region"] == r), "Net Sales"].sum()
+                     / df.loc[comp & y1 & (df["Region"] == r), "Net Sales"].sum() - 1)
+            for r in sorted(df["Region"].unique())},
+        "naive_growth_by_region": {
+            r: float(df.loc[y2 & (df["Region"] == r), "Net Sales"].sum()
+                     / df.loc[y1 & (df["Region"] == r), "Net Sales"].sum() - 1)
+            for r in sorted(df["Region"].unique())},
         # the six 9999 weeks' real units are unknowable: the right total is the known weeks'
         "units": int(df["Units"].drop(index=sentinel).sum()), "naive_units": int(df["Units"].sum()),
         "sentinel_rows": len(sentinel), "pii_columns": [],
@@ -801,6 +823,18 @@ def make_b2b_invoices(seed: int) -> tuple[pd.DataFrame, dict]:
         "naive_repeat_rate_lines_pct": float((lines_per_cust >= 2).mean() * 100),
         "top20_customer_share_pct": float(top.sum() / cust_net.sum() * 100),
         "top_products": by_code.head(5).index.tolist(),
+        # net of credits (a credit nets against its product), sentinels and non-products out
+        "net_by_top_code": amt[product].groupby(df["StockCode"]).sum()
+                           .reindex(by_code.head(5).index).to_dict(),
+        "repeat_rate_by_country": {
+            c: float((known[known["Country"] == c].groupby("CustomerID")["InvoiceNo"].nunique() >= 2).mean())
+            for c in sorted(known["Country"].unique())},
+        "naive_repeat_rate_by_country_lines": {
+            c: float((known[known["Country"] == c].groupby("CustomerID").size() >= 2).mean())
+            for c in sorted(known["Country"].unique())},
+        "return_rate_by_country": {
+            c: float(-amt[credit & (df["Country"] == c)].sum() / amt[sale & (df["Country"] == c)].sum())
+            for c in sorted(df["Country"].unique())},
         "naive_top_products": naive_code.head(5).index.tolist(),
         "sentinel_rows": len(sentinel), "pii_columns": [],
     }

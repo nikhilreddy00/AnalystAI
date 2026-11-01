@@ -1,0 +1,19 @@
+id: e2e-38
+domain: retail
+dataset:
+  name: retail_lines
+  seed: 1
+question: What's our average basket size, by shipping country?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: aov_by_country.Germany
+  rel_tol: 0.003
+- kind: must_not_number
+  truth_key: naive_aov_by_country_lines.Germany
+  rel_tol: 0.003
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

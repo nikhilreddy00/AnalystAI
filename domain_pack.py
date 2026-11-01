@@ -86,7 +86,7 @@ class Pack(_Strict):
     # (independent signals: a product AND a money column, or an orders export's own shape) and
     # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).
     signals: list[dict[str, list[str]]]
-    exclude_headers: list[list[str]] = Field(default_factory=list)   # whole headers, all present
+    exclude_headers: list[list[str]] = Field(default_factory=list)   # header words, all present
     week_ends: str = "SUN"          # a calendar week's last day for weekly buckets of daily data
     roles: dict[str, Role]
     status_values: dict[Literal["ok", "return", "cancel"], list[str]] = Field(default_factory=dict)
@@ -219,9 +219,9 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
     one role; personal-data columns are never an id role (a `customer` column of names)."""
     found = []
     norm = {str(c): normalize_header(c) for c in df.columns}
-    headers = set(norm.values())
+    words = {w for n in norm.values() for w in n.split("_")}
     for pack in load_packs():
-        if any(set(veto) <= headers for veto in pack.exclude_headers):
+        if any(set(veto) <= words for veto in pack.exclude_headers):
             continue
         roles: dict[str, str] = {}
         for role, r in pack.roles.items():
@@ -463,7 +463,7 @@ def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(R
 
 
 def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: str | None = None,
-               present: set[str] = frozenset()) -> list[str]:
+               present: set[str] = frozenset(), currency: str | None = None) -> list[str]:
     """The pack's rules, in role names: which rows are not sales (the kinds `present` in this
     data), the grain, and each concept (a KPI or a definition) asked about. Roles, never column
     names: the caller shows the role → column map inside its untrusted-data block."""
@@ -471,6 +471,9 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     lines = []
     if rules := row_rules(pack, roles, present):
         lines.append(f"Row kinds: {rules}.")
+    if currency and "currency" in roles:
+        lines.append(f"Money totals use {currency} only: rows whose currency is another are left "
+                     "out of every money figure (never added across currencies).")
     if grain == "line":
         lines.append("One row is an order line: count orders as distinct order_id, never rows; "
                      "an average per order divides by orders.")

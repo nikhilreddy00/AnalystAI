@@ -1,0 +1,21 @@
+id: intake-retail-05
+category: clear
+pipeline: production
+source:
+  dataset: retail_lines
+  seed: 1
+overview_done: true
+question: How did takings in January 2026 compare with January last year?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: net_sales
+    compare: yoy
+  period:
+  - '2026-01-01'
+  - '2026-01-31'
+rationale: 'Takings are net sales; January vs last January: a month period + yoy.'

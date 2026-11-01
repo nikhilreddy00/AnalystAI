@@ -1,0 +1,29 @@
+id: retail-4
+domain: retail
+category: ratio
+pipeline: production
+dataset:
+  name: store_weeks
+  seed: 1
+question: What was like-for-like (comparable store) sales growth by region, the second year against the
+  first?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Net Sales
+  segments:
+  - Region
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Region
+  truth_key: comp_growth_by_region
+  abs_tol: 0.003
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

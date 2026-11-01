@@ -1,0 +1,29 @@
+id: retail-3
+domain: retail
+category: ratio
+pipeline: production
+dataset:
+  name: store_weeks
+  seed: 1
+question: What is the gross margin by department?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Net Sales
+  - COGS
+  segments:
+  - Dept
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Dept
+  truth_key: margin_by_dept
+  abs_tol: 0.005
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

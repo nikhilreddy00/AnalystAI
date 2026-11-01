@@ -1,0 +1,17 @@
+id: intake-retail-10
+category: clear
+pipeline: production
+source:
+  dataset: store_weeks
+  seed: 1
+overview_done: true
+question: Show me GM% by department.
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: gross_margin_pct
+rationale: GM% is the gross margin KPI (a ratio of sums).

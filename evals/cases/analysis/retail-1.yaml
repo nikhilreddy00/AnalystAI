@@ -1,0 +1,28 @@
+id: retail-1
+domain: retail
+category: ratio
+pipeline: production
+dataset:
+  name: retail_lines
+  seed: 1
+question: What is the average order value (net sales per order) by shipping country?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Lineitem price
+  - Lineitem quantity
+  segments:
+  - Shipping Country
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Shipping Country
+  truth_key: aov_by_country
+  abs_tol: 0.5
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded

@@ -277,7 +277,7 @@ def period_window(df, date: str | None, start: str | None, end: str | None):
         return None, None, None, None, "the data has no date column to limit to that period"
     t = _local(pd.to_datetime(df[date], errors="coerce"))
     try:
-        if start and end and _bound(start, False) > _bound(end, False):
+        if start and end and _bound(start, False) > _bound(end, True):
             start, end = end, start   # "2025 to 2024": swapped whole, widths kept
         lo = _bound(start, False) if start else t.min()
         hi = _bound(end, True) if end else t.max()
@@ -305,7 +305,7 @@ def filter_period(df, date: str | None, start: str | None, end: str | None):
                           f"{lo:%d %b %Y} to {hi:%d %b %Y}")
     note = f"{lo:%d %b %Y} to {hi:%d %b %Y}"
     gaps = ([f"the data starts {first:%d %b %Y}"] if lo < first.normalize() else []) + \
-           ([f"the data ends {last:%d %b %Y}"] if hi > last else [])
+           ([f"the data ends {last:%d %b %Y}"] if hi > _bound(str(last.date()), True) else [])
     if gaps:
         note += f" ({' and '.join(gaps)}, so the period is incomplete)"
     return rows, note, None

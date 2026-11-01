@@ -94,7 +94,7 @@ def working_frame(case: dict, guard: bool = False):
     from agents.ingestion_agent import prepare_frame, remember_pii
     from connectors.csv_connector import CSVConnector, _read_bytes
     df, _, csv = dataset(case)
-    if case.get("domain", "retail") != "retail":
+    if case.get("domain", "retail") != "retail" or case.get("pipeline") == "production":
         # Production's reader (dates parsed, leading zeros kept), so E2B gets the frame it would
         # in the product. ponytail: the 46 retail cases keep read_csv: their inputs are pinned
         # (evals/snapshots/pre_5_5.json) and changing them buys a paid re-run.
@@ -104,6 +104,22 @@ def working_frame(case: dict, guard: bool = False):
         remember_pii(df, contract)
     # The scope production uses: the session's user (an eval session's user is "default").
     return prepare_frame(df, contract, ConnectorType.CSV, {}, AnalysisSession(session_id="x").user_id)
+
+
+def cleaned_for_analysis(case: dict, df: pd.DataFrame, contract) -> tuple[pd.DataFrame, object]:
+    """`pipeline: production` cases (Phase 5.7): the frame after the real Cleaning agent, as
+    analysis_node gets it in the product, and its audit (the domain rules read it). The older
+    cases are pinned to the uncleaned frame (evals/snapshots) and keep it."""
+    if case.get("pipeline") != "production":
+        return df, None
+    from agents.cleaning_agent import clean
+    from agents.cleaning_agent import build_context as cleaning_context
+    s = AnalysisSession(session_id="clean", data_contract=contract,
+                        task_plan=AnalysisTask(raw_query=case["question"], **case["task"]))
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    return clean(cleaning_context(s))
 
 
 async def run_analysis_case(case: dict) -> dict:
@@ -116,7 +132,8 @@ async def run_analysis_case(case: dict) -> dict:
     E2B_UPLOADS.set(uploads)
     pii_values.set(set())    # this case's guard, as the runner sets one per run
     df, contract = working_frame(case, guard=True)
-    session = AnalysisSession(session_id=str(uuid.uuid4()))
+    df, audit = cleaned_for_analysis(case, df, contract)
+    session = AnalysisSession(session_id=str(uuid.uuid4()), cleaning_audit=audit)
     session.data_contract = contract
     session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
     buf = io.BytesIO()
@@ -152,6 +169,7 @@ def builtin_only(case: dict) -> bool:
                                        _build_standard_code, _parse_findings, e2b_frame)
     from agents.utils import pii_columns
     df, contract = working_frame(case)
+    df = cleaned_for_analysis(case, df, contract)[0]
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
     upload, _ = e2b_frame(buf.getvalue(), pii_columns(contract))
@@ -219,25 +237,46 @@ async def run_e2e_case(case: dict) -> dict:
     LLM_SENT.set([])         # …and what the client's guard let through…
     uploads: list[str] = []
     E2B_UPLOADS.set(uploads)  # …and every frame sent to E2B
-    error, approvals, seen = None, [], 0
-    run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
-                                         input={"message": case["question"]})
-    # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
-    # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
-    for _ in range(2):
-        status = await execute(await deps.run_store.claim(), deps)
-        events = [e for _, e in await deps.run_store.events_after(run.id, seen)]
-        seen += len(events)
-        gates = [e.get("context") for e in events if e.get("type") == "approval_required"]
-        approvals += gates
-        if status != "waiting_approval" or gates != ["high_null"]:
+    async def ask(question: str, session: AnalysisSession):
+        """One question as POST /chat stores it for this thread (a follow-up: the stored session,
+        the question noted, a new run on the same session id), executed as the worker does."""
+        if session.overview_done or session.task_plan:   # a follow-up turn
+            await deps.session_store.note_question(session.session_id, question)
+        run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
+                                             input={"message": question})
+        approvals, seen = [], 0
+        # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
+        # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
+        for _ in range(2):
+            status = await execute(await deps.run_store.claim(), deps)
+            events = [e for _, e in await deps.run_store.events_after(run.id, seen)]
+            seen += len(events)
+            gates = [e.get("context") for e in events if e.get("type") == "approval_required"]
+            approvals += gates
+            if status != "waiting_approval" or gates != ["high_null"]:
+                break
+            await deps.run_store.resume(run.id, {"answer": "Continue with imputation"})
+        state = await deps.graph.aget_state({"configurable": {"thread_id": run.id}})
+        session = state.values.get("session", session)
+        error = session.error_message or (await deps.run_store.get(run.id)).error
+        if approvals and approvals[-1] != "high_null" and not error:
+            error = f"stopped at approval_required ({approvals[-1]})"
+        return session, error, approvals, run
+
+    session, error, approvals, run = await ask(case["question"], session)
+    first_checks = score_e2e(case, session, error)["checks"]   # the first question's own checks
+    # Phase 5.7: a conversation. Each later turn is a follow-up on the same thread; its checks
+    # are scored on its own answer, and every turn must end without an error.
+    turn_checks = []
+    for n, turn in enumerate(case.get("turns", []), start=2):
+        if error:
+            turn_checks.append({"kind": "turn", "ok": False, "detail": f"turn {n} not asked: {error}"})
             break
-        await deps.run_store.resume(run.id, {"answer": "Continue with imputation"})
-    state = await deps.graph.aget_state({"configurable": {"thread_id": run.id}})
-    session = state.values.get("session", session)
-    error = session.error_message or (await deps.run_store.get(run.id)).error
-    if approvals and approvals[-1] != "high_null" and not error:
-        error = f"stopped at approval_required ({approvals[-1]})"
+        session, error, more, run = await ask(turn["question"], session)
+        approvals += more
+        scored_turn = score_e2e({**case, "checks": turn["checks"], "hard_rules": []}, session, error)
+        turn_checks += [{**c, "detail": f"turn {n}: {c['detail']}"} for c in scored_turn["checks"]]
+        turn_checks.append({"kind": "turn", "ok": not error, "detail": f"turn {n}: {error or 'answered'}"})
 
     literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
     hits = len(leaked("\n".join(sent), literals))
@@ -247,7 +286,8 @@ async def run_e2e_case(case: dict) -> dict:
         every = [e for _, e in await deps.run_store.events_after(run.id, 0)]
         shown = json.dumps(every, default=str) + session.model_dump_json(exclude={"prior_pii"})
     exits = exits_rule(literals, uploads, shown, case["question"])
-    scored = score_e2e(case, session, error)
+    scored = score_e2e(case if not case.get("turns") else {**case, "checks": []}, session, error)
+    scored["checks"] = (scored["checks"] if not case.get("turns") else first_checks) + turn_checks
     return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals)), exits],
             "pii_exits": exits,
             "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
@@ -297,7 +337,10 @@ def intake_contract(case: dict):
     from connectors.csv_connector import CSVConnector
     src = case["source"]
     if "dataset" in src:
-        df = dataset({"dataset": {"name": src["dataset"], "seed": src["seed"]}})[0]
+        df, _, csv = dataset({"dataset": {"name": src["dataset"], "seed": src["seed"]}})
+        if case.get("pipeline") == "production":   # 5.7: as the product reads it (dates, £)
+            from connectors.csv_connector import _read_bytes
+            df = _read_bytes(csv.encode(), ".csv")[0]
     else:
         df = pd.DataFrame(src["frame"]["rows"], columns=src["frame"]["columns"])
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
