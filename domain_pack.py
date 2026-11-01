@@ -33,6 +33,8 @@ class Role(_Strict):
     # order when it is constant within every order.
     level: Literal["row", "order"] = "row"
     pattern: str | None = None    # the values' shape (an order number), checked on 90% of them
+    # False for a per-unit amount (a unit price, a unit cost): never summed across rows.
+    additive: bool = True
 
 
 class Term(_Strict):
@@ -44,7 +46,8 @@ class Term(_Strict):
     kpi: str | None = None
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] | None = None
     sign: Literal[1, -1] = 1
-    optional: bool = False        # a missing role drops this term, not the KPI
+    optional: bool = False        # a missing role drops this term (and a blank value counts 0)
+    net_of: str | None = None     # a rate role: each row's value × (1 − rate) (a 25% line discount)
 
     @model_validator(mode="after")
     def _one(self) -> Term:
@@ -59,7 +62,8 @@ class Term(_Strict):
         expr = self.sum if self.sum is not None else self.sum_abs
         if self.nunique:
             return [self.nunique]
-        return [] if expr is None else [expr] if isinstance(expr, str) else [expr[0], expr[2]]
+        own = [] if expr is None else [expr] if isinstance(expr, str) else [expr[0], expr[2]]
+        return own + ([self.net_of] if self.net_of else [])
 
 
 class KPI(_Strict):
@@ -75,7 +79,12 @@ class KPI(_Strict):
 
 class Pack(_Strict):
     domain: str
-    signals: dict[str, list[str]]   # detection: a role from EVERY group (two independent signals)
+    # Detection: the data is this domain when, for one alternative, every group has a role in it
+    # (independent signals: a product AND a money column, or an orders export's own shape) and
+    # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).
+    signals: list[dict[str, list[str]]]
+    exclude_headers: list[str] = Field(default_factory=list)
+    week_ends: str = "SUN"          # a calendar week's last day for weekly buckets of daily data
     roles: dict[str, Role]
     status_values: dict[Literal["ok", "return", "cancel"], list[str]] = Field(default_factory=dict)
     credit_prefix: dict[str, str] = Field(default_factory=dict)   # role → prefix ("C536379")
@@ -110,10 +119,16 @@ class Pack(_Strict):
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
-                *self.test_roles, *(r for g in self.signals.values() for r in g)]
+                *self.test_roles, *(r for alt in self.signals for g in alt.values() for r in g)]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
-        if len(self.signals) < 2:
-            errors.append("signals needs two groups (two independent signals)")
+        if not self.signals or any(len(alt) < 2 for alt in self.signals):
+            errors.append("each signals alternative needs two groups (two independent signals)")
+        for where, rx in [*((f"role {r}", x.pattern) for r, x in self.roles.items()),
+                          ("test_marker", self.test_marker)]:
+            try:
+                re.compile(rx or "")
+            except re.error as exc:
+                errors.append(f"{where}: invalid regex {rx!r}: {exc}")
         names = [k.name for k in self.kpis]
         errors += [f"glossary {c}: neither a KPI, a definition nor unsupported" for c in self.glossary
                    if c not in names and c not in self.definitions and c not in self.unsupported]
@@ -193,22 +208,26 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
 
 def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
            pii_columns: set[str] = frozenset()) -> tuple[str | None, dict[str, str]]:
-    """(domain, {role: column}) when exactly one pack's every signal group has a role in the
-    data; else (None, {}). A column takes the first role whose header and values fit; personal-
-    data columns are never an id role (a `customer` column of names)."""
+    """(domain, {role: column}) when exactly one pack matches (see Pack.signals); else (None, {}).
+    Roles are filled in the pack's order, each by the column whose header comes earliest in the
+    role's list (Square's `Net Sales` over `Gross Sales`) and whose values fit; a column serves
+    one role; personal-data columns are never an id role (a `customer` column of names)."""
     found = []
+    norm = {str(c): normalize_header(c) for c in df.columns}
+    tokens = {t for n in norm.values() for t in n.split("_")} | set(norm.values())
     for pack in load_packs():
+        if tokens & set(pack.exclude_headers):
+            continue
         roles: dict[str, str] = {}
-        for col in df.columns:
-            for role, r in pack.roles.items():
-                if role in roles or normalize_header(col) not in r.headers:
-                    continue
-                if r.kind == "id" and col in pii_columns:
-                    continue
-                if _fits(df[col], r, pack, col in date_columns):
-                    roles[role] = str(col)
+        for role, r in pack.roles.items():
+            for header in r.headers:
+                col = next((c for c, n in norm.items() if n == header and c not in roles.values()
+                            and not (r.kind == "id" and c in pii_columns)
+                            and _fits(df[c], r, pack, c in date_columns)), None)
+                if col is not None:
+                    roles[role] = col
                     break
-        if all(any(r in roles for r in group) for group in pack.signals.values()):
+        if any(all(any(x in roles for x in group) for group in alt.values()) for alt in pack.signals):
             found.append((pack.domain, roles))
     return found[0] if len(found) == 1 else (None, {})
 
@@ -224,11 +243,15 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
         if role in roles:
             kind[pd.to_numeric(df[roles[role]], errors="coerce") < 0] = "return"
     for role, prefix in pack.credit_prefix.items():
-        if role in roles:
-            kind[df[roles[role]].astype(str).str.upper().str.startswith(prefix.upper())] = "return"
-    if "status" in roles:
+        if role in roles:   # "C536379" beside "536365": the prefix on an otherwise plain number;
+            ids = df[roles[role]].astype(str).str.strip().str.upper()   # never "CA-2025-152156"
+            credit = ids.str.fullmatch(rf"{re.escape(prefix.upper())}\d+")
+            if ids[~credit].str.fullmatch(r"\d+").mean() >= 0.5:
+                kind[credit] = "return"
+    if "status" in roles:   # a reversed sale (positive lines); a negative line stays a netted return
         status = df[roles["status"]].astype(str).str.strip().str.lower()
-        kind[status.isin([v.lower() for v in pack.status_values.get("return", [])])] = "refunded"
+        kind[status.isin([v.lower() for v in pack.status_values.get("return", [])])
+             & kind.eq("sale")] = "refunded"
     for role, values in pack.non_product.items():
         if role in roles:
             vals = df[roles[role]].astype(str).str.strip().str.upper()
@@ -237,8 +260,9 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
         kind[status.isin([v.lower() for v in pack.status_values.get("cancel", [])])] = "cancel"
     if pack.test_marker:
         for role in pack.test_roles:
-            if role in roles:
-                hit = df[roles[role]].astype(str).str.strip().str.contains(
+            if role in roles:   # short values only: a pack regex never runs on long text
+                text = df[roles[role]].astype(str).str.strip()
+                hit = text.str.len().le(80) & text.str.contains(
                     pack.test_marker, case=False, regex=True, na=False)
                 kind[hit] = "test"
     return kind
@@ -283,11 +307,23 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         col = part[roles[term.nunique]]
         return col.groupby(part[by]).nunique() if by else col.nunique()
     expr = term.sum if term.sum is not None else term.sum_abs
-    if _order_level(df, roles, pack, expr):
-        part = part.drop_duplicates(subset=[roles["order_id"]])
     values = _column(part, roles, expr)
+    if _order_level(df, roles, pack, expr):
+        # One value per order on each of its lines: counted once. Grouped by anything inside an
+        # order (a product, a category), each line takes its share of the order's line value.
+        order = part[roles["order_id"]]
+        weight = (_column(part, roles, ["quantity", "*", "unit_price"])
+                  if {"quantity", "unit_price"} <= roles.keys() else pd.Series(1.0, index=part.index))
+        weight = weight.where(weight > 0, 0).fillna(0)
+        total = weight.groupby(order).transform("sum")
+        n = order.groupby(order).transform("size")
+        values = values * (weight / total).where(total > 0, 1 / n)
+    if term.net_of:
+        values = values * (1 - pd.to_numeric(part[roles[term.net_of]], errors="coerce").fillna(0))
     if term.sum_abs is not None:
         values = values.abs()
+    if term.optional:   # a blank discount is no discount
+        values = values.fillna(0)
     return values.groupby(part[by]).sum(min_count=1) if by else values.sum(min_count=1)
 
 

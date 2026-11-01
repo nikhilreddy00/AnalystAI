@@ -22,7 +22,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
-from agents.utils import PARTIAL_MIN_DAYS, pii_columns, safe_column_name, strip_markdown_fences
+from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import ROW_KINDS, glossary_hits, pack_brief, pack_for, used_terms
 from guardrails import (
     pseudonym,
@@ -237,7 +237,9 @@ try:
             if _d.empty:
                 return _mm
             _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
-            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[:-1].median() >= {PARTIAL_MIN_DAYS} and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
+            _g = _d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()
+            _regular = len(_g) >= 3 and _g.std() <= {REGULAR_CV} * _g.mean()
+            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and (_days.iloc[:-1].median() >= {PARTIAL_MIN_DAYS} or _regular) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
                 _mm = _mm.where(_mm != _days.index[-1])
             return _mm
         _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')

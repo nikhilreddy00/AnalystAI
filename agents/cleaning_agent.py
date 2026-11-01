@@ -150,6 +150,18 @@ def _code_like(s: pd.Series) -> bool:
     return len(v) > 0 and v.str.match(_LEADING_ZERO_RE).mean() >= 0.1
 
 
+def _whole_orders(df: pd.DataFrame, dup: pd.Series, order: str) -> bool:
+    """Every order with an exact duplicate row is repeated whole (each of its lines the same
+    number of times): an export overlap, not a second scan of one item on a receipt."""
+    hit = df.loc[dup, order].dropna().unique()
+    if not len(hit):
+        return False
+    rows = df[df[order].isin(hit)]
+    counts = rows.groupby(list(rows.columns), dropna=False).size()
+    return bool(counts.groupby(level=list(rows.columns).index(order)).nunique().eq(1).all()
+                and counts.min() >= 2)
+
+
 def _null_pct(s: pd.Series) -> float:
     return round(float(s.isna().mean() * 100), 1) if len(s) else 0.0
 
@@ -187,6 +199,7 @@ async def run_cleaning_agent(session: AnalysisSession, drop_high_null: bool = Fa
         c.column_count = len(c.columns)
         for name in ("date_columns", "id_columns", "metric_columns"):
             setattr(c, name, [x for x in getattr(c, name) if x not in dropped])
+        c.roles = {r: col for r, col in c.roles.items() if col not in dropped}
         c.sample_rows = [{k: v for k, v in r.items() if k not in dropped} for r in c.sample_rows]
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
@@ -268,6 +281,9 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             if col is None or not pd.api.types.is_numeric_dtype(df[col]):
                 continue
             hit = df[col].isin(codes)
+            others = df.loc[~hit, col].abs().max()
+            # a code stands apart from the real values (₹9,999 among ₹500–₹12,000 is a price)
+            hit &= (df[col] < 0) | (df[col] >= 2 * others) if pd.notna(others) else hit
             if n := int(hit.sum()):
                 pct, found = _null_pct(df[col]), sorted(df.loc[hit, col].unique())
                 df[col] = df[col].mask(hit)
@@ -315,8 +331,10 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
     order, item = ctx.roles.get("order_id"), ctx.roles.get("sku") or ctx.roles.get("product")
-    if order and item and df[order].dropna().duplicated().any():   # an order line: its order and
-        keys = [f"{order} + {item}"]                               # product say what one is
+    if order and item and df[order].dropna().duplicated().any() and _whole_orders(df, dup, order):
+        # an order line: its order and product say what one is. An export overlap repeats whole
+        # orders; one line repeated inside an order is a second scan of the item: then kept.
+        keys = [f"{order} + {item}"]
     if n_dup and keys and not ctx.deidentified:
         df = df[~dup]
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
@@ -399,9 +417,11 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     outliers = [f.message for f in anomaly_report.flags]
 
     # 9b. The domain pack's row kinds and valid ranges: flagged and kept. KPIs leave them out
-    #     by rule (domain_pack.row_kinds); the rows stay for any other question.
+    #     by rule (domain_pack.row_kinds); the rows stay for any other question. Roles of a
+    #     column dropped at the high-null gate are gone.
+    roles = {r: c for r, c in ctx.roles.items() if c in df.columns}
     if ctx.pack:
-        kinds = row_kinds(df, ctx.roles, ctx.pack).value_counts()
+        kinds = row_kinds(df, roles, ctx.pack).value_counts()
         for kind, what in (("return", "return or credit lines (a negative quantity or amount, or "
                                       "a credit note): netted in net sales"),
                            ("refunded", "lines of refunded orders: left out of net sales"),
@@ -412,7 +432,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             if n := int(kinds.get(kind, 0)):
                 log("*", "flag", kind, f"{n} {what}; kept in the data.", n)
         for role, bounds in ctx.pack.ranges.items():
-            col = ctx.roles.get(role)
+            col = roles.get(role)
             if col is None or not pd.api.types.is_numeric_dtype(df[col]):
                 continue
             s = df[col]

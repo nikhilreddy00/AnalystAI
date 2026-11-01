@@ -180,10 +180,12 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
             if pack.kpi(c)]
     if not params.get("kpi") and len(kpis) == 1:
         params["kpi"] = kpis[0]
-    for f in ("period_start", "period_end"):
+    for f in ("period_start", "period_end"):   # 2025-03-31, or a whole month / year: 2025-03, 2025
         if params.get(f):
+            text = str(params[f]).strip()[:10]
+            ok = re.fullmatch(r"\d{4}(?:-\d{2})?", text)
             try:
-                params[f] = str(date.fromisoformat(str(params[f])[:10]))
+                params[f] = text if ok else str(date.fromisoformat(text))
             except ValueError:
                 params[f] = None
     if params.get("compare") not in (None, "yoy"):

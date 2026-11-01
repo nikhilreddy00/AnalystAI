@@ -781,7 +781,8 @@ def _date_span(df: pd.DataFrame, cols: dict) -> list:
         if not pd.api.types.is_datetime64_any_dtype(s):
             s = (pd.to_datetime(s, unit="s", errors="coerce") if pd.api.types.is_numeric_dtype(s)
                  # a UTC offset off: each value's local time (a Shopify export's -0500 / -0400)
-                 else pd.to_datetime(s.astype("string").str.replace(r" ?[+-]\d{2}:?\d{2}$", "", regex=True),
+                 else pd.to_datetime(s.astype("string").str.replace(
+                     r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$", r"\1", regex=True),
                                      format="mixed", dayfirst=bool(t.get("dayfirst")), errors="coerce"))
         stamps += [s.min(), s.max()]
     stamps = [x for x in stamps if not pd.isna(x)]

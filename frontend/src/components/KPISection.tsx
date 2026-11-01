@@ -52,7 +52,9 @@ export default function KPISection({ briefing }: Props) {
             key={`${kpi.label}-${i}`}
             label={kpi.label}
             value={kpi.value}
-            sublabel={kpi.context || undefined}
+            sublabel={kpi.recipe?.kind === "pack" && hasActiveFilters
+              ? "Whole dataset: not recomputed for filters"
+              : kpi.context || undefined}
             filteredValue={filteredValue}
             hasActiveFilters={hasActiveFilters}
           />

@@ -1256,9 +1256,11 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
         return got.strip() == str(want).strip()
     if isinstance(got, pd.Timestamp) and dayfirst is not None:   # a parsed date column
         try:
-            # an offset (" -0500") is dropped: the load keeps each value's local time
-            return got == pd.to_datetime(re.sub(r" ?[+-]\d{2}:?\d{2}$", "", str(want)),
-                                         dayfirst=dayfirst)
+            # an offset after a time (" -0500") is dropped: the load keeps local time
+            if got.tzinfo is not None:
+                got = got.tz_localize(None)
+            return got == pd.to_datetime(re.sub(r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$",
+                                                r"\1", str(want)), dayfirst=dayfirst)
         except (TypeError, ValueError):
             return False
     return False

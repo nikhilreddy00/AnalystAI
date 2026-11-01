@@ -621,7 +621,11 @@ def make_retail_lines(seed: int) -> tuple[pd.DataFrame, dict]:
         "Total": df["_order"].map(order_total).where(first_line),
         "Currency": df["_currency"],
     })
-    dups = out.sample(40, random_state=seed)
+    # Export overlap: the last day of one export is the first of the next, so whole orders repeat
+    # (about 40 lines). A line repeated inside an order would be a second scan, not a duplicate.
+    names = out["Name"].drop_duplicates().sample(25, random_state=seed)
+    dups = out[out["Name"].isin(names)]
+    dups = dups[dups.groupby("Name").cumcount().lt(10)]
     out = pd.concat([out, dups]).sort_index(kind="stable").reset_index(drop=True)
 
     s = df[sale(df)].assign(_net=lambda d: net(d))
@@ -653,7 +657,7 @@ def make_retail_lines(seed: int) -> tuple[pd.DataFrame, dict]:
         "voided_lines": int(df["_status"].eq("voided").sum()),
         "cad_lines": int(df["_currency"].eq("CAD").sum()),
         "test_lines": int(df["_order"].isin(test).sum()),
-        "duplicate_rows": 40, "partial_month": "2026-02", "partial_days": 12,
+        "duplicate_rows": len(dups), "partial_month": "2026-02", "partial_days": 12,
         "top_sku_by_net": usd_lines.groupby("sku")["_amt"].sum().idxmax(),
         "pii_columns": ["Email", "Billing Name"],
     }

@@ -2,24 +2,36 @@
 # Headers are normalized (domain_pack.normalize_header): lower case, "_" for spaces, units dropped.
 domain: retail
 
-# Retail needs a commerce column (a SKU, a quantity or an order number) AND a money column
-# (revenue, a unit price or an order total): `amount` + `transaction_id` (a bank file) or `price`
-# alone (SaaS) is not retail; a Shopify orders export (`Name` #1001 + `Total`) is.
+# Retail is one of: lines of products sold (a product or SKU, sales money, an order or a date);
+# orders with revenue and units; store sales (a store and revenue); an orders export (an order
+# number, an order total, a customer email and a currency: Shopify's orders CSV). `quantity` + `price`, `invoice_no` + `total` alone are any
+# domain's words (trades, claims, fuel, POs, SaaS invoices); a header token of another domain
+# vetoes the pack.
 signals:
-  specific: [sku, quantity, order_id]
-  money: [revenue, unit_price, order_total]
+  - {item: [sku, product], money: [revenue, unit_price], when: [order_id, date]}   # sold lines
+  - {order: [order_id], money: [revenue], volume: [quantity]}       # orders with revenue and units
+  - {store: [store], money: [revenue]}                               # store / POS sales
+  - {order: [order_id], money: [order_total], contact: [email], currency: [currency]}   # orders CSV
+exclude_headers: [patient, claim, cpt, ndc, rx, prescription, ticker, symbol, isin, cusip, po,
+                  purchase, vendor, supplier, policy, policyholder, premium, employee, payroll,
+                  meter, sensor, device, shipment, freight, carrier, on_hand, onhand, bin,
+                  warehouse_qty, deal, opportunity, stage, tariff, kwh]
+week_ends: SAT
 
 roles:
-  revenue:       {kind: money, headers: [revenue, net_sales, sales, sales_amount, turnover, gmv,
-                                          net_revenue, gross_sales, sales_value, total_sales,
-                                          sales_usd, line_total, lineitem_total, extended_price,
-                                          ext_price]}
-  order_total:   {kind: money, level: order, headers: [total, order_total, total_price, grand_total,
-                                                       order_value, subtotal]}
+  revenue:       {kind: money, headers: [net_sales, net_revenue, revenue, sales, sales_amount,
+                                          turnover, gmv, sales_value, total_sales, sales_usd,
+                                          line_total, lineitem_total, extended_price, ext_price]}
+  gross_revenue: {kind: money, headers: [gross_sales, gross_revenue, gross_amount]}
+  refunded_amount: {kind: money, level: order, headers: [refunded_amount, refund_amount,
+                                                         amount_refunded, refunds]}
+  order_total:   {kind: money, level: order, headers: [subtotal, order_total, total, total_price,
+                                                       grand_total, order_value]}
   quantity:      {kind: count, headers: [qty, quantity, units, units_sold, lineitem_quantity,
                                          qty_sold, quantity_sold, unit_sales, pieces]}
-  unit_price:    {kind: money, headers: [price, unit_price, unitprice, lineitem_price, selling_price,
-                                         sale_price, retail_price, price_each, sales_price]}
+  unit_price:    {kind: money, additive: false, headers: [unit_price, unitprice, lineitem_price,
+                                                          price, selling_price, sale_price,
+                                                          retail_price, price_each, sales_price]}
   # A rate first: 0.1 is a rate; 12.50 is an amount (both headers can be `discount`).
   discount_rate: {kind: rate, headers: [discount, discount_rate, discount_pct, discount_percent,
                                         markdown_pct]}
@@ -27,21 +39,22 @@ roles:
                                                        discount_value, markdown_amount]}
   cost:          {kind: money, headers: [cogs, cost, cost_of_goods, cost_of_goods_sold, total_cost,
                                          cost_of_sales]}
-  unit_cost:     {kind: money, headers: [unit_cost, cost_price, unitcost, cost_each]}
+  unit_cost:     {kind: money, additive: false, headers: [unit_cost, cost_price, unitcost, cost_each]}
   profit:        {kind: money, headers: [profit, gross_profit, margin_amount, gross_margin_amount]}
   # An order / invoice / receipt number: "#1001", "536365", "C536379", "INV-0042", "O00017",
   # "CA-2025-152156" (Superstore). Never a person's name: it must carry digits.
   order_id:      {kind: id, pattern: '#?[A-Za-z]{0,4}-?\d{2,}(?:-\d{2,}){0,2}',
                   headers: [order_id, order_no, order_number, order, name, invoiceno, invoice_no,
                             invoice, invoice_number, invoice_id, receipt_no, receipt_id,
-                            transaction_id, ticket_no]}
+                            ticket_no]}
   customer_id:   {kind: id, headers: [customer_id, customerid, customer_no, customer_number,
                                       client_id, account_id, customer_code, buyer_id]}
   email:         {kind: text, headers: [email, customer_email, billing_email, buyer_email]}
   sku:           {kind: id, headers: [sku, lineitem_sku, stockcode, stock_code, product_id, item_id,
                                       item_code, product_code, upc, ean, article_no, style_code]}
   product:       {kind: category, headers: [product, product_name, item, item_name, description,
-                                            lineitem_name, product_title, item_description]}
+                                            lineitem_name, product_title, item_description,
+                                            memo_description]}
   category:      {kind: category, headers: [category, product_category, product_type, dept,
                                             department, sub_category, subcategory]}
   store:         {kind: id, headers: [store, store_id, store_no, store_number, store_code, shop,
@@ -62,10 +75,14 @@ status_values:
   return: [refunded, returned]
   cancel: [cancelled, canceled, voided, void]
 credit_prefix: {order_id: C}
-non_product: {sku: [POST, DOT, M, D, C2, BANK CHARGES, AMAZONFEE, CRUK, S, PADS]}
-test_marker: '^test\b|^test@|@test\.'
+non_product: {sku: [POST, DOT, M, D, C2, B, BANK CHARGES, AMAZONFEE, CRUK, S, PADS]}
+# "test@shop.dev", "TEST", "test-order": never a real customer like test.smith@gmail.com
+test_marker: '^test(?:@|$|[-_ ]?order)|@test\.'
 test_roles: [email, customer_id, order_id]
-sentinels: {unit_price: [-1, 9999, 99999], quantity: [9999, 99999], cost: [-1, 9999, 99999]}
+# Codes an export writes for "unknown". Read as missing only where they stand apart from the real
+# values (Cleaning: at least twice the largest other value). 9,999 is no price code: a ₹9,999 TV
+# among groceries can't be told from one.
+sentinels: {unit_price: [-1, 99999], quantity: [9999, 99999], cost: [-1, 99999]}
 ranges: {unit_price: {ge: 0}, discount_rate: {le: 1}}
 # Shopify writes these on an order's first line only; the total stays there (summing it down an
 # order's lines would count it once per line).
@@ -81,14 +98,17 @@ kpis:
     tile: true
     rows: [sale, return]
     num:
-      - [{sum: revenue}]
-      - [{sum: [quantity, "*", unit_price]}, {sum: discount, sign: -1, optional: true}]
-      - [{sum: order_total}]   # an orders export: one total per order (after discounts)
+      - [{sum: revenue}, {sum: refunded_amount, sign: -1, optional: true}]
+      - [{sum: [quantity, "*", unit_price], net_of: discount_rate}]
+      - [{sum: [quantity, "*", unit_price]}, {sum: discount, sign: -1, optional: true},
+         {sum: refunded_amount, sign: -1, optional: true}]
+      - [{sum: order_total}, {sum: refunded_amount, sign: -1, optional: true}]
   - name: gross_sales
     label: Gross sales
     unit: money
     rows: [sale, refunded]
     num:
+      - [{sum: gross_revenue}]
       - [{sum: revenue}]
       - [{sum: [quantity, "*", unit_price]}]
   - {name: orders, label: Orders, unit: count, tile: true, num: [[{nunique: order_id}]]}
@@ -107,7 +127,7 @@ kpis:
     label: Avg selling price
     unit: money
     num: [[{kpi: net_sales}]]
-    den: [[{kpi: units}]]
+    den: [[{sum: quantity, rows: [sale, return]}]]   # net units, as net sales
   - name: gross_margin_pct
     label: Gross margin
     unit: percent

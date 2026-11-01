@@ -25,6 +25,7 @@ from agents.utils import (
     aggregate,
     column_hint,
     effective_agg,
+    current_window,
     filter_period,
     pandas_freq,
     partial_last_month,
@@ -82,6 +83,10 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
 
     handler = _HANDLERS.get(intent)
     pack = pack_for(contract.domain)
+    params = _asked_agg(params, contract, session.task_plan.raw_query)
+    if params and pack and intent in _KPI_INTENTS and not params.kpi and \
+            (params.aggregation or "sum").lower() == "sum" and (kpi := _summed_kpi(pack, contract, params, df)):
+        params = params.model_copy(update={"kpi": kpi})   # "sales by country": the pack's net sales
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS:
         handler = handle_kpi   # "basket size by country": the pack's AOV, not a column's mean
     if handler is None:
@@ -103,8 +108,7 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
                                                "Ask without a period (the whole data)"])
     if handler is handle_kpi:
         extra = {"full": full, "intent": intent}
-    response = handler(df, _asked_agg(params, contract, session.task_plan.raw_query), contract,
-                       ctx=ctx, **extra)
+    response = handler(df, params, contract, ctx=ctx, **extra)
     if period and handler is not handle_kpi:
         response.answer_text += f" Period: {period}."
     response.chart_configs = finalize_charts(response.chart_configs, ctx)
@@ -117,8 +121,8 @@ _TOTAL_WORDS = re.compile(r"\b(?:total|sum|summed|combined|altogether|overall am
                           r"bed[- ]?days|how much)\b", re.I)
 
 
-_AVERAGE_WORDS = re.compile(r"\b(?:average|avg|mean|typical|per (?:order|line|row|customer|"
-                            r"transaction|unit|item))\b", re.I)
+_AVERAGE_WORDS = re.compile(r"\b(?:average|avg|mean (?:of|per|value)|typical|per (?:order|line|row|"
+                            r"customer|transaction|unit|item))\b", re.I)
 
 
 def _asked_agg(params: TargetedParams | None, contract: DataContract, question: str):
@@ -131,8 +135,8 @@ def _asked_agg(params: TargetedParams | None, contract: DataContract, question: 
         return params
     pack = pack_for(contract.domain)
     role = next((r for r, c in contract.roles.items() if c == params.metric_column), None)
-    if pack and role and pack.roles[role].kind in ("money", "count") and \
-            pack.roles[role].level == "row" and (params.aggregation or "mean").lower() == "mean" \
+    if pack and role and pack.roles[role].kind in ("money", "count") and pack.roles[role].additive \
+            and pack.roles[role].level == "row" and (params.aggregation or "mean").lower() == "mean" \
             and not _AVERAGE_WORDS.search(question or ""):
         return params.model_copy(update={"aggregation": "sum"})
     if (params.aggregation or "").lower() != "sum":
@@ -443,7 +447,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
             series = aggregate(s, [pd.Grouper(key=date, freq=pandas_freq(freq))], metric, agg,
                                contract, over_time=True).dropna()
         else:
-            rule = _week_anchor(s[date]) if freq == "W" else pandas_freq(freq)
+            rule = _week_anchor(s[date], contract) if freq == "W" else pandas_freq(freq)
             series = s.set_index(date)[metric].resample(rule).agg(agg).dropna()
     except Exception as exc:
         return _unanswerable(
@@ -461,9 +465,12 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
 
     partial = ""
     if freq == "M" and len(series) >= 3 and partial_last_month(s[date]):
-        # ponytail: monthly only; Q/Y exports cut mid-period have the same trap.
         partial = (f" {series.index[-1]:%b %Y} is left out: the data ends {s[date].max():%d %b %Y}, "
                    "so that month is incomplete.")
+        series = series.iloc[:-1]
+    elif freq in ("Q", "Y") and len(series) >= 3 and _cut_partial(series, s[date], freq)[1]:
+        partial = (f" The last {'quarter' if freq == 'Q' else 'year'} is left out: the data ends "
+                   f"{s[date].max():%d %b %Y}, so it is incomplete.")
         series = series.iloc[:-1]
     chart_data = [{"period": idx.strftime("%Y-%m-%d"), metric: float(v)} for idx, v in series.items()]
     first, last = series.iloc[0], series.iloc[-1]
@@ -737,11 +744,48 @@ def _default_freq(dates: pd.Series, agg: str = "sum") -> str:
     return "W" if agg in ("sum", "count") and weekly_cadence(dates) else "M"
 
 
-def _week_anchor(dates: pd.Series) -> str:
-    """Weeks that end on the data's own weekday (a POS week ending Saturday is W-SAT), so a
-    week's label is its week-ending date, not the Sunday after."""
-    last = pd.to_datetime(dates, errors="coerce").max()
-    return f"W-{['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][last.weekday()]}" if pd.notna(last) else "W"
+def _week_anchor(dates: pd.Series, contract: DataContract | None = None) -> str:
+    """Weekly data's own week end (a POS week ending Saturday: W-SAT), so a week's label is its
+    week-ending date; daily data: the domain's calendar week (retail: Sun–Sat), else ISO weeks.
+    Never the export's last weekday (a bucket that moved with every refresh)."""
+    if weekly_cadence(dates):
+        last = pd.to_datetime(dates, errors="coerce").max()
+        return f"W-{['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][last.weekday()]}"
+    pack = pack_for(contract.domain) if contract is not None else None
+    return f"W-{pack.week_ends if pack else 'SUN'}"
+
+
+def _summed_kpi(pack, contract: DataContract, params: TargetedParams, df: pd.DataFrame) -> str | None:
+    """The tile KPI that is a plain sum of the asked column's role (revenue → net sales, quantity
+    → units), when its rules change the number: the data has refunds, test orders, non-product
+    lines or other currencies, which the tiles leave out. Otherwise the column's own sum is the
+    same number and its chart stays as it was."""
+    role = next((r for r, c in contract.roles.items() if c == params.metric_column), None)
+    kpi = next((k.name for k in pack.kpis if k.tile and k.num and k.num[0]
+                and k.num[0][0].sum == role), None) if role else None
+    if kpi is None:
+        return None
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    kinds = set(row_kinds(df, roles, pack).unique())
+    return kpi if kinds - {"sale"} or main_currency(df, roles)[2] else None
+
+
+def _cut_partial(series: pd.Series, t: pd.Series, freq: str) -> tuple[pd.Series, str]:
+    """Leave out a last period the data stops inside (a month by the shared rule; a quarter or a
+    year when the data ends before its last day)."""
+    if len(series) < 3:
+        return series, ""
+    last = t.max()
+    if freq == "M":
+        cut = partial_last_month(t)
+    elif freq in ("Q", "Y"):
+        end = pd.Period(last, freq).end_time.normalize()
+        cut = last.normalize() < end
+    else:
+        cut = False
+    if not cut:
+        return series, ""
+    return series.iloc[:-1], f" {series.index[-1]} is left out: the data ends {last:%d %b %Y}."
 
 
 def _date_of(contract: DataContract, params: TargetedParams, df: pd.DataFrame) -> str | None:
@@ -790,17 +834,19 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         if params.compare == "yoy" and date:
             prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end)
             prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, by=group)
-            if prior is None:
+            now = compute_kpi(current_window(full, date, params.period_start, params.period_end),
+                              roles, pack, kpi.name, by=group)
+            if prior is None or now is None:
                 answer += f" No year-earlier comparison: {why or 'nothing to compare'}."
-            elif lead in prior.index and prior[lead]:
+            elif lead in prior.index and lead in now.index and prior[lead]:
                 answer += (f" A year earlier ({prior_period}) {lead} was {fmt(prior[lead])} "
-                           f"({(by.iloc[0] / prior[lead] - 1) * 100:+.1f}%).")
+                           f"({(now[lead] / prior[lead] - 1) * 100:+.1f}%, same days).")
         chart = _chart(ChartType.HORIZONTAL_BAR, f"{kpi.label} by {group}{where}",
                        [{group: str(k), kpi.label: float(v)} for k, v in by.items()],
                        x_key=group, y_keys=[kpi.label], x_label=group, y_label=kpi.label,
                        source="kpi")
         _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked. {how}",
-             group, kpi.label, "kpi", len(df))
+             group, kpi.label, "sum" if kpi.den is None else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                 chart_configs=[chart])
     one_period = params.compare == "yoy" and (params.period_start or params.period_end)
@@ -808,31 +854,34 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         freq = (params.frequency or _default_freq(df[date], "sum" if kpi.den is None else "ratio")).upper()
         freq = freq if freq in {"W", "M", "Q", "Y"} else "M"
         t = pd.to_datetime(df[date], errors="coerce")
-        frame = df.assign(_period=t.dt.to_period(_week_anchor(t) if freq == "W" else freq))
+        frame = df.assign(_period=t.dt.to_period(_week_anchor(t, contract) if freq == "W" else freq))
         series = compute_kpi(frame, roles, pack, kpi.name, by="_period")
         if series is None or series.empty:
             return _unanswerable(intent, f"{kpi.label.lower()} can't be computed over time here",
                                  [f"{kpi.label} overall"])
-        series = series.sort_index()
-        note = ""
-        if freq == "M" and len(series) >= 3 and partial_last_month(t):
-            note = f" {series.index[-1]} is left out: the data ends {t.max():%d %b %Y}."
-            series = series.iloc[:-1]
+        series, note = _cut_partial(series.sort_index(), t, freq)
+        latest = series.index[-1]
+
+        def name(p) -> str:   # a week is named by its week-ending date
+            return f"week ending {p.end_time:%Y-%m-%d}" if freq == "W" else str(p)
+
         answer = f"{kpi.label} by {'week' if freq == 'W' else 'period'}{where}: latest " \
-                 f"{series.index[-1]} {fmt(series.iloc[-1])}"
-        if len(series) >= 2 and series.iloc[-2]:
-            answer += f", vs {fmt(series.iloc[-2])} the period before ({(series.iloc[-1] / series.iloc[-2] - 1) * 100:+.1f}%)"
-        back = {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq]
-        if len(series) > back and series.iloc[-1 - back]:
-            answer += (f"; a year earlier {fmt(series.iloc[-1 - back])} "
-                       f"({(series.iloc[-1] / series.iloc[-1 - back] - 1) * 100:+.1f}% year over year)")
+                 f"{name(latest)} {fmt(series.iloc[-1])}"
+        before = series.get(latest - 1)   # by label: a missing period is no "period before"
+        if before:
+            answer += f", vs {fmt(before)} the period before ({(series.iloc[-1] / before - 1) * 100:+.1f}%)"
+        prior = series.get(latest - {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq])
+        if prior:
+            answer += (f"; a year earlier {fmt(prior)} "
+                       f"({(series.iloc[-1] / prior - 1) * 100:+.1f}% year over year)")
         answer += "." + note
         chart = _chart(ChartType.LINE, f"{kpi.label} over time{where}",
-                       [{"period": str(k), kpi.label: float(v)} for k, v in series.items()],
+                       [{"period": f"{k.end_time:%Y-%m-%d}" if freq == "W" else str(k),
+                         kpi.label: float(v)} for k, v in series.items()],
                        x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
                        source="kpi")
         _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date,
-             kpi.label, "kpi", len(df))
+             kpi.label, "sum" if kpi.den is None else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                 chart_configs=[chart])
     value = compute_kpi(df, roles, pack, kpi.name)
@@ -843,9 +892,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     if params.compare == "yoy" and date:
         prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end)
         prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name)
+        now = compute_kpi(current_window(full, date, params.period_start, params.period_end),
+                          roles, pack, kpi.name)   # the same days as the year-earlier window
         answer += (f" A year earlier ({prior_period}): {fmt(prior)} "
-                   f"({(value / prior - 1) * 100:+.1f}% year over year)." if prior else
-                   f" No year-earlier comparison: {why or 'nothing to compare'}.")
+                   f"({(now / prior - 1) * 100:+.1f}% year over year, same days)." if prior and now
+                   else f" No year-earlier comparison: {why or 'nothing to compare'}.")
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")
 
 

@@ -874,11 +874,15 @@ def mask_emails(value: Any) -> Any:
     return _EMAIL_RE.sub(MASK, value) if isinstance(value, str) else value
 
 
+_ORDER_NO_RE = re.compile(r"#?[A-Za-z]{0,4}-?\d{2,}(?:-\d{2,}){0,2}")
+
+
 def _numbered(values: Iterable[Any]) -> bool:
-    """≥ 90% of the values carry a digit ("#1001", "INV-0042"): numbers, not people's names,
-    whatever their case or convention ("Smith, Ann", "ann smith" have none)."""
-    vals = [str(v) for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
-    return bool(vals) and sum(any(ch.isdigit() for ch in v) for v in vals) >= 0.9 * len(vals)
+    """≥ 90% of the values are wholly order numbers ("#1001", "INV-0042"), not people's names: a
+    name with a number beside it ("John Smith 2", "E1001 - Jane Doe") stays a name."""
+    vals = [str(v).strip() for v in values
+            if v is not None and not (isinstance(v, float) and math.isnan(v))]
+    return bool(vals) and sum(bool(_ORDER_NO_RE.fullmatch(v)) for v in vals) >= 0.9 * len(vals)
 
 
 def _is_measure(values: Iterable[Any]) -> bool:

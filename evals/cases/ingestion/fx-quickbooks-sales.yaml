@@ -12,4 +12,4 @@ expect:
 label_note: 'Hand-written accounting report: 4 title lines above the header, quoted thousands, and a
   TOTAL footer row that must not be loaded as a sale (it would double every sum).'
 expect_domain: retail
-expect_roles: {date: Date, quantity: Qty, unit_price: Sales Price}
+expect_roles: {date: Date, product: Memo/Description, quantity: Qty, unit_price: Sales Price}

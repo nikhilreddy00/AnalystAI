@@ -24,6 +24,14 @@ _FIRST_PART_RE = re.compile(r"^(\d{1,2})[/.]\d{1,2}[/.]\d{2,4}")
 _OFFSET_RE = re.compile(r" ?(Z|[+-]\d{2}:?\d{2})$")
 
 
+def _minutes(offset: str) -> int:
+    """'-0500' / '+01:00' / 'Z' as minutes east of UTC."""
+    if offset in ("Z", "z"):
+        return 0
+    digits = offset[1:].replace(":", "")
+    return (1 if offset[0] == "+" else -1) * (int(digits[:2]) * 60 + int(digits[2:]))
+
+
 def _looks_like_dates(s: pd.Series, share: float = 1.0) -> bool:
     """A text/object column whose values are dates, whatever its name: a SQL `DATE` column
     arrives as Python date objects, a query's `month` as '2025-01-01'. Checks that `share` of the
@@ -51,10 +59,17 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
     try:
         parsed = pd.to_datetime(s.astype("string"), format="mixed",
                                 dayfirst=dayfirst, errors="coerce")
-    except ValueError:   # mixed UTC offsets (a daylight-saving change): each value's local time,
-        # the clock the shop reports by (Shopify's `Created at`: -0500 in winter, -0400 in summer)
-        parsed = pd.to_datetime(s.astype("string").str.strip().str.replace(_OFFSET_RE, "", regex=True),
-                                format="mixed", dayfirst=dayfirst, errors="coerce")
+    except ValueError:   # mixed UTC offsets
+        text = s.astype("string").str.strip()
+        offsets = {_minutes(m) for m in text.str.extract(_OFFSET_RE)[0].dropna().unique()}
+        if len(offsets) == 2 and abs(max(offsets) - min(offsets)) == 60:
+            # a daylight-saving change: each value's local time, the clock the shop reports by
+            # (Shopify's `Created at`: -0500 in winter, -0400 in summer)
+            parsed = pd.to_datetime(text.str.replace(_OFFSET_RE, "", regex=True), format="mixed",
+                                    dayfirst=dayfirst, errors="coerce")
+        else:   # different places (pickup -05:00, delivery +01:00): one clock, UTC, keeps order
+            parsed = pd.to_datetime(text, format="mixed", dayfirst=dayfirst, errors="coerce",
+                                    utc=True).dt.tz_localize(None)
     return parsed if parsed.notna().sum() >= share * s.notna().sum() else None
 
 

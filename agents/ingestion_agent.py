@@ -355,8 +355,13 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     if pack := pack_for(domain):   # the pack knows a store number is a label, not a quantity
         for c in cols:
             role = next((r for r, col in roles.items() if col == c.name), None)
-            if role and pack.roles[role].kind == "id" and not c.is_id:
-                c.is_id, c.is_metric, c.is_date = True, False, False
+            s = df[c.name].dropna()
+            shaped = bool(role) and bool(pack.roles[role].pattern) and \
+                s.head(1000).astype(str).str.fullmatch(pack.roles[role].pattern).mean() >= 0.9
+            if role and pack.roles[role].kind == "id" and not c.is_id and (
+                    c.is_metric or shaped or s.nunique() >= 0.5 * max(len(s), 1)):   # a store number, an
+                # order number ("#1001"); a store named "Downtown" (few values) stays a category
+                c.is_id, c.is_metric = True, False
                 c.role_reason = f"id: the {domain} {role.replace('_', ' ')}"
     return DataContract(
         source_type=source_type, row_count=len(df), column_count=df.shape[1], columns=cols,

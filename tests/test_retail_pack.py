@@ -46,7 +46,7 @@ def _gen(name: str, seed: int = 1) -> pd.DataFrame:
     return _load(datagen.make(name, seed)[0].to_csv(index=False))
 
 
-_BASE = {"domain": "x", "signals": {"a": ["r"], "b": ["s"]},
+_BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
          "roles": {"r": {"kind": "money", "headers": ["rev"]}, "s": {"kind": "count", "headers": ["q"]}}}
 
 
@@ -55,8 +55,9 @@ _BASE = {"domain": "x", "signals": {"a": ["r"], "b": ["s"]},
      "not normalized"),
     ({"roles": {"r": {"kind": "money", "headers": ["rev"]}, "s": {"kind": "money", "headers": ["rev"]}}},
      "same kind"),
-    ({"signals": {"a": ["r"]}}, "two groups"),
-    ({"signals": {"a": ["r"], "b": ["nope"]}}, "unknown role nope"),
+    ({"signals": [{"a": ["r"]}]}, "two groups"),
+    ({"signals": [{"a": ["r"], "b": ["nope"]}]}, "unknown role nope"),
+    ({"test_marker": "(unclosed"}, "invalid regex"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"kpi": "k"}]]}]}, "refers to itself"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "zzz"}]]}]}, "unknown role zzz"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "r", "nunique": "s"}]]}]}, "exactly one"),
@@ -124,7 +125,7 @@ def test_a_person_named_column_is_never_an_id_role_and_names_stay_pii():
     df = _load("Name,qty,price\nAnn Smith,1,10\nBen Jones,2,12\nCara Moss,1,9\n")
     c = _contract(df)
     assert "order_id" not in c.roles and "Name" in c.pii_columns
-    df = _load("Name,qty,price\n#1001,1,10\n#1002,2,12\n#1003,1,9\n")   # Shopify's order number
+    df = _load("Name,Lineitem name,qty,price\n#1001,Tee,1,10\n#1002,Cap,2,12\n#1003,Tee,1,9\n")
     c = _contract(df)
     assert c.roles.get("order_id") == "Name" and "Name" not in c.pii_columns
 
@@ -168,7 +169,7 @@ def test_net_sales_aov_and_the_rows_they_leave_out():
                 p=[10.0, 5.0, 20.0, 30.0, 40.0, 50.0, 10.0], d=[2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 s=["paid", "paid", "paid", "refunded", "voided", "paid", "paid"],
                 c=["USD"] * 6 + ["USD"], e=["a@x.com"] * 5 + ["test@shop.dev", "b@x.com"],
-                k=["A", "B", "A", "A", "A", "A", "A"])
+                k=["SKU-A", "SKU-B", "SKU-A", "SKU-A", "SKU-A", "SKU-A", "SKU-A"])
     kinds = row_kinds(df, _r(df), RETAIL).tolist()
     assert kinds == ["sale", "sale", "sale", "refunded", "cancel", "test", "return"]
     # order 1: 10 + 10 - 2 (once, not per line); order 2: 20; the return: -10
@@ -204,9 +205,9 @@ def test_an_unavailable_kpi_is_none_never_zero_or_infinite(df, kpi):
 
 
 def test_kpis_by_group_drop_groups_with_a_zero_denominator():
-    df = _lines(o=["1", "2", "3"], q=[1, 1, -1], p=[10.0, 30.0, 5.0], k=["A", "B", "C"])
+    df = _lines(o=["1", "2", "3"], q=[1, 1, -1], p=[10.0, 30.0, 5.0], k=["SKU-A", "SKU-B", "SKU-C"])
     by = compute_kpi(df, _r(df), RETAIL, "aov", by="k")
-    assert by.to_dict() == {"A": 10.0, "B": 30.0}
+    assert by.to_dict() == {"SKU-A": 10.0, "SKU-B": 30.0}
 
 
 def test_margin_from_profit_or_cost_is_a_ratio_of_sums():
@@ -284,18 +285,23 @@ def test_order_fields_are_carried_within_their_order_only():
 
 
 def test_no_order_id_means_no_carrying_and_an_aggregate_grain():
-    df = pd.DataFrame({"k": ["A", "B"], "q": [1, 2], "p": [9999.0, 5.0], "s": ["paid", None]})
+    df = pd.DataFrame({"k": ["A", "B"], "q": [1, 2], "p": [99999.0, 5.0], "s": ["paid", None]})
     out, audit = _clean(df, {"sku": "k", "quantity": "q", "unit_price": "p", "status": "s"})
     assert audit.grain == "aggregate"
     assert not any(d.operation == "fill_within_order" for d in audit.decisions)
-    assert pd.isna(out["p"].iloc[0])   # 9999 is the export's "unknown"
+    assert pd.isna(out["p"].iloc[0])   # 99999 is the export's "unknown"
 
 
-def test_exact_duplicate_lines_go_by_order_and_product_and_real_repeats_stay():
-    df = pd.DataFrame({"o": ["#1", "#1", "#1", "#2"], "k": ["A", "A", "B", "A"],
-                       "q": [1, 1, 1, 2], "p": [5.0, 5.0, 5.0, 5.0]})
-    out, audit = _clean(df, {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p"})
-    assert len(out) == 3 and audit.duplicates_removed == 1
+def test_a_whole_order_repeated_is_an_export_overlap_one_line_repeated_is_a_scan():
+    roles = {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p"}
+    overlap = pd.DataFrame({"o": ["#1", "#1", "#2", "#1", "#1"], "k": ["A", "B", "A", "A", "B"],
+                            "q": [1, 1, 2, 1, 1], "p": [5.0] * 5})
+    out, audit = _clean(overlap, roles)
+    assert len(out) == 3 and audit.duplicates_removed == 2
+    scans = pd.DataFrame({"o": ["#1", "#1", "#1", "#2"], "k": ["A", "A", "B", "A"],
+                          "q": [1, 1, 1, 2], "p": [5.0] * 4})
+    out, audit = _clean(scans, roles)
+    assert len(out) == 4 and any(d.strategy == "repeated_rows" for d in audit.decisions)
 
 
 def test_without_a_pack_none_of_it_happens():
@@ -358,9 +364,14 @@ def _months(dates: pd.Series) -> dict:
     (pd.Series(pd.date_range("2025-01-01", "2025-06-30", freq="D")), False),   # full months
     (pd.Series(pd.date_range("2025-01-04", periods=26, freq="7D")), False),    # weekly, full
     (pd.Series(pd.date_range("2025-01-03", "2025-06-06", freq="7D")), True),   # weekly, cut mid-June
-    # an 18-row sample: 3 dates a month, then 1 in the last month: too sparse to call partial
-    (pd.Series(pd.to_datetime([f"2025-{m:02d}-{d:02d}" for m in range(1, 6) for d in (3, 14, 25)]
-                              + ["2025-06-07"])), False),
+    # an 18-row sample: 1–3 irregular dates a month, then 1 in the last: too sparse to judge
+    (pd.Series(pd.to_datetime(["2025-01-02", "2025-01-19", "2025-01-23", "2025-02-08", "2025-02-11",
+                               "2025-02-27", "2025-03-05", "2025-03-29", "2025-04-16", "2025-04-17",
+                               "2025-04-30", "2025-05-03", "2025-05-21", "2025-06-07"])), False),
+    # biweekly pay runs cut mid-month, and semi-monthly ones: a regular cadence is judged
+    (pd.Series(pd.date_range("2025-01-03", "2025-06-13", freq="14D")), True),
+    (pd.Series(pd.to_datetime([f"2025-{m:02d}-{d}" for m in range(1, 6) for d in ("15", "28")]
+                              + ["2025-06-15"])), True),
 ])
 def test_the_partial_month_rule_is_one_rule_in_the_app_and_the_sandbox(dates, partial):
     from agents.utils import partial_last_month
@@ -468,7 +479,7 @@ def test_no_year_earlier_data_is_said_not_invented(shop):
     s, _ = shop
     r = _ask(s, "March 2025 vs last year", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
              period_start="2025-03-01", period_end="2025-03-31", compare="yoy")
-    assert "No year-earlier comparison: the data covers 01 Jan 2025" in r.answer_text
+    assert "No year-earlier comparison: the data starts 01 Jan 2025" in r.answer_text
 
 
 def test_retail_money_by_group_is_a_total_unless_an_average_is_asked():
@@ -477,6 +488,7 @@ def test_retail_money_by_group_is_a_total_unless_an_average_is_asked():
                  metric_column="Net Sales", segment_column="Dept", aggregation="mean")
     avg = _ask(s, "Average sales by department", QuestionIntent.SEGMENT_COMPARE,
                metric_column="Net Sales", segment_column="Dept", aggregation="mean")
+    # no refunds or other currencies here: the column's own sum is net sales, an average a mean
     assert total.answer_text.startswith("sum(Net Sales)") and avg.answer_text.startswith("mean(")
     weekly = _ask(s, "sales trend", QuestionIntent.TIME_SERIES, metric_column="Net Sales")
     assert "freq=W" in weekly.answer_text and "2026-06-27" in weekly.answer_text   # a Saturday
@@ -591,3 +603,203 @@ async def test_sell_through_is_asked_never_computed(recorded_llm):
         "targeted_params": {"metric_column": "Lineitem quantity", "segment_column": "Lineitem sku"}}))
     task = await run_intake_agent(_intake_session(), "What is the sell-through rate by SKU?", get_client())
     assert task.clarification_needed and "inventory on hand" in task.clarification_question
+
+
+# ── Review #1 (end of WP2): one test per finding, each fails without its fix ────────────────
+
+@pytest.mark.parametrize("csv", [
+    # other domains' tables the first rule called retail (reviewer's list)
+    "trade_date,account_id,ticker,quantity,price,transaction_id\n2025-01-02,A1,AAPL,10,190.5,T1\n"
+    "2025-01-03,A1,AAPL,-5,191.0,T2\n2025-01-04,A2,MSFT,3,410.0,T3\n",
+    "claim_id,patient_id,cpt_code,units,unit_price,department\nC1,P1,99213,1,9999,ER\n"
+    "C2,P2,99214,2,150,ER\nC3,P3,99213,1,120,Clinic\n",
+    "invoice_no,product_code,quantity,unit_price,account_id,status,patient_name\n"
+    "1001,J1100,1,40,A1,paid,Ann Lee\n1001,J1100,1,40,A1,paid,Ann Lee\n1002,J2001,2,15,A2,void,Bo Li\n",
+    "rx_number,ndc,drug_name,quantity,price,fill_date\nRX1,0002-1433,Insulin,1,120,2025-01-02\n"
+    "RX2,0003-0894,Statin,30,15,2025-01-03\n",
+    "po_number,vendor,item_code,quantity,unit_price,order_date\nPO-1001,Acme,IC-1,9999,2.5,2025-01-02\n"
+    "PO-1002,Acme,IC-2,10,4.0,2025-01-03\n",
+    "invoice_id,customer_id,plan,total,status\nINV-0042,C1,Pro,99,paid\nINV-0043,C2,Team,49,void\n",
+    "receipt_no,employee_id,category,total\nR-1001,E1,Travel,120\nR-1002,E2,Meals,45\n",
+    "transaction_id,truck,quantity,price,date\nT1001,TR-1,50,1.6,2025-01-02\nT1002,TR-2,40,1.7,2025-01-03\n",
+    "meter_id,units,price,read_date\nM-1,320,0.21,2025-01-31\nM-2,410,0.21,2025-01-31\n",
+    "deal_id,amount,stage,quantity,price,close_date\nD-1001,5000,won,10,500,2025-01-02\n"
+    "D-1002,3000,lost,5,600,2025-01-03\n",
+    "sku,quantity,unit_cost,price\nA-100,40,5,9\nA-101,12,7,12\n",            # inventory valuation
+    "sku,warehouse,quantity,unit_price,count_date,qty_on_hand\nA-1,W1,4,9,2025-01-02,4\n"
+    "A-2,W2,5,8,2025-01-02,5\n",                                              # stock count
+])
+def test_other_domains_tables_are_not_retail(csv):
+    assert _contract(_load(csv)).domain is None
+
+
+def test_superstore_order_ids_are_orders_not_credit_notes():
+    df = _load(open("evals/cases/ingestion/files/superstore.csv").read())
+    c = _contract(df)
+    assert set(row_kinds(df, c.roles, RETAIL)) == {"sale"}
+    assert compute_kpi(df, c.roles, RETAIL, "return_rate") is None
+    uci = pd.DataFrame({"o": ["536365", "C536379", "536366"], "q": [2, -1, 1], "p": [5.0, 5.0, 3.0]})
+    assert row_kinds(uci, _r(uci), RETAIL).tolist() == ["sale", "return", "sale"]
+
+
+def test_a_negative_line_marked_returned_is_netted_not_dropped():
+    df = _lines(o=["1", "2"], q=[1, -1], p=[100.0, 50.0], s=["paid", "returned"])
+    assert compute_kpi(df, _r(df), RETAIL, "net_sales") == 50.0
+    assert compute_kpi(df, _r(df), RETAIL, "return_rate") == pytest.approx(0.5)
+
+
+def test_the_best_header_wins_net_sales_over_gross_sales():
+    df = _load("Item,Gross Sales,Discounts,Net Sales,Qty,Date\nLatte,5,0,5,1,2025-01-02\n"
+               "Muffin,12,1,11,3,2025-01-02\n")
+    c = _contract(df)
+    assert c.roles["revenue"] == "Net Sales" and c.roles["gross_revenue"] == "Gross Sales"
+    assert compute_kpi(df, c.roles, RETAIL, "net_sales") == 16 and \
+        compute_kpi(df, c.roles, RETAIL, "gross_sales") == 17
+
+
+def test_a_discount_rate_reduces_net_sales_and_asp_uses_net_units():
+    df = _lines(o=["1", "2"], q=[10, 10], p=[100.0, 100.0], r=[0.25, 0.0])
+    assert compute_kpi(df, {**_r(df), "discount_rate": "r"}, RETAIL, "net_sales") == 1750
+    ret = _lines(o=["1", "2"], q=[10, -5], p=[10.0, 10.0])
+    assert compute_kpi(ret, _r(ret), RETAIL, "asp") == 10.0
+
+
+def test_an_order_discount_is_shared_across_its_lines_by_product():
+    df = _lines(o=["1", "1"], k=["SKU-A", "SKU-B"], q=[1, 1], p=[50.0, 50.0], d=[20.0, 20.0])
+    by = compute_kpi(df, _r(df), RETAIL, "net_sales", by="k")
+    assert by.to_dict() == {"SKU-A": 40.0, "SKU-B": 40.0}
+    assert compute_kpi(df, _r(df), RETAIL, "net_sales") == 80.0
+
+
+def test_two_scans_of_one_item_are_two_lines_and_a_9999_price_is_a_price():
+    df = pd.DataFrame({"o": ["5001", "5001", "5001", "5002"], "k": ["MILK", "MILK", "BREAD", "TV"],
+                       "q": [1, 1, 1, 1], "p": [2.5, 2.5, 5.5, 9999.0]})
+    out, audit = _clean(df, {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p"})
+    assert len(out) == 4 and out["p"].iloc[3] == 9999.0
+    sentinel = pd.DataFrame({"k": ["A", "B", "C"], "q": [2, 9999, 3], "p": [1.0, 2.0, 3.0]})
+    out, _ = _clean(sentinel, {"sku": "k", "quantity": "q", "unit_price": "p"})
+    assert pd.isna(out["q"].iloc[1])   # stands apart from the real quantities: a code
+
+
+def test_a_high_null_drop_of_a_pack_column_does_not_break_cleaning():
+    df = pd.DataFrame({"o": [f"#{i}" for i in range(10)], "k": ["SKU-A"] * 10, "q": [1] * 10,
+                       "p": [5.0] * 10, "e": [None] * 8 + ["a@x.com", "b@x.com"]})
+    roles = {"order_id": "o", "sku": "k", "quantity": "q", "unit_price": "p", "email": "e"}
+    out, audit = clean(CleanContext(df=df, ids={"o"}, dates=set(), targets=set(),
+                                    drop_high_null=True, pack=RETAIL, roles=roles))
+    assert "e" not in out.columns
+
+
+def test_a_text_store_column_stays_a_category():
+    c = _contract(_load("store,sku,qty,price,date\n" + "".join(
+        f"{s},A-{i},1,5,2025-01-0{i}\n" for i in range(1, 4) for s in ("Downtown", "Uptown", "Mall"))))
+    store = next(x for x in c.columns if x.name == "store")
+    assert not store.is_id and "store" not in c.id_columns
+
+
+def test_year_over_year_compares_the_same_days():
+    days = pd.date_range("2024-03-15", "2025-03-15")
+    df = pd.DataFrame({"Order": [f"#{i}" for i in range(len(days))], "Created at": days,
+                       "Lineitem name": "Tee", "Lineitem quantity": 1, "Lineitem price": 100.0})
+    s = AnalysisSession(session_id="t", data_contract=_contract(df),
+                        task_plan=AnalysisTask(raw_query="o", analysis_types=["eda"], target_metrics=[]))
+    import io
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    r = _ask(s, "March 2025 vs last year", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+             period_start="2025-03", period_end="2025-03", compare="yoy")
+    # 1–15 Mar 2025 has no full twin: the data starts 15 Mar 2024 (never 15 days vs 17)
+    assert "No year-earlier comparison: the data starts 15 Mar 2024" in r.answer_text
+    r = _ask(s, "Q1 2025 vs last year", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+             period_start="2025-03-15", period_end="2025-03-31", compare="yoy")
+    assert "+0.0% year over year, same days" in r.answer_text and "data ends 15 Mar 2025" in r.answer_text
+    r = _ask(s, "net sales in 2024", QuestionIntent.SEGMENT_COMPARE, kpi="net_sales",
+             period_start="2024", period_end="2024")
+    assert "the data starts 15 Mar 2024" in r.answer_text
+    r = _ask(s, "net sales by quarter", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="Q")
+    assert "2025Q1 is left out" in r.answer_text
+
+
+def test_a_missing_period_is_not_the_period_before():
+    from agents.targeted_analysis_agent import handle_kpi
+    from orchestrator.state import TargetedParams
+    months = [m for m in pd.period_range("2023-11", "2024-12", freq="M") if str(m) != "2024-11"]
+    df = pd.DataFrame({"Order": [f"#{i}" for i in range(len(months))],
+                       "Created at": [m.start_time for m in months], "Lineitem name": "Tee",
+                       "Lineitem quantity": 1, "Lineitem price": [100.0 * (i + 1) for i in range(len(months))]})
+    r = handle_kpi(df, TargetedParams(kpi="net_sales"), _contract(df), intent=QuestionIntent.TIME_SERIES)
+    assert "the period before" not in r.answer_text   # Nov 2024 is missing: no MoM, not Oct's
+
+
+def test_prices_by_group_stay_a_mean_and_sales_by_group_go_through_the_kpi(shop):
+    s, truth = shop
+    price = _ask(s, "Which country has the highest price?", QuestionIntent.SEGMENT_COMPARE,
+                 metric_column="Lineitem price", segment_column="Shipping Country", aggregation="mean")
+    assert price.answer_text.startswith("mean(")
+    total = _ask(s, "sales by country, and what does that mean?", QuestionIntent.SEGMENT_COMPARE,
+                 metric_column="Total", segment_column="Shipping Country", aggregation="sum")
+    assert not total.unanswerable_reason
+
+
+def test_a_blank_discount_is_no_discount():
+    df = _lines(o=["1", "2"], q=[1, 1], p=[10.0, 20.0], d=[float("nan"), float("nan")])
+    assert compute_kpi(df, _r(df), RETAIL, "net_sales") == 30.0
+
+
+def test_real_customers_named_test_are_customers():
+    df = _lines(o=["1", "2", "3"], q=[1, 1, 1], p=[1.0, 1.0, 1.0],
+                e=["test.smith@gmail.com", "test@shop.dev", "TEST"])
+    assert row_kinds(df, _r(df), RETAIL).tolist() == ["sale", "test", "test"]
+
+
+@pytest.mark.parametrize("values, pii", [
+    (["John Smith 2", "Ann Lee 3"], True), (["Smith J. (ID 123)", "Lee A. (ID 9)"], True),
+    (["E1001 - Jane Doe", "E1002 - Bo Li"], True), (["John Smith <j1@x.com>", "A B <a@x.com>"], True),
+    (["#1001", "#1002"], False), (["INV-0042", "INV-0043"], False),
+])
+def test_only_wholly_numbered_name_columns_lose_pii_status(values, pii):
+    from guardrails import pii_kind
+    assert bool(pii_kind("Name", values)) is pii
+
+
+def test_different_zones_keep_their_order_one_zone_change_is_local_time():
+    two_places = parse_text_dates(pd.Series(["2025-01-05 10:00 -05:00", "2025-01-05 16:30 +01:00"]))
+    assert two_places.tolist() == [pd.Timestamp("2025-01-05 15:00"), pd.Timestamp("2025-01-05 15:30")]
+
+
+def test_a_utc_column_filters_by_period():
+    from agents.utils import filter_period, year_earlier
+    df = pd.DataFrame({"d": pd.to_datetime(["2024-01-01", "2024-01-10", "2025-01-10"]).tz_localize("UTC"),
+                       "v": [0, 1, 2]})
+    rows, _, why = filter_period(df, "d", "2025-01-01", "2025-01-31")
+    assert why is None and rows["v"].tolist() == [2]
+    assert year_earlier(df, "d", "2025-01", "2025-01")[0]["v"].tolist() == [0, 1]
+    assert filter_period(df, "d", "2025-02-30", None)[2].startswith("I couldn't read")
+
+
+def test_the_scorer_keeps_dashed_dates_and_aware_values():
+    from evals.scoring import _same_loaded
+    assert _same_loaded("05-01-2025", pd.Timestamp("2025-05-01"), False)
+    assert _same_loaded("2025-01-05 10:00:00 +0000", pd.Timestamp("2025-01-05 10:00", tz="UTC"), False)
+
+
+def test_intake_keeps_a_month_or_year_period():
+    from agents.intake_agent import _pack_params
+    c = _contract(_gen("retail_lines"))
+    p = _pack_params({"period_start": "2025-03", "period_end": "2025"}, c, "x")
+    assert (p["period_start"], p["period_end"]) == ("2025-03", "2025")
+
+
+def test_daily_data_in_weeks_ends_on_the_retail_week_not_the_export_day():
+    from agents.targeted_analysis_agent import _week_anchor
+    c = _contract(_gen("retail_lines"))
+    assert _week_anchor(pd.Series(pd.date_range("2025-01-01", "2025-02-12")), c) == "W-SAT"
+    assert _week_anchor(pd.Series(pd.date_range("2025-01-01", "2025-02-12")), None) == "W-SUN"
+
+
+def test_a_kpi_series_by_week_names_weeks_by_their_end(shop):
+    s, _ = shop
+    r = _ask(s, "net sales by week", QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="W")
+    assert "latest week ending 2026-02-" in r.answer_text   # retail weeks end on Saturday
+    assert pd.Timestamp(r.chart_configs[0].data[-1]["period"]).weekday() == 5

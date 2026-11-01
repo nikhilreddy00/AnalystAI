@@ -152,5 +152,10 @@ export function evaluateKPI(
       const cv = Math.sqrt(variance) / Math.abs(mean);
       return { value: `CV ${cv.toFixed(2)}`, ok: true };
     }
+    // Phase 5.7: a domain-pack KPI (net sales after refunds, AOV per order …) depends on rules
+    // the browser doesn't have (row kinds, one currency): never recomputed under filters.
+    case "pack":
+    default:
+      return { value: "—", ok: false };
   }
 }

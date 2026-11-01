@@ -94,7 +94,7 @@ def test_the_shipped_layers_are_valid_and_found_from_any_directory(tmp_path, mon
 @pytest.fixture
 def bad_pack(tmp_path, monkeypatch):
     import domain_pack
-    (tmp_path / "broken.yaml").write_text("domain: x\nsignals: {a: [r]}\nroles: {r: {kind: money, "
+    (tmp_path / "broken.yaml").write_text("domain: x\nsignals: [{a: [r]}]\nroles: {r: {kind: money, "
                                           "headers: [Revenue]}}\n")
     monkeypatch.setattr(domain_pack, "PACKS", tmp_path)
     domain_pack.load_packs.cache_clear()

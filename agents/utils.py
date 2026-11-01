@@ -74,9 +74,11 @@ def conversation_context(session, n_turns: int = 6) -> str:
     return delimit_untrusted(pseudonymize("\n".join(lines))[0])
 
 
-# A month is judged partial only against months at least weekly-dense (median distinct dates):
-# weekly snapshots cut mid-month are partial (5.5); an 18-row sample's 1–3 dates a month are noise.
+# A month is judged partial against months at least weekly-dense (median distinct dates), or when
+# the dates keep a regular cadence (biweekly or semi-monthly pay runs): an 18-row sample's 1–3
+# irregular dates a month are noise, a biweekly payroll cut mid-month is not.
 PARTIAL_MIN_DAYS = 4
+REGULAR_CV = 0.25   # the gaps between distinct dates vary less than this (std / mean): a cadence
 
 
 def partial_last_month(dates) -> bool:
@@ -95,7 +97,9 @@ def partial_last_month(dates) -> bool:
         return False
     last = d.max().normalize()
     full = days.iloc[:-1].median()
-    return bool(last < last + pd.offsets.MonthEnd(0) and full >= PARTIAL_MIN_DAYS
+    gaps = d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()
+    regular = len(gaps) >= 3 and gaps.std() <= REGULAR_CV * gaps.mean()
+    return bool(last < last + pd.offsets.MonthEnd(0) and (full >= PARTIAL_MIN_DAYS or regular)
                 and days.iloc[-1] < 0.9 * full)
 
 
@@ -244,37 +248,93 @@ def latest_rows(df, column: str, contract):
     return last.drop(columns="_t")
 
 
+def _local(t):
+    """Datetimes compared as wall-clock time: an aware column (one UTC offset in the file) drops
+    its zone, as the loader's mixed-offset rule does (connectors.base)."""
+    return t.dt.tz_localize(None) if getattr(t.dt, "tz", None) is not None else t
+
+
+def _bound(text: str, end: bool):
+    """'2025', '2025-03' or '2025-03-31' as the first (or, for an end, the last) instant."""
+    import pandas as pd
+
+    text = str(text).strip()
+    ts = pd.Timestamp(text)
+    if end and len(text) == 4:
+        return ts + pd.offsets.YearEnd(0) + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+    if end and len(text) == 7:
+        return ts + pd.offsets.MonthEnd(0) + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+    if end and ts == ts.normalize():
+        return ts + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+    return ts
+
+
+def period_window(df, date: str | None, start: str | None, end: str | None):
+    """(lo, hi, data start, data end, error): the period asked, as bounds, and the data's span."""
+    import pandas as pd
+
+    if not date or date not in df.columns:
+        return None, None, None, None, "the data has no date column to limit to that period"
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    try:
+        lo = _bound(start, False) if start else t.min()
+        hi = _bound(end, True) if end else t.max()
+    except (ValueError, TypeError):
+        return None, None, None, None, f"I couldn't read the period ({start} to {end}) as dates"
+    if lo > hi:
+        lo, hi = _bound(str(hi.date()), False), _bound(str(lo.date()), True)
+    return lo, hi, t.min(), t.max(), None
+
+
 def filter_period(df, date: str | None, start: str | None, end: str | None):
     """(rows in [start, end], a note, or an error) for a period the user named. Inclusive ISO
-    dates; reversed bounds are swapped; a period the data doesn't reach is an error to say, never
-    an empty answer. No period: the frame unchanged."""
+    dates (a year or a month means all of it); reversed bounds are swapped; a period the data
+    doesn't reach, or doesn't fully cover, is said, never an empty or silent answer. No period:
+    the frame unchanged."""
     import pandas as pd
 
     if not (start or end):
         return df, "", None
-    if not date or date not in df.columns:
-        return df, "", "the data has no date column to limit to that period"
-    t = pd.to_datetime(df[date], errors="coerce")
-    lo = pd.Timestamp(start) if start else t.min()
-    hi = pd.Timestamp(end) if end else t.max()
-    if lo > hi:
-        lo, hi = hi, lo
-    hi = hi + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1) if hi == hi.normalize() else hi
+    lo, hi, first, last, why = period_window(df, date, start, end)
+    if why:
+        return df.iloc[:0], "", why
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
     rows = df[(t >= lo) & (t <= hi)]
     if rows.empty:
-        return rows, "", (f"the data covers {t.min():%d %b %Y} to {t.max():%d %b %Y}, not "
+        return rows, "", (f"the data covers {first:%d %b %Y} to {last:%d %b %Y}, not "
                           f"{lo:%d %b %Y} to {hi:%d %b %Y}")
     note = f"{lo:%d %b %Y} to {hi:%d %b %Y}"
-    if hi > t.max():
-        note += f" (the data ends {t.max():%d %b %Y}, so the period is incomplete)"
+    gaps = ([f"the data starts {first:%d %b %Y}"] if lo < first.normalize() else []) + \
+           ([f"the data ends {last:%d %b %Y}"] if hi > last else [])
+    if gaps:
+        note += f" ({' and '.join(gaps)}, so the period is incomplete)"
     return rows, note, None
 
 
 def year_earlier(df, date: str, start: str | None, end: str | None):
-    """The same calendar window one year earlier, filtered from `df` (YoY)."""
+    """(rows, note, error) for the same window one year earlier (YoY). Both windows are first cut
+    to the days the data covers; a year-earlier window the data doesn't fully cover is an error
+    to say (a 15-day March against a 31-day March is no year-over-year change)."""
     import pandas as pd
 
-    t = pd.to_datetime(df[date], errors="coerce")
-    lo = (pd.Timestamp(start) if start else t.min()) - pd.DateOffset(years=1)
-    hi = (pd.Timestamp(end) if end else t.max()) - pd.DateOffset(years=1)
-    return filter_period(df, date, str(lo.date()), str(hi.date()))
+    lo, hi, first, last, why = period_window(df, date, start, end)
+    if why:
+        return df.iloc[:0], "", why
+    lo, hi = max(lo, first.normalize()), min(hi, last)
+    p_lo, p_hi = lo - pd.DateOffset(years=1), hi - pd.DateOffset(years=1)
+    if p_lo < first.normalize():
+        return df.iloc[:0], "", (f"the data starts {first:%d %b %Y}, so it has no full "
+                                 f"{p_lo:%d %b %Y} to {p_hi:%d %b %Y}")
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    return df[(t >= p_lo) & (t <= p_hi)], f"{p_lo:%d %b %Y} to {p_hi:%d %b %Y}", None
+
+
+def current_window(df, date: str, start: str | None, end: str | None):
+    """The asked window cut to the data's days: what a YoY compares with its year-earlier twin."""
+    import pandas as pd
+
+    lo, hi, first, last, why = period_window(df, date, start, end)
+    if why:
+        return df.iloc[:0]
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    return df[(t >= max(lo, first.normalize())) & (t <= min(hi, last))]
