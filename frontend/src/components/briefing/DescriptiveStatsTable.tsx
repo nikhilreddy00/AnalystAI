@@ -2,6 +2,7 @@
 
 // PROMPT-10 (3): "Descriptive statistics" — continuous columns only, with
 // skewness + currency formatting + a target-correlation row at the bottom.
+import { formatWithUnit } from "@/lib/formatUnit";
 
 interface Stats {
   mean?: number;
@@ -17,6 +18,7 @@ interface Props {
   columnRoles?: Record<string, string>;
   targetCorrelations?: Record<string, number>;
   targetCol?: string | null;
+  units?: Record<string, string>;   // Phase 5.5: from the semantic layer or the file
 }
 
 const _CURRENCY_RE = /(?:^|_|\s)(price|cost|fare|revenue|amount|salary|income|spend|budget|fee|total|usd|sales|profit)(?:$|_|\s)/i;
@@ -25,8 +27,9 @@ function isCurrencyColumn(name: string): boolean {
   return _CURRENCY_RE.test(name);
 }
 
-function fmt(v: unknown, currency: boolean): string {
+function fmt(v: unknown, currency: boolean, unit?: string): string {
   if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+  if (unit) return formatWithUnit(v, unit);   // a known unit decides; the name rule is the fallback
   if (currency) return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (Math.abs(v) >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
   return v.toFixed(2);
@@ -47,6 +50,7 @@ export default function DescriptiveStatsTable({
   columnRoles = {},
   targetCorrelations = {},
   targetCol,
+  units = {},
 }: Props) {
   // Only include columns the role classifier flagged as continuous. Fallback
   // to "any column with mean/std" when role info is absent (older sessions).
@@ -88,6 +92,7 @@ export default function DescriptiveStatsTable({
             {cols.map((c, i) => {
               const stats = describe[c];
               const currency = isCurrencyColumn(c);
+              const unit = units[c];
               const std = getStat(stats, "std");
               const sk = skewness[c];
               const skewedBadge = typeof sk === "number" && Math.abs(sk) > 2;
@@ -106,11 +111,11 @@ export default function DescriptiveStatsTable({
                       )}
                     </span>
                   </td>
-                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "mean"), currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "median"), currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(std, currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "min"), currency)}</td>
-                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "max"), currency)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "mean"), currency, unit)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "median"), currency, unit)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(std, currency, unit)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "min"), currency, unit)}</td>
+                  <td className="px-2 py-1.5 text-right text-foreground font-mono">{fmt(getStat(stats, "max"), currency, unit)}</td>
                   <td className={`px-2 py-1.5 text-right font-mono ${skewedBadge ? "text-warning" : "text-foreground"}`}>
                     {typeof sk === "number" ? sk.toFixed(2) : "—"}
                   </td>

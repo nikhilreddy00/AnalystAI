@@ -736,9 +736,15 @@ def _display(col: str, narrative: DataNarrative | None) -> str:
     return _title_case(col)
 
 
-def _detect_entity_singular(columns, query: str = "") -> str:
-    """Deterministic fallback when the narrative wasn't generated. Picks a noun
+def _detect_entity_singular(columns, query: str = "", df: pd.DataFrame | None = None) -> str:
+    """Deterministic fallback when the narrative wasn't generated. A row-unique `<noun>_id`
+    names what one row is (claim_id → claim; a sensor_id repeats, so it doesn't); else a noun
     from the entity-keyword table based on column names + the user's query."""
+    if df is not None:
+        for c in map(str, columns):
+            m = re.fullmatch(r"([a-z]+)_?id", c.lower())
+            if m and m[1] not in ("row", "record", "") and df[c].notna().all() and df[c].is_unique:
+                return m[1]
     blob = " ".join(str(c).lower() for c in columns)
     if query:
         blob = f"{blob} {query.lower()}"
@@ -763,7 +769,7 @@ def _pluralize(noun: str) -> str:
 
 
 def _entity_pair(
-    columns, narrative: DataNarrative | None, query: str = ""
+    columns, narrative: DataNarrative | None, query: str = "", df: pd.DataFrame | None = None
 ) -> tuple[str, str]:
     """Return (singular, plural) entity nouns. Prefers the narrative; falls back
     to the deterministic keyword detector."""
@@ -771,7 +777,7 @@ def _entity_pair(
         sg = narrative.entity_singular.lower().strip()
         pl = (narrative.entity_plural or _pluralize(sg)).lower().strip()
         return sg, pl
-    sg = _detect_entity_singular(columns, query)
+    sg = _detect_entity_singular(columns, query, df)
     return sg, _pluralize(sg)
 
 
@@ -1085,7 +1091,7 @@ def generate_smart_kpis(
     high_card_cat: list[str] = list(column_roles.get("high_card_cat") or [])
     ordinal_cols: set[str] = set(column_roles.get("ordinal_cols") or [])
 
-    entity_sg, entity_pl = _entity_pair(df.columns, narrative, query)
+    entity_sg, entity_pl = _entity_pair(df.columns, narrative, query, df)
 
     kpis: list[KPI] = []
 
@@ -1792,6 +1798,8 @@ def compute_briefing_extras(
             continue
     out["unique_counts"] = unique_counts
     out["sample_values_per_col"] = sample_values
+    # Phase 5.5: units from the semantic layer or the file ($ → USD), so the UI never guesses money.
+    out["column_units"] = {c.name: c.unit for c in (contract.columns if contract else []) if c.unit}
 
     # Skewness per numeric column
     skew: dict[str, float] = {}

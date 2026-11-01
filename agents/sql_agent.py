@@ -20,6 +20,7 @@ from agents.errors import AgentError, GuardrailViolation, LLMOutputError
 from agents.utils import strip_markdown_fences
 from connectors.sql_connector import MAX_ROWS, QueryResult, SQLConnector, sql_dialect
 from guardrails import (
+    MASK,
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
@@ -165,19 +166,28 @@ def _pii_columns(res: QueryResult) -> set[str]:
     query runs before ingestion has registered the run's PII values with the client guard."""
     pii = {c for i, c in enumerate(res.columns)
            if pii_kind(c, [r[i] for r in res.rows[:200]]) or is_phi_identifier(c)}
-    if any(is_health_column(c) or is_phi_identifier(c) for c in res.columns):
-        # Patient data, before PHI mode has seen it: only short category text is shown (a name
-        # or a note under any header stays out); numbers and dates are kept.
-        for i, c in enumerate(res.columns):
-            vals = [r[i] for r in res.rows[:200] if isinstance(r[i], str)]
-            if vals and len(set(vals)) > 20:
-                pii.add(c)
     return pii
+
+
+def _patient_rows(res: QueryResult) -> bool:
+    return any(is_health_column(c) or is_phi_identifier(c) for c in res.columns)
+
+
+def _category_cells(res: QueryResult, rows: list) -> list[dict]:
+    """Patient data, before PHI mode has seen it: a text cell is shown only when it is a short
+    label (1-2 words) that repeats in the result, a category; a name or a note under any header
+    stays masked, however few rows came back. Numbers and dates are kept."""
+    from collections import Counter
+    counts = Counter(v for r in res.rows[:200] for v in r if isinstance(v, str))
+    return [{k: (MASK if isinstance(v, str) and (counts[v] < 2 or len(v.split()) > 2) else v)
+             for k, v in row.items()} for row in rows]
 
 
 def _preview(res: QueryResult, n: int = _PREVIEW_ROWS) -> str:
     pii = _pii_columns(res)
     rows = [mask_row(dict(zip(res.columns, r)), pii) for r in res.rows[:n]]
+    if _patient_rows(res):
+        rows = _category_cells(res, rows)
     head = f"columns: {res.columns}\nrows returned: {len(res.rows)}"
     if res.truncated:
         head += f" (capped at {MAX_ROWS:,})"

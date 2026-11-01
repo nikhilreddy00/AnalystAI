@@ -266,15 +266,15 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     chart_data = [{group: str(k), metric: float(v)} for k, v in grouped.items()]
     direction = "Bottom" if asc else "Top"
     answer = (
-        f"{direction} {len(grouped)} {group} by {agg}({metric}). "
+        f"{direction} {len(grouped)} {group} by {_agg_name(agg)}({metric}). "
         f"Leader: {grouped.index[0]} = {grouped.iloc[0]:,.2f}."
     )
     chart = _chart(
-        ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {agg}({metric})",
+        ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_agg_name(agg)}({metric})",
         chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=f"{_agg_name(agg)}({metric})",
         source="top_n",
     )
-    _why(chart, ctx, "targeted:top_n→ranked bars", f"Ranks {group} by {agg} {metric}, "
+    _why(chart, ctx, "targeted:top_n→ranked bars", f"Ranks {group} by {_agg_name(agg)} {metric}, "
          f"{'lowest' if asc else 'highest'} first.", group, metric, agg,
          int(df[[group, metric]].dropna().shape[0]),
          code=f"df.groupby({group!r})[{metric!r}].{agg}().sort_values(ascending={asc}).head({n})")
@@ -433,7 +433,7 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     chart = group_bars(df, segment, metric, agg, ctx, top=20)
     if chart and chart.rationale:
         r = chart.rationale
-        _why(chart, ctx, "targeted:segment_compare→bars", f"Compares {agg} {metric} across "
+        _why(chart, ctx, "targeted:segment_compare→bars", f"Compares {_agg_name(agg)} {metric} across "
              f"{segment}" + ("; whiskers are 95% confidence intervals." if chart.error_key else "."),
              r.x, r.y, r.aggregation, r.n_rows, code=r.code)
     return TargetedResponse(intent=QuestionIntent.SEGMENT_COMPARE, answer_text=answer,

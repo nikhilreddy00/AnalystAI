@@ -222,6 +222,9 @@ export interface KPIRecipe {
   segment_column?: string | null;
   segment_value?: string | null;
   format_kind?: "currency" | "percent" | "count" | "number" | null;
+  // Phase 5.5: an ISO currency for "currency" tiles (absent: USD), or a unit after a number.
+  currency?: string | null;
+  unit?: string | null;
 }
 
 // PROMPT-2: backend-computed hero KPI card. Values are pre-formatted display
@@ -248,6 +251,7 @@ export interface BriefingData {
   target_correlations?: Record<string, number>;
   target_col?: string | null;
   column_roles_summary?: Record<string, string>;
+  column_units?: Record<string, string>;   // Phase 5.5: ISO currency or unit per column
 }
 
 export interface BriefingEvent {

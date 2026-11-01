@@ -25,7 +25,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 D = sys.argv[1]
 PORT = int(sys.argv[2])
-SCEN = D + "/scenario"  # file holding full|error|approval|slow|insight|drop|trickle
+SCEN = D + "/scenario"  # file holding full|error|approval|slow|insight|drop|trickle|units
 QUESTION = "Give me an overview of this sales data"
 lock = threading.Lock()
 state = {"connections": [], "served": set(), "posts": 0}   # seqs sent, per connection

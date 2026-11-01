@@ -321,3 +321,16 @@ def test_the_eval_loads_domain_data_with_the_products_reader():
     case = next(c for c in load_cases("analysis", None) if c["domain"] == "banking")
     df, _ = working_frame(case)
     assert pd.api.types.is_datetime64_any_dtype(df["snapshot_date"])
+
+
+def test_a_phone_passed_as_a_number_is_scrubbed():
+    pii_values.set({"5551234567"})   # a phone column's value, registered by ingestion
+    assert "5551234567" not in _scrubbed((5551234567,), "caller %s")
+
+
+def test_a_small_patient_result_still_hides_names():
+    from agents.sql_agent import _preview
+    from connectors.sql_connector import QueryResult
+    rows = [["MRN-1", "Jane Roe", "Cardiology"], ["MRN-2", "Bo Li", "Cardiology"]]
+    text = _preview(QueryResult(columns=["mrn", "attending", "department"], rows=rows, truncated=False))
+    assert "Jane Roe" not in text and "Bo Li" not in text and "Cardiology" in text

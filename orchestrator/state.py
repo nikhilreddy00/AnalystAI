@@ -399,6 +399,7 @@ class AnalysisFindings(BaseModel):
     target_correlations: dict[str, float] = Field(default_factory=dict)        # Pearson r vs target_col (when one exists)
     target_col: str | None = None                                              # auto-detected target column name
     column_roles_summary: dict[str, str] = Field(default_factory=dict)         # column → role (id/binary/continuous/...)
+    column_units: dict[str, str] = Field(default_factory=dict)                 # 5.5: column → ISO currency or unit
     evidence: list[Evidence] = Field(default_factory=list)                     # Phase 3: one per finding
 
 

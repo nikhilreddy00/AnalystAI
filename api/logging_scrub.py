@@ -21,14 +21,12 @@ class ScrubFilter(logging.Filter):
         try:
             if record.exc_info and not record.exc_text:
                 record.exc_text = logging.Formatter().formatException(record.exc_info)
-            if isinstance(record.args, tuple) and record.args:
-                # Keep the args: uvicorn's access formatter unpacks them. Scrub each one.
-                record.msg = scrub(str(record.msg))
-                # Numbers stay numbers (%d needs them); anything else is scrubbed as its text
-                # (an exception or a dict passed as an arg can carry a value).
-                record.args = tuple(a if isinstance(a, (int, float)) else scrub(str(a))
-                                    for a in record.args)
-            else:
+            if record.name == "uvicorn.access" and isinstance(record.args, tuple) and record.args:
+                # uvicorn's access formatter unpacks the args (client, method, path, version,
+                # status): keep them, each scrubbed; the status code stays a number.
+                record.args = tuple(a if isinstance(a, int) and not isinstance(a, bool)
+                                    and 100 <= a <= 599 else scrub(str(a)) for a in record.args)
+            else:   # anything else: formatted first, then scrubbed as text (a number can be a phone)
                 record.msg, record.args = scrub(record.getMessage()), None
             if record.exc_text:
                 record.exc_text = scrub(record.exc_text)

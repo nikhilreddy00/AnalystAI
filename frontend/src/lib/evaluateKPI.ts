@@ -1,4 +1,5 @@
 import type { KPIRecipe } from "@/types";
+import { formatMoney, formatWithUnit } from "@/lib/formatUnit";
 
 const POSITIVE = new Set(["1", "true", "yes", "y", "t"]);
 const NEGATIVE = new Set(["0", "false", "no", "n", "f"]);
@@ -24,22 +25,20 @@ function numeric(rows: Record<string, unknown>[], col: string): number[] {
   return out;
 }
 
-function formatValue(n: number, kind: KPIRecipe["format_kind"]): string {
+function formatValue(n: number, kind: KPIRecipe["format_kind"], currency?: string | null,
+                     unit?: string | null): string {
   if (!Number.isFinite(n)) return "—";
   switch (kind) {
     case "currency":
-      return n.toLocaleString("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 2,
-      });
+      // Reports from before Phase 5.5 carry no currency: they were USD.
+      return formatMoney(n, currency || "USD");
     case "percent":
       return `${(n * 100).toFixed(1)}%`;
     case "count":
       return Math.round(n).toLocaleString("en-US");
     case "number":
     default:
-      return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+      return formatWithUnit(n, unit);
   }
 }
 
@@ -88,7 +87,7 @@ export function evaluateKPI(
       const vals = numeric(rows, recipe.column);
       if (vals.length === 0) return { value: "—", ok: false };
       const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-      return { value: formatValue(mean, recipe.format_kind), ok: true };
+      return { value: formatValue(mean, recipe.format_kind, recipe.currency, recipe.unit), ok: true };
     }
 
     case "top_cat": {
