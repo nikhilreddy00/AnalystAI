@@ -106,8 +106,10 @@ def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, met
     pandas under the aggregation the agent reported. The agent picks the aggregation, since
     it never sees the user's wording; correctness of the number is what's scored. `aggregation`
     pins it where only one answers the question (attrition is a rate: a headcount isn't it)."""
+    # A rate of a 0/1 flag (attrition) filed as a "ratio" is its mean: scored as one, by value.
     matches = [s for s in f.segments if s.segment_column == segment and s.metric_column == metric
-               and (aggregation is None or s.aggregation == aggregation)]
+               and (aggregation is None or s.aggregation == aggregation
+                    or (aggregation == "mean" and s.aggregation == "ratio"))]
     if not matches:
         return False, f"no {aggregation or ''} segment result for {metric} by {segment}"
     for seg in matches:

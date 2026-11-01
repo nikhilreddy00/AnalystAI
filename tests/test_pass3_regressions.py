@@ -214,3 +214,15 @@ def test_a_patient_frame_with_a_duplicate_index_is_prepared():
     df = pd.DataFrame({"mrn": [f"MRN{i % 50}" for i in range(N)], "region": rng.choice(["north east", "west"], N),
                        "los_days": rng.integers(1, 9, N)}, index=[0] * N)
     assert phi_plan(df, _contract(df))[0] == []
+
+
+def test_an_attrition_rate_filed_as_a_ratio_is_scored_as_the_flags_mean():
+    from agents.analysis_agent import _parse_findings
+    from evals.scoring import check_segment_value
+    df = pd.DataFrame({"department": ["a"] * 10 + ["b"] * 10, "left": [1] * 3 + [0] * 7 + [1] + [0] * 9})
+    seg = lambda a, b: {"segment_column": "department", "metric_column": "left", "aggregation": "ratio",
+                        "label": "attrition_rate", "results": [{"name": "a", "value": a}, {"name": "b", "value": b}]}
+    assert check_segment_value(_parse_findings({"segments": [seg(0.3, 0.1)]}, "", []), df, "department", "left",
+                               aggregation="mean")[0]
+    assert not check_segment_value(_parse_findings({"segments": [seg(0.5, 0.1)]}, "", []), df, "department",
+                                   "left", aggregation="mean")[0]
