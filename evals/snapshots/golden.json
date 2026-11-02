@@ -711,7 +711,7 @@
    }
   },
   "bank-1": {
-   "context": "820dc02aa38a688f",
+   "context": "23675c1f502d64e3",
    "roles": {
     "account_id": {
      "date": false,
@@ -752,7 +752,7 @@
    }
   },
   "bank-2": {
-   "context": "d6774e3b65cf1bff",
+   "context": "fb2910754dea5ca6",
    "roles": {
     "account_id": {
      "date": false,
@@ -793,7 +793,7 @@
    }
   },
   "bank-3": {
-   "context": "c1e7663ebffcd16f",
+   "context": "97ea0388a0e1a851",
    "roles": {
     "account_id": {
      "date": false,
@@ -828,6 +828,338 @@
     "snapshot_date": {
      "date": true,
      "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "bank-4": {
+   "context": "399cb777c1b70def",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "bank-5": {
+   "context": "9e48af42826c059c",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "bank-6": {
+   "context": "2dd0f7de5dea19ba",
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "bank-7": {
+   "context": "a1a58b1dcee9163a",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
      "id": false,
      "metric": false
     }
@@ -2375,7 +2707,7 @@
    }
   },
   "retail-1": {
-   "context": "8530b9c3c0850d7b",
+   "context": "66c5472d7b3c6987",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -2458,7 +2790,7 @@
    }
   },
   "retail-2": {
-   "context": "329d9e5ed48676b6",
+   "context": "44392affd646170e",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -2635,7 +2967,7 @@
    }
   },
   "retail-5": {
-   "context": "52f47da39494ec3f",
+   "context": "ecc642b305b55972",
    "roles": {
     "Country": {
      "date": false,
@@ -2688,7 +3020,7 @@
    }
   },
   "retail-6": {
-   "context": "330bdc91473e9ef4",
+   "context": "21642e6d21e3f2c0",
    "roles": {
     "Country": {
      "date": false,
@@ -2741,7 +3073,7 @@
    }
   },
   "retail-7": {
-   "context": "d1b15a022e67e542",
+   "context": "c577a55c9e4eb2cb",
    "roles": {
     "Country": {
      "date": false,
@@ -3149,7 +3481,7 @@
    }
   },
   "saas-1": {
-   "context": "6335937ab41d16a7",
+   "context": "86a32d18034996d7",
    "roles": {
     "account_id": {
      "date": false,
@@ -3196,7 +3528,7 @@
    }
   },
   "saas-2": {
-   "context": "bf464a5ae0afe678",
+   "context": "913d8aa077a61e1b",
    "roles": {
     "account_id": {
      "date": false,
@@ -3243,7 +3575,7 @@
    }
   },
   "saas-3": {
-   "context": "776b69ed187ab7be",
+   "context": "17d3f84355a37db6",
    "roles": {
     "account_id": {
      "date": false,
@@ -3290,7 +3622,7 @@
    }
   },
   "saas-4": {
-   "context": "1c9aaf6a504011c4",
+   "context": "21906e8d8f90d4d3",
    "roles": {
     "account_id": {
      "date": false,
@@ -4543,46 +4875,62 @@
  "deterministic": {
   "b2b_invoices-1": {
    "answers": "50c3bb365d2c40a5",
+   "answers_by_group": "bb0cac490f336eb4",
    "audit": "6b6e393c4c4deaef",
    "chart": "85e02438d57ed426",
-   "contract": "e127a93bbdb66bd7",
+   "contract": "553beb847cdf1b23",
    "extras": "05081e9b7d26ec5e",
    "frame": "26b15556b32b9292",
    "kpis": "cbe989cf6adf5f35",
-   "standard_code": "41216535f83e708d"
+   "standard_code": "fb032767c7b2549e"
   },
   "bank_balances-1": {
-   "answers": "8a1bdf6d13be173c",
-   "audit": "f88a8bc97cdbc49e",
+   "answers": "d1dda253399faa8f",
+   "answers_by_group": "cedbeeeb35265dbd",
+   "audit": "d87908421c026dc9",
    "chart": "f0c61ea07d435cff",
-   "contract": "c337f1ca4e54ba73",
+   "contract": "4cecca5cf3dde118",
    "extras": "dd06533359059630",
    "frame": "81ebaf4fb5e1ba79",
-   "kpis": "1b6cb87e5c0b0f48",
-   "standard_code": "4c474d64b9db7707"
+   "kpis": "0e93e5d9d981edd0",
+   "standard_code": "1c9c42caeb6ee436"
   },
   "bank_balances-2": {
-   "answers": "44595f39f9ecdef1",
-   "audit": "ba8e40648cdd5ac3",
+   "answers": "9b2941d38d2a86cd",
+   "answers_by_group": "b22e36d04ace2f8b",
+   "audit": "c5c3cdb9b57e85f5",
    "chart": "3b998dadb93136aa",
-   "contract": "8eaafdcfe1b367ea",
+   "contract": "d43329f0d7aa8a73",
    "extras": "5192f0c9403591be",
    "frame": "6529b5ab7cece8d1",
-   "kpis": "ec19204421868597",
-   "standard_code": "355ab06f78d523b5"
+   "kpis": "44029723c4860cc5",
+   "standard_code": "9925b30f9fccedfb"
   },
   "bank_balances-3": {
-   "answers": "56d5885fdbde51a4",
-   "audit": "c19ca0c2b890f8b1",
+   "answers": "8d5ecb21d099e820",
+   "answers_by_group": "2a57d67c0097ca74",
+   "audit": "933b7b180db00aa5",
    "chart": "cf0aab2829b09359",
-   "contract": "1bc5de8bfa29c5d7",
+   "contract": "63bb54292be5e258",
    "extras": "b1302ca719471746",
    "frame": "0ff8cafd06441073",
-   "kpis": "5974b7a666c86bd8",
-   "standard_code": "ffa28d341902c8e0"
+   "kpis": "892c6099a0ba6de1",
+   "standard_code": "a11425f49aa9a5c4"
+  },
+  "card_ledger-1": {
+   "answers": "9d002e18bdfbc480",
+   "answers_by_group": "1d826e28784288a0",
+   "audit": "ff56b337cb8076cd",
+   "chart": "d23402f29c5e0661",
+   "contract": "2020d8b78f0325a5",
+   "extras": "7218a992368f5c0d",
+   "frame": "45f1427c0c55a755",
+   "kpis": "65c2854eb74089be",
+   "standard_code": "ca601ea37f39d2a6"
   },
   "claims-1": {
    "answers": "f4ca7a447f608991",
+   "answers_by_group": "191dab0ec1db8c19",
    "audit": "9b36154b6082a2a1",
    "chart": "58a60fe3f95043a5",
    "contract": "3f324c9f15abc596",
@@ -4593,6 +4941,7 @@
   },
   "claims-2": {
    "answers": "7cc44d9d908e9ff0",
+   "answers_by_group": "a94b26eee6f88660",
    "audit": "24ac2dcbfce130ab",
    "chart": "f0257268e6bd5ef2",
    "contract": "3c1dbaad6415f963",
@@ -4603,6 +4952,7 @@
   },
   "claims-3": {
    "answers": "c83c616bbe0665a8",
+   "answers_by_group": "2c7457f2df98f765",
    "audit": "3648958bbf9e843e",
    "chart": "9e6f2836e7818ea4",
    "contract": "05b67a65dca65a7e",
@@ -4613,6 +4963,7 @@
   },
   "employees-1": {
    "answers": "39487905357f4bb5",
+   "answers_by_group": "da4cf494405309c9",
    "audit": "49f731886993257f",
    "chart": "773fb9a9a9b6b498",
    "contract": "64b3a60aff1918cd",
@@ -4623,6 +4974,7 @@
   },
   "employees-2": {
    "answers": "f04a42fa119cf2d6",
+   "answers_by_group": "f7b26cf5bdbda761",
    "audit": "a22e744a5dd4ddd6",
    "chart": "0a1881399edb7096",
    "contract": "fee0b53cd64bb2ea",
@@ -4633,6 +4985,7 @@
   },
   "employees-3": {
    "answers": "9f104f0812eb9086",
+   "answers_by_group": "2ae3a3720e671ad4",
    "audit": "bf64d9b5c47c4b72",
    "chart": "34c904fe9d21a475",
    "contract": "e0dcf7023b415060",
@@ -4643,6 +4996,7 @@
   },
   "encounters-1": {
    "answers": "cf023254b90e2ab9",
+   "answers_by_group": "4d61342ae69c5577",
    "audit": "fc2d4bec3a25d674",
    "chart": "eb07a78a97de1e95",
    "contract": "c428ecef8af7b456",
@@ -4653,6 +5007,7 @@
   },
   "encounters-2": {
    "answers": "342ca2d40c20cf85",
+   "answers_by_group": "4038f22c71f89693",
    "audit": "97549727a18f4cc5",
    "chart": "4f40522efbed9731",
    "contract": "b382642107698489",
@@ -4663,6 +5018,7 @@
   },
   "encounters-3": {
    "answers": "56eb2fc9acc5e5ed",
+   "answers_by_group": "1671a2790107fe1d",
    "audit": "3a8bb7bba410a24f",
    "chart": "da7534cd08c9ffa6",
    "contract": "37e5a75f8f031d46",
@@ -4671,8 +5027,20 @@
    "kpis": "ee45a6508d7f7e3f",
    "standard_code": "ca81cce0a7af033c"
   },
+  "loan_tape-1": {
+   "answers": "bb014230652760d6",
+   "answers_by_group": "845078981087c808",
+   "audit": "abf6b4caadc5b941",
+   "chart": "a5ab37873d58659b",
+   "contract": "98cdca58e380729a",
+   "extras": "bac2945dbabdcdf7",
+   "frame": "14392165574b6c7b",
+   "kpis": "923564efb05026e6",
+   "standard_code": "a9f5d628b15121cc"
+  },
   "mixed_dates-1": {
    "answers": "061185aea05e8e7d",
+   "answers_by_group": "98a17fa8f3587de7",
    "audit": "28cff6c17ceec4ca",
    "chart": "e5225aee5d9d762d",
    "contract": "5fd443c79840b02a",
@@ -4683,6 +5051,7 @@
   },
   "mixed_dates-2": {
    "answers": "a236aaeeca0fd404",
+   "answers_by_group": "149ba44378405672",
    "audit": "69446804432236c1",
    "chart": "7c27543752c2e6d2",
    "contract": "01b75d5eb0951402",
@@ -4693,46 +5062,51 @@
   },
   "retail_lines-1": {
    "answers": "6d55c91ef76c0fb9",
-   "audit": "5e6901526775a9a7",
+   "answers_by_group": "80533d7c4ebee561",
+   "audit": "9bd0704ad6051ac4",
    "chart": "7183dd4a2b2e4f40",
-   "contract": "cf2afc0bb8e9a11f",
+   "contract": "0b73a025c2328ea7",
    "extras": "25c43c24b00f4f0f",
    "frame": "155ca7e0d68d1e4d",
    "kpis": "649ee3dbb39af880",
-   "standard_code": "d5e7308158aa6cf4"
+   "standard_code": "aac890c07415b2f0"
   },
   "saas_accounts-1": {
    "answers": "912dacf8d903c9fd",
+   "answers_by_group": "d4667516ad191230",
    "audit": "034b52be8fbc20b7",
    "chart": "be4babed1dc057e5",
-   "contract": "814d9d45e2d5c2f4",
-   "extras": "404eff5132a86ab0",
+   "contract": "98fd1e7e5ca488de",
+   "extras": "ceb01b779ac6009a",
    "frame": "aeda91087b27433b",
    "kpis": "9ca5f20019075bac",
-   "standard_code": "a815f135a80ecbb3"
+   "standard_code": "9cf9d29f3aedf1af"
   },
   "saas_accounts-2": {
    "answers": "1d90fe67bf24aec3",
+   "answers_by_group": "2c4c28ec9b24973e",
    "audit": "dc599ba22278a789",
    "chart": "7526ccbaf995380e",
-   "contract": "c3f5c1bb9b3a4355",
-   "extras": "cd9b4050cc0054a4",
+   "contract": "de6c9f410fed0940",
+   "extras": "ddb01f120df451b4",
    "frame": "1df50698b8e9e977",
    "kpis": "d8ed811190fe2c66",
-   "standard_code": "451719d52721ce27"
+   "standard_code": "b789a46d8d24ab2a"
   },
   "saas_accounts-3": {
    "answers": "03c8b5ffcca808ad",
+   "answers_by_group": "48e9e215228fbe34",
    "audit": "034b52be8fbc20b7",
    "chart": "2361f67d93a910a5",
-   "contract": "145a44f96606246e",
-   "extras": "a0557f8734a762de",
+   "contract": "ab046b6c7cb163b5",
+   "extras": "d27aed53b67a63dd",
    "frame": "daf04f4973a699e9",
    "kpis": "c4ce276bc81edfc8",
-   "standard_code": "4e4ba250ac097677"
+   "standard_code": "03531dfff073117f"
   },
   "sales-1": {
    "answers": "35416c8547d73a4b",
+   "answers_by_group": "e7df497bc06c1610",
    "audit": "e8c98298b33dbf45",
    "chart": "616a313b81ef5db2",
    "contract": "6c698807825cfc15",
@@ -4743,6 +5117,7 @@
   },
   "sales-2": {
    "answers": "7c1bd6f804b0dfa8",
+   "answers_by_group": "62bf4650be94272f",
    "audit": "304b15f33669c1a3",
    "chart": "1174208937e5cb41",
    "contract": "ff9979adf9f27440",
@@ -4753,6 +5128,7 @@
   },
   "sales-3": {
    "answers": "0622f0336fefcc7b",
+   "answers_by_group": "3732ddef922951b8",
    "audit": "ba102c91ad26e3a2",
    "chart": "5041dd03a3bdd777",
    "contract": "2ca773f2d23c0091",
@@ -4763,6 +5139,7 @@
   },
   "sales-4": {
    "answers": "cfc06509607b630f",
+   "answers_by_group": "756b0bc047761227",
    "audit": "8860921dacec6320",
    "chart": "76d4943d2125afbb",
    "contract": "ae7ecddef0de1135",
@@ -4773,6 +5150,7 @@
   },
   "sales-5": {
    "answers": "3769d0d4ac4ebf3d",
+   "answers_by_group": "01bb560d2d7bb66a",
    "audit": "090bbe3a9e3679a1",
    "chart": "9ad903e6b80ae1e4",
    "contract": "1cb7a02ac9862e94",
@@ -4783,6 +5161,7 @@
   },
   "sensor_readings-1": {
    "answers": "81e124a16926e26b",
+   "answers_by_group": "6f5ec80afbf8171f",
    "audit": "3800f941a25b8241",
    "chart": "07791d54b55ad119",
    "contract": "cca1c6c1582db95b",
@@ -4793,6 +5172,7 @@
   },
   "sensor_readings-2": {
    "answers": "8b29b48354e31b00",
+   "answers_by_group": "c554ab926c612f9a",
    "audit": "fc8bd306b60dad34",
    "chart": "965d1ab6f0c7de3b",
    "contract": "1d0d538b1e170f3f",
@@ -4803,6 +5183,7 @@
   },
   "sensor_readings-3": {
    "answers": "12ba1acfc95ae1e9",
+   "answers_by_group": "a177a1d0985cee24",
    "audit": "772418e3cbfbc8d5",
    "chart": "f8d9a0dd4f46b968",
    "contract": "858c5d4a20f01f94",
@@ -4813,6 +5194,7 @@
   },
   "shipments-1": {
    "answers": "7c838419be005b84",
+   "answers_by_group": "6974fff8e3c6dc99",
    "audit": "33e3ad398019b1b9",
    "chart": "99baea2ade30bfec",
    "contract": "2d9db48a004a20a4",
@@ -4823,6 +5205,7 @@
   },
   "shipments-2": {
    "answers": "e5fcde21e5226b4b",
+   "answers_by_group": "6974fff8e3c6dc99",
    "audit": "87319f3004c7e8ca",
    "chart": "633f10aad09ce4d9",
    "contract": "af6d480d25d90e93",
@@ -4833,6 +5216,7 @@
   },
   "shipments-3": {
    "answers": "01338541be9c2c1c",
+   "answers_by_group": "6974fff8e3c6dc99",
    "audit": "3d821f3c29413884",
    "chart": "cfef3661358a3f6a",
    "contract": "61750fb5f226fe8d",
@@ -4843,6 +5227,7 @@
   },
   "simpson-1": {
    "answers": "c7bc89f8fb35100e",
+   "answers_by_group": "ca1ad30eed4e6113",
    "audit": "0d53670aaa8aae6f",
    "contract": "fe3f3afa6b674d2d",
    "extras": "a8960714fe934351",
@@ -4852,6 +5237,7 @@
   },
   "simpson-2": {
    "answers": "c7bc89f8fb35100e",
+   "answers_by_group": "ca1ad30eed4e6113",
    "audit": "4bbcb36092c38a90",
    "contract": "44d125b31a0b6560",
    "extras": "f00140928538ceef",
@@ -4861,6 +5247,7 @@
   },
   "simpson-3": {
    "answers": "c7bc89f8fb35100e",
+   "answers_by_group": "ca1ad30eed4e6113",
    "audit": "edfdfeed47e3fd88",
    "contract": "453d86d31c4a31ea",
    "extras": "ff6d6f87104106c6",
@@ -4870,6 +5257,7 @@
   },
   "simpson-4": {
    "answers": "c7bc89f8fb35100e",
+   "answers_by_group": "ca1ad30eed4e6113",
    "audit": "8b24c78c60944a72",
    "contract": "a4b7be7652738ff3",
    "extras": "e14e4ef9570c4d48",
@@ -4879,6 +5267,7 @@
   },
   "simpson-5": {
    "answers": "c7bc89f8fb35100e",
+   "answers_by_group": "ca1ad30eed4e6113",
    "audit": "fd5e9aa194e4b584",
    "contract": "144ba8935e44f6a1",
    "extras": "7676b144a7c768cf",
@@ -4888,7 +5277,8 @@
   },
   "store_weeks-1": {
    "answers": "817286a74ba33d9a",
-   "audit": "64753ab31aa18dd2",
+   "answers_by_group": "2d796bcf2426acff",
+   "audit": "cd0f656c436b50ba",
    "chart": "0663feafcd63f721",
    "contract": "01c5a18e419a8e07",
    "extras": "ac4938f9a789b7f5",
@@ -7477,6 +7867,620 @@
      "metric": true
     }
    }
+  },
+  "e2e-43": {
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-44": {
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-45": {
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-46": {
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-47": {
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-48": {
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-49": {
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-51": {
+   "roles": {
+    "account_id": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "balance": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "deposits": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "snapshot_date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
   }
  },
  "insight": {
@@ -9971,6 +10975,172 @@
      "metric": false
     }
    }
+  },
+  "ins-41-loan-tape-overview": {
+   "context": "3849ad276dfcc4d8",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-42-ledger-overview": {
+   "context": "3252b90b3128b765",
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
   }
  },
  "intake": {
@@ -10495,6 +11665,960 @@
      "dtype": "int64",
      "id": false,
      "metric": true
+    }
+   }
+  },
+  "intake-bank-01": {
+   "context": "3dc1cf2d88bd5ff8",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-02": {
+   "context": "043cb6029e05ac97",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-03": {
+   "context": "014e7d27e790481e",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-04": {
+   "context": "7ecd0be67a97ab83",
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-05": {
+   "context": "c4d15dba9b8db8a7",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-06": {
+   "context": "74d177c06e0bef8a",
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-07": {
+   "context": "4c504c7691038c14",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-08": {
+   "context": "dba3e1a5da753ded",
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-09": {
+   "context": "c9f351f4ee0c7ded",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-10": {
+   "context": "0609f794519a5e9d",
+   "roles": {
+    "As Of Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Borrower Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Charge Off Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Days Past Due": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Interest Rate (%)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Loan ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Loan Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Original Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Origination Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Outstanding Principal": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Product": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-11": {
+   "context": "9e9fbd0d62e2196e",
+   "roles": {
+    "account_id": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "balance": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "branch": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "deposits": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "snapshot_date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-bank-12": {
+   "context": "609c373fa75c638d",
+   "roles": {
+    "Account ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Balance After": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Channel": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Description": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "IBAN": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Merchant Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Posting Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Transaction Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Transaction ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
     }
    }
   },
@@ -11455,7 +13579,7 @@
    }
   },
   "intake-clear-sql-03": {
-   "context": "3c58d6934b5669e3",
+   "context": "97f4ab46bb10fc95",
    "roles": {
     "account_id": {
      "date": false,
@@ -12999,7 +15123,7 @@
    }
   },
   "intake-retail-01": {
-   "context": "17986d766257a25a",
+   "context": "7dcb39757f063b62",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -13082,7 +15206,7 @@
    }
   },
   "intake-retail-02": {
-   "context": "1d0c1c24db879690",
+   "context": "df07b01dc0be38a4",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -13165,7 +15289,7 @@
    }
   },
   "intake-retail-03": {
-   "context": "01a6f3b48610465d",
+   "context": "cb0946c4e5c5e15e",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -13295,7 +15419,7 @@
    }
   },
   "intake-retail-05": {
-   "context": "4ec1314203e4a805",
+   "context": "46e6ec95e5d004ee",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -13378,7 +15502,7 @@
    }
   },
   "intake-retail-06": {
-   "context": "f25377a616668b34",
+   "context": "8028839d73ab8bd3",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -13461,7 +15585,7 @@
    }
   },
   "intake-retail-07": {
-   "context": "89e01b7006880d59",
+   "context": "7808f6011030bba3",
    "roles": {
     "Billing Name": {
      "date": false,
@@ -13544,7 +15668,7 @@
    }
   },
   "intake-retail-08": {
-   "context": "67655ea3ad92610e",
+   "context": "c167fb65833a00ab",
    "roles": {
     "Billing Name": {
      "date": false,

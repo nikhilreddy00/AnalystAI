@@ -58,7 +58,16 @@ DEPTH = {"retail": ["analysis-20261102T002211Z.json",           # 7 retail cases
                     "e2e-20261102T004453Z-rescored.json",       # the 10 re-run after their fixes
                     "intake-20261102T004821Z.json",             # 13 intake cases, k=3
                     "intake-20261102T011951Z.json",             # intake-retail-07 k=3 after its note named the KPI
-                    "insight-20261102T004752Z.json"]}           # the 5 changed overviews
+                    "insight-20261102T004752Z.json"],           # the 5 changed overviews
+         "banking": ["analysis-20261102T203011Z.json",          # 7 banking cases, k=3
+                     "analysis-20261102T203339Z.json",          # bank-4/5/6/7 k=3 after their fixes
+                     "analysis-20261102T204011Z.json",          # bank-5 k=3 after its fix
+                     "intake-20261102T205448Z.json",            # 12 banking + 8 changed intake cases, k=3
+                     "intake-20261102T205953Z.json",            # intake-bank-08 k=3 after its fix
+                     "insight-20261102T210024Z.json",           # 2 banking overviews
+                     "quality-20261102T210206Z.json",           # 2 seeded banking reports
+                     "e2e-20261102T212128Z-rescored.json",      # 10 banking E2E cases, k=1
+                     "e2e-20261102T213308Z.json"]}              # 4 retail E2E cases whose context changed
 
 
 def _listed(text: str) -> set[str]:
