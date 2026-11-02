@@ -1019,7 +1019,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         flow = kpi.den is None and kind != "percent"
         default = _default_freq(df[date], "sum" if flow else "ratio") if defaults_pack(contract) else "M"
         freq = (params.frequency or default).upper()
-        freq = freq if freq in {"D", "W", "M", "Q", "Y"} else "M"
+        # a KPI is reported by week at the finest (a day's AOV or return rate is noise); a daily
+        # ask is shown by month and says so ("net sales in January" asked as days is January)
+        by_month = "" if freq in {"W", "M", "Q", "Y"} else " (shown by month)"
+        freq = freq if freq in {"W", "M", "Q", "Y"} else "M"
         # the whole data's buckets, so the period before and a year earlier exist for the window
         t = _local(pd.to_datetime(full[date], errors="coerce"))
         rule = _week_anchor(t, contract) if freq == "W" else freq
@@ -1046,18 +1049,19 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                            if buckets.get(m.group(1) if (m := re.search(r"\(([^)]*)\)", x)) else "", True))
         if series.empty or (len(series) == 1 and asked):
             carry = note if series.empty else ""   # one period: answered (and compared) below
+            where += by_month if not series.empty else ""
         else:
             latest = series.index[-1]
 
             def name(p) -> str:   # a week is named by its week-ending date
                 return f"week ending {p.end_time:%Y-%m-%d}" if freq == "W" else str(p)
 
-            answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{where}: latest " \
+            answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{where}{by_month}: latest " \
                      f"{name(latest)} {fmt(series.iloc[-1])}"
             def base(v) -> bool:   # a value to compare against (0% is one; $0 has no % change)
                 return v is not None and not pd.isna(v) and (kind == "percent" or v != 0)
 
-            back = {"D": 364, "W": 52, "M": 12, "Q": 4, "Y": 1}[freq]
+            back = {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq]
             before = whole.get(latest - 1)   # by label: a missing period is no "period before"
             if base(before):
                 answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"

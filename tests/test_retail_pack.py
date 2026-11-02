@@ -1794,11 +1794,17 @@ def test_a_missing_kpi_names_every_way_to_compute_it():
     assert "profit" in got and "cost" in got, got
 
 
-def test_a_daily_kpi_trend_stays_daily():
-    """Audit pass 3 (m7): frequency D is by day, never silently by month."""
-    text = _answer(_daily("2025-03-01", "2025-03-20"), QuestionIntent.TIME_SERIES, kpi="net_sales",
-                   frequency="D").answer_text
-    assert "latest 2025-03-20" in text, text
+def test_a_daily_kpi_ask_is_shown_by_month_and_says_so(shop):
+    """Audit pass 3 m7, reverted after the e2e-39 smoke run: intake planned 'How were net sales in
+    January 2026?' as a daily trend, and the answer compared 31 Jan with 30 Jan. A KPI by day is
+    shown by month and says so; one month asked is its total against a year earlier."""
+    s, truth = shop
+    text = _ask(s, "How were net sales in January 2026?", QuestionIntent.TIME_SERIES, kpi="net_sales",
+                frequency="D", period_start="2026-01-01", period_end="2026-01-31").answer_text
+    assert f"{truth['jan26_yoy_pct']:+.1f}%" in text and "shown by month" in text, text
+    trend = _answer(_daily("2025-01-01", "2025-03-31"), QuestionIntent.TIME_SERIES, kpi="net_sales",
+                    frequency="D").answer_text
+    assert "shown by month" in trend and "latest 2025-03" in trend, trend
 
 
 def test_the_trend_stores_note_reads_the_weeks_compared():
