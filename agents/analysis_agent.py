@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
+    counted,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -218,12 +219,11 @@ def kind_column(contract: DataContract) -> str:
 
 
 def _money_targets(contract: DataContract, targets: list[str]) -> list[str]:
-    """Targets that are a strong-matched pack's additive money roles (net of the row rules)."""
+    """Targets in a strong-matched pack's additive money or count roles (net of the row rules)."""
     pack = defaults_pack(contract)
     if pack is None:
         return []
-    return [c for r, c in contract.roles.items() if c in targets and pack.roles[r].kind == "money"
-            and pack.roles[r].additive]
+    return [c for r, c in contract.roles.items() if c in targets and counted(pack, r)]
 
 
 def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:

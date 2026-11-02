@@ -700,13 +700,19 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     return df.assign(**{name: kinds.where(keep, "other_currency")}), name
 
 
+def counted(pack: Pack, role: str) -> bool:
+    """An additive amount or count (net sales, units): its totals use the KPI rows (sale and
+    return rows, the main currency), so a trend and its tile are one number."""
+    return pack.roles[role].kind in ("money", "count") and pack.roles[role].additive
+
+
 def money_rows(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, str]:
     """(rows, how) for a strong-matched pack's additive money column: sale and return rows in the
     main currency, as its tiles count them. The one filter every chart and answer of that column
     uses (one number per name); anything else: every row, no note."""
     pack = defaults_pack(contract)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
-    if not (role and pack.roles[role].kind == "money" and pack.roles[role].additive):
+    if not (role and counted(pack, role)):
         return df, ""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     keep, currency, _ = main_currency(df, roles)

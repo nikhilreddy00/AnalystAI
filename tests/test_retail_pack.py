@@ -2030,3 +2030,14 @@ def test_an_order_level_field_is_never_called_missing_in_the_evidence():
     notes = {e.id: " ".join(e.assumptions) for e in build_evidence(f, {}, "", "", audit)}
     assert "missing" not in notes["eda:Total"] and "export's layout" in notes["eda:Total"]
     assert "12% missing" in notes["eda:Notes"]
+
+
+def test_units_trend_counts_the_rows_the_units_tile_counts():
+    """Live run (b2b): 'units sold rose 26.6%' came from a Quantity trend with postage lines in
+    it, while the Units tile leaves them out: one number per name."""
+    from domain_pack import money_rows, with_row_kind
+    df = _gen("b2b_invoices")
+    c = _contract(df)
+    framed, kind = with_row_kind(df, c)
+    rows, note = money_rows(framed, c, "Quantity")
+    assert note and set(rows[kind]) <= {"sale", "return"} and len(rows) < len(df)
