@@ -13,11 +13,12 @@ end to end.
 
 **The audit bar was not met.** The plan's bar is a final audit pass with 0 major and ≤ 2 minor.
 The user capped the loop after pass 3. Pass 4 found 2 majors and 5 minors, all fixed, each with a
-failing-first test. The paid gates, the live run and the diff review after them then found more
-(see the ledger). Partial periods and year-over-year logic produced majors in every pass until
+failing-first test. The paid gates, the live run and the last diff review after them found more,
+up to that review's 3 majors and 4 minors (see the ledger). That review's fixes were not reviewed
+again. Partial periods and year-over-year logic produced majors in every pass until
 the rule was replaced by one coverage rule in pass 3.
 
-## Paid gates (spend $3.53 of the $5 cap)
+## Paid gates (spend $3.60 of the $5 cap)
 
 | run | report | result | cost (est.) |
 |---|---|---|---|
@@ -30,6 +31,7 @@ the rule was replaced by one coverage rule in pass 3.
 | E2E re-run of the 10 affected cases, k=1 | `e2e-20261102T004453Z` | **10/10**, hard 0, errors 0 | $0.71 ($0.65) |
 | insight, the 5 overviews whose context changed, k=1 | `insight-20261102T004752Z` | 5/5, hard 0 | $0.08 ($0.08) |
 | **intake final, 13 cases, k=3** | `intake-20261102T004821Z` | **39/39**, flip 0, hard 0 | $0.26 ($0.47) |
+| intake-retail-07, k=3, after the last review's "sent back" change | `intake-20261102T011843Z`, `…011951Z` | 0/3 (the definition did not name the KPI key, so the model followed the "sales" note), then **3/3** | $0.07 ($0.02 each) |
 | live: upload + overview + "How were net sales in January 2026?" + cancel, twice | traces 2026-11-02 | first run found 3 bugs (below); second run: overview with net sales $310,635.46, January +8.0% year over year, cancel honoured | $0.20 ($0.15–0.20) |
 
 The four causes of the 10 E2E failures, each diagnosed (no case passed "on retry"):
@@ -146,7 +148,7 @@ The live run itself:
 | smoke re-runs | 3 findings | | | one regression of mine (daily KPI), two brief gaps |
 | paid gates (intake, E2E) | 7 causes | | | one regression of mine (KPI fill), one harness, one scorer, model guidance ×4 |
 | live run | 3 findings | | | two were there before 5.7 |
-| diff review of the gate/live fixes | _pending_ | | | |
+| diff review of the gate/live fixes | 0 | 3 | 4 | 3 majors and 3 minors fixed (one with a paid re-run of intake-retail-07); one minor kept as a stated deviation (order-level layout on weak matches) |
 
 Bugs came from three areas:
 - **Partial periods and year over year.** Every pass until pass 3 replaced the rule.
@@ -156,8 +158,8 @@ Bugs came from three areas:
 ## Deviations from the plan
 - **Detection is strong or weak (user's choice), not one threshold.** A weak match changes
   nothing by default. It gets a "read as" hedge line, and a KPI the user names. The one exception
-  is the order-field carry, which runs on the file's own layout evidence. A real Shopify export
-  can detect as weak (audit pass 1, B2).
+  is the order-field carry, and keeping order-level blanks out of the high-null gate, which run
+  on the file's own layout evidence. A real Shopify export can detect as weak (audit pass 1, B2).
 - **B7 (two signals).** Retail needs a retail-specific signal (an item or quantity) plus money;
   bank, HR, insurance, logistics and SaaS negatives stay unmatched.
 - **Generic changes, all gated to a pack match except two fixes.** The schema-init lock (all
@@ -197,7 +199,11 @@ Bugs came from three areas:
     monthly trend, with each month against a year earlier, rather than the Q4 total.
   - The narrative can label columns oddly: the live run's report called Billing Name "Billing
     order number".
-- **E2E gate.** It ran at k=1. Ten cases were re-run after fixes; none were run at k=3.
+- **E2E gate.** It ran at k=1. Ten cases were re-run after fixes; none were run at k=3. The last
+  review's fixes (high-null on first lines, the checkpointer lock, "sent back") were checked
+  offline and by the intake-retail-07 re-run, not by another E2E or live run.
+- **Daily KPIs.** A KPI asked by day is shown by month, and a short window by its total.
+  Daily flash reporting is not offered.
 - **Harness.** A crash in the harness after the pipeline ran stores no output, so it cannot be
   rescored and needs a paid re-run (e2e-35/42).
 
