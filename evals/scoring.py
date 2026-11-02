@@ -439,6 +439,14 @@ def check_must_not_match(session: AnalysisSession, pattern: str,
     return m is None, f"matched forbidden '{m.group(0)}'" if m else "ok"
 
 
+def check_must_match(session: AnalysisSession, pattern: str,
+                     scope: str = "answer") -> tuple[bool, str]:
+    """Phase 5.7: what the report must say (a domain's 'how these numbers are counted')."""
+    m = re.search(pattern, report_text(session) if scope == "report" else answer_text(session),
+                  re.IGNORECASE)
+    return m is not None, f"said '{m.group(0)}'" if m else f"never says '{pattern}'"
+
+
 # ── Hard rules (recorded; gating starts in Phase 2/3) ─────────────────────────
 
 def _referenced_columns(f: AnalysisFindings) -> set[str]:
@@ -558,6 +566,7 @@ def check_findings(session: AnalysisSession, df: pd.DataFrame, truth: dict, chec
 E2E_CHECKS = {
     "number_in_answer": lambda s, df, truth, **kw: check_number_in_answer(s, truth, **kw),
     "must_not_match": lambda s, df, truth, **kw: check_must_not_match(s, **kw),
+    "must_match": lambda s, df, truth, **kw: check_must_match(s, **kw),
     "must_not_number": lambda s, df, truth, **kw: check_must_not_number(s, truth, **kw),
     "findings": lambda s, df, truth, **kw: check_findings(s, df, truth, **kw),
 }
@@ -635,6 +644,9 @@ INTAKE_SCALAR_FIELDS = ("metric_column", "date_column", "segment_column", "group
 
 
 def _intake_field(task: dict, field: str) -> Any:
+    if field == "by":   # Phase 5.7: the grouping column, however the intent holds it
+        p = task.get("targeted_params") or {}
+        return p.get("segment_column") or p.get("group_by")
     return task.get(field) if field in ("target_metrics", "segments") \
         else (task.get("targeted_params") or {}).get(field)
 
@@ -649,6 +661,19 @@ def intake_columns(task: dict) -> set[str]:
         if v := _intake_field(task, f):
             cols.add(v)
     return cols
+
+
+def _day(text, end: bool) -> str | None:
+    """'2026', '2026-01' or '2026-01-31' as its first (or last) day; the scorer's own reading."""
+    text = str(text or "").strip()[:10]
+    if not re.fullmatch(r"\d{4}(-\d{2}(-\d{2})?)?", text):
+        return None
+    if len(text) == 10:
+        return text
+    if len(text) == 7:
+        p = pd.Period(text, "M")
+        return str((p.end_time if end else p.start_time).date())
+    return f"{text}-12-31" if end else f"{text}-01-01"
 
 
 def score_intake(expect: dict, task: dict | None, known: set[str], injected: bool
@@ -680,6 +705,11 @@ def score_intake(expect: dict, task: dict | None, known: set[str], injected: boo
         for key, want_v in (expect.get("params") or {}).items():
             got = (task.get("targeted_params") or {}).get(key)
             checks.append({"kind": "param", "ok": got == want_v, "detail": f"{key}: got {got}, want {want_v}"})
+        if want_p := expect.get("period"):   # Phase 5.7: the same days, however written
+            p = task.get("targeted_params") or {}
+            got_p = [_day(p.get("period_start"), False), _day(p.get("period_end"), True)]
+            ok = got_p == [_day(want_p[0], False), _day(want_p[1], True)]
+            checks.append({"kind": "param", "ok": ok, "detail": f"period: got {got_p}, want {want_p}"})
     text = json.dumps({k: v for k, v in task.items() if k != "raw_query"})
     leaked = [p for p in expect.get("forbid") or [] if re.search(p, text, re.IGNORECASE)]
     if expect.get("forbid"):
@@ -979,6 +1009,20 @@ def _date_cols(df: pd.DataFrame, contract=None) -> list[str]:
     return [c for c in df.columns if "date" in str(c).lower()][:1]
 
 
+def any_dates(s: pd.Series) -> pd.Series:
+    """Dates however written; mixed UTC offsets (a Shopify export across daylight saving) are
+    read as the product reads them (connectors.base.parse_text_dates: a daylight-saving pair is
+    local wall time), never an error that loses the run."""
+    try:
+        return pd.to_datetime(s, format="mixed", errors="coerce")
+    except ValueError:
+        from connectors.base import parse_text_dates
+        got = parse_text_dates(s, share=0.8)
+        if got is None:
+            return pd.to_datetime(s, format="mixed", errors="coerce", utc=True).dt.tz_localize(None)
+        return got.dt.tz_localize(None) if getattr(got.dt, "tz", None) is not None else got
+
+
 def bundle_facts(session: AnalysisSession, df: pd.DataFrame, past: list[str] = ()) -> dict:
     """What a report may rest on, from the session the insight agent was handed (findings,
     evidence, audit, charts, contract) and the frame's own dates. The number pool excludes raw
@@ -986,7 +1030,7 @@ def bundle_facts(session: AnalysisSession, df: pd.DataFrame, past: list[str] = (
     findings, audit, contract = session.analysis_findings, session.cleaning_audit, session.data_contract
     evidence = list(findings.evidence) if findings else []
     cols = _date_cols(df, contract)
-    dates = pd.concat([pd.to_datetime(df[c], format="mixed", errors="coerce") for c in cols]
+    dates = pd.concat([any_dates(df[c]) for c in cols]
                       ).dropna() if cols else None
     first, last = ([dates.min().year, dates.min().month], [dates.max().year, dates.max().month]) \
         if dates is not None and len(dates) else (None, None)
@@ -1256,7 +1300,14 @@ def _same_loaded(want: Any, got: Any, dayfirst: bool | None) -> bool:
         return got.strip() == str(want).strip()
     if isinstance(got, pd.Timestamp) and dayfirst is not None:   # a parsed date column
         try:
-            return got == pd.to_datetime(str(want), dayfirst=dayfirst)
+            # an offset after a time (" -0500") is dropped: the load keeps local time
+            if got.tzinfo is not None:   # loaded with a zone (UTC, or one offset): the instant
+                try:
+                    return got == pd.Timestamp(str(want))
+                except (ValueError, TypeError):
+                    return False
+            local = re.sub(r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$", r"\1", str(want))
+            return got == pd.to_datetime(local, dayfirst=dayfirst)   # one place's local time
         except (TypeError, ValueError):
             return False
     return False
@@ -1354,6 +1405,10 @@ def score_ingestion(truth: dict, output: dict | None, error: str | None
                            "detail": "masked although not PII" if masked else "kept"})
 
     checks += _phi_checks(truth, output.get("phi"))
+    if (pack := truth.get("pack")) is not None:
+        got = {"domain": contract.get("domain"), "roles": contract.get("roles") or {}}
+        checks.append({"kind": "domain", "ok": got == pack,
+                       "detail": "ok" if got == pack else f"{got} (want {pack})"})
     all_lits = [lit for t in cols.values() for lit in t["literals"]]
     canary = leaked(sent, all_lits)
     summary = contract.get("schema_summary", "")
@@ -1371,3 +1426,38 @@ def score_ingestion(truth: dict, output: dict | None, error: str | None
          "detail": "ok" if src else "no source evidence"},
     ]
     return checks, hard
+
+
+def score_cleaning_decisions(case: dict, output: dict | None, error: str | None, truth: dict
+                             ) -> tuple[list[dict], list[dict]]:
+    """Phase 5.7: a domain pack's cleaning on a realistic table, scored on the audit's decisions.
+    `expect_decisions`: {column, operation, strategy, rows | truth_key} that must be there with
+    exactly that many rows; `forbid`: decisions that must not be there (the over-cleaning traps:
+    a test-order rule firing on real customers, an order total carried down its lines, a pack
+    rule on another domain's data); `expect_grain`. Hard: the run's own guardrails (a violation
+    is an error)."""
+    if output is None:
+        return ([{"kind": "load", "ok": False, "detail": error or "no output"}],
+                [{"rule": "cleaning_guardrails", "ok": False, "detail": error or "no output"}])
+    got = output["audit"]["decisions"]
+
+    def match(spec: dict, d: dict) -> bool:
+        return all(d.get(k) == spec[k] for k in ("column", "operation", "strategy") if k in spec)
+
+    checks = []
+    for spec in case.get("expect_decisions", []):
+        want = _truth_value(truth, spec["truth_key"]) if "truth_key" in spec else spec.get("rows")
+        hits = [d for d in got if match(spec, d)]
+        rows = sum(d["rows_affected"] for d in hits)
+        ok = bool(hits) and (want is None or rows == want)
+        checks.append({"kind": "decision", "ok": ok, "spec": spec,
+                       "detail": f"{len(hits)} decisions, {rows} rows" + ("" if ok else f" (want {want})")})
+    for spec in case.get("forbid", []):
+        hits = [d for d in got if match(spec, d)]
+        checks.append({"kind": "forbid", "ok": not hits, "spec": spec,
+                       "detail": "absent" if not hits else f"{hits[0]['column']}: {hits[0]['reason'][:80]}"})
+    if "expect_grain" in case:
+        g = output["audit"].get("grain")
+        checks.append({"kind": "grain", "ok": g == case["expect_grain"],
+                       "detail": f"{g}" + ("" if g == case["expect_grain"] else f" (want {case['expect_grain']})")})
+    return checks, [{"rule": "cleaning_guardrails", "ok": not error, "detail": error or "ok"}]

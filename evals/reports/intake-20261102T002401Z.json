@@ -1,0 +1,1103 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261102T002401Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "2812e9a",
+  "started_at": "20261102T002401Z",
+  "only": "intake-retail-01,intake-retail-02,intake-retail-03,intake-retail-04,intake-retail-05,intake-retail-06,intake-retail-07,intake-retail-08,intake-retail-09,intake-retail-10,intake-retail-11,intake-retail-12-holdout,intake-oos-csv-01",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 13,
+  "runs": 13,
+  "pass_rate": 0.7692,
+  "case_majority_pass_rate": 0.7692,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0107,
+  "latency_p50_s": 5.64,
+  "latency_p95_s": 7.7,
+  "intent_accuracy": 1.0,
+  "column_mapping": 1.0,
+  "param_accuracy": 0.8235,
+  "asks_when_ambiguous": 1.0,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": 0.0,
+  "pass_rate_by_category": {
+   "clear": 0.7,
+   "followup": 1.0,
+   "out_of_scope": 1.0
+  }
+ },
+ "runs": {
+  "intake-oos-csv-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "out_of_scope",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show profit margin by region.",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Profit margin requires a cost or COGS column to compute (e.g. cost_of_goods_sold or cost_per_unit), but this dataset only has revenue, units, discount, and marketing_spend \u2014 none of which represent cost of goods. Could you clarify what you'd like instead? For example: (a) revenue by region, (b) discount by region, (c) marketing_spend by region, or (d) upload a dataset that includes a cost/COGS column so margin can be calculated?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "region",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "gross_margin_pct",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.84,
+    "cost_usd": 0.01602,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average basket size by shipping country?",
+     "target_metrics": [
+      "Total",
+      "Name"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.58,
+    "cost_usd": 0.01521,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got upt, want upt"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What are the items per order, by country?",
+     "target_metrics": [
+      "Lineitem quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "upt",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.81,
+    "cost_usd": 0.01529,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our ATV in Germany?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Total",
+       "Shipping Country"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": "Germany",
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.14,
+    "cost_usd": 0.01525,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": false,
+      "detail": "kpi: got None, want net_sales"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-01-01', '2026-03-31'], want ['2026-01-01', '2026-03-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What were net sales in Q1 2026 compared with the same quarter the year before?",
+     "target_metrics": [
+      "Net Sales"
+     ],
+     "timeframe": "Q1 2026 vs Q1 2025",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Net Sales"
+      ],
+      "metric_column": "Net Sales",
+      "date_column": "Wk_End_Dt",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "W",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": "2026-01-01",
+      "period_end": "2026-03-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 5.64,
+    "cost_usd": 0.01562,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "intake-retail-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got net_sales, want net_sales"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-01-01', '2026-01-31'], want ['2026-01-01', '2026-01-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How did takings in January 2026 compare with January last year?",
+     "target_metrics": [
+      "Total",
+      "Lineitem price",
+      "Discount Amount"
+     ],
+     "timeframe": "January 2025 vs January 2026",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Total",
+       "Lineitem price",
+       "Discount Amount",
+       "Lineitem quantity"
+      ],
+      "metric_column": null,
+      "date_column": "Created at",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "net_sales",
+      "period_start": "2026-01-01",
+      "period_end": "2026-01-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 6.42,
+    "cost_usd": 0.01672,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-06": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "out_of_scope",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our sell-through rate for each SKU?",
+     "target_metrics": [
+      "Lineitem quantity",
+      "Lineitem sku"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Lineitem sku"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Sell-through needs inventory on hand (units received), which this data does not have. I can answer with what the data has: net sales, units sold or returns by product. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.61,
+    "cost_usd": 0.00719,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-07": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": false,
+      "detail": "kpi: got net_sales, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem quantity",
+      "Lineitem price",
+      "Discount Amount",
+      "Financial Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Financial Status"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "net_sales",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.68,
+    "cost_usd": 0.00675,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "intake-retail-08": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2025-01-01', '2025-03-31'], want ['2025-01-01', '2025-03-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Q1 2025 only?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": "Q1 2025",
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Total",
+      "date_column": "Created at",
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": "2025-01-01",
+      "period_end": "2025-03-31",
+      "compare": null
+     }
+    },
+    "latency_s": 4.16,
+    "cost_usd": 0.00736,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-09": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Region, want Region"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got net_sales, want net_sales"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's turnover by region?",
+     "target_metrics": [
+      "Net Sales"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Region"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Net Sales",
+       "Region"
+      ],
+      "metric_column": "Net Sales",
+      "date_column": null,
+      "segment_column": "Region",
+      "segment_value": null,
+      "group_by": "Region",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "net_sales",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.29,
+    "cost_usd": 0.00576,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-10": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Dept, want Dept"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got gross_margin_pct, want gross_margin_pct"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show me GM% by department.",
+     "target_metrics": [
+      "Net Sales",
+      "COGS"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Dept"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Dept",
+      "segment_value": null,
+      "group_by": "Dept",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "gross_margin_pct",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 3.98,
+    "cost_usd": 0.00583,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-11": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got StockCode, want StockCode"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got asp, want asp"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average selling price for each stock code?",
+     "target_metrics": [
+      "UnitPrice",
+      "Quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "StockCode"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "UnitPrice",
+       "Quantity"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "StockCode",
+      "segment_value": null,
+      "group_by": "StockCode",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "asp",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.1,
+    "cost_usd": 0.00596,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-12-holdout": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": false,
+      "detail": "period: got ['2025-01-01', '2026-01-31'], want ['2026-01-01', '2026-01-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": true,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much did we sell in January 2026 versus January the year before?",
+     "target_metrics": [
+      "Quantity",
+      "UnitPrice"
+     ],
+     "timeframe": "January 2025 vs January 2026",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Quantity",
+       "UnitPrice"
+      ],
+      "metric_column": "Quantity",
+      "date_column": "InvoiceDate",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": "2025-01-01",
+      "period_end": "2026-01-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 4.72,
+    "cost_usd": 0.00665,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ]
+ }
+}

@@ -1,0 +1,19 @@
+id: intake-retail-11
+category: clear
+pipeline: production
+source:
+  dataset: b2b_invoices
+  seed: 1
+overview_done: true
+question: What's the average selling price for each stock code?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: asp
+  columns:
+    by: StockCode
+rationale: Average selling price is ASP (net sales / net units).

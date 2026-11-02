@@ -13,3 +13,4 @@ columns:
 - [dx, icd10]
 - [enrolled, date_iso]
 label_note: 'A disease registry: MRN, address, SSN, DOB, card.'
+expect_domain: null

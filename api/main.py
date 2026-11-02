@@ -34,6 +34,8 @@ async def lifespan(app: FastAPI):
     from semantic_layer import configured_layer, file_layers
     configured_layer()
     file_layers()   # Phase 5.5: the flat-file layers too (semantic_layers/*.yaml)
+    from domain_pack import load_packs
+    load_packs()    # Phase 5.7: the domain packs (domain_packs/*.yaml), same rule
 
     # Bootstrap on-disk artifact dir for per-session parquet cache.
     from pathlib import Path

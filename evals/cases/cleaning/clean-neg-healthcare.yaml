@@ -1,0 +1,23 @@
+id: clean-neg-healthcare
+dataset:
+  name: encounters
+  seed: 1
+category: negative
+forbid:
+- operation: fill_within_order
+- strategy: numeric_sentinel
+- strategy: whole_number_id
+- operation: flag
+  strategy: return
+- operation: flag
+  strategy: refunded
+- operation: flag
+  strategy: cancel
+- operation: flag
+  strategy: test
+- operation: flag
+  strategy: non_product
+- operation: flag
+  strategy: out_of_range
+expect_grain: null
+label_note: 'Another domain (healthcare): no retail rule may fire.'

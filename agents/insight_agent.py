@@ -26,16 +26,19 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents.analysis_agent import ANALYSIS_CARD, findings_by_id, segment_id
+from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
 from agents.utils import pii_columns, strip_markdown_fences
+from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
+    _SENTENCE_RE,
     UNTRUSTED_NOTE,
     delimit_untrusted,
     executive_jargon,
     mask_pii,
     ungrounded_dates,
     ungrounded_numbers,
+    claim_causal_overreach,
     claim_rank_conflict,
     without_dates,
 )
@@ -93,7 +96,6 @@ _SYSTEM = (INSIGHT_CARD.render() + "\n\n" + (_PROMPTS / f"{PROMPT_VERSION}.md").
 _MAX_EVIDENCE = 40     # ponytail: an item cap, not a token budget; revisit for wide tables
 _MAX_GROUPS = 20       # breakdown cells shown per segment; more are counted, never cut silently
 _CONVENTIONS = [0.05, 0.01, 0.001, 0.95, 0.99]   # significance levels prose may cite
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
 
 
 # ── Context ────────────────────────────────────────────────────────────────────
@@ -167,6 +169,10 @@ def _values(e: Evidence, by_id: dict) -> str:
                                                                       if more > 0 else "")
 
 
+def _prev(ym: tuple[int, int]) -> tuple[int, int]:
+    return (ym[0], ym[1] - 1) if ym[1] > 1 else (ym[0] - 1, 12)
+
+
 def build_context(session: AnalysisSession, past: list[str] | None = None) -> InsightContext:
     findings, audit, contract = session.analysis_findings, session.cleaning_audit, session.data_contract
     narrative = session.narrative
@@ -189,13 +195,28 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         col, (lo, hi, months) = span
         first, last = (int(lo[:4]), int(lo[5:7])), (int(hi[:4]), int(hi[5:7]))
         facts.append(f"Date range ({col}): {lo} to {hi}, {months} month{'s' * (months != 1)}.")
-        if months > 1:
-            prev = (last[0], last[1] - 1) if last[1] > 1 else (last[0] - 1, 12)
-            facts.append(f"Month-over-month figures compare {_month(last)} with {_month(prev)}.")
+        partial = (audit.partial_months.get(col) if audit else None)
+        if partial and months > 2:   # a mid-month export: its last month is left out (5.7)
+            full = _prev(last)
+            facts.append(f"{_month(last)} is partial (data through the {ordinal(partial[1])}) and is left out "
+                         f"of period comparisons: month-over-month figures compare {_month(full)} "
+                         f"with {_month(_prev(full))}.")
+        elif months > 1:
+            facts.append(f"Month-over-month figures compare {_month(last)} with {_month(_prev(last))}.")
         else:
             facts.append("There is one month of data: no month-over-month comparison exists.")
     else:
         facts.append("There is no date column: name no period.")
+    # 5.7: the domain's KPI tiles, as computed (a number here is grounded), and what must be said:
+    # for an overview of the data or a question naming one of its KPIs (as analysis's notes).
+    tiles = [k for k in (findings.kpis if findings else []) if k.recipe and k.recipe.kind == "pack"]
+    question = session.task_plan.raw_query if session.task_plan else ""
+    pack = pack_for(contract.domain) if contract else None
+    named = {c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns])} if pack else set()
+    tiles = [k for k in tiles if _OVERVIEW_WORDS.search(question) or k.recipe.kpi in named]
+    facts += [f"{k.label}: {k.value}" + (f" ({k.context})" if k.context else "") for k in tiles]
+    if tiles:
+        facts += [f"Stated with the report (do not contradict): {c}" for c in _pack_caveats(session)]
 
     chart_of: dict[str, str] = {}
     chart_lines = []
@@ -272,7 +293,11 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     narrative = session.narrative
     evidence = {e.id: e for e in findings.evidence}
     pool, has_dates = ctx.pool(), ctx.first is not None
-    removed = {"sentences": 0, "uncited": 0, "ranks": 0}
+    removed = {"sentences": 0, "uncited": 0, "ranks": 0, "causal": 0}
+    contract = session.data_contract
+    pack = defaults_pack(contract)   # a removal changes the report: strong matches only
+    # 5.7: "the discount drove sales" with no experiment cited is removed, as quality flags it
+    triggers = pack.causal_triggers if pack and not any(e.kind == "test" for e in findings.evidence) else ()
     # The quality check's rank rule as a repair: "B has the lowest average (98.06)" when C does
     # (ins-02, in all 3 runs) is removed before the report ships.
     groups = [{"id": i, "values": [(str(r.get("name")), r.get("value")) for r in f.results]}
@@ -285,7 +310,10 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
         removed["sentences"] += bool(bad)
         misranked = not bad and claim_rank_conflict(sentence, groups) is not None
         removed["ranks"] += misranked
-        return not bad and not misranked
+        causal = not bad and not misranked and bool(triggers) and \
+            claim_causal_overreach(sentence, [], triggers) is not None
+        removed["causal"] += causal
+        return not bad and not misranked and not causal
 
     def fix(text, executive: bool = True) -> str:
         text = _clean_for_executive(str(text or ""), narrative) if executive else str(text or "")
@@ -347,6 +375,13 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     if removed["ranks"]:
         caveats.append(f"{removed['ranks']} sentence(s) ranking a group differently from its "
                        "breakdown were removed.")
+    if removed["causal"]:
+        trace_verdict("insight", PROMPT_VERSION, "causal_removed")
+        pack = defaults_pack(session.data_contract) or pack_for(session.data_contract.domain
+                                                                 if session.data_contract else None)
+        caveats.append(pack.say("causal_removed", n=removed["causal"]) if pack else
+                       f"{removed['causal']} sentence(s) saying an action caused a change were "
+                       "removed: without a control group that can't be shown.")
 
     executive = ExecutiveSummary(headline=headline, headline_evidence_ids=head_ids,
                                  paragraphs=summary, findings=claims, action_items=actions)
@@ -460,7 +495,7 @@ def _analyst_view(session: AnalysisSession, model_caveats: list[str]) -> Analyst
     low = [f"{e.claim}: low confidence ({e.confidence_reason})" for e in evidence
            if e.confidence == "low"]
     assumptions = [a for e in evidence for a in e.assumptions]
-    caveats = list(dict.fromkeys([*model_caveats, *low, *assumptions]))[:12]
+    caveats = list(dict.fromkeys([*model_caveats, *_pack_caveats(session), *low, *assumptions]))[:12]
     code = [c.rationale.code for c in session.chart_configs if c.rationale and c.rationale.code]
     return AnalystDetail(methodology=methodology, statistical_notes=notes, caveats=caveats,
                          code_references=list(dict.fromkeys(code))[:3])
@@ -485,7 +520,7 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
 
     for d in audit.decisions:
         name = _name(d.column, narrative)
-        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT:
+        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT and d.strategy != "order_level":
             alert(Severity.CRITICAL if d.after_null_pct > 50 else Severity.HIGH, d.column,
                   f"{name.capitalize()}: {_pct(d.after_null_pct)} missing",
                   f"{_pct(d.after_null_pct)} of {name} values are missing. They are left out of "
@@ -508,7 +543,7 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
             alert(Severity.LOW, f.column, f"{name.capitalize()}: a long tail of large values",
                   f"A few very large {name} values are normal for this data; they were kept.",
                   f"Report the typical {name} alongside the average.")
-        else:
+        elif f.extreme_count:   # mild-only flags are the analyst tab's, never "0 extreme values"
             alert(Severity.MEDIUM, f.column, f"{name.capitalize()}: {f.extreme_count} extreme values",
                   f"{f.extreme_count} {name} values ({_pct(f.extreme_pct)} of rows) are far "
                   "outside the usual range. They were kept.",
@@ -517,7 +552,19 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
         alert(Severity.LOW, "", f"Duplicates: {audit.duplicates_removed} rows removed",
               f"{audit.duplicates_removed} duplicate records (the same ID twice) were removed "
               "before the analysis.", "Find where duplicate records enter the export.")
-    return _compress_alerts(out)
+    kept, overflow = _compress_alerts(out)
+    if lines := _pack_caveats(session):   # 5.7: how the domain's numbers are counted, always shown
+        kept.append(AnomalyAlert(title="How these numbers are counted", severity=Severity.LOW,
+                                 description=" ".join(lines), affected_metric="",
+                                 suggested_investigation=""))
+    return kept, overflow
+
+
+def _pack_caveats(session: AnalysisSession) -> list[str]:
+    contract = session.data_contract
+    pack = pack_for(contract.domain) if contract else None
+    return pack_caveats(pack, session.cleaning_audit, contract.roles,
+                        contract.domain_confidence) if pack else []
 
 
 # ── Alert ordering, executive sanitizer, legacy text ───────────────────────────
@@ -563,12 +610,25 @@ def _clean_for_executive(text: str, narrative: DataNarrative | None) -> str:
     if not text:
         return ""
     out = text.replace("`", "")
-    # Longest raw name first so 'order_date' wins over 'order'; skip same-word no-ops.
+    # One pass, longest first, so 'order_date' wins over 'order' and a display name already
+    # written ('Order Total' for Total) is kept, not renamed again ('Order Order Total').
     if narrative and narrative.column_display_names:
-        for raw_name, display in sorted(narrative.column_display_names.items(),
-                                        key=lambda kv: len(kv[0]), reverse=True):
-            if raw_name and raw_name.lower() != display.lower():
-                out = re.sub(rf"\b{re.escape(raw_name)}\b", display, out, flags=re.IGNORECASE)
+        shown = {raw.lower(): d for raw, d in narrative.column_display_names.items()
+                 if raw and raw.lower() != d.lower()}
+        keep = {d.lower() for d in shown.values()}
+        if shown:
+            pat = "|".join(re.escape(k) for k in sorted(shown.keys() | keep, key=len,
+                                                       reverse=True))
+            plain = {r for r, d in narrative.column_display_names.items()
+                     if r and re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", r)}
+
+            def swap(m: re.Match[str]) -> str:
+                w = m.group(0)
+                # a plain-word name ('Total') only as written: 'total' is the English word
+                if w.lower() in keep or (w not in plain and w.lower() in {p.lower() for p in plain}):
+                    return w
+                return shown.get(w.lower(), w)
+            out = re.sub(rf"\b(?:{pat})\b", swap, out, flags=re.IGNORECASE)
     for needle, replacement in _EXECUTIVE_REPLACEMENTS.items():
         out = re.sub(re.escape(needle), replacement, out, flags=re.IGNORECASE)
 

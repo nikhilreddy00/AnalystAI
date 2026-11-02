@@ -110,6 +110,11 @@ def to_markdown(title: str, dataset_name: str | None, turns: list[dict]) -> str:
             if view.get("action_items"):
                 lines += ["### Actions", ""] + [f"- {md(a.get('action'))}"
                                                 for a in view["action_items"]] + [""]
+            # 5.7: how the numbers were counted (a domain's must-say lines) travels with them
+            counted = [a for a in ins.get("anomaly_alerts") or []
+                       if a.get("title") == "How these numbers are counted"]
+            if counted:
+                lines += ["### How these numbers are counted", "", md(counted[0]["description"]), ""]
         if tr := r.get("targeted_response"):
             lines += [md(tr.get("answer_text")), ""]
         if flags := (r.get("expert_review") or {}).get("flags"):

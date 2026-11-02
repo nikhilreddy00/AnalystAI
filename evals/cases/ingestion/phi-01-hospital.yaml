@@ -16,3 +16,4 @@ columns:
 - [attending_npi, npi]
 - [visit_id, visit_id]
 label_note: 'Inpatient stays: MRN, name, DOB, ZIP, phone; provider NPI and visit ids are not the patient.'
+expect_domain: null

@@ -1,0 +1,12 @@
+id: neg-inventory-counts
+category: domain
+file: inventory_counts.csv
+truth_read: {}
+roles:
+  sku: id
+  warehouse: category
+  bin: category
+  qty_on_hand: metric
+  count_date: date
+expect_domain: null
+label_note: 'Stock counts: a SKU without any money column is not sales.'

@@ -15,12 +15,21 @@ import pandas as pd
 from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
 
 
-# Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00), US (1/31/2025), European
-# (31.01.2025), "Jan 31, 2025".
+# Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00, … -0500), US (1/31/2025),
+# European (31.01.2025), either with a time (31/01/2025 14:30), "Jan 31, 2025".
 _DATE_TEXT_RE = re.compile(
-    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+(Z|[+-]\d{2}:?\d{2})?)?|\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4}"
+    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+( ?(Z|[+-]\d{2}:?\d{2}))?)?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
     r"|[A-Za-z]{3,9} \d{1,2}, \d{4})$")
 _FIRST_PART_RE = re.compile(r"^(\d{1,2})[/.]\d{1,2}[/.]\d{2,4}")
+_OFFSET_RE = re.compile(r" ?(Z|[+-]\d{2}:?\d{2})$")
+
+
+def _minutes(offset: str) -> int:
+    """'-0500' / '+01:00' / 'Z' as minutes east of UTC."""
+    if offset in ("Z", "z"):
+        return 0
+    digits = offset[1:].replace(":", "")
+    return (1 if offset[0] == "+" else -1) * (int(digits[:2]) * 60 + int(digits[2:]))
 
 
 def _looks_like_dates(s: pd.Series, share: float = 1.0) -> bool:
@@ -47,8 +56,19 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
     text = s.dropna().astype(str).str.strip()
     first = text.str.extract(_FIRST_PART_RE)[0].dropna().astype(int)
     dayfirst = bool(text.str.contains(r"^\d{1,2}\.\d", regex=True).any() or (first > 12).any())
-    parsed = pd.to_datetime(s.astype("string"), format="mixed",
-                            dayfirst=dayfirst, errors="coerce")
+    try:
+        parsed = pd.to_datetime(s.astype("string"), format="mixed",
+                                dayfirst=dayfirst, errors="coerce")
+    except ValueError:   # mixed UTC offsets
+        text = s.astype("string").str.strip()
+        offsets = {_minutes(m) for m in text.str.extract(_OFFSET_RE)[0].dropna().unique()}
+        if len(offsets) == 2 and max(offsets) - min(offsets) == 60 and (max(offsets) <= 0 or min(offsets) >= 0):
+            # one place across a daylight-saving change (Shopify's -0500 / -0400): local time
+            parsed = pd.to_datetime(text.str.replace(_OFFSET_RE, "", regex=True), format="mixed",
+                                    dayfirst=dayfirst, errors="coerce")
+        else:   # several places (pickup -05:00, delivery -08:00): UTC keeps instants and durations
+            parsed = pd.to_datetime(text, format="mixed", dayfirst=dayfirst, errors="coerce",
+                                    utc=True)
     return parsed if parsed.notna().sum() >= share * s.notna().sum() else None
 
 

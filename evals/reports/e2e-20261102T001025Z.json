@@ -1,0 +1,1020 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261102T001025Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "29b4ad6",
+  "started_at": "20261102T001025Z",
+  "only": "e2e-39",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.026,
+  "latency_p50_s": 14.74,
+  "latency_p95_s": 14.74,
+  "by_domain": {
+   "retail": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-39": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22488 [(1.0, '%')] in answer; saw [294.42, 1530.65, 80.8, 679.15, 56.6, 10.0]"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "answer": "Net sales by period (01 Jan 2026 to 31 Jan 2026): latest 2026-01-31 $294.42, vs $1,530.65 the period before (-80.8%); a year earlier $679.15 (-56.6% year over year). How: Sum of Lineitem quantity \u00d7 Lineitem price less sum of Discount Amount (once per order); over sales and returns (refunded orders, cancelled orders, test orders left out). USD only: 10 rows in other currencies left out.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 2590,
+    "approvals": [
+     "high_null"
+    ],
+    "output": {
+     "session_id": "dca4684a-c07c-42a5-a000-e457f155290c",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "How were net sales in January 2026?",
+       "timestamp": "2026-11-02T00:10:39.261901Z"
+      },
+      {
+       "role": "user",
+       "content": "Continue with imputation",
+       "timestamp": "2026-11-02T00:10:39.571814Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Net sales by period (01 Jan 2026 to 31 Jan 2026): latest 2026-01-31 $294.42, vs $1,530.65 the period before (-80.8%); a year earlier $679.15 (-56.6% year over year). How: Sum of Lineitem quantity \u00d7 Lineitem price less sum of Discount Amount (once per order); over sales and returns (refunded orders, cancelled orders, test orders left out). USD only: 10 rows in other currencies left out.",
+       "timestamp": "2026-11-02T00:10:39.709405Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/retail_lines-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "How were net sales in January 2026?",
+      "target_metrics": [
+       "Total",
+       "Lineitem price",
+       "Discount Amount",
+       "Lineitem quantity"
+      ],
+      "timeframe": "January 2026",
+      "segments": [],
+      "analysis_types": [
+       "eda",
+       "trend"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "time_series",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": null,
+       "date_column": "Created at",
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": "D",
+       "test_type": null,
+       "aggregation": "sum",
+       "chart_type": null,
+       "kpi": "net_sales",
+       "period_start": "2026-01-01",
+       "period_end": "2026-01-31",
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 4503,
+      "column_count": 13,
+      "columns": [
+       {
+        "name": "Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "#1001",
+         "#1001",
+         "#1001",
+         "#1002",
+         "#1003"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the retail order id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Created at",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-01-15T15:40:00",
+         "2025-01-15T15:40:00",
+         "2025-01-15T15:40:00",
+         "2025-01-03T08:24:00",
+         "2025-01-04T14:48:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Socks 3-pack",
+         "Canvas Tote",
+         "Leather Belt",
+         "Rain Jacket",
+         "Denim Jeans"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem sku",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SKU-011",
+         "SKU-003",
+         "SKU-004",
+         "SKU-006",
+         "SKU-007"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "a code with few distinct values: a label",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem quantity",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         2,
+         1,
+         1,
+         2
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem price",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         12.6,
+         25.2,
+         57.75,
+         108.0,
+         78.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Discount Amount",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         12.08,
+         10.8,
+         15.6,
+         0.0,
+         12.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 43.7,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Financial Status",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "paid",
+         "paid",
+         "paid",
+         "pending",
+         "paid"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 43.7,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Email",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 43.7,
+        "role_reason": "unique codes, one per row",
+        "pii": "email",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Billing Name",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 43.7,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Shipping Country",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "Australia",
+         "Canada",
+         "United States",
+         "United States",
+         "Canada"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 43.7,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Total",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         108.67,
+         97.2,
+         140.4,
+         331.0,
+         116.64
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 43.7,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       },
+       {
+        "name": "Currency",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "USD",
+         "USD",
+         "USD",
+         "USD",
+         "USD"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Name": "[REDACTED]",
+        "Created at": "2025-01-15T15:40:00",
+        "Lineitem name": "Socks 3-pack",
+        "Lineitem sku": "SKU-011",
+        "Lineitem quantity": 1,
+        "Lineitem price": 12.6,
+        "Discount Amount": 12.08,
+        "Financial Status": "paid",
+        "Email": "[REDACTED]",
+        "Billing Name": "[REDACTED]",
+        "Shipping Country": "Australia",
+        "Total": 108.67,
+        "Currency": "USD"
+       },
+       {
+        "Name": "[REDACTED]",
+        "Created at": "2025-01-15T15:40:00",
+        "Lineitem name": "Canvas Tote",
+        "Lineitem sku": "SKU-003",
+        "Lineitem quantity": 2,
+        "Lineitem price": 25.2,
+        "Discount Amount": null,
+        "Financial Status": null,
+        "Email": "[REDACTED]",
+        "Billing Name": "[REDACTED]",
+        "Shipping Country": null,
+        "Total": null,
+        "Currency": "USD"
+       },
+       {
+        "Name": "[REDACTED]",
+        "Created at": "2025-01-15T15:40:00",
+        "Lineitem name": "Leather Belt",
+        "Lineitem sku": "SKU-004",
+        "Lineitem quantity": 1,
+        "Lineitem price": 57.75,
+        "Discount Amount": null,
+        "Financial Status": null,
+        "Email": "[REDACTED]",
+        "Billing Name": "[REDACTED]",
+        "Shipping Country": null,
+        "Total": null,
+        "Currency": "USD"
+       },
+       {
+        "Name": "[REDACTED]",
+        "Created at": "2025-01-03T08:24:00",
+        "Lineitem name": "Rain Jacket",
+        "Lineitem sku": "SKU-006",
+        "Lineitem quantity": 1,
+        "Lineitem price": 108.0,
+        "Discount Amount": 10.8,
+        "Financial Status": "paid",
+        "Email": "[REDACTED]",
+        "Billing Name": "[REDACTED]",
+        "Shipping Country": "Canada",
+        "Total": 97.2,
+        "Currency": "USD"
+       },
+       {
+        "Name": "[REDACTED]",
+        "Created at": "2025-01-04T14:48:00",
+        "Lineitem name": "Denim Jeans",
+        "Lineitem sku": "SKU-007",
+        "Lineitem quantity": 2,
+        "Lineitem price": 78.0,
+        "Discount Amount": 15.6,
+        "Financial Status": "paid",
+        "Email": "[REDACTED]",
+        "Billing Name": "[REDACTED]",
+        "Shipping Country": "United States",
+        "Total": 140.4,
+        "Currency": "USD"
+       }
+      ],
+      "date_columns": [
+       "Created at"
+      ],
+      "id_columns": [
+       "Name",
+       "Email"
+      ],
+      "metric_columns": [
+       "Lineitem quantity",
+       "Lineitem price",
+       "Discount Amount",
+       "Total"
+      ],
+      "schema_summary": "4,503 rows \u00d7 13 columns. Dates: Created at from 2025-01-01 to 2026-02-12 (daily). Metrics: Lineitem quantity, Lineitem price, Discount Amount, Total. Identifiers: Name. Categories: Lineitem name, Lineitem sku, Financial Status, Shipping Country, Currency. Personal data, masked before any model sees it: Email (email), Billing Name (name). Missing values: Discount Amount 43.7%, Financial Status 43.7%, Email 43.7%, Billing Name 43.7%, Shipping Country 43.7%.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 4,503 rows \u00d7 13 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Name\", \"Email\"], \"date\": [\"Created at\"], \"category\": [\"Lineitem name\", \"Lineitem sku\", \"Financial Status\", \"Billing Name\", \"Shipping Country\", \"Currency\"], \"metric\": [\"Lineitem quantity\", \"Lineitem price\", \"Discount Amount\", \"Total\"]}, \"personal_data\": {\"Email\": \"email\", \"Billing Name\": \"name\"}, \"fingerprint\": \"ce1c068a22142d50\"}",
+       "row_count": 4503,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "2 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "ce1c068a22142d50e5b537cf20286956cbad06c2e7e62d242c4b6628bb25914c",
+      "pii_columns": [
+       "Email",
+       "Billing Name"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "retail",
+      "roles": {
+       "order_total": "Total",
+       "quantity": "Lineitem quantity",
+       "unit_price": "Lineitem price",
+       "discount": "Discount Amount",
+       "order_id": "Name",
+       "email": "Email",
+       "sku": "Lineitem sku",
+       "product": "Lineitem name",
+       "status": "Financial Status",
+       "currency": "Currency",
+       "country": "Shipping Country",
+       "date": "Created at"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "*",
+        "operation": "drop_duplicates",
+        "strategy": "exact",
+        "reason": "Removed 48 exact duplicate rows (same Email and every other value).",
+        "rows_affected": 48,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 48
+       },
+       {
+        "column": "Financial Status",
+        "operation": "fill_within_order",
+        "strategy": "order_value",
+        "reason": "1945 lines took their order's own status (the export writes it on an order's first line only).",
+        "rows_affected": 1945,
+        "before_null_pct": 43.7,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Email",
+        "operation": "fill_within_order",
+        "strategy": "order_value",
+        "reason": "1945 lines took their order's own email (the export writes it on an order's first line only).",
+        "rows_affected": 1945,
+        "before_null_pct": 43.7,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Shipping Country",
+        "operation": "fill_within_order",
+        "strategy": "order_value",
+        "reason": "1945 lines took their order's own country (the export writes it on an order's first line only).",
+        "rows_affected": 1945,
+        "before_null_pct": 43.7,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Discount Amount",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "1945 of 4455 values missing (43.7%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 43.7,
+        "after_null_pct": 43.7,
+        "rows_removed": 0
+       },
+       {
+        "column": "Billing Name",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "1945 of 4455 values missing (43.7%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 43.7,
+        "after_null_pct": 43.7,
+        "rows_removed": 0
+       },
+       {
+        "column": "Total",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "1945 of 4455 values missing (43.7%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 43.7,
+        "after_null_pct": 43.7,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "refunded",
+        "reason": "177 lines of refunded orders: left out of net sales; kept in the data.",
+        "rows_affected": 177,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "cancel",
+        "reason": "98 lines of cancelled or voided orders: left out of sales; kept in the data.",
+        "rows_affected": 98,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "test",
+        "reason": "26 test-order lines: left out of sales; kept in the data.",
+        "rows_affected": 26,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Currency",
+        "operation": "flag",
+        "strategy": "other_currency",
+        "reason": "111 rows in other currencies than USD; kept, left out of money totals.",
+        "rows_affected": 111,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 4503,
+      "rows_after": 4455,
+      "columns_coerced": [],
+      "duplicates_removed": 48,
+      "outliers_flagged": [
+       "106 mild outliers in Lineitem price (threshold: values outside [-102.69, 191.52]) \u2014 see analyst tab",
+       "25 mild outliers in Discount Amount (threshold: values outside [-0.990, 446.75]) \u2014 see analyst tab",
+       "7 extreme outliers in Total (0.3% of data, threshold: values > 603.89)"
+      ],
+      "high_null_columns": [
+       "Discount Amount",
+       "Billing Name",
+       "Total"
+      ],
+      "summary": "Removed 48 duplicate rows. Outliers flagged (kept) in: Discount, Lineitem, Total. More than 40% missing in: Discount Amount, Billing Name, Total \u2014 review recommended. Final dataset: 4455 rows (started with 4503).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Lineitem price",
+         "extreme_count": 0,
+         "mild_count": 106,
+         "extreme_pct": 0.0,
+         "lower_bound": -102.69000000000003,
+         "upper_bound": 191.52000000000004,
+         "mild_lower_bound": -39.64500000000002,
+         "mild_upper_bound": 128.47500000000002,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "106 mild outliers in Lineitem price (threshold: values outside [-102.69, 191.52]) \u2014 see analyst tab"
+        },
+        {
+         "column": "Discount Amount",
+         "extreme_count": 0,
+         "mild_count": 25,
+         "extreme_pct": 0.0,
+         "lower_bound": -0.9897263098338556,
+         "upper_bound": 446.7455990451071,
+         "mild_lower_bound": -0.8986407824926632,
+         "mild_upper_bound": 44.383143963029625,
+         "used_log_transform": true,
+         "heavy_tailed": false,
+         "message": "25 mild outliers in Discount Amount (threshold: values outside [-0.990, 446.75]) \u2014 see analyst tab"
+        },
+        {
+         "column": "Total",
+         "extreme_count": 7,
+         "mild_count": 91,
+         "extreme_pct": 0.27888446215139445,
+         "lower_bound": -366.2925,
+         "upper_bound": 603.89,
+         "mild_lower_bound": -158.39625,
+         "mild_upper_bound": 395.99375,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "7 extreme outliers in Total (0.3% of data, threshold: values > 603.89)"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Lineitem price",
+        "Discount Amount",
+        "Total"
+       ],
+       "skipped_columns": {
+        "Name": "constant or unsupported",
+        "Created at": "datetime column",
+        "Lineitem name": "non-numeric",
+        "Lineitem sku": "non-numeric",
+        "Lineitem quantity": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+        "Financial Status": "non-numeric",
+        "Email": "constant or unsupported",
+        "Billing Name": "constant or unsupported",
+        "Shipping Country": "non-numeric",
+        "Currency": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Created at": [
+        "2025-01-01",
+        "2026-02-12",
+        14
+       ]
+      },
+      "grain": "line",
+      "partial_months": {
+       "Created at": [
+        "2026-02",
+        12
+       ]
+      },
+      "main_currency": "USD"
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "time_series",
+      "answer_text": "Net sales by period (01 Jan 2026 to 31 Jan 2026): latest 2026-01-31 $294.42, vs $1,530.65 the period before (-80.8%); a year earlier $679.15 (-56.6% year over year). How: Sum of Lineitem quantity \u00d7 Lineitem price less sum of Discount Amount (once per order); over sales and returns (refunded orders, cancelled orders, test orders left out). USD only: 10 rows in other currencies left out.",
+      "chart_configs": [
+       {
+        "id": "06ab55a2-41ab-4b57-8195-24084b39f623",
+        "chart_type": "LineChart",
+        "title": "Net sales over time (01 Jan 2026 to 31 Jan 2026)",
+        "data": [
+         {
+          "period": "2026-01-01",
+          "Net sales": 463.40999999999997
+         },
+         {
+          "period": "2026-01-02",
+          "Net sales": 147.82
+         },
+         {
+          "period": "2026-01-03",
+          "Net sales": 1240.52
+         },
+         {
+          "period": "2026-01-04",
+          "Net sales": 869.3100000000001
+         },
+         {
+          "period": "2026-01-05",
+          "Net sales": 68.56
+         },
+         {
+          "period": "2026-01-06",
+          "Net sales": 931.0400000000001
+         },
+         {
+          "period": "2026-01-07",
+          "Net sales": 831.2900000000001
+         },
+         {
+          "period": "2026-01-08",
+          "Net sales": 647.0
+         },
+         {
+          "period": "2026-01-09",
+          "Net sales": 248.97
+         },
+         {
+          "period": "2026-01-10",
+          "Net sales": 876.58
+         },
+         {
+          "period": "2026-01-11",
+          "Net sales": 775.98
+         },
+         {
+          "period": "2026-01-12",
+          "Net sales": 915.5
+         },
+         {
+          "period": "2026-01-13",
+          "Net sales": 712.38
+         },
+         {
+          "period": "2026-01-14",
+          "Net sales": 1248.51
+         },
+         {
+          "period": "2026-01-15",
+          "Net sales": 1909.73
+         },
+         {
+          "period": "2026-01-16",
+          "Net sales": 1429.78
+         },
+         {
+          "period": "2026-01-17",
+          "Net sales": 884.04
+         },
+         {
+          "period": "2026-01-18",
+          "Net sales": 694.71
+         },
+         {
+          "period": "2026-01-19",
+          "Net sales": 728.21
+         },
+         {
+          "period": "2026-01-20",
+          "Net sales": 1768.44
+         },
+         {
+          "period": "2026-01-21",
+          "Net sales": 760.1800000000001
+         },
+         {
+          "period": "2026-01-22",
+          "Net sales": 1404.1799999999998
+         },
+         {
+          "period": "2026-01-23",
+          "Net sales": 470.69000000000005
+         },
+         {
+          "period": "2026-01-24",
+          "Net sales": 527.71
+         },
+         {
+          "period": "2026-01-25",
+          "Net sales": 741.8
+         },
+         {
+          "period": "2026-01-26",
+          "Net sales": 755.51
+         },
+         {
+          "period": "2026-01-27",
+          "Net sales": 1326.8600000000001
+         },
+         {
+          "period": "2026-01-28",
+          "Net sales": 98.95
+         },
+         {
+          "period": "2026-01-29",
+          "Net sales": 243.21
+         },
+         {
+          "period": "2026-01-30",
+          "Net sales": 1530.65
+         },
+         {
+          "period": "2026-01-31",
+          "Net sales": 294.42
+         }
+        ],
+        "x_key": "period",
+        "y_keys": [
+         "Net sales"
+        ],
+        "colors": [],
+        "x_label": "Period",
+        "y_label": "Net sales",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "kpi",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:kpi\u2192line",
+         "reason": "Net sales per D period. Sum of Lineitem quantity \u00d7 Lineitem price less sum of Discount Amount (once per order); over sales and returns (refunded orders, cancelled orders, test orders left out). USD only: 10 rows in other currencies left out.",
+         "x": "Created at",
+         "y": "Net sales",
+         "split": null,
+         "aggregation": "sum",
+         "n_rows": 343,
+         "evidence_ids": [],
+         "code": "",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-02T00:10:39.709300Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Name": "Order Number",
+       "Created at": "Order Date",
+       "Lineitem name": "Product Name",
+       "Lineitem sku": "SKU",
+       "Lineitem quantity": "Quantity",
+       "Lineitem price": "Unit Price",
+       "Discount Amount": "Discount Amount",
+       "Financial Status": "Payment Status",
+       "Email": "Customer Email",
+       "Billing Name": "Billing Name",
+       "Shipping Country": "Shipping Country",
+       "Total": "Order Total",
+       "Currency": "Currency"
+      },
+      "entity_singular": "order line item",
+      "entity_plural": "order line items"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": "continue",
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/dca4684a-c07c-42a5-a000-e457f155290c/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-02T00:10:26.100851Z",
+     "updated_at": "2026-11-02T00:10:39.709406Z"
+    },
+    "domain": "retail",
+    "latency_s": 14.74,
+    "cost_usd": 0.02604,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ]
+ }
+}

@@ -167,3 +167,49 @@ async def test_a_query_cancelled_mid_flight_does_not_break_the_next_request(stor
     with pytest.raises(asyncio.CancelledError):
         await task
     assert await store.active_for_session("s1", "u1") is None   # served, not "connection is closed"
+
+
+async def test_api_and_worker_starting_together_on_a_new_database_both_start():
+    """Phase 5.7 live run: the API and the worker both ran CREATE TABLE IF NOT EXISTS on a fresh
+    database and the worker died on a duplicate type; schema setup now holds an advisory lock."""
+    if not PG:
+        pytest.skip("TEST_PG_URL not set")
+    import uuid
+
+    from sqlalchemy.engine import make_url
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from memory.session_store import SessionStore
+    name = f"init_race_{uuid.uuid4().hex[:8]}"
+    admin = create_async_engine(PG, isolation_level="AUTOCOMMIT")
+    async with admin.connect() as conn:
+        await conn.execute(text(f"CREATE DATABASE {name}"))
+    url = make_url(PG).set(database=name).render_as_string(hide_password=False)
+    from orchestrator.runner import open_deps
+    stores = [SessionStore(url), RunStore(url), SessionStore(url), RunStore(url)]
+    deps = []
+    try:
+        assert [r for r in await asyncio.gather(*(s.init() for s in stores), return_exceptions=True)
+                if isinstance(r, Exception)] == []
+        # the whole start-up, checkpoint tables included (diff review: saver.setup raced too)
+        name2 = name + "_deps"
+        async with admin.connect() as conn:
+            await conn.execute(text(f"CREATE DATABASE {name2}"))
+        url2 = make_url(PG).set(database=name2).render_as_string(hide_password=False)
+        got = await asyncio.gather(*(open_deps("production", url2, vector=False) for _ in range(3)),
+                                   return_exceptions=True)
+        deps = [d for d in got if not isinstance(d, Exception)]
+        assert len(deps) == 3, [repr(d) for d in got if isinstance(d, Exception)]
+    finally:
+        for s in stores:
+            await s._engine.dispose()
+        for d in deps:
+            for close in d.closers:
+                await close()
+            await d.run_store._engine.dispose()
+            await d.session_store._engine.dispose()
+        async with admin.connect() as conn:
+            await conn.execute(text(f"DROP DATABASE IF EXISTS {name}_deps WITH (FORCE)"))
+        async with admin.connect() as conn:
+            await conn.execute(text(f"DROP DATABASE {name} WITH (FORCE)"))
+        await admin.dispose()

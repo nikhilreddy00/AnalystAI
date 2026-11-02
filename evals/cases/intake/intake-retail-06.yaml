@@ -1,0 +1,11 @@
+id: intake-retail-06
+category: out_of_scope
+pipeline: production
+source:
+  dataset: retail_lines
+  seed: 1
+overview_done: true
+question: What's our sell-through rate for each SKU?
+expect:
+  ask: true
+rationale: 'Sell-through needs inventory on hand, which sales data does not have: ask.'

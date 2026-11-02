@@ -36,6 +36,16 @@ from agents.utils import (
     looks_like_sequential_id,
     pandas_freq,
     partial_last_month,
+    weekly_cadence,
+)
+from domain_pack import (
+    compute_kpi,
+    defaults_pack,
+    describe_kpi,
+    main_currency,
+    money_columns,
+    money_rows,
+    row_kinds,
 )
 from guardrails import chart_lint
 from llm.client import trace_verdict
@@ -1138,6 +1148,41 @@ def _unit_fields(kind: str, unit: str | None) -> dict:
     return {"currency": unit} if kind == "currency" else {"unit": unit}
 
 
+def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
+    """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. A KPI the
+    data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
+    and the run goes on. Money is in the main currency; other currencies are left out, said in
+    the tile's context."""
+    pack = defaults_pack(contract)   # a weak match keeps the generic tiles (and says how it read)
+    if pack is None or df is None or df.empty:
+        return []
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    _, currency, other = main_currency(df, roles)
+    present = set(row_kinds(df, roles, pack).unique())
+    money = currency or next((c.unit for c in contract.columns if is_currency(c.unit) and c.name in
+                              money_columns(pack, roles)), None)
+    tiles = []
+    for k in pack.kpis:
+        if not k.tile:
+            continue
+        try:
+            v = compute_kpi(df, roles, pack, k.name)
+        except Exception:   # a pack/data mismatch is a missing tile, never a failed run
+            logger.warning("KPI %s failed", k.name, exc_info=True)
+            trace_verdict("visualization", VIZ_CARD.version, "kpi_failed")
+            continue
+        if v is None:
+            continue
+        kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
+        unit = money if kind == "currency" else None
+        context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
+        tiles.append(KPI(label=k.label, value=_format_value(v, kind, unit), context=context,
+                         recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
+                                          **_unit_fields(kind, unit)),
+                         how=describe_kpi(pack, k.name, roles, present)))
+    return tiles[:5] if len(tiles) >= 2 else []   # one tile is no strip: the generic tiles
+
+
 def generate_smart_kpis(
     df: pd.DataFrame,
     column_roles: dict,
@@ -1167,7 +1212,11 @@ def generate_smart_kpis(
 
     entity_sg, entity_pl = _entity_pair(df.columns, narrative, query, df)
 
-    kpis: list[KPI] = []
+    # Phase 5.7: a domain's own KPIs (net sales, orders, AOV …) replace the generic tiles, which
+    # would count order lines as orders, average line amounts and call a share of rows a share
+    # of sales.
+    if kpis := pack_kpis(df, contract):
+        return kpis
 
     # KPI 1 — row count, labeled by the detected entity (column count belongs
     # in the briefing tables, not on the KPI strip)
@@ -1269,17 +1318,22 @@ def _kpi_how(r: KPIRecipe | None, n: int) -> str:
     }.get(r.kind, "")
 
 
-def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None) -> list[str]:
+def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None,
+                   contract: DataContract | None = None) -> list[str]:
     """Labels of tiles whose number doesn't match the data: each is recomputed from its recipe on
     this frame, and an average must also match the report's own statistics (eda_summary)."""
     bad = []
+    pack = ({t.recipe.kpi: t.value for t in pack_kpis(df, contract)}
+            if any(k.recipe and k.recipe.kind == "pack" for k in kpis) else {})
     for k in kpis:
         r = k.recipe
         if r is None:
             continue
         col = r.column
         try:
-            if r.kind == "row_count":
+            if r.kind == "pack":
+                ok = pack.get(r.kpi) == k.value
+            elif r.kind == "row_count":
                 ok = k.value == _format_count(len(df))
             elif r.kind == "target_rate":
                 ok = k.value == f"{float(_to_01(df[col]).mean()) * 100:.1f}%"
@@ -2168,6 +2222,7 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         monthly = True   # staggered snapshots: a day holds only some accounts, a month all
     extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
+    df, kept = money_rows(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
     sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
@@ -2191,6 +2246,12 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
                           ctx.contract, over_time=True) * scale
     except LevelUnavailable:
         return None
+    # a domain's convention (retail, strong match): other data keeps calendar-month sums
+    weekly = monthly and agg == "sum" and defaults_pack(ctx.contract) is not None \
+        and weekly_cadence(sub[date])
+    if weekly:   # weekly flows: a month is its average week, as the reported MoM (4 vs 5 weeks)
+        weeks = sub[date].groupby(period).nunique()
+        table = table.div(weeks, level=0) if split else table / weeks.reindex(table.index)
     if split:
         table = table.unstack()[keys]
     if len(table) < 2:
@@ -2207,17 +2268,24 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
     by = f", per {_display(split, ctx.narrative)}" if split else ""
     freq = "M" if monthly else "D"
     groupby = f"[_period, {split!r}]" if split else "_period"
+    label = _label(metric, agg, ctx) + (" (average week)" if weekly else "")
+    if weekly:
+        note = (note + " " if note else "") + "Weekly data: each month is its average week " \
+            "(months have 4 or 5 week-endings)."
     return ChartConfig(
         id=str(uuid.uuid4()), chart_type=ChartType.LINE,
-        title=f"{_label(metric, agg, ctx).replace(' (%)', '')} by {step}{by}",
+        title=f"{label.replace(' (%)', '')} by {step}{by}",
         data=data, x_key="period", y_keys=[metric] if not split else [str(k) for k in keys],
-        colors=[], x_label=step.title(), y_label=_label(metric, agg, ctx),
+        colors=[], x_label=step.title(), y_label=label,
         show_legend=bool(split), source_finding="time_series", split_key=split,
         value_format="percent" if rate else "number", layout_hint="full_width",
         rationale=ChartRationale(
-            rule="", reason=note, x=date, y=metric, split=split, aggregation=agg, n_rows=len(sub),
-            code=f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
-                 + (f"df.groupby({groupby})[{metric!r}].{agg}()" if not hint else
+            rule="", reason=" ".join(x for x in (note, kept) if x), x=date, y=metric, split=split,
+            aggregation=agg, n_rows=len(sub),
+            code=("# rows: " + kept + "\n" if kept else "")
+                 + f"_period = pd.to_datetime(df[{date!r}], format='mixed').dt.to_period({freq!r}); "
+                 + (f"df.groupby({groupby})[{metric!r}].{agg}()" + (
+                     f" / df.groupby(_period)[{date!r}].nunique()" if weekly else "") if not hint else
                     f"df.sort_values({date!r}).groupby([{groupby}, *{hint.aggregation_by!r}])"
                     f"[{metric!r}].{agg}().groupby(level=0).sum()   # each entity's {agg}, summed")),
     )

@@ -396,7 +396,9 @@ function ChartGrid({
   const derivedCharts = useMemo(
     () =>
       charts.map((c) => {
-        const agg = aggregateForChart(filteredRows, c);
+        const agg = hasActiveFilters
+          ? aggregateForChart(filteredRows, c)
+          : ({ mode: "unfiltered" } as const);
         const renderedData = agg.mode === "unfiltered" ? c.data : agg.data;
         const showUnfilteredPill = agg.mode === "unfiltered" && hasActiveFilters;
         const showCountSublabel = agg.mode === "count" && hasActiveFilters;

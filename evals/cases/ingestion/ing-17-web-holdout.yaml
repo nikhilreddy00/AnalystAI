@@ -20,3 +20,4 @@ columns:
 - - visitor_ip
   - ip
 label_note: Web sessions as TSV with visitor IPs.
+expect_domain: null

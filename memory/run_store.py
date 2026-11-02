@@ -27,7 +27,7 @@ from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, UniqueC
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from memory.session_store import Base
+from memory.session_store import Base, schema_lock
 
 ACTIVE = ("queued", "running", "waiting_approval")
 TERMINAL = ("completed", "failed", "cancelled")
@@ -314,6 +314,7 @@ class RunStore:
 
     async def init(self) -> None:
         async with self._engine.begin() as conn:
+            await schema_lock(conn)
             await conn.run_sync(Base.metadata.create_all, tables=[RunRow.__table__,
                                                                  RunEventRow.__table__])
             await conn.execute(text(   # tables made before the crash budget had its own column

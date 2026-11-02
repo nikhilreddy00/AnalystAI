@@ -1,0 +1,24 @@
+id: e2e-39
+domain: retail
+dataset:
+  name: retail_lines
+  seed: 1
+# The seasonal trap (plan M10): Jan 2026 is -30% vs Dec but +8% vs Jan 2025. An open question
+# (no comparison named) must be answered against last January; December is the naive answer.
+# (The explicit 'vs January last year' wording is intake-retail-05.)
+question: How were net sales in January 2026?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: jan26_yoy_pct
+  rel_tol: 0.03
+  unit: '%'
+- kind: must_not_number
+  truth_key: jan26_mom_pct
+  rel_tol: 0.02
+  unit: '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

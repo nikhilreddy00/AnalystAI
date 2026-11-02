@@ -22,7 +22,18 @@ import pandas as pd
 from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
-from agents.utils import pii_columns, safe_column_name, strip_markdown_fences
+from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
+from domain_pack import (
+    counted,
+    ROW_KIND_COLUMN,
+    ROW_KINDS,
+    computable,
+    defaults_pack,
+    glossary_hits,
+    pack_brief,
+    pack_for,
+    with_row_kind,
+)
 from guardrails import (
     pseudonym,
     is_phi_identifier,
@@ -200,6 +211,21 @@ except Exception:
     return "\n".join(lines)
 
 
+def kind_column(contract: DataContract) -> str:
+    """The row-kind column's name in the frame analysis gets (domain_pack.with_row_kind's rule)."""
+    names = {c.name for c in contract.columns}
+    return next(n for n in (ROW_KIND_COLUMN, f"_{ROW_KIND_COLUMN}", f"pack_{ROW_KIND_COLUMN}")
+                if n not in names)
+
+
+def _money_targets(contract: DataContract, targets: list[str]) -> list[str]:
+    """Targets in a strong-matched pack's additive money or count roles (net of the row rules)."""
+    pack = defaults_pack(contract)
+    if pack is None:
+        return []
+    return [c for r, c in contract.roles.items() if c in targets and counted(pack, r)]
+
+
 def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
     """Statistics with one right answer, for the requested analysis types, computed here rather
     than by the model (shorter generated code, no arithmetic slips). MoM of a target metric
@@ -236,18 +262,27 @@ try:
             if _d.empty:
                 return _mm
             _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
-            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
+            _g = _d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()
+            _regular = len(_g) >= 3 and _g.std() <= {REGULAR_CV} * _g.mean()
+            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and (_days.iloc[:-1].median() >= {PARTIAL_MIN_DAYS} or _regular) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
                 _mm = _mm.where(_mm != _days.index[-1])
             return _mm
         _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')
         def _level_months(_tc):
             return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))
         # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
-        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
+        _yoy = {defaults_pack(contract) is not None!r}
+        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') in (('MoM', 'YoY') if _yoy else ('MoM',)) and t.get('column') in _targets)]
         # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else
         # by month total. A semantic layer (Phase 4) can declare the aggregation instead.
         # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's
         # last value in the month, summed; a reading is a mean.
+        # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months
+        # compare fairly (agents.utils.weekly_cadence).
+        _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
+        _weekly = _yoy and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
+        # a domain's money columns count sale and return rows in the main currency (as its tiles)
+        _money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
@@ -261,11 +296,23 @@ try:
                 _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')
                 _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
             else:
+                if _col in _money and _kind in _frame.columns:
+                    _frame = _frame[_frame[_kind].isin(['sale', 'return'])]
                 _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
+                if _weekly and _agg == 'sum':
+                    _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)
+                    if 'weekly' not in ' '.join(result['assumptions']):
+                        result['assumptions'].append('Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).')
             if len(_tot) < 2 or _tot.iloc[-2] == 0:
                 return None, 0
             _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])
             _n = int(_frame.loc[_last2, _col].notna().sum())
+            # a domain's data compares the last full month with the same month a year earlier
+            _ago = _tot.index[-1] - 12 if _yoy else None
+            if _ago is not None and _ago in _tot.index and _tot[_ago] != 0:
+                _pair = _mon.loc[_frame.index].isin([_tot.index[-1], _ago])
+                _y = round(float((_tot.iloc[-1] / _tot[_ago] - 1) * 100), 2)
+                _yearly.append((_col, _y, int(_frame.loc[_pair, _col].notna().sum())))
             return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n
         for _c in _targets:
             _jobs = [(None, df)]
@@ -273,11 +320,16 @@ try:
                 _top = df[_segs[0]].value_counts().head(10).index
                 _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]
             for _seg, _frame in _jobs:
+                _yearly = []
                 _p, _n = _mom(_frame, _c)
                 if _p is not None:
                     result['trends'].append({{'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,
                                              'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'}})
                     result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':MoM')
+                for _, _y, _yn in _yearly:
+                    result['trends'].append({{'column': _c, 'period': 'YoY', 'pct_change': _y, 'segment': _seg, 'n': _yn,
+                                             'direction': 'up' if _y > 0 else 'down' if _y < 0 else 'flat'}})
+                    result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':YoY')
 except Exception:
     pass
 try:
@@ -311,6 +363,10 @@ class AnalysisContext(BaseModel):
     samples: dict[str, list[Any]]      # 3 masked values per column (from the DataContract)
     aggregations: list[str] = []       # semantic-layer meanings (Phase 5.5); empty: none matched
     question: str = ""                 # the user's words: a rate's definition lives only here
+    # Phase 5.7: the domain pack's rules for this question (or an overview): role names only,
+    # and the role → column map (column names are the user's: delimited).
+    domain: list[str] = []
+    domain_roles: str = ""
 
     def render(self) -> str:
         # Column names come from the user's file, so the whole schema block is delimited.
@@ -330,12 +386,15 @@ class AnalysisContext(BaseModel):
                  if self.aggregations else "")
         cleaning = ("\n\nCleaning already applied:\n" + delimit_untrusted(
             "\n".join(self.cleaning_notes))) if self.cleaning_notes else ""
+        domain = ("\nDomain rules (the product's domain pack; each role is a column of this data):\n"
+                  + delimit_untrusted(self.domain_roles) + "\n" + "\n".join(
+                      f"- {line}" for line in self.domain)) if self.domain else ""
         question = ("\nThe user's question (the plan below was made from it; when it defines a "
                     "measure — a rate, its window, which rows count — compute exactly that):\n"
                     + delimit_untrusted(self.question)) if self.question else ""
         return f"""\
 Dataset schema (column names come from the user's file):
-{delimit_untrusted(schema)}{rules}{question}
+{delimit_untrusted(schema)}{rules}{domain}{question}
 Analysis types requested: {self.analysis_types}
 Timeframe: {self.timeframe}{cleaning}
 
@@ -384,7 +443,40 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
                       for c in contract.columns if c.aggregation],
         question=(task.raw_query or "")[:2000],
+        **_domain(contract, task, audit),
     )
+
+
+# An overview of the data itself ("an overview of this dataset", "what's in my sales file"), not
+# of one measure ("an overview of revenue by segment", "summarize spend per order").
+_OVERVIEW_WORDS = re.compile(r"\b(?:overview|summary|tour|walk me through|what(?:'s| is) in)\b(?: of)?"
+                             r"(?: (?:this|the|my|our))? (?:data(?:set)?|file|upload|sales data|"
+                             r"spreadsheet|export)\b", re.I)
+
+
+def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
+    """The pack's rules, relevant ones only, so a question they don't touch reads as before:
+    the row kinds Cleaning found in this data (returns, refunds, test orders …), a line grain,
+    the KPIs or concepts the question names (every tile KPI the data supports when it asks for
+    an overview)."""
+    pack = pack_for(contract.domain)
+    if pack is None:
+        return {}
+    question = task.raw_query or ""
+    concepts = [c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns])]
+    roles = dict(contract.roles)
+    if defaults_pack(contract) is None and not concepts:
+        return {}   # a weak match changes nothing by default: only a KPI the user names
+    if _OVERVIEW_WORDS.search(question) and defaults_pack(contract):
+        concepts = [k.name for k in pack.kpis if k.tile and computable(pack, k.name, roles)] + concepts
+    present = {d.strategy for d in (audit.decisions if audit else [])
+               if d.operation == "flag" and d.strategy in ROW_KINDS}
+    grain = audit.grain if audit else None
+    brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None,
+                       kind_column(contract))
+    if not brief:
+        return {}
+    return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
 
 
 def _aggregation_line(c, names: set[str]) -> str:
@@ -589,6 +681,15 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     ctx = build_context(session)
     contract = session.data_contract
     known = [c.name for c in contract.columns]
+    if ctx.domain or defaults_pack(contract):   # 5.7: row kinds as a column code filters on
+        def framed_bytes() -> tuple[bytes, str | None]:
+            framed, col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
+            buf = io.BytesIO()
+            framed.to_parquet(buf, index=False)
+            return buf.getvalue(), col
+        new_bytes, kind_col = await asyncio.to_thread(framed_bytes)
+        if kind_col:
+            df_parquet, known = new_bytes, known + [kind_col]
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
     back: dict = {}                  # {pseudonym: value}, never leaves this process
@@ -854,7 +955,9 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     imputed = {d.column: d.before_null_pct for d in decisions
                if d.operation in ("impute", "fill_unknown")}
     missing = {d.column: d.before_null_pct for d in decisions
-               if d.operation == "keep" and d.before_null_pct > 0}
+               if d.operation == "keep" and d.before_null_pct > 0 and d.strategy != "order_level"}
+    # an order-level field (Shopify's total): later lines are blank by the export's layout
+    per_order = {d.column: d.after_null_pct for d in decisions if d.strategy == "order_level"}
     model_notes = [str(a) for a in raw.get("assumptions", []) if isinstance(a, str)][:5] \
         if isinstance(raw.get("assumptions"), list) else []
     audit_notes = [f"{audit.duplicates_removed} duplicate rows were removed first"] \
@@ -869,6 +972,9 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         notes = [f"{c}: {imputed[c]:.0f}% nulls were imputed" for c in cols if c in imputed]
         notes += [f"{c}: {missing[c]:.0f}% missing, left out of this result" for c in cols
                   if c in missing]
+        notes += [f"{c}: one value per order (an order's later lines are blank by the export's "
+                  f"layout)" + (f"; {per_order[c]:g}% of orders have no value"
+                                             if per_order[c] else "") for c in cols if c in per_order]
         # The model's notes are global; keep the ones about this finding's columns.
         relevant = [m for m in model_notes if not cols or any(c in m for c in cols)]
         return Evidence(id=id_, kind=kind, claim=claim,

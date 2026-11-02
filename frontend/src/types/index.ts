@@ -216,7 +216,9 @@ export interface SuggestedQuestionsEvent {
 }
 
 export interface KPIRecipe {
-  kind: "row_count" | "target_rate" | "metric_avg" | "top_cat" | "comparison_split" | "highest_cv";
+  // "pack" (Phase 5.7): a domain-pack KPI (net sales, AOV …), the server's value only.
+  kind: "row_count" | "target_rate" | "metric_avg" | "top_cat" | "comparison_split" | "highest_cv" | "pack";
+  kpi?: string | null;
   column?: string | null;
   target_column?: string | null;
   segment_column?: string | null;

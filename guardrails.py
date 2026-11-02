@@ -440,7 +440,9 @@ _SCOPE_RE = re.compile(r"\b(?:data(?:set)?|cover(?:s|ed|ing)?|spans?|spanning|th
 _POSITION_RE = re.compile(r"\b(?:latest|last|recent|final|first|earliest|previous|prior|vs|"
                           r"versus|compared|month[- ]over[- ]month|MoM|before|after|since|"
                           r"until|between|starting|onwards?|beginning|through|thru|up to|ending)\b", re.I)
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+# One sentence rule for every check (and insight, drill-down): a stop then a capital, digit or
+# quote, so "vs. last year" and "e.g. returns" stay one sentence.
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
 
 
 def _month_no(name: str) -> int:
@@ -531,13 +533,15 @@ _YOY_RE = re.compile(r"\b(?:year[- ]over[- ]year|yoy|annual(?:ly)?|year[- ]on[- 
 _MOM_RE = re.compile(r"\b(?:month[- ]over[- ]month|mom|month[- ]on[- ]month|last month|"
                      r"(?:previous|prior|preceding) month|(?:latest|most recent|recent) month|"
                      r"monthly change|a month earlier)\b", re.I)
-_CAUSAL_RE = re.compile(r"\b(?:drives?|driving|driven by|causes?|caused|causing|leads? to|led to|"
-                        r"results? in|resulting in|because of|thanks to|boosts?|boosting|"
-                        r"lifts?|lifting|pays? for (?:it|them)sel(?:f|ves)|makes? .{0,20}"
+_CAUSAL_RE = re.compile(r"\b(?:drives?|drove|driving|driven by|causes?|caused|causing|leads? to|"
+                        r"led to|results? in|resulted in|resulting in|because of|thanks to|"
+                        r"boosts?|boosted|boosting|lifts?|lifted|lifting|fuel(?:s|ed|led|ing)|"
+                        r"pays? for (?:it|them)sel(?:f|ves)|makes? .{0,20}"
                         r"(?:rise|grow|increase))\b", re.I)
 _NOT_ASSERTED_RE = re.compile(r"\b(?:whether|if|test|experiment|validate|determine|isolate|"
                               r"could|may|might|not|n't|no|rather than|imply|implies|possible|"
-                              r"likely|association|associated|correlat\w*)\b", re.I)
+                              r"likely|association|associated|correlat\w*|unclear|cannot|"
+                              r"uncertain|inconclusive|insufficient|lacks?)\b", re.I)
 _CERTAIN_RE = re.compile(r"\b(?:clearly|reliabl[ey]|proven|proves?|definitive(?:ly)?|"
                          r"conclusive(?:ly)?|confirm(?:s|ed)?|certain(?:ly)?|undeniabl[ey]|"
                          r"without doubt|guarantee[sd]?|real difference|statistically "
@@ -615,10 +619,15 @@ def _label_hits(text: str, labels: set[str]) -> list[tuple[int, int, str]]:
     grouping noun ('segment A'), so the article 'a' is never a group."""
     out = []
     for lab in labels:
-        for m in re.finditer(rf"(?<![\w']){re.escape(lab)}(?!\w|'(?!s\b))", text):
+        # 'partially_refunded' is written 'partially refunded' in prose
+        pat = r"[\s_-]+".join(re.escape(w) for w in re.split(r"[\s_-]+", lab))
+        for m in re.finditer(rf"(?<![\w']){pat}(?!\w|'(?!s\b))", text):
             if len(lab) <= 2 and not _GROUP_NOUN_RE.search(text[:m.start()]):
                 continue
             out.append((m.start(), m.end(), lab))
+    # a label inside a longer one's span ('refunded' in 'partially refunded') is not named
+    out = [h for h in out if not any(o[0] <= h[0] and h[1] <= o[1] and o[1] - o[0] > h[1] - h[0]
+                                     for o in out)]
     # "Segment B" names a group even when B is not in the evidence at all.
     for m in re.finditer(r"\b(?i:segment|group|region|plan|tier|department|cohort|team)\s+"
                          r"([A-Z][\w-]*)(?!\w)", text):
@@ -726,13 +735,91 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
     return None
 
 
-def claim_causal_overreach(text: str, cited_kinds: list[str]) -> str | None:
-    """Cause asserted where every cited item is a correlation."""
-    if not cited_kinds or any(k != "correlation" for k in cited_kinds):
-        return None
+_SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
+# the trigger path only (a domain pack's words): more ways to give a cause than the shared rule
+_TRIGGER_CAUSAL_RE = re.compile(_CAUSAL_RE.pattern[:-3] + r"|due to|owing to|as a result of|"
+                                r"attributable to|"
+                                # a share is no cause: 'responsible for 30% of net sales'
+                                r"(?:responsible for|contribut(?:ed|es|ing) to)(?!\s+(?:about |around "
+                                r"|roughly |nearly |over |under )?\$?\d|\s+(?:a|the)\s+(?:\w+\s+)?share))\b",
+                                re.I)
+_PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|over|across"
+# a verb with an object ('increased units', 'increased 2025 holiday sales'): what ends the verb
+# phrase instead ('Discounts increased 15%', '… markedly', '… as a share', '… while') is the
+# trigger word's own change, a fact
+_SUBJECT_VERB_RE = re.compile(
+    r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b(?=\s+"
+    r"(?!(?:by|in|on|at|from|to|over|across|during|per|each|again|and|but|or|as|while|when|"
+    r"whereas|compared|versus|vs|than|since|after|before|until|through|again|yoy|mom|wow)\b)"
+    r"(?!\w+ly\b)"
+    r"(?!(?:this|last|next|that)\s+(?:week|month|quarter|year|season|period)\b(?!'s))"
+    r"(?!(?:week|month|quarter|year)\s+(?:over|on)\s+(?:week|month|quarter|year)\b)"
+    r"(?![$£€]|\d[\d.,]*\s*(?:%|x\b|pts?\b|points?\b|percent\b|per cent\b|times\b|[.;,!?]|$))"
+    r"[\w'])", re.I)
+
+
+def claim_causal_overreach(text: str, cited_kinds: list[str],
+                           triggers: list[str] | tuple = ()) -> str | None:
+    """Cause asserted where every cited item is a correlation; or (Phase 5.7, a domain pack's
+    `causal_triggers`: discount, promo, campaign …) a cause given to one of those words,
+    whatever is cited, unless an experiment (a test) is cited: without a control group a
+    promotion's effect can't be told from the season or the mix. The trigger may sit anywhere in
+    the asserted span (up to the sentence's end or a contrast: '…, driven by the season and the
+    Black Friday promotions'), or be the subject ('The markdown increased units'); a hedged
+    span ('may', 'without a control group … unclear') is no claim."""
     for m in _CAUSAL_RE.finditer(text):
-        if not _NOT_ASSERTED_RE.search(_clause_at(text, m.start(), m.end())):
+        clause = _clause_at(text, m.start(), m.end())
+        if _NOT_ASSERTED_RE.search(clause):
+            continue
+        if cited_kinds and all(k == "correlation" for k in cited_kinds):
             return f"states a cause ('{m.group(0)}') from a correlation"
+    if not triggers or "test" in cited_kinds:
+        return None
+    for sentence in _SENTENCE_RE.split(text):
+        if _NOT_ASSERTED_RE.search(sentence):
+            continue
+        verbs = [*_TRIGGER_CAUSAL_RE.finditer(sentence), *_SUBJECT_VERB_RE.finditer(sentence)]
+        for v in verbs:
+            end = _SPAN_END_RE.search(sentence, v.end())
+            start = max((x.end() for x in _SPAN_END_RE.finditer(sentence, 0, v.start())), default=0)
+            span = sentence[start:end.start() if end else len(sentence)]
+            # increased …: the trigger must head the subject ('The markdown increased'), not modify
+            # it ('Sales in the promotion weeks grew', 'Units sold at a discount increased')
+            subject = _TRIGGER_CAUSAL_RE.fullmatch(v.group(0)) is None
+            if subject:
+                span = sentence[start:v.start()]
+            word = next((t for t in triggers if re.search(
+                rf"^(?:(?!\b(?:{_PREPOSITIONS})\b).)*(?<![-\w]){re.escape(t)}(?:s|es|ing|ed)?\s*$"
+                if subject else rf"(?<![-\w]){re.escape(t)}(?:ing|ed)?\b",   # never 'non-discounted'
+                span.strip() if subject else span, re.I)), None)
+            if word:
+                return (f"says the {word} caused a change ('{v.group(0)}'); without a control group "
+                        "that can't be told from the season or the mix")
+    return None
+
+
+# asking for the missing data ('Add cost data to measure margin'), not any sentence naming a cost
+_COST_ASK_RE = re.compile(r"\b(?:add|adding|upload|provide|include|collect|track|capture|need(?:s|ed)?|"
+                          r"without|missing|requires?|no)\b[^.]*\b(?:costs?|cogs)\b|"
+                          r"\b(?:margin|profit|markup)s?\b[^.;]{0,30}\b(?:unknown|unavailable|not "
+                          r"available|not known)\b", re.I)
+_PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
+
+
+def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
+    """Profit or margin stated about data with no cost and no profit column (Phase 5.7): sales
+    alone say nothing about profit. Flagged, never removed (the user may have asked). A hedged
+    or negated sentence ('whether … a margin leak') states nothing, so it passes."""
+    if has_cost:
+        return None
+    for sentence in _SENTENCE_RE.split(text):
+        if _NOT_ASSERTED_RE.search(sentence) or _COST_ASK_RE.search(sentence):
+            continue   # hedged, or about the missing cost data ('Add cost data to measure margin')
+        # a name, not a claim: 'the Profit Center store', 'Margin Street store'
+        if m := next((m for m in _PROFIT_RE.finditer(sentence)
+                      if not m.group(0)[0].isupper()
+                      or (m.start() == 0 and not re.match(r"\s+[A-Z]", sentence[m.end():]))), None):
+            return f"speaks of {m.group(0)} but the data has no cost or profit column"
     return None
 
 
@@ -778,8 +865,8 @@ _PII_COL_RE = re.compile(
 _THING_NAME_RE = re.compile(
     r"(?:^|_)(?:product|company|file|brand|category|item|sku|host|table|column|field|sheet|"
     r"store|shop|city|country|state|region|department|dept|team|project|campaign|vendor|"
-    r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment)"
-    r"_names?$", re.I)
+    r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment|"
+    r"lineitem|line_item)_names?$", re.I)
 # A column named for a person's role (`sales_rep`, `contact_owner`, `assigned_to`): PII only when
 # its values read as people (pii_kind checks), so `new_customer` (Yes/No) keeps its breakdowns.
 _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "agent", "salesperson",
@@ -874,6 +961,17 @@ def mask_emails(value: Any) -> Any:
     return _EMAIL_RE.sub(MASK, value) if isinstance(value, str) else value
 
 
+_ORDER_NO_RE = re.compile(r"#?[A-Za-z]{0,4}-?\d{2,}(?:-\d{2,}){0,2}")
+
+
+def _numbered(values: Iterable[Any]) -> bool:
+    """≥ 90% of the values are wholly order numbers ("#1001", "INV-0042"), not people's names: a
+    name with a number beside it ("John Smith 2", "E1001 - Jane Doe") stays a name."""
+    vals = [str(v).strip() for v in values
+            if v is not None and not (isinstance(v, float) and math.isnan(v))]
+    return bool(vals) and sum(bool(_ORDER_NO_RE.fullmatch(v)) for v in vals) >= 0.9 * len(vals)
+
+
 def _is_measure(values: Iterable[Any]) -> bool:
     """Numbers that aren't dates or years (a count of births, a weight at birth): a birth- or
     death-named column holding them is a measure, not a person's date."""
@@ -948,6 +1046,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 _DATE_NAME_RE.search(norm) or _serial_dates(values))):
             return None   # births = 120, birth_order = 2, birth_length_cm = 50.5; a `dob` of
             # 25204 (a spreadsheet date) stays a date
+        if kind == "name" and norm.lower() == "name" and _numbered(values):
+            return None   # Shopify's `Name` is the order number (#1001), not a person
         return kind, f"the column name '{name}' marks personal data"
     vals = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
     if not vals:

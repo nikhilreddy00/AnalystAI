@@ -258,7 +258,9 @@ async def ingestion_node(state: AgentState) -> dict:
 
                 # FEAT-01: Auto-suggest questions after data connect
                 try:
-                    questions = await generate_proactive_questions(contract, get_client())
+                    raw = session.__dict__.get("_df_parquet")   # 5.7: questions this data answers
+                    frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(raw)) if raw else None
+                    questions = await generate_proactive_questions(contract, get_client(), frame)
                     if questions:
                         _emit(state, {
                             "type": "suggested_questions",
@@ -406,7 +408,8 @@ async def analysis_node(state: AgentState) -> dict:
                     df, roles, query, narrative=session.narrative, contract=session.data_contract
                 )
                 # Phase 5: a tile whose number doesn't match the data or the report is dropped.
-                wrong = set(kpi_mismatches(findings.kpis, df, findings.eda_summary))
+                wrong = set(kpi_mismatches(findings.kpis, df, findings.eda_summary,
+                                           session.data_contract))
                 for _ in wrong:
                     trace_verdict("visualization", VIZ_CARD.version, "kpi_mismatch")
                 findings.kpis = [k for k in findings.kpis if k.label not in wrong]

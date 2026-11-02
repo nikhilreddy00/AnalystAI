@@ -1,0 +1,30 @@
+id: intake-retail-08
+category: followup
+pipeline: production
+source:
+  dataset: retail_lines
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: What's the basket size by country?
+- role: assistant
+  content: Germany has the largest average order, then the United Kingdom.
+prior_task:
+  question_intent: segment_compare
+  targeted_params:
+    kpi: aov
+    segment_column: Shipping Country
+question: and for Q1 2025 only?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: aov
+  period:
+  - '2025-01-01'
+  - '2025-03-31'
+rationale: A follow-up keeps the KPI (AOV) and adds the period.

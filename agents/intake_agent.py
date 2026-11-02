@@ -10,12 +10,25 @@ from __future__ import annotations
 import difflib
 import json
 import logging
+import re
+from datetime import date
 from pathlib import Path
 
+import pandas as pd
 from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
+from domain_pack import (
+    computable,
+    defaults_pack,
+    describe_kpi,
+    first_questions,
+    glossary_hits,
+    kpi_roles,
+    normalize_header,
+    pack_for,
+)
 from guardrails import (
     PLAN_LIST_FIELDS,
     PLAN_SCALAR_FIELDS,
@@ -80,6 +93,10 @@ class IntakeContext(BaseModel):
     schema_text: str     # columns and roles from the user's data: rendered delimited
     history: str         # conversation_context(): already delimited, "" on a first turn
     existing_task: str   # the previous plan's JSON (column names, past question): delimited
+    # Phase 5.7: what the data's domain pack says about this question's terms and periods. The
+    # product's own configuration (never user data): rendered outside the delimiter, and only
+    # when the question uses a pack term or a calendar period.
+    domain: str = ""
 
     def render(self) -> str:
         return "\n\n".join(filter(bool, [
@@ -88,6 +105,7 @@ class IntakeContext(BaseModel):
             f"Dataset schema:\n{delimit_untrusted(self.schema_text)}" if self.schema_text else "",
             "Existing analysis task (amend if this is a follow-up):\n"
             + delimit_untrusted(self.existing_task) if self.existing_task else "",
+            self.domain,
         ]))
 
 
@@ -108,7 +126,102 @@ def build_context(session: AnalysisSession, message: str) -> IntakeContext:
         )
     return IntakeContext(
         message=message, schema_text=schema_text, history=conversation_context(session),
-        existing_task=session.task_plan.model_dump_json() if session.task_plan else "")
+        existing_task=_plan_json(session.task_plan) if session.task_plan else "",
+        domain=domain_notes(session.data_contract, message))
+
+
+# A calendar period the targeted path can filter to (not "last month": the built-in MoM has it).
+_PERIOD_RE = re.compile(r"\b(?:q[1-4]|quarter|ytd|year[- ]to[- ]date|year[- ]over[- ]year|yoy|"
+                        r"(?:last|this|previous|prior|same \w+ last) year|vs\.? last year|"
+                        r"(?:the )?year before|(?:19|20)\d{2}|"
+                        r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{4}|"
+                        r"\d{4}-\d{2}(?:-\d{2})?|week \d{1,2})\b", re.I)
+
+
+def domain_notes(contract: DataContract | None, message: str) -> str:
+    """The domain pack's words for this question: each KPI or concept it names (with its exact
+    definition, mapped to this data's columns), and how to express a calendar period. Empty when
+    the data has no pack or the question uses none of its terms: the prompt is then as before."""
+    pack = pack_for(contract.domain) if contract else None
+    if pack is None:
+        return ""
+    hits = glossary_hits(pack, message, [c.name for c in contract.columns])
+    period = _PERIOD_RE.search(message)
+    if not hits and not period:
+        return ""
+    roles = dict(contract.roles)
+    named = {r: r for r in roles}   # the notes name roles; the columns are data, delimited below
+    lines = [f"Domain notes (from the product's {pack.domain} pack, not from the user). Each role "
+             "below is a column of this data:\n"
+             + delimit_untrusted("\n".join(f"{r} = {c}" for r, c in roles.items()))]
+    for concept, words in hits:
+        if kpi := pack.kpi(concept):
+            if computable(pack, concept, roles):
+                lines.append(f'- "{words}" is the KPI {concept} ({kpi.label}): '
+                             f"{describe_kpi(pack, concept, named)} To answer it set "
+                             f'targeted_params.kpi = "{concept}" (with top_n, segment_compare or '
+                             "time_series; group_by / segment_column for a breakdown, none for the "
+                             "overall value). Never put a column in place of the KPI.")
+            else:
+                lines.append(f'- "{words}" is the KPI {concept} ({kpi.label}), but this data lacks '
+                             "the columns it needs: set clarification_needed and say which are missing.")
+        elif concept in pack.unsupported:
+            lines.append(f'- "{words}" needs {pack.unsupported[concept]}: set clarification_needed '
+                         "and say so.")
+        elif concept in pack.definitions:
+            lines.append(f'- "{words}": {pack.definitions[concept]}')
+    if period:
+        lines.append("- A calendar period: set targeted_params.period_start and period_end (ISO "
+                     "dates, inclusive). Anchor 'last quarter', 'this year' on the data's last date "
+                     "in the schema (a period after it is incomplete). For 'vs last year' / "
+                     'year over year set targeted_params.compare = "yoy" and the period to the '
+                     "current one only (Q3 2025 vs a year earlier: 2025-07-01 to 2025-09-30); "
+                     "the year-earlier window follows from compare.")
+    return "\n".join(lines)
+
+
+def _pack_params(params: dict, contract: DataContract | None, message: str) -> dict:
+    """Decided here, not by the model (class 15): an unknown KPI or an unreadable date is dropped;
+    a question naming exactly one computable KPI gets it even if the model put a column there."""
+    pack = pack_for(contract.domain) if contract else None
+    if pack is None:
+        return {k: v for k, v in params.items() if k not in _NEW_PARAMS}
+    if params.get("kpi") and not pack.kpi(params["kpi"]):
+        params["kpi"] = None
+    # words that are a column's own name are the column ("average revenue" in a file with a
+    # revenue column is that column's mean), unless they are the KPI's own name and the column one
+    # of its roles ("net sales" with a Net Sales revenue column: the KPI, periods and yoy included)
+    by_name = {normalize_header(c): r for r, c in contract.roles.items()}
+    own = {normalize_header(x.name) for x in contract.columns}
+    kpis = [c for c, w in glossary_hits(pack, message, []) if pack.kpi(c)
+            and (normalize_header(w) not in own
+                 or (normalize_header(w) in {c, normalize_header(pack.kpi(c).label)}
+                     and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
+    # a phrase that isn't the KPI ("sales tax") is the pack's `consumed`, never a KPI hit
+    if not params.get("kpi") and len(kpis) == 1:
+        params["kpi"] = kpis[0]
+    for f in ("period_start", "period_end"):   # 2025-03-31, or a whole month / year: 2025-03, 2025
+        if params.get(f):
+            text = str(params[f]).strip()[:10]
+            ok = re.fullmatch(r"\d{4}(?:-\d{2})?", text)
+            try:
+                params[f] = text if ok else str(date.fromisoformat(text))
+            except ValueError:
+                params[f] = None
+    if params.get("compare") not in (None, "yoy"):
+        params["compare"] = None
+    return params
+
+
+_NEW_PARAMS = ("kpi", "period_start", "period_end", "compare")   # Phase 5.7
+
+
+def _plan_json(task: AnalysisTask) -> str:
+    """The previous plan as the model reads it. The 5.7 parameters appear only when set (a KPI or a
+    period to carry into a follow-up), so a plan without them reads as it did before."""
+    p = task.targeted_params
+    unset = {f for f in _NEW_PARAMS if p is not None and getattr(p, f) is None}
+    return task.model_dump_json(exclude={"targeted_params": unset} if unset else None)
 
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
@@ -243,7 +356,16 @@ async def run_intake_agent(
         data["analysis_types"] = [AnalysisType.EDA.value]
     data.setdefault("raw_query", user_message)
     data.setdefault("target_metrics", [])
-    data["targeted_params"] = _targeted_params(data.get("targeted_params") or {})
+    data["targeted_params"] = _targeted_params(_pack_params(
+        data.get("targeted_params") or {}, session.data_contract, user_message))
+    pack = pack_for(session.data_contract.domain) if session.data_contract else None
+    unsupported = [c for c, _ in glossary_hits(pack, user_message, list(known or []))
+                   if c in pack.unsupported] if pack else []
+    if unsupported and not is_overview_request:   # sell-through: never computed from sales alone
+        data["clarification_needed"] = True
+        data["clarification_question"] = (
+            f"{unsupported[0].replace('_', '-').capitalize()} needs "
+            f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives')}")
 
     if is_overview_request:   # the first run is always a full overview, never a question
         data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
@@ -332,7 +454,8 @@ Rules:
     )
 
 
-async def generate_proactive_questions(contract: DataContract, llm: LLMClient) -> list[str]:
+async def generate_proactive_questions(contract: DataContract, llm: LLMClient,
+                                       df: pd.DataFrame | None = None) -> list[str]:
     """
     FEAT-01: Generate contextual suggested questions based on the dataset schema.
     Called after data ingestion so the user sees relevant starting prompts.
@@ -364,6 +487,12 @@ Rules:
 - Mix question types: overview, trend, comparison, anomaly, correlation
 - Questions should be immediately actionable (no setup needed)
 - Return a JSON array of 5 strings — no explanation, no markdown fences."""
+    pack = defaults_pack(contract)   # a weak match is not told "this is retail data"
+    firsts = first_questions(pack, contract.roles, df) if pack else []
+    if firsts:   # 5.7: what a senior analyst of this domain asks first, that this data supports
+        prompt += ("\n\nThis is " + pack.domain + " data. Questions a senior " + pack.domain +
+                   " analyst asks first (adapt them to these columns):\n"
+                   + "\n".join(f"- {q}" for q in firsts))
 
     try:
         response = await llm.complete(
@@ -378,6 +507,8 @@ Rules:
     except Exception as exc:
         logger.warning("intake: suggested questions fell back to defaults: %s", exc)
 
+    if firsts:   # the domain's own first questions this data supports
+        return firsts[:5]
     # Fallback: generate generic but dataset-aware questions
     fallback = []
     if metric_cols:

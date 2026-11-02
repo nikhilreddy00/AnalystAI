@@ -1,0 +1,16 @@
+id: clean-retail-04-old-sales
+dataset:
+  name: sales
+  seed: 1
+category: retail
+expect_decisions:
+- column: '*'
+  operation: drop_duplicates
+  rows: 25
+forbid:
+- operation: flag
+  strategy: test
+- operation: fill_within_order
+expect_grain: order
+label_note: "The original sales table: every customer is user\u2026@example.com, real customers, not test orders\
+  \ (red-team B1)."

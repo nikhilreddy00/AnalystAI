@@ -1,0 +1,21 @@
+id: intake-retail-04
+category: clear
+pipeline: production
+source:
+  dataset: store_weeks
+  seed: 1
+overview_done: true
+question: What were net sales in Q1 2026 compared with the same quarter the year before?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: net_sales
+    compare: yoy
+  period:
+  - '2026-01-01'
+  - '2026-03-31'
+rationale: 'A quarter compared with the same quarter a year earlier: period + yoy, net sales.'

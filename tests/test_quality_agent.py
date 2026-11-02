@@ -276,3 +276,37 @@ def test_checks_raise_nothing_on_the_stored_real_overviews():
             assert check_claims(s, s.insight_report) == [], (path, [f.reason for f in check_claims(s, s.insight_report)])
             seen += 1
     assert seen >= 15
+
+
+def test_pack_claim_rules_need_a_strong_match():
+    """Diff review (5.7): a weak domain match only hedges; the pack's claim rules (promotion
+    cause, profit without cost) apply on a strong match."""
+    claim = ("Segment B margin fell in Oct 2026 versus Sep 2026.", ["trend:revenue (B):MoM"])
+    s = _session([claim])   # the sales data: a weak retail match
+    assert (s.data_contract.domain, s.data_contract.domain_confidence) == ("retail", "weak")
+    assert check_claims(s, s.insight_report) == []
+    s.data_contract = s.data_contract.model_copy(update={"domain_confidence": "strong"})
+    assert [f.kind for f in check_claims(s, s.insight_report)] == ["basis"]
+
+
+def test_an_underscored_group_named_in_words_is_not_a_shorter_group():
+    """Live run: 'partially refunded ... $114.37' was flagged as naming 'refunded'."""
+    from guardrails import claim_group_conflict
+    groups = [{"id": "seg:1", "claim": "mean Total by Financial Status",
+               "values": [("paid", 137.03), ("partially_refunded", 114.37), ("refunded", 120.5)]}]
+    text = "Paid orders average $137.03 versus $114.37 for partially refunded."
+    assert claim_group_conflict(text, [], groups) is None
+    assert claim_group_conflict("Paid orders average $137.03 versus $114.37 for refunded.",
+                                [], groups)
+
+
+def test_one_sentence_rule_and_one_not_asserted_set_for_every_claim_check():
+    """Audit: 'vs.' split a sentence in quality and drill-down but not in insight; the profit
+    rule skipped any sentence with 'before' (a certainty hedge, not a negation)."""
+    import guardrails
+    from agents import insight_agent
+    assert insight_agent._SENTENCE_RE is guardrails._SENTENCE_RE
+    s = "Sales may have dipped vs. last year driven by the promo."
+    assert guardrails.claim_causal_overreach(s, [], ["promo"]) is None
+    assert guardrails.claim_profit_without_cost("Margins fell before the holiday.", False)
+    assert guardrails.claim_profit_without_cost("Margin cannot be computed: there is no cost.", False) is None

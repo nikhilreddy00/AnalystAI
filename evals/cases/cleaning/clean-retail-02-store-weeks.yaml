@@ -1,0 +1,17 @@
+id: clean-retail-02-store-weeks
+dataset:
+  name: store_weeks
+  seed: 1
+category: retail
+expect_decisions:
+- column: Units
+  strategy: numeric_sentinel
+  truth_key: sentinel_rows
+forbid:
+- operation: drop_duplicates
+- operation: fill_within_order
+- operation: flag
+  strategy: test
+expect_grain: aggregate
+label_note: 'POS store-weeks: Units = 9999 is the POS''s ''unknown'', not 9,999 units; no order id, so the grain
+  is aggregate.'

@@ -34,6 +34,7 @@ from api.config import settings
 from evals import cleangen, datagen
 from evals.datagen import INJECTION
 from evals.scoring import (
+    any_dates,
     ANALYSIS_CHECKS,
     E2E_CHECKS,
     NUMERIC_CHECKS,
@@ -46,6 +47,7 @@ from evals.scoring import (
     hard_rule,
     result_matches,
     score_cleaning,
+    score_cleaning_decisions,
     score_ingestion,
     leaked,
     loaded_cell,
@@ -93,7 +95,7 @@ def working_frame(case: dict, guard: bool = False):
     from agents.ingestion_agent import prepare_frame, remember_pii
     from connectors.csv_connector import CSVConnector, _read_bytes
     df, _, csv = dataset(case)
-    if case.get("domain", "retail") != "retail":
+    if case.get("domain", "retail") != "retail" or case.get("pipeline") == "production":
         # Production's reader (dates parsed, leading zeros kept), so E2B gets the frame it would
         # in the product. ponytail: the 46 retail cases keep read_csv: their inputs are pinned
         # (evals/snapshots/pre_5_5.json) and changing them buys a paid re-run.
@@ -103,6 +105,22 @@ def working_frame(case: dict, guard: bool = False):
         remember_pii(df, contract)
     # The scope production uses: the session's user (an eval session's user is "default").
     return prepare_frame(df, contract, ConnectorType.CSV, {}, AnalysisSession(session_id="x").user_id)
+
+
+def cleaned_for_analysis(case: dict, df: pd.DataFrame, contract) -> tuple[pd.DataFrame, object]:
+    """`pipeline: production` cases (Phase 5.7): the frame after the real Cleaning agent, as
+    analysis_node gets it in the product, and its audit (the domain rules read it). The older
+    cases are pinned to the uncleaned frame (evals/snapshots) and keep it."""
+    if case.get("pipeline") != "production":
+        return df, None
+    from agents.cleaning_agent import clean
+    from agents.cleaning_agent import build_context as cleaning_context
+    s = AnalysisSession(session_id="clean", data_contract=contract,
+                        task_plan=AnalysisTask(raw_query=case["question"], **case["task"]))
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    return clean(cleaning_context(s))
 
 
 async def run_analysis_case(case: dict) -> dict:
@@ -115,7 +133,8 @@ async def run_analysis_case(case: dict) -> dict:
     E2B_UPLOADS.set(uploads)
     pii_values.set(set())    # this case's guard, as the runner sets one per run
     df, contract = working_frame(case, guard=True)
-    session = AnalysisSession(session_id=str(uuid.uuid4()))
+    df, audit = cleaned_for_analysis(case, df, contract)
+    session = AnalysisSession(session_id=str(uuid.uuid4()), cleaning_audit=audit)
     session.data_contract = contract
     session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
     buf = io.BytesIO()
@@ -151,6 +170,7 @@ def builtin_only(case: dict) -> bool:
                                        _build_standard_code, _parse_findings, e2b_frame)
     from agents.utils import pii_columns
     df, contract = working_frame(case)
+    df = cleaned_for_analysis(case, df, contract)[0]
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
     upload, _ = e2b_frame(buf.getvalue(), pii_columns(contract))
@@ -218,39 +238,80 @@ async def run_e2e_case(case: dict) -> dict:
     LLM_SENT.set([])         # …and what the client's guard let through…
     uploads: list[str] = []
     E2B_UPLOADS.set(uploads)  # …and every frame sent to E2B
-    error, approvals, seen = None, [], 0
-    run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
-                                         input={"message": case["question"]})
-    # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
-    # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
-    for _ in range(2):
-        status = await execute(await deps.run_store.claim(), deps)
-        events = [e for _, e in await deps.run_store.events_after(run.id, seen)]
-        seen += len(events)
-        gates = [e.get("context") for e in events if e.get("type") == "approval_required"]
-        approvals += gates
-        if status != "waiting_approval" or gates != ["high_null"]:
+    async def ask(question: str, session: AnalysisSession):
+        """One question as POST /chat stores it for this thread (a follow-up: the stored session,
+        the question noted, a new run on the same session id), executed as the worker does."""
+        if session.overview_done or session.task_plan:   # a follow-up turn
+            await deps.session_store.note_question(session.session_id, question)
+        run, _ = await deps.run_store.create(session_id=session.session_id, user_id=session.user_id,
+                                             input={"message": question})
+        approvals, seen = [], 0
+        # The eval plays the user: it accepts the high-null gate with the UI's recommended answer
+        # (ApprovalModal "Continue with imputation"). A clarification question stays unanswered.
+        for _ in range(2):
+            status = await execute(await deps.run_store.claim(), deps)
+            events = [e for _, e in await deps.run_store.events_after(run.id, seen)]
+            seen += len(events)
+            gates = [e.get("context") for e in events if e.get("type") == "approval_required"]
+            approvals += gates
+            if status != "waiting_approval" or gates != ["high_null"]:
+                break
+            await deps.run_store.resume(run.id, {"answer": "Continue with imputation"})
+        state = await deps.graph.aget_state({"configurable": {"thread_id": run.id}})
+        session = state.values.get("session", session)
+        error = session.error_message or (await deps.run_store.get(run.id)).error
+        if approvals and approvals[-1] != "high_null" and not error:
+            error = f"stopped at approval_required ({approvals[-1]})"
+        runs.append(run)
+        return session, error, approvals, run
+
+    runs: list = []
+    session, error, approvals, run = await ask(case["question"], session)
+    first = score_e2e(case, session, error)   # the first question's own checks and hard rules
+    first_checks, turn_hard = first["checks"], []
+    # Phase 5.7: a conversation. Each later turn is a follow-up on the same thread; its checks
+    # are scored on its own answer, and every turn must end without an error.
+    turn_checks = []
+    for n, turn in enumerate(case.get("turns", []), start=2):
+        if error:
+            turn_checks.append({"kind": "turn", "ok": False, "detail": f"turn {n} not asked: {error}"})
             break
-        await deps.run_store.resume(run.id, {"answer": "Continue with imputation"})
-    state = await deps.graph.aget_state({"configurable": {"thread_id": run.id}})
-    session = state.values.get("session", session)
-    error = session.error_message or (await deps.run_store.get(run.id)).error
-    if approvals and approvals[-1] != "high_null" and not error:
-        error = f"stopped at approval_required ({approvals[-1]})"
+        session, error, more, run = await ask(turn["question"], session)
+        approvals += more
+        scored_turn = score_e2e({**case, "checks": turn["checks"], "hard_rules": TURN_HARD_RULES},
+                                turn_view(session), error)
+        turn_checks += [{**c, "detail": f"turn {n}: {c['detail']}"} for c in scored_turn["checks"]]
+        turn_hard += [{**h, "detail": f"turn {n}: {h['detail']}"} for h in scored_turn["hard"]]
+        turn_checks.append({"kind": "turn", "ok": not error, "detail": f"turn {n}: {error or 'answered'}"})
 
     literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
     hits = len(leaked("\n".join(sent), literals))
     model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
     shown = None
     if session.data_contract and session.data_contract.phi:
-        every = [e for _, e in await deps.run_store.events_after(run.id, 0)]
+        every = [e for r in runs for _, e in await deps.run_store.events_after(r.id, 0)]
         shown = json.dumps(every, default=str) + session.model_dump_json(exclude={"prior_pii"})
-    exits = exits_rule(literals, uploads, shown, case["question"])
-    scored = score_e2e(case, session, error)
+    exits = exits_rule(literals, uploads, shown,
+                       " ".join([case["question"], *(t["question"] for t in case.get("turns", []))]))
+    scored = first if not case.get("turns") else {**score_e2e({**case, "checks": []}, session, error),
+                                                  "checks": first_checks + turn_checks}
+    if case.get("turns"):   # turn 1's hard rules on turn 1, each later turn's on its own
+        scored["hard"] = first["hard"] + turn_hard
     return {**scored, "hard": scored["hard"] + [_canary_rule(hits, model_hits, len(literals)), exits],
             "pii_exits": exits,
             "pii_canary_hits": hits, "pii_model_hits": model_hits, "pii_planted": len(literals),
             "approvals": approvals, "output": session.model_dump(mode="json")}
+
+
+def turn_view(session: AnalysisSession) -> AnalysisSession:
+    """A follow-up turn as its own answer: the thread keeps the earlier report, whose numbers
+    must not answer (or pass) a later question. A turn that ran a new overview keeps its own."""
+    return session.model_copy(update={"insight_report": None}) if session.targeted_response \
+        else session
+
+
+# What every follow-up turn's answer must hold to (its charts; an answer, or an explicit error).
+TURN_HARD_RULES = ["charts_lint_clean", "charts_have_rationale", "non_empty_or_error"]
 
 
 def e2e_pii_literals(df: pd.DataFrame, truth: dict | None = None) -> list[str]:
@@ -296,7 +357,10 @@ def intake_contract(case: dict):
     from connectors.csv_connector import CSVConnector
     src = case["source"]
     if "dataset" in src:
-        df = dataset({"dataset": {"name": src["dataset"], "seed": src["seed"]}})[0]
+        df, _, csv = dataset({"dataset": {"name": src["dataset"], "seed": src["seed"]}})
+        if case.get("pipeline") == "production":   # 5.7: as the product reads it (dates, £)
+            from connectors.csv_connector import _read_bytes
+            df = _read_bytes(csv.encode(), ".csv")[0]
     else:
         df = pd.DataFrame(src["frame"]["rows"], columns=src["frame"]["columns"])
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
@@ -355,7 +419,7 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = ()
 
     plan = case["plan"]
     date = _viz_date(df)
-    month = pd.to_datetime(df[date], format="mixed", errors="coerce").dt.to_period("M") if date else None
+    month = any_dates(df[date]).dt.to_period("M") if date else None
     corr, trends, raw_trends, segs, anoms, tests, ids = {}, [], [], [], [], [], []
     for f in case.get("findings") or []:
         if f["kind"] == "trend":
@@ -530,6 +594,12 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     findings.missing_pct = {str(c): round(float(clean_df[c].isna().mean() * 100), 2)
                             for c in clean_df.columns}
     findings.evidence.insert(0, cleaning_evidence(audit))
+    # the tiles analysis_node computes (and keeps only when they recheck), as production does
+    from agents.visualization_agent import classify_columns, generate_smart_kpis, kpi_mismatches
+    findings.kpis = generate_smart_kpis(clean_df, classify_columns(clean_df), case["question"],
+                                        narrative=session.narrative, contract=session.data_contract)
+    wrong = set(kpi_mismatches(findings.kpis, clean_df, findings.eda_summary, session.data_contract))
+    findings.kpis = [k for k in findings.kpis if k.label not in wrong]
     session.analysis_findings = findings
     session.chart_configs = await run_visualization_agent(session)
     session.__dict__.pop("_df_parquet", None)
@@ -653,15 +723,24 @@ def cleaning_dataset(case: dict) -> tuple[pd.DataFrame, pd.DataFrame, list[dict]
     return received, expected, manifest, [roles["id"], roles["date"], roles["target"]]
 
 
+def cleaning_pack_frame(case: dict) -> tuple[pd.DataFrame, dict]:
+    """5.7: a realistic dataset as the product loads it (production reader), and its truth."""
+    from connectors.csv_connector import _read_bytes
+    raw, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
+    return _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0], truth
+
+
 async def run_cleaning_case(case: dict) -> dict:
     from agents.cleaning_agent import run_cleaning_agent
     from connectors.csv_connector import CSVConnector
 
-    received = cleaning_dataset(case)[0]
+    received = cleaning_pack_frame(case)[0] if "dataset" in case else cleaning_dataset(case)[0]
     session = AnalysisSession(session_id=str(uuid.uuid4()))
     session.data_contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(received)
-    session.task_plan = AnalysisTask(raw_query="Give me an overview", analysis_types=["eda"],
-                                     target_metrics=[cleangen.SCHEMAS[case["schema"]]["target"]])
+    session.task_plan = AnalysisTask(
+        raw_query="Give me an overview", analysis_types=["eda"],
+        target_metrics=(session.data_contract.metric_columns if "dataset" in case
+                        else [cleangen.SCHEMAS[case["schema"]]["target"]]))
     buf = io.BytesIO()
     received.to_parquet(buf, index=False)
     session.__dict__["_df_parquet"] = buf.getvalue()
@@ -677,6 +756,10 @@ async def run_cleaning_case(case: dict) -> dict:
 
 
 def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> dict:
+    if "dataset" in case:
+        checks, hard = score_cleaning_decisions(case, output, error, cleaning_pack_frame(case)[1])
+        return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
+                "holdout": case["id"].endswith("holdout")}
     received, expected, manifest, protected = cleaning_dataset(case)
     checks, hard = score_cleaning(output, received, expected, manifest, protected, error)
     return {"checks": checks, "hard": hard, "error": error, "category": case["category"],
@@ -688,6 +771,9 @@ def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> di
 # The text of every LLM request a run makes (system + messages), for the PII canary scan.
 LLM_REQUESTS: ContextVar[list | None] = ContextVar("llm_requests", default=None)
 LLM_SENT: ContextVar[list | None] = ContextVar("llm_sent", default=None)
+# Each reply as the model sent it (PII still tokenized): stored in the report, so tests/test_replay.py
+# can run every deterministic step after the model again at $0.
+LLM_REPLIES: ContextVar[list | None] = ContextVar("llm_replies", default=None)
 E2B_UPLOADS: ContextVar[list | None] = ContextVar("e2b_uploads", default=None)
 
 
@@ -738,7 +824,11 @@ class RecordingClient:
             sent.append(json.dumps({"system": kw.get("system"),
                                     "messages": pseudonymize(kw.get("messages"))[0]},
                                    ensure_ascii=False, default=str))
-        return await self.inner.complete(**kw)
+        result = await self.inner.complete(**kw)
+        if (replies := LLM_REPLIES.get()) is not None:
+            replies.append({"text": pseudonymize(result.text)[0], "stop_reason": result.stop_reason,
+                            "tool_calls": pseudonymize(result.tool_calls)[0]})
+        return result
 
 
 def _ingestion_facts(df: pd.DataFrame, roles: dict[str, list[str]]) -> dict:
@@ -766,8 +856,10 @@ def _date_span(df: pd.DataFrame, cols: dict) -> list:
         s = df[name]
         if not pd.api.types.is_datetime64_any_dtype(s):
             s = (pd.to_datetime(s, unit="s", errors="coerce") if pd.api.types.is_numeric_dtype(s)
-                 else pd.to_datetime(s.astype("string"), format="mixed",
-                                     dayfirst=bool(t.get("dayfirst")), errors="coerce"))
+                 # a UTC offset off: each value's local time (a Shopify export's -0500 / -0400)
+                 else pd.to_datetime(s.astype("string").str.replace(
+                     r"(\d:\d\d(?::\d\d(?:\.\d+)?)?) ?[+-]\d{2}:?\d{2}$", r"\1", regex=True),
+                                     format="mixed", dayfirst=bool(t.get("dayfirst")), errors="coerce"))
         stamps += [s.min(), s.max()]
     stamps = [x for x in stamps if not pd.isna(x)]
     if not stamps:
@@ -808,7 +900,8 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
                     "literals": sorted({str(v) for v in df[c].dropna()}
                                        - ingestgen.CALENDAR_WORDS) if case.get("pii", {}).get(c) else [],
                     "trap": c in case.get("traps", []),
-                    "dayfirst": (case.get("truth_read", {}).get("sep") == ";") if "date" in rs[:1] else None}
+                    "dayfirst": case.get("dayfirst", case.get("truth_read", {}).get("sep") == ";")
+                    if "date" in rs[:1] else None}
                 for c, rs in roles.items()}
         cells = case.get("expect", {}).get("cells")
     if cells is None:   # 20 sampled cells of the canonical frame
@@ -821,6 +914,8 @@ def ingestion_truth(case: dict) -> tuple[bytes, str, dict]:
              "rows": expect.get("rows", len(df)), "cells": cells,
              "facts": _ingestion_facts(df, {c: t["roles"] for c, t in cols.items()}),
              "date_span": _date_span(df, cols)}
+    if "expect_domain" in case:   # Phase 5.7: the domain pack it matches (null: none) and its roles
+        truth["pack"] = {"domain": case["expect_domain"], "roles": case.get("expect_roles", {})}
     return data, ext, truth
 
 
@@ -982,6 +1077,9 @@ def lint_case(case: dict) -> list[str]:
     checks = case.get("checks") or []
     if not checks:
         return ["no checks: all([]) would pass"]
+    known = ANALYSIS_CHECKS if "task" in case else E2E_CHECKS
+    problems += [f"unknown check kind {c['kind']!r}" for c in
+                 [*checks, *(x for t in case.get("turns", []) for x in t["checks"])] if c["kind"] not in known]
     df, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
     if all(c["kind"] in _NEGATIVE or c.get("check") in _NEGATIVE for c in checks):
         problems.append("only negative checks: a silent answer would pass")
@@ -1085,19 +1183,23 @@ def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | N
     kinds: dict = {}
     if suite == "e2e":
         cases = {c["id"]: c for c in load_cases("e2e", None)}
-        for r in paid[:1]:
-            for cid, rs in r["runs"].items():
+        # the newest FULL report: a smoke run (--only) has too few kinds (5.7: priced 2x low)
+        for r in [next((r for r in paid if not r["meta"].get("only")), None)] if paid else []:
+            for cid, rs in (r or {"runs": {}})["runs"].items():
                 if cid in cases:
                     kinds.setdefault(cases[cid].get("overview_done", False), []).extend(
                         x["cost_usd"] for x in rs)
     total = 0.0
+    by_id = {c["id"]: c for c in load_cases(suite, None)} if suite == "e2e" else {}
     for cid in case_ids:
         costs = next(([x["cost_usd"] for x in r["runs"][cid]] for r in paid if cid in r["runs"]), None)
+        case = by_id.get(cid, {})
         if not costs and kinds:
-            kind = next((c.get("overview_done", False) for c in load_cases("e2e", None)
-                         if c["id"] == cid), False)
-            costs = kinds.get(kind)
-        total += (statistics.mean(costs) if costs else average) * k
+            costs = kinds.get(case.get("overview_done", False))
+        cost = statistics.mean(costs) if costs else average
+        if case.get("turns") and not any(cid in r["runs"] for r in paid):   # each turn is a question
+            cost += len(case["turns"]) * statistics.mean(kinds.get(True) or [average])
+        total += cost * k
     return round(total, 2)
 
 
@@ -1107,6 +1209,8 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
             return None   # over budget: don't start more runs
         meter: list[dict] = []
         trace_meter.set(meter)   # each asyncio task has its own context copy
+        replies: list[dict] = []
+        LLM_REPLIES.set(replies)
         start = time.perf_counter()
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
                   "intake": run_intake_case, "visualization": run_visualization_case,
@@ -1117,7 +1221,10 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         except Exception as exc:   # a scorer or harness bug fails this run, never the report
             out = {"checks": [{"kind": "harness", "ok": False,
                                "detail": f"{type(exc).__name__}: {exc}"[:300]}],
-                   "hard": [], "error": f"harness: {type(exc).__name__}: {exc}"[:300], "output": None}
+                   "hard": [], "error": f"harness: {type(exc).__name__}: {exc}"[:300], "output": None,
+                   # what every scorer adds, so the summaries count the failure, not crash on it
+                   "category": case.get("category"), "case": case["id"],
+                   "holdout": case["id"].endswith("holdout")}
         if "domain" in case:
             out["domain"] = case["domain"]
         out["latency_s"] = round(time.perf_counter() - start, 2)
@@ -1126,6 +1233,8 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         out["llm_calls"] = len(calls)
         out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
         out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
+        if replies:
+            out["replies"] = replies
         out["passed"] = run_passed(suite, case, out)
         _budget["spent"] += out["cost_usd"]
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
@@ -1438,6 +1547,7 @@ def _ingestion_quality(flat: list[dict]) -> dict:
                                     if c["kind"] == "phi"}),
         "phi_over_masking": round(1 - keep, 4) if keep is not None else None,
         "phi_flag_accuracy": share("phi_flag"),
+        "domain_accuracy": share("domain"),   # Phase 5.7: domain + every pack role exact
     }
 
 
@@ -1680,6 +1790,8 @@ async def main() -> None:
     ap.add_argument("--max-usd", type=float, default=2.0,
                     help="refuse to start if the estimate exceeds this; stop starting runs once "
                          "spend reaches it (default $2 — raise it on purpose for a final k=3 run)")
+    ap.add_argument("--fail-under", type=float,
+                    help="exit 1 if the pass rate is below this or any hard rule broke (CI gate)")
     args = ap.parse_args()
 
     cases = load_cases(args.suite, args.only, args.exclude)
@@ -1695,8 +1807,8 @@ async def main() -> None:
     _budget["max"] = args.max_usd
     if args.suite == "sql":
         _sql_setup()
-    if args.suite in ("ingestion", "e2e", "analysis"):   # the PII canary scans every request
-        set_client(RecordingClient(get_client()))
+    # every suite: replies kept for the $0 replay; ingestion/e2e/analysis: the PII canary too
+    set_client(RecordingClient(get_client()))
     if args.suite in ("e2e", "analysis"):   # …and every frame uploaded to E2B
         record_e2b_uploads()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -1736,6 +1848,11 @@ async def main() -> None:
     if "compare" in report:
         print(json.dumps(report["compare"], indent=1))
     print(f"→ {out / name}.md")
+    summary = report["summary"]
+    if args.fail_under is not None and (summary["pass_rate"] < args.fail_under
+                                        or summary["hard_rule_violations"]):
+        raise SystemExit(f"gate failed: pass rate {summary['pass_rate']} < {args.fail_under} "
+                         f"or {summary['hard_rule_violations']} hard-rule violations")
 
 
 if __name__ == "__main__":

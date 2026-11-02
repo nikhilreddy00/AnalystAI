@@ -22,3 +22,4 @@ columns:
 - - notes
   - notes_pii
 label_note: Invoice register with a title row, payment cards and contact details in notes.
+expect_domain: null

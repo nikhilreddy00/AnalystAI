@@ -1,0 +1,26 @@
+id: clean-retail-03-b2b
+dataset:
+  name: b2b_invoices
+  seed: 1
+category: retail
+expect_decisions:
+- column: UnitPrice
+  strategy: numeric_sentinel
+  truth_key: sentinel_rows
+- column: CustomerID
+  strategy: whole_number_id
+  truth_key: whole_ids
+- operation: flag
+  strategy: return
+  truth_key: credit_lines
+- operation: flag
+  strategy: non_product
+  truth_key: non_product_lines
+forbid:
+- operation: drop_rows
+- operation: drop_duplicates
+- column: CustomerID
+  operation: fill_unknown
+expect_grain: line
+label_note: 'Wholesale invoices: credit notes and postage flagged and kept, 99999 prices read as missing, guest
+  CustomerIDs stay missing.'

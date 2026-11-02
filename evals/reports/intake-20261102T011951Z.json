@@ -1,0 +1,284 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261102T011951Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "81a7d1e",
+  "started_at": "20261102T011951Z",
+  "only": "intake-retail-07",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0069,
+  "latency_p50_s": 6.05,
+  "latency_p95_s": 6.41,
+  "intent_accuracy": 1.0,
+  "column_mapping": null,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 1.0
+  }
+ },
+ "runs": {
+  "intake-retail-07": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got return_rate, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Total",
+       "Lineitem quantity"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "return_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.45,
+    "cost_usd": 0.00691,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got return_rate, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Total",
+       "Lineitem quantity"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "return_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.05,
+    "cost_usd": 0.00691,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got return_rate, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Total",
+       "Lineitem quantity"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "return_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.18,
+    "cost_usd": 0.00691,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

@@ -1,0 +1,20 @@
+id: intake-retail-12-holdout
+category: clear
+pipeline: production
+source:
+  dataset: b2b_invoices
+  seed: 1
+overview_done: true
+question: How much did we sell in January 2026 versus January the year before?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    compare: yoy
+  period:
+  - '2026-01-01'
+  - '2026-01-31'
+rationale: 'A bare year against the year before: the year as the period, yoy.'

@@ -74,11 +74,19 @@ def conversation_context(session, n_turns: int = 6) -> str:
     return delimit_untrusted(pseudonymize("\n".join(lines))[0])
 
 
+# A month is judged partial against months at least weekly-dense (median distinct dates), or when
+# the dates keep a regular cadence (biweekly or semi-monthly pay runs): an 18-row sample's 1–3
+# irregular dates a month are noise, a biweekly payroll cut mid-month is not.
+PARTIAL_MIN_DAYS = 4
+REGULAR_CV = 0.25   # the gaps between distinct dates vary less than this (std / mean): a cadence
+
+
 def partial_last_month(dates) -> bool:
     """True when the data stops before the end of its last calendar month and that month has far
     fewer distinct days than the others (a mid-month export). A month-over-month change must not
-    compare such a month with a full one. Monthly-grain data (one date per month) is never partial.
-    Mirrored inside the analysis agent's sandbox code (`_partial` in _build_standard_code)."""
+    compare such a month with a full one. Monthly grain or sparse data (an 18-row sample: 1–3
+    dates a month) is never partial: there are too few dates to tell.
+    Mirrored inside the analysis agent's sandbox code (`_cut` in _build_standard_code)."""
     import pandas as pd
 
     d = pd.to_datetime(dates, format="mixed", errors="coerce").dropna()
@@ -88,7 +96,21 @@ def partial_last_month(dates) -> bool:
     if len(days) < 3:
         return False
     last = d.max().normalize()
-    return bool(last < last + pd.offsets.MonthEnd(0) and days.iloc[-1] < 0.9 * days.iloc[:-1].median())
+    full = days.iloc[:-1].median()
+    gaps = d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()
+    regular = len(gaps) >= 3 and gaps.std() <= REGULAR_CV * gaps.mean()
+    return bool(last < last + pd.offsets.MonthEnd(0) and (full >= PARTIAL_MIN_DAYS or regular)
+                and days.iloc[-1] < 0.9 * full)
+
+
+def weekly_cadence(dates) -> bool:
+    """One date a week (POS week endings): distinct dates 7 days apart. Weekly flows summed into
+    calendar months show a ~25% sawtooth (4 vs 5 week-endings). Mirrored in the analysis
+    sandbox (`_weekly` in _build_standard_code)."""
+    import pandas as pd
+
+    d = pd.to_datetime(dates, errors="coerce").dropna().drop_duplicates().sort_values()
+    return len(d) >= 4 and d.diff().dt.days.median() == 7
 
 
 def looks_like_sequential_id(s, n: int) -> bool:
@@ -224,3 +246,167 @@ def latest_rows(df, column: str, contract):
             # refresh lag, or weekday-only rows on a Saturday export, is still current)
             last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
     return last.drop(columns="_t")
+
+
+def _local(t):
+    """Datetimes compared as wall-clock time: an aware column (one UTC offset in the file) drops
+    its zone, as the loader's mixed-offset rule does (connectors.base)."""
+    return t.dt.tz_localize(None) if getattr(t.dt, "tz", None) is not None else t
+
+
+def _bound(text: str, end: bool):
+    """'2025', '2025-03' or '2025-03-31' as the first (or, for an end, the last) instant."""
+    import pandas as pd
+
+    text = str(text).strip()
+    ts = pd.Timestamp(text)
+    if end and len(text) == 4:
+        return ts + pd.offsets.YearEnd(0) + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+    if end and len(text) == 7:
+        return ts + pd.offsets.MonthEnd(0) + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+    if end and ts == ts.normalize():
+        return ts + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+    return ts
+
+
+def period_window(df, date: str | None, start: str | None, end: str | None):
+    """(lo, hi, data start, data end, error): the period asked, as bounds, and the data's span."""
+    import pandas as pd
+
+    if not date or date not in df.columns:
+        return None, None, None, None, "the data has no date column to limit to that period"
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    try:
+        if start and end and _bound(start, False) > _bound(end, True):
+            start, end = end, start   # "2025 to 2024": swapped whole, widths kept
+        lo = _bound(start, False) if start else t.min()
+        hi = _bound(end, True) if end else t.max()
+    except (ValueError, TypeError):
+        return None, None, None, None, f"I couldn't read the period ({start} to {end}) as dates"
+    return lo, hi, t.min(), t.max(), None
+
+
+def filter_period(df, date: str | None, start: str | None, end: str | None):
+    """(rows in [start, end], a note, or an error) for a period the user named. Inclusive ISO
+    dates (a year or a month means all of it); reversed bounds are swapped; a period the data
+    doesn't reach, or doesn't fully cover, is said, never an empty or silent answer. No period:
+    the frame unchanged."""
+    import pandas as pd
+
+    if not (start or end):
+        return df, "", None
+    lo, hi, first, last, why = period_window(df, date, start, end)
+    if why:
+        return df.iloc[:0], "", why
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    rows = df[(t >= lo) & (t <= hi)]
+    if rows.empty:
+        return rows, "", (f"the data covers {first:%d %b %Y} to {last:%d %b %Y}, not "
+                          f"{lo:%d %b %Y} to {hi:%d %b %Y}")
+    note = f"{lo:%d %b %Y} to {hi:%d %b %Y}"
+    gaps = ([f"the data starts {first:%d %b %Y}"] if lo < first.normalize() else []) + \
+           ([f"the data ends {last:%d %b %Y}"] if hi > _bound(str(last.date()), True) else [])
+    if gaps:
+        note += f" ({' and '.join(gaps)}, so the period is incomplete)"
+    return rows, note, None
+
+
+def _year_back(weekly: bool):
+    import pandas as pd
+    # weekly data: 52 weeks back, so both windows hold the same number of week-endings
+    return pd.DateOffset(weeks=52) if weekly else pd.DateOffset(years=1)
+
+
+def year_earlier(df, date: str, start: str | None, end: str | None, weekly: bool = False):
+    """(rows, note, error) for the same window one year earlier (YoY). Both windows are first cut
+    to the days the data covers; a year-earlier window the data doesn't fully cover is an error
+    to say (a 15-day March against a 31-day March is no year-over-year change). A data start up
+    to a week inside the earlier window (2 Jan, the first trading day) still counts."""
+    import pandas as pd
+
+    lo, hi, first, last, why = period_window(df, date, start, end)
+    if why:
+        return df.iloc[:0], "", why
+    lo, hi = max(lo, first.normalize()), min(hi, last)
+    p_lo, p_hi = lo - _year_back(weekly), hi - _year_back(weekly)
+    if not weekly and lo.day == 1 and hi.normalize() == (hi + pd.offsets.MonthEnd(0)).normalize():
+        # whole months: the same months a year earlier (Feb 2025 against all of Feb 2024, the 29th too)
+        p_lo = (lo.to_period("M") - 12).start_time
+        p_hi = (hi.to_period("M") - 12).end_time
+    calendar = (p_hi.normalize() - p_lo).days != (hi.normalize() - lo).days   # a leap February
+    if first.normalize() - pd.Timedelta(days=7) <= p_lo < first.normalize():
+        p_lo = first.normalize()   # (the current window is cut to match in current_window)
+    if p_lo < first.normalize():
+        return df.iloc[:0], "", (f"the data starts {first:%d %b %Y}, so it has no full "
+                                 f"{p_lo:%d %b %Y} to {p_hi:%d %b %Y}")
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    days = (f", {(p_hi.normalize() - p_lo).days + 1} days against {(hi.normalize() - lo).days + 1}"
+            if calendar else "")   # callers then say "same months", not "same days"
+    return df[(t >= p_lo) & (t <= p_hi)], f"{p_lo:%d %b %Y} to {p_hi:%d %b %Y}{days}", None
+
+
+def current_window(df, date: str, start: str | None, end: str | None, weekly: bool = False):
+    """(rows, label, cut): the asked window cut to the data's days, and to the year-earlier
+    twin's (YoY compares the same days); `cut` when the twin's start made it shorter than the
+    period shown, so the answer states the same-days value it compared."""
+    import pandas as pd
+
+    lo, hi, first, last, why = period_window(df, date, start, end)
+    if why:
+        return df.iloc[:0], "", False
+    lo, hi = max(lo, first.normalize()), min(hi, last)
+    twin = max(lo, first.normalize() + _year_back(weekly))   # the twin starts no earlier than the data
+    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    return df[(t >= twin) & (t <= hi)], f"{twin:%d %b %Y} to {hi:%d %b %Y}", twin > lo
+
+
+def cut_partial(series, t, freq: str, rule: str | None = None):
+    """Leave out a first or last bucket the dates don't cover from its start to its end, by the
+    data's own spacing: daily data by the weekdays it trades (a Mon-Fri week ends on Friday; a
+    month may open on the 2nd or 3rd), weekly or monthly rows by whether the next expected date
+    falls outside the bucket (weekly data covers a month through its last week-ending; month-start
+    data covers its quarter). A middle bucket
+    is never partial (a closed week is a fact to show). A month's end: the shared rule
+    (utils.partial_last_month, also in the sandbox and the charts). May leave nothing: the note
+    then says no complete period is covered, and the caller answers without a comparison."""
+    import pandas as pd
+
+    if freq not in ("W", "M", "Q", "Y") or series.empty:
+        return series, ""
+    d = _local(pd.to_datetime(t, errors="coerce")).dropna().dt.normalize().drop_duplicates().sort_values()
+    if d.empty:
+        return series, ""
+    period = rule or freq
+    labels = series.index if isinstance(series.index, pd.PeriodIndex) else series.index.to_period(period)
+    step = d.diff().median() if len(d) > 1 else pd.Timedelta(days=1)
+    first, last = labels[0], labels[-1]
+    start, end = first.start_time.normalize(), last.end_time.normalize()
+    if step <= pd.Timedelta(days=1):
+        # daily data: the trading days it would have had, on the weekdays it trades (a Mon-Fri
+        # seller's week ends on Friday); a long bucket may miss a couple (a holiday opening)
+        trades = set(d.dt.weekday) if len(d) >= 14 else set(range(7))
+
+        def missing(lo, hi) -> int:
+            return sum(x.weekday() in trades for x in pd.date_range(lo, hi))
+        slack = {"W": 0}.get(freq, 2)
+        cut_first = missing(start, d.min() - pd.Timedelta(days=1)) > slack
+        cut_last = missing(d.max() + pd.Timedelta(days=1), end) > slack
+    else:   # weekly or monthly rows: the next expected date falls outside the bucket
+        if pd.Timedelta(days=28) <= step <= pd.Timedelta(days=31):
+            step = pd.Timedelta(days=31)   # monthly rows: a month on, whatever the month's length
+        cut_first = d.min() - step >= start
+        cut_last = d.max() + step <= end
+    if freq == "M" and len(series) >= 3:   # a month's end: the shared rule
+        cut_last = bool(partial_last_month(t)) and d.max() < end
+    unit, note = {"M": "month", **_UNIT}[freq], ""
+    if cut_last:
+        note += f" The last {unit} ({last}) is left out: it is covered only to {d.max():%d %b %Y}."
+    if cut_first and (len(series) > 1 or not cut_last):
+        note += f" The first {unit} ({first}) is left out: it is covered only from {d.min():%d %b %Y}."
+    series = series.iloc[int(cut_first): len(series) - int(cut_last)]
+    if series.empty:
+        note = f" No complete {unit} is covered ({d.min():%d %b %Y} to {d.max():%d %b %Y})."
+    return series, note
+
+
+_UNIT = {"W": "week", "Q": "quarter", "Y": "year"}

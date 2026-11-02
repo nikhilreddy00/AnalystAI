@@ -1,0 +1,19 @@
+id: intake-retail-01
+category: clear
+pipeline: production
+source:
+  dataset: retail_lines
+  seed: 1
+overview_done: true
+question: What's the average basket size by shipping country?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: aov
+  columns:
+    by: Shipping Country
+rationale: Basket size is the pack's AOV (net sales per distinct order), not a column's mean.

@@ -23,3 +23,5 @@ pii:
   customer_email: email
   customer_name: name
 label_note: 'An existing eval dataset: roles every other suite depends on must not regress.'
+expect_domain: retail
+expect_roles: {date: order_date, discount_rate: discount, email: customer_email, order_id: order_id, quantity: units, revenue: revenue}

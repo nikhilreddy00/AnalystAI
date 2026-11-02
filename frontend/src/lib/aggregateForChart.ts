@@ -39,7 +39,10 @@ export function aggregateForChart(
   if (PASSTHROUGH_TYPES.has(chart.chart_type)) {
     return { mode: "passthrough", data: rows, countKey: chart.y_keys[0] ?? "" };
   }
-  if (!GROUPBY_TYPES.has(chart.chart_type) || !chart.x_key) {
+  // Only a row-count chart can be recounted: a sum or a KPI (an AOV by country, pinned from an
+  // answer) would show row counts under its own name (Phase 5.7)
+  const counted = !chart.rationale || chart.rationale.aggregation === "count";
+  if (!GROUPBY_TYPES.has(chart.chart_type) || !chart.x_key || !counted) {
     return { mode: "unfiltered", data: chart.data, countKey: "" };
   }
 

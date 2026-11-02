@@ -1,0 +1,23 @@
+id: e2e-40
+domain: retail
+dataset:
+  name: store_weeks
+  seed: 1
+question: What is the gross margin for each department?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: margin_by_dept_pct.Electronics
+  rel_tol: 0.01
+  unit: '%'
+- kind: must_not_number
+  truth_key: naive_margin_by_dept_rows.Electronics
+  rel_tol: 0.01
+  scales:
+  - 100
+  unit: '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+trap: true

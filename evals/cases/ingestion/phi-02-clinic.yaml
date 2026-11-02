@@ -15,3 +15,4 @@ columns:
 - [visit_date, date_us]
 - [copay, money]
 label_note: 'Clinic visits: patient id, first name, email, address, SSN, notes naming the patient.'
+expect_domain: null
