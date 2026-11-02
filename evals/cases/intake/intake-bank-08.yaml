@@ -5,7 +5,7 @@ source:
   dataset: card_ledger
   seed: 1
 overview_done: true
-question: Compare money in and money out by month.
+question: How has money coming in changed month by month?
 expect:
   ask: false
   intent_any:

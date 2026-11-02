@@ -52,6 +52,18 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
     assert _same(again["output"], first["output"]) and again["passed"] == first["passed"]
 
 
+# A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
+# to its stored output (that is the $0 regression check over every old case).
+CHANGED = {
+    ("intake-20261102T204144Z.json", "intake-bank-01"):
+        "Domain 2 intake gate: an overview intent naming a KPI after the overview is its time series",
+    ("intake-20261102T204144Z.json", "intake-bank-09"):
+        "Domain 2 intake gate: a default prediction is an unsupported concept: asked",
+    ("intake-20261102T204144Z.json", "intake-bank-11"):
+        "Domain 2 intake gate: 'average account balance' is the avg_balance KPI's word",
+}
+
+
 @pytest.mark.parametrize("suite, report, cid, run", _stored_runs() or
                          [pytest.param(None, None, None, None, marks=pytest.mark.skip(
                              "no stored replies yet: the next paid intake/insight run adds them"))])
@@ -59,4 +71,8 @@ async def test_stored_replies_reproduce_their_stored_output(suite, report, cid, 
     monkeypatch.setitem(harness._budget, "max", 1.0)
     case = next(c for c in harness.load_cases(suite, None) if c["id"] == cid)
     again = await _replay(suite, case, run["replies"])
+    if (report, cid) in CHANGED:   # changed as stated: it must now differ, and pass its checks
+        assert not _same(again["output"], run["output"]), f"{report} {cid}: listed but unchanged"
+        assert again["passed"], f"{report} {cid}: changed, yet still failing: {again['checks']}"
+        return
     assert _same(again["output"], run["output"]), f"{report} {cid}: a post-model step changed"

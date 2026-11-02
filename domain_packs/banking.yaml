@@ -209,7 +209,8 @@ glossary:
   open_accounts: [open accounts, number of accounts, active accounts, number of loans,
                   account count, accounts]
   avg_balance: [average balance, avg balance, mean balance, balance per account,
-                average outstanding, average loan size, average loan balance]
+                average account balance, average outstanding, average loan size,
+                average loan balance]
   npl_ratio: [npl, npl ratio, npls, non performing, non-performing, nonperforming, npa, bad loans,
               90+, 90 plus, 90 days past due, 90+ dpd]
   delinquency_30: [delinquency, delinquency rate, delinquent, 30+, 30 plus, 30+ dpd, past due,
@@ -229,6 +230,8 @@ glossary:
   adb: [average daily balance, adb]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
   nim: [net interest margin, nim]
+  default_prediction: [going to default, will default, likely to default, predict default,
+                       predicted default, probability of default, default risk score, pd model]
 consumed: [balance sheet, accounts payable, accounts receivable, account manager, interest rate,
            fee schedule]
 definitions:
@@ -239,6 +242,7 @@ definitions:
   yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
 unsupported:
   nim: interest income and interest expense (cost of funds), which this data does not have
+  default_prediction: a credit model trained on outcomes; this data shows who is delinquent now (days past due, NPL), not who will default
 
 caveats:
   read_as_domain: "Read as banking data ({kpis})."
