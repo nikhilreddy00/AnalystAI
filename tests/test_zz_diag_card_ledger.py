@@ -1,6 +1,5 @@
 """TEMPORARY (Domain 2): card_ledger differs on CI's Linux; print per-column hashes to compare."""
 import hashlib
-import io
 
 
 def _h(x) -> str:
