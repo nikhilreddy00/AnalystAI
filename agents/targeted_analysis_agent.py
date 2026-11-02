@@ -22,6 +22,7 @@ import pandas as pd
 
 from agents.utils import cut_partial as _cut_partial
 from agents.utils import (
+    ranked,
     LevelUnavailable,
     aggregate,
     column_hint,
@@ -351,7 +352,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     asc = (params.order or "desc").lower() == "asc"
 
     try:
-        grouped = aggregate(df, [group], metric, agg, contract).sort_values(ascending=asc).head(n)
+        grouped = ranked(aggregate(df, [group], metric, agg, contract), ascending=asc).head(n)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TOP_N,
@@ -377,7 +378,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
          f"{'lowest' if asc else 'highest'} first.", group, metric, agg,
          int(df[[group, metric]].dropna().shape[0]),
          code=_code(f"df.groupby({group!r})[{metric!r}]", agg, metric, contract)
-         + f".sort_values(ascending={asc}).head({n})")
+         + f".sort_index(kind='stable').sort_values(ascending={asc}, kind='stable').head({n})")
     return TargetedResponse(intent=QuestionIntent.TOP_N, answer_text=answer, chart_configs=[chart])
 
 
@@ -554,6 +555,22 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
 
 
+def _lead_and_last(order: pd.Series) -> str:
+    """The highest and the lowest group of a ranking, saying so when groups tie."""
+    def names(at) -> str:
+        tied = [f"'{g}'" for g in order.index[order == at]]
+        return tied[0] if len(tied) == 1 else (
+            f"{', '.join(tied[:-1])} and {tied[-1]}" if len(tied) <= 3
+            else f"{', '.join(tied[:2])} and {len(tied) - 2} more")
+    top, low = order.iloc[0], order.iloc[-1]
+    if top == low:
+        return f"all {len(order)} groups are at {_num(top)}"
+    lead = names(top)
+    lead += f" tie at {_num(top)}" if (order == top).sum() > 1 else f" leads at {_num(top)}"
+    return f"{lead}; {names(low)} is lowest at {_num(low)}" if (order == low).sum() == 1 else \
+        f"{lead}; {names(low)} are lowest at {_num(low)}"
+
+
 def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                            ctx: VizContext | None = None) -> TargetedResponse:
     metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
@@ -578,7 +595,7 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
 
     try:
         full = aggregate(df, [segment], metric, agg, contract)
-        grouped = full.sort_values(ascending=False).head(20)
+        grouped = ranked(full).head(20)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.SEGMENT_COMPARE,
@@ -589,12 +606,8 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
         return _unanswerable(QuestionIntent.SEGMENT_COMPARE, f"no rows have both {segment} and "
                              f"{metric}", [f"Distribution of {metric}", "Pick a different segment"])
 
-    top_seg, top_val = grouped.index[0], grouped.iloc[0]
-    bottom_seg, bottom_val = grouped.index[-1], grouped.iloc[-1]
-    answer = (
-        f"{_of(agg, metric, False)} by {segment}: '{top_seg}' leads at {_num(top_val)}, "
-        f"'{bottom_seg}' trails at {_num(bottom_val)}."
-    )
+    order = ranked(full)
+    answer = f"{_of(agg, metric, False)} by {segment}: {_lead_and_last(order)}."
     group = _named_group(df, params)
     if group is not None:
         # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
@@ -940,7 +953,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             return _unanswerable(intent, f"{kpi.label.lower()} can't be computed from these rows",
                                  ["Ask without the group", "Ask about a longer period"])
         asc = (params.order or "desc").lower() == "asc"
-        by = by.sort_values(ascending=asc).head(params.n or 20)
+        by = ranked(by, ascending=asc).head(params.n or 20)
         lead, tail = by.index[0], by.index[-1]
         answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                   f"{fmt(by.iloc[0])}" + (f", {tail} at {fmt(by.iloc[-1])}." if len(by) > 1 else "."))
@@ -1062,6 +1075,16 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                    f"({change(now, prior)} year over year, {_basis(prior_period)})."
                    + stores_note(contract, full, date, (prior_df, rows)) if both
                    else "" if auto else f" No year-earlier comparison: {why or 'nothing to compare'}.")
+        if both:   # the two periods side by side: the answer's own numbers
+            chart = _chart(ChartType.BAR, f"{kpi.label}{where}: against a year earlier",
+                           [{"period": prior_period.split(",")[0], kpi.label: float(prior)},
+                            {"period": days, kpi.label: float(now)}],
+                           x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
+                           source="kpi")
+            _why(chart, ctx, "targeted:kpi→bars", f"{kpi.label} in the period asked and the same "
+                 f"period a year earlier. {how}", date, kpi.label, "none", len(rows))
+            return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
+                                    chart_configs=[chart])
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")
 
 

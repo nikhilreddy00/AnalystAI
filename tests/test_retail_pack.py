@@ -61,6 +61,7 @@ _BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
     ({"line_weight": ["r", "/", "s"]}, "line_weight"),
     ({"cost_roles": ["zzz"]}, "unknown role zzz"),
     ({"text": {"no_such_text": "x"}}, "text"),
+    ({"roles": {**_BASE["roles"], "state": {"kind": "status", "headers": ["state"]}}}, "reserved"),
     ({"signals": [{"a": ["r"]}]}, "two groups"),
     ({"signals": [{"a": ["r"], "b": ["nope"]}]}, "unknown role nope"),
     ({"test_marker": "(unclosed"}, "invalid regex"),
@@ -458,6 +459,10 @@ def test_a_period_and_its_year_earlier(shop):
              period_start="2026-01-01", period_end="2026-01-31", compare="yoy")
     assert f"${truth['net_sales_by_month']['2026-01']:,.2f}" in r.answer_text
     assert f"{truth['jan26_yoy_pct']:+.1f}% year over year" in r.answer_text
+    # desktop check: the report showed no chart for it; the two periods side by side
+    (bars,) = r.chart_configs
+    assert round(bars.data[1]["Net sales"], 2) == round(truth["net_sales_by_month"]["2026-01"], 2)
+    assert bars.rationale and "2025" in bars.data[0]["period"]
 
 
 def test_the_trend_leaves_the_partial_month_out_and_gives_mom_and_yoy(shop):
@@ -2041,3 +2046,46 @@ def test_units_trend_counts_the_rows_the_units_tile_counts():
     framed, kind = with_row_kind(df, c)
     rows, note = money_rows(framed, c, "Quantity")
     assert note and set(rows[kind]) <= {"sale", "return"} and len(rows) < len(df)
+
+
+def test_a_domain_overview_opens_with_its_headline_kpi_by_month_and_by_group():
+    """Desktop browser check: the retail overview showed average quantity by country and a
+    scatter, but no net sales by month or by product: the two charts a sales analyst reads
+    first. Built by the KPI answers' code, so a chart and an answer are one number."""
+    import asyncio
+    import io
+
+    from agents.visualization_agent import run_visualization_agent
+    from orchestrator.state import AnalysisSession, AnalysisTask, QuestionIntent
+    df = _gen("retail_lines")
+    c = _contract(df)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+
+    def charts(intent):
+        s = AnalysisSession(session_id="t", data_contract=c, task_plan=AnalysisTask(
+            raw_query="q", analysis_types=["eda"], target_metrics=[], question_intent=intent))
+        s.__dict__["_df_parquet"] = buf.getvalue()
+        return asyncio.run(run_visualization_agent(s))
+    titles = [ch.title for ch in charts(QuestionIntent.OVERVIEW)]
+    assert titles[:2] == ["Net sales over time", "Net sales by Lineitem name"]
+    other = _gen("shipments")
+    s = AnalysisSession(session_id="t", data_contract=_contract(other), task_plan=AnalysisTask(
+        raw_query="q", analysis_types=["eda"], target_metrics=[], question_intent=QuestionIntent.OVERVIEW))
+    b = io.BytesIO()
+    other.to_parquet(b, index=False)
+    s.__dict__["_df_parquet"] = b.getvalue()
+    assert not any("Net sales" in ch.title for ch in asyncio.run(run_visualization_agent(s)))
+
+
+async def test_suggested_questions_know_order_level_blanks_are_layout(recorded_llm):
+    """Desktop check: a suggestion asked about '43.7% of rows missing Financial Status' — the
+    field is on each order's first line only. One rule (domain_pack.layout_blanks) for every
+    place that reports blanks."""
+    from agents.intake_agent import generate_proactive_questions
+    df = _gen("retail_lines")
+    recorded_llm.responses.append('["a?", "b?", "c?", "d?", "e?"]')
+    await generate_proactive_questions(_contract(df), recorded_llm, df)
+    sent = recorded_llm.calls[-1]["messages"][0]["content"]
+    line = next(x for x in sent.splitlines() if x.startswith("One value per order"))
+    assert "Financial Status" in line and "Discount Amount" in line and "Lineitem name" not in line

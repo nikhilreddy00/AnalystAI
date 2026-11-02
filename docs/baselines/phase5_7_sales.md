@@ -252,6 +252,38 @@ gated to strong matches; `evals/run.py` exempts `domain: retail` E2E cases from 
 (predates 5.7). The audit bar for this addendum is the snapshot + full suite + the browser check,
 not another audit pass.
 
+## Desktop browser check and the domain regression gate (2026-11-02, $0.28; total $4.54)
+
+The user asked for a desktop (not phone) check that a senior sales analyst would find useful,
+and for a permanent guarantee that building one domain never breaks another.
+
+**CI had been red since 2026-11-01 (19 commits, merged to main).** Only on Linux: healthcare's
+segment answer ranked tied groups ('MRN-…' at 11.00) by numpy's unstable sort, which orders ties
+differently on Linux and macOS. No one checked `gh run list`. Root fix: `utils.ranked` (by label,
+then stable by value) for every ranking; the answer now says when groups tie and names the real
+lowest group (it named the 20th shown). CI is green again.
+
+**Desktop check (1440 px, live API + worker, asyncpg, production):**
+
+| what | result |
+|---|---|
+| retail overview: tiles | net sales $310,635.46, 2,272 orders, AOV $136.72, units 6,548, return 3.9% — match truth; the net sales value was cut off at 5 tiles → fixed |
+| retail overview: charts | had no net sales by month or by product (the first two charts a sales analyst reads) → added (`pack_overview_charts`, pack field `overview_groups`) |
+| follow-up "January 2026 vs January 2025" | +8.0% YoY, $25,545.94 vs $23,653.70 — matches truth; the report panel was empty (no chart) → two-period bars, and any chartless answer shows its text |
+| suggested questions | asked about "43.7% missing Financial Status" (first-line-only layout) → `domain_pack.layout_blanks`, the one rule cleaning uses too |
+| Dashboard page | KPI strip, net sales charts, filters render; earlier the data endpoint 500ed (fixed) |
+
+Left as minor: chart tooltips show unformatted money; every other bar label on long product
+lists; the panel heading says "Segment comparison" for a period question (the model's intent);
+the intake schema summary still states raw null shares (fixing it changes retail intake contexts:
+needs a paid intake re-run, left for the banking session's budget).
+
+**The gate (permanent, in ROADMAP 5.7 and CLAUDE.md):** the rolling golden
+`evals/snapshots/golden.json` pins every dataset's no-LLM outputs and every paid case's context
+for all domains (the old pre-5.5/pre-5.7 baselines missed every retail case); a mutation of one
+retail label fails it naming exactly the retail cases. `tests/test_one_definition.py` guards the
+rules that kept recurring (rankings, sentence splitting, role names in shared code).
+
 ## What to carry into the next domain
 - Put every deterministic step that runs after the model under a $0 regression check over the
   old cases. The intake fill-in is the one the snapshot missed.
@@ -264,5 +296,7 @@ not another audit pass.
 - Open the real app in a browser at phone width and read the numbers against the generator's
   truth before calling a domain done: the gates passed, yet the browser found a seasonal headline,
   a false "missing" claim, a 500 and a label bug.
+- Check CI before every merge. A red main hid a platform bug for 19 commits.
+- The browser check is at desktop width and includes one upload of every finished domain.
 - A new pack declares its layout (`order_key`, `negative_is_return`, `cost_roles` …) in YAML;
   shared code must never name a role. `tests/test_second_pack.py` is the guard.

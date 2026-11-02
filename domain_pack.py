@@ -18,7 +18,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
-ROW_KIND_COLUMN = "row_kind"   # each row's kind, in the frame analysis code gets
+ROW_KIND_COLUMN = "row_kind"
+# Role names shared code may use: a role of these kinds is named after its kind in every pack.
+RESERVED_ROLES = ("status", "currency")   # each row's kind, in the frame analysis code gets
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
 CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded")
@@ -125,6 +127,9 @@ class Pack(_Strict):
     item_roles: list[str] = Field(default_factory=list)   # a line's item: order + item = one line
     line_weight: list[str] | None = None   # [role, '*', role]: a line's share of an order value
     cost_roles: list[str] = Field(default_factory=list)   # margin or profit needs one of these
+    # An overview opens with the first money tile KPI by month and by the first of these the
+    # data has (the charts the domain's analyst reads first)
+    overview_groups: list[str] = Field(default_factory=list)
     location_role: str | None = None   # sites that open and close (comparable-store growth)
     # Words: each row kind's name ("refunded orders") and its cleaning flag; `text` for the rest.
     row_labels: dict[RowKind, str] = Field(default_factory=dict)
@@ -167,13 +172,15 @@ class Pack(_Strict):
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
-                *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles,
+                *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
                 *(r for r in (self.order_key, self.location_role) if r),
                 *(self.line_weight[::2] if self.line_weight else []),
                 *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g)]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
             errors.append(f"line_weight is [role, '*' or '-', role], not {self.line_weight}")
+        errors += [f"role {r}: a {x.kind} role is named {x.kind!r} (reserved)" for r, x in
+                   self.roles.items() if x.kind in RESERVED_ROLES and r != x.kind]
         if not any(r.kind == "date" for r in self.roles.values()):
             errors.append("roles: one role of kind date is needed (periods, partial months)")
         if not self.signals or any(len(alt) < 2 for alt in [*self.signals, *self.strong]):
@@ -682,6 +689,30 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
                                    "currency": audit.main_currency}
     return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
 
+
+
+def first_line_only(df: pd.DataFrame, by: pd.Series, col: str) -> bool:
+    """The export writes `col` on an order's first line and leaves the rest blank, in at least 80%
+    of the orders with several lines (Shopify): a layout, not missing data."""
+    multi = by.notna() & by.duplicated(keep=False)
+    if not multi.any():
+        return False
+    first = ~by[multi].duplicated()
+    filled = df.loc[multi, col].notna()
+    per = pd.DataFrame({"o": by[multi], "first_only": filled.eq(first)}).groupby("o")["first_only"].all()
+    return bool(per.mean() >= 0.8)
+
+
+def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
+    """Columns written on an order's first line only (Shopify's status, total, email): their
+    blanks are the export's layout, not missing values. The one rule every place that reports
+    blanks uses (cleaning, evidence notes, alerts, suggested questions)."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    key = contract.roles.get(pack.order_key) if pack and pack.order_key else None
+    if key is None or key not in df.columns:
+        return []
+    return [c for c in df.columns if c != key and df[c].isna().any()
+            and first_line_only(df, df[key], c)]
 
 
 def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]:

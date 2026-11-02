@@ -20,6 +20,7 @@ from pydantic import BaseModel, ValidationError
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
 from domain_pack import (
+    layout_blanks,
     computable,
     defaults_pack,
     describe_kpi,
@@ -474,7 +475,10 @@ async def generate_proactive_questions(contract: DataContract, llm: LLMClient,
         f"Dataset: {contract.row_count:,} rows × {contract.column_count} columns\n"
         f"Metric columns: {metric_cols}\nDate columns: {date_cols}\n"
         f"Categorical columns: {categorical_cols}\nAll columns: {col_names}\n"
-        f"Schema: {contract.schema_summary}")
+        f"Schema: {contract.schema_summary}"
+        + (f"\nOne value per order (blank on an order's later lines by the export's layout, not "
+           f"missing): {blanks}" if (blanks := layout_blanks(df, contract) if df is not None
+                                     else []) else ""))
     prompt = f"""You are a senior data analyst who just received a new dataset.
 Generate exactly 5 natural-language questions a business stakeholder would want answered.
 

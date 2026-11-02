@@ -515,6 +515,27 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   - after each fix round, one reviewer reads only that fix diff before the next broad pass;
   - pass 1 broad; later passes only re-open areas the previous fixes touched;
   - the per-pass count (major/minor) is recorded in the review note's bug ledger.
+- **Domain regression contract (added 2026-11-02, after Domain 1; applies to every domain
+  session and to Phase 6).** Building domain N must never break domains 1..N-1, and after all
+  eight, uploading any domain's data again must find no bug. Enforced by code, not memory:
+  - **Rolling golden** (`evals/snapshots/golden.json`, `tests/test_suite_inputs_unchanged.py`):
+    every eval dataset's no-LLM outputs (contract, audit, tiles, frame, built-in analysis code,
+    trend chart, targeted answers) and every paid case's context, all domains. Any difference
+    fails unless listed in `CHANGES` with its reason (and re-measured at that domain's gate). At
+    the domain's end: `uv run python -m evals.snapshot pin`, the diff named in the review note.
+  - **One definition** (`tests/test_one_definition.py`): rankings via `utils.ranked` (stable,
+    same on every machine), one sentence splitter, shared code never names a pack role (a pack
+    declares its layout in YAML), plus `tests/test_second_pack.py` (a toy second pack beside the
+    real ones). A rule that keeps coming back gets a guard here, not another patch.
+  - **$0 replay** (`tests/test_replay.py`): every paid run stores its model replies; the
+    deterministic steps after the model are re-run on them for free.
+  - **CI is green before any merge** (`gh run list`): a red main is a stop, not a note. (CI was
+    red for 19 commits of Domain 1 — Linux ranked ties differently — and no one looked.)
+  - **Browser check at the end of every domain**, by Claude, in Playwright at **desktop width
+    (1440 px)** against the live API + worker: upload the domain's datasets AND one dataset of
+    every finished domain, read every number against the generator's truth, check the overview
+    charts, a follow-up's chart, the Dashboard page and the KPI tiles a senior analyst of that
+    domain expects. Fix what it finds before "Domain N done".
 - **Done when (per domain):** its analysis cases pass at k=3 on every run and its E2E cases at
   k=1 (k=3 on failures), hard rules 100%, each agent's expert-rubric checks pass, the final
   audit pass finds 0 major and ≤ 2 minor, and the README's domain list is regenerated from the

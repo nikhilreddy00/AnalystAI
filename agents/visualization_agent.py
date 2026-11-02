@@ -27,6 +27,7 @@ from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
 from agents.utils import (
+    ranked,
     LevelUnavailable,
     aggregate,
     column_hint,
@@ -39,6 +40,7 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    computable,
     compute_kpi,
     defaults_pack,
     describe_kpi,
@@ -63,6 +65,7 @@ from orchestrator.state import (
     Evidence,
     KPI,
     KPIRecipe,
+    QuestionIntent,
     TargetedParams,
 )
 
@@ -496,7 +499,7 @@ def _build_target_rate_by_cat(
     if numeric_sort is not None:
         rate = rate.sort_index(key=lambda idx: idx.map(numeric_sort)).head(10)
     else:
-        rate = rate.sort_values(ascending=False).head(10)
+        rate = ranked(rate).head(10)
 
     # PROMPT-2 fix 4: color each bar by whether it's above/below the overall
     # target rate across the full dataset (not just this slice).
@@ -1085,7 +1088,7 @@ def _comparison_kpi_chi2(
     grouped = pd.Series(t.values, index=df[best_col]).groupby(level=0).mean().dropna()
     if grouped.shape[0] < 2:
         return None
-    g_sorted = grouped.sort_values(ascending=False)
+    g_sorted = ranked(grouped)
     high_name, high_rate = g_sorted.index[0], float(g_sorted.iloc[0])
     low_name, low_rate = g_sorted.index[-1], float(g_sorted.iloc[-1])
     high_label = _humanize_value(high_name, best_col, df, ordinal_cols, narrative)
@@ -1349,8 +1352,8 @@ def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None,
                 ok = k.context.startswith(f"{float(vc.iloc[0]) / float(vc.sum()) * 100:.1f}%") and (
                     str(top) in k.value or k.value == _humanize_value(top, col, df, set(), None))
             elif r.kind == "comparison_split":
-                g = pd.Series(_to_01(df[r.target_column]).values, index=df[r.segment_column]) \
-                    .groupby(level=0).mean().dropna().sort_values(ascending=False)
+                g = ranked(pd.Series(_to_01(df[r.target_column]).values, index=df[r.segment_column])
+                           .groupby(level=0).mean().dropna())
                 ok = k.value == f"{g.iloc[0] * 100:.1f}% vs {g.iloc[-1] * 100:.1f}%"
             else:   # highest_cv
                 s = pd.to_numeric(df[col], errors="coerce").dropna()
@@ -2171,7 +2174,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
         return None
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
-    order = sub.groupby(x)[metric].agg(agg).sort_values(ascending=False)
+    order = ranked(sub.groupby(x)[metric].agg(agg))
     natural = _sort_key_for(order.index)   # numeric labels (1, 2, 3) keep their order
     keys = sorted(order.index[:top], key=natural) if natural else list(order.index[:top])
     series = [None] if not split else list(sub[split].value_counts().index[:_MAX_SERIES])
@@ -2606,6 +2609,33 @@ def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
 
 # ── Public entry point ───────────────────────────────────────────────────────
 
+def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]:
+    """A strong-matched domain's overview opens with its headline KPI (the pack's first money
+    tile) by month and by its first `overview_groups` role present: the charts its analyst reads
+    first. Built by the KPI answers' code (handle_kpi), so a chart and an answer are one number.
+    No pack, or a KPI the data can't compute: none."""
+    from agents.targeted_analysis_agent import handle_kpi   # it imports this module
+
+    pack = defaults_pack(ctx.contract)
+    roles = ctx.contract.roles if ctx.contract else {}
+    kpi = next((k for k in pack.kpis if k.tile and k.unit == "money"
+                and computable(pack, k.name, roles)), None) if pack else None
+    if kpi is None:
+        return []
+    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in df.columns), None)
+    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=kpi.name, frequency="M"))]
+    if group:
+        asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=kpi.name, segment_column=group,
+                                                          group_by=group)))
+    out = []
+    for intent, params in asks:
+        try:
+            out += handle_kpi(df, params, ctx.contract, ctx, intent=intent).chart_configs[:1]
+        except Exception:   # a chart the KPI code can't make is left out, never a failed run
+            trace_verdict("visualization", "pack", "pack_chart_failed")
+    return out
+
+
 async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]:
     """One chart per finding (charts_for_findings), topped up with data-profile charts when there
     are fewer than 4, then linted (finalize_charts). Falls back to contract metadata when the
@@ -2624,7 +2654,8 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
 
     ctx = build_context(df, session.task_plan, session.analysis_findings, session.narrative,
                         session.data_contract)
-    charts = charts_for_findings(ctx)
+    overview = session.task_plan and session.task_plan.question_intent == QuestionIntent.OVERVIEW
+    charts = (pack_overview_charts(df, ctx) if overview else []) + charts_for_findings(ctx)
     if len(charts) < 4:
         query = session.task_plan.raw_query if session.task_plan else ""
         shown = {(c.rationale.x, c.rationale.y) for c in charts if c.rationale}
