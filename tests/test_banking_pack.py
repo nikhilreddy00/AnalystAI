@@ -386,6 +386,9 @@ def test_a_balance_by_segment_is_built_in_and_matches_the_tile(tape):
     code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
             + "result['segments'].append({'segment_column': 'Product', 'metric_column': "
               "'Outstanding Principal', 'aggregation': 'last', 'results': [{'name': 'card', 'value': 780.0}]})\n"
+            # the model's NPL ratio filed under the balance (analysis gate: it was deleted)
+            + "result['segments'].append({'segment_column': 'Product', 'metric_column': "
+              "'Outstanding Principal', 'aggregation': 'ratio', 'results': [{'name': 'card', 'value': 0.5}]})\n"
             + analysis_agent._build_standard_code(c, AnalysisTask(
                 raw_query="q", target_metrics=["Outstanding Principal"], segments=["Product"],
                 analysis_types=["segmentation"]))
@@ -393,7 +396,9 @@ def test_a_balance_by_segment_is_built_in_and_matches_the_tile(tape):
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         exec(code, {"df": frame})
-    segs = [x for x in json.loads(out.getvalue())["segments"] if x["metric_column"] == "Outstanding Principal"]
+    every = [x for x in json.loads(out.getvalue())["segments"] if x["metric_column"] == "Outstanding Principal"]
+    assert [x["aggregation"] for x in every if x["aggregation"] != "last"] == ["ratio"]   # kept
+    segs = [x for x in every if x["aggregation"] == "last"]
     assert len(segs) == 1
     assert {r["name"]: r["value"] for r in segs[0]["results"]} == {"auto": 1340.0, "card": 480.0,
                                                                      "mortgage": 2000.0}

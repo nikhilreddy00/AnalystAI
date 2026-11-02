@@ -379,7 +379,9 @@ try:
             for _k in _keys:
                 _s = '|'.join(_k)
                 _tot = _w.groupby(_k)[_c].sum(min_count=1).dropna()
-                result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c)]
+                # only the model's totals of it are replaced: its means and ratios (an average
+                # balance, an NPL ratio filed under the balance) are other findings, kept
+                result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c and str(_x.get('aggregation') or 'sum').lower() in ('sum', 'total', 'last', 'first'))]
                 result['segments'].append({{'segment_column': _s, 'metric_column': _c, 'aggregation': 'last',
                                            'results': [{{'name': '|'.join(map(str, _n)) if isinstance(_n, tuple) else str(_n), 'value': round(float(_v), 4)}} for _n, _v in _tot.items()]}})
                 result['builtin'].append(f'seg:{{_s}}/{{_c}}')

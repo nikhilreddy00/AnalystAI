@@ -3,7 +3,7 @@ domain: banking
 dataset:
   name: card_ledger
   seed: 1
-question: Where did card spend go by merchant category from August to October 2026?
+question: Where did spending go by merchant category from August to October 2026?
 overview_done: true
 trap: true
 checks:
