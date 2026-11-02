@@ -1,0 +1,299 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261102T002919Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7a7c2cf",
+  "started_at": "20261102T002919Z",
+  "only": "intake-retail-04,intake-retail-07,intake-retail-12-holdout",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 3,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0159,
+  "latency_p50_s": 5.37,
+  "latency_p95_s": 5.47,
+  "intent_accuracy": 1.0,
+  "column_mapping": null,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": 1.0,
+  "pass_rate_by_category": {
+   "clear": 1.0
+  }
+ },
+ "runs": {
+  "intake-retail-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got net_sales, want net_sales"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-01-01', '2026-03-31'], want ['2026-01-01', '2026-03-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What were net sales in Q1 2026 compared with the same quarter the year before?",
+     "target_metrics": [
+      "Net Sales"
+     ],
+     "timeframe": "Q1 2026 vs Q1 2025",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Net Sales"
+      ],
+      "metric_column": "Net Sales",
+      "date_column": "Wk_End_Dt",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "W",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "net_sales",
+      "period_start": "2026-01-01",
+      "period_end": "2026-03-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 5.48,
+    "cost_usd": 0.01576,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-07": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got return_rate, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem quantity",
+      "Lineitem price"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Total",
+       "Lineitem quantity",
+       "Lineitem price"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "return_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.37,
+    "cost_usd": 0.01613,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "intake-retail-12-holdout": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-01-01', '2026-01-31'], want ['2026-01-01', '2026-01-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": true,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much did we sell in January 2026 versus January the year before?",
+     "target_metrics": [
+      "Quantity",
+      "UnitPrice"
+     ],
+     "timeframe": "January 2026 vs January 2025",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Quantity",
+       "UnitPrice"
+      ],
+      "metric_column": "Quantity",
+      "date_column": "InvoiceDate",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": "2026-01-01",
+      "period_end": "2026-01-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 5.16,
+    "cost_usd": 0.01581,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

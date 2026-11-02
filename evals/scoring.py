@@ -1009,6 +1009,15 @@ def _date_cols(df: pd.DataFrame, contract=None) -> list[str]:
     return [c for c in df.columns if "date" in str(c).lower()][:1]
 
 
+def any_dates(s: pd.Series) -> pd.Series:
+    """Dates however written; mixed UTC offsets (a Shopify export across daylight saving) read as
+    UTC instants with the offset dropped, never an error that loses the run."""
+    try:
+        return pd.to_datetime(s, format="mixed", errors="coerce")
+    except ValueError:
+        return pd.to_datetime(s, format="mixed", errors="coerce", utc=True).dt.tz_localize(None)
+
+
 def bundle_facts(session: AnalysisSession, df: pd.DataFrame, past: list[str] = ()) -> dict:
     """What a report may rest on, from the session the insight agent was handed (findings,
     evidence, audit, charts, contract) and the frame's own dates. The number pool excludes raw
@@ -1016,7 +1025,7 @@ def bundle_facts(session: AnalysisSession, df: pd.DataFrame, past: list[str] = (
     findings, audit, contract = session.analysis_findings, session.cleaning_audit, session.data_contract
     evidence = list(findings.evidence) if findings else []
     cols = _date_cols(df, contract)
-    dates = pd.concat([pd.to_datetime(df[c], format="mixed", errors="coerce") for c in cols]
+    dates = pd.concat([any_dates(df[c]) for c in cols]
                       ).dropna() if cols else None
     first, last = ([dates.min().year, dates.min().month], [dates.max().year, dates.max().month]) \
         if dates is not None and len(dates) else (None, None)

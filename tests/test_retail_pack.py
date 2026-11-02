@@ -36,6 +36,7 @@ def test_offset_like_text_that_is_not_a_date_stays_text():
 
 # ── The pack: schema, detection, KPIs ────────────────────────────────────────────────────────
 RETAIL = pack_for("retail")
+EVALS = __import__("pathlib").Path(__file__).resolve().parents[1] / "evals"
 
 
 def _contract(df: pd.DataFrame):
@@ -1869,6 +1870,7 @@ def test_the_brief_says_why_the_row_kind_column_must_be_used():
     text = " ".join(pack_brief(RETAIL, roles, ["aov"], "line", {"sale", "test"}))
     assert "pseudonyms" in text and "only this column marks them" in text
     assert "one column more than the schema shows: 'row_kind'" in text   # smoke rerun: 'not present
+    assert "Column profiles (eda_summary, distributions) describe every row" in text   # e2e-37
 
 
 def test_net_sales_named_by_its_own_column_is_the_kpi():
@@ -1880,3 +1882,43 @@ def test_net_sales_named_by_its_own_column_is_the_kpi():
                         "period_end": "2026-03-31"}, c,
                        "What were net sales in Q1 2026 compared with the same quarter the year before?")
     assert got["kpi"] == "net_sales"
+
+
+@pytest.mark.parametrize("question", ["What is the average revenue for segment B?",
+                                      "How much did segment B revenue change last month compared to the month before?"])
+def test_a_column_named_by_a_synonym_stays_the_column(question):
+    """Paid E2E gate (e2e-06..14 regressed): 'revenue' in a file with a revenue column is that
+    column, never the net sales KPI; only the KPI's own name ('net sales') makes it the KPI."""
+    from agents.intake_agent import _pack_params
+    c = _contract(_gen("sales"))
+    assert not _pack_params({"metric_column": "revenue"}, c, question).get("kpi")
+
+
+def test_old_sales_questions_get_no_kpi_from_the_fill():
+    """Paid E2E gate lesson: the snapshot pins contexts, not intake's deterministic fill-in after
+    the model. Every pre-5.7 case on the sales data keeps its plan (no KPI filled in), except
+    the margin question, whose KPI is what makes it ask for a cost column."""
+    import glob
+
+    import yaml
+
+    from agents.intake_agent import _pack_params
+    c = _contract(_gen("sales"))
+    got = {}
+    for f in sorted(glob.glob(str(EVALS / "cases" / "e2e" / "*.yaml"))
+                    + glob.glob(str(EVALS / "cases" / "intake" / "*.yaml"))):
+        case = yaml.safe_load(open(f))
+        src = case.get("dataset") or case.get("source") or {}
+        if (src.get("name") or src.get("dataset")) == "sales":
+            if k := _pack_params({}, c, case.get("question") or "").get("kpi"):
+                got[case["id"]] = k
+    assert got == {"intake-oos-csv-01": "gross_margin_pct"}
+
+
+def test_the_report_scorer_reads_a_shopify_date_column():
+    """Paid E2E gate (e2e-35, e2e-42: harness error): bundle_facts read the raw export's
+    'Created at' (-0500/-0400 offsets) with format='mixed', which raises on mixed offsets."""
+    from evals.scoring import any_dates
+    raw = datagen.make("retail_lines", 1)[0]
+    d = any_dates(raw["Created at"])
+    assert d.notna().all() and d.min().year == 2025 and d.max() < pd.Timestamp("2026-02-14")

@@ -34,6 +34,7 @@ from api.config import settings
 from evals import cleangen, datagen
 from evals.datagen import INJECTION
 from evals.scoring import (
+    any_dates,
     ANALYSIS_CHECKS,
     E2E_CHECKS,
     NUMERIC_CHECKS,
@@ -418,7 +419,7 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = ()
 
     plan = case["plan"]
     date = _viz_date(df)
-    month = pd.to_datetime(df[date], format="mixed", errors="coerce").dt.to_period("M") if date else None
+    month = any_dates(df[date]).dt.to_period("M") if date else None
     corr, trends, raw_trends, segs, anoms, tests, ids = {}, [], [], [], [], [], []
     for f in case.get("findings") or []:
         if f["kind"] == "trend":

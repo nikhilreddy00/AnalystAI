@@ -558,7 +558,8 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
                      "cancel, test, non_product, other_currency), computed by these rules: filter on "
                      "it, never re-derive it. Personal columns (email, names) reach you as "
                      "pseudonyms, so test orders cannot be found from them: only this column marks "
-                     "them. Sales figures use sale rows; net figures sale and return rows.")
+                     "them. Sales figures use sale rows; net figures sale and return rows. Column "
+                     "profiles (eda_summary, distributions) describe every row, as loaded.")
     if rules := row_rules(pack, roles, present):
         lines.append(f"Row kinds: {rules}.")
     if currency and "currency" in roles:

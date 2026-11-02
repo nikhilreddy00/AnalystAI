@@ -188,13 +188,15 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
         return {k: v for k, v in params.items() if k not in _NEW_PARAMS}
     if params.get("kpi") and not pack.kpi(params["kpi"]):
         params["kpi"] = None
-    # a KPI named by a column's own name counts when that column is one of the KPI's roles
-    # ("net sales" in a file with a Net Sales revenue column is the net sales KPI, its periods
-    # and year-earlier comparison included); another column's name is the column
+    # words that are a column's own name are the column ("average revenue" in a file with a
+    # revenue column is that column's mean), unless they are the KPI's own name and the column one
+    # of its roles ("net sales" with a Net Sales revenue column: the KPI, periods and yoy included)
     by_name = {normalize_header(c): r for r, c in contract.roles.items()}
+    own = {normalize_header(x.name) for x in contract.columns}
     kpis = [c for c, w in glossary_hits(pack, message, []) if pack.kpi(c)
-            and (normalize_header(w) not in {normalize_header(x.name) for x in contract.columns}
-                 or by_name.get(normalize_header(w)) in kpi_roles(pack, c))]
+            and (normalize_header(w) not in own
+                 or (normalize_header(w) in {c, normalize_header(pack.kpi(c).label)}
+                     and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
     # a phrase that isn't the KPI ("sales tax") is the pack's `consumed`, never a KPI hit
     if not params.get("kpi") and len(kpis) == 1:
         params["kpi"] = kpis[0]

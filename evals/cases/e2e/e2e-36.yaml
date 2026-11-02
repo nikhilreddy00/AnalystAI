@@ -18,9 +18,9 @@ checks:
   truth_key: naive_units
   rel_tol: 0.001
   scope: report
-- kind: must_not_number
-  truth_key: naive_margin_mean_of_rows_pct
-  rel_tol: 0.005
+- kind: must_not_number   # 34.156%: written 34.2% or 34.16%; 0.15% keeps a +34.0% trend
+  truth_key: naive_margin_mean_of_rows_pct   # (paid E2E gate) from colliding with the trap
+  rel_tol: 0.0015
   unit: '%'
 - kind: number_in_answer
   truth_key: net_sales
