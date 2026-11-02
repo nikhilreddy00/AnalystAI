@@ -14,7 +14,7 @@ import pandas as pd
 
 from agents.errors import LLMOutputError
 from agents.utils import ranked, strip_markdown_fences
-from domain_pack import defaults_pack
+from domain_pack import pack_for
 from guardrails import (
     _SENTENCE_RE,
     UNTRUSTED_NOTE,
@@ -220,8 +220,10 @@ def checked_answer(answer: str, session: AnalysisSession, shown: list) -> str:
     pack's causal words, no experiment cited), is removed and counted. Nothing left: a fixed
     reply, never an unchecked one."""
     contract = session.data_contract
-    pack = defaults_pack(contract)
-    if pack is None:   # a domain's checks (strong match); other answers as before
+    # any pack match: a weak one only hedges defaults, but an ungrounded number or a promotion
+    # credited with a change is wrong whatever the confidence. No pack: answers as before.
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack is None:
         return answer
     triggers = pack.causal_triggers
     has_dates = bool(contract and contract.date_columns)

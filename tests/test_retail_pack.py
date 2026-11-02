@@ -112,8 +112,8 @@ def test_the_retail_datasets_are_retail_with_every_role(name, roles):
                                   "claims", "employees", "saas_accounts", "sensor_readings",
                                   "shipments"])
 def test_no_other_domains_dataset_is_retail(name):
-    c = _contract(_gen(name))
-    assert c.domain is None and c.roles == {}
+    c = _contract(_gen(name))   # bank_balances is banking (Domain 2); never retail
+    assert c.domain != "retail" and (c.domain or name == "bank_balances" or c.roles == {})
 
 
 @pytest.mark.parametrize("csv", [
@@ -130,7 +130,7 @@ def test_no_other_domains_dataset_is_retail(name):
     "sku,warehouse,qty_on_hand\nA-100,W1,40\nA-101,W2,12\n",
 ])
 def test_one_signal_or_none_is_not_retail(csv):
-    assert _contract(_load(csv)).domain is None
+    assert _contract(_load(csv)).domain != "retail"   # card transactions are banking (Domain 2)
 
 
 def test_a_person_named_column_is_never_an_id_role_and_names_stay_pii():

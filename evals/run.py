@@ -1139,10 +1139,11 @@ def passed(checks: list[dict]) -> bool:
 
 
 def run_passed(suite: str, case: dict, out: dict) -> bool:
-    """`passed`, and for a domain's E2E case its hard rules too: an overview's only positive
-    check is a built-in statistic, so without them an empty or ungrounded report would pass."""
+    """`passed`, and for an E2E case its hard rules too: an overview's only positive check is a
+    built-in statistic, so without them an empty or ungrounded report would pass. Every domain
+    (the retail exemption predated 5.7: Domain 2, R6)."""
     ok = passed(out["checks"])
-    if suite == "e2e" and case.get("domain", "retail") != "retail":
+    if suite == "e2e":
         ok = ok and all(h["ok"] for h in out.get("hard") or [])
     return ok
 

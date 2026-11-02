@@ -62,3 +62,18 @@ def test_a_comparison_says_ties_and_names_the_real_lowest_group():
     r = handle_segment_compare(flat, TargetedParams(metric_column="stay", segment_column="site",
                                                     aggregation="mean"), c)
     assert "all 2 groups are at 3.00" in r.answer_text
+
+
+def test_one_rule_for_blanks_that_are_the_layout():
+    """Domain 1 left the schema summary saying "Discount Amount 44% missing" on a Shopify export
+    while cleaning knew better: every place that reports blanks reads domain_pack.layout_columns."""
+    assert _hits(r"first_line_only\(", {"domain_pack.py"}) == [], "use domain_pack.layout_columns"
+
+
+def test_a_kpi_label_in_a_sentence_is_kpi_phrase():
+    """Banking's caveat said "npl ratio (90+ dpd)": labels were lower-cased at each site."""
+    import domain_pack
+    assert _hits(r"\.label\.lower\(\)") == [], "use KPI.phrase"
+    bank, retail = domain_pack.pack_for("banking"), domain_pack.pack_for("retail")
+    assert (bank.kpi("npl_ratio").phrase, retail.kpi("net_sales").phrase) == (
+        "NPL ratio (90+ DPD)", "net sales")

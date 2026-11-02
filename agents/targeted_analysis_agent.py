@@ -115,7 +115,7 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS and grouped:
         roles = {r: c for r, c in contract.roles.items() if c in df.columns}
         if not computable(pack, params.kpi, roles):   # named, but the data lacks what it needs
-            return _unanswerable(intent, f"{pack.kpi(params.kpi).label.lower()} needs "
+            return _unanswerable(intent, f"{pack.kpi(params.kpi).phrase} needs "
                                  f"{_missing(pack, params.kpi, roles)}, which this data does not have",
                                  ["Ask about a column the data has"])
         handler = handle_kpi   # "basket size by country": the pack's AOV, not a column's mean
@@ -950,7 +950,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     if group and group in df.columns:
         by = compute_kpi(df, roles, pack, kpi.name, by=group, full=full)
         if by is None or by.empty:
-            return _unanswerable(intent, f"{kpi.label.lower()} can't be computed from these rows",
+            return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                                  ["Ask without the group", "Ask about a longer period"])
         asc = (params.order or "desc").lower() == "asc"
         by = ranked(by, ascending=asc).head(params.n or 20)
@@ -998,7 +998,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         frame = full.assign(_period=t.dt.to_period(rule))
         series = compute_kpi(frame, roles, pack, kpi.name, by="_period", full=full)
         if series is None or series.empty:
-            return _unanswerable(intent, f"{kpi.label.lower()} can't be computed over time here",
+            return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here",
                                  [f"{kpi.label} overall"])
         series = series.sort_index()
         unit = ""
@@ -1054,7 +1054,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                     chart_configs=[chart])
     value = compute_kpi(df, roles, pack, kpi.name, full=full)
     if value is None:
-        return _unanswerable(intent, f"{kpi.label.lower()} can't be computed from these rows",
+        return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                              ["Ask about a longer period"])
     answer = f"{kpi.label}{where}: {fmt(value)}." + carry
     # one period asked on strong pack data (a month or longer): against the same period a year

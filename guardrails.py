@@ -856,7 +856,7 @@ _DOB_NAME = (r"dob|dod|bday|(?<!of_)birth(?:_?(?:date|dt|day|year|yr))?|"
              r"(?:year|date|day)_of_(?:birth|death)|born(?:_?(?:on|date|dt))?|"
              r"death_?(?:date|dt|day)|deceased_?(?:date|dt|on)|date_?(?:born|deceased)")
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|iban|"
     rf"{_DOB_NAME}|"
     r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
@@ -915,6 +915,17 @@ _PHONE_RE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s
 _INTL_PHONE_RE = re.compile(r"(?<![\w+])\+(?:\d{1,3}(?:[\s.-]\(?\d{1,8}\)?){1,5}|\d{8,15})"
                             r"(?![\w%]|\.\d)")
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+# An IBAN (GB82 WEST 1234 5698 7654 32): country, check digits, 11–30 letters/digits; masked only
+# when its mod-97 checksum holds, so a product code of the same shape is left alone.
+_IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b")
+
+
+def _iban(text: str) -> bool:
+    t = text.replace(" ", "")
+    n = "".join(str(int(ch, 36)) for ch in t[4:] + t[:4])
+    return int(n) % 97 == 1
+
+
 _IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)"
                       r"(?![\d.])")
 MASK = "[REDACTED]"
@@ -1015,6 +1026,7 @@ def mask_pii(value: Any) -> Any:
     v = _EMAIL_RE.sub(MASK, value)
     v = _SSN_RE.sub(MASK, v)
     v = _CARD_RE.sub(lambda m: MASK if _luhn(re.sub(r"\D", "", m.group())) else m.group(), v)
+    v = _IBAN_RE.sub(lambda m: MASK if _iban(m.group()) else m.group(), v)
     v = _PHONE_RE.sub(MASK, v)
     v = _INTL_PHONE_RE.sub(_intl_phone, v)
     return _IPV4_RE.sub(MASK, v)
@@ -1029,7 +1041,7 @@ def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
 
 _NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
                ("address", r"address|street"), ("dob", _DOB_NAME),
-               ("passport", r"passport"))
+               ("passport", r"passport"), ("iban", r"iban"))
 
 
 def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
@@ -1037,7 +1049,7 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     `values`: a sample of the column's non-null values.
     - name: the PII name rule (`customer_email`, 'Tel.'), or a role noun (`sales_rep`) whose
       values read as people's names;
-    - values: ≥ 30% of them contain an email, phone, SSN, card or IP address."""
+    - values: ≥ 30% of them contain an email, phone, SSN, card, IBAN or IP address."""
     norm = _norm_name(name)
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
@@ -1076,6 +1088,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 hits["phone"] = hits.get("phone", 0) + 1
             elif any(_luhn(re.sub(r"\D", "", m.group())) for m in _CARD_RE.finditer(t)):
                 hits["card"] = hits.get("card", 0) + 1
+            elif any(_iban(m.group()) for m in _IBAN_RE.finditer(t)):
+                hits["iban"] = hits.get("iban", 0) + 1
     if sum(hits.values()) >= 0.3 * len(vals):
         kind = max(hits, key=hits.get)
         return kind, f"{sum(hits.values())} of {len(vals)} sampled values contain personal data"
@@ -1217,6 +1231,7 @@ def pii_strings(value: Any) -> list[str]:
     found = [m.group() for rx in (_EMAIL_RE, _SSN_RE, _PHONE_RE, _IPV4_RE) for m in rx.finditer(text)]
     found += [m.group() for m in _INTL_PHONE_RE.finditer(text) if _intl_phone(m) == MASK]
     found += [m.group() for m in _CARD_RE.finditer(text) if _luhn(re.sub(r"\D", "", m.group()))]
+    found += [m.group() for m in _IBAN_RE.finditer(text) if _iban(m.group())]
     return found
 
 

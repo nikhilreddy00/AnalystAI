@@ -28,7 +28,7 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
-from domain_pack import pack_for
+from domain_pack import layout_columns, pack_for
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -216,8 +216,11 @@ def _names(cols: list[str], cap: int = 12) -> str:
     return ", ".join(cols[:cap]) + (f" (+{len(cols) - cap} more)" if len(cols) > cap else "")
 
 
-def _summary(df: pd.DataFrame, cols: list[ColumnInfo]) -> str:
-    """Computed facts only: counts, the primary date span and grain, roles, PII, missing values."""
+def _summary(df: pd.DataFrame, cols: list[ColumnInfo], layout: dict[str, str] | None = None) -> str:
+    """Computed facts only: counts, the primary date span and grain, roles, PII, missing values.
+    Blanks that are the file's layout (domain_pack.layout_columns) are said as such, never as
+    missing values."""
+    layout = layout or {}
     by = lambda role: [c.name for c in cols if _role(c) == role and not c.pii]   # noqa: E731
     parts = [f"{len(df):,} rows × {df.shape[1]} columns."]
     if date := next((c.name for c in cols if c.is_date and not c.pii), None):
@@ -230,9 +233,14 @@ def _summary(df: pd.DataFrame, cols: list[ColumnInfo]) -> str:
             parts.append(f"{label}: {_names(names)}.")
     if pii := [f"{c.name} ({c.pii})" for c in cols if c.pii]:
         parts.append(f"Personal data, masked before any model sees it: {_names(pii)}.")
-    if missing := sorted((c for c in cols if c.null_pct >= 1), key=lambda c: -c.null_pct)[:5]:
+    if missing := sorted((c for c in cols if c.null_pct >= 1 and c.name not in layout),
+                         key=lambda c: -c.null_pct)[:5]:
         parts.append("Missing values: " + ", ".join(f"{c.name} {c.null_pct:g}%" for c in missing)
                      + ".")
+    for kind, why in (("order", "one value per order, on its first line"),
+                      ("conditional", "filled only for the rows whose status needs one")):
+        if names := [c for c, k in layout.items() if k == kind]:
+            parts.append(f"Blank by the file's layout, not missing ({why}): {_names(names)}.")
     return " ".join(parts)
 
 
@@ -366,6 +374,12 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
             if c.is_metric or shaped or coded or s.nunique() >= 0.5 * max(len(s), 1):
                 c.is_id, c.is_metric = True, False
                 c.role_reason = f"id: the {domain} {role.replace('_', ' ')}"
+        key, date = roles.get(pack.snapshot_key), roles.get(pack.date_role)
+        if confidence == "strong" and key and date:   # a balance: the layer's level rule
+            for c in cols:   # (a semantic-layer hint on the same column wins)
+                role = next((r for r, col in roles.items() if col == c.name), None)
+                if role and pack.roles[role].over_time == "last" and not c.aggregation:
+                    c.aggregation, c.aggregation_by, c.aggregation_time = "last", [key], date
     return DataContract(
         source_type=source_type, row_count=len(df), column_count=df.shape[1], columns=cols,
         sample_rows=[mask_row(r, pii) for r in rows],
@@ -374,7 +388,8 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
         date_columns=[c.name for c in cols if c.is_date and not c.pii], phi=phi,
         id_columns=[c.name for c in cols if c.is_id],
         metric_columns=[c.name for c in cols if c.is_metric],
-        schema_summary=_summary(df, cols), fingerprint=fp, pii_columns=pii,
+        schema_summary=_summary(df, cols, layout_columns(df, pack, roles)), fingerprint=fp,
+        pii_columns=pii,
         source_evidence=source_evidence(df, cols, source_type, info, fp),
         domain=domain, roles=roles, domain_confidence=confidence)
 
@@ -626,7 +641,8 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
                 r.aggregation, r.aggregation_by, r.aggregation_time)
         if r and not c.unit and r.unit:
             c.unit = r.unit
-    rebuilt.schema_summary = _summary(out, rebuilt.columns) + (
+    rebuilt.schema_summary = _summary(out, rebuilt.columns, layout_columns(
+        out, pack_for(rebuilt.domain), {r: c for r, c in rebuilt.roles.items() if c in out.columns})) + (
         f" Patient data: identifiers withheld ({', '.join(withheld)}), record numbers "
         f"pseudonymised; groups under {SMALL_CELL} records appear as '{POOLED_LABEL}'.")
     rebuilt.source_evidence = source_evidence(out, rebuilt.columns, source_type,

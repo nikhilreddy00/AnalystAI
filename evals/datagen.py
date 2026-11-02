@@ -855,13 +855,243 @@ def make_b2b_invoices(seed: int) -> tuple[pd.DataFrame, dict]:
     assert 55 < truth["top20_customer_share_pct"] < 90
     return out, truth
 
+_PRODUCTS = {   # share, balance scale, monthly paydown, monthly roll to 30 DPD, rate (%)
+    "mortgage": (0.20, 220_000.0, 0.003, 0.0008, 6.5),
+    "auto": (0.30, 22_000.0, 0.022, 0.006, 8.9),
+    "personal": (0.25, 9_000.0, 0.028, 0.025, 13.5),
+    "card": (0.25, 3_200.0, 0.0, 0.045, 22.9),
+}
+_ON_BOOKS_OUT = ("Charged Off", "Paid Off")
+
+
+def _on_books(df: pd.DataFrame, as_of: str) -> pd.DataFrame:
+    return df[(df["As Of Date"] == as_of) & ~df["Loan Status"].isin(_ON_BOOKS_OUT)]
+
+
+def make_loan_tape(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A consumer loan tape: 1,200 loans × 14 month-ends (2025-09-30 .. 2026-10-31).
+
+    Traps: `Outstanding Principal` is a level (a 14-month sum is ~13× the book); NPL by count
+    (small, delinquent card loans) is far above NPL by balance; a charged-off loan's row carries
+    its balance in its charge-off month (out of outstanding); paid-off loans leave a zero row (they
+    drag a naive average); DPD 999 = unknown (in the denominator only); a few loans are
+    non-accrual below 90 DPD (NPL by status); `Charge Off Date` is blank except on charged-off
+    rows (a conditional field, not 97% missing); Original Amount repeats on every snapshot."""
+    rng = np.random.default_rng(seed)
+    months = pd.date_range("2025-09-30", "2026-10-31", freq="ME")
+    names = list(_PRODUCTS)
+    n = 1200
+    product = rng.choice(names, n, p=[_PRODUCTS[k][0] for k in names])
+    # 85% are on the book at the start; the rest open during the window
+    opens = np.where(rng.random(n) < 0.85, -1, rng.integers(1, len(months), n))
+    branch = rng.choice(["Downtown", "Harbor", "Hillside", "Airport", "Riverside"], n)
+    orig = np.array([_PRODUCTS[k][1] for k in product]) * rng.lognormal(0, 0.45, n)
+    bal = orig * rng.uniform(0.5, 1.0, n)
+    rate = np.array([_PRODUCTS[k][4] for k in product]) + rng.normal(0, 1.2, n)
+    nonaccrual = set(rng.choice(np.flatnonzero(product == "personal"), 8, replace=False).tolist())
+    born = pd.to_datetime("2019-01-01") + pd.to_timedelta(rng.integers(0, 2400, n), "D")
+    dpd = np.zeros(n, int)
+    alive = np.ones(n, bool)
+    rows = []
+    for m, day in enumerate(months):
+        for i in range(n):
+            if not alive[i] or opens[i] > m:
+                continue
+            k = product[i]
+            if opens[i] == m:
+                born_i, bal[i] = day - pd.Timedelta(days=int(rng.integers(1, 25))), orig[i]
+            else:
+                born_i = born[i]
+                if dpd[i]:   # delinquent: rolls on (half the time) or cures
+                    dpd[i] = dpd[i] + 30 if rng.random() < 0.55 else 0
+                elif rng.random() < _PRODUCTS[k][3]:
+                    dpd[i] = 30
+                if not dpd[i]:
+                    bal[i] = bal[i] * (1 - _PRODUCTS[k][2]) if k != "card" else \
+                        max(0.0, bal[i] * rng.normal(1.0, 0.06))
+            status = ("Current" if dpd[i] == 0 else "Delinquent" if dpd[i] < 90 else "Non-Accrual")
+            if i in nonaccrual and m >= 6:
+                status = "Non-Accrual"
+            charge = ""
+            if dpd[i] >= 180:
+                status, charge, alive[i] = "Charged Off", day.strftime("%Y-%m-%d"), False
+            elif k in ("auto", "personal") and not dpd[i] and m and rng.random() < 0.012:
+                status, bal[i], alive[i] = "Paid Off", 0.0, False
+            rows.append((f"LN-{100000 + i}", day.strftime("%Y-%m-%d"), k.title() if k != "card"
+                         else "Credit Card", branch[i],
+                         f"{_FIRST[i % len(_FIRST)]} {_LAST[(i // 3) % len(_LAST)]}",
+                         born_i.strftime("%Y-%m-%d"), round(float(orig[i]), 2),
+                         round(float(bal[i]), 2), round(float(rate[i]), 2), int(dpd[i]), status,
+                         charge, "USD"))
+    df = pd.DataFrame(rows, columns=["Loan ID", "As Of Date", "Product", "Branch", "Borrower Name",
+                                     "Origination Date", "Original Amount",
+                                     "Outstanding Principal", "Interest Rate (%)",
+                                     "Days Past Due", "Loan Status", "Charge Off Date",
+                                     "Currency"])
+    df["Charge Off Date"] = df["Charge Off Date"].replace("", None)
+    sentinel = sorted(rng.choice(np.flatnonzero(df["Days Past Due"].eq(0)), 60,
+                                 replace=False).tolist())
+    df.loc[sentinel, "Days Past Due"] = 999
+
+    last, prev, year = "2026-10-31", "2026-09-30", "2025-10-31"
+    book = _on_books(df, last)
+    dpd_known = book["Days Past Due"].where(book["Days Past Due"] != 999)
+    npl = (dpd_known >= 90) | book["Loan Status"].eq("Non-Accrual")
+    by_product = {p: float(b.loc[npl.loc[b.index], "Outstanding Principal"].sum()
+                           / b["Outstanding Principal"].sum())
+                  for p, b in book.groupby("Product")}
+    total = float(book["Outstanding Principal"].sum())
+    truth = {
+        "row_count": len(df), "pii_columns": ["Borrower Name"],
+        "outstanding_last": total, "accounts_last": len(book),
+        "avg_balance_last": total / len(book),
+        "naive_balance_sum": float(df["Outstanding Principal"].sum()),
+        "naive_avg_balance": float(df["Outstanding Principal"].mean()),
+        "npl_ratio_pct": 100 * float(book.loc[npl, "Outstanding Principal"].sum()) / total,
+        "npl_count_pct": 100 * float(npl.mean()),
+        "delinq30_pct": 100 * float(book.loc[dpd_known >= 30, "Outstanding Principal"].sum()) / total,
+        "npl_by_product_pct": {p: 100 * v for p, v in by_product.items()},
+        "balance_mom_pct": 100 * (total / float(_on_books(df, prev)["Outstanding Principal"].sum()) - 1),
+        "balance_yoy_pct": 100 * (total / float(_on_books(df, year)["Outstanding Principal"].sum()) - 1),
+        "avg_balance_by_branch": (book.groupby("Branch")["Outstanding Principal"].mean()).to_dict(),
+        "naive_avg_by_branch": df.groupby("Branch")["Outstanding Principal"].mean().to_dict(),
+        "charged_off_rows": int(df["Loan Status"].eq("Charged Off").sum()),
+        "paid_off_rows": int(df["Loan Status"].eq("Paid Off").sum()),
+        "dpd_sentinel_rows": len(sentinel),
+        "naive_original_amount_sum": float(df["Original Amount"].sum()),
+    }
+    truth["naive_sum_by_branch"] = df.groupby("Branch")["Outstanding Principal"].sum().to_dict()
+    assert truth["npl_count_pct"] > 1.5 * truth["npl_ratio_pct"]
+    assert truth["naive_balance_sum"] > 10 * total
+    return df, truth
+
+
+_MCC = {"Groceries": (55, 0.30), "Dining": (28, 0.18), "Fuel": (48, 0.12), "Travel": (240, 0.05),
+        "Utilities": (95, 0.08), "Online Retail": (62, 0.17), "Entertainment": (35, 0.10)}
+
+
+def _iban(rng: np.random.Generator) -> str:
+    """A valid (mod-97) UK-shaped IBAN: GBkk BANK ssssss aaaaaaaa."""
+    body = "WEST" + "".join(str(d) for d in rng.integers(0, 10, 14))
+    n = int("".join(str(int(c, 36)) for c in body + "GB00"))
+    return f"GB{98 - n % 97:02d}{body}"
+
+
+def make_card_ledger(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A current-account transaction ledger: 400 accounts, posting dates 2025-07-01 .. 2026-10-31.
+
+    Traps: fee reversals (the original marked `reversed`, a REVERSAL entry beside it: fee income
+    counting either overstates it); pending transactions in the last days; transfers between own
+    accounts are no spend; 4% EUR accounts (never added to USD); a 2% export overlap (exact
+    repeated rows); Transaction Date before Posting Date across month ends (books go by posting);
+    `Balance After` is a running level (summing it is meaningless). Seed 2: reversal entries
+    without the original marked (a stated limit)."""
+    rng = np.random.default_rng(seed)
+    days = pd.date_range("2025-07-01", "2026-10-31", freq="D")
+    n_acc = 400
+    accounts = [f"ACC-{10001 + i}" for i in range(n_acc)]
+    ibans = [_iban(rng) for _ in range(n_acc)]
+    eur = set(rng.choice(n_acc, 16, replace=False).tolist())
+    cats, weights = list(_MCC), np.array([w for _, w in _MCC.values()])
+    rows = []
+    tid = 500000
+    for a in range(n_acc):
+        balance = float(rng.lognormal(7.8, 0.7))
+        salary = float(rng.lognormal(7.9, 0.3))
+        for month in pd.period_range("2025-07", "2026-10", freq="M"):
+            mdays = days[(days >= month.start_time) & (days <= month.end_time)]
+            events = [(mdays[0], "DEPOSIT", "Income", "Payroll", salary)]
+            for _ in range(rng.poisson(3)):
+                c = rng.choice(cats, p=weights / weights.sum())
+                events.append((rng.choice(mdays), "PURCHASE", c, f"{c} merchant",
+                               -round(float(rng.gamma(2.0, _MCC[c][0] / 2)), 2)))
+            if rng.random() < 0.35:
+                events.append((rng.choice(mdays), "TRANSFER", "Transfer", "To own savings",
+                               -round(float(rng.uniform(100, 800)), 2)))
+            if rng.random() < 0.25:
+                events.append((rng.choice(mdays), "FEE", "Bank Fees", "Overdraft fee", -35.0))
+            events.append((mdays[-1], "FEE", "Bank Fees", "Monthly service fee", -12.0))
+            for day, kind, cat, desc, amount in sorted(events, key=lambda e: e[0]):
+                tid += 1
+                balance += amount
+                rows.append([f"TX{tid}", accounts[a], ibans[a], day, kind, cat, desc,
+                             amount, "EUR" if a in eur else "USD", "posted", round(balance, 2)])
+    df = pd.DataFrame(rows, columns=["Transaction ID", "Account ID", "IBAN", "Posting Date",
+                                     "Transaction Type", "Merchant Category", "Description",
+                                     "Amount", "Currency", "Status", "Balance After"])
+    # fee reversals: 8% of fees, reversed 1–3 days later by a REVERSAL entry
+    fees = np.flatnonzero(df["Transaction Type"].eq("FEE"))
+    rev = sorted(rng.choice(fees, int(0.08 * len(fees)), replace=False).tolist())
+    df["_reversed"] = False
+    df.loc[rev, "_reversed"] = True   # the truth's own marker: seed 2 exports none
+    if seed != 2:
+        df.loc[rev, "Status"] = "reversed"
+    back = df.loc[rev].copy()
+    back["Transaction ID"] = [f"RV{i}" for i in range(len(back))]
+    back["Posting Date"] = back["Posting Date"] + pd.to_timedelta(rng.integers(1, 4, len(back)), "D")
+    back["Transaction Type"], back["Description"] = "REVERSAL", "Fee reversal"
+    back["Amount"], back["Status"], back["_reversed"] = -back["Amount"], "posted", False
+    back["Balance After"] = (back["Balance After"] + back["Amount"]).round(2)
+    df = pd.concat([df, back], ignore_index=True)
+    # the last 3 days: some still pending (no balance yet)
+    tail = np.flatnonzero(df["Posting Date"] >= pd.Timestamp("2026-10-29"))
+    pend = sorted(rng.choice(tail, min(150, len(tail)), replace=False).tolist())
+    df.loc[pend, "Status"] = "pending"
+    df.loc[pend, "Balance After"] = np.nan
+    df["Transaction Date"] = df["Posting Date"] - pd.to_timedelta(rng.integers(0, 4, len(df)), "D")
+    df["Channel"] = rng.choice(["Card", "Online", "Branch", "ATM"], len(df), p=[0.6, 0.3, 0.05, 0.05])
+    df = df.sort_values(["Posting Date", "Transaction ID"], kind="stable").reset_index(drop=True)
+    clean = df   # the books: everything below is computed before the export overlap is added
+    dup = sorted(rng.choice(len(df), int(0.02 * len(df)), replace=False).tolist())
+    df = pd.concat([df, df.loc[dup]], ignore_index=True)
+    for col in ("Posting Date", "Transaction Date"):
+        df[col] = df[col].dt.strftime("%Y-%m-%d")
+    df = df[["Transaction ID", "Account ID", "IBAN", "Posting Date", "Transaction Date",
+             "Description", "Merchant Category", "Transaction Type", "Amount", "Currency",
+             "Status", "Balance After", "Channel"]]
+
+    books = clean[clean["Currency"].eq("USD") & clean["Status"].isin(["posted", "reversed"])
+                  & ~clean["_reversed"] & clean["Transaction Type"].ne("REVERSAL")]
+    month = books["Posting Date"].dt.to_period("M")
+    fee = books[books["Transaction Type"].eq("FEE")]
+    q = books[(books["Posting Date"] >= "2026-08-01")]
+    spend = q[q["Amount"].lt(0) & ~q["Transaction Type"].isin(["TRANSFER", "FEE"])]
+    naive_fee = df[df["Transaction Type"].eq("FEE")]
+    last_bal = clean[clean["Currency"].eq("USD") & clean["Balance After"].notna()].groupby(
+        "Account ID")["Balance After"].last()
+    truth = {
+        "row_count": len(df), "pii_columns": ["IBAN"],
+        "duplicate_rows": len(dup), "pending_rows": len(pend), "reversed_rows": len(rev),
+        "reversal_entries": len(rev), "eur_rows": int(df["Currency"].eq("EUR").sum()),
+        "fee_income_total": float(-fee["Amount"].sum()),
+        "fee_income_naive": float(-naive_fee["Amount"].sum()),
+        "fee_income_by_month": {str(k): float(-v) for k, v in
+                                fee.groupby(fee["Posting Date"].dt.to_period("M"))["Amount"].sum().items()},
+        "fee_income_oct": float(-fee[fee["Posting Date"] >= "2026-10-01"]["Amount"].sum()),
+        "spend_by_category_q": {k: float(-v) for k, v in
+                                spend.groupby("Merchant Category")["Amount"].sum().items()},
+        "spend_q_total": float(-spend["Amount"].sum()),
+        "spend_q_with_transfers": float(-q[q["Amount"].lt(0) & q["Transaction Type"].ne("FEE")]["Amount"].sum()),
+        "inflows_by_month": {str(k): float(v) for k, v in
+                             books[books["Amount"] > 0].groupby(month)["Amount"].sum().items()},
+        "outflows_by_month": {str(k): float(-v) for k, v in
+                              books[books["Amount"] < 0].groupby(month)["Amount"].sum().items()},
+        "transactions": int(books["Transaction ID"].nunique()),
+        "total_balance_last": float(last_bal.sum()),
+        "naive_balance_after_sum": float(df["Balance After"].sum()),
+    }
+    assert truth["fee_income_naive"] > 1.1 * truth["fee_income_total"]
+    assert truth["spend_q_with_transfers"] > 1.1 * truth["spend_q_total"]
+    return df, truth
+
 
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
             "saas_accounts": make_saas_accounts, "sensor_readings": make_sensor_readings,
             "shipments": make_shipments, "retail_lines": make_retail_lines,
-            "store_weeks": make_store_weeks, "b2b_invoices": make_b2b_invoices}
+            "store_weeks": make_store_weeks, "b2b_invoices": make_b2b_invoices,
+            "loan_tape": make_loan_tape, "card_ledger": make_card_ledger}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

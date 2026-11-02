@@ -191,7 +191,8 @@ def test_a_domain_overview_with_a_broken_report_fails():
     from evals.run import run_passed
     out = {"checks": [{"ok": True}], "hard": [{"rule": "non_empty_or_error", "ok": False}]}
     assert not run_passed("e2e", {"domain": "insurance"}, out)
-    assert run_passed("e2e", {"domain": "retail"}, out)   # old cases: unchanged meaning
+    # Domain 2 (R6): retail too; the last three full E2E reports rescored with no run changed
+    assert not run_passed("e2e", {"domain": "retail"}, out)
 
 
 def test_by_domain_reads_attribution_from_any_run():

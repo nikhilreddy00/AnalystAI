@@ -205,9 +205,14 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
     so the answer and its chart agree. Missing values are never carried forward."""
     import pandas as pd
     hint = column_hint(contract, column)
+    names = [k for k in (keys if isinstance(keys, list) else [keys]) if isinstance(k, str)]
+    if agg not in _LEVEL and hint is not None and hint.aggregation in _LEVEL and not over_time \
+            and hint.aggregation_time not in names:
+        # an average balance by branch: per account at its latest snapshot, never every week's
+        # snapshot of it (an account weighted by its history, a closed one still averaged in)
+        return latest_rows(df, column, contract).groupby(keys)[column].agg(agg)
     if agg not in _LEVEL or hint is None:
         return df.groupby(keys)[column].agg("sum" if agg in _LEVEL else agg)
-    names = [k for k in (keys if isinstance(keys, list) else [keys]) if isinstance(k, str)]
     if not over_time and hint.aggregation_time not in names:
         return latest_rows(df, column, contract).groupby(keys)[column].sum()
     keys = keys if isinstance(keys, list) else [keys]
@@ -219,20 +224,30 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
 
 def latest_rows(df, column: str, contract):
     """For a level by group (bars, answers): each entity's latest snapshot (or first, for a
-    'first' window), the rows a current total adds up. An entity whose latest snapshot is a full
-    usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
-    data: not in the newest complete month); staggered snapshots (each account on its own day)
-    all count. Anything else: the frame as it is."""
-    import pandas as pd
+    'first' window), the rows a current total adds up (snapshot_rows). Anything else: the frame
+    as it is."""
     hint = column_hint(contract, column)
     if hint is None or hint.aggregation not in _LEVEL:
         return df
-    d = _snapshots(df.dropna(subset=[column]), hint)
-    g = d.groupby(hint.aggregation_by, sort=False)
-    if hint.aggregation == "first":
+    _snapshots(df, hint)   # the entity and time columns are there, or LevelUnavailable
+    return snapshot_rows(df.dropna(subset=[column]), hint.aggregation_by, hint.aggregation_time,
+                         hint.aggregation)
+
+
+def snapshot_rows(df, by: list[str], time: str, window: str = "last"):
+    """Each entity's latest snapshot (or first, for a 'first' window): the one rule for a level's
+    current rows (a balance's tile, bars, answers). An entity whose latest snapshot is a full
+    usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
+    data: not in the newest complete month); staggered snapshots (each account on its own day)
+    all count. Undated rows are out (one can't be the latest)."""
+    import pandas as pd
+    t = pd.to_datetime(df[time], format="mixed", errors="coerce")
+    d = df.loc[t.notna()].assign(_t=t[t.notna()]).sort_values("_t", kind="stable")
+    g = d.groupby(by, sort=False)
+    if window == "first":
         return g.head(1).drop(columns="_t")
     gaps = g["_t"].diff().dt.total_seconds().dropna()
-    cadence = gaps.groupby([d.loc[gaps.index, e] for e in hint.aggregation_by]).median().median() \
+    cadence = gaps.groupby([d.loc[gaps.index, e] for e in by]).median().median() \
         if len(gaps) else 0.0
     last = g.tail(1)
     newest = d["_t"].max()

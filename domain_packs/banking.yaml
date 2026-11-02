@@ -1,0 +1,259 @@
+# Banking / financial services (Phase 5.7, domain 2): loan tapes and deposit snapshots (one row
+# per account per as-of date), and transaction ledgers (one row per transaction).
+# Headers are normalized (domain_pack.normalize_header): lower case, "_" for spaces, units dropped.
+domain: banking
+
+# A balance is a level: it adds across accounts at one date, never across dates. Every balance
+# role is `over_time: last` (each account's latest snapshot per period), and every KPI of a state
+# (outstanding, accounts, NPL) is `at: latest`.
+#
+# Strong: shapes only banking data has. An account and a balance alone are any ledger's words
+# (accounts-receivable aging, leave balances), so each strong shape adds a delinquency field, a
+# flow beside a running balance, or banking transaction types.
+strong:
+  - {account: [account], balance: [balance], delinquency: [dpd, delinquency_bucket]}   # loan tape
+  - {account: [account], balance: [balance, balance_after], flow: [amount, debit, credit]}
+  - {account: [account], flow: [amount, debit, credit], kind: [txn_type], when: [date]}   # ledger
+# Weak: read as banking, and every report and KPI answer says so in one line.
+signals:
+  - {account: [account], balance: [balance, balance_after]}
+  - {account: [account], flow: [amount, debit, credit], when: [date]}
+# Another domain's headers (all words in ONE header).
+exclude_headers: [[patient], [mrn], [diagnosis], [sku], [mrr], [arr], [subscription], [seats],
+                  [premium], [policyholder], [claim, id], [claim, amount], [policy, id],
+                  [employee, id], [payroll], [invoice], [invoiceno], [vendor], [supplier],
+                  [sensor], [meter], [shipment], [order, id], [lineitem], [ticker], [cusip]]
+
+roles:
+  # The as-of date first: the domain's time role (statement cycles, snapshots, postings).
+  date:          {kind: date, headers: [as_of_date, asof_date, snapshot_date, statement_date,
+                                        reporting_date, report_date, balance_date, month_end,
+                                        posting_date, posted_date, post_date, booking_date,
+                                        transaction_date, txn_date, trans_date, value_date, date]}
+  account:       {kind: id, headers: [loan_id, loan_number, loan_no, account_id, acct_id,
+                                      account_no, acct_no, account_number, facility_id, card_id,
+                                      card_account_id, contract_id]}
+  txn_id:        {kind: id, headers: [transaction_id, txn_id, trans_id, transaction_ref,
+                                      reference_number, ref_no, reference]}
+  customer_id:   {kind: id, headers: [customer_id, cif, cif_number, client_id, customer_number,
+                                      borrower_id]}
+  balance:       {kind: money, over_time: last,
+                  headers: [outstanding_principal, outstanding_balance, principal_balance,
+                            current_balance, balance, ledger_balance, closing_balance,
+                            eod_balance, end_of_day_balance, outstanding, book_balance]}
+  # A running balance on a ledger: a level per account, never a KPI's sum.
+  balance_after: {kind: money, over_time: last,
+                  headers: [balance_after, running_balance, balance_after_transaction,
+                            post_balance, available_balance]}
+  # Per-loan amounts repeated on every snapshot: summed 14 times across 14 month-ends otherwise.
+  original_amount: {kind: money, over_time: last,
+                    headers: [original_amount, original_balance, original_principal,
+                              loan_amount, funded_amount, origination_amount]}
+  credit_limit:  {kind: money, over_time: last, headers: [credit_limit, limit, credit_line,
+                                                          approved_limit]}
+  interest_rate: {kind: number, additive: false, headers: [interest_rate, int_rate, rate, apr,
+                                                           coupon, interest_rate_pct]}
+  dpd:           {kind: count, additive: false, headers: [days_past_due, dpd, days_delinquent,
+                                                          days_overdue, days_in_arrears]}
+  delinquency_bucket: {kind: category, headers: [delinquency_bucket, dpd_bucket, aging_bucket,
+                                                 delinquency_status, arrears_bucket]}
+  amount:        {kind: money, headers: [amount, transaction_amount, txn_amount, trans_amount,
+                                         amount_usd, amt]}
+  debit:         {kind: money, headers: [debit, debit_amount, withdrawal, withdrawals,
+                                         money_out, paid_out]}
+  credit:        {kind: money, headers: [credit, credit_amount, deposit, deposits, money_in,
+                                         paid_in]}
+  # Banking transaction types: "PURCHASE", "Direct Debit", "ATM Withdrawal", "Fee" …
+  txn_type:      {kind: category,
+                  pattern: '(?i)[a-z /-]{0,20}(?:purchase|payment|fee|fees|interest|transfer|deposit|withdrawal|reversal|debit|credit|atm|pos|refund|charge|cheque|check|ach|wire|standing order|direct debit|cash)[a-z /-]{0,20}',
+                  headers: [transaction_type, txn_type, trans_type, tran_type, type,
+                            transaction_code]}
+  merchant_category: {kind: category, headers: [merchant_category, mcc_description,
+                                                spend_category, category]}
+  merchant:      {kind: category, headers: [merchant, merchant_name, payee, description,
+                                            narrative]}
+  product:       {kind: category, headers: [product, product_type, loan_type, account_type,
+                                            product_name]}
+  segment:       {kind: category, headers: [segment, customer_segment, business_line]}
+  branch:        {kind: category, headers: [branch, branch_name, region]}
+  channel:       {kind: category, headers: [channel]}
+  interest_expense: {kind: money, headers: [interest_expense, cost_of_funds, interest_paid]}
+  charge_off_date: {kind: date, headers: [charge_off_date, chargeoff_date, write_off_date]}
+  status:        {kind: status, headers: [loan_status, account_status, status,
+                                          transaction_status, txn_status]}
+  currency:      {kind: currency, headers: [currency, currency_code, ccy]}
+
+# Compared lower-case: each written as real tapes and cores do.
+status_values:
+  ok: [current, active, open, performing, delinquent, late, past due, past_due,
+       "late (16-30 days)", "late (31-120 days)", in grace period, grace period, non-accrual,
+       non accrual, non_accrual, nonaccrual, default, defaulted, posted, booked, cleared,
+       settled, completed, complete]
+  return: [reversed]
+  cancel: [pending, declined, failed, rejected, charged off, charged_off, charged-off,
+           charge off, written off, written_off, write off, paid off, paid_off, fully paid,
+           closed]
+non_product: {txn_type: [REVERSAL, REV, REVERSAL CREDIT, REVERSAL DEBIT]}
+sentinels: {dpd: [999, 9999]}
+ranges: {dpd: {ge: 0}, credit_limit: {ge: 0}, interest_rate: {ge: 0}}
+conditional_fields: {charge_off_date: [charged off, charged_off, charged-off, charge off,
+                                       written off, written_off, write off]}
+
+snapshot_key: account
+cost_roles: [interest_expense]              # margin or NIM talk needs funding costs
+overview_groups: [product, segment, branch, merchant_category, txn_type]
+row_labels: {sale: posted rows, refunded: reversed transactions,
+             cancel: "pending, declined or closed rows", test: test accounts,
+             non_product: reversal entries}
+row_flags:
+  refunded: "transactions marked reversed: left out of money figures"
+  cancel: "pending or declined transactions, or closed, paid-off or charged-off accounts: left out of balances and money figures"
+  non_product: "reversal entries (the reversing side of a reversed transaction): left out of money figures"
+  test: "test-account rows: left out"
+text:
+  rows_brief: "Money figures and balances use rows of kind 'sale' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: each account's latest row per period, summed across accounts, never across dates."
+  unsupported_alternatives: "I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?"
+  kpis_default: its balance and transaction columns
+  causal_removed: "{n} sentence(s) saying a rate change, campaign or offer caused a change were removed: without a control group that can't be shown."
+  refunded_rule: reversed (left out)
+  cancel_rule: pending, declined or closed (left out)
+  non_product_rule: a reversal entry (left out)
+
+kpis:
+  - name: total_balance
+    label: Total balance
+    unit: money
+    tile: true
+    at: latest
+    num: [[{sum: balance}]]   # never balance_after: a ledger's latest row is often a reversal or pending
+  - name: open_accounts
+    label: Open accounts
+    unit: count
+    tile: true
+    at: latest
+    # accounts with a balance on the row: snapshot data (a ledger has no open-account count)
+    num: [[{nunique: account, where: [[{role: balance, not_in: []}]]}]]
+  - name: avg_balance
+    label: Avg balance per account
+    unit: money
+    tile: true
+    num: [[{kpi: total_balance}]]
+    den: [[{kpi: open_accounts}]]
+  # Non-performing: 90+ days past due OR non-accrual, by balance (a count ratio overstates small
+  # card loans). DPD 999 is read as unknown (Cleaning): in the denominator, not the numerator.
+  - name: npl_ratio
+    label: NPL ratio (90+ DPD)
+    unit: percent
+    tile: true
+    at: latest
+    num:
+      - [{sum: balance, where: [[{role: dpd, ge: 90}], [{role: status, in: [non-accrual, nonaccrual, default, defaulted]}]]}]
+      - [{sum: balance, where: [[{role: dpd, ge: 90}]]}]
+      - [{sum: balance, where: [[{role: delinquency_bucket, in: [90+, 90-119, 120+, 90 plus, 90-179, 180+, 90+ dpd]}], [{role: status, in: [non-accrual, nonaccrual, default, defaulted]}]]}]
+      - [{sum: balance, where: [[{role: delinquency_bucket, in: [90+, 90-119, 120+, 90 plus, 90-179, 180+, 90+ dpd]}]]}]
+    den: [[{kpi: total_balance}]]
+  - name: delinquency_30
+    label: 30+ delinquency
+    unit: percent
+    tile: true
+    at: latest
+    num:
+      - [{sum: balance, where: [[{role: dpd, ge: 30}]]}]
+      - [{sum: balance, where: [[{role: delinquency_bucket, not_in: [current, "0", 0-29, 1-29, "1-29 dpd", none]}]]}]
+    den: [[{kpi: total_balance}]]
+  - name: net_flow
+    label: Net flow
+    unit: money
+    tile: true
+    num:
+      - [{sum: amount}]
+      - [{sum: credit}, {sum_abs: debit, sign: -1}]   # both: deposits alone are no net flow
+  - name: inflows
+    label: Inflows
+    unit: money
+    tile: true
+    num: [[{sum: amount, where: [[{role: amount, gt: 0}]]}], [{sum: credit}]]
+  - name: outflows
+    label: Outflows
+    unit: money
+    tile: true
+    num: [[{sum_abs: amount, where: [[{role: amount, lt: 0}]]}], [{sum_abs: debit}]]
+  - name: fee_income
+    label: Fee income
+    unit: money
+    tile: true
+    num: [[{sum_abs: amount, where: [[{role: txn_type, in: [fee, fees, service charge, overdraft fee, monthly fee, late fee, annual fee, atm fee]}]]}]]
+  - name: interest_charged
+    label: Interest charged
+    unit: money
+    num: [[{sum_abs: amount, where: [[{role: txn_type, in: [interest, interest charge, interest charged, finance charge]}]]}]]
+  # Spend: money out that isn't moving money between own accounts, a fee or interest.
+  - name: spend
+    label: Spend
+    unit: money
+    num: [[{sum_abs: amount, where: [[{role: amount, lt: 0}, {role: txn_type, not_in: [transfer, internal transfer, fee, fees, interest, interest charge, payment]}]]}]]
+  - {name: transactions, label: Transactions, unit: count, tile: true, num: [[{nunique: txn_id}]]}
+
+glossary:
+  total_balance: [outstanding balance, outstanding, total balance, book size, loan book,
+                  portfolio balance, balances, balance]
+  open_accounts: [open accounts, number of accounts, active accounts, number of loans,
+                  account count, accounts]
+  avg_balance: [average balance, avg balance, mean balance, balance per account,
+                average outstanding, average loan size, average loan balance]
+  npl_ratio: [npl, npl ratio, npls, non performing, non-performing, nonperforming, npa, bad loans,
+              90+, 90 plus, 90 days past due, 90+ dpd]
+  delinquency_30: [delinquency, delinquency rate, delinquent, 30+, 30 plus, 30+ dpd, past due,
+                   arrears]
+  utilisation: [utilisation, utilization, utilisation rate, utilization rate, credit utilization]
+  net_flow: [net flow, net flows, net cash flow, net movement]
+  inflows: [inflows, inflow, money in]
+  outflows: [outflows, outflow, money out]
+  fee_income: [fee income, fees, fee revenue, fees charged, service charges, overdraft fees]
+  interest_charged: [interest charged, interest income, interest earned]
+  spend: [spend, spending, card spend, purchases]
+  transactions: [transactions, transaction count, number of transactions, transaction volume]
+  roll_rate: [roll rate, roll rates, roll forward]
+  charge_offs: [charge off, charge offs, charge-off, charge-offs, write off, write offs,
+                write-offs, net charge-offs]
+  originations: [originations, new loans, loans originated, origination volume]
+  adb: [average daily balance, adb]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+  nim: [net interest margin, nim]
+consumed: [balance sheet, accounts payable, accounts receivable, account manager, interest rate,
+           fee schedule]
+definitions:
+  utilisation: "Credit utilisation = the balance on revolving accounts with a limit / their credit limits, both at the latest snapshot (never limits summed across months)."
+  roll_rate: "Roll rate = the share of balances in one delinquency bucket last month that are in the next bucket this month (30-59 → 60-89): follow each account from one as-of date to the next; never compare bucket totals."
+  charge_offs: "Charge-offs are balances written off in the period (status charged off): the balance at charge-off, by the charge-off month. They are left out of the outstanding balance from then on."
+  originations: "Originations are loans first seen in the period by their origination date (original amount, once per loan), never the original amount summed over snapshots."
+  adb: "Average daily balance = the mean of an account's end-of-day balances over the period's days; with weekly or monthly snapshots it is the mean of those snapshots: say which."
+  yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
+unsupported:
+  nim: interest income and interest expense (cost of funds), which this data does not have
+
+caveats:
+  read_as_domain: "Read as banking data ({kpis})."
+  read_as_domain_weak: "Read as banking data because it has {roles} columns; if these are not accounts and balances, the banking figures here don't apply."
+  repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
+  refunded_excluded: "{n} reversed transactions are left out of money figures."
+  cancelled_excluded: "{n} pending, declined or closed-account rows are left out of balances and money figures."
+  months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+  mixed_currency: "{n} rows in currencies other than {currency} are left out of money totals."
+  test_excluded: "{n} test-account rows are left out."
+  non_product_excluded: "{n} reversal entries are left out of money figures."
+  level_as_of: "Balances are as of {date}: each account's latest snapshot, added across accounts, never across dates."
+
+causal_triggers: [rate cut, rate cuts, rate hike, rate hikes, rate increase, rate increases,
+                  campaign, campaigns, promotion, promotions, offer, offers, fee waiver,
+                  fee waivers, marketing, teaser rate]
+
+first_questions:
+  - {q: "How has the total balance moved month over month, and against the same month last year?", needs: [total_balance, year]}
+  - {q: "What share of the book is non-performing (90+ days past due), and is it rising?", needs: [npl_ratio]}
+  - {q: "Which products or branches carry the most 30+ day delinquency?", needs: [delinquency_30, product|branch]}
+  - {q: "What is the average balance per account by segment?", needs: [avg_balance, segment|product]}
+  - {q: "How much fee income did we earn each month?", needs: [fee_income]}
+  - {q: "Where is spend going, by merchant category?", needs: [spend, merchant_category]}
+  - {q: "How do inflows compare with outflows each month?", needs: [inflows, outflows]}
