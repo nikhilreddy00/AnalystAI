@@ -1,0 +1,27 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-41-loan-tape-overview
+insight_case: ins-41-loan-tape-overview
+category: straightforward
+source:
+  report: insight-20261102T210024Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 3
+  kind: number
+  label: contradicted
+  text: Mortgage is the dominant product by balance at $535,592,630.84, dwarfing Auto, Personal and Credit
+    Card.
+- op: replace
+  i: 4
+  kind: causal
+  label: overstated
+  text: The rate cut drove Credit Card balances up, while Mortgage rates held at 6.58%.
+- op: replace
+  i: 5
+  kind: direction
+  label: contradicted
+  text: Outstanding principal fell 0.9% month-over-month in October 2026 versus September 2026.
+natural: []

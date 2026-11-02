@@ -12,9 +12,9 @@ BUNDLE = {"values": [{"pct_change": -2.8}], "evidence_ids": ["trend:revenue:MoM"
 
 
 def test_suite_shape():
-    assert len(CASES) == 40
+    assert len(CASES) == 42   # 5.7 banking: +2
     seeded = [c for c in CASES if c["seeded"]]
-    assert len(seeded) == 20
+    assert len(seeded) == 22   # 5.7 banking: +2
     holdout = [c for c in CASES if c["id"].endswith("holdout")]
     assert len(holdout) == 8 and sum(c["seeded"] for c in holdout) == 4
     # Both halves cover every insight category.
