@@ -395,3 +395,13 @@ def test_a_display_name_already_written_is_not_renamed_again():
     assert _clean_for_executive("Order Total fell; Total rose; order_date ok.", n) == \
         "Order Total fell; Order Total rose; Order Date ok."
     assert _clean_for_executive("Lineitem quantity and Quantity", n) == "Quantity and Quantity"
+
+
+def test_a_plain_word_column_is_renamed_only_as_written():
+    """Live run: 'net sales total $310,635.46' became 'Net sales Order Total' (Total → Order
+    Total matched the English word)."""
+    from agents.insight_agent import _clean_for_executive
+    from orchestrator.state import DataNarrative
+    n = DataNarrative(column_display_names={"Total": "Order Total", "order_date": "Order Date"})
+    assert _clean_for_executive("Net sales total $5; Total rose; ORDER_DATE ok.", n) == \
+        "Net sales total $5; Order Total rose; Order Date ok."

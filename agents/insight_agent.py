@@ -619,9 +619,16 @@ def _clean_for_executive(text: str, narrative: DataNarrative | None) -> str:
         if shown:
             pat = "|".join(re.escape(k) for k in sorted(shown.keys() | keep, key=len,
                                                        reverse=True))
-            out = re.sub(rf"\b(?:{pat})\b", lambda m: shown.get(m.group(0).lower(), m.group(0))
-                         if m.group(0).lower() not in keep else m.group(0), out,
-                         flags=re.IGNORECASE)
+            plain = {r for r, d in narrative.column_display_names.items()
+                     if r and re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", r)}
+
+            def swap(m: re.Match[str]) -> str:
+                w = m.group(0)
+                # a plain-word name ('Total') only as written: 'total' is the English word
+                if w.lower() in keep or (w not in plain and w.lower() in {p.lower() for p in plain}):
+                    return w
+                return shown.get(w.lower(), w)
+            out = re.sub(rf"\b(?:{pat})\b", swap, out, flags=re.IGNORECASE)
     for needle, replacement in _EXECUTIVE_REPLACEMENTS.items():
         out = re.sub(re.escape(needle), replacement, out, flags=re.IGNORECASE)
 

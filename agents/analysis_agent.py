@@ -955,7 +955,9 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     imputed = {d.column: d.before_null_pct for d in decisions
                if d.operation in ("impute", "fill_unknown")}
     missing = {d.column: d.before_null_pct for d in decisions
-               if d.operation == "keep" and d.before_null_pct > 0}
+               if d.operation == "keep" and d.before_null_pct > 0 and d.strategy != "order_level"}
+    # an order-level field (Shopify's total): later lines are blank by the export's layout
+    per_order = {d.column: d.after_null_pct for d in decisions if d.strategy == "order_level"}
     model_notes = [str(a) for a in raw.get("assumptions", []) if isinstance(a, str)][:5] \
         if isinstance(raw.get("assumptions"), list) else []
     audit_notes = [f"{audit.duplicates_removed} duplicate rows were removed first"] \
@@ -970,6 +972,9 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         notes = [f"{c}: {imputed[c]:.0f}% nulls were imputed" for c in cols if c in imputed]
         notes += [f"{c}: {missing[c]:.0f}% missing, left out of this result" for c in cols
                   if c in missing]
+        notes += [f"{c}: one value per order (an order's later lines are blank by the export's "
+                  f"layout)" + (f"; {per_order[c]:g}% of orders have no value"
+                                             if per_order[c] else "") for c in cols if c in per_order]
         # The model's notes are global; keep the ones about this finding's columns.
         relevant = [m for m in model_notes if not cols or any(c in m for c in cols)]
         return Evidence(id=id_, kind=kind, claim=claim,

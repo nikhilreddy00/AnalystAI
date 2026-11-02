@@ -2011,3 +2011,22 @@ def test_a_packs_trend_has_year_over_year_when_the_same_month_last_year_is_there
     s = _gen("subscriptions")
     g = _months_for(s, "billing_date", "mrr")
     assert {t["period"] for t in g["result"]["trends"]} == {"MoM"}
+
+
+def test_an_order_level_field_is_never_called_missing_in_the_evidence():
+    """Live run: Total (first line of each order only) was '44% missing, left out', and the
+    report told the user to fix a gap the export's layout makes."""
+    from agents.analysis_agent import build_evidence
+    from orchestrator.state import AnalysisFindings, CleaningAudit, CleaningDecision
+    keep = [CleaningDecision(column="Total", operation="keep", strategy="order_level", reason="x",
+                             rows_affected=0, before_null_pct=44.0, after_null_pct=0.0),
+            CleaningDecision(column="Notes", operation="keep", strategy="kept", reason="x",
+                             rows_affected=0, before_null_pct=12.0, after_null_pct=12.0)]
+    audit = CleaningAudit(decisions=keep, rows_before=10, rows_after=10, columns_coerced=[],
+                          duplicates_removed=0, outliers_flagged=[], high_null_columns=[], summary="")
+    f = AnalysisFindings(eda_summary={c: {"mean": 1.0, "min": 0.0, "max": 2.0} for c in ("Total", "Notes")},
+                         correlations={}, trends=[], segments=[], anomalies=[],
+                         statistical_tests=[], code_executed="")
+    notes = {e.id: " ".join(e.assumptions) for e in build_evidence(f, {}, "", "", audit)}
+    assert "missing" not in notes["eda:Total"] and "export's layout" in notes["eda:Total"]
+    assert "12% missing" in notes["eda:Notes"]
