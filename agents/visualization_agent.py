@@ -27,6 +27,7 @@ from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
 from agents.utils import (
+    ranked,
     LevelUnavailable,
     aggregate,
     column_hint,
@@ -496,7 +497,7 @@ def _build_target_rate_by_cat(
     if numeric_sort is not None:
         rate = rate.sort_index(key=lambda idx: idx.map(numeric_sort)).head(10)
     else:
-        rate = rate.sort_values(ascending=False).head(10)
+        rate = ranked(rate).head(10)
 
     # PROMPT-2 fix 4: color each bar by whether it's above/below the overall
     # target rate across the full dataset (not just this slice).
@@ -1085,7 +1086,7 @@ def _comparison_kpi_chi2(
     grouped = pd.Series(t.values, index=df[best_col]).groupby(level=0).mean().dropna()
     if grouped.shape[0] < 2:
         return None
-    g_sorted = grouped.sort_values(ascending=False)
+    g_sorted = ranked(grouped)
     high_name, high_rate = g_sorted.index[0], float(g_sorted.iloc[0])
     low_name, low_rate = g_sorted.index[-1], float(g_sorted.iloc[-1])
     high_label = _humanize_value(high_name, best_col, df, ordinal_cols, narrative)
@@ -1349,8 +1350,8 @@ def kpi_mismatches(kpis: list[KPI], df: pd.DataFrame, eda: dict | None = None,
                 ok = k.context.startswith(f"{float(vc.iloc[0]) / float(vc.sum()) * 100:.1f}%") and (
                     str(top) in k.value or k.value == _humanize_value(top, col, df, set(), None))
             elif r.kind == "comparison_split":
-                g = pd.Series(_to_01(df[r.target_column]).values, index=df[r.segment_column]) \
-                    .groupby(level=0).mean().dropna().sort_values(ascending=False)
+                g = ranked(pd.Series(_to_01(df[r.target_column]).values, index=df[r.segment_column])
+                           .groupby(level=0).mean().dropna())
                 ok = k.value == f"{g.iloc[0] * 100:.1f}% vs {g.iloc[-1] * 100:.1f}%"
             else:   # highest_cv
                 s = pd.to_numeric(df[col], errors="coerce").dropna()
@@ -2171,7 +2172,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
         return None
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
-    order = sub.groupby(x)[metric].agg(agg).sort_values(ascending=False)
+    order = ranked(sub.groupby(x)[metric].agg(agg))
     natural = _sort_key_for(order.index)   # numeric labels (1, 2, 3) keep their order
     keys = sorted(order.index[:top], key=natural) if natural else list(order.index[:top])
     series = [None] if not split else list(sub[split].value_counts().index[:_MAX_SERIES])

@@ -13,7 +13,7 @@ import uuid
 import pandas as pd
 
 from agents.errors import LLMOutputError
-from agents.utils import strip_markdown_fences
+from agents.utils import ranked, strip_markdown_fences
 from domain_pack import defaults_pack
 from guardrails import (
     _SENTENCE_RE,
@@ -259,5 +259,5 @@ def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str) -> li
     if chart_type == ChartType.LINE.value:
         grouped = grouped.sort_index().tail(200)
     else:
-        grouped = grouped.sort_values(ascending=False).head(20)
+        grouped = ranked(grouped).head(20)
     return [{x: str(k), y: round(float(v), 4)} for k, v in grouped.items()]

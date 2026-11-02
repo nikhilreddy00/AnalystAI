@@ -4,6 +4,7 @@ suite calls; a suite whose snapshot is unchanged needs no paid re-run (eval cost
 
     uv run python -m evals.snapshot <out.json>      # write
     uv run python -m evals.snapshot diff <a> <b>    # which cases changed, per suite
+    uv run python -m evals.snapshot pin              # re-pin evals/snapshots/golden.json (a domain's end)
 """
 
 from __future__ import annotations
@@ -190,8 +191,13 @@ def diff(a: dict, b: dict) -> dict:
             for suite in a}
 
 
+GOLDEN = Path(__file__).parent / "snapshots" / "golden.json"
+
 if __name__ == "__main__":
-    if sys.argv[1] == "diff":
+    if sys.argv[1] == "pin":   # only at a domain's end, its changes listed in its review note
+        GOLDEN.write_text(json.dumps(asyncio.run(snapshot()), indent=1, sort_keys=True))
+        print(f"→ {GOLDEN}")
+    elif sys.argv[1] == "diff":
         load = lambda p: json.loads(Path(p).read_text())   # noqa: E731
         print(json.dumps(diff(load(sys.argv[2]), load(sys.argv[3])), indent=1))
     else:

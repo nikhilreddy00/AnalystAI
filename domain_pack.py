@@ -18,7 +18,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
-ROW_KIND_COLUMN = "row_kind"   # each row's kind, in the frame analysis code gets
+ROW_KIND_COLUMN = "row_kind"
+# Role names shared code may use: a role of these kinds is named after its kind in every pack.
+RESERVED_ROLES = ("status", "currency")   # each row's kind, in the frame analysis code gets
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
 CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded")
@@ -174,6 +176,8 @@ class Pack(_Strict):
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
             errors.append(f"line_weight is [role, '*' or '-', role], not {self.line_weight}")
+        errors += [f"role {r}: a {x.kind} role is named {x.kind!r} (reserved)" for r, x in
+                   self.roles.items() if x.kind in RESERVED_ROLES and r != x.kind]
         if not any(r.kind == "date" for r in self.roles.values()):
             errors.append("roles: one role of kind date is needed (periods, partial months)")
         if not self.signals or any(len(alt) < 2 for alt in [*self.signals, *self.strong]):

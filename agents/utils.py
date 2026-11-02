@@ -410,3 +410,10 @@ def cut_partial(series, t, freq: str, rule: str | None = None):
 
 
 _UNIT = {"W": "week", "Q": "quarter", "Y": "year"}
+
+
+def ranked(series, ascending: bool = False):
+    """A ranking that is the same on every machine: by label first, then a stable sort by
+    value, so tied groups keep their name order (numpy's default sort is not stable, and Linux
+    and macOS order ties differently)."""
+    return series.sort_index(kind="stable").sort_values(ascending=ascending, kind="stable")

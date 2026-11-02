@@ -339,7 +339,7 @@ try:
             if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):
                 continue
             _g = df.groupby(_segs[:2])[_c].mean()
-            _n = df.groupby(_segs[:2]).size().sort_values(ascending=False).head(20).index
+            _n = df.groupby(_segs[:2]).size().sort_index(kind='stable').sort_values(ascending=False, kind='stable').head(20).index
             result['segments'].append({{'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',
                                        'results': [{{'name': f'{{_a}}|{{_b}}', 'value': round(float(_g[(_a, _b)]), 4)}} for _a, _b in _n]}})
             result['builtin'].append(f'seg:{{_joint}}/{{_c}}')
