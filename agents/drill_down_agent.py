@@ -13,8 +13,8 @@ import uuid
 import pandas as pd
 
 from agents.errors import LLMOutputError
-from agents.utils import ranked, strip_markdown_fences
-from domain_pack import defaults_pack
+from agents.utils import aggregate, column_hint, ranked, strip_markdown_fences
+from domain_pack import pack_for
 from guardrails import (
     _SENTENCE_RE,
     UNTRUSTED_NOTE,
@@ -172,7 +172,7 @@ Answer in JSON as specified.
         x = spec.get("x_column")
         y = spec.get("y_column")
         # Only build the chart if both columns exist and there is data to plot.
-        data = _chart_data(df_parquet, chart_type_str, x, y) \
+        data = _chart_data(df_parquet, chart_type_str, x, y, session.data_contract) \
             if chart_type_str and x in column_names and y in column_names else []
         if data:
             try:
@@ -220,8 +220,10 @@ def checked_answer(answer: str, session: AnalysisSession, shown: list) -> str:
     pack's causal words, no experiment cited), is removed and counted. Nothing left: a fixed
     reply, never an unchecked one."""
     contract = session.data_contract
-    pack = defaults_pack(contract)
-    if pack is None:   # a domain's checks (strong match); other answers as before
+    # any pack match: a weak one only hedges defaults, but an ungrounded number or a promotion
+    # credited with a change is wrong whatever the confidence. No pack: answers as before.
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack is None:
         return answer
     triggers = pack.causal_triggers
     has_dates = bool(contract and contract.date_columns)
@@ -241,12 +243,16 @@ def checked_answer(answer: str, session: AnalysisSession, shown: list) -> str:
                              "removed.)" if dropped else "")
 
 
-def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str) -> list[dict]:
+def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str,
+                contract=None) -> list[dict]:
     """Rows for the suggested chart: raw points for a scatter, mean of y per x otherwise
     (top 20 by value for categorical charts, x-ordered for lines)."""
     if not df_parquet:
         return []
-    df = pd.read_parquet(io.BytesIO(df_parquet), columns=list(dict.fromkeys([x, y]))).dropna()
+    hint = column_hint(contract, y)   # a level needs its entity and time columns too
+    need = [x, y, *(([*hint.aggregation_by, hint.aggregation_time]) if hint and
+                    hint.aggregation in ("last", "first") else [])]
+    df = pd.read_parquet(io.BytesIO(df_parquet), columns=list(dict.fromkeys(need))).dropna()
     if df.empty:
         return []
     if chart_type == ChartType.SCATTER.value:
@@ -255,7 +261,7 @@ def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str) -> li
     if x == y or not pd.api.types.is_numeric_dtype(df[y]):
         grouped = df.groupby(x).size()       # non-numeric y: count rows per x
     else:
-        grouped = df.groupby(x)[y].mean()
+        grouped = aggregate(df, [x], y, "mean", contract)   # a level: latest per entity
     if chart_type == ChartType.LINE.value:
         grouped = grouped.sort_index().tail(200)
     else:

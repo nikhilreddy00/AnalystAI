@@ -106,6 +106,7 @@ class ColumnInfo(BaseModel):
     aggregation: str | None = None
     aggregation_by: list[str] = Field(default_factory=list)   # the level's entity (key columns)
     aggregation_time: str | None = None   # the level's time column (its snapshots' order)
+    aggregation_every: str | None = None  # a level's snapshot cadence per entity ("monthly")
     unit: str | None = None
 
 

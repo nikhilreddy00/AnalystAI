@@ -365,9 +365,14 @@ async def run_intake_agent(
     if unsupported and not is_overview_request:   # sell-through: never computed from sales alone
         data["clarification_needed"] = True
         data["clarification_question"] = (
-            f"{unsupported[0].replace('_', '-').capitalize()} needs "
+            f"{pack.name_of(unsupported[0])} needs "
             f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives')}")
 
+    named = (data.get("targeted_params") or {}).get("kpi") if isinstance(
+        data.get("targeted_params"), dict) else getattr(data.get("targeted_params"), "kpi", None)
+    if not is_overview_request and data.get("question_intent") == QuestionIntent.OVERVIEW.value \
+            and named:   # "What's our NPL ratio?" after the overview: that KPI, latest and change
+        data["question_intent"] = QuestionIntent.TIME_SERIES.value
     if is_overview_request:   # the first run is always a full overview, never a question
         data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
                     clarification_question=None, resume_from=None)

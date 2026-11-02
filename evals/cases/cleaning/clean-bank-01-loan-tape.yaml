@@ -1,0 +1,26 @@
+id: clean-bank-01-loan-tape
+dataset:
+  name: loan_tape
+  seed: 1
+category: banking
+expect_decisions:
+- column: Days Past Due
+  strategy: numeric_sentinel
+  truth_key: dpd_sentinel_rows
+- column: Charge Off Date
+  operation: keep
+  strategy: conditional
+- operation: flag
+  strategy: cancel
+  truth_key: closed_rows
+forbid:
+- strategy: high_null
+- operation: fill_within_order
+- operation: flag
+  strategy: return
+- operation: drop_duplicates
+- column: Charge Off Date
+  operation: fill_unknown
+expect_grain: aggregate
+label_note: 'A loan tape: DPD 999 read as unknown, Charge Off Date blank by design (no high-null gate),
+  charged-off and paid-off rows flagged and kept.'

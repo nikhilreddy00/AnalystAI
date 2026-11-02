@@ -1,0 +1,24 @@
+id: e2e-44
+domain: banking
+dataset:
+  name: loan_tape
+  seed: 1
+question: What is the NPL ratio by product?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: npl_by_product_pct.Personal
+  rel_tol: 0.02
+  unit: '%'
+- kind: must_not_number
+  truth_key: npl_count_by_product_pct.Personal
+  rel_tol: 0.02
+  unit: '%'
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bunits sold|\bSKU
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

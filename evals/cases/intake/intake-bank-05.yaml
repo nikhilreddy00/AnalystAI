@@ -1,0 +1,11 @@
+id: intake-bank-05
+category: clear
+pipeline: production
+source:
+  dataset: loan_tape
+  seed: 1
+overview_done: true
+question: What is our net interest margin by product?
+expect:
+  ask: true
+rationale: 'NIM needs interest income and expense, which a loan tape lacks: ask.'

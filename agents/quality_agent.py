@@ -17,7 +17,6 @@ Flags are shown next to their claims; the report itself is never changed here.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -26,7 +25,7 @@ from agents.analysis_agent import findings_by_id
 from agents.errors import AgentError
 from agents import insight_agent
 from agents.insight_agent import InsightContext
-from agents.utils import strip_markdown_fences
+from agents.utils import strip_markdown_fences, with_display_names
 from api.config import settings
 from domain_pack import defaults_pack
 from guardrails import (
@@ -343,16 +342,11 @@ def _bullets(items, grounded, columns: set[str] | None = None,
              display: dict[str, str] | None = None) -> list[str]:
     """Grounded bullets, with raw column names (also spelled with spaces) shown by their
     display names, as the report shows them."""
-    names = {form.lower(): shown for raw, shown in (display or {}).items()
-             if raw != shown and len(raw) > 3 for form in (raw, raw.replace("_", " "))}
-    names_re = re.compile("|".join(rf"(?<!\w){re.escape(f)}(?!\w)"
-                                   for f in sorted(names, key=len, reverse=True)), re.I)
     out = []
     for item in items if isinstance(items, list) else []:
         text, cols = (item.get("text"), item.get("columns")) if isinstance(item, dict) else (item, None)
         text = " ".join(str(text or "").split())
-        if names:   # one pass: a display name that contains its raw name isn't replaced again
-            text = names_re.sub(lambda m: names[m.group(0).lower()], text)
+        text = with_display_names(text, display)   # the report's own names, one rule
         if not text or not grounded(text):
             continue
         if columns is not None and (not isinstance(cols, list) or not cols

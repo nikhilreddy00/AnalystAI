@@ -25,7 +25,12 @@ def _stored_runs():
 
 
 def _same(a, b):
-    return json.loads(json.dumps(a, default=str)) == json.loads(json.dumps(b, default=str))
+    """Equal outputs, a report's own timestamp aside (generated_at is when, not what)."""
+    def plain(x):
+        if isinstance(x, dict):
+            return {k: plain(v) for k, v in x.items() if k != "generated_at"}
+        return [plain(v) for v in x] if isinstance(x, list) else x
+    return plain(json.loads(json.dumps(a, default=str))) == plain(json.loads(json.dumps(b, default=str)))
 
 
 async def _replay(suite: str, case: dict, replies: list[dict]) -> dict:
@@ -52,6 +57,30 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
     assert _same(again["output"], first["output"]) and again["passed"] == first["passed"]
 
 
+# A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
+# to its stored output (that is the $0 regression check over every old case).
+CHANGED = {
+    ("intake-20261102T204144Z.json", "intake-bank-01"):
+        "Domain 2 intake gate: an overview intent naming a KPI after the overview is its time series",
+    ("intake-20261102T204144Z.json", "intake-bank-09"):
+        "Domain 2 intake gate: a default prediction is an unsupported concept: asked",
+    ("intake-20261102T204144Z.json", "intake-bank-11"):
+        "Domain 2 intake gate: 'average account balance' is the avg_balance KPI's word",
+    **{(r, "intake-bank-08"): "Domain 2 intake: case reworded to one KPI ('money coming in' is "
+                               "the inflows KPI's word); old replies replay against the new question"
+       for r in ("intake-20261102T204144Z.json", "intake-20261102T205448Z.json")},
+    **{(r, c): "Domain 2 E2E gate: a concept's name in a clarification is its glossary word "
+               "(Pack.name_of: 'Net interest margin', never 'Nim')"
+       for r in ("intake-20261102T204144Z.json", "intake-20261102T205448Z.json")
+       for c in ("intake-bank-05", "intake-bank-09")},
+    ("insight-20261102T210024Z.json", "ins-41-loan-tape-overview"):
+        "Domain 2 browser check: a pack overview adds its first state ratio (NPL) by product",
+    ("insight-20261102T210024Z.json", "ins-42-ledger-overview"):
+        "Domain 2 CI: card_ledger's salaries in cents (an unrounded exp() differed on Linux); "
+        "inflow totals move by cents",
+}
+
+
 @pytest.mark.parametrize("suite, report, cid, run", _stored_runs() or
                          [pytest.param(None, None, None, None, marks=pytest.mark.skip(
                              "no stored replies yet: the next paid intake/insight run adds them"))])
@@ -59,4 +88,8 @@ async def test_stored_replies_reproduce_their_stored_output(suite, report, cid, 
     monkeypatch.setitem(harness._budget, "max", 1.0)
     case = next(c for c in harness.load_cases(suite, None) if c["id"] == cid)
     again = await _replay(suite, case, run["replies"])
+    if (report, cid) in CHANGED:   # changed as stated: it must now differ, and pass its checks
+        assert not _same(again["output"], run["output"]), f"{report} {cid}: listed but unchanged"
+        assert again["passed"], f"{report} {cid}: changed, yet still failing: {again['checks']}"
+        return
     assert _same(again["output"], run["output"]), f"{report} {cid}: a post-model step changed"

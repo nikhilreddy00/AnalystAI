@@ -1,0 +1,284 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261102T205953Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "bb3cc97",
+  "started_at": "20261102T205953Z",
+  "only": "intake-bank-08",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0059,
+  "latency_p50_s": 8.86,
+  "latency_p95_s": 13.13,
+  "intent_accuracy": 1.0,
+  "column_mapping": null,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 1.0
+  }
+ },
+ "runs": {
+  "intake-bank-08": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got inflows, want inflows"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How has money coming in changed month by month?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "inflows",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 13.6,
+    "cost_usd": 0.00587,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How has money coming in changed month by month?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"inflows\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got inflows, want inflows"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How has money coming in changed month by month?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "inflows",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.86,
+    "cost_usd": 0.00587,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How has money coming in changed month by month?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"inflows\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got inflows, want inflows"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How has money coming in changed month by month?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "inflows",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.71,
+    "cost_usd": 0.00587,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How has money coming in changed month by month?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"inflows\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

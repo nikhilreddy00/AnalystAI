@@ -1,0 +1,26 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-42-ledger-overview
+insight_case: ins-42-ledger-overview
+category: straightforward
+source:
+  report: insight-20261102T210024Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 6
+  kind: number
+  label: contradicted
+  text: Fee income totals $135,577.00 across the period.
+- op: replace
+  i: 4
+  kind: causal
+  label: overstated
+  text: The fee waiver campaign caused transaction amounts to rise 1.8% month-over-month from September
+    to October 2026.
+natural:
+- i: 3
+  label: unclear
+  why: 'calls Transfer a spending category: transfers between own accounts are no spend (a banker''s reading),
+    though the figure is the evidence''s'

@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
-from agents.utils import pii_columns, strip_markdown_fences
+from agents.utils import pii_columns, strip_markdown_fences, with_display_names
 from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
     _SENTENCE_RE,
@@ -187,7 +187,14 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         facts.append(f"{contract.row_count:,} rows.")
     if contract:
         facts.append(f"{contract.column_count} columns.")
-    if narrative:
+    levels = [c for c in (contract.columns if contract else [])
+              if c.aggregation in ("last", "first") and c.aggregation_by and c.aggregation_time]
+    if levels:   # snapshots: the grain is the data's, not a guessed noun ("one loan" was a loan-month)
+        names = ", ".join(c.name for c in levels)
+        facts.append(f"One row is one {', '.join(levels[0].aggregation_by)} at one "
+                     f"{levels[0].aggregation_time} (a snapshot); levels (never added across dates): "
+                     f"{names}.")
+    elif narrative:
         facts.append(f"One row is one {narrative.entity_singular}.")
     first = last = None
     months = 0
@@ -610,25 +617,7 @@ def _clean_for_executive(text: str, narrative: DataNarrative | None) -> str:
     if not text:
         return ""
     out = text.replace("`", "")
-    # One pass, longest first, so 'order_date' wins over 'order' and a display name already
-    # written ('Order Total' for Total) is kept, not renamed again ('Order Order Total').
-    if narrative and narrative.column_display_names:
-        shown = {raw.lower(): d for raw, d in narrative.column_display_names.items()
-                 if raw and raw.lower() != d.lower()}
-        keep = {d.lower() for d in shown.values()}
-        if shown:
-            pat = "|".join(re.escape(k) for k in sorted(shown.keys() | keep, key=len,
-                                                       reverse=True))
-            plain = {r for r, d in narrative.column_display_names.items()
-                     if r and re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", r)}
-
-            def swap(m: re.Match[str]) -> str:
-                w = m.group(0)
-                # a plain-word name ('Total') only as written: 'total' is the English word
-                if w.lower() in keep or (w not in plain and w.lower() in {p.lower() for p in plain}):
-                    return w
-                return shown.get(w.lower(), w)
-            out = re.sub(rf"\b(?:{pat})\b", swap, out, flags=re.IGNORECASE)
+    out = with_display_names(out, narrative.column_display_names if narrative else None)
     for needle, replacement in _EXECUTIVE_REPLACEMENTS.items():
         out = re.sub(re.escape(needle), replacement, out, flags=re.IGNORECASE)
 

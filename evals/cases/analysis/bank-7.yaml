@@ -1,0 +1,29 @@
+id: bank-7
+domain: banking
+category: ratio
+pipeline: production
+dataset:
+  name: loan_tape
+  seed: 1
+question: Which products carry the most 30+ day delinquency?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Outstanding Principal
+  segments:
+  - Product
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Product
+  truth_key: delinq30_by_product_pct
+  abs_tol: 0.05
+  scales:
+  - 1
+  - 0.01
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 30+ DPD balance / outstanding, by product at the latest month-end.

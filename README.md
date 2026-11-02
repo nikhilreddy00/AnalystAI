@@ -220,7 +220,11 @@ broad coverage.
 
 Domain depth (Phase 5.7: a domain pack, an expert brief and every agent tested end to end):
 **retail** (sales KPIs, returns, periods and year-over-year, three realistic exports; 7 analysis
-cases k=3, 25 E2E cases, 13 intake cases k=3; `docs/baselines/phase5_7_sales.md`).
+cases k=3, 25 E2E cases, 13 intake cases k=3; `docs/baselines/phase5_7_sales.md`);
+**banking** (balances as levels: period-end, never added across dates; NPL and delinquency by
+balance, charge-offs, reversals, pending and fees on ledgers; a loan tape, a transaction ledger
+and deposit snapshots; 7 analysis cases k=3, 10 E2E cases, 12 intake cases k=3;
+`docs/baselines/phase5_7_banking.md`).
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one

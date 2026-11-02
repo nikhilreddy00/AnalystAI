@@ -1,0 +1,17 @@
+id: intake-bank-01
+category: clear
+pipeline: production
+source:
+  dataset: loan_tape
+  seed: 1
+overview_done: true
+question: What's our NPL ratio?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: npl_ratio
+rationale: NPL ratio is the pack KPI (90+ DPD or non-accrual, by balance).

@@ -1,0 +1,19 @@
+id: e2e-48
+domain: banking
+dataset:
+  name: card_ledger
+  seed: 1
+question: Where did spending go by merchant category from August to October 2026?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: spend_by_category_q.Groceries
+  rel_tol: 0.003
+- kind: must_not_number
+  truth_key: spend_q_with_transfers
+  rel_tol: 0.003
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

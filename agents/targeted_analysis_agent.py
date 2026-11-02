@@ -52,6 +52,8 @@ from scipy import stats
 
 from domain_pack import (
     additive,
+    entity_rows,
+    layout_columns,
     money_rows,
     compute_kpi,
     computable,
@@ -112,10 +114,17 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if params and conventions and intent in _KPI_INTENTS and not params.kpi and grouped and \
             (params.aggregation or "sum").lower() == "sum" and (kpi := _summed_kpi(pack, contract, params, df)):
         params = params.model_copy(update={"kpi": kpi})   # "sales by country": the pack's net sales
+    if params and params.kpi and pack and not pack.kpi(params.kpi) and (
+            params.kpi in pack.unsupported or params.kpi in pack.definitions):
+        # a concept with no KPI (NIM, roll rate): its own words, never another column's figure
+        name = pack.name_of(params.kpi)   # 'Net interest margin', never 'nim'
+        why = (f"{name} needs {pack.unsupported[params.kpi]}." if params.kpi in pack.unsupported
+               else f"This isn't one figure here. {pack.definitions[params.kpi]}")
+        return _unanswerable(intent, why, [pack.say("unsupported_alternatives")])
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS and grouped:
         roles = {r: c for r, c in contract.roles.items() if c in df.columns}
         if not computable(pack, params.kpi, roles):   # named, but the data lacks what it needs
-            return _unanswerable(intent, f"{pack.kpi(params.kpi).label.lower()} needs "
+            return _unanswerable(intent, f"{pack.kpi(params.kpi).phrase} needs "
                                  f"{_missing(pack, params.kpi, roles)}, which this data does not have",
                                  ["Ask about a column the data has"])
         handler = handle_kpi   # "basket size by country": the pack's AOV, not a column's mean
@@ -132,7 +141,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     full, period = df, ""
     if params and (params.period_start or params.period_end):
         date = _date_of(contract, params, df)
-        df, period, why = filter_period(df, date, params.period_start, params.period_end)
+        df, period, why = filter_period(df, date, params.period_start, params.period_end,
+                                        _span_of(contract, df, date))
         if why:
             return _unanswerable(intent, why, ["Ask about a period the data covers",
                                                "Ask without a period (the whole data)"])
@@ -229,7 +239,7 @@ def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataC
             _suggest_metric_questions(contract) or ["Upload data with more than one numeric column"],
         )
 
-    corr = df[cols].corr(numeric_only=True).round(3)
+    corr = entity_rows(df, contract)[cols].corr(numeric_only=True).round(3)   # an account once
     table_columns = ["variable", *cols]
     table_data = [{"variable": c, **{k: float(v) for k, v in corr.loc[c].items()}} for c in cols]
 
@@ -256,7 +266,7 @@ def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataC
     )
 
     # The pair asked about (else the strongest) as a scatter: a bar of r values hides the data.
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     a, b = (requested[0], requested[1]) if len(requested) == 2 else strongest[:2]
     chart = oriented_scatter(df, a, b, ctx)
     if chart and chart.rationale:
@@ -350,6 +360,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     asked = asked if asked in valid_aggs else None
     agg = effective_agg(contract, metric, asked) or "sum"   # a balance is its current total
     asc = (params.order or "desc").lower() == "asc"
+    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         grouped = ranked(aggregate(df, [group], metric, agg, contract), ascending=asc).head(n)
@@ -368,7 +379,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     answer = (
         f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}. "
         f"Leader: {grouped.index[0]} = {_num(grouped.iloc[0])}."
-    )
+    ) + (f" {kept}" if kept else "")
     chart = _chart(
         ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}",
         chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=_with_unit(_of(agg, metric, False), metric, contract),
@@ -592,6 +603,7 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     asked = (params.aggregation or "").lower() or None
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "mean"
+    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         full = aggregate(df, [segment], metric, agg, contract)
@@ -607,13 +619,14 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
                              f"{metric}", [f"Distribution of {metric}", "Pick a different segment"])
 
     order = ranked(full)
-    answer = f"{_of(agg, metric, False)} by {segment}: {_lead_and_last(order)}."
+    answer = f"{_of(agg, metric, False)} by {segment}: {_lead_and_last(order)}." + (
+        f" {kept}" if kept else "")
     group = _named_group(df, params)
     if group is not None:
         # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
         value = float(full[full.index.astype(str) == group].sum())
         answer = f"{_of(agg, metric, False)} for {segment} '{group}': {_num(value)}. " + answer
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     chart = group_bars(df, segment, metric, agg, ctx, top=20)
     if chart and chart.rationale:
         r = chart.rationale
@@ -725,7 +738,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
     )
     # Group means with 95% CIs; within each stratum when the plan names one, because a pooled
     # comparison can reverse inside every stratum (Simpson's paradox).
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     stratum = next((c for c in strata if c in df.columns and c != variant), None)
     chart = group_bars(df, stratum or variant, metric, "mean", ctx, split=variant if stratum else None)
     if chart and chart.rationale:
@@ -787,7 +800,7 @@ def handle_outlier_scan(df: pd.DataFrame, params: TargetedParams, contract: Data
            if worst else "No outliers detected.")
     )
     # The worst column's distribution with the same 1.5×IQR fences as the table.
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     chart = fence_histogram(df, worst["column"], ctx, k=1.5) if worst else None
     if chart and chart.rationale:
         r = chart.rationale
@@ -882,6 +895,32 @@ def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
             "growth leaves them out.")
 
 
+def _span_of(contract: DataContract, df: pd.DataFrame, date: str | None) -> str | None:
+    """The column the data's coverage is read from when `date` is an event's own date (a
+    charge-off date, filled only on charged-off rows): the time axis. Otherwise None (itself)."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack is None or not date:
+        return None
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    return roles.get(pack.date_role) if layout_columns(df, pack, roles).get(date) == "conditional" \
+        else None
+
+
+def _percent_axis(chart: ChartConfig, kind: str, key: str) -> None:
+    """A percent KPI's chart in percent (10.4, axis '10.4%'), never a fraction (0.104)."""
+    if kind == "percent":
+        for row in chart.data:
+            if isinstance(row.get(key), (int, float)):
+                row[key] = round(float(row[key]) * 100, 4)
+        chart.value_format = "percent"
+
+
+def _as_of(rows: pd.DataFrame, date: str) -> str:
+    """'as of 31 Oct 2026': a state's date, the newest snapshot in these rows."""
+    t = _local(pd.to_datetime(rows[date], format="mixed", errors="coerce")).max()
+    return f"as of {t:%-d %b %Y}" if pd.notna(t) else ""
+
+
 def _basis(prior_period: str) -> str:
     """'same days', or 'same months' when a leap February makes the day counts differ."""
     return "same months" if "days against" in prior_period else "same days"
@@ -937,7 +976,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
 
     date = _date_of(contract, params, df)
     weekly = bool(date) and weekly_cadence(full[date])   # YoY: 52 weeks back, same week-endings
-    period = filter_period(full, date, params.period_start, params.period_end)[1]
+    period = filter_period(full, date, params.period_start, params.period_end,
+                           _span_of(contract, full, date))[1]
+    state = kpi.at == "latest" and date is not None   # a balance is as of a date, not over days
+    if state:   # asked for a period or not: a balance is as of a date
+        period = _as_of(df, date)
     where = f" ({period})" if period else ""
     present = set(row_kinds(df, roles, pack).unique())
     # every KPI answer on a weak match says how the file was read
@@ -950,7 +993,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     if group and group in df.columns:
         by = compute_kpi(df, roles, pack, kpi.name, by=group, full=full)
         if by is None or by.empty:
-            return _unanswerable(intent, f"{kpi.label.lower()} can't be computed from these rows",
+            return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                                  ["Ask without the group", "Ask about a longer period"])
         asc = (params.order or "desc").lower() == "asc"
         by = ranked(by, ascending=asc).head(params.n or 20)
@@ -974,6 +1017,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        [{group: str(k), kpi.label: float(v)} for k, v in by.items()],
                        x_key=group, y_keys=[kpi.label], x_label=group, y_label=kpi.label,
                        source="kpi")
+        _percent_axis(chart, kind, kpi.label)
         _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked. {how}",
              group, kpi.label, "sum" if kpi.den is None else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
@@ -985,7 +1029,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     # against the same period a year earlier, below; a frequency asked: the trend in that window
     one_period = asked and (params.compare == "yoy" or not params.frequency)
     if intent == QuestionIntent.TIME_SERIES and date and not one_period:
-        flow = kpi.den is None and kind != "percent"
+        # a flow (sales, fees) sums over a period; a state (a balance) is as of its end
+        flow = kpi.den is None and kind != "percent" and kpi.at == "all"
         default = _default_freq(df[date], "sum" if flow else "ratio") if defaults_pack(contract) else "M"
         freq = (params.frequency or default).upper()
         # a KPI is reported by week at the finest (a day's AOV or return rate is noise); a daily
@@ -998,7 +1043,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         frame = full.assign(_period=t.dt.to_period(rule))
         series = compute_kpi(frame, roles, pack, kpi.name, by="_period", full=full)
         if series is None or series.empty:
-            return _unanswerable(intent, f"{kpi.label.lower()} can't be computed over time here",
+            return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here",
                                  [f"{kpi.label} overall"])
         series = series.sort_index()
         unit = ""
@@ -1034,27 +1079,33 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             before = whole.get(latest - 1)   # by label: a missing period is no "period before"
             if base(before):
                 answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"
+            elif before is not None and not pd.isna(before):   # a $0 month is a month
+                answer += f", vs {fmt(before)} the period before (no % change from zero)"
             prior = whole.get(latest - back) if freq != "Y" else None
             if base(prior):   # (by year, "a year earlier" is the period before: said once)
                 answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
-            compared = latest - back if base(prior) else latest - 1 if base(before) else None
+            elif prior is not None and not pd.isna(prior):   # a $0 month a year earlier is said
+                answer += f"; a year earlier {fmt(prior)} (no % change from zero)"
+            compared = latest - back if base(prior) else latest - 1 if (
+                before is not None and not pd.isna(before)) else None
             if compared is None:
                 answer += "; there is no earlier complete period to compare with"
             answer += "." + note + (stores_note(contract, full, date, (
                 frame[frame["_period"] == compared], frame[frame["_period"] == latest]))
                 if compared is not None else "")
-            chart = _chart(ChartType.LINE, f"{kpi.label} over time{where}",
+            chart = _chart(ChartType.LINE, f"{kpi.label} over time{'' if state else where}",
                            [{"period": f"{k.end_time:%Y-%m-%d}" if freq == "W" else str(k),
                              kpi.label: float(v)} for k, v in series.items()],
                            x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
                            source="kpi")
+            _percent_axis(chart, kind, kpi.label)
             _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date,
                  kpi.label, "sum" if kpi.den is None else "none", len(df))
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
     value = compute_kpi(df, roles, pack, kpi.name, full=full)
     if value is None:
-        return _unanswerable(intent, f"{kpi.label.lower()} can't be computed from these rows",
+        return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                              ["Ask about a longer period"])
     answer = f"{kpi.label}{where}: {fmt(value)}." + carry
     # one period asked on strong pack data (a month or longer): against the same period a year
@@ -1070,9 +1121,12 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         rows, days, cut = current_window(full, date, params.period_start, params.period_end, weekly)
         now = compute_kpi(rows, roles, pack, kpi.name, full=full)   # the same days as the year-earlier window
         both = prior is not None and now is not None and (kind == "percent" or prior != 0)
+        if state:   # two dates, not two windows of days
+            prior_period, days, cut = _as_of(prior_df, date), _as_of(rows, date), False
         same = f" On the same days ({days}): {fmt(now)}." if cut and both else ""
         answer += same + (f" A year earlier ({prior_period}): {fmt(prior)} "
-                   f"({change(now, prior)} year over year, {_basis(prior_period)})."
+                   f"({change(now, prior)} year over year"
+                   f"{'' if state else ', ' + _basis(prior_period)})."
                    + stores_note(contract, full, date, (prior_df, rows)) if both
                    else "" if auto else f" No year-earlier comparison: {why or 'nothing to compare'}.")
         if both:   # the two periods side by side: the answer's own numbers
@@ -1081,6 +1135,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                             {"period": days, kpi.label: float(now)}],
                            x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
                            source="kpi")
+            _percent_axis(chart, kind, kpi.label)
             _why(chart, ctx, "targeted:kpi→bars", f"{kpi.label} in the period asked and the same "
                  f"period a year earlier. {how}", date, kpi.label, "none", len(rows))
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",

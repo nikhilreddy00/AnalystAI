@@ -62,3 +62,53 @@ def test_a_comparison_says_ties_and_names_the_real_lowest_group():
     r = handle_segment_compare(flat, TargetedParams(metric_column="stay", segment_column="site",
                                                     aggregation="mean"), c)
     assert "all 2 groups are at 3.00" in r.answer_text
+
+
+def test_one_rule_for_blanks_that_are_the_layout():
+    """Domain 1 left the schema summary saying "Discount Amount 44% missing" on a Shopify export
+    while cleaning knew better: every place that reports blanks reads domain_pack.layout_columns."""
+    assert _hits(r"first_line_only\(", {"domain_pack.py"}) == [], "use domain_pack.layout_columns"
+
+
+def test_a_kpi_label_in_a_sentence_is_kpi_phrase():
+    """Banking's caveat said "npl ratio (90+ dpd)": labels were lower-cased at each site."""
+    import domain_pack
+    assert _hits(r"\.label\.lower\(\)") == [], "use KPI.phrase"
+    bank, retail = domain_pack.pack_for("banking"), domain_pack.pack_for("retail")
+    assert (bank.kpi("npl_ratio").phrase, retail.kpi("net_sales").phrase) == (
+        "NPL ratio", "net sales")
+
+
+def test_one_rename_to_display_names():
+    """Domain 1 fixed 'Order Order Total' in the insight; the expert review kept its own rename
+    and wrote 'Loan Loan Product' (Domain 2 smoke run)."""
+    from agents.utils import with_display_names
+    names = {"Product": "Loan Product", "order_date": "Order Date", "Total": "Order Total"}
+    assert with_display_names("Days Past Due by Loan Product and Product", names) == \
+        "Days Past Due by Loan Product and Loan Product"
+    assert with_display_names("order_date and order date; the total Total", names) == \
+        "Order Date and order date; the total Order Total"   # a display name as written stays
+    # chart titles (visualization_agent) are built from raw names, never model prose, and also fix
+    # casing ('revenue' → 'Revenue'): their own rule
+    assert _hits(r"column_display_names\.items\(\)|names_re", {"visualization_agent.py"}) == [], \
+        "use utils.with_display_names"
+
+
+def test_a_correlation_on_snapshot_data_counts_each_entity_once():
+    """Passes 1–3 each found correlations over every snapshot (each loan 14 times): every r a
+    user sees reads domain_pack.entity_rows (the sandbox mirrors it as _cdf). Per function: one
+    that computes r takes entity_rows, is handed its rows by one that does, or is a column-role
+    heuristic (which outcome column; no r is shown)."""
+    import inspect
+
+    from agents import targeted_analysis_agent as t
+    from agents import visualization_agent as v
+    handed = {"_best_correlated_pair", "_build_correlation_heatmap", "_build_scatter"}
+    roles_only = {"classify_columns", "_rank_continuous_by_target_assoc"}
+    for mod in (t, v):
+        for name, fn in inspect.getmembers(mod, inspect.isfunction):
+            if fn.__module__ != mod.__name__ or name in handed | roles_only:
+                continue
+            src = inspect.getsource(fn)
+            assert ".corr(" not in src or "entity_rows" in src, f"{name}: r on domain_pack.entity_rows"
+    assert "_cdf" in inspect.getsource(__import__("agents.analysis_agent", fromlist=["x"])._build_standard_code)

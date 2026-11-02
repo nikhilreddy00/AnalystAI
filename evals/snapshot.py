@@ -136,11 +136,36 @@ def _behaviour(df, contract) -> dict:
         r = run_targeted_analysis(s)
         answers.append([r.answer_text, [c.data for c in r.chart_configs]])
     out["answers"] = answers
+    # Domain 2 audit: a mean by group (a level's: per entity, latest) and a pack money column by
+    # group (its row filter) were unseen by the probes above
+    import domain_pack
+    pack = domain_pack.pack_for(contract.domain)
+    money = next((c for r, c in contract.roles.items() if pack and pack.roles[r].kind == "money"),
+                 None)
+    more = []
+    for params in ({"metric_column": metric, "segment_column": group, "aggregation": "mean"},
+                   {"metric_column": money, "segment_column": group, "aggregation": "sum"}):
+        if not params["metric_column"] or not group:
+            continue
+        s = AnalysisSession(session_id="snap", data_contract=contract, task_plan=AnalysisTask(
+            raw_query="q", analysis_types=["eda"], target_metrics=[],
+            question_intent=QuestionIntent.SEGMENT_COMPARE, targeted_params=TargetedParams(**params)))
+        s.__dict__["_df_parquet"] = buf.getvalue()
+        r = run_targeted_analysis(s)
+        more.append([r.answer_text, [c.data for c in r.chart_configs]])
+    out["answers_by_group"] = more
     return out
 
 
 def _set_only(d: dict, new_fields: tuple[str, ...]) -> dict:
     return {k: v for k, v in d.items() if not (k in new_fields and not v)}
+
+
+def _contract_dump(contract) -> dict:
+    """The contract, fields added since the pin left out while unset (a column's cadence)."""
+    d = _set_only(contract.model_dump(mode="json"), ("domain", "roles", "domain_confidence"))
+    d["columns"] = [_set_only(c, ("aggregation_every",)) for c in d["columns"]]
+    return d
 
 
 async def deterministic(datasets: set[tuple[str, int]]) -> dict:
@@ -176,7 +201,7 @@ async def deterministic(datasets: set[tuple[str, int]]) -> dict:
         behaviour = _behaviour(clean_df, contract)
         out[f"{name}-{seed}"] = {k: _sha(json.dumps(_rounded(v), sort_keys=True, default=str)) for k, v in {
             # fields added since pre_5_7 count only when set (a new empty field is no change)
-            "contract": _set_only(contract.model_dump(mode="json"), ("domain", "roles", "domain_confidence")),
+            "contract": _contract_dump(contract),
             "audit": _set_only(audit.model_dump(mode="json"), ("grain", "partial_months", "main_currency")),
             "kpis": [{**k.model_dump(mode="json"), "recipe": _set_only(k.recipe.model_dump(
                 mode="json"), ("kpi",)) if k.recipe else None} for k in kpis],

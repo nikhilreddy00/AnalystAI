@@ -2,6 +2,8 @@
 import pandas as pd
 import pytest
 
+import domain_pack
+
 from connectors.base import parse_text_dates
 from connectors.csv_connector import CSVConnector, _read_bytes
 from domain_pack import Pack, compute_kpi, normalize_header, pack_for, row_kinds
@@ -112,8 +114,8 @@ def test_the_retail_datasets_are_retail_with_every_role(name, roles):
                                   "claims", "employees", "saas_accounts", "sensor_readings",
                                   "shipments"])
 def test_no_other_domains_dataset_is_retail(name):
-    c = _contract(_gen(name))
-    assert c.domain is None and c.roles == {}
+    c = _contract(_gen(name))   # bank_balances is banking (Domain 2); never retail
+    assert c.domain != "retail" and (c.domain or name == "bank_balances" or c.roles == {})
 
 
 @pytest.mark.parametrize("csv", [
@@ -130,7 +132,7 @@ def test_no_other_domains_dataset_is_retail(name):
     "sku,warehouse,qty_on_hand\nA-100,W1,40\nA-101,W2,12\n",
 ])
 def test_one_signal_or_none_is_not_retail(csv):
-    assert _contract(_load(csv)).domain is None
+    assert _contract(_load(csv)).domain != "retail"   # card transactions are banking (Domain 2)
 
 
 def test_a_person_named_column_is_never_an_id_role_and_names_stay_pii():
@@ -1246,7 +1248,10 @@ def test_the_order_discount_stays_on_its_first_line_so_no_path_counts_it_twice()
     r = _ask(s, "total discount by country", QuestionIntent.SEGMENT_COMPARE,
              metric_column="Discount Amount", segment_column="Shipping Country", aggregation="sum")
     raw = datagen.make("retail_lines", 1)[0].drop_duplicates()
-    want = raw.groupby("Shipping Country")["Discount Amount"].sum()
+    # the rows the tiles count (Domain 2: segment answers use the one money filter, money_rows)
+    c = s.data_contract
+    keep = domain_pack.row_kinds(raw, c.roles, RETAIL).isin(["sale", "return"]) & raw["Currency"].eq("USD")
+    want = raw[keep].groupby("Shipping Country")["Discount Amount"].sum()
     assert f"{want.max():,.2f}" in r.answer_text.replace("$", "")
 
 
@@ -2008,7 +2013,8 @@ def test_a_packs_trend_has_year_over_year_when_the_same_month_last_year_is_there
                     "Lineitem price")
     t = {t["period"]: t for t in g["result"]["trends"] if not t.get("segment")}
     m = pd.to_datetime(df["Created at"].astype(str), utc=True).dt.tz_localize(None).dt.to_period("M")
-    tot = df.groupby(m.values)["Lineitem price"].sum()
+    # a unit price is averaged, never summed (Domain 2 audit: the pack's additive: false)
+    tot = df.groupby(m.values)["Lineitem price"].mean()
     jan26, jan25 = tot[pd.Period("2026-01")], tot[pd.Period("2025-01")]
     assert t["YoY"]["pct_change"] == round((jan26 / jan25 - 1) * 100, 2)
     assert "trend:Lineitem price:YoY" in g["result"]["builtin"]

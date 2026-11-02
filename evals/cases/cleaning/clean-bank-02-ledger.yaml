@@ -1,0 +1,31 @@
+id: clean-bank-02-ledger
+dataset:
+  name: card_ledger
+  seed: 1
+category: banking
+expect_decisions:
+- column: '*'
+  operation: drop_duplicates
+  truth_key: duplicate_rows
+- operation: flag
+  strategy: refunded
+  truth_key: reversed_rows
+- operation: flag
+  strategy: non_product
+  truth_key: reversal_entries
+- operation: flag
+  strategy: cancel
+  truth_key: pending_rows
+- operation: flag
+  strategy: other_currency
+  truth_key: eur_rows
+forbid:
+- strategy: high_null
+- operation: fill_within_order
+- operation: flag
+  strategy: return
+- column: Balance After
+  operation: fill_unknown
+expect_grain: aggregate
+label_note: 'A ledger: export-overlap duplicates removed (transaction ids), reversed / reversal / pending
+  / EUR rows flagged and kept; a debit is never a return.'

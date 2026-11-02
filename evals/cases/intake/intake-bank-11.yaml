@@ -1,0 +1,17 @@
+id: intake-bank-11
+category: clear
+pipeline: production
+source:
+  dataset: bank_balances
+  seed: 1
+overview_done: true
+question: What's the average account balance for business customers?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: avg_balance
+rationale: Average account balance = avg_balance per account at the latest snapshot.

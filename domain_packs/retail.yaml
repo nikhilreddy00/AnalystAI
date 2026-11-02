@@ -209,7 +209,7 @@ glossary:
          same-store sales]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
   repeat_rate: [repeat rate, repeat customers, returning customers, repeat purchase rate]
-  sell_through: [sell through, sell-through, sellthrough]
+  sell_through: [sell-through, sell through, sellthrough]
 # Phrases that contain a KPI's word but mean something else: they use up their words.
 consumed: [sales tax, cost of sales, sales rep, sales reps, sales per square foot, sales returns,
            sales channel, sales team]

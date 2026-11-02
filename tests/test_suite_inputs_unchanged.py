@@ -28,7 +28,9 @@ async def test_every_finished_domain_gets_the_same_inputs_and_outputs():
             if cid in PLATFORM_FLOATS or cid in CHANGES.get(suite, {}):
                 continue
             got = now.get(suite, {}).get(cid)
-            if got != pinned:   # deterministic entries are {stage: hash}: name the stages
+            # the pinned stages only: a probe added since the pin is checked from the next pin on
+            if got is None or (any(got.get(k) != pinned[k] for k in pinned) if isinstance(pinned, dict)
+                               else got != pinned):   # deterministic entries are {stage: hash}
                 broken.setdefault(suite, {})[cid] = sorted(
                     k for k in pinned if got is None or got.get(k) != pinned[k]) \
                     if isinstance(pinned, dict) else "changed"

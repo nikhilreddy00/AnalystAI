@@ -1,0 +1,5168 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261102T205448Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5971c61",
+  "started_at": "20261102T205448Z",
+  "only": "intake-bank-01,intake-bank-02,intake-bank-03,intake-bank-04,intake-bank-05,intake-bank-06,intake-bank-07,intake-bank-08,intake-bank-09,intake-bank-10,intake-bank-11,intake-bank-12,intake-retail-01,intake-retail-02,intake-retail-03,intake-retail-05,intake-retail-06,intake-retail-07,intake-retail-08,intake-clear-sql-03",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 20,
+  "runs": 60,
+  "pass_rate": 0.95,
+  "case_majority_pass_rate": 0.95,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 2,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0079,
+  "latency_p50_s": 7.27,
+  "latency_p95_s": 16.44,
+  "intent_accuracy": 1.0,
+  "column_mapping": 1.0,
+  "param_accuracy": 0.9545,
+  "asks_when_ambiguous": 1.0,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 0.9412,
+   "followup": 1.0,
+   "out_of_scope": 1.0
+  }
+ },
+ "runs": {
+  "intake-bank-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got npl_ratio, want npl_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our NPL ratio?",
+     "target_metrics": [
+      "Outstanding Principal",
+      "Days Past Due",
+      "Loan Status"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "npl_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.96,
+    "cost_usd": 0.01516,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our NPL ratio?\",\n  \"target_metrics\": [\"Outstanding Principal\", \"Days Past Due\", \"Loan Status\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"npl_ratio\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got npl_ratio, want npl_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our NPL ratio?",
+     "target_metrics": [
+      "Outstanding Principal",
+      "Days Past Due",
+      "Loan Status"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "npl_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.57,
+    "cost_usd": 0.01516,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our NPL ratio?\",\n  \"target_metrics\": [\"Outstanding Principal\", \"Days Past Due\", \"Loan Status\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"npl_ratio\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got npl_ratio, want npl_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our NPL ratio?",
+     "target_metrics": [
+      "Outstanding Principal",
+      "Days Past Due",
+      "Loan Status"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "npl_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.56,
+    "cost_usd": 0.01516,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our NPL ratio?\",\n  \"target_metrics\": [\"Outstanding Principal\", \"Days Past Due\", \"Loan Status\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"npl_ratio\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Product, want Product"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got avg_balance, want avg_balance"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show me the average balance by product.",
+     "target_metrics": [
+      "Outstanding Principal"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Outstanding Principal",
+      "date_column": null,
+      "segment_column": "Product",
+      "segment_value": null,
+      "group_by": "Product",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.2,
+    "cost_usd": 0.015,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Show me the average balance by product.\",\n  \"target_metrics\": [\"Outstanding Principal\"],\n  \"timeframe\": null,\n  \"segments\": [\"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Outstanding Principal\",\n    \"date_column\": null,\n    \"segment_column\": \"Product\",\n    \"segment_value\": null,\n    \"group_by\": \"Product\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Product, want Product"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got avg_balance, want avg_balance"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show me the average balance by product.",
+     "target_metrics": [
+      "Outstanding Principal"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Outstanding Principal",
+      "date_column": null,
+      "segment_column": "Product",
+      "segment_value": null,
+      "group_by": "Product",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.58,
+    "cost_usd": 0.015,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Show me the average balance by product.\",\n  \"target_metrics\": [\"Outstanding Principal\"],\n  \"timeframe\": null,\n  \"segments\": [\"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Outstanding Principal\",\n    \"date_column\": null,\n    \"segment_column\": \"Product\",\n    \"segment_value\": null,\n    \"group_by\": \"Product\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Product, want Product"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got avg_balance, want avg_balance"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show me the average balance by product.",
+     "target_metrics": [
+      "Outstanding Principal"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Outstanding Principal",
+      "date_column": null,
+      "segment_column": "Product",
+      "segment_value": null,
+      "group_by": "Product",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.69,
+    "cost_usd": 0.015,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Show me the average balance by product.\",\n  \"target_metrics\": [\"Outstanding Principal\"],\n  \"timeframe\": null,\n  \"segments\": [\"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Outstanding Principal\",\n    \"date_column\": null,\n    \"segment_column\": \"Product\",\n    \"segment_value\": null,\n    \"group_by\": \"Product\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Branch, want Branch"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got delinquency_30, want delinquency_30"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much is 30+ days past due at each branch?",
+     "target_metrics": [
+      "Outstanding Principal",
+      "Days Past Due"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Branch"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "As Of Date",
+      "segment_column": "Branch",
+      "segment_value": null,
+      "group_by": "Branch",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "delinquency_30",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 12.25,
+    "cost_usd": 0.00637,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much is 30+ days past due at each branch?\",\n  \"target_metrics\": [\"Outstanding Principal\", \"Days Past Due\"],\n  \"timeframe\": null,\n  \"segments\": [\"Branch\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"As Of Date\",\n    \"segment_column\": \"Branch\",\n    \"segment_value\": null,\n    \"group_by\": \"Branch\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"delinquency_30\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Branch, want Branch"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got delinquency_30, want delinquency_30"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much is 30+ days past due at each branch?",
+     "target_metrics": [
+      "Outstanding Principal",
+      "Days Past Due"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Branch"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "As Of Date",
+      "segment_column": "Branch",
+      "segment_value": null,
+      "group_by": "Branch",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "delinquency_30",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 10.04,
+    "cost_usd": 0.00637,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much is 30+ days past due at each branch?\",\n  \"target_metrics\": [\"Outstanding Principal\", \"Days Past Due\"],\n  \"timeframe\": null,\n  \"segments\": [\"Branch\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"As Of Date\",\n    \"segment_column\": \"Branch\",\n    \"segment_value\": null,\n    \"group_by\": \"Branch\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"delinquency_30\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Branch, want Branch"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got delinquency_30, want delinquency_30"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much is 30+ days past due at each branch?",
+     "target_metrics": [
+      "Outstanding Principal",
+      "Days Past Due"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Branch"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "As Of Date",
+      "segment_column": "Branch",
+      "segment_value": null,
+      "group_by": "Branch",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "delinquency_30",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 9.09,
+    "cost_usd": 0.00637,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much is 30+ days past due at each branch?\",\n  \"target_metrics\": [\"Outstanding Principal\", \"Days Past Due\"],\n  \"timeframe\": null,\n  \"segments\": [\"Branch\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"As Of Date\",\n    \"segment_column\": \"Branch\",\n    \"segment_value\": null,\n    \"group_by\": \"Branch\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"delinquency_30\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got fee_income, want fee_income"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-07-01', '2026-09-30'], want ['2026-07-01', '2026-09-30']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much did we make in fees in Q3 2026?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": "Q3 2026",
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "fee_income",
+      "period_start": "2026-07-01",
+      "period_end": "2026-09-30",
+      "compare": null
+     }
+    },
+    "latency_s": 14.68,
+    "cost_usd": 0.00686,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much did we make in fees in Q3 2026?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": \"Q3 2026\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"fee_income\",\n    \"period_start\": \"2026-07-01\",\n    \"period_end\": \"2026-09-30\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got fee_income, want fee_income"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-07-01', '2026-09-30'], want ['2026-07-01', '2026-09-30']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much did we make in fees in Q3 2026?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": "Q3 2026",
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "fee_income",
+      "period_start": "2026-07-01",
+      "period_end": "2026-09-30",
+      "compare": null
+     }
+    },
+    "latency_s": 16.18,
+    "cost_usd": 0.00686,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much did we make in fees in Q3 2026?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": \"Q3 2026\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"fee_income\",\n    \"period_start\": \"2026-07-01\",\n    \"period_end\": \"2026-09-30\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got fee_income, want fee_income"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-07-01', '2026-09-30'], want ['2026-07-01', '2026-09-30']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much did we make in fees in Q3 2026?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": "Q3 2026",
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "fee_income",
+      "period_start": "2026-07-01",
+      "period_end": "2026-09-30",
+      "compare": null
+     }
+    },
+    "latency_s": 8.28,
+    "cost_usd": 0.00686,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much did we make in fees in Q3 2026?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": \"Q3 2026\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"fee_income\",\n    \"period_start\": \"2026-07-01\",\n    \"period_end\": \"2026-09-30\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our net interest margin by product?",
+     "target_metrics": [
+      "Interest Rate (%)"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Nim needs interest income and interest expense (cost of funds), which this data does not have. I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Interest Rate (%)"
+      ],
+      "metric_column": "Interest Rate (%)",
+      "date_column": null,
+      "segment_column": "Product",
+      "segment_value": null,
+      "group_by": "Product",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 12.07,
+    "cost_usd": 0.00786,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our net interest margin by product?\",\n  \"target_metrics\": [\"Interest Rate (%)\"],\n  \"timeframe\": null,\n  \"segments\": [\"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Net Interest Margin (NIM) requires both interest income and interest expense (cost of funds) \u2014 for example, the rate paid on deposits or borrowings used to fund these loans. This dataset only contains the loan-side interest rate (Interest Rate (%)) and does not include a cost-of-funds figure. Could you clarify what you'd like instead? Options: (A) Average Interest Rate (%) by Product \u2014 a proxy for the yield side of NIM; (B) Upload or provide a cost-of-funds rate so true NIM can be computed; (C) A different metric altogether, such as Outstanding Principal or portfolio breakdown by Product.\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Interest Rate (%)\"],\n    \"metric_column\": \"Interest Rate (%)\",\n    \"date_column\": null,\n    \"segment_column\": \"Product\",\n    \"segment_value\": null,\n    \"group_by\": \"Product\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our net interest margin by product?",
+     "target_metrics": [
+      "Interest Rate (%)"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Nim needs interest income and interest expense (cost of funds), which this data does not have. I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Interest Rate (%)"
+      ],
+      "metric_column": "Interest Rate (%)",
+      "date_column": null,
+      "segment_column": "Product",
+      "segment_value": null,
+      "group_by": "Product",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 19.38,
+    "cost_usd": 0.0082,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our net interest margin by product?\",\n  \"target_metrics\": [\"Interest Rate (%)\"],\n  \"timeframe\": null,\n  \"segments\": [\"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Net Interest Margin (NIM) requires two inputs this dataset doesn't contain: (1) interest income earned and (2) interest expense (cost of funds). This dataset only has the nominal Interest Rate (%) on each loan \u2014 not the actual income collected or the funding cost paid.\\n\\nWould one of these alternatives work for you?\\n- **Average Interest Rate by Product** \u2014 the weighted-average lending rate across your portfolio, broken down by product (a proxy for yield, not true NIM)\\n- **Interest Income Estimate by Product** \u2014 Outstanding Principal \u00d7 Interest Rate as a rough income proxy, segmented by product\\n- **Something else** \u2014 if you have a separate funding-cost figure you'd like to supply, I can incorporate it\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Interest Rate (%)\"],\n    \"metric_column\": \"Interest Rate (%)\",\n    \"date_column\": null,\n    \"segment_column\": \"Product\",\n    \"segment_value\": null,\n    \"group_by\": \"Product\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our net interest margin by product?",
+     "target_metrics": [
+      "Interest Rate (%)"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Nim needs interest income and interest expense (cost of funds), which this data does not have. I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Interest Rate (%)",
+      "date_column": null,
+      "segment_column": "Product",
+      "segment_value": null,
+      "group_by": "Product",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 19.38,
+    "cost_usd": 0.00811,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our net interest margin by product?\",\n  \"target_metrics\": [\"Interest Rate (%)\"],\n  \"timeframe\": null,\n  \"segments\": [\"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Net Interest Margin (NIM) requires two inputs this dataset doesn't contain: (1) interest income earned on loans and (2) interest expense (cost of funds paid on deposits or borrowings). This dataset only has the contractual Interest Rate (%) on each loan \u2014 not actual income collected or funding costs. Would you like one of these alternatives instead?\\n\\n\u2022 **Average interest rate by product** \u2014 the weighted average Interest Rate (%) across loans, grouped by Product (a proxy for the yield side of NIM)\\n\u2022 **Portfolio yield by product** \u2014 weighted average rate using Outstanding Principal as the weight\\n\u2022 **Something else** \u2014 if you have a separate dataset with interest income and funding costs, please share it and I can compute true NIM\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Interest Rate (%)\",\n    \"date_column\": null,\n    \"segment_column\": \"Product\",\n    \"segment_value\": null,\n    \"group_by\": \"Product\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-06": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Merchant Category, want Merchant Category"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got spend, want spend"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Where is spending going by merchant category?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Merchant Category"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Merchant Category",
+      "segment_value": null,
+      "group_by": "Merchant Category",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "spend",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 14.92,
+    "cost_usd": 0.00609,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Where is spending going by merchant category?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Merchant Category\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Merchant Category\",\n    \"segment_value\": null,\n    \"group_by\": \"Merchant Category\",\n    \"variant_column\": null,\n    \"n\": 10,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"spend\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Merchant Category, want Merchant Category"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got spend, want spend"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Where is spending going by merchant category?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Merchant Category"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Amount",
+       "Merchant Category"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Merchant Category",
+      "segment_value": null,
+      "group_by": "Merchant Category",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "spend",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 13.5,
+    "cost_usd": 0.0062,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Where is spending going by merchant category?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Merchant Category\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Amount\", \"Merchant Category\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Merchant Category\",\n    \"segment_value\": null,\n    \"group_by\": \"Merchant Category\",\n    \"variant_column\": null,\n    \"n\": 10,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"spend\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Merchant Category, want Merchant Category"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got spend, want spend"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Where is spending going by merchant category?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Merchant Category"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Amount",
+       "Merchant Category"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Merchant Category",
+      "segment_value": null,
+      "group_by": "Merchant Category",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "spend",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.3,
+    "cost_usd": 0.0062,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Where is spending going by merchant category?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Merchant Category\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Amount\", \"Merchant Category\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Merchant Category\",\n    \"segment_value\": null,\n    \"group_by\": \"Merchant Category\",\n    \"variant_column\": null,\n    \"n\": 10,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"spend\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-07": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got total_balance, want total_balance"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How does the outstanding balance compare with the same month last year?",
+     "target_metrics": [
+      "Outstanding Principal"
+     ],
+     "timeframe": "latest month vs same month last year",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Outstanding Principal"
+      ],
+      "metric_column": "Outstanding Principal",
+      "date_column": "As Of Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "total_balance",
+      "period_start": "2026-10-31",
+      "period_end": "2026-10-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 9.38,
+    "cost_usd": 0.00724,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How does the outstanding balance compare with the same month last year?\",\n  \"target_metrics\": [\"Outstanding Principal\"],\n  \"timeframe\": \"latest month vs same month last year\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Outstanding Principal\"],\n    \"metric_column\": \"Outstanding Principal\",\n    \"date_column\": \"As Of Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"total_balance\",\n    \"period_start\": \"2026-10-31\",\n    \"period_end\": \"2026-10-31\",\n    \"compare\": \"yoy\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got total_balance, want total_balance"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How does the outstanding balance compare with the same month last year?",
+     "target_metrics": [
+      "Outstanding Principal"
+     ],
+     "timeframe": "latest month vs same month last year",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Outstanding Principal"
+      ],
+      "metric_column": "Outstanding Principal",
+      "date_column": "As Of Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "total_balance",
+      "period_start": "2026-10-01",
+      "period_end": "2026-10-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 10.04,
+    "cost_usd": 0.00724,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How does the outstanding balance compare with the same month last year?\",\n  \"target_metrics\": [\"Outstanding Principal\"],\n  \"timeframe\": \"latest month vs same month last year\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Outstanding Principal\"],\n    \"metric_column\": \"Outstanding Principal\",\n    \"date_column\": \"As Of Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"total_balance\",\n    \"period_start\": \"2026-10-01\",\n    \"period_end\": \"2026-10-31\",\n    \"compare\": \"yoy\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got total_balance, want total_balance"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How does the outstanding balance compare with the same month last year?",
+     "target_metrics": [
+      "Outstanding Principal"
+     ],
+     "timeframe": "latest month vs same month last year",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Outstanding Principal"
+      ],
+      "metric_column": "Outstanding Principal",
+      "date_column": "As Of Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "total_balance",
+      "period_start": "2026-10-01",
+      "period_end": "2026-10-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 15.05,
+    "cost_usd": 0.00724,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How does the outstanding balance compare with the same month last year?\",\n  \"target_metrics\": [\"Outstanding Principal\"],\n  \"timeframe\": \"latest month vs same month last year\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Outstanding Principal\"],\n    \"metric_column\": \"Outstanding Principal\",\n    \"date_column\": \"As Of Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"total_balance\",\n    \"period_start\": \"2026-10-01\",\n    \"period_end\": \"2026-10-31\",\n    \"compare\": \"yoy\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-08": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": false,
+      "detail": "kpi: got None, want inflows"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How has money coming in changed month by month?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Transaction Type"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Amount",
+      "date_column": "Posting Date",
+      "segment_column": "Transaction Type",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 10.88,
+    "cost_usd": 0.00515,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How has money coming in changed month by month?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Transaction Type\"],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Amount\",\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": \"Transaction Type\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": false,
+      "detail": "kpi: got None, want inflows"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How has money coming in changed month by month?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Transaction Type"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Amount",
+      "date_column": "Posting Date",
+      "segment_column": "Transaction Type",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 12.04,
+    "cost_usd": 0.00515,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How has money coming in changed month by month?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Transaction Type\"],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Amount\",\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": \"Transaction Type\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": false,
+      "detail": "kpi: got None, want inflows"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How has money coming in changed month by month?",
+     "target_metrics": [
+      "Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Transaction Type"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Amount",
+      "date_column": "Posting Date",
+      "segment_column": "Transaction Type",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.82,
+    "cost_usd": 0.00515,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How has money coming in changed month by month?\",\n  \"target_metrics\": [\"Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Transaction Type\"],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Amount\",\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": \"Transaction Type\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ],
+  "intake-bank-09": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which customers are going to default next quarter?",
+     "target_metrics": [
+      "Days Past Due",
+      "Outstanding Principal",
+      "Loan Status"
+     ],
+     "timeframe": "next quarter",
+     "segments": [
+      "Loan Status",
+      "Product",
+      "Branch"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Default-prediction needs a credit model trained on outcomes; this data shows who is delinquent now (days past due, NPL), not who will default. I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?",
+     "question_intent": "overview",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 16.41,
+    "cost_usd": 0.02004,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "bad_intent"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which customers are going to default next quarter?\",\n  \"target_metrics\": [\"Days Past Due\", \"Outstanding Principal\", \"Loan Status\"],\n  \"timeframe\": \"next quarter\",\n  \"segments\": [\"Loan Status\", \"Product\", \"Branch\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset shows current delinquency signals (Days Past Due, Loan Status) but does not contain future default outcomes \u2014 predicting who *will* default next quarter requires a credit model trained on historical outcome data, which isn't present here. I can instead help you with one of these related analyses using the available data:\\n\\n1. **Current at-risk accounts** \u2014 identify loans already delinquent (high Days Past Due) or in NPL/charged-off status right now.\\n2. **Delinquency trend** \u2014 track how Days Past Due and Loan Status have evolved over recent months to spot deteriorating accounts.\\n3. **High-risk segment breakdown** \u2014 compare delinquency levels across Product, Branch, or other categories to find concentrations of risk.\\n\\nWhich of these would be most useful, or did you have something else in mind?\",\n  \"question_intent\": \"forecasting\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which customers are going to default next quarter?\",\n  \"target_metrics\": [\"Days Past Due\", \"Outstanding Principal\", \"Loan Status\"],\n  \"timeframe\": \"next quarter\",\n  \"segments\": [\"Loan Status\", \"Product\", \"Branch\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset shows current delinquency signals (Days Past Due, Loan Status) but does not contain future default outcomes \u2014 predicting who *will* default next quarter requires a credit model trained on historical outcome data, which isn't present here. I can instead help you with one of these related analyses using the available data:\\n\\n1. **Current at-risk accounts** \u2014 identify loans already delinquent (high Days Past Due) or in NPL/charged-off status right now.\\n2. **Delinquency trend** \u2014 track how Days Past Due and Loan Status have evolved over recent months to spot deteriorating accounts.\\n3. **High-risk segment breakdown** \u2014 compare delinquency levels across Product, Branch, or other categories to find concentrations of risk.\\n\\nWhich of these would be most useful, or did you have something else in mind?\",\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which customers are going to default next quarter?",
+     "target_metrics": [
+      "Days Past Due",
+      "Outstanding Principal",
+      "Loan Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Loan Status",
+      "Product",
+      "Branch"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Default-prediction needs a credit model trained on outcomes; this data shows who is delinquent now (days past due, NPL), not who will default. I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?",
+     "question_intent": "overview",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 16.92,
+    "cost_usd": 0.02052,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "bad_intent"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which customers are going to default next quarter?\",\n  \"target_metrics\": [\"Days Past Due\", \"Outstanding Principal\", \"Loan Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Loan Status\", \"Product\", \"Branch\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset shows current delinquency signals \u2014 Days Past Due, Loan Status, and Outstanding Principal \u2014 but does not contain future default outcomes or a trained credit model to predict them. I can't identify who *will* default next quarter from this data alone. Would one of these alternatives help instead?\\n\\n1. **Current at-risk accounts** \u2014 flag loans already delinquent (e.g. Days Past Due > 30/60/90) as a proxy for default risk right now.\\n2. **NPL / charge-off breakdown** \u2014 analyse which loans are already in non-performing or charged-off status by product, branch, or loan size.\\n3. **Trend of delinquency over time** \u2014 track how Days Past Due and NPL rates have evolved month-over-month to spot a worsening trajectory.\\n\\nWhich of these would be most useful, or do you have a separate scored/modelled dataset you'd like to bring in?\",\n  \"question_intent\": \"forecasting\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which customers are going to default next quarter?\",\n  \"target_metrics\": [\"Days Past Due\", \"Outstanding Principal\", \"Loan Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Loan Status\", \"Product\", \"Branch\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset shows current delinquency signals \u2014 Days Past Due, Loan Status, and Outstanding Principal \u2014 but does not contain future default outcomes or a trained credit model to predict who will default next quarter. Would one of these alternatives help instead?\\n\\n1. **Current at-risk accounts** \u2014 flag loans already delinquent (e.g. Days Past Due > 30/60/90) as a proxy for default risk right now.\\n2. **NPL / charge-off breakdown** \u2014 analyse which loans are already in non-performing or charged-off status by product, branch, or loan size.\\n3. **Trend of delinquency over time** \u2014 track how Days Past Due and NPL rates have evolved month-over-month to spot a worsening trajectory.\\n\\nWhich of these would be most useful, or do you have a separate scored/modelled dataset you'd like to bring in?\",\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which customers are going to default next quarter?",
+     "target_metrics": [
+      "Days Past Due",
+      "Outstanding Principal",
+      "Loan Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Loan Status",
+      "Product",
+      "Branch"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Default-prediction needs a credit model trained on outcomes; this data shows who is delinquent now (days past due, NPL), not who will default. I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?",
+     "question_intent": "overview",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 15.9,
+    "cost_usd": 0.00908,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which customers are going to default next quarter?\",\n  \"target_metrics\": [\"Days Past Due\", \"Outstanding Principal\", \"Loan Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Loan Status\", \"Product\", \"Branch\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset shows current delinquency signals (Days Past Due, Loan Status) but does not contain a predictive credit model or future outcome labels \u2014 so it cannot forecast which borrowers will default next quarter. I can instead help you with one of these related analyses:\\n\\n1. **Current at-risk borrowers** \u2014 identify loans that are already delinquent (e.g. Days Past Due > 30/60/90) or flagged as NPL/Charged-Off right now.\\n2. **Delinquency trend** \u2014 track how Days Past Due and Loan Status have evolved over recent months to spot deteriorating accounts.\\n3. **High-risk segment breakdown** \u2014 compare delinquency rates by Product, Branch, or other categories to find concentrations of risk.\\n\\nWhich of these would be most useful, or did you have something else in mind?\",\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-10": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got npl_ratio, want npl_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Auto loans only?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [
+      "Branch",
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Branch",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "npl_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.48,
+    "cost_usd": 0.00629,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"and for Auto loans only?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [\"Branch\", \"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Branch\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"npl_ratio\",\n    \"filter_column\": \"Product\",\n    \"filter_value\": \"Auto loans\"\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got npl_ratio, want npl_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Auto loans only?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [
+      "Branch",
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Branch",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "npl_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.7,
+    "cost_usd": 0.00629,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"and for Auto loans only?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [\"Branch\", \"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Branch\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"npl_ratio\",\n    \"filter_column\": \"Product\",\n    \"filter_value\": \"Auto loans\"\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got npl_ratio, want npl_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Auto loans only?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [
+      "Branch",
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Branch",
+      "segment_value": "Auto loans",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "npl_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.76,
+    "cost_usd": 0.00639,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"and for Auto loans only?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [\"Branch\", \"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Branch\",\n    \"segment_value\": \"Auto loans\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"npl_ratio\",\n    \"filter_column\": \"Product\",\n    \"filter_value\": \"Auto loans\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-11": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got avg_balance, want avg_balance"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average account balance for business customers?",
+     "target_metrics": [
+      "balance"
+     ],
+     "timeframe": null,
+     "segments": [
+      "segment"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "balance",
+      "date_column": null,
+      "segment_column": "segment",
+      "segment_value": "business",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.46,
+    "cost_usd": 0.00556,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the average account balance for business customers?\",\n  \"target_metrics\": [\"balance\"],\n  \"timeframe\": null,\n  \"segments\": [\"segment\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"balance\",\n    \"date_column\": null,\n    \"segment_column\": \"segment\",\n    \"segment_value\": \"business\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got avg_balance, want avg_balance"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average account balance for business customers?",
+     "target_metrics": [
+      "balance"
+     ],
+     "timeframe": null,
+     "segments": [
+      "segment"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "balance",
+      "date_column": null,
+      "segment_column": "segment",
+      "segment_value": "business",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.82,
+    "cost_usd": 0.00556,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the average account balance for business customers?\",\n  \"target_metrics\": [\"balance\"],\n  \"timeframe\": null,\n  \"segments\": [\"segment\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"balance\",\n    \"date_column\": null,\n    \"segment_column\": \"segment\",\n    \"segment_value\": \"business\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got avg_balance, want avg_balance"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average account balance for business customers?",
+     "target_metrics": [
+      "balance"
+     ],
+     "timeframe": null,
+     "segments": [
+      "segment"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "balance",
+      "date_column": null,
+      "segment_column": "segment",
+      "segment_value": "business",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.85,
+    "cost_usd": 0.00556,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the average account balance for business customers?\",\n  \"target_metrics\": [\"balance\"],\n  \"timeframe\": null,\n  \"segments\": [\"segment\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"balance\",\n    \"date_column\": null,\n    \"segment_column\": \"segment\",\n    \"segment_value\": \"business\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-bank-12": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Channel, want Channel"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got transactions, want transactions"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How many transactions did each channel have last month?",
+     "target_metrics": [
+      "Transaction ID"
+     ],
+     "timeframe": "last month",
+     "segments": [
+      "Channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Channel",
+       "Transaction ID"
+      ],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": "Channel",
+      "segment_value": null,
+      "group_by": "Channel",
+      "variant_column": null,
+      "n": null,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "count",
+      "chart_type": null,
+      "kpi": "transactions",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 10.63,
+    "cost_usd": 0.00605,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many transactions did each channel have last month?\",\n  \"target_metrics\": [\"Transaction ID\"],\n  \"timeframe\": \"last month\",\n  \"segments\": [\"Channel\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Channel\", \"Transaction ID\"],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": \"Channel\",\n    \"segment_value\": null,\n    \"group_by\": \"Channel\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"count\",\n    \"chart_type\": null,\n    \"kpi\": \"transactions\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Channel, want Channel"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got transactions, want transactions"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How many transactions did each channel have last month?",
+     "target_metrics": [
+      "Transaction ID"
+     ],
+     "timeframe": "last month",
+     "segments": [
+      "Channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Channel"
+      ],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": "Channel",
+      "segment_value": null,
+      "group_by": "Channel",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "count",
+      "chart_type": null,
+      "kpi": "transactions",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.15,
+    "cost_usd": 0.00597,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many transactions did each channel have last month?\",\n  \"target_metrics\": [\"Transaction ID\"],\n  \"timeframe\": \"last month\",\n  \"segments\": [\"Channel\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Channel\"],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": \"Channel\",\n    \"segment_value\": null,\n    \"group_by\": \"Channel\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"count\",\n    \"chart_type\": null,\n    \"kpi\": \"transactions\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Channel, want Channel"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got transactions, want transactions"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How many transactions did each channel have last month?",
+     "target_metrics": [
+      "Transaction ID"
+     ],
+     "timeframe": "last month",
+     "segments": [
+      "Channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Channel"
+      ],
+      "metric_column": null,
+      "date_column": "Posting Date",
+      "segment_column": "Channel",
+      "segment_value": null,
+      "group_by": "Channel",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "count",
+      "chart_type": null,
+      "kpi": "transactions",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.97,
+    "cost_usd": 0.00597,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many transactions did each channel have last month?\",\n  \"target_metrics\": [\"Transaction ID\"],\n  \"timeframe\": \"last month\",\n  \"segments\": [\"Channel\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Channel\"],\n    \"metric_column\": null,\n    \"date_column\": \"Posting Date\",\n    \"segment_column\": \"Channel\",\n    \"segment_value\": null,\n    \"group_by\": \"Channel\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"count\",\n    \"chart_type\": null,\n    \"kpi\": \"transactions\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-clear-sql-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got balance, want balance"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "segment_column: got account_type, want account_type"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "aggregation: got mean, want mean"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Compare the average balance by account type.",
+     "target_metrics": [
+      "balance"
+     ],
+     "timeframe": null,
+     "segments": [
+      "account_type"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "balance",
+       "account_type"
+      ],
+      "metric_column": "balance",
+      "date_column": null,
+      "segment_column": "account_type",
+      "segment_value": null,
+      "group_by": "account_type",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.56,
+    "cost_usd": 0.00572,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Compare the average balance by account type.\",\n  \"target_metrics\": [\"balance\"],\n  \"timeframe\": null,\n  \"segments\": [\"account_type\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"balance\", \"account_type\"],\n    \"metric_column\": \"balance\",\n    \"date_column\": null,\n    \"segment_column\": \"account_type\",\n    \"segment_value\": null,\n    \"group_by\": \"account_type\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got balance, want balance"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "segment_column: got account_type, want account_type"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "aggregation: got mean, want mean"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Compare the average balance by account type.",
+     "target_metrics": [
+      "balance"
+     ],
+     "timeframe": null,
+     "segments": [
+      "account_type"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "balance",
+       "account_type"
+      ],
+      "metric_column": "balance",
+      "date_column": null,
+      "segment_column": "account_type",
+      "segment_value": null,
+      "group_by": "account_type",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.56,
+    "cost_usd": 0.00572,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Compare the average balance by account type.\",\n  \"target_metrics\": [\"balance\"],\n  \"timeframe\": null,\n  \"segments\": [\"account_type\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"balance\", \"account_type\"],\n    \"metric_column\": \"balance\",\n    \"date_column\": null,\n    \"segment_column\": \"account_type\",\n    \"segment_value\": null,\n    \"group_by\": \"account_type\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got balance, want balance"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "segment_column: got account_type, want account_type"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "aggregation: got mean, want mean"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Compare the average balance by account type.",
+     "target_metrics": [
+      "balance"
+     ],
+     "timeframe": null,
+     "segments": [
+      "account_type"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "balance",
+       "account_type"
+      ],
+      "metric_column": "balance",
+      "date_column": null,
+      "segment_column": "account_type",
+      "segment_value": null,
+      "group_by": "account_type",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_balance",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.24,
+    "cost_usd": 0.00572,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Compare the average balance by account type.\",\n  \"target_metrics\": [\"balance\"],\n  \"timeframe\": null,\n  \"segments\": [\"account_type\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"balance\", \"account_type\"],\n    \"metric_column\": \"balance\",\n    \"date_column\": null,\n    \"segment_column\": \"account_type\",\n    \"segment_value\": null,\n    \"group_by\": \"account_type\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_balance\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average basket size by shipping country?",
+     "target_metrics": [
+      "Total",
+      "Name"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.73,
+    "cost_usd": 0.00626,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the average basket size by shipping country?\",\n  \"target_metrics\": [\"Total\", \"Name\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"aov\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average basket size by shipping country?",
+     "target_metrics": [
+      "Total",
+      "Shipping Country"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 9.28,
+    "cost_usd": 0.0062,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the average basket size by shipping country?\",\n  \"target_metrics\": [\"Total\", \"Shipping Country\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the average basket size by shipping country?",
+     "target_metrics": [
+      "Total",
+      "Shipping Country"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.39,
+    "cost_usd": 0.0062,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the average basket size by shipping country?\",\n  \"target_metrics\": [\"Total\", \"Shipping Country\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got upt, want upt"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What are the items per order, by country?",
+     "target_metrics": [
+      "Lineitem quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "upt",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.65,
+    "cost_usd": 0.00618,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What are the items per order, by country?\",\n  \"target_metrics\": [\"Lineitem quantity\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"upt\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got upt, want upt"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What are the items per order, by country?",
+     "target_metrics": [
+      "Lineitem quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "upt",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.65,
+    "cost_usd": 0.00618,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What are the items per order, by country?\",\n  \"target_metrics\": [\"Lineitem quantity\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"upt\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got upt, want upt"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What are the items per order, by country?",
+     "target_metrics": [
+      "Lineitem quantity"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "upt",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.68,
+    "cost_usd": 0.00618,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What are the items per order, by country?\",\n  \"target_metrics\": [\"Lineitem quantity\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"upt\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our ATV in Germany?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Total",
+       "Shipping Country"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": "Germany",
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.81,
+    "cost_usd": 0.00615,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"What's our ATV in Germany?\",\n  \"target_metrics\": [\"Total\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Total\", \"Shipping Country\"],\n    \"metric_column\": \"Total\",\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": \"Germany\",\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\"\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our ATV in Germany?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Total",
+       "Shipping Country"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": "Germany",
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.75,
+    "cost_usd": 0.00622,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our ATV in Germany?\",\n  \"target_metrics\": [\"Total\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Total\", \"Shipping Country\"],\n    \"metric_column\": \"Total\",\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": \"Germany\",\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Shipping Country, want Shipping Country"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our ATV in Germany?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Total",
+       "Shipping Country"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": "Germany",
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.53,
+    "cost_usd": 0.00622,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our ATV in Germany?\",\n  \"target_metrics\": [\"Total\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Total\", \"Shipping Country\"],\n    \"metric_column\": \"Total\",\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": \"Germany\",\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got net_sales, want net_sales"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-01-01', '2026-01-31'], want ['2026-01-01', '2026-01-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How did takings in January 2026 compare with January last year?",
+     "target_metrics": [
+      "Total",
+      "Lineitem price",
+      "Discount Amount"
+     ],
+     "timeframe": "January 2026 vs January 2025",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Created at",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "net_sales",
+      "period_start": "2026-01-01",
+      "period_end": "2026-01-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 6.81,
+    "cost_usd": 0.00753,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How did takings in January 2026 compare with January last year?\",\n  \"target_metrics\": [\"Total\", \"Lineitem price\", \"Discount Amount\"],\n  \"timeframe\": \"January 2026 vs January 2025\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Created at\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"net_sales\",\n    \"period_start\": \"2026-01-01\",\n    \"period_end\": \"2026-01-31\",\n    \"compare\": \"yoy\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got net_sales, want net_sales"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-01-01', '2026-01-31'], want ['2026-01-01', '2026-01-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How did takings in January 2026 compare with January last year?",
+     "target_metrics": [
+      "Total",
+      "Lineitem price",
+      "Discount Amount",
+      "Lineitem quantity"
+     ],
+     "timeframe": "January 2026 vs January 2025",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Total",
+       "Lineitem price",
+       "Discount Amount",
+       "Lineitem quantity"
+      ],
+      "metric_column": null,
+      "date_column": "Created at",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "net_sales",
+      "period_start": "2026-01-01",
+      "period_end": "2026-01-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 6.81,
+    "cost_usd": 0.00792,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How did takings in January 2026 compare with January last year?\",\n  \"target_metrics\": [\"Total\", \"Lineitem price\", \"Discount Amount\", \"Lineitem quantity\"],\n  \"timeframe\": \"January 2026 vs January 2025\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Total\", \"Lineitem price\", \"Discount Amount\", \"Lineitem quantity\"],\n    \"metric_column\": null,\n    \"date_column\": \"Created at\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"net_sales\",\n    \"period_start\": \"2026-01-01\",\n    \"period_end\": \"2026-01-31\",\n    \"compare\": \"yoy\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got net_sales, want net_sales"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "compare: got yoy, want yoy"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2026-01-01', '2026-01-31'], want ['2026-01-01', '2026-01-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How did takings in January 2026 compare with January last year?",
+     "target_metrics": [
+      "Total",
+      "Lineitem price",
+      "Discount Amount",
+      "Lineitem quantity"
+     ],
+     "timeframe": "January 2026 vs January 2025",
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Total",
+       "Lineitem price",
+       "Discount Amount",
+       "Lineitem quantity"
+      ],
+      "metric_column": null,
+      "date_column": "Created at",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "net_sales",
+      "period_start": "2026-01-01",
+      "period_end": "2026-01-31",
+      "compare": "yoy"
+     }
+    },
+    "latency_s": 7.08,
+    "cost_usd": 0.00792,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How did takings in January 2026 compare with January last year?\",\n  \"target_metrics\": [\"Total\", \"Lineitem price\", \"Discount Amount\", \"Lineitem quantity\"],\n  \"timeframe\": \"January 2026 vs January 2025\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Total\", \"Lineitem price\", \"Discount Amount\", \"Lineitem quantity\"],\n    \"metric_column\": null,\n    \"date_column\": \"Created at\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"net_sales\",\n    \"period_start\": \"2026-01-01\",\n    \"period_end\": \"2026-01-31\",\n    \"compare\": \"yoy\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-06": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "out_of_scope",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our sell-through rate for each SKU?",
+     "target_metrics": [
+      "Lineitem quantity",
+      "Lineitem sku"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Lineitem sku"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Sell-through needs inventory on hand (units received), which this data does not have. I can answer with what the data has: net sales, units sold or returns by product. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Lineitem sku",
+       "Lineitem quantity"
+      ],
+      "metric_column": "Lineitem quantity",
+      "date_column": null,
+      "segment_column": "Lineitem sku",
+      "segment_value": null,
+      "group_by": "Lineitem sku",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.15,
+    "cost_usd": 0.00772,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our sell-through rate for each SKU?\",\n  \"target_metrics\": [\"Lineitem quantity\", \"Lineitem sku\"],\n  \"timeframe\": null,\n  \"segments\": [\"Lineitem sku\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Sell-through rate requires knowing how many units were received into inventory (units available), but this dataset only contains sales transactions \u2014 units sold per SKU. To calculate sell-through rate (units sold \u00f7 units received), could you provide an inventory or purchase-order file that includes units received per SKU? Alternatively, I can show you **units sold per SKU** as a proxy \u2014 would that be helpful in the meantime?\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Lineitem sku\", \"Lineitem quantity\"],\n    \"metric_column\": \"Lineitem quantity\",\n    \"date_column\": null,\n    \"segment_column\": \"Lineitem sku\",\n    \"segment_value\": null,\n    \"group_by\": \"Lineitem sku\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "out_of_scope",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our sell-through rate for each SKU?",
+     "target_metrics": [
+      "Lineitem quantity",
+      "Lineitem sku"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Lineitem sku"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Sell-through needs inventory on hand (units received), which this data does not have. I can answer with what the data has: net sales, units sold or returns by product. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Lineitem sku",
+       "Lineitem quantity"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Lineitem sku",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.87,
+    "cost_usd": 0.00772,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"What's our sell-through rate for each SKU?\",\n  \"target_metrics\": [\"Lineitem quantity\", \"Lineitem sku\"],\n  \"timeframe\": null,\n  \"segments\": [\"Lineitem sku\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Sell-through rate requires knowing how many units were **received into inventory** (units available), not just units sold. This dataset only contains sales order lines \u2014 there is no inventory-on-hand or units-received column available. To calculate sell-through (units sold \u00f7 units received), could you share an inventory or purchase-order file that includes units received per SKU? Alternatively, I can show you **units sold per SKU** as a proxy \u2014 would that be helpful in the meantime?\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Lineitem sku\", \"Lineitem quantity\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Lineitem sku\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "out_of_scope",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our sell-through rate for each SKU?",
+     "target_metrics": [
+      "Lineitem quantity",
+      "Lineitem sku"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Lineitem sku"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Sell-through needs inventory on hand (units received), which this data does not have. I can answer with what the data has: net sales, units sold or returns by product. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Lineitem sku",
+       "Lineitem quantity"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Lineitem sku",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.06,
+    "cost_usd": 0.00751,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"What's our sell-through rate for each SKU?\",\n  \"target_metrics\": [\"Lineitem quantity\", \"Lineitem sku\"],\n  \"timeframe\": null,\n  \"segments\": [\"Lineitem sku\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Sell-through rate requires knowing how many units were **received into inventory** (units available), not just units sold. This dataset only contains sales order lines \u2014 there is no inventory or stock-received column available. To calculate sell-through rate (units sold \u00f7 units received), could you share an inventory or stock receipt file? Alternatively, I can show you **units sold per SKU** as a proxy \u2014 would that be helpful instead?\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Lineitem sku\", \"Lineitem quantity\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Lineitem sku\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-07": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got return_rate, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem price",
+      "Lineitem quantity",
+      "Discount Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Total",
+       "Lineitem price",
+       "Lineitem quantity",
+       "Discount Amount"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "return_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.45,
+    "cost_usd": 0.00715,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which country sends back the most, as a share of sales?\",\n  \"target_metrics\": [\"Total\", \"Lineitem price\", \"Lineitem quantity\", \"Discount Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Shipping Country\", \"Total\", \"Lineitem price\", \"Lineitem quantity\", \"Discount Amount\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": 10,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"return_rate\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got return_rate, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem price",
+      "Lineitem quantity",
+      "Discount Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Total",
+       "Lineitem price",
+       "Lineitem quantity",
+       "Discount Amount"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "return_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.7,
+    "cost_usd": 0.00723,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which country sends back the most, as a share of sales?\",\n  \"target_metrics\": [\"Total\", \"Lineitem price\", \"Lineitem quantity\", \"Discount Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Shipping Country\", \"Total\", \"Lineitem price\", \"Lineitem quantity\", \"Discount Amount\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": 10,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"return_rate\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got return_rate, want return_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which country sends back the most, as a share of sales?",
+     "target_metrics": [
+      "Total",
+      "Lineitem price",
+      "Lineitem quantity",
+      "Discount Amount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "Shipping Country",
+       "Total",
+       "Lineitem price",
+       "Lineitem quantity",
+       "Discount Amount"
+      ],
+      "metric_column": "Total",
+      "date_column": null,
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": "Shipping Country",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "return_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.73,
+    "cost_usd": 0.00724,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which country sends back the most, as a share of sales?\",\n  \"target_metrics\": [\"Total\", \"Lineitem price\", \"Lineitem quantity\", \"Discount Amount\"],\n  \"timeframe\": null,\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Shipping Country\", \"Total\", \"Lineitem price\", \"Lineitem quantity\", \"Discount Amount\"],\n    \"metric_column\": \"Total\",\n    \"date_column\": null,\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": \"Shipping Country\",\n    \"variant_column\": null,\n    \"n\": 10,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"return_rate\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-08": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2025-01-01', '2025-03-31'], want ['2025-01-01', '2025-03-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Q1 2025 only?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": "Q1 2025",
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Total",
+      "date_column": "Created at",
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": "2025-01-01",
+      "period_end": "2025-03-31",
+      "compare": null
+     }
+    },
+    "latency_s": 4.21,
+    "cost_usd": 0.00749,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"and for Q1 2025 only?\",\n  \"target_metrics\": [\"Total\"],\n  \"timeframe\": \"Q1 2025\",\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Total\",\n    \"date_column\": \"Created at\",\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\",\n    \"period_start\": \"2025-01-01\",\n    \"period_end\": \"2025-03-31\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2025-01-01', '2025-03-31'], want ['2025-01-01', '2025-03-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Q1 2025 only?",
+     "target_metrics": [],
+     "timeframe": "Q1 2025",
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Total",
+      "date_column": "Created at",
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": "2025-01-01",
+      "period_end": "2025-03-31",
+      "compare": null
+     }
+    },
+    "latency_s": 5.08,
+    "cost_usd": 0.00746,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"and for Q1 2025 only?\",\n  \"target_metrics\": [],\n  \"timeframe\": \"Q1 2025\",\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Total\",\n    \"date_column\": \"Created at\",\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\",\n    \"period_start\": \"2025-01-01\",\n    \"period_end\": \"2025-03-31\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2025-01-01', '2025-03-31'], want ['2025-01-01', '2025-03-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Q1 2025 only?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": "Q1 2025",
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Total",
+      "date_column": "Created at",
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": "2025-01-01",
+      "period_end": "2025-03-31",
+      "compare": null
+     }
+    },
+    "latency_s": 5.51,
+    "cost_usd": 0.00749,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"and for Q1 2025 only?\",\n  \"target_metrics\": [\"Total\"],\n  \"timeframe\": \"Q1 2025\",\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Total\",\n    \"date_column\": \"Created at\",\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\",\n    \"period_start\": \"2025-01-01\",\n    \"period_end\": \"2025-03-31\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

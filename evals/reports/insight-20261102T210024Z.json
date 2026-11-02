@@ -1,0 +1,1543 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261102T210024Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "bb3cc97",
+  "started_at": "20261102T210024Z",
+  "only": "ins-41-loan-tape-overview,ins-42-ledger-overview",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0241,
+  "latency_p50_s": 24.62,
+  "latency_p95_s": 25.84,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": 1.0,
+  "must_not": 1.0,
+  "contradictions_named": null,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "straightforward": 1.0
+  }
+ },
+ "runs": {
+  "ins-41-loan-tape-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/31 oct(ober)? 2026|october 31,? 2026|as of/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/mortgage/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|basket|(rate (cut|hike)|campaign|promotion)s? (drove|caused|led to)/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "A 1,094-account loan portfolio with a total balance of $47,521,711.85 is dominated by Mortgage balances, carries a low overall NPL ratio of 0.2%, and grew modestly in October 2026. Mortgages hold the vast majority of outstanding principal while Credit Cards carry the highest average interest rate and the highest 30-day delinquency rate, making them the primary risk pocket to watch. Overall credit quality looks healthy at the portfolio level, but the Personal product's NPL ratio of 3.4% and Credit Card's 30+ delinquency rate of 10.4% stand out against the portfolio average.",
+      "technical_findings": [
+       "Outstanding Principal MoM: +0.9% (n = 15,032; high confidence: 15032 rows)",
+       "sum Outstanding Principal by Product (4 groups) (n = 15,032; high confidence: 15032 rows)",
+       "mean Interest Rate (%) by Product (4 groups) (n = 15,032; high confidence: 15032 rows)",
+       "Outstanding Principal: median 8,196.01, mean 42,673.17, range 0 to 757,899.00 (n = 15,032; high confidence: 15032 rows)",
+       "Interest Rate (%): median 11.54, mean 13.43, range 3.41 to 26.25 (n = 15,032; high confidence: 15032 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate Credit Card delinquency: review the 10.4% of Credit Card accounts that are 30+ days past due and assess whether collections or limit adjustments are warranted.",
+        "reasoning": "Reduces the highest-risk delinquency pocket in the portfolio",
+        "metric_impact": "Reduces the highest-risk delinquency pocket in the portfolio"
+       },
+       {
+        "priority": 2,
+        "action": "Monitor Personal loan NPL exposure: flag the 3.4% NPL ratio on Personal loans for closer monthly tracking given it is the highest NPL rate by product.",
+        "reasoning": "Provides early warning on the product with the greatest non-performing loan concentration",
+        "metric_impact": "Provides early warning on the product with the greatest non-performing loan concentration"
+       },
+       {
+        "priority": 3,
+        "action": "Examine the large-balance outlier accounts in Outstanding Principal (up to $757,899.00) to confirm they are correctly classified and appropriately risk-rated.",
+        "reasoning": "Ensures concentration risk in a small number of accounts is understood and managed",
+        "metric_impact": "Ensures concentration risk in a small number of accounts is understood and managed"
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Outstanding principal: 97 extreme values",
+        "severity": "medium",
+        "description": "97 Outstanding Principal values (0.6% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Outstanding Principal",
+        "suggested_investigation": "Verify the largest Outstanding Principal values against the source records."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as banking data (total balance, open accounts, avg balance per account, NPL ratio, 30+ delinquency). 106 pending, declined or closed-account rows are left out of balances and money figures. Balances are as of 31 Oct 2026: each account's latest snapshot, added across accounts, never across dates.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "How have Credit Card delinquency and Personal NPL rates trended over the full 14-month period \u2014 are they improving or deteriorating?",
+       "What share of total accounts and total balance do the outlier large-balance loans represent, and are they concentrated in a single product or borrower segment?",
+       "Is the 0.9% month-over-month growth in outstanding principal driven by new originations, reduced paydowns, or a mix \u2014 and which product is contributing most to that growth?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 3 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Original Amount, Outstanding Principal. Final dataset: 15032 rows (started with 15032). Analysis (analysis v8) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "A 1,094-account loan portfolio with a total balance of $47,521,711.85 is dominated by Mortgage balances, carries a low overall NPL ratio of 0.2%, and grew modestly in October 2026.",
+       "headline_evidence_ids": [
+        "seg:Product/Outstanding Principal:sum",
+        "trend:Outstanding Principal:MoM"
+       ],
+       "paragraphs": [
+        {
+         "text": "Mortgages hold the vast majority of outstanding principal while Credit Cards carry the highest average interest rate and the highest 30-day delinquency rate, making them the primary risk pocket to watch.",
+         "evidence_ids": [
+          "seg:Product/Outstanding Principal:sum",
+          "seg:Product/Interest Rate (%)",
+          "clean:audit"
+         ]
+        },
+        {
+         "text": "Overall credit quality looks healthy at the portfolio level, but the Personal product's NPL ratio of 3.4% and Credit Card's 30+ delinquency rate of 10.4% stand out against the portfolio average.",
+         "evidence_ids": [
+          "seg:Product/Outstanding Principal:sum"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Mortgage is the dominant product by balance at $40,584,162.85, dwarfing Auto ($4,760,351.70), Personal ($1,320,667.16), and Credit Card ($856,530.14).",
+         "evidence_ids": [
+          "seg:Product/Outstanding Principal:sum"
+         ]
+        },
+        {
+         "text": "Credit Cards carry the highest average interest rate at 22.93%, compared to 13.51% for Personal, 8.83% for Auto, and 6.58% for Mortgage.",
+         "evidence_ids": [
+          "seg:Product/Interest Rate (%)"
+         ]
+        },
+        {
+         "text": "Outstanding principal grew 0.9% month-over-month in October 2026 versus September 2026, suggesting modest but positive portfolio expansion.",
+         "evidence_ids": [
+          "trend:Outstanding Principal:MoM"
+         ]
+        },
+        {
+         "text": "The distribution of outstanding principal is highly skewed \u2014 the median balance is $8,196.01 while the mean is $42,673.17 and the maximum reaches $757,899.00 \u2014 indicating a small number of very large accounts pull the average up significantly.",
+         "evidence_ids": [
+          "eda:Outstanding Principal"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate Credit Card delinquency: review the 10.4% of Credit Card accounts that are 30+ days past due and assess whether collections or limit adjustments are warranted.",
+         "expected_impact": "Reduces the highest-risk delinquency pocket in the portfolio",
+         "evidence_ids": [
+          "seg:Product/Outstanding Principal:sum"
+         ]
+        },
+        {
+         "action": "Monitor Personal loan NPL exposure: flag the 3.4% NPL ratio on Personal loans for closer monthly tracking given it is the highest NPL rate by product.",
+         "expected_impact": "Provides early warning on the product with the greatest non-performing loan concentration",
+         "evidence_ids": [
+          "seg:Product/Outstanding Principal:sum"
+         ]
+        },
+        {
+         "action": "Examine the large-balance outlier accounts in Outstanding Principal (up to $757,899.00) to confirm they are correctly classified and appropriately risk-rated.",
+         "expected_impact": "Ensures concentration risk in a small number of accounts is understood and managed",
+         "evidence_ids": [
+          "eda:Outstanding Principal"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 3 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Original Amount, Outstanding Principal. Final dataset: 15032 rows (started with 15032). Analysis (analysis v8) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "Outstanding Principal MoM: +0.9% (n = 15,032; high confidence: 15032 rows)",
+        "sum Outstanding Principal by Product (4 groups) (n = 15,032; high confidence: 15032 rows)",
+        "mean Interest Rate (%) by Product (4 groups) (n = 15,032; high confidence: 15032 rows)",
+        "Outstanding Principal: median 8,196.01, mean 42,673.17, range 0 to 757,899.00 (n = 15,032; high confidence: 15032 rows)",
+        "Interest Rate (%): median 11.54, mean 13.43, range 3.41 to 26.25 (n = 15,032; high confidence: 15032 rows)"
+       ],
+       "caveats": [
+        "106 pending, declined, or closed-account rows are excluded from all balance and money figures, so the portfolio totals reflect only active accounts.",
+        "Outstanding Principal values contain flagged outliers that were kept in the dataset; the large gap between the median ($8,196.01) and mean ($42,673.17) reflects this skew and should be considered when interpreting averages.",
+        "NPL and delinquency rates are stated figures accompanying the report; the underlying loan-level detail behind those rates was not separately verified in this evidence set.",
+        "Read as banking data (total balance, open accounts, avg balance per account, NPL ratio, 30+ delinquency).",
+        "106 pending, declined or closed-account rows are left out of balances and money figures.",
+        "Balances are as of 31 Oct 2026: each account's latest snapshot, added across accounts, never across dates.",
+        "As Of Date: Parsed as dates.",
+        "Origination Date: Parsed as dates.",
+        "Charge Off Date: Parsed as dates.",
+        "Days Past Due: 60 values coded 999 (the export's 'unknown', not a real dpd) read as missing.",
+        "Days Past Due: 60 missing (0.4%), number: left as missing; totals and averages use the 14972 known rows.",
+        "Charge Off Date: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is."
+       ],
+       "code_references": [
+        "# rows: On-book rows in USD only: 106 other rows (pending, reversed, closed or in another currency) left out.\n_period = pd.to_datetime(df['As Of Date'], format='mixed').dt.to_period('M'); df.sort_values('As Of Date').groupby([_period, *['Loan ID']])['Outstanding Principal'].last().groupby(level=0).sum()   # each entity's last, summed",
+        "# each Loan ID's latest snapshot (newest period), then summed\nlatest_rows(df, 'Outstanding Principal').groupby('Product')['Outstanding Principal'].sum()",
+        "df.groupby('Product')['Interest Rate (%)'].mean()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-02T21:00:50.836524Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Loan ID",
+       "As Of Date",
+       "Product",
+       "Branch",
+       "Borrower Name",
+       "Origination Date",
+       "Original Amount",
+       "Outstanding Principal",
+       "Interest Rate (%)",
+       "Days Past Due",
+       "Loan Status",
+       "Charge Off Date",
+       "Currency"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Outstanding Principal:MoM",
+       "seg:Product/Outstanding Principal:sum",
+       "seg:Product/Interest Rate (%)",
+       "eda:Outstanding Principal",
+       "eda:Interest Rate (%)"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 15032 \u2192 15032 rows, 7 logged changes",
+        "result_excerpt": "{\"rows_before\": 15032, \"rows_after\": 15032, \"decisions\": [[\"As Of Date\", \"type_coerce\", 15032, 0], [\"Origination Date\", \"type_coerce\", 15032, 0], [\"Charge Off Date\", \"type_coerce\", 9, 0], [\"Days Past Due\", \"sentinel_null\", 60, 0], [\"Days Past Due\", \"keep\", 0, 0], [\"Charge Off Date\", \"keep\", 0, 0], [\"*\", \"flag\", 106, 0]]}",
+        "row_count": 15032,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "As Of Date: Parsed as dates.",
+         "Origination Date: Parsed as dates.",
+         "Charge Off Date: Parsed as dates.",
+         "Days Past Due: 60 values coded 999 (the export's 'unknown', not a real dpd) read as missing.",
+         "Days Past Due: 60 missing (0.4%), number: left as missing; totals and averages use the 14972 known rows.",
+         "Charge Off Date: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+         "*: 106 pending or declined transactions, or closed, paid-off or charged-off accounts: left out of balances and money figures; kept in the data."
+        ]
+       },
+       {
+        "id": "trend:Outstanding Principal:MoM",
+        "kind": "trend",
+        "claim": "Outstanding Principal MoM: +0.9%",
+        "result_excerpt": "{\"column\": \"Outstanding Principal\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 0.9, \"segment\": null}",
+        "row_count": 15032,
+        "confidence": "high",
+        "confidence_reason": "15032 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Product/Outstanding Principal:sum",
+        "kind": "segment",
+        "claim": "sum Outstanding Principal by Product (4 groups)",
+        "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Outstanding Principal\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 4760351.7}, {\"name\": \"Credit Card\", \"value\": 856530.14}, {\"name\": \"Mortgage\", \"value\": 40584162.85}, {\"name\": \"Personal\", \"value\": 1320667.16}]}",
+        "row_count": 15032,
+        "confidence": "high",
+        "confidence_reason": "15032 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Product/Interest Rate (%)",
+        "kind": "segment",
+        "claim": "mean Interest Rate (%) by Product (4 groups)",
+        "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Interest Rate (%)\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Auto\", \"value\": 8.8319}, {\"name\": \"Credit Card\", \"value\": 22.9298}, {\"name\": \"Mortgage\", \"value\": 6.579}, {\"name\": \"Personal\", \"value\": 13.511}]}",
+        "row_count": 15032,
+        "confidence": "high",
+        "confidence_reason": "15032 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Outstanding Principal",
+        "kind": "eda",
+        "claim": "Outstanding Principal: median 8,196.01, mean 42,673.17, range 0 to 757,899.00",
+        "result_excerpt": "{\"mean\": 42673.168, \"std\": 83188.7706, \"min\": 0.0, \"max\": 757899.0, \"median\": 8196.015, \"count\": 15032.0}",
+        "row_count": 15032,
+        "confidence": "high",
+        "confidence_reason": "15032 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Interest Rate (%)",
+        "kind": "eda",
+        "claim": "Interest Rate (%): median 11.54, mean 13.43, range 3.41 to 26.25",
+        "result_excerpt": "{\"mean\": 13.4312, \"std\": 6.5001, \"min\": 3.41, \"max\": 26.25, \"median\": 11.54, \"count\": 15032.0}",
+        "row_count": 15032,
+        "confidence": "high",
+        "confidence_reason": "15032 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2019,
+       1
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 94,
+      "audit_summary": "Parsed numbers or dates in 3 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Original Amount, Outstanding Principal. Final dataset: 15032 rows (started with 15032).",
+      "chart_titles": [
+       "Total balance over time (as of 31 Oct 2026)",
+       "Total balance by Product (as of 31 Oct 2026)",
+       "outstanding principal rose 0.9% in Oct 2026 vs Sep 2026",
+       "Total outstanding principal by product: Mortgage highest (40,584,162.85), Credit Card lowest (856,530.14)",
+       "Average interest rate by product: Credit Card highest (22.93), Mortgage lowest (6.58)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Outstanding Principal": {
+          "mean": 42673.168,
+          "std": 83188.7706,
+          "min": 0.0,
+          "max": 757899.0,
+          "median": 8196.015,
+          "count": 15032.0
+         },
+         "Interest Rate (%)": {
+          "mean": 13.4312,
+          "std": 6.5001,
+          "min": 3.41,
+          "max": 26.25,
+          "median": 11.54,
+          "count": 15032.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Outstanding Principal",
+          "period": "MoM",
+          "direction": "up",
+          "pct_change": 0.9,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Product",
+          "metric_column": "Outstanding Principal",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 4760351.7
+           },
+           {
+            "name": "Credit Card",
+            "value": 856530.14
+           },
+           {
+            "name": "Mortgage",
+            "value": 40584162.85
+           },
+           {
+            "name": "Personal",
+            "value": 1320667.16
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Product",
+          "metric_column": "Interest Rate (%)",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 8.8319
+           },
+           {
+            "name": "Credit Card",
+            "value": 22.9298
+           },
+           {
+            "name": "Mortgage",
+            "value": 6.579
+           },
+           {
+            "name": "Personal",
+            "value": 13.511
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Loan ID": 0.0,
+         "As Of Date": 0.0,
+         "Product": 0.0,
+         "Branch": 0.0,
+         "Borrower Name": 0.0,
+         "Origination Date": 0.0,
+         "Original Amount": 0.0,
+         "Outstanding Principal": 0.0,
+         "Interest Rate (%)": 0.0,
+         "Days Past Due": 0.4,
+         "Loan Status": 0.0,
+         "Charge Off Date": 99.94,
+         "Currency": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Total balance",
+          "value": "$47,521,711.85",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "total_balance",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Sum of Outstanding Principal, at each Loan ID's latest snapshot; over on-book rows (pending, declined or closed rows left out)."
+         },
+         {
+          "label": "Open accounts",
+          "value": "1,094",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "open_accounts",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Loan ID, at each Loan ID's latest snapshot; over on-book rows (pending, declined or closed rows left out)."
+         },
+         {
+          "label": "Avg balance per account",
+          "value": "$43,438.49",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "avg_balance",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Total balance, divided by open accounts."
+         },
+         {
+          "label": "NPL ratio",
+          "value": "0.2%",
+          "context": "by Product: highest Personal 3.4%, lowest Mortgage 0.0%",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "npl_ratio",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Outstanding Principal where Days Past Due \u2265 90 or Loan Status is non-accrual / nonaccrual / default / defaulted, divided by total balance, at each Loan ID's latest snapshot; over on-book rows (pending, declined or closed rows left out)."
+         },
+         {
+          "label": "30+ delinquency",
+          "value": "0.5%",
+          "context": "by Product: highest Credit Card 10.4%, lowest Mortgage 0.0%",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "delinquency_30",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Outstanding Principal where Days Past Due \u2265 30, divided by total balance, at each Loan ID's latest snapshot; over on-book rows (pending, declined or closed rows left out)."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 15032 \u2192 15032 rows, 7 logged changes",
+         "result_excerpt": "{\"rows_before\": 15032, \"rows_after\": 15032, \"decisions\": [[\"As Of Date\", \"type_coerce\", 15032, 0], [\"Origination Date\", \"type_coerce\", 15032, 0], [\"Charge Off Date\", \"type_coerce\", 9, 0], [\"Days Past Due\", \"sentinel_null\", 60, 0], [\"Days Past Due\", \"keep\", 0, 0], [\"Charge Off Date\", \"keep\", 0, 0], [\"*\", \"flag\", 106, 0]]}",
+         "row_count": 15032,
+         "assumptions": [
+          "As Of Date: Parsed as dates.",
+          "Origination Date: Parsed as dates.",
+          "Charge Off Date: Parsed as dates.",
+          "Days Past Due: 60 values coded 999 (the export's 'unknown', not a real dpd) read as missing.",
+          "Days Past Due: 60 missing (0.4%), number: left as missing; totals and averages use the 14972 known rows.",
+          "Charge Off Date: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+          "*: 106 pending or declined transactions, or closed, paid-off or charged-off accounts: left out of balances and money figures; kept in the data."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Outstanding Principal MoM: +0.9%",
+         "result_excerpt": "{\"column\": \"Outstanding Principal\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 0.9, \"segment\": null}",
+         "row_count": 15032,
+         "assumptions": [],
+         "confidence_reason": "15032 rows"
+        },
+        {
+         "claim": "sum Outstanding Principal by Product (4 groups)",
+         "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Outstanding Principal\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 4760351.7}, {\"name\": \"Credit Card\", \"value\": 856530.14}, {\"name\": \"Mortgage\", \"value\": 40584162.85}, {\"name\": \"Personal\", \"value\": 1320667.16}]}",
+         "row_count": 15032,
+         "assumptions": [],
+         "confidence_reason": "15032 rows"
+        },
+        {
+         "claim": "mean Interest Rate (%) by Product (4 groups)",
+         "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Interest Rate (%)\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Auto\", \"value\": 8.8319}, {\"name\": \"Credit Card\", \"value\": 22.9298}, {\"name\": \"Mortgage\", \"value\": 6.579}, {\"name\": \"Personal\", \"value\": 13.511}]}",
+         "row_count": 15032,
+         "assumptions": [],
+         "confidence_reason": "15032 rows"
+        },
+        {
+         "claim": "Outstanding Principal: median 8,196.01, mean 42,673.17, range 0 to 757,899.00",
+         "result_excerpt": "{\"mean\": 42673.168, \"std\": 83188.7706, \"min\": 0.0, \"max\": 757899.0, \"median\": 8196.015, \"count\": 15032.0}",
+         "row_count": 15032,
+         "assumptions": [],
+         "confidence_reason": "15032 rows"
+        },
+        {
+         "claim": "Interest Rate (%): median 11.54, mean 13.43, range 3.41 to 26.25",
+         "result_excerpt": "{\"mean\": 13.4312, \"std\": 6.5001, \"min\": 3.41, \"max\": 26.25, \"median\": 11.54, \"count\": 15032.0}",
+         "row_count": 15032,
+         "assumptions": [],
+         "confidence_reason": "15032 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "As Of Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 15032,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Origination Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 15032,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Charge Off Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 9,
+          "before_null_pct": 99.9,
+          "after_null_pct": 99.9,
+          "rows_removed": 0
+         },
+         {
+          "column": "Days Past Due",
+          "operation": "sentinel_null",
+          "strategy": "numeric_sentinel",
+          "reason": "60 values coded 999 (the export's 'unknown', not a real dpd) read as missing.",
+          "rows_affected": 60,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.4,
+          "rows_removed": 0
+         },
+         {
+          "column": "Days Past Due",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "60 missing (0.4%), number: left as missing; totals and averages use the 14972 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 0.4,
+          "after_null_pct": 0.4,
+          "rows_removed": 0
+         },
+         {
+          "column": "Charge Off Date",
+          "operation": "keep",
+          "strategy": "conditional",
+          "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 99.9,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "cancel",
+          "reason": "106 pending or declined transactions, or closed, paid-off or charged-off accounts: left out of balances and money figures; kept in the data.",
+          "rows_affected": 106,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 15032,
+        "rows_after": 15032,
+        "columns_coerced": [
+         "As Of Date",
+         "Origination Date",
+         "Charge Off Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "96 mild outliers in Original Amount (threshold: values outside [17.37, 8.19M]) \u2014 see analyst tab",
+         "97 extreme outliers in Outstanding Principal (0.6% of data, threshold: values < 10.41)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 3 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Original Amount, Outstanding Principal. Final dataset: 15032 rows (started with 15032).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Original Amount",
+           "extreme_count": 0,
+           "mild_count": 96,
+           "extreme_pct": 0.0,
+           "lower_bound": 17.374699540406468,
+           "upper_bound": 8194204.600581455,
+           "mild_lower_bound": 297.38821249844403,
+           "mild_upper_bound": 504596.90158026194,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "96 mild outliers in Original Amount (threshold: values outside [17.37, 8.19M]) \u2014 see analyst tab"
+          },
+          {
+           "column": "Outstanding Principal",
+           "extreme_count": 97,
+           "mild_count": 119,
+           "extreme_pct": 0.645290047897818,
+           "lower_bound": 10.408341913593457,
+           "upper_bound": 5914039.572377593,
+           "mild_lower_bound": 190.33433365104514,
+           "mild_upper_bound": 352624.666594471,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "97 extreme outliers in Outstanding Principal (0.6% of data, threshold: values < 10.41)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Original Amount",
+          "Outstanding Principal",
+          "Interest Rate (%)",
+          "Days Past Due"
+         ],
+         "skipped_columns": {
+          "Loan ID": "constant or unsupported",
+          "As Of Date": "datetime column",
+          "Product": "non-numeric",
+          "Branch": "non-numeric",
+          "Borrower Name": "constant or unsupported",
+          "Origination Date": "datetime column",
+          "Loan Status": "non-numeric",
+          "Charge Off Date": "datetime column",
+          "Currency": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "As Of Date": [
+          "2025-09-30",
+          "2026-10-31",
+          14
+         ],
+         "Origination Date": [
+          "2019-01-03",
+          "2026-10-27",
+          94
+         ],
+         "Charge Off Date": [
+          "2026-02-28",
+          "2026-10-31",
+          9
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "Total balance over time (as of 31 Oct 2026)",
+        "Total balance by Product (as of 31 Oct 2026)",
+        "outstanding principal rose 0.9% in Oct 2026 vs Sep 2026",
+        "Total outstanding principal by product: Mortgage highest (40,584,162.85), Credit Card lowest (856,530.14)",
+        "Average interest rate by product: Credit Card highest (22.93), Mortgage lowest (6.58)"
+       ],
+       [
+        15032,
+        13,
+        94
+       ],
+       [
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "latency_s": 25.98,
+    "cost_usd": 0.02497,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"A 1,094-account loan portfolio with a total balance of $47,521,711.85 is dominated by Mortgage balances, carries a low overall NPL ratio of 0.2%, and grew modestly in October 2026.\",\n    \"evidence\": [\"seg:Product/Outstanding Principal:sum\", \"trend:Outstanding Principal:MoM\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Mortgages hold the vast majority of outstanding principal while Credit Cards carry the highest average interest rate and the highest 30-day delinquency rate, making them the primary risk pocket to watch.\",\n      \"evidence\": [\"seg:Product/Outstanding Principal:sum\", \"seg:Product/Interest Rate (%)\", \"clean:audit\"]\n    },\n    {\n      \"text\": \"Overall credit quality looks healthy at the portfolio level, but the Personal product's NPL ratio of 3.4% and Credit Card's 30+ delinquency rate of 10.4% stand out against the portfolio average.\",\n      \"evidence\": [\"seg:Product/Outstanding Principal:sum\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Mortgage is the dominant product by balance at $40,584,162.85, dwarfing Auto ($4,760,351.70), Personal ($1,320,667.16), and Credit Card ($856,530.14).\",\n      \"evidence\": [\"seg:Product/Outstanding Principal:sum\"]\n    },\n    {\n      \"text\": \"Credit Cards carry the highest average interest rate at 22.93%, compared to 13.51% for Personal, 8.83% for Auto, and 6.58% for Mortgage.\",\n      \"evidence\": [\"seg:Product/Interest Rate (%)\"]\n    },\n    {\n      \"text\": \"Outstanding principal grew 0.9% month-over-month in October 2026 versus September 2026, suggesting modest but positive portfolio expansion.\",\n      \"evidence\": [\"trend:Outstanding Principal:MoM\"]\n    },\n    {\n      \"text\": \"The distribution of outstanding principal is highly skewed \u2014 the median balance is $8,196.01 while the mean is $42,673.17 and the maximum reaches $757,899.00 \u2014 indicating a small number of very large accounts pull the average up significantly.\",\n      \"evidence\": [\"eda:Outstanding Principal\"]\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate Credit Card delinquency: review the 10.4% of Credit Card accounts that are 30+ days past due and assess whether collections or limit adjustments are warranted.\",\n      \"impact\": \"Reduces the highest-risk delinquency pocket in the portfolio\",\n      \"evidence\": [\"seg:Product/Outstanding Principal:sum\"]\n    },\n    {\n      \"action\": \"Monitor Personal loan NPL exposure: flag the 3.4% NPL ratio on Personal loans for closer monthly tracking given it is the highest NPL rate by product.\",\n      \"impact\": \"Provides early warning on the product with the greatest non-performing loan concentration\",\n      \"evidence\": [\"seg:Product/Outstanding Principal:sum\"]\n    },\n    {\n      \"action\": \"Examine the large-balance outlier accounts in Outstanding Principal (up to $757,899.00) to confirm they are correctly classified and appropriately risk-rated.\",\n      \"impact\": \"Ensures concentration risk in a small number of accounts is understood and managed\",\n      \"evidence\": [\"eda:Outstanding Principal\"]\n    }\n  ],\n  \"caveats\": [\n    \"106 pending, declined, or closed-account rows are excluded from all balance and money figures, so the portfolio totals reflect only active accounts.\",\n    \"Outstanding Principal values contain flagged outliers that were kept in the dataset; the large gap between the median ($8,196.01) and mean ($42,673.17) reflects this skew and should be considered when interpreting averages.\",\n    \"NPL and delinquency rates are stated figures accompanying the report; the underlying loan-level detail behind those rates was not separately verified in this evidence set.\"\n  ],\n  \"questions\": [\n    \"How have Credit Card delinquency and Personal NPL rates trended over the full 14-month period \u2014 are they improving or deteriorating?\",\n    \"What share of total accounts and total balance do the outlier large-balance loans represent, and are they concentrated in a single product or borrower segment?\",\n    \"Is the 0.9% month-over-month growth in outstanding principal driven by new originations, reduced paydowns, or a mix \u2014 and which product is contributing most to that growth?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-42-ledger-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/revers/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/pending/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|basket|\\bunits sold/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This banking dataset covers 17 months of account activity (July 2025 \u2013 November 2026), with USD inflows of $17,227,508.72 outpacing outflows of $2,185,693.45 and a net flow of $15,041,815.27 across 33,640 USD transactions. Income is the dominant transaction category, while spending is spread across transfers, travel, groceries, and other consumer categories. Data quality is strong after cleaning, though 1,490 non-USD rows and 632 reversal entries are excluded from all money figures, and outliers in Amount and Balance After were flagged but kept.",
+      "technical_findings": [
+       "Amount MoM: +1.8% (n = 33,640; high confidence: 33640 rows)",
+       "sum Amount by Merchant Category (10 groups) (n = 36,467; high confidence: 36467 rows)",
+       "Amount: median -22.97, mean 430.73, range -1,170.01 to 7,119.23 (n = 36,467; high confidence: 36467 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the 1,490 non-USD rows to determine whether they represent material activity that should be converted and included in financial summaries.",
+        "reasoning": "Ensures money totals reflect the full scope of account activity.",
+        "metric_impact": "Ensures money totals reflect the full scope of account activity."
+       },
+       {
+        "priority": 2,
+        "action": "Review flagged outliers in Amount and Balance After to confirm they are legitimate transactions rather than data errors.",
+        "reasoning": "Protects the integrity of trend and segment analyses that depend on these figures.",
+        "metric_impact": "Protects the integrity of trend and segment analyses that depend on these figures."
+       },
+       {
+        "priority": 3,
+        "action": "Monitor the Transfer category (-$948,438.05) closely, as it is the largest outflow segment and may warrant further breakdown by account or counterparty.",
+        "reasoning": "Identifies concentration risk or unusual outflow patterns.",
+        "metric_impact": "Identifies concentration risk or unusual outflow patterns."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Balance after: 19 extreme values",
+        "severity": "medium",
+        "description": "19 Balance After values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Balance After",
+        "suggested_investigation": "Verify the largest Balance After values against the source records."
+       },
+       {
+        "title": "Amount: a long tail of large values",
+        "severity": "low",
+        "description": "A few very large Amount values are normal for this data; they were kept.",
+        "affected_metric": "Amount",
+        "suggested_investigation": "Report the typical Amount alongside the average."
+       },
+       {
+        "title": "Duplicates: 729 rows removed",
+        "severity": "low",
+        "description": "729 duplicate records (the same ID twice) were removed before the analysis.",
+        "affected_metric": "",
+        "suggested_investigation": "Find where duplicate records enter the export."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as banking data (net flow, inflows, outflows, fee income, transactions). Nov 2026 is partial (data through the 3rd) and is left out of period comparisons. 632 reversed transactions are left out of money figures. 150 pending, declined or closed-account rows are left out of balances and money figures. 1,490 rows in currencies other than USD are left out of money totals. 632 reversal entries are left out of money figures.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Which accounts or account types are driving the largest inflows in the Income category?",
+       "How does the Transfer outflow of -$948,438.05 break down by recipient or account \u2014 are a small number of accounts responsible for most of it?",
+       "What currencies make up the 1,490 excluded rows, and how significant are those balances relative to the USD totals?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 729 duplicate rows. Parsed numbers or dates in 2 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Amount, Balance After. Final dataset: 36467 rows (started with 37196). Analysis (analysis v8) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "This banking dataset covers 17 months of account activity (July 2025 \u2013 November 2026), with USD inflows of $17,227,508.72 outpacing outflows of $2,185,693.45 and a net flow of $15,041,815.27 across 33,640 USD transactions.",
+       "headline_evidence_ids": [
+        "clean:audit",
+        "trend:Amount:MoM"
+       ],
+       "paragraphs": [
+        {
+         "text": "Income is the dominant transaction category, while spending is spread across transfers, travel, groceries, and other consumer categories.",
+         "evidence_ids": [
+          "seg:Merchant Category/Amount:sum"
+         ]
+        },
+        {
+         "text": "Data quality is strong after cleaning, though 1,490 non-USD rows and 632 reversal entries are excluded from all money figures, and outliers in Amount and Balance After were flagged but kept.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Income transactions account for $17,227,508.72 in inflows \u2014 by far the largest category \u2014 while Transfer is the largest spending category at -$948,438.05, followed by Travel at -$218,984.85 and Online Retail at -$201,230.54.",
+         "evidence_ids": [
+          "seg:Merchant Category/Amount:sum"
+         ]
+        },
+        {
+         "text": "Transaction amount rose 1.8% month-over-month from September to October 2026, suggesting a modest uptick in activity heading into the final full month of data.",
+         "evidence_ids": [
+          "trend:Amount:MoM"
+         ]
+        },
+        {
+         "text": "The typical transaction is a small outflow (median -$22.97), but the mean of $430.73 is pulled up by large inflows, with individual amounts ranging from -$1,170.01 to $7,119.23.",
+         "evidence_ids": [
+          "eda:Amount"
+         ]
+        },
+        {
+         "text": "Fee income totals $115,865.00 across the period, consistent with the Bank Fees category showing -$115,865.00 on the spending side.",
+         "evidence_ids": [
+          "seg:Merchant Category/Amount:sum"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the 1,490 non-USD rows to determine whether they represent material activity that should be converted and included in financial summaries.",
+         "expected_impact": "Ensures money totals reflect the full scope of account activity.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        },
+        {
+         "action": "Review flagged outliers in Amount and Balance After to confirm they are legitimate transactions rather than data errors.",
+         "expected_impact": "Protects the integrity of trend and segment analyses that depend on these figures.",
+         "evidence_ids": [
+          "eda:Amount",
+          "clean:audit"
+         ]
+        },
+        {
+         "action": "Monitor the Transfer category (-$948,438.05) closely, as it is the largest outflow segment and may warrant further breakdown by account or counterparty.",
+         "expected_impact": "Identifies concentration risk or unusual outflow patterns.",
+         "evidence_ids": [
+          "seg:Merchant Category/Amount:sum"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 729 duplicate rows. Parsed numbers or dates in 2 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Amount, Balance After. Final dataset: 36467 rows (started with 37196). Analysis (analysis v8) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "Amount MoM: +1.8% (n = 33,640; high confidence: 33640 rows)",
+        "sum Amount by Merchant Category (10 groups) (n = 36,467; high confidence: 36467 rows)",
+        "Amount: median -22.97, mean 430.73, range -1,170.01 to 7,119.23 (n = 36,467; high confidence: 36467 rows)"
+       ],
+       "caveats": [
+        "All money figures cover USD transactions only; 1,490 rows in other currencies are excluded, so totals may understate true activity.",
+        "November 2026 is partial (data through the 3rd only) and is excluded from period comparisons, so the most recent month's trends are not yet visible.",
+        "The mean transaction amount is heavily influenced by large income entries; the median is a better guide to the typical transaction.",
+        "Read as banking data (net flow, inflows, outflows, fee income, transactions).",
+        "Nov 2026 is partial (data through the 3rd) and is left out of period comparisons.",
+        "632 reversed transactions are left out of money figures.",
+        "150 pending, declined or closed-account rows are left out of balances and money figures.",
+        "1,490 rows in currencies other than USD are left out of money totals.",
+        "632 reversal entries are left out of money figures.",
+        "Posting Date: Parsed as dates.",
+        "Transaction Date: Parsed as dates.",
+        "*: Removed 729 exact duplicate rows (same Transaction ID and every other value)."
+       ],
+       "code_references": [
+        "# rows: On-book rows in USD only: 2,827 other rows (pending, reversed, closed or in another currency) left out.\n_period = pd.to_datetime(df['Posting Date'], format='mixed').dt.to_period('M'); df.groupby(_period)['Amount'].sum()",
+        "df.groupby('Merchant Category')['Amount'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-02T21:00:49.757449Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Transaction ID",
+       "Account ID",
+       "IBAN",
+       "Posting Date",
+       "Transaction Date",
+       "Description",
+       "Merchant Category",
+       "Transaction Type",
+       "Amount",
+       "Currency",
+       "Status",
+       "Balance After",
+       "Channel"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Amount:MoM",
+       "seg:Merchant Category/Amount:sum",
+       "eda:Amount"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 37196 \u2192 36467 rows, 8 logged changes",
+        "result_excerpt": "{\"rows_before\": 37196, \"rows_after\": 36467, \"decisions\": [[\"Posting Date\", \"type_coerce\", 37196, 0], [\"Transaction Date\", \"type_coerce\", 37196, 0], [\"*\", \"drop_duplicates\", 729, 729], [\"Balance After\", \"keep\", 0, 0], [\"*\", \"flag\", 632, 0], [\"*\", \"flag\", 150, 0], [\"*\", \"flag\", 632, 0], [\"Currency\", \"flag\", 1490, 0]]}",
+        "row_count": 36467,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Posting Date: Parsed as dates.",
+         "Transaction Date: Parsed as dates.",
+         "*: Removed 729 exact duplicate rows (same Transaction ID and every other value).",
+         "Balance After: 150 missing (0.4%), number: left as missing; totals and averages use the 36317 known rows.",
+         "*: 632 transactions marked reversed: left out of money figures; kept in the data.",
+         "*: 150 pending or declined transactions, or closed, paid-off or charged-off accounts: left out of balances and money figures; kept in the data.",
+         "*: 632 reversal entries (the reversing side of a reversed transaction): left out of money figures; kept in the data.",
+         "Currency: 1490 rows in other currencies than USD; kept, left out of money totals."
+        ]
+       },
+       {
+        "id": "trend:Amount:MoM",
+        "kind": "trend",
+        "claim": "Amount MoM: +1.8%",
+        "result_excerpt": "{\"column\": \"Amount\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 1.78, \"segment\": null}",
+        "row_count": 33640,
+        "confidence": "high",
+        "confidence_reason": "33640 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Merchant Category/Amount:sum",
+        "kind": "segment",
+        "claim": "sum Amount by Merchant Category (10 groups)",
+        "result_excerpt": "{\"segment_column\": \"Merchant Category\", \"metric_column\": \"Amount\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Bank Fees\", \"value\": -115865.0}, {\"name\": \"Dining\", \"value\": -92155.44}, {\"name\": \"Entertainment\", \"value\": -64489.67}, {\"name\": \"Fuel\", \"value\": -108365.98}, {\"name\": \"Groceries\", \"value\": -297549.01}, {\"name\": \"Income\", \"value\": 17227508.7184}, {\"name\": \"Online Retail\", \"value\": -201230",
+        "row_count": 36467,
+        "confidence": "high",
+        "confidence_reason": "36467 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Amount",
+        "kind": "eda",
+        "claim": "Amount: median -22.97, mean 430.73, range -1,170.01 to 7,119.23",
+        "result_excerpt": "{\"mean\": 430.7282, \"std\": 1158.0339, \"min\": -1170.01, \"max\": 7119.2271, \"median\": -22.97, \"count\": 36467.0}",
+        "row_count": 36467,
+        "confidence": "high",
+        "confidence_reason": "36467 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       6
+      ],
+      "date_last": [
+       2026,
+       11
+      ],
+      "n_months": 18,
+      "audit_summary": "Removed 729 duplicate rows. Parsed numbers or dates in 2 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Amount, Balance After. Final dataset: 36467 rows (started with 37196).",
+      "chart_titles": [
+       "Net flow over time",
+       "Net flow by Merchant Category",
+       "amount rose 1.8% in Oct 2026 vs Sep 2026",
+       "Total amount by merchant category: Income highest (17,227,508.72), Transfer lowest (-948,438.05)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Amount": {
+          "mean": 430.7282,
+          "std": 1158.0339,
+          "min": -1170.01,
+          "max": 7119.2271,
+          "median": -22.97,
+          "count": 36467.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Amount",
+          "period": "MoM",
+          "direction": "up",
+          "pct_change": 1.78,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Merchant Category",
+          "metric_column": "Amount",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Bank Fees",
+            "value": -115865.0
+           },
+           {
+            "name": "Dining",
+            "value": -92155.44
+           },
+           {
+            "name": "Entertainment",
+            "value": -64489.67
+           },
+           {
+            "name": "Fuel",
+            "value": -108365.98
+           },
+           {
+            "name": "Groceries",
+            "value": -297549.01
+           },
+           {
+            "name": "Income",
+            "value": 17227508.7184
+           },
+           {
+            "name": "Online Retail",
+            "value": -201230.54
+           },
+           {
+            "name": "Transfer",
+            "value": -948438.05
+           },
+           {
+            "name": "Travel",
+            "value": -218984.85
+           },
+           {
+            "name": "Utilities",
+            "value": -138614.91
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Transaction ID": 0.0,
+         "Account ID": 0.0,
+         "IBAN": 0.0,
+         "Posting Date": 0.0,
+         "Transaction Date": 0.0,
+         "Description": 0.0,
+         "Merchant Category": 0.0,
+         "Transaction Type": 0.0,
+         "Amount": 0.0,
+         "Currency": 0.0,
+         "Status": 0.0,
+         "Balance After": 0.41,
+         "Channel": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Net flow",
+          "value": "$15,041,815.27",
+          "context": "USD only; 1,490 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "net_flow",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Sum of Amount; over on-book rows (reversed transactions, pending, declined or closed rows, reversal entries left out)."
+         },
+         {
+          "label": "Inflows",
+          "value": "$17,227,508.72",
+          "context": "USD only; 1,490 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "inflows",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Sum of Amount where Amount > 0; over on-book rows (reversed transactions, pending, declined or closed rows, reversal entries left out)."
+         },
+         {
+          "label": "Outflows",
+          "value": "$2,185,693.45",
+          "context": "USD only; 1,490 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "outflows",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Sum of |Amount| where Amount < 0; over on-book rows (reversed transactions, pending, declined or closed rows, reversal entries left out)."
+         },
+         {
+          "label": "Fee income",
+          "value": "$115,865.00",
+          "context": "USD only; 1,490 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "fee_income",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Sum of |Amount| where Transaction Type is fee / fees / service charge / overdraft fee / monthly fee / late fee / annual fee / atm fee; over on-book rows (reversed transactions, pending, declined or closed rows, reversal entries left out)."
+         },
+         {
+          "label": "Transactions",
+          "value": "33,640",
+          "context": "USD only; 1,490 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "transactions",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Transaction ID; over on-book rows (reversed transactions, pending, declined or closed rows, reversal entries left out)."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 37196 \u2192 36467 rows, 8 logged changes",
+         "result_excerpt": "{\"rows_before\": 37196, \"rows_after\": 36467, \"decisions\": [[\"Posting Date\", \"type_coerce\", 37196, 0], [\"Transaction Date\", \"type_coerce\", 37196, 0], [\"*\", \"drop_duplicates\", 729, 729], [\"Balance After\", \"keep\", 0, 0], [\"*\", \"flag\", 632, 0], [\"*\", \"flag\", 150, 0], [\"*\", \"flag\", 632, 0], [\"Currency\", \"flag\", 1490, 0]]}",
+         "row_count": 36467,
+         "assumptions": [
+          "Posting Date: Parsed as dates.",
+          "Transaction Date: Parsed as dates.",
+          "*: Removed 729 exact duplicate rows (same Transaction ID and every other value).",
+          "Balance After: 150 missing (0.4%), number: left as missing; totals and averages use the 36317 known rows.",
+          "*: 632 transactions marked reversed: left out of money figures; kept in the data.",
+          "*: 150 pending or declined transactions, or closed, paid-off or charged-off accounts: left out of balances and money figures; kept in the data.",
+          "*: 632 reversal entries (the reversing side of a reversed transaction): left out of money figures; kept in the data.",
+          "Currency: 1490 rows in other currencies than USD; kept, left out of money totals."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Amount MoM: +1.8%",
+         "result_excerpt": "{\"column\": \"Amount\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 1.78, \"segment\": null}",
+         "row_count": 33640,
+         "assumptions": [],
+         "confidence_reason": "33640 rows"
+        },
+        {
+         "claim": "sum Amount by Merchant Category (10 groups)",
+         "result_excerpt": "{\"segment_column\": \"Merchant Category\", \"metric_column\": \"Amount\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Bank Fees\", \"value\": -115865.0}, {\"name\": \"Dining\", \"value\": -92155.44}, {\"name\": \"Entertainment\", \"value\": -64489.67}, {\"name\": \"Fuel\", \"value\": -108365.98}, {\"name\": \"Groceries\", \"value\": -297549.01}, {\"name\": \"Income\", \"value\": 17227508.7184}, {\"name\": \"Online Retail\", \"value\": -201230.54}, {\"name\": \"Transfer\", \"value\": -948438.05}, {\"name\": \"Travel\", \"value\": -218984.85}, {\"name\": \"",
+         "row_count": 36467,
+         "assumptions": [],
+         "confidence_reason": "36467 rows"
+        },
+        {
+         "claim": "Amount: median -22.97, mean 430.73, range -1,170.01 to 7,119.23",
+         "result_excerpt": "{\"mean\": 430.7282, \"std\": 1158.0339, \"min\": -1170.01, \"max\": 7119.2271, \"median\": -22.97, \"count\": 36467.0}",
+         "row_count": 36467,
+         "assumptions": [],
+         "confidence_reason": "36467 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Posting Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 37196,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Transaction Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 37196,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 729 exact duplicate rows (same Transaction ID and every other value).",
+          "rows_affected": 729,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 729
+         },
+         {
+          "column": "Balance After",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "150 missing (0.4%), number: left as missing; totals and averages use the 36317 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 0.4,
+          "after_null_pct": 0.4,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "refunded",
+          "reason": "632 transactions marked reversed: left out of money figures; kept in the data.",
+          "rows_affected": 632,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "cancel",
+          "reason": "150 pending or declined transactions, or closed, paid-off or charged-off accounts: left out of balances and money figures; kept in the data.",
+          "rows_affected": 150,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "non_product",
+          "reason": "632 reversal entries (the reversing side of a reversed transaction): left out of money figures; kept in the data.",
+          "rows_affected": 632,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Currency",
+          "operation": "flag",
+          "strategy": "other_currency",
+          "reason": "1490 rows in other currencies than USD; kept, left out of money totals.",
+          "rows_affected": 1490,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 37196,
+        "rows_after": 36467,
+        "columns_coerced": [
+         "Posting Date",
+         "Transaction Date"
+        ],
+        "duplicates_removed": 729,
+        "outliers_flagged": [
+         "Amount has a heavy-tailed distribution \u2014 25.1% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies.",
+         "19 extreme outliers in Balance After (0.1% of data, threshold: values > 90,361)"
+        ],
+        "high_null_columns": [],
+        "summary": "Removed 729 duplicate rows. Parsed numbers or dates in 2 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Amount, Balance After. Final dataset: 36467 rows (started with 37196).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Amount",
+           "extreme_count": 0,
+           "mild_count": 0,
+           "extreme_pct": 25.058271862231607,
+           "lower_bound": -183.3830324064519,
+           "upper_bound": 135.78620742305247,
+           "mild_lower_bound": -122.30513873851282,
+           "mild_upper_bound": 59.67674826919165,
+           "used_log_transform": true,
+           "heavy_tailed": true,
+           "message": "Amount has a heavy-tailed distribution \u2014 25.1% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+          },
+          {
+           "column": "Balance After",
+           "extreme_count": 19,
+           "mild_count": 547,
+           "extreme_pct": 0.052317096676487596,
+           "lower_bound": -45586.36,
+           "upper_bound": 90361.41,
+           "mild_lower_bound": -16454.695,
+           "mild_upper_bound": 61229.745,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "19 extreme outliers in Balance After (0.1% of data, threshold: values > 90,361)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Amount",
+          "Balance After"
+         ],
+         "skipped_columns": {
+          "Transaction ID": "constant or unsupported",
+          "Account ID": "constant or unsupported",
+          "IBAN": "constant or unsupported",
+          "Posting Date": "datetime column",
+          "Transaction Date": "datetime column",
+          "Description": "non-numeric",
+          "Merchant Category": "non-numeric",
+          "Transaction Type": "non-numeric",
+          "Currency": "binary column (only 2 values)",
+          "Status": "non-numeric",
+          "Channel": "non-numeric"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Posting Date": [
+          "2025-07-01",
+          "2026-11-03",
+          17
+         ],
+         "Transaction Date": [
+          "2025-06-28",
+          "2026-11-02",
+          18
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Posting Date": [
+          "2026-11",
+          3
+         ],
+         "Transaction Date": [
+          "2026-11",
+          2
+         ]
+        },
+        "main_currency": "USD"
+       },
+       [
+        "Net flow over time",
+        "Net flow by Merchant Category",
+        "amount rose 1.8% in Oct 2026 vs Sep 2026",
+        "Total amount by merchant category: Income highest (17,227,508.72), Transfer lowest (-948,438.05)"
+       ],
+       [
+        37196,
+        13,
+        18
+       ],
+       [
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "latency_s": 23.26,
+    "cost_usd": 0.0233,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"This banking dataset covers 17 months of account activity (July 2025 \u2013 November 2026), with USD inflows of $17,227,508.72 outpacing outflows of $2,185,693.45 and a net flow of $15,041,815.27 across 33,640 USD transactions.\",\n    \"evidence\": [\"clean:audit\", \"trend:Amount:MoM\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Income is the dominant transaction category, while spending is spread across transfers, travel, groceries, and other consumer categories.\",\n      \"evidence\": [\"seg:Merchant Category/Amount:sum\"]\n    },\n    {\n      \"text\": \"Data quality is strong after cleaning, though 1,490 non-USD rows and 632 reversal entries are excluded from all money figures, and outliers in Amount and Balance After were flagged but kept.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Income transactions account for $17,227,508.72 in inflows \u2014 by far the largest category \u2014 while Transfer is the largest spending category at -$948,438.05, followed by Travel at -$218,984.85 and Online Retail at -$201,230.54.\",\n      \"evidence\": [\"seg:Merchant Category/Amount:sum\"]\n    },\n    {\n      \"text\": \"Transaction amount rose 1.8% month-over-month from September to October 2026, suggesting a modest uptick in activity heading into the final full month of data.\",\n      \"evidence\": [\"trend:Amount:MoM\"]\n    },\n    {\n      \"text\": \"The typical transaction is a small outflow (median -$22.97), but the mean of $430.73 is pulled up by large inflows, with individual amounts ranging from -$1,170.01 to $7,119.23.\",\n      \"evidence\": [\"eda:Amount\"]\n    },\n    {\n      \"text\": \"Fee income totals $115,865.00 across the period, consistent with the Bank Fees category showing -$115,865.00 on the spending side.\",\n      \"evidence\": [\"seg:Merchant Category/Amount:sum\"]\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the 1,490 non-USD rows to determine whether they represent material activity that should be converted and included in financial summaries.\",\n      \"impact\": \"Ensures money totals reflect the full scope of account activity.\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"action\": \"Review flagged outliers in Amount and Balance After to confirm they are legitimate transactions rather than data errors.\",\n      \"impact\": \"Protects the integrity of trend and segment analyses that depend on these figures.\",\n      \"evidence\": [\"eda:Amount\", \"clean:audit\"]\n    },\n    {\n      \"action\": \"Monitor the Transfer category (-$948,438.05) closely, as it is the largest outflow segment and may warrant further breakdown by account or counterparty.\",\n      \"impact\": \"Identifies concentration risk or unusual outflow patterns.\",\n      \"evidence\": [\"seg:Merchant Category/Amount:sum\"]\n    }\n  ],\n  \"caveats\": [\n    \"All money figures cover USD transactions only; 1,490 rows in other currencies are excluded, so totals may understate true activity.\",\n    \"November 2026 is partial (data through the 3rd only) and is excluded from period comparisons, so the most recent month's trends are not yet visible.\",\n    \"The mean transaction amount is heavily influenced by large income entries; the median is a better guide to the typical transaction.\"\n  ],\n  \"questions\": [\n    \"Which accounts or account types are driving the largest inflows in the Income category?\",\n    \"How does the Transfer outflow of -$948,438.05 break down by recipient or account \u2014 are a small number of accounts responsible for most of it?\",\n    \"What currencies make up the 1,490 excluded rows, and how significant are those balances relative to the USD totals?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

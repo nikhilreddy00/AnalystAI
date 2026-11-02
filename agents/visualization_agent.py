@@ -33,6 +33,7 @@ from agents.utils import (
     column_hint,
     effective_agg,
     latest_rows,
+    level_rows,
     time_axis,
     looks_like_sequential_id,
     pandas_freq,
@@ -46,6 +47,7 @@ from domain_pack import (
     describe_kpi,
     main_currency,
     money_columns,
+    entity_rows,
     money_rows,
     row_kinds,
 )
@@ -1179,11 +1181,25 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
+        if k.at == "latest" and kind == "percent":   # a book's ratio hides its mix: say the spread
+            context = "; ".join(x for x in (_spread(df, roles, pack, k.name), context) if x)
         tiles.append(KPI(label=k.label, value=_format_value(v, kind, unit), context=context,
                          recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
                                           **_unit_fields(kind, unit)),
                          how=describe_kpi(pack, k.name, roles, present)))
     return tiles[:5] if len(tiles) >= 2 else []   # one tile is no strip: the generic tiles
+
+
+def _spread(df: pd.DataFrame, roles: dict, pack, name: str) -> str:
+    """'highest Credit Card 10.4%, lowest Mortgage 0.0%' over the pack's first overview group the
+    data has: a portfolio ratio of 0.5% can hide a product at 10%."""
+    group = next((roles[g] for g in pack.overview_groups if g in roles), None)
+    by = compute_kpi(df, roles, pack, name, by=group) if group else None
+    if by is None or len(by) < 2:
+        return ""
+    order = ranked(by)
+    return (f"by {group}: highest {order.index[0]} {order.iloc[0]:.1%}, "
+            f"lowest {order.index[-1]} {order.iloc[-1]:.1%}")
 
 
 def generate_smart_kpis(
@@ -1771,7 +1787,7 @@ def generate_dashboard_charts(
 
     # ── Priority 4: relationships ────────────────────────────────────────
     if len(charts) < 8 and len(continuous) >= 2:
-        pair = _best_correlated_pair(df, continuous)
+        pair = _best_correlated_pair(entity_rows(df, ctx.contract if ctx else None), continuous)
         if pair:
             ch = oriented_scatter(df, pair[0], pair[1], ctx)
             if ch:
@@ -1779,7 +1795,8 @@ def generate_dashboard_charts(
                 charts.append(ch)
 
     if len(charts) < 8 and len(numeric_cols) > 4:
-        ch = _build_correlation_heatmap(df, numeric_cols, narrative)
+        ch = _build_correlation_heatmap(entity_rows(df, ctx.contract if ctx else None), numeric_cols,
+                                        narrative)
         if ch:
             charts.append(ch)
 
@@ -1856,8 +1873,11 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
              f"{ch.rationale.reason}.", ch.rationale.x, ch.rationale.y, "none", ch.rationale.n_rows,
              code=ch.rationale.code)
     elif src == "correlation_heatmap":
+        rows = entity_rows(ctx.df, ctx.contract)   # the rows the matrix was computed on
         _why(ch, ctx, "profile:correlation_matrix", "Pearson r for every pair of numeric columns.",
-             "numeric columns", "pearson r", "none", len(ctx.df), code="df.corr(numeric_only=True)")
+             "numeric columns", "pearson r", "none", len(rows),
+             code="df.corr(numeric_only=True)" if rows is ctx.df else
+             "entity_rows(df, contract).corr(numeric_only=True)  # one row per account: its latest snapshot")
     elif src == "distribution":
         col = ch.x_label if ch.x_label in ctx.df.columns else col
         if ch.title.startswith(str(col)):
@@ -1964,6 +1984,7 @@ def compute_briefing_extras(
     out["target_col"] = target_col
     corrs: dict[str, float] = {}
     if target_col and target_col in df.columns:
+        df = entity_rows(df, contract)   # snapshot data: one row per account (shown on the dashboard)
         t = _to_01(df[target_col])
         if t is not None:
             for col in df.columns:
@@ -2155,7 +2176,13 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
+    df, _ = money_rows(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
     level = None
+    if agg not in ("last", "first") and not split:   # a level's mean: the answer's rows (utils)
+        try:
+            df = level_rows(df, metric, ctx.contract)
+        except LevelUnavailable:
+            return None
     if agg in ("last", "first"):   # a balance by group: each account's latest snapshot, added up
         hint = level = column_hint(ctx.contract, metric)
         if hint and x == hint.aggregation_time:
@@ -2333,6 +2360,7 @@ def oriented_scatter(df: pd.DataFrame, a: str, b: str, ctx: VizContext) -> Chart
         return None   # a relationship needs two different numeric columns
     outcome, why = pick_outcome([a, b], ctx)
     x, y = (b, a) if outcome == a else (a, b)
+    df = entity_rows(df, ctx.contract)   # snapshot data: one point per account (its r = the finding's)
     chart = _build_scatter(df, x, y)
     if chart is None:
         return None
@@ -2627,6 +2655,12 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     if group:
         asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=kpi.name, segment_column=group,
                                                           group_by=group)))
+        # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
+        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
+                      and computable(pack, k.name, roles)), None)
+        if ratio:
+            asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=ratio.name, segment_column=group,
+                                                              group_by=group)))
     out = []
     for intent, params in asks:
         try:
@@ -2702,8 +2736,13 @@ def build_single_chart(
     agg = month_agg(df[y], contract) if numeric_y else "count"
 
     chart: ChartConfig | None = None
+    used: tuple[int, str] | None = None   # (rows, code) when the chart reads other rows than df
     if chart_type == ChartType.SCATTER and numeric_y:
-        chart = _build_scatter(df, x_key, y)
+        points = entity_rows(df, contract)   # snapshot data: one point per account
+        chart = _build_scatter(points, x_key, y)
+        used = (int(points[[x_key, y]].dropna().shape[0]),
+                f"df[[{x_key!r}, {y!r}]].dropna()" if points is df else
+                f"entity_rows(df, contract)[[{x_key!r}, {y!r}]].dropna()  # latest snapshot per account")
         if chart:
             chart.colors, agg = [], "none"
     elif chart_type == ChartType.HISTOGRAM:
@@ -2726,6 +2765,7 @@ def build_single_chart(
     r = chart.rationale
     _why(chart, ctx, "user:chart_request", f"Drawn as you asked: {chart_type.value} of "
          f"{agg if agg not in ('none', 'count') else ''} {y} by {x_key}.".replace("  ", " "),
-         r.x if r else x_key, r.y if r else y, agg, r.n_rows if r else len(df),
-         code=r.code if r else "")
+         r.x if r else x_key, r.y if r else y, agg,
+         r.n_rows if r else used[0] if used else len(df),
+         code=r.code if r else used[1] if used else "")
     return finalize_charts([chart], ctx, user_chosen=True)[0]

@@ -1,0 +1,19 @@
+id: intake-bank-06
+category: clear
+pipeline: production
+source:
+  dataset: card_ledger
+  seed: 1
+overview_done: true
+question: Where is spending going by merchant category?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: spend
+  columns:
+    by: Merchant Category
+rationale: Spend excludes transfers, fees and interest (the pack KPI).

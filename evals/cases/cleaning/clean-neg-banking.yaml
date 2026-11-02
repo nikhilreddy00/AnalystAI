@@ -2,7 +2,7 @@ id: clean-neg-banking
 dataset:
   name: bank_balances
   seed: 1
-category: negative
+category: banking
 forbid:
 - operation: fill_within_order
 - strategy: numeric_sentinel
@@ -19,5 +19,5 @@ forbid:
   strategy: non_product
 - operation: flag
   strategy: out_of_range
-expect_grain: null
-label_note: 'Another domain (banking): no retail rule may fire.'
+expect_grain: aggregate
+label_note: 'Deposit snapshots (now banking): every row is on the books; no row rule fires.'

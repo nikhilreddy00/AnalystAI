@@ -32,6 +32,7 @@ from domain_pack import (
     glossary_hits,
     pack_brief,
     pack_for,
+    snapshot_entity,
     with_row_kind,
 )
 from guardrails import (
@@ -242,12 +243,22 @@ def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
 # ─── Standard statistics (deterministic) ───
 result['builtin'] = []
 _targets, _segs, _date, _hints = {targets!r}, {segments!r}, {date!r}, {hints!r}
+# snapshot data: one row per entity for statistics over entities (domain_pack.entity_rows)
+_ent = {snapshot_entity(contract, {c.name for c in contract.columns})!r}
+# a domain's money columns count sale and return rows in the main currency (as its tiles)
+_money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
 try:
     if {bool(types & {"correlation", "hypothesis"})!r}:
+        # snapshot data (a level): one row per entity, its latest snapshot (never each one again)
+        _cdf = df
+        if _ent and all(_e in df.columns for _e in [*_ent[0], _ent[1]]):
+            _cdf = df.assign(_t=pd.to_datetime(df[_ent[1]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable').groupby(list(_ent[0])).tail(1)
+            if _kind in _cdf.columns:
+                _cdf = _cdf[_cdf[_kind].isin(['sale', 'return'])]
         for _i, _a in enumerate(_targets):
             for _b in _targets[_i + 1:]:
                 if f'{{_a}}__{{_b}}' not in result['correlations'] and f'{{_b}}__{{_a}}' not in result['correlations']:
-                    _r = df[_a].corr(df[_b])
+                    _r = _cdf[_a].corr(_cdf[_b])
                     if _r == _r:
                         result['correlations'][f'{{_a}}__{{_b}}'] = round(float(_r), 4)
                         result['builtin'].append(f'corr:{{_a}}__{{_b}}')
@@ -281,8 +292,6 @@ try:
         # compare fairly (agents.utils.weekly_cadence).
         _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
         _weekly = _yoy and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
-        # a domain's money columns count sale and return rows in the main currency (as its tiles)
-        _money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
@@ -293,8 +302,11 @@ try:
                 _mon = _level_months(_h[2])   # the level's own months, partial last month out
                 _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),
                                    _m=_mon.loc[_frame.index])
-                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')
-                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
+                if _col in _money and _kind in _f.columns:   # a row left out blanks its value
+                    _f[_col] = _f[_col].where(_f[_kind].isin(['sale', 'return']))
+                # each entity's latest row in the month, of any kind, then its value (as the tiles)
+                _g = _f.dropna(subset=['_m', '_t']).sort_values('_t', kind='stable').groupby(['_m', *_h[1]])
+                _tot = (_g.tail(1) if _agg == 'last' else _g.head(1)).groupby('_m')[_col].sum(min_count=1).dropna().sort_index()
             else:
                 if _col in _money and _kind in _frame.columns:
                     _frame = _frame[_frame[_kind].isin(['sale', 'return'])]
@@ -338,11 +350,44 @@ try:
         for _c in _targets:
             if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):
                 continue
+            if _hints.get(_c) and _hints[_c][0] in ('last', 'first'):
+                continue   # a level: the level block below (latest rows, not every snapshot)
             _g = df.groupby(_segs[:2])[_c].mean()
             _n = df.groupby(_segs[:2]).size().sort_index(kind='stable').sort_values(ascending=False, kind='stable').head(20).index
             result['segments'].append({{'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',
                                        'results': [{{'name': f'{{_a}}|{{_b}}', 'value': round(float(_g[(_a, _b)]), 4)}} for _a, _b in _n]}})
             result['builtin'].append(f'seg:{{_joint}}/{{_c}}')
+except Exception:
+    pass
+try:
+    # A level by segment (a balance by product): each entity's latest row first, a row left out
+    # blanks its value, then summed (as its tile); replaces the model's own breakdown of it.
+    # ponytail: no stopped-account cut here (utils.snapshot_rows has it); stale accounts count
+    if 'segmentation' in {sorted(types)!r}:
+        for _c in _targets:
+            _h = _hints.get(_c)
+            if not (_h and _h[0] in ('last', 'first') and _h[1] and all(_e in df.columns for _e in [*_h[1], _h[2]])):
+                continue
+            _f = df.assign(_t=pd.to_datetime(df[_h[2]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable')
+            if _c in _money and _kind in _f.columns:
+                _f[_c] = _f[_c].where(_f[_kind].isin(['sale', 'return']))
+            _g = _f.groupby(_h[1])
+            _w = _g.tail(1) if _h[0] == 'last' else _g.head(1)
+            _keys = [[_x] for _x in _segs if _x in df.columns]
+            if len(_segs) >= 2 and all(_x in df.columns for _x in _segs[:2]):
+                _keys.append(list(_segs[:2]))
+            for _k in _keys:
+                _s = '|'.join(_k)
+                _tot = _w.groupby(_k)[_c].sum(min_count=1).dropna()
+                _avg = _w.groupby(_k)[_c].mean().dropna()   # per account on the books (blanks out)
+                # only the model's totals of it are replaced: its means and ratios (an average
+                # balance, an NPL ratio filed under the balance) are other findings, kept
+                result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c and str(_x.get('aggregation') or 'sum').lower() in ('sum', 'total', 'last', 'first'))]
+                result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c and str(_x.get('aggregation') or '').lower() in ('mean', 'avg', 'average'))]
+                for _agg, _vals in (('last', _tot), ('mean', _avg)):
+                    result['segments'].append({{'segment_column': _s, 'metric_column': _c, 'aggregation': _agg,
+                                               'results': [{{'name': '|'.join(map(str, _n)) if isinstance(_n, tuple) else str(_n), 'value': round(float(_v), 4)}} for _n, _v in _vals.items()]}})
+                result['builtin'].append(f'seg:{{_s}}/{{_c}}')
 except Exception:
     pass
 """
@@ -440,8 +485,9 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         samples={c.name: (c.sample_values or [])[:3] for c in contract.columns[:_MAX_COLUMNS]},
         # Only what the semantic layer matched (its column names are the operator's, equal to the
         # file's): a unit read from the file alone would put a file-written header out here.
-        aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
-                      for c in contract.columns if c.aggregation],
+        aggregations=[_aggregation_line(c, {x.name for x in contract.columns}, bool(
+                          {t.value if hasattr(t, "value") else t for t in task.analysis_types}
+                          & {"correlation", "hypothesis"})) for c in contract.columns if c.aggregation],
         question=(task.raw_query or "")[:2000],
         **_domain(contract, task, audit),
     )
@@ -479,16 +525,21 @@ def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
     return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
 
 
-def _aggregation_line(c, names: set[str]) -> str:
+def _aggregation_line(c, names: set[str], correlates: bool = False) -> str:
     unit = f" ({c.unit})" if c.unit else ""
     if c.aggregation in ("last", "first"):
         need = [*c.aggregation_by, c.aggregation_time]
         if not all(n in names for n in need):
             return (f"{c.name}{unit} is a level, but a column it needs ({', '.join(need)}) was "
                     "removed: never total it across dates or rows")
+        every = (f"; one snapshot per {', '.join(c.aggregation_by)} {c.aggregation_every}, so "
+                 f"periods are {c.aggregation_every} or longer (never daily or rolling-day windows)"
+                 if c.aggregation_every and c.aggregation_every != "daily" else "")
         return (f"{c.name}{unit} is a level: per period take each {', '.join(c.aggregation_by)}'s "
                 f"{c.aggregation} value (by {c.aggregation_time}), then sum; never sum it across "
-                "dates")
+                f"dates{every}" + (f". Correlations on this snapshot data use one row per "
+                           f"{', '.join(c.aggregation_by)} (its latest snapshot): every snapshot "
+                           "would count it many times" if correlates else ""))
     if c.aggregation == "mean":
         return f"{c.name}{unit} is summarized as an average (sum it only for a total that is asked for)"
     return f"{c.name}{unit} adds up" if c.aggregation == "sum" else f"{c.name}{unit}"
@@ -850,7 +901,12 @@ def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
             continue
         cols = [c for c in s.segment_column.split("|") if c]
         if hint.aggregation_time in cols:   # by its own snapshot time: a total per date, right
-            totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+            try:
+                totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+            except (LevelUnavailable, KeyError):   # its account column is gone: no total
+                f.segments.remove(s)
+                notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
+                continue
             s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                           "value": round(float(v), 4)} for k, v in totals.items()]
             s.aggregation = hint.aggregation

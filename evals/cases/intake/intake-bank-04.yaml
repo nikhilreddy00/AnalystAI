@@ -1,0 +1,20 @@
+id: intake-bank-04
+category: clear
+pipeline: production
+source:
+  dataset: card_ledger
+  seed: 1
+overview_done: true
+question: How much did we make in fees in Q3 2026?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: fee_income
+  period:
+  - '2026-07-01'
+  - '2026-09-30'
+rationale: Fees made = fee income; Q3 is the period.

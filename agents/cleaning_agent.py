@@ -49,7 +49,7 @@ from agents.data_cleaning import (
 from agents.errors import GuardrailViolation
 from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
-from domain_pack import Pack, first_line_only, main_currency, pack_for, row_kinds
+from domain_pack import Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds
 from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
 from llm.client import trace_verdict
 from orchestrator.state import (
@@ -367,9 +367,10 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     #     guessed from the domain): carried down the order.
     if ctx.pack and order:
         by = df[order]
+        layout = layout_columns(df, ctx.pack, ctx.roles)
         for role in ctx.pack.order_fields:
             col = ctx.roles.get(role)
-            if col is None or col == order or not df[col].isna().any() or not first_line_only(df, by, col):
+            if col is None or col == order or layout.get(col) != "order":
                 continue
             values = df[col].groupby(by).transform("nunique")
             gap = df[col].isna() & by.notna() & values.eq(1)
@@ -397,6 +398,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
 
     # 7. Missing values: labels become "Unknown"; everything else stays missing.
     high_null: list[str] = []
+    layout = layout_columns(df, ctx.pack, ctx.roles)
     for col in df.columns:
         missing = int(df[col].isna().sum())
         if col in skip or not missing:
@@ -405,14 +407,23 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         known = len(df) - missing
         first = df[order].notna() & ~df[order].duplicated() if ctx.pack and order else None
         first_pct = _null_pct(df.loc[first, col]) if first is not None and first.any() else 0.0
-        if (ctx.pack and order and col != order and first_line_only(df, df[order], col)
-                and first_pct <= HIGH_NULL_PCT):
+        if layout.get(col) == "order" and first_pct <= HIGH_NULL_PCT:
             # an order-level field written on each order's first line (Shopify's discount, total,
             # billing name): blank later lines are the layout, never "missing" or "Unknown". What
             # is missing is judged on the orders' first lines (a blank there is a real gap)
             log(col, "keep", "order_level", f"Written on each order's first line only, so later "
                 f"lines are blank by the export's layout; {first_pct:g}% of orders have no value. "
                 "An order-level field, kept as it is.", 0, pct, first_pct)
+            continue
+        role = next((r for r, c in ctx.roles.items() if c == col), None)
+        due = filled_statuses(df, ctx.pack, ctx.roles, role) if layout.get(col) == "conditional" \
+            else None
+        if due is not None and _null_pct(df.loc[due, col]) <= HIGH_NULL_PCT:
+            # filled only where the status needs it (a charge-off date): blank elsewhere by design;
+            # what is missing is judged on the rows that need a value
+            log(col, "keep", "conditional", f"Filled only for rows whose status needs it, so other "
+                f"rows are blank by design; {_null_pct(df.loc[due, col]):g}% of those rows have no "
+                "value. Kept as it is.", 0, pct, _null_pct(df.loc[due, col]))
             continue
         if pct > HIGH_NULL_PCT:
             high_null.append(col)
@@ -493,7 +504,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         duplicates_removed=duplicates,
         outliers_flagged=outliers,
         high_null_columns=[] if ctx.drop_high_null else high_null,
-        summary=_build_summary(decisions, outliers, high_null, rows_before, rows_after,
+        summary=_build_summary(decisions, [f.column for f in anomaly_report.flags], high_null,
+                               rows_before, rows_after,
                                anomaly_report.methodology_note),
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
@@ -541,10 +553,8 @@ def _build_summary(decisions: list[CleaningDecision], outliers: list[str], high_
     kept = [d.column for d in decisions if d.operation == "keep" and d.strategy == "left_missing"]
     if kept:
         parts.append(f"Left missing values as missing in {len(kept)} column(s); nothing was imputed.")
-    if outliers:
-        names = sorted({f.split(" in ")[1].split()[0] if " in " in f else f.split()[0]
-                        for f in outliers})
-        parts.append(f"Outliers flagged (kept) in: {', '.join(names)}.")
+    if outliers:   # column names, never a word of a message ("Outstanding" for Outstanding Principal)
+        parts.append(f"Outliers flagged (kept) in: {', '.join(sorted(set(outliers)))}.")
     if anomaly_methodology:
         parts.append(anomaly_methodology)
     if high_null:
@@ -557,9 +567,10 @@ def build_evidence(audit: CleaningAudit) -> Evidence:
     """One Evidence item for what cleaning changed, from the audit only: counts and the
     decisions' reasons, no cell values beyond masked labels."""
     # Medium only when it matters: a mostly-empty column, or > 5% of a column unreadable.
-    risky = [d.column for d in audit.decisions
-             if d.after_null_pct > HIGH_NULL_PCT
-             or (d.operation == "type_coerce" and d.after_null_pct - d.before_null_pct > 5)]
+    layout = {d.column for d in audit.decisions if d.strategy in ("order_level", "conditional")}
+    risky = [d.column for d in audit.decisions if d.column not in layout and (
+             d.after_null_pct > HIGH_NULL_PCT
+             or (d.operation == "type_coerce" and d.after_null_pct - d.before_null_pct > 5))]
     level, why = (("medium", f"many missing or unreadable values in {', '.join(risky[:3])}")
                   if risky else ("high", "rule-based; every change below is logged"))
     return Evidence(

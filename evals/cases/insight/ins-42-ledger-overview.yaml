@@ -1,0 +1,33 @@
+id: ins-42-ledger-overview
+category: straightforward
+label_note: 'A transaction ledger overview: spend by merchant category on posted USD rows; reversed fees,
+  pending, duplicates and EUR accounts left out, and said.'
+dataset:
+  name: card_ledger
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- transaction
+- transactions
+plan:
+  target_metrics:
+  - Amount
+  segments:
+  - Merchant Category
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: Amount
+- kind: segment
+  segment_column: Merchant Category
+  metric: Amount
+  aggregation: sum
+expect:
+  must_mention:
+  - revers
+  - pending
+  must_not_match:
+  - net sales|order value|basket|\bunits sold

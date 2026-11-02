@@ -1,0 +1,38 @@
+id: ins-41-loan-tape-overview
+category: straightforward
+label_note: 'A loan tape overview: outstanding by product (a level, at the latest month-end), NPL by balance;
+  the report must give the as-of date and never credit a cause.'
+dataset:
+  name: loan_tape
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- loan
+- loans
+plan:
+  target_metrics:
+  - Outstanding Principal
+  - Interest Rate (%)
+  segments:
+  - Product
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: Outstanding Principal
+- kind: segment
+  segment_column: Product
+  metric: Outstanding Principal
+  aggregation: sum
+- kind: segment
+  segment_column: Product
+  metric: Interest Rate (%)
+  aggregation: mean
+expect:
+  must_mention:
+  - 31 oct(ober)? 2026|october 31,? 2026|as of
+  - mortgage
+  must_not_match:
+  - net sales|order value|basket|(rate (cut|hike)|campaign|promotion)s? (drove|caused|led to)

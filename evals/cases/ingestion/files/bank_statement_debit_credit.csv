@@ -1,0 +1,7 @@
+Date,Description,Debit,Credit,Balance,Account Number
+2026-10-01,Card purchase TESCO,42.10,,1957.90,ACC-2001
+2026-10-02,Salary ACME LTD,,2400.00,4357.90,ACC-2001
+2026-10-02,Direct debit ENERGY CO,85.00,,4272.90,ACC-2001
+2026-10-03,ATM withdrawal,60.00,,4212.90,ACC-2001
+2026-10-01,Transfer from savings,,500.00,820.00,ACC-2002
+2026-10-04,Card purchase CAFE,6.40,,813.60,ACC-2002

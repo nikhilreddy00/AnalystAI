@@ -1,0 +1,40 @@
+id: dom-bank-loan-tape
+category: domain
+dataset:
+  name: loan_tape
+  seed: 1
+roles:
+  Loan ID: id
+  As Of Date: date
+  Product: category
+  Branch: category
+  Borrower Name:
+  - category
+  - id
+  Origination Date: date
+  Original Amount: metric
+  Outstanding Principal: metric
+  Interest Rate (%): metric
+  Days Past Due: metric
+  Loan Status: category
+  Charge Off Date: date
+  Currency: category
+pii:
+  Borrower Name: name
+traps:
+- Loan ID
+- Charge Off Date
+expect_domain: banking
+expect_roles:
+  date: As Of Date
+  account: Loan ID
+  balance: Outstanding Principal
+  original_amount: Original Amount
+  interest_rate: Interest Rate (%)
+  dpd: Days Past Due
+  product: Product
+  branch: Branch
+  charge_off_date: Charge Off Date
+  status: Loan Status
+  currency: Currency
+label_note: 'A loan tape: one row per loan per month-end; the as-of date is the time axis (not origination).'

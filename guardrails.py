@@ -856,7 +856,7 @@ _DOB_NAME = (r"dob|dod|bday|(?<!of_)birth(?:_?(?:date|dt|day|year|yr))?|"
              r"(?:year|date|day)_of_(?:birth|death)|born(?:_?(?:on|date|dt))?|"
              r"death_?(?:date|dt|day)|deceased_?(?:date|dt|on)|date_?(?:born|deceased)")
 _PII_COL_RE = re.compile(
-    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|"
+    r"(?:^|_)(?:e?mail|phone|mobile|tel|ssn|social_?security\w*|address|street|iban|"
     rf"{_DOB_NAME}|"
     r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
@@ -915,6 +915,58 @@ _PHONE_RE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s
 _INTL_PHONE_RE = re.compile(r"(?<![\w+])\+(?:\d{1,3}(?:[\s.-]\(?\d{1,8}\)?){1,5}|\d{8,15})"
                             r"(?![\w%]|\.\d)")
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+# An IBAN (GB82 WEST 1234 5698 7654 32): country, check digits, 11–30 letters/digits; masked only
+# when its mod-97 checksum holds, so a product code of the same shape is left alone.
+# An IBAN start: country letters and check digits; every start is tried (overlapping), so an
+# IBAN inside a longer token or after a failed candidate is still found.
+_IBAN_START = re.compile(r"(?=[A-Z]{2}\d{2})", re.I | re.A)   # ASCII: no Kelvin sign as a K
+_IBAN_BODY = re.compile(r"[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}", re.I | re.A)
+# Each country's IBAN length (ISO 13616 registry): with the checksum, a random code (a 16-digit
+# hex pseudonym "de76627c71637faa") is never read as one; a code not listed is no IBAN.
+_IBAN_LEN = dict(x.split(":") for x in (
+    "AD:24 AE:23 AL:28 AT:20 AZ:28 BA:20 BE:16 BG:22 BH:22 BI:27 BR:29 BY:28 CH:21 CR:22 CY:28 "
+    "CZ:24 DE:22 DJ:27 DK:18 DO:28 EE:20 EG:29 ES:24 FI:18 FK:18 FO:18 FR:27 GB:22 GE:22 GI:23 "
+    "GL:18 GR:27 GT:28 HN:28 HR:21 HU:28 IE:22 IL:23 IQ:23 IS:26 IT:27 JO:30 KW:30 KZ:20 LB:28 "
+    "LC:32 LI:21 LT:20 LU:20 LV:21 LY:25 MC:27 MD:24 ME:22 MK:19 MN:20 MR:27 MT:31 MU:30 NI:28 "
+    "NL:18 NO:15 OM:23 PK:24 PL:28 PS:29 PT:25 QA:29 RO:24 RS:22 RU:33 SA:24 SC:31 SD:18 SE:24 "
+    "SI:19 SK:24 SM:27 SO:23 ST:25 SV:28 TL:23 TN:24 TR:26 UA:29 VA:22 VG:24 XK:20 YE:30"
+).split())
+
+
+def _iban_ok(t: str) -> bool:
+    if str(len(t)) != _IBAN_LEN.get(t[:2].upper()):   # the registry is the definition
+        return False
+    return int("".join(str(int(ch, 36)) for ch in (t[4:] + t[:4]).upper())) % 97 == 1
+
+
+def _iban_spans(text: str, whole_token: bool = False) -> list[tuple[int, int]]:
+    """Where IBANs are: from every candidate start, the longest prefix (15–34 characters,
+    spaces aside) whose registry length and mod-97 checksum hold. Masking takes one even inside
+    a longer token (fail closed); `whole_token` (is this column IBANs?) needs it to end one."""
+    spans: list[tuple[int, int]] = []
+    for s in _IBAN_START.finditer(text):
+        i = s.start()
+        if spans and i < spans[-1][1]:
+            continue
+        m = _IBAN_BODY.match(text, i)
+        if not m:
+            continue
+        ends = [i + k + 1 for k, ch in enumerate(m.group()) if ch != " "]
+        for n in range(min(34, len(ends)), 14, -1):
+            end = ends[n - 1]
+            inside = end < len(text) and text[end].isascii() and text[end].isalnum()
+            if not (whole_token and inside) and _iban_ok(text[i:end].replace(" ", "")):
+                spans.append((i, ends[n - 1]))
+                break
+    return spans
+
+
+def _mask_spans(text: str, spans: list[tuple[int, int]]) -> str:
+    for a, b in reversed(spans):
+        text = text[:a] + MASK + text[b:]
+    return text
+
+
 _IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)"
                       r"(?![\d.])")
 MASK = "[REDACTED]"
@@ -1015,6 +1067,7 @@ def mask_pii(value: Any) -> Any:
     v = _EMAIL_RE.sub(MASK, value)
     v = _SSN_RE.sub(MASK, v)
     v = _CARD_RE.sub(lambda m: MASK if _luhn(re.sub(r"\D", "", m.group())) else m.group(), v)
+    v = _mask_spans(v, _iban_spans(v))
     v = _PHONE_RE.sub(MASK, v)
     v = _INTL_PHONE_RE.sub(_intl_phone, v)
     return _IPV4_RE.sub(MASK, v)
@@ -1029,7 +1082,7 @@ def mask_row(row: dict, pii: Iterable[str] = ()) -> dict:
 
 _NAME_KINDS = (("email", r"e?mail"), ("phone", r"phone|mobile|tel|cell"), ("ssn", r"ssn"),
                ("address", r"address|street"), ("dob", _DOB_NAME),
-               ("passport", r"passport"))
+               ("passport", r"passport"), ("iban", r"iban"))
 
 
 def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
@@ -1037,7 +1090,7 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     `values`: a sample of the column's non-null values.
     - name: the PII name rule (`customer_email`, 'Tel.'), or a role noun (`sales_rep`) whose
       values read as people's names;
-    - values: ≥ 30% of them contain an email, phone, SSN, card or IP address."""
+    - values: ≥ 30% of them contain an email, phone, SSN, card, IBAN or IP address."""
     norm = _norm_name(name)
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
@@ -1076,6 +1129,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 hits["phone"] = hits.get("phone", 0) + 1
             elif any(_luhn(re.sub(r"\D", "", m.group())) for m in _CARD_RE.finditer(t)):
                 hits["card"] = hits.get("card", 0) + 1
+            elif _iban_spans(t, whole_token=True):
+                hits["iban"] = hits.get("iban", 0) + 1
     if sum(hits.values()) >= 0.3 * len(vals):
         kind = max(hits, key=hits.get)
         return kind, f"{sum(hits.values())} of {len(vals)} sampled values contain personal data"
@@ -1217,6 +1272,7 @@ def pii_strings(value: Any) -> list[str]:
     found = [m.group() for rx in (_EMAIL_RE, _SSN_RE, _PHONE_RE, _IPV4_RE) for m in rx.finditer(text)]
     found += [m.group() for m in _INTL_PHONE_RE.finditer(text) if _intl_phone(m) == MASK]
     found += [m.group() for m in _CARD_RE.finditer(text) if _luhn(re.sub(r"\D", "", m.group()))]
+    found += [text[a:b] for a, b in _iban_spans(text)]
     return found
 
 
