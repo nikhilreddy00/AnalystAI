@@ -1866,3 +1866,4 @@ def test_the_brief_says_why_the_row_kind_column_must_be_used():
     roles = {"order_id": "Name", "email": "Email", "quantity": "Q", "unit_price": "P"}
     text = " ".join(pack_brief(RETAIL, roles, ["aov"], "line", {"sale", "test"}))
     assert "pseudonyms" in text and "only this column marks them" in text
+    assert "one column more than the schema shows: 'row_kind'" in text   # smoke rerun: 'not present

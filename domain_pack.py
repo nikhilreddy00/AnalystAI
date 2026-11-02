@@ -553,7 +553,8 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     named = {r: r for r in roles}
     lines = []
     if present - {"sale"} or concepts:   # rows to leave out, or a KPI to compute
-        lines.append(f"Each row's kind is in the column '{kind_column}' (sale, return, refunded, "
+        lines.append(f"`df` has one column more than the schema shows: '{kind_column}', each row's "
+                     "kind (sale, return, refunded, "
                      "cancel, test, non_product, other_currency), computed by these rules: filter on "
                      "it, never re-derive it. Personal columns (email, names) reach you as "
                      "pseudonyms, so test orders cannot be found from them: only this column marks "
