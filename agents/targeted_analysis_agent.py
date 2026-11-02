@@ -52,6 +52,7 @@ from scipy import stats
 
 from domain_pack import (
     additive,
+    entity_rows,
     money_rows,
     compute_kpi,
     computable,
@@ -115,9 +116,10 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if params and params.kpi and pack and not pack.kpi(params.kpi) and (
             params.kpi in pack.unsupported or params.kpi in pack.definitions):
         # a concept with no KPI (NIM, roll rate): its own words, never another column's figure
-        why = (f"{params.kpi.replace('_', ' ')} needs {pack.unsupported[params.kpi]}"
-               if params.kpi in pack.unsupported else
-               f"{params.kpi.replace('_', ' ')} isn't one figure here: {pack.definitions[params.kpi]}")
+        name = pack.glossary.get(params.kpi, [params.kpi.replace("_", " ")])[0]
+        name = name[0].upper() + name[1:]   # 'Net interest margin', never 'nim'
+        why = (f"{name} needs {pack.unsupported[params.kpi]}." if params.kpi in pack.unsupported
+               else f"{name} isn't one figure here: {pack.definitions[params.kpi]}")
         return _unanswerable(intent, why, [pack.say("unsupported_alternatives")])
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS and grouped:
         roles = {r: c for r, c in contract.roles.items() if c in df.columns}
@@ -236,7 +238,7 @@ def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataC
             _suggest_metric_questions(contract) or ["Upload data with more than one numeric column"],
         )
 
-    corr = df[cols].corr(numeric_only=True).round(3)
+    corr = entity_rows(df, contract)[cols].corr(numeric_only=True).round(3)   # an account once
     table_columns = ["variable", *cols]
     table_data = [{"variable": c, **{k: float(v) for k, v in corr.loc[c].items()}} for c in cols]
 

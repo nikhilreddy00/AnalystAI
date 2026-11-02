@@ -32,6 +32,7 @@ from domain_pack import (
     glossary_hits,
     pack_brief,
     pack_for,
+    snapshot_entity,
     with_row_kind,
 )
 from guardrails import (
@@ -242,14 +243,18 @@ def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
 # ─── Standard statistics (deterministic) ───
 result['builtin'] = []
 _targets, _segs, _date, _hints = {targets!r}, {segments!r}, {date!r}, {hints!r}
+# snapshot data: one row per entity for statistics over entities (domain_pack.entity_rows)
+_ent = {snapshot_entity(contract, {c.name for c in contract.columns})!r}
 # a domain's money columns count sale and return rows in the main currency (as its tiles)
 _money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
 try:
     if {bool(types & {"correlation", "hypothesis"})!r}:
         # snapshot data (a level): one row per entity, its latest snapshot (never each one again)
-        _lv = next((_h for _h in _hints.values() if _h[0] in ('last', 'first') and _h[1]
-                    and all(_e in df.columns for _e in [*_h[1], _h[2]])), None)
-        _cdf = df.assign(_t=pd.to_datetime(df[_lv[2]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable').groupby(_lv[1]).tail(1) if _lv else df
+        _cdf = df
+        if _ent and all(_e in df.columns for _e in [*_ent[0], _ent[1]]):
+            _cdf = df.assign(_t=pd.to_datetime(df[_ent[1]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable').groupby(list(_ent[0])).tail(1)
+            if _kind in _cdf.columns:
+                _cdf = _cdf[_cdf[_kind].isin(['sale', 'return'])]
         for _i, _a in enumerate(_targets):
             for _b in _targets[_i + 1:]:
                 if f'{{_a}}__{{_b}}' not in result['correlations'] and f'{{_b}}__{{_a}}' not in result['correlations']:
@@ -345,6 +350,8 @@ try:
         for _c in _targets:
             if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):
                 continue
+            if _hints.get(_c) and _hints[_c][0] in ('last', 'first'):
+                continue   # a level: the level block below (latest rows, not every snapshot)
             _g = df.groupby(_segs[:2])[_c].mean()
             _n = df.groupby(_segs[:2]).size().sort_index(kind='stable').sort_values(ascending=False, kind='stable').head(20).index
             result['segments'].append({{'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',
@@ -366,11 +373,15 @@ try:
                 _f[_c] = _f[_c].where(_f[_kind].isin(['sale', 'return']))
             _g = _f.groupby(_h[1])
             _w = _g.tail(1) if _h[0] == 'last' else _g.head(1)
-            for _s in [_x for _x in _segs if _x in df.columns]:
-                _tot = _w.groupby(_s)[_c].sum(min_count=1).dropna()
+            _keys = [[_x] for _x in _segs if _x in df.columns]
+            if len(_segs) >= 2 and all(_x in df.columns for _x in _segs[:2]):
+                _keys.append(list(_segs[:2]))
+            for _k in _keys:
+                _s = '|'.join(_k)
+                _tot = _w.groupby(_k)[_c].sum(min_count=1).dropna()
                 result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c)]
                 result['segments'].append({{'segment_column': _s, 'metric_column': _c, 'aggregation': 'last',
-                                           'results': [{{'name': str(_k), 'value': round(float(_v), 4)}} for _k, _v in _tot.items()]}})
+                                           'results': [{{'name': '|'.join(map(str, _n)) if isinstance(_n, tuple) else str(_n), 'value': round(float(_v), 4)}} for _n, _v in _tot.items()]}})
                 result['builtin'].append(f'seg:{{_s}}/{{_c}}')
 except Exception:
     pass

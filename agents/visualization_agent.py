@@ -47,6 +47,7 @@ from domain_pack import (
     describe_kpi,
     main_currency,
     money_columns,
+    entity_rows,
     money_rows,
     row_kinds,
 )
@@ -1794,7 +1795,8 @@ def generate_dashboard_charts(
                 charts.append(ch)
 
     if len(charts) < 8 and len(numeric_cols) > 4:
-        ch = _build_correlation_heatmap(df, numeric_cols, narrative)
+        ch = _build_correlation_heatmap(entity_rows(df, ctx.contract if ctx else None), numeric_cols,
+                                        narrative)
         if ch:
             charts.append(ch)
 
@@ -2354,6 +2356,7 @@ def oriented_scatter(df: pd.DataFrame, a: str, b: str, ctx: VizContext) -> Chart
         return None   # a relationship needs two different numeric columns
     outcome, why = pick_outcome([a, b], ctx)
     x, y = (b, a) if outcome == a else (a, b)
+    df = entity_rows(df, ctx.contract)   # snapshot data: one point per account (its r = the finding's)
     chart = _build_scatter(df, x, y)
     if chart is None:
         return None

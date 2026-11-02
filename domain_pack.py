@@ -487,8 +487,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         return None
     # the groups this KPI's rows have (a postage-only code or a test customer is no group at $0)
     counted = kinds.isin({"sale", "return", "refunded", *kpi.rows})
-    if met is not None and kpi.den is None:   # spend by category: no "Transfer" at $0
-        counted &= met
+    periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
+    if met is not None and kpi.den is None and not periodic:   # spend by category: no "Transfer"
+        counted &= met   # at $0; but a month with no charge-offs is a month at $0
     groups = pd.unique(df.loc[counted, by].dropna()) if by else None
     if term.nunique:
         col = part[roles[term.nunique]]
@@ -904,6 +905,32 @@ def money_rows(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, s
         else df[kept]
     return out, pack.say("money_rows_note", currency=f" in {currency}" if currency else "",
                               n=f"{int((~kept).sum()):,}")
+
+
+def snapshot_entity(contract, columns) -> tuple[list[str], str] | None:
+    """(entity columns, time column) when the data is snapshots: a level's (a balance's)."""
+    lv = next((c for c in (contract.columns if contract is not None else [])
+               if c.aggregation in ("last", "first") and c.aggregation_by and c.aggregation_time
+               and all(x in columns for x in [*c.aggregation_by, c.aggregation_time])), None)
+    return (lv.aggregation_by, lv.aggregation_time) if lv else None
+
+
+def entity_rows(df: pd.DataFrame, contract) -> pd.DataFrame:
+    """Rows for a statistic over entities (a correlation) on snapshot data: each entity's latest
+    snapshot (any kind first), then only rows the tiles count (on the books, main currency);
+    every snapshot would count an account 14 times. Not snapshot data: the frame as it is.
+    Mirrored in the analysis sandbox's built-in correlation."""
+    ent = snapshot_entity(contract, df.columns)
+    if ent is None:
+        return df
+    from agents.utils import snapshot_rows
+    rows = snapshot_rows(df, ent[0], ent[1])
+    pack = pack_for(contract.domain)
+    if pack is None:
+        return rows
+    roles = {r: c for r, c in contract.roles.items() if c in rows.columns}
+    keep, _, _ = main_currency(rows, roles)
+    return rows[keep & row_kinds(rows, roles, pack).isin(["sale", "return"])]
 
 
 def defaults_pack(contract) -> Pack | None:

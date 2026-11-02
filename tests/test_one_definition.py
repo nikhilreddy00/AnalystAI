@@ -92,3 +92,15 @@ def test_one_rename_to_display_names():
     # casing ('revenue' → 'Revenue'): their own rule
     assert _hits(r"column_display_names\.items\(\)|names_re", {"visualization_agent.py"}) == [], \
         "use utils.with_display_names"
+
+
+def test_a_correlation_on_snapshot_data_counts_each_entity_once():
+    """Pass 1 and pass 2 both found correlations over every snapshot (each loan 14 times),
+    three definitions with three r values: answers and charts read domain_pack.entity_rows; the
+    sandbox mirrors it (_cdf). A new .corr( must take one of them."""
+    allowed = {"analysis_agent.py:_cdf", "targeted_analysis_agent.py:entity_rows",
+               "visualization_agent.py:entity_rows"}
+    for p in SHARED:
+        text = p.read_text()
+        if ".corr(" in text and "domain_pack" not in p.name and p.name != "guardrails.py":
+            assert any(a.startswith(p.name) and a.split(":")[1] in text for a in allowed), p.name

@@ -484,3 +484,40 @@ def test_an_undated_row_is_never_an_accounts_latest_snapshot_in_a_correlation(ta
     latest = df[df["As Of Date"] == "2026-10-31"]
     got = json.loads(out.getvalue())["correlations"]["Outstanding Principal__Days Past Due"]
     assert got == pytest.approx(latest["Outstanding Principal"].corr(latest["Days Past Due"]), abs=1e-4)
+
+
+def test_audit_pass_2_periods_joint_levels_and_one_correlation(tape):
+    """M1 a month with no charge-offs is $0, not skipped; M2 a level by two segments is built
+    in from latest rows; M3 one correlation rule (entity_rows) for the built-in and the answer."""
+    import contextlib
+    import io
+    import json
+
+    from agents import analysis_agent
+    from agents.targeted_analysis_agent import handle_correlation
+    from orchestrator.state import AnalysisTask, TargetedParams
+    df, c = tape
+    frame = df.assign(_period=pd.to_datetime(df["As Of Date"]).dt.to_period("M"))
+    co = compute_kpi(frame, c.roles, BANK, "charge_offs", by="_period", full=df)
+    assert {str(k): v for k, v in co.items()} == {"2026-09": 0.0, "2026-10": 290.0}
+    two = df.assign(Branch=["A", "B"] * 5 + ["A"])
+    c2 = _contract(two)
+    kinds, _ = domain_pack.with_row_kind(two, c2)
+    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
+            + analysis_agent._build_standard_code(c2, AnalysisTask(
+                raw_query="q", target_metrics=["Outstanding Principal", "Days Past Due"],
+                segments=["Product", "Branch"], analysis_types=["segmentation", "correlation"]))
+            + analysis_agent._CODE_FOOTER)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        exec(code, {"df": kinds})
+    res = json.loads(out.getvalue())
+    joint = [x for x in res["segments"] if x["segment_column"] == "Product|Branch"
+             and x["metric_column"] == "Outstanding Principal"]
+    assert len(joint) == 1 and joint[0]["aggregation"] == "last"
+    book = domain_pack.entity_rows(kinds, c2)
+    assert sorted(book["Loan ID"]) == ["L1", "L2", "L5", "L6"]
+    want = book["Outstanding Principal"].corr(book["Days Past Due"])
+    assert res["correlations"]["Outstanding Principal__Days Past Due"] == pytest.approx(want, abs=1e-4)
+    r = handle_correlation(df, TargetedParams(target_columns=["Outstanding Principal", "Days Past Due"]), c)
+    assert f"{want:.3f}".lstrip("0") in r.answer_text or f"{want:.2f}" in r.answer_text
