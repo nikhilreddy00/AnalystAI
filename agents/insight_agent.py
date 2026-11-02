@@ -517,7 +517,7 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
 
     for d in audit.decisions:
         name = _name(d.column, narrative)
-        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT:
+        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT and d.strategy != "order_level":
             alert(Severity.CRITICAL if d.after_null_pct > 50 else Severity.HIGH, d.column,
                   f"{name.capitalize()}: {_pct(d.after_null_pct)} missing",
                   f"{_pct(d.after_null_pct)} of {name} values are missing. They are left out of "
@@ -540,7 +540,7 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
             alert(Severity.LOW, f.column, f"{name.capitalize()}: a long tail of large values",
                   f"A few very large {name} values are normal for this data; they were kept.",
                   f"Report the typical {name} alongside the average.")
-        else:
+        elif f.extreme_count:   # mild-only flags are the analyst tab's, never "0 extreme values"
             alert(Severity.MEDIUM, f.column, f"{name.capitalize()}: {f.extreme_count} extreme values",
                   f"{f.extreme_count} {name} values ({_pct(f.extreme_pct)} of rows) are far "
                   "outside the usual range. They were kept.",

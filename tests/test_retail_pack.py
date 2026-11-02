@@ -1940,3 +1940,12 @@ def test_a_shopify_export_raises_no_high_null_gate_for_order_level_fields():
     assert audit.high_null_columns == [], audit.high_null_columns
     layout = {d.column for d in audit.decisions if d.strategy == "order_level"}
     assert {"Discount Amount", "Total"} <= layout, layout
+
+
+def test_the_report_alerts_neither_layout_blanks_nor_zero_extremes():
+    """Live run: the report alerted 'Discount amount: 43.7% missing' (the order-level layout) and
+    'Unit price: 0 extreme values' (a mild-only flag, on main too)."""
+    from agents.insight_agent import _alerts
+    s, _ = _session("retail_lines")
+    titles = [a.title for a in _alerts(s)[0]]
+    assert not any("missing" in t or "0 extreme" in t for t in titles), titles
