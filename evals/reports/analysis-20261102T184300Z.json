@@ -1,0 +1,759 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261102T184300Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "55d4e08",
+  "started_at": "20261102T184300Z",
+  "only": "bank-4",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0307,
+  "latency_p50_s": 25.6,
+  "latency_p95_s": 25.6,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0938,
+  "verifiable_claims": 32,
+  "by_domain": {
+   "banking": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 1,
+    "model_dependent_cases": 1,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0938,
+    "verifiable_claims": 32,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0938,
+     "verifiable_claims": 32
+    }
+   }
+  }
+ },
+ "runs": {
+  "bank-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Days Past Due)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 3,
+     "verifiable": 32,
+     "details": [
+      "Days Past Due.max",
+      "Days Past Due.mean",
+      "Days Past Due.std"
+     ]
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 80,
+    "output": {
+     "eda_summary": {
+      "Original Amount": {
+       "mean": 58023.2157,
+       "std": 108739.4129,
+       "min": 741.9,
+       "max": 904548.54,
+       "median": 13195.2,
+       "count": 15032
+      },
+      "Outstanding Principal": {
+       "mean": 42673.168,
+       "std": 83188.7706,
+       "min": 0.0,
+       "max": 757899.0,
+       "median": 8196.015,
+       "count": 15032
+      },
+      "Interest Rate (%)": {
+       "mean": 13.4312,
+       "std": 6.5001,
+       "min": 3.41,
+       "max": 26.25,
+       "median": 11.54,
+       "count": 15032
+      },
+      "Days Past Due": {
+       "mean": 2.0178,
+       "std": 12.658,
+       "min": 0.0,
+       "max": 180.0,
+       "median": 0.0,
+       "count": 14972
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Product",
+       "metric_column": "Days Past Due",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Auto",
+         "value": 0.005222
+        },
+        {
+         "name": "Credit Card",
+         "value": 0.029516
+        },
+        {
+         "name": "Mortgage",
+         "value": 0.0
+        },
+        {
+         "name": "Personal",
+         "value": 0.033907
+        }
+       ],
+       "label": "npl_ratio"
+      },
+      {
+       "segment_column": "Product",
+       "metric_column": "Outstanding Principal",
+       "aggregation": "last",
+       "results": [
+        {
+         "name": "Auto",
+         "value": 4760351.7
+        },
+        {
+         "name": "Credit Card",
+         "value": 859390.63
+        },
+        {
+         "name": "Mortgage",
+         "value": 40584162.85
+        },
+        {
+         "name": "Personal",
+         "value": 1327730.99
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "Product",
+       "metric_column": "Outstanding Principal",
+       "aggregation": "last",
+       "results": [
+        {
+         "name": "Auto",
+         "value": 4760351.7
+        },
+        {
+         "name": "Credit Card",
+         "value": 859390.63
+        },
+        {
+         "name": "Mortgage",
+         "value": 40584162.85
+        },
+        {
+         "name": "Personal",
+         "value": 1327730.99
+        }
+       ],
+       "label": "npl_outstanding_principal"
+      },
+      {
+       "segment_column": "Product",
+       "metric_column": "Days Past Due",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "All Products",
+         "value": 0.001997
+        }
+       ],
+       "label": "npl_ratio_overall"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Original Amount": [
+       {
+        "label": "(-161.907, 91122.564]",
+        "count": 12248
+       },
+       {
+        "label": "(91122.564, 181503.228]",
+        "count": 854
+       },
+       {
+        "label": "(181503.228, 271883.892]",
+        "count": 978
+       },
+       {
+        "label": "(271883.892, 362264.556]",
+        "count": 486
+       },
+       {
+        "label": "(362264.556, 452645.22]",
+        "count": 278
+       },
+       {
+        "label": "(452645.22, 543025.884]",
+        "count": 92
+       },
+       {
+        "label": "(543025.884, 633406.548]",
+        "count": 40
+       },
+       {
+        "label": "(633406.548, 723787.212]",
+        "count": 28
+       },
+       {
+        "label": "(723787.212, 814167.876]",
+        "count": 14
+       },
+       {
+        "label": "(814167.876, 904548.54]",
+        "count": 14
+       }
+      ],
+      "Outstanding Principal": [
+       {
+        "label": "(-757.899, 75789.9]",
+        "count": 12385
+       },
+       {
+        "label": "(75789.9, 151579.8]",
+        "count": 954
+       },
+       {
+        "label": "(151579.8, 227369.7]",
+        "count": 961
+       },
+       {
+        "label": "(227369.7, 303159.6]",
+        "count": 440
+       },
+       {
+        "label": "(303159.6, 378949.5]",
+        "count": 194
+       },
+       {
+        "label": "(378949.5, 454739.4]",
+        "count": 38
+       },
+       {
+        "label": "(454739.4, 530529.3]",
+        "count": 6
+       },
+       {
+        "label": "(530529.3, 606319.2]",
+        "count": 29
+       },
+       {
+        "label": "(606319.2, 682109.1]",
+        "count": 11
+       },
+       {
+        "label": "(682109.1, 757899.0]",
+        "count": 14
+       }
+      ],
+      "Interest Rate (%)": [
+       {
+        "label": "(3.387, 5.694]",
+        "count": 710
+       },
+       {
+        "label": "(5.694, 7.978]",
+        "count": 2767
+       },
+       {
+        "label": "(7.978, 10.262]",
+        "count": 3500
+       },
+       {
+        "label": "(10.262, 12.546]",
+        "count": 1038
+       },
+       {
+        "label": "(12.546, 14.83]",
+        "count": 2372
+       },
+       {
+        "label": "(14.83, 17.114]",
+        "count": 382
+       },
+       {
+        "label": "(19.398, 21.682]",
+        "count": 498
+       },
+       {
+        "label": "(21.682, 23.966]",
+        "count": 2981
+       },
+       {
+        "label": "(23.966, 26.25]",
+        "count": 784
+       }
+      ],
+      "Days Past Due": [
+       {
+        "label": "(-0.18, 25.714]",
+        "count": 14455
+       },
+       {
+        "label": "(25.714, 51.429]",
+        "count": 258
+       },
+       {
+        "label": "(51.429, 77.143]",
+        "count": 126
+       },
+       {
+        "label": "(77.143, 102.857]",
+        "count": 70
+       },
+       {
+        "label": "(102.857, 128.571]",
+        "count": 37
+       },
+       {
+        "label": "(128.571, 154.286]",
+        "count": 17
+       },
+       {
+        "label": "(154.286, 180.0]",
+        "count": 9
+       }
+      ],
+      "Product": [
+       {
+        "label": "Auto",
+        "count": 4651
+       },
+       {
+        "label": "Credit Card",
+        "count": 4263
+       },
+       {
+        "label": "Personal",
+        "count": 3292
+       },
+       {
+        "label": "Mortgage",
+        "count": 2826
+       }
+      ],
+      "Branch": [
+       {
+        "label": "Riverside",
+        "count": 3166
+       },
+       {
+        "label": "Airport",
+        "count": 3056
+       },
+       {
+        "label": "Downtown",
+        "count": 3031
+       },
+       {
+        "label": "Harbor",
+        "count": 3012
+       },
+       {
+        "label": "Hillside",
+        "count": 2767
+       }
+      ],
+      "Borrower Name": [
+       {
+        "label": "Ivo Novak",
+        "count": 279
+       },
+       {
+        "label": "Chen Ito",
+        "count": 278
+       },
+       {
+        "label": "Jun Quinn",
+        "count": 275
+       },
+       {
+        "label": "Ana Lopez",
+        "count": 273
+       },
+       {
+        "label": "Chen Park",
+        "count": 272
+       },
+       {
+        "label": "Ben Kaur",
+        "count": 269
+       },
+       {
+        "label": "Chen Novak",
+        "count": 268
+       },
+       {
+        "label": "Dara Okafor",
+        "count": 267
+       },
+       {
+        "label": "Ben Moss",
+        "count": 266
+       },
+       {
+        "label": "Dara Kaur",
+        "count": 265
+       }
+      ],
+      "Loan Status": [
+       {
+        "label": "Current",
+        "count": 14366
+       },
+       {
+        "label": "Delinquent",
+        "count": 384
+       },
+       {
+        "label": "Non-Accrual",
+        "count": 176
+       },
+       {
+        "label": "Paid Off",
+        "count": 97
+       },
+       {
+        "label": "Charged Off",
+        "count": 9
+       }
+      ],
+      "Currency": [
+       {
+        "label": "USD",
+        "count": 15032
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Standard statistics (deterministic) \u2500\u2500\u2500\nresult['builtin'] = []\n_targets, _segs, _date, _hints = ['Outstanding Principal'], ['Product'], 'As Of Date', {'Outstanding Principal': ['last', ['Loan ID'], 'As Of Date']}\ntry:\n    if False:\n        for _i, _a in enumerate(_targets):\n            for _b in _targets[_i + 1:]:\n                if f'{_a}__{_b}' not in result['correlations'] and f'{_b}__{_a}' not in result['correlations']:\n                    _r = df[_a].corr(df[_b])\n                    if _r == _r:\n                        result['correlations'][f'{_a}__{_b}'] = round(float(_r), 4)\n                        result['builtin'].append(f'corr:{_a}__{_b}')\nexcept Exception:\n    pass\ntry:\n    if (_date or _hints) and False:\n        # A mid-month export compares the last two complete months (agents.utils.partial_last_month).\n        def _cut(_t):\n            _mm = _t.dt.to_period('M')\n            _d = _t.dropna()\n            if _d.empty:\n                return _mm\n            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()\n            _g = _d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()\n            _regular = len(_g) >= 3 and _g.std() <= 0.25 * _g.mean()\n            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and (_days.iloc[:-1].median() >= 4 or _regular) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():\n                _mm = _mm.where(_mm != _days.index[-1])\n            return _mm\n        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')\n        def _level_months(_tc):\n            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))\n        # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.\n        _yoy = True\n        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') in (('MoM', 'YoY') if _yoy else ('MoM',)) and t.get('column') in _targets)]\n        # ponytail: values all in [0, 1] \u2192 a rate or flag, compared by month mean; anything else\n        # by month total. A semantic layer (Phase 4) can declare the aggregation instead.\n        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's\n        # last value in the month, summed; a reading is a mean.\n        # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months\n        # compare fairly (agents.utils.weekly_cadence).\n        _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')\n        _weekly = _yoy and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7\n        # a domain's money columns count sale and return rows in the main currency (as its tiles)\n        _money, _kind = ['Outstanding Principal'], 'row_kind'\n        def _mom(_frame, _col):\n            _h = _hints.get(_col)\n            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')\n            _mon = _month\n            if _agg in ('last', 'first'):\n                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:\n                    return None, 0   # its account (or time) column is gone: no total, never a sum\n                _mon = _level_months(_h[2])   # the level's own months, partial last month out\n                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),\n                                   _m=_mon.loc[_frame.index])\n                if _col in _money and _kind in _f.columns:   # a row left out blanks its value\n                    _f[_col] = _f[_col].where(_f[_kind].isin(['sale', 'return']))\n                # each entity's latest row in the month, of any kind, then its value (as the tiles)\n                _g = _f.dropna(subset=['_m', '_t']).sort_values('_t', kind='stable').groupby(['_m', *_h[1]])\n                _tot = (_g.tail(1) if _agg == 'last' else _g.head(1)).groupby('_m')[_col].sum(min_count=1).dropna().sort_index()\n            else:\n                if _col in _money and _kind in _frame.columns:\n                    _frame = _frame[_frame[_kind].isin(['sale', 'return'])]\n                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()\n                if _weekly and _agg == 'sum':\n                    _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)\n                    if 'weekly' not in ' '.join(result['assumptions']):\n                        result['assumptions'].append('Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).')\n            if len(_tot) < 2 or _tot.iloc[-2] == 0:\n                return None, 0\n            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])\n            _n = int(_frame.loc[_last2, _col].notna().sum())\n            # a domain's data compares the last full month with the same month a year earlier\n            _ago = _tot.index[-1] - 12 if _yoy else None\n            if _ago is not None and _ago in _tot.index and _tot[_ago] != 0:\n                _pair = _mon.loc[_frame.index].isin([_tot.index[-1], _ago])\n                _y = round(float((_tot.iloc[-1] / _tot[_ago] - 1) * 100), 2)\n                _yearly.append((_col, _y, int(_frame.loc[_pair, _col].notna().sum())))\n            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n\n        for _c in _targets:\n            _jobs = [(None, df)]\n            if _segs:\n                _top = df[_segs[0]].value_counts().head(10).index\n                _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]\n            for _seg, _frame in _jobs:\n                _yearly = []\n                _p, _n = _mom(_frame, _c)\n                if _p is not None:\n                    result['trends'].append({'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,\n                                             'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'})\n                    result['builtin'].append(f'trend:{_c}' + (f' ({_seg})' if _seg else '') + ':MoM')\n                for _, _y, _yn in _yearly:\n                    result['trends'].append({'column': _c, 'period': 'YoY', 'pct_change': _y, 'segment': _seg, 'n': _yn,\n                                             'direction': 'up' if _y > 0 else 'down' if _y < 0 else 'flat'})\n                    result['builtin'].append(f'trend:{_c}' + (f' ({_seg})' if _seg else '') + ':YoY')\nexcept Exception:\n    pass\ntry:\n    if len(_segs) >= 2 and 'segmentation' in ['segmentation']:\n        _joint = '|'.join(_segs[:2])\n        for _c in _targets:\n            if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):\n                continue\n            _g = df.groupby(_segs[:2])[_c].mean()\n            _n = df.groupby(_segs[:2]).size().sort_index(kind='stable').sort_values(ascending=False, kind='stable').head(20).index\n            result['segments'].append({'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',\n                                       'results': [{'name': f'{_a}|{_b}', 'value': round(float(_g[(_a, _b)]), 4)} for _a, _b in _n]})\n            result['builtin'].append(f'seg:{_joint}/{_c}')\nexcept Exception:\n    pass\n\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Original Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Original Amount']):\n        _s = df['Original Amount'].dropna()\n        if len(_s) > 0 and 'Original Amount' not in result['eda_summary']:\n            result['eda_summary']['Original Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Outstanding Principal' in df.columns and pd.api.types.is_numeric_dtype(df['Outstanding Principal']):\n        _s = df['Outstanding Principal'].dropna()\n        if len(_s) > 0 and 'Outstanding Principal' not in result['eda_summary']:\n            result['eda_summary']['Outstanding Principal'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Interest Rate (%)' in df.columns and pd.api.types.is_numeric_dtype(df['Interest Rate (%)']):\n        _s = df['Interest Rate (%)'].dropna()\n        if len(_s) > 0 and 'Interest Rate (%)' not in result['eda_summary']:\n            result['eda_summary']['Interest Rate (%)'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Days Past Due' in df.columns and pd.api.types.is_numeric_dtype(df['Days Past Due']):\n        _s = df['Days Past Due'].dropna()\n        if len(_s) > 0 and 'Days Past Due' not in result['eda_summary']:\n            result['eda_summary']['Days Past Due'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Original Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Original Amount']):\n        _col_data = df['Original Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Original Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Outstanding Principal' in df.columns and pd.api.types.is_numeric_dtype(df['Outstanding Principal']):\n        _col_data = df['Outstanding Principal'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Outstanding Principal'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Interest Rate (%)' in df.columns and pd.api.types.is_numeric_dtype(df['Interest Rate (%)']):\n        _col_data = df['Interest Rate (%)'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Interest Rate (%)'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Days Past Due' in df.columns and pd.api.types.is_numeric_dtype(df['Days Past Due']):\n        _col_data = df['Days Past Due'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Days Past Due'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Product' in df.columns:\n        _vc = df['Product'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Product'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Branch' in df.columns:\n        _vc = df['Branch'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Branch'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Borrower Name' in df.columns:\n        _vc = df['Borrower Name'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Borrower Name'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Loan Status' in df.columns:\n        _vc = df['Loan Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Loan Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Currency' in df.columns:\n        _vc = df['Currency'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Currency'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Loan ID": "LN-100000",
+       "As Of Date": "2025-09-30 00:00:00",
+       "Product": "Personal",
+       "Branch": "Airport",
+       "Borrower Name": "Ana Ito",
+       "Origination Date": "2023-09-14",
+       "Original Amount": 12083.01,
+       "Outstanding Principal": 9880.86,
+       "Interest Rate (%)": 12.76,
+       "Days Past Due": 0.0,
+       "Loan Status": "Current",
+       "Charge Off Date": null,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Loan ID": "LN-100001",
+       "As Of Date": "2025-09-30 00:00:00",
+       "Product": "Credit Card",
+       "Branch": "Downtown",
+       "Borrower Name": "Ben Ito",
+       "Origination Date": "2021-09-05",
+       "Original Amount": 1927.49,
+       "Outstanding Principal": 1319.19,
+       "Interest Rate (%)": 21.69,
+       "Days Past Due": 0.0,
+       "Loan Status": "Current",
+       "Charge Off Date": null,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Loan ID": "LN-100002",
+       "As Of Date": "2025-09-30 00:00:00",
+       "Product": "Mortgage",
+       "Branch": "Airport",
+       "Borrower Name": "Chen Ito",
+       "Origination Date": "2021-09-09",
+       "Original Amount": 74837.01,
+       "Outstanding Principal": 38323.49,
+       "Interest Rate (%)": 5.56,
+       "Days Past Due": 0.0,
+       "Loan Status": "Current",
+       "Charge Off Date": null,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Loan ID": "LN-100003",
+       "As Of Date": "2025-09-30 00:00:00",
+       "Product": "Credit Card",
+       "Branch": "Riverside",
+       "Borrower Name": "Dara Kaur",
+       "Origination Date": "2019-06-11",
+       "Original Amount": 4721.89,
+       "Outstanding Principal": 3923.13,
+       "Interest Rate (%)": 23.0,
+       "Days Past Due": 0.0,
+       "Loan Status": "Current",
+       "Charge Off Date": null,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Loan ID": "LN-100004",
+       "As Of Date": "2025-09-30 00:00:00",
+       "Product": "Auto",
+       "Branch": "Harbor",
+       "Borrower Name": "Eli Kaur",
+       "Origination Date": "2023-12-05",
+       "Original Amount": 30099.36,
+       "Outstanding Principal": 19177.46,
+       "Interest Rate (%)": 10.52,
+       "Days Past Due": 0.0,
+       "Loan Status": "Current",
+       "Charge Off Date": null,
+       "Currency": "USD",
+       "row_kind": "sale"
+      }
+     ],
+     "dtypes_summary": {
+      "Loan ID": "object",
+      "As Of Date": "datetime64[ns]",
+      "Product": "object",
+      "Branch": "object",
+      "Borrower Name": "object",
+      "Origination Date": "object",
+      "Original Amount": "float64",
+      "Outstanding Principal": "float64",
+      "Interest Rate (%)": "float64",
+      "Days Past Due": "float64",
+      "Loan Status": "object",
+      "Charge Off Date": "object",
+      "Currency": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Loan ID": 0.0,
+      "As Of Date": 0.0,
+      "Product": 0.0,
+      "Branch": 0.0,
+      "Borrower Name": 0.0,
+      "Origination Date": 0.0,
+      "Original Amount": 0.0,
+      "Outstanding Principal": 0.0,
+      "Interest Rate (%)": 0.0,
+      "Days Past Due": 0.4,
+      "Loan Status": 0.0,
+      "Charge Off Date": 99.94,
+      "Currency": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Product/Days Past Due:ratio:npl_ratio",
+       "kind": "segment",
+       "claim": "npl_ratio (from Days Past Due) by Product (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Days Past Due\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Auto\", \"value\": 0.005222}, {\"name\": \"Credit Card\", \"value\": 0.029516}, {\"name\": \"Mortgage\", \"value\": 0.0}, {\"name\": \"Personal\", \"value\": 0.033907}], \"label\": \"npl_ratio\"}",
+       "row_count": 14972,
+       "confidence": "high",
+       "confidence_reason": "14972 rows",
+       "assumptions": [
+        "Days Past Due: 0% missing, left out of this result",
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row",
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "seg:Product/Outstanding Principal:last",
+       "kind": "segment",
+       "claim": "last Outstanding Principal by Product (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Outstanding Principal\", \"aggregation\": \"last\", \"results\": [{\"name\": \"Auto\", \"value\": 4760351.7}, {\"name\": \"Credit Card\", \"value\": 859390.63}, {\"name\": \"Mortgage\", \"value\": 40584162.85}, {\"name\": \"Personal\", \"value\": 1327730.99}]}",
+       "row_count": 15032,
+       "confidence": "high",
+       "confidence_reason": "15032 rows",
+       "assumptions": [
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row",
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "seg:Product/Outstanding Principal:last",
+       "kind": "segment",
+       "claim": "last Outstanding Principal by Product (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Outstanding Principal\", \"aggregation\": \"last\", \"results\": [{\"name\": \"Auto\", \"value\": 4760351.7}, {\"name\": \"Credit Card\", \"value\": 859390.63}, {\"name\": \"Mortgage\", \"value\": 40584162.85}, {\"name\": \"Personal\", \"value\": 1327730.99}], \"label\": \"npl_outstanding_principal\"}",
+       "row_count": 15032,
+       "confidence": "high",
+       "confidence_reason": "15032 rows",
+       "assumptions": [
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row",
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "seg:Product/Days Past Due:ratio:npl_ratio_overall",
+       "kind": "segment",
+       "claim": "npl_ratio_overall (from Days Past Due) by Product (1 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Product\", \"metric_column\": \"Days Past Due\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"All Products\", \"value\": 0.001997}], \"label\": \"npl_ratio_overall\"}",
+       "row_count": 14972,
+       "confidence": "high",
+       "confidence_reason": "14972 rows",
+       "assumptions": [
+        "Days Past Due: 0% missing, left out of this result",
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row",
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "eda:Original Amount",
+       "kind": "eda",
+       "claim": "Original Amount: median 13,195.20, mean 58,023.22, range 741.90 to 904,548.54",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 58023.2157, \"std\": 108739.4129, \"min\": 741.9, \"max\": 904548.54, \"median\": 13195.2, \"count\": 15032}",
+       "row_count": 15032,
+       "confidence": "high",
+       "confidence_reason": "15032 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Outstanding Principal",
+       "kind": "eda",
+       "claim": "Outstanding Principal: median 8,196.01, mean 42,673.17, range 0 to 757,899.00",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 42673.168, \"std\": 83188.7706, \"min\": 0.0, \"max\": 757899.0, \"median\": 8196.015, \"count\": 15032}",
+       "row_count": 15032,
+       "confidence": "high",
+       "confidence_reason": "15032 rows",
+       "assumptions": [
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row",
+        "Outstanding Principal by Product recomputed as the latest total (each Loan ID's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "eda:Interest Rate (%)",
+       "kind": "eda",
+       "claim": "Interest Rate (%): median 11.54, mean 13.43, range 3.41 to 26.25",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 13.4312, \"std\": 6.5001, \"min\": 3.41, \"max\": 26.25, \"median\": 11.54, \"count\": 15032}",
+       "row_count": 15032,
+       "confidence": "high",
+       "confidence_reason": "15032 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Days Past Due",
+       "kind": "eda",
+       "claim": "Days Past Due: median 0, mean 2.02, range 0 to 180.00",
+       "code": "try:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 2.0178, \"std\": 12.658, \"min\": 0.0, \"max\": 180.0, \"median\": 0.0, \"count\": 14972}",
+       "row_count": 14972,
+       "confidence": "high",
+       "confidence_reason": "14972 rows",
+       "assumptions": [
+        "Days Past Due: 0% missing, left out of this result"
+       ]
+      }
+     ]
+    },
+    "domain": "banking",
+    "latency_s": 25.6,
+    "cost_usd": 0.03074,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [
+     "level_recomputed"
+    ],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    import numpy as np\n\n    # Step 1: Get latest snapshot per Loan ID (any kind)\n    df['As Of Date'] = pd.to_datetime(df['As Of Date'])\n    latest_per_loan = df.sort_values('As Of Date').groupby('Loan ID').last().reset_index()\n\n    # Step 2: Keep only 'sale' kind rows (on-book)\n    closed_statuses = ['pending', 'declined', 'failed', 'rejected',\n                       'charged off', 'charged_off', 'charged-off', 'charge off',\n                       'written off', 'written_off', 'write off',\n                       'paid off', 'paid_off', 'fully paid', 'closed']\n    on_book = latest_per_loan[\n        (~latest_per_loan['Loan Status'].str.lower().isin(closed_statuses)) &\n        (latest_per_loan['row_kind'] == 'sale')\n    ].copy()\n\n    # Step 3: Define NPL condition: DPD >= 90 OR status in non-accrual/default\n    npl_statuses = ['non-accrual', 'nonaccrual', 'non_accrual', 'default', 'defaulted']\n    on_book['is_npl'] = (\n        (on_book['Days Past Due'] >= 90) |\n        (on_book['Loan Status'].str.lower().isin(npl_statuses))\n    )\n\n    # Step 4: NPL ratio by Product\n    product_groups = on_book.groupby('Product')\n    npl_by_product = product_groups.apply(\n        lambda g: g.loc[g['is_npl'], 'Outstanding Principal'].sum() /\n                  g['Outstanding Principal'].sum()\n        if g['Outstanding Principal'].sum() > 0 else np.nan\n    ).reset_index()\n    npl_by_product.columns = ['Product', 'npl_ratio']\n\n    npl_results = []\n    for _, row in npl_by_product.iterrows():\n        npl_results.append({\"name\": str(row['Product']), \"value\": round(float(row['npl_ratio']), 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio\",\n        \"results\": npl_results\n    })\n\n    # Step 5: Also report Outstanding Principal sum by Product (on-book)\n    op_by_product = on_book.groupby('Product')['Outstanding Principal'].sum().reset_index()\n    op_results = []\n    for _, row in op_by_product.iterrows():\n        op_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": op_results\n    })\n\n    # Step 6: NPL balance sum by Product (numerator)\n    npl_bal_by_product = on_book[on_book['is_npl']].groupby('Product')['Outstanding Principal'].sum().reset_index()\n    npl_bal_results = []\n    for _, row in npl_bal_by_product.iterrows():\n        npl_bal_results.append({\"name\": str(row['Product']), \"value\": round(float(row['Outstanding Principal']), 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Outstanding Principal\",\n        \"aggregation\": \"sum\",\n        \"label\": \"npl_outstanding_principal\",\n        \"results\": npl_bal_results\n    })\n\n    # Step 7: Overall NPL ratio\n    total_bal = on_book['Outstanding Principal'].sum()\n    npl_bal = on_book.loc[on_book['is_npl'], 'Outstanding Principal'].sum()\n    overall_npl = npl_bal / total_bal if total_bal > 0 else np.nan\n\n    result['segments'].append({\n        \"segment_column\": \"Product\",\n        \"metric_column\": \"Days Past Due\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"npl_ratio_overall\",\n        \"results\": [{\"name\": \"All Products\", \"value\": round(float(overall_npl), 6)}]\n    })\n\n    result['assumptions'].append(\n        \"NPL = DPD >= 90 or Loan Status in [non-accrual, nonaccrual, default, defaulted]; \"\n        \"balance uses latest snapshot per Loan ID, sale rows only.\"\n    )\n    result['assumptions'].append(\n        \"106 cancel-flagged rows excluded via row_kind filter; \"\n        \"60 sentinel-null DPD rows retained with imputed values per cleaning audit.\"\n    )\n    result['assumptions'].append(\n        \"Closed/paid-off/charged-off statuses excluded from on-book population before ratio computation.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

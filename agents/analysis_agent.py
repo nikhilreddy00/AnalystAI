@@ -244,10 +244,14 @@ result['builtin'] = []
 _targets, _segs, _date, _hints = {targets!r}, {segments!r}, {date!r}, {hints!r}
 try:
     if {bool(types & {"correlation", "hypothesis"})!r}:
+        # snapshot data (a level): one row per entity, its latest snapshot (never each one again)
+        _lv = next((_h for _h in _hints.values() if _h[0] in ('last', 'first') and _h[1]
+                    and all(_e in df.columns for _e in [*_h[1], _h[2]])), None)
+        _cdf = df.assign(_t=pd.to_datetime(df[_lv[2]], format='mixed', errors='coerce')).sort_values('_t', kind='stable').groupby(_lv[1]).tail(1) if _lv else df
         for _i, _a in enumerate(_targets):
             for _b in _targets[_i + 1:]:
                 if f'{{_a}}__{{_b}}' not in result['correlations'] and f'{{_b}}__{{_a}}' not in result['correlations']:
-                    _r = df[_a].corr(df[_b])
+                    _r = _cdf[_a].corr(_cdf[_b])
                     if _r == _r:
                         result['correlations'][f'{{_a}}__{{_b}}'] = round(float(_r), 4)
                         result['builtin'].append(f'corr:{{_a}}__{{_b}}')
@@ -443,8 +447,9 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
         samples={c.name: (c.sample_values or [])[:3] for c in contract.columns[:_MAX_COLUMNS]},
         # Only what the semantic layer matched (its column names are the operator's, equal to the
         # file's): a unit read from the file alone would put a file-written header out here.
-        aggregations=[_aggregation_line(c, {x.name for x in contract.columns})
-                      for c in contract.columns if c.aggregation],
+        aggregations=[_aggregation_line(c, {x.name for x in contract.columns}, bool(
+                          {t.value if hasattr(t, "value") else t for t in task.analysis_types}
+                          & {"correlation", "hypothesis"})) for c in contract.columns if c.aggregation],
         question=(task.raw_query or "")[:2000],
         **_domain(contract, task, audit),
     )
@@ -482,7 +487,7 @@ def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
     return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
 
 
-def _aggregation_line(c, names: set[str]) -> str:
+def _aggregation_line(c, names: set[str], correlates: bool = False) -> str:
     unit = f" ({c.unit})" if c.unit else ""
     if c.aggregation in ("last", "first"):
         need = [*c.aggregation_by, c.aggregation_time]
@@ -491,7 +496,9 @@ def _aggregation_line(c, names: set[str]) -> str:
                     "removed: never total it across dates or rows")
         return (f"{c.name}{unit} is a level: per period take each {', '.join(c.aggregation_by)}'s "
                 f"{c.aggregation} value (by {c.aggregation_time}), then sum; never sum it across "
-                "dates")
+                "dates" + (f". Correlations on this snapshot data use one row per "
+                           f"{', '.join(c.aggregation_by)} (its latest snapshot): every snapshot "
+                           "would count it many times" if correlates else ""))
     if c.aggregation == "mean":
         return f"{c.name}{unit} is summarized as an average (sum it only for a total that is asked for)"
     return f"{c.name}{unit} adds up" if c.aggregation == "sum" else f"{c.name}{unit}"

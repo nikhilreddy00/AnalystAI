@@ -22,7 +22,9 @@ _OUTLIERS = "Domain 2: the cleaning summary names outlier columns in full ('Line
 CHANGES: dict[str, dict[str, str]] = {
     "deterministic": {"bank_balances-1": _BANK, "bank_balances-2": _BANK, "bank_balances-3": _BANK,
                       "retail_lines-1": f"{_LAYOUT}; {_OUTLIERS}", "store_weeks-1": _OUTLIERS},
-    "analysis": {"bank-1": _BANK, "bank-2": _BANK},
+    "analysis": {"bank-1": _BANK, "bank-2": _BANK,
+                 "saas-3": "Domain 2: a correlation on snapshot data (MRR, a level) uses one row "
+                           "per account, its latest snapshot (pseudo-replication)"},
     "intake": {"intake-clear-sql-03": "Domain 2: account_id + balance is a weak banking match",
                **{f"intake-retail-0{i}": _LAYOUT for i in (1, 2, 3, 5, 6, 7, 8)}},
 }

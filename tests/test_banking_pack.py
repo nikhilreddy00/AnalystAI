@@ -308,3 +308,30 @@ def test_a_weak_banking_match_still_never_sums_a_balance():
 def test_the_iban_scan_ignores_non_ascii_lookalikes():
     from guardrails import mask_pii
     assert mask_pii("GB82WESTK2345698765432") == "GB82WESTK2345698765432"   # no crash
+
+
+def test_a_correlation_on_snapshot_data_counts_each_account_once(tape):
+    """Audit: correlations over all 14 snapshots counted each loan 14 times."""
+    import contextlib
+    import io
+    import json
+
+    from agents import analysis_agent
+    from orchestrator.state import AnalysisTask
+    df, c = tape
+    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
+            + analysis_agent._build_standard_code(c, AnalysisTask(
+                raw_query="q", target_metrics=["Outstanding Principal", "Days Past Due"],
+                analysis_types=["correlation"]))
+            + analysis_agent._CODE_FOOTER)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        exec(code, {"df": df})
+    got = json.loads(out.getvalue())["correlations"]["Outstanding Principal__Days Past Due"]
+    latest = df[df["As Of Date"] == "2026-10-31"]
+    assert got == pytest.approx(latest["Outstanding Principal"].corr(latest["Days Past Due"]), abs=1e-4)
+    task = AnalysisTask(raw_query="q", target_metrics=["Outstanding Principal"],
+                        analysis_types=["correlation"])
+    s = __import__("orchestrator.state", fromlist=["AnalysisSession"]).AnalysisSession(
+        session_id="t", data_contract=c, task_plan=task)
+    assert "one row per Loan ID (its latest snapshot)" in analysis_agent.build_context(s).render()
