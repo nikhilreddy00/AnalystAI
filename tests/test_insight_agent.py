@@ -384,3 +384,14 @@ def test_breakdowns_reach_the_prompt_whole_not_cut_at_300_characters():
     line, _ = line_for(cells[:25])
     assert cells[19]["name"] in line and cells[20]["name"] not in line
     assert "(+5 more groups not shown)" in line
+
+
+def test_a_display_name_already_written_is_not_renamed_again():
+    """Live run: 'Order Total' (Total → Order Total) became 'Order Order Total'."""
+    from agents.insight_agent import _clean_for_executive
+    from orchestrator.state import DataNarrative
+    n = DataNarrative(column_display_names={"Total": "Order Total", "Lineitem quantity": "Quantity",
+                                            "order_date": "Order Date"})
+    assert _clean_for_executive("Order Total fell; Total rose; order_date ok.", n) == \
+        "Order Total fell; Order Total rose; Order Date ok."
+    assert _clean_for_executive("Lineitem quantity and Quantity", n) == "Quantity and Quantity"

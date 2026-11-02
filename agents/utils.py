@@ -358,3 +358,55 @@ def current_window(df, date: str, start: str | None, end: str | None, weekly: bo
     twin = max(lo, first.normalize() + _year_back(weekly))   # the twin starts no earlier than the data
     t = _local(pd.to_datetime(df[date], errors="coerce"))
     return df[(t >= twin) & (t <= hi)], f"{twin:%d %b %Y} to {hi:%d %b %Y}", twin > lo
+
+
+def cut_partial(series, t, freq: str, rule: str | None = None):
+    """Leave out a first or last bucket the dates don't cover from its start to its end, by the
+    data's own spacing: daily data by the weekdays it trades (a Mon-Fri week ends on Friday; a
+    month may open on the 2nd or 3rd), weekly or monthly rows by whether the next expected date
+    falls outside the bucket (weekly data covers a month through its last week-ending; month-start
+    data covers its quarter). A middle bucket
+    is never partial (a closed week is a fact to show). A month's end: the shared rule
+    (utils.partial_last_month, also in the sandbox and the charts). May leave nothing: the note
+    then says no complete period is covered, and the caller answers without a comparison."""
+    import pandas as pd
+
+    if freq not in ("W", "M", "Q", "Y") or series.empty:
+        return series, ""
+    d = _local(pd.to_datetime(t, errors="coerce")).dropna().dt.normalize().drop_duplicates().sort_values()
+    if d.empty:
+        return series, ""
+    period = rule or freq
+    labels = series.index if isinstance(series.index, pd.PeriodIndex) else series.index.to_period(period)
+    step = d.diff().median() if len(d) > 1 else pd.Timedelta(days=1)
+    first, last = labels[0], labels[-1]
+    start, end = first.start_time.normalize(), last.end_time.normalize()
+    if step <= pd.Timedelta(days=1):
+        # daily data: the trading days it would have had, on the weekdays it trades (a Mon-Fri
+        # seller's week ends on Friday); a long bucket may miss a couple (a holiday opening)
+        trades = set(d.dt.weekday) if len(d) >= 14 else set(range(7))
+
+        def missing(lo, hi) -> int:
+            return sum(x.weekday() in trades for x in pd.date_range(lo, hi))
+        slack = {"W": 0}.get(freq, 2)
+        cut_first = missing(start, d.min() - pd.Timedelta(days=1)) > slack
+        cut_last = missing(d.max() + pd.Timedelta(days=1), end) > slack
+    else:   # weekly or monthly rows: the next expected date falls outside the bucket
+        if pd.Timedelta(days=28) <= step <= pd.Timedelta(days=31):
+            step = pd.Timedelta(days=31)   # monthly rows: a month on, whatever the month's length
+        cut_first = d.min() - step >= start
+        cut_last = d.max() + step <= end
+    if freq == "M" and len(series) >= 3:   # a month's end: the shared rule
+        cut_last = bool(partial_last_month(t)) and d.max() < end
+    unit, note = {"M": "month", **_UNIT}[freq], ""
+    if cut_last:
+        note += f" The last {unit} ({last}) is left out: it is covered only to {d.max():%d %b %Y}."
+    if cut_first and (len(series) > 1 or not cut_last):
+        note += f" The first {unit} ({first}) is left out: it is covered only from {d.min():%d %b %Y}."
+    series = series.iloc[int(cut_first): len(series) - int(cut_last)]
+    if series.empty:
+        note = f" No complete {unit} is covered ({d.min():%d %b %Y} to {d.max():%d %b %Y})."
+    return series, note
+
+
+_UNIT = {"W": "week", "Q": "quarter", "Y": "year"}

@@ -440,7 +440,9 @@ _SCOPE_RE = re.compile(r"\b(?:data(?:set)?|cover(?:s|ed|ing)?|spans?|spanning|th
 _POSITION_RE = re.compile(r"\b(?:latest|last|recent|final|first|earliest|previous|prior|vs|"
                           r"versus|compared|month[- ]over[- ]month|MoM|before|after|since|"
                           r"until|between|starting|onwards?|beginning|through|thru|up to|ending)\b", re.I)
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+# One sentence rule for every check (and insight, drill-down): a stop then a capital, digit or
+# quote, so "vs. last year" and "e.g. returns" stay one sentence.
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
 
 
 def _month_no(name: str) -> int:
@@ -538,7 +540,8 @@ _CAUSAL_RE = re.compile(r"\b(?:drives?|drove|driving|driven by|causes?|caused|ca
                         r"(?:rise|grow|increase))\b", re.I)
 _NOT_ASSERTED_RE = re.compile(r"\b(?:whether|if|test|experiment|validate|determine|isolate|"
                               r"could|may|might|not|n't|no|rather than|imply|implies|possible|"
-                              r"likely|association|associated|correlat\w*)\b", re.I)
+                              r"likely|association|associated|correlat\w*|unclear|cannot|"
+                              r"uncertain|inconclusive|insufficient|lacks?)\b", re.I)
 _CERTAIN_RE = re.compile(r"\b(?:clearly|reliabl[ey]|proven|proves?|definitive(?:ly)?|"
                          r"conclusive(?:ly)?|confirm(?:s|ed)?|certain(?:ly)?|undeniabl[ey]|"
                          r"without doubt|guarantee[sd]?|real difference|statistically "
@@ -616,10 +619,15 @@ def _label_hits(text: str, labels: set[str]) -> list[tuple[int, int, str]]:
     grouping noun ('segment A'), so the article 'a' is never a group."""
     out = []
     for lab in labels:
-        for m in re.finditer(rf"(?<![\w']){re.escape(lab)}(?!\w|'(?!s\b))", text):
+        # 'partially_refunded' is written 'partially refunded' in prose
+        pat = r"[\s_-]+".join(re.escape(w) for w in re.split(r"[\s_-]+", lab))
+        for m in re.finditer(rf"(?<![\w']){pat}(?!\w|'(?!s\b))", text):
             if len(lab) <= 2 and not _GROUP_NOUN_RE.search(text[:m.start()]):
                 continue
             out.append((m.start(), m.end(), lab))
+    # a label inside a longer one's span ('refunded' in 'partially refunded') is not named
+    out = [h for h in out if not any(o[0] <= h[0] and h[1] <= o[1] and o[1] - o[0] > h[1] - h[0]
+                                     for o in out)]
     # "Segment B" names a group even when B is not in the evidence at all.
     for m in re.finditer(r"\b(?i:segment|group|region|plan|tier|department|cohort|team)\s+"
                          r"([A-Z][\w-]*)(?!\w)", text):
@@ -767,8 +775,8 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
             return f"states a cause ('{m.group(0)}') from a correlation"
     if not triggers or "test" in cited_kinds:
         return None
-    for sentence in re.split(r"(?<=[.!?])\s+", text):
-        if _NOT_ASSERTED_RE.search(sentence) or re.search(r"\bunclear\b", sentence, re.I):
+    for sentence in _SENTENCE_RE.split(text):
+        if _NOT_ASSERTED_RE.search(sentence):
             continue
         verbs = [*_TRIGGER_CAUSAL_RE.finditer(sentence), *_SUBJECT_VERB_RE.finditer(sentence)]
         for v in verbs:
@@ -805,7 +813,7 @@ def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
     if has_cost:
         return None
     for sentence in _SENTENCE_RE.split(text):
-        if _HEDGE_RE.search(sentence) or _COST_ASK_RE.search(sentence):
+        if _NOT_ASSERTED_RE.search(sentence) or _COST_ASK_RE.search(sentence):
             continue   # hedged, or about the missing cost data ('Add cost data to measure margin')
         # a name, not a claim: 'the Profit Center store', 'Margin Street store'
         if m := next((m for m in _PROFIT_RE.finditer(sentence)

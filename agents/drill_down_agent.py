@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import io
 import json
-import re
 import uuid
 
 import pandas as pd
@@ -17,6 +16,7 @@ from agents.errors import LLMOutputError
 from agents.utils import strip_markdown_fences
 from domain_pack import defaults_pack
 from guardrails import (
+    _SENTENCE_RE,
     UNTRUSTED_NOTE,
     claim_causal_overreach,
     delimit_untrusted,
@@ -226,7 +226,7 @@ def checked_answer(answer: str, session: AnalysisSession, shown: list) -> str:
     triggers = pack.causal_triggers
     has_dates = bool(contract and contract.date_columns)
     kept, dropped = [], 0
-    for s in (x for x in re.split(r"(?<=[.!?])\s+", answer) if x.strip()):
+    for s in (x for x in _SENTENCE_RE.split(answer) if x.strip()):
         if ungrounded_numbers(without_dates(s, has_dates), shown) or (
                 triggers and claim_causal_overreach(s, [], triggers)):
             dropped += 1

@@ -182,6 +182,15 @@ async def download_latest_report(
     )
 
 
+def json_rows(df):
+    """Rows as JSON-safe records: NaN, ±inf and NaT become None (a float column keeps NaN
+    under a plain `where(notna, None)`, and JSONResponse refuses it)."""
+    import numpy as np
+
+    df = df.replace([np.inf, -np.inf], np.nan).astype(object)
+    return df.where(df.notna(), None).to_dict("records")
+
+
 @router.get("/latest/data")
 @limiter.limit("30/minute")
 async def get_latest_dashboard_data(
@@ -220,8 +229,7 @@ async def get_latest_dashboard_data(
     from agents.visualization_agent import classify_columns
     roles = classify_columns(df)
 
-    # NaN → None so the JSON payload is valid
-    rows = df.where(df.notna(), None).to_dict("records")
+    rows = json_rows(df)
 
     return {
         "session_id": session.session_id,

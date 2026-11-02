@@ -48,15 +48,19 @@ def _gen(name: str, seed: int = 1) -> pd.DataFrame:
 
 
 _BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
-         "roles": {"r": {"kind": "money", "headers": ["rev"]}, "s": {"kind": "count", "headers": ["q"]}},
+         "roles": {"r": {"kind": "money", "headers": ["rev"]}, "s": {"kind": "count", "headers": ["q"]},
+                   "d": {"kind": "date", "headers": ["day"]}},
          "caveats": {"read_as_domain_weak": "Read as x data: {roles}."}}
 
 
 @pytest.mark.parametrize("change, error", [
-    ({"roles": {"r": {"kind": "money", "headers": ["Rev"]}, "s": {"kind": "count", "headers": ["q"]}}},
-     "not normalized"),
-    ({"roles": {"r": {"kind": "money", "headers": ["rev"]}, "s": {"kind": "money", "headers": ["rev"]}}},
-     "same kind"),
+    ({"roles": {**_BASE["roles"], "r": {"kind": "money", "headers": ["Rev"]}}}, "not normalized"),
+    ({"roles": {**_BASE["roles"], "s": {"kind": "money", "headers": ["rev"]}}}, "same kind"),
+    ({"roles": {r: x for r, x in _BASE["roles"].items() if r != "d"}}, "kind date"),
+    ({"order_key": "nope"}, "unknown role nope"),
+    ({"line_weight": ["r", "/", "s"]}, "line_weight"),
+    ({"cost_roles": ["zzz"]}, "unknown role zzz"),
+    ({"text": {"no_such_text": "x"}}, "text"),
     ({"signals": [{"a": ["r"]}]}, "two groups"),
     ({"signals": [{"a": ["r"], "b": ["nope"]}]}, "unknown role nope"),
     ({"test_marker": "(unclosed"}, "invalid regex"),
@@ -1990,3 +1994,20 @@ def test_a_short_window_total_carries_no_left_out_note(shop):
     text = _ask(s, "daily net sales 1-7 Feb 2026", QuestionIntent.TIME_SERIES, kpi="net_sales",
                 frequency="D", period_start="2026-02-01", period_end="2026-02-07").answer_text
     assert "left out:" not in text.split("How:")[0] and "(01 Feb 2026 to 07 Feb 2026): $" in text, text
+
+
+def test_a_packs_trend_has_year_over_year_when_the_same_month_last_year_is_there():
+    """Live run: the overview led with January −30% MoM; it is +8% YoY and no YoY was built."""
+    df = _gen("retail_lines")
+    g = _months_for(df.assign(**{"Created at": df["Created at"].astype(str)}), "Created at",
+                    "Lineitem price")
+    t = {t["period"]: t for t in g["result"]["trends"] if not t.get("segment")}
+    m = pd.to_datetime(df["Created at"].astype(str), utc=True).dt.tz_localize(None).dt.to_period("M")
+    tot = df.groupby(m.values)["Lineitem price"].sum()
+    jan26, jan25 = tot[pd.Period("2026-01")], tot[pd.Period("2025-01")]
+    assert t["YoY"]["pct_change"] == round((jan26 / jan25 - 1) * 100, 2)
+    assert "trend:Lineitem price:YoY" in g["result"]["builtin"]
+    # no pack, no new evidence: 30 months of SaaS billing keeps MoM only
+    s = _gen("subscriptions")
+    g = _months_for(s, "billing_date", "mrr")
+    assert {t["period"] for t in g["result"]["trends"]} == {"MoM"}

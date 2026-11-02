@@ -24,6 +24,24 @@ CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "pa
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded")
 
 
+RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
+# A pack's own sentences; each has a domain-neutral default (TEXT_DEFAULTS).
+TextKey = Literal["rows_brief", "grain_line", "unsupported_alternatives", "kpis_default",
+                  "causal_removed", "return_rule", "refunded_rule", "cancel_rule"]
+TEXT_DEFAULTS = {
+    "rows_brief": "Figures use sale rows; net figures sale and return rows.",
+    "grain_line": "One row is a line of a larger record: count records as distinct {key}, never "
+                  "rows; an average per record divides by records.",
+    "unsupported_alternatives": "I can answer with what the data has. Which would help?",
+    "kpis_default": "its main columns",
+    "causal_removed": "{n} sentence(s) saying an action caused a change were removed: without a "
+                      "control group that can't be shown.",
+    "return_rule": "a return (netted in net figures)",
+    "refunded_rule": "reversed (left out)",
+    "cancel_rule": "cancelled (left out)",
+}
+
+
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -101,6 +119,17 @@ class Pack(_Strict):
     ranges: dict[str, dict[Literal["gt", "ge", "lt", "le"], float]] = Field(default_factory=dict)
     # Fields an export writes on an order's first line only (Shopify): carried down the order.
     order_fields: list[str] = Field(default_factory=list)
+    # The row layout, in this domain's roles (none: the behaviour is off, never borrowed):
+    negative_is_return: list[str] = Field(default_factory=list)   # a negative value: a return
+    order_key: str | None = None    # the role that groups rows into one order (orders, dedup)
+    item_roles: list[str] = Field(default_factory=list)   # a line's item: order + item = one line
+    line_weight: list[str] | None = None   # [role, '*', role]: a line's share of an order value
+    cost_roles: list[str] = Field(default_factory=list)   # margin or profit needs one of these
+    location_role: str | None = None   # sites that open and close (comparable-store growth)
+    # Words: each row kind's name ("refunded orders") and its cleaning flag; `text` for the rest.
+    row_labels: dict[RowKind, str] = Field(default_factory=dict)
+    row_flags: dict[RowKind, str] = Field(default_factory=dict)
+    text: dict[TextKey, str] = Field(default_factory=dict)
     kpis: list[KPI] = Field(default_factory=list)
     glossary: dict[str, list[str]] = Field(default_factory=dict)   # KPI or concept → its words
     definitions: dict[str, str] = Field(default_factory=dict)      # a non-KPI concept → its rule
@@ -113,6 +142,17 @@ class Pack(_Strict):
 
     def kpi(self, name: str) -> KPI | None:
         return next((k for k in self.kpis if k.name == name), None)
+
+    @property
+    def date_role(self) -> str:
+        """The domain's time role: the first role of kind date (the validator requires one)."""
+        return next(r for r, x in self.roles.items() if x.kind == "date")
+
+    def label(self, kind: str) -> str:
+        return self.row_labels.get(kind, kind.replace("_", "-") + " rows")
+
+    def say(self, which: str, **kw) -> str:
+        return self.text.get(which, TEXT_DEFAULTS[which]).format(**kw)
 
     @model_validator(mode="after")
     def _check(self) -> Pack:
@@ -127,9 +167,15 @@ class Pack(_Strict):
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
-                *self.test_roles,
+                *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles,
+                *(r for r in (self.order_key, self.location_role) if r),
+                *(self.line_weight[::2] if self.line_weight else []),
                 *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g)]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
+        if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
+            errors.append(f"line_weight is [role, '*' or '-', role], not {self.line_weight}")
+        if not any(r.kind == "date" for r in self.roles.values()):
+            errors.append("roles: one role of kind date is needed (periods, partial months)")
         if not self.signals or any(len(alt) < 2 for alt in [*self.signals, *self.strong]):
             errors.append("each signals alternative needs two groups (two independent signals)")
         for where, rx in [*((f"role {r}", x.pattern) for r, x in self.roles.items()),
@@ -187,8 +233,9 @@ def normalize_header(name: str) -> str:
 @cache
 def load_packs() -> tuple[Pack, ...]:
     """Every pack in domain_packs/, loaded once (at boot by the API and the worker)."""
-    return tuple(Pack.model_validate(yaml.safe_load(p.read_text()))
-                 for p in sorted(PACKS.glob("*.yaml")))
+    packs = tuple(Pack.model_validate(yaml.safe_load(p.read_text()))
+                  for p in sorted(PACKS.glob("*.yaml")))
+    return packs
 
 
 def pack_for(domain: str | None) -> Pack | None:
@@ -262,7 +309,12 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
             found.append((pack.domain, roles, "strong"))
         elif _matches(pack.signals, roles):
             found.append((pack.domain, roles, "weak"))
-    return found[0] if len(found) == 1 else (None, {}, None)
+    # a shape only one domain has beats another domain's weaker match; two equal: neither
+    best = [f for f in found if f[2] == "strong"] or found
+    if len(best) > 1:
+        from llm.client import trace_verdict
+        trace_verdict("ingestion", "pack", "domain_ambiguous")
+    return best[0] if len(best) == 1 else (None, {}, None)
 
 
 # ── Row kinds and KPIs ────────────────────────────────────────────────────────────────────────
@@ -272,7 +324,7 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
     A return is a negative quantity/amount or a credit note; refunded is an order whose status
     says the sale was reversed (its lines stay positive, so it is left out, never netted)."""
     kind = pd.Series("sale", index=df.index, dtype=object)
-    for role in ("quantity", "revenue"):
+    for role in pack.negative_is_return:
         if role in roles:
             kind[pd.to_numeric(df[roles[role]], errors="coerce") < 0] = "return"
     for role, prefix in pack.credit_prefix.items():
@@ -326,9 +378,9 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str]) -> p
 def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> bool:
     """A single order-level role (Shopify's discount) whose value is constant within every
     order: counted once per order. A per-line discount differs within an order: summed."""
-    if not isinstance(expr, str) or pack.roles[expr].level != "order" or "order_id" not in roles:
+    if not isinstance(expr, str) or pack.roles[expr].level != "order" or pack.order_key not in roles:
         return False
-    per = df.groupby(df[roles["order_id"]], dropna=True)[roles[expr]].nunique(dropna=False)
+    per = df.groupby(df[roles[pack.order_key]], dropna=True)[roles[expr]].nunique(dropna=False)
     return bool(len(per)) and int(per.max()) <= 1
 
 
@@ -355,9 +407,10 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     if _order_level(df, roles, pack, expr):
         # One value per order on each of its lines: counted once. Grouped by anything inside an
         # order (a product, a category), each line takes its share of the order's line value.
-        order = part[roles["order_id"]]
-        weight = (_column(part, roles, ["quantity", "*", "unit_price"])
-                  if {"quantity", "unit_price"} <= roles.keys() else pd.Series(1.0, index=part.index))
+        order = part[roles[pack.order_key]]
+        lw = pack.line_weight
+        weight = (_column(part, roles, lw) if lw and {lw[0], lw[2]} <= roles.keys()
+                  else pd.Series(1.0, index=part.index))
         weight = weight.where(weight > 0, 0).fillna(0)
         total = weight.groupby(order).transform("sum")
         n = order.groupby(order).transform("size")
@@ -427,8 +480,9 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     return None if pd.isna(value) else float(value)
 
 
-_ROWS_TEXT = {"sale": "sales", "return": "returns", "refunded": "refunded orders",
-              "cancel": "cancelled orders", "test": "test orders", "non_product": "non-product lines"}
+def money_columns(pack: Pack, roles: dict[str, str]) -> set[str]:
+    """The data's columns in the pack's money roles (where a currency symbol says the unit)."""
+    return {c for r, c in roles.items() if r in pack.roles and pack.roles[r].kind == "money"}
 
 
 def used_terms(pack: Pack, kpi: KPI, roles: dict[str, str], side: str = "num") -> list[Term]:
@@ -485,7 +539,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
         cols = roles[expr] if isinstance(expr, str) else (
             f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
-            and "order_id" in roles else ""
+            and pack.order_key in roles else ""
         return f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}"
 
     def side(name_: str) -> str:
@@ -495,8 +549,8 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
 
     text = side("num") + (f", divided by {side('den')}" if kpi.den else "")
     if any(not t.kpi for t in used_terms(pack, kpi, roles)):   # a ratio of KPIs says it there
-        left_out = [_ROWS_TEXT[k] for k in ROW_KINDS if k not in kpi.rows and k in present]
-        text += f"; over {' and '.join(_ROWS_TEXT[k] for k in kpi.rows)}"
+        left_out = [pack.label(k) for k in ROW_KINDS if k not in kpi.rows and k in present]
+        text += f"; over {' and '.join(pack.label(k) for k in kpi.rows)}"
         text += f" ({', '.join(left_out)} left out)" if left_out else ""
     return text[0].upper() + text[1:] + "."
 
@@ -525,22 +579,23 @@ def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[s
 def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(ROW_KINDS)) -> str:
     """Which rows are not plain sales, in the pack's words, for the kinds this data has."""
     rules = []
-    if "return" in present and (any(r in roles for r in ("quantity", "revenue"))
+    if "return" in present and (any(r in roles for r in pack.negative_is_return)
                                 or any(r in roles for r in pack.credit_prefix)):
-        neg = " or ".join(r for r in ("quantity", "revenue") if r in roles)
+        neg = " or ".join(r for r in pack.negative_is_return if r in roles)
         credit = [f"{r} starting {p!r}" for r, p in pack.credit_prefix.items() if r in roles]
-        rules.append("a return (netted in net sales): " + " or ".join(
+        rules.append(pack.say("return_rule") + ": " + " or ".join(
             ([f"a negative {neg}"] if neg else []) + credit))
     sv = pack.status_values
     if "status" in roles and "refunded" in present:
-        rules.append(f"refunded (left out): status in {sv.get('return', [])}")
+        rules.append(f"{pack.say('refunded_rule')}: status in {sv.get('return', [])}")
     if "status" in roles and "cancel" in present:
-        rules.append(f"cancelled (left out): status in {sv.get('cancel', [])}")
+        rules.append(f"{pack.say('cancel_rule')}: status in {sv.get('cancel', [])}")
     if "non_product" in present:
         rules += [f"non-product (left out): {r} in {v}" for r, v in pack.non_product.items() if r in roles]
     test = [r for r in pack.test_roles if r in roles]
     if pack.test_marker and test and "test" in present:
-        rules.append(f"a test order (left out): {' or '.join(test)} matching {pack.test_marker!r}")
+        rules.append(f"a {pack.label('test').removesuffix('s')} (left out): {' or '.join(test)} "
+                     f"matching {pack.test_marker!r}")
     return "; ".join(rules)
 
 
@@ -557,17 +612,16 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
                      "kind (sale, return, refunded, "
                      "cancel, test, non_product, other_currency), computed by these rules: filter on "
                      "it, never re-derive it. Personal columns (email, names) reach you as "
-                     "pseudonyms, so test orders cannot be found from them: only this column marks "
-                     "them. Sales figures use sale rows; net figures sale and return rows. Column "
+                     f"pseudonyms, so {pack.label('test')} cannot be found from them: only this "
+                     f"column marks them. {pack.say('rows_brief')} Column "
                      "profiles (eda_summary, distributions) describe every row, as loaded.")
     if rules := row_rules(pack, roles, present):
         lines.append(f"Row kinds: {rules}.")
     if currency and "currency" in roles:
         lines.append(f"Every figure uses {currency} rows only: rows in another currency are left "
                      "out (never added across currencies).")
-    if grain == "line":
-        lines.append("One row is an order line: count orders as distinct order_id, never rows; "
-                     "an average per order divides by orders.")
+    if grain == "line" and pack.order_key:
+        lines.append(pack.say("grain_line", key=pack.order_key))
     for c in dict.fromkeys(concepts):
         if kpi := pack.kpi(c):
             if computable(pack, c, roles):
@@ -603,13 +657,13 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     kinds = {s for s in flags if s in ROW_KINDS}
     kpis = ", ".join(k.label.lower() for k in pack.kpis if k.tile and computable(pack, k.name, roles)
                      and ("sale" in k.rows or set(k.rows) & kinds))
-    date = roles.get("date")
+    date = roles.get(pack.date_role)
     span = audit.date_ranges.get(date) if date and audit else None
     facts: dict[str, dict] = {}
     if confidence == "weak":
         facts["read_as_domain_weak"] = {"roles": shown}
     elif confidence == "strong":
-        facts["read_as_domain"] = {"kpis": kpis or "its sales columns"}
+        facts["read_as_domain"] = {"kpis": kpis or pack.say("kpis_default")}
     if "repeated_rows" in flags:
         facts["repeated_rows_kept"] = {"n": f"{flags['repeated_rows'].rows_affected:,}"}
     if audit and date and (p := audit.partial_months.get(date)):
@@ -686,15 +740,14 @@ def first_questions(pack: Pack, roles: dict[str, str], df: pd.DataFrame | None =
             return n in roles
         if df is None:
             return True   # not knowable without the data: offered, as before
-        if n == "year":
-            t = pd.to_datetime(df[roles["date"]], errors="coerce").dropna() if "date" in roles else None
+        if n == "year":   # 13 complete months, by the one coverage rule answers use
+            from agents.utils import _local, cut_partial
+            date = roles.get(pack.date_role)
+            t = _local(pd.to_datetime(df[date], errors="coerce")).dropna() if date else None
             if t is None or t.empty:
                 return False
-            lo, hi = t.min(), t.max()   # complete months: a few days' slack at either end
-            months = (hi.to_period("M") - lo.to_period("M")).n + 1
-            months -= (lo.day > 3) + (hi.normalize() < (hi + pd.offsets.MonthEnd(0)).normalize()
-                                      - pd.Timedelta(days=3))
-            return months >= 13
+            months = t.groupby(t.dt.to_period("M")).size().sort_index()
+            return len(cut_partial(months, t, "M")[0]) >= 13
         return n in kinds
     return [q if isinstance(q, str) else str(q["q"]) for q in pack.first_questions
             if isinstance(q, str) or all(any(has(a) for a in n.split("|")) for n in q.get("needs", []))]

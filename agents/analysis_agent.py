@@ -271,7 +271,8 @@ try:
         def _level_months(_tc):
             return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))
         # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
-        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]
+        _yoy = {defaults_pack(contract) is not None!r}
+        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') in (('MoM', 'YoY') if _yoy else ('MoM',)) and t.get('column') in _targets)]
         # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else
         # by month total. A semantic layer (Phase 4) can declare the aggregation instead.
         # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's
@@ -279,7 +280,7 @@ try:
         # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months
         # compare fairly (agents.utils.weekly_cadence).
         _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
-        _weekly = {defaults_pack(contract) is not None!r} and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
+        _weekly = _yoy and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
         # a domain's money columns count sale and return rows in the main currency (as its tiles)
         _money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
         def _mom(_frame, _col):
@@ -306,6 +307,12 @@ try:
                 return None, 0
             _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])
             _n = int(_frame.loc[_last2, _col].notna().sum())
+            # a domain's data compares the last full month with the same month a year earlier
+            _ago = _tot.index[-1] - 12 if _yoy else None
+            if _ago is not None and _ago in _tot.index and _tot[_ago] != 0:
+                _pair = _mon.loc[_frame.index].isin([_tot.index[-1], _ago])
+                _y = round(float((_tot.iloc[-1] / _tot[_ago] - 1) * 100), 2)
+                _yearly.append((_col, _y, int(_frame.loc[_pair, _col].notna().sum())))
             return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n
         for _c in _targets:
             _jobs = [(None, df)]
@@ -313,11 +320,16 @@ try:
                 _top = df[_segs[0]].value_counts().head(10).index
                 _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]
             for _seg, _frame in _jobs:
+                _yearly = []
                 _p, _n = _mom(_frame, _c)
                 if _p is not None:
                     result['trends'].append({{'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,
                                              'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'}})
                     result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':MoM')
+                for _, _y, _yn in _yearly:
+                    result['trends'].append({{'column': _c, 'period': 'YoY', 'pct_change': _y, 'segment': _seg, 'n': _yn,
+                                             'direction': 'up' if _y > 0 else 'down' if _y < 0 else 'flat'}})
+                    result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':YoY')
 except Exception:
     pass
 try:

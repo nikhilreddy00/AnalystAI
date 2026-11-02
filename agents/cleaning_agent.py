@@ -346,7 +346,9 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     n_dup = int(dup.sum())
     keys = [c for c in ids if c in df.columns
             and df[c].nunique() >= 0.9 * max(int(df[c].notna().sum()), 1)]
-    order, item = ctx.roles.get("order_id"), ctx.roles.get("sku") or ctx.roles.get("product")
+    pack = ctx.pack
+    order = ctx.roles.get(pack.order_key) if pack and pack.order_key else None
+    item = next((ctx.roles[r] for r in (pack.item_roles if pack else []) if r in ctx.roles), None)
     if n_dup and not keys and order and item and not ctx.deidentified:   # whole orders: any match
         # Order lines: an export overlap repeats whole orders (their copies go); one line
         # repeated inside an order is a second scan of the item (kept, flagged). Per order.
@@ -462,13 +464,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
     currency, other = None, 0
     if ctx.pack:
         kinds = row_kinds(df, roles, ctx.pack).value_counts()
-        for kind, what in (("return", "return or credit lines (a negative quantity or amount, or "
-                                      "a credit note): netted in net sales"),
-                           ("refunded", "lines of refunded orders: left out of net sales"),
-                           ("cancel", "lines of cancelled or voided orders: left out of sales"),
-                           ("test", "test-order lines: left out of sales"),
-                           ("non_product", "postage, fee or adjustment lines: left out of product "
-                                           "and sales figures")):
+        for kind in ("return", "refunded", "cancel", "test", "non_product"):
+            what = ctx.pack.row_flags.get(kind, f"{ctx.pack.label(kind)}: left out of the figures")
             if n := int(kinds.get(kind, 0)):
                 log("*", "flag", kind, f"{n} {what}; kept in the data.", n)
         _, currency, other = main_currency(df, roles)

@@ -31,6 +31,7 @@ from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
 from agents.utils import pii_columns, strip_markdown_fences
 from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
+    _SENTENCE_RE,
     UNTRUSTED_NOTE,
     delimit_untrusted,
     executive_jargon,
@@ -95,7 +96,6 @@ _SYSTEM = (INSIGHT_CARD.render() + "\n\n" + (_PROMPTS / f"{PROMPT_VERSION}.md").
 _MAX_EVIDENCE = 40     # ponytail: an item cap, not a token budget; revisit for wide tables
 _MAX_GROUPS = 20       # breakdown cells shown per segment; more are counted, never cut silently
 _CONVENTIONS = [0.05, 0.01, 0.001, 0.95, 0.99]   # significance levels prose may cite
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
 
 
 # ── Context ────────────────────────────────────────────────────────────────────
@@ -377,8 +377,11 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
                        "breakdown were removed.")
     if removed["causal"]:
         trace_verdict("insight", PROMPT_VERSION, "causal_removed")
-        caveats.append(f"{removed['causal']} sentence(s) saying a promotion or discount caused a "
-                       "change were removed: without a control group that can't be shown.")
+        pack = defaults_pack(session.data_contract) or pack_for(session.data_contract.domain
+                                                                 if session.data_contract else None)
+        caveats.append(pack.say("causal_removed", n=removed["causal"]) if pack else
+                       f"{removed['causal']} sentence(s) saying an action caused a change were "
+                       "removed: without a control group that can't be shown.")
 
     executive = ExecutiveSummary(headline=headline, headline_evidence_ids=head_ids,
                                  paragraphs=summary, findings=claims, action_items=actions)
@@ -607,12 +610,18 @@ def _clean_for_executive(text: str, narrative: DataNarrative | None) -> str:
     if not text:
         return ""
     out = text.replace("`", "")
-    # Longest raw name first so 'order_date' wins over 'order'; skip same-word no-ops.
+    # One pass, longest first, so 'order_date' wins over 'order' and a display name already
+    # written ('Order Total' for Total) is kept, not renamed again ('Order Order Total').
     if narrative and narrative.column_display_names:
-        for raw_name, display in sorted(narrative.column_display_names.items(),
-                                        key=lambda kv: len(kv[0]), reverse=True):
-            if raw_name and raw_name.lower() != display.lower():
-                out = re.sub(rf"\b{re.escape(raw_name)}\b", display, out, flags=re.IGNORECASE)
+        shown = {raw.lower(): d for raw, d in narrative.column_display_names.items()
+                 if raw and raw.lower() != d.lower()}
+        keep = {d.lower() for d in shown.values()}
+        if shown:
+            pat = "|".join(re.escape(k) for k in sorted(shown.keys() | keep, key=len,
+                                                       reverse=True))
+            out = re.sub(rf"\b(?:{pat})\b", lambda m: shown.get(m.group(0).lower(), m.group(0))
+                         if m.group(0).lower() not in keep else m.group(0), out,
+                         flags=re.IGNORECASE)
     for needle, replacement in _EXECUTIVE_REPLACEMENTS.items():
         out = re.sub(re.escape(needle), replacement, out, flags=re.IGNORECASE)
 

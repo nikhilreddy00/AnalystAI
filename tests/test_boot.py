@@ -121,7 +121,7 @@ def test_the_shipped_packs_are_valid_found_from_any_directory_and_in_the_image(t
     root = Path(__file__).parent.parent
     monkeypatch.chdir(tmp_path)
     domain_pack.load_packs.cache_clear()
-    assert [p.domain for p in domain_pack.load_packs()] == ["retail"]
+    assert "retail" in [p.domain for p in domain_pack.load_packs()]   # any later pack beside it
     ignored = (root / ".dockerignore").read_text().split()
     assert not {"domain_packs", "domain_packs/", "*.yaml", "domain_pack.py"} & set(ignored)
     assert "COPY . ." in (root / "Dockerfile").read_text()

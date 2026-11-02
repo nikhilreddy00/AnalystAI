@@ -104,6 +104,31 @@ ranges: {unit_price: {ge: 0}, discount_rate: {le: 1}}
 # Shopify writes these on an order's first line only; the total stays there (summing it down an
 # order's lines would count it once per line).
 order_fields: [status, email, customer_id, country, currency, channel]   # never money: a discount
+
+# The row layout in retail's roles (domain_pack: shared code reads these, never role names).
+negative_is_return: [quantity, revenue]     # a negative line is a return, netted
+order_key: order_id
+item_roles: [sku, product]                  # order + item = one line (export-overlap dedup)
+line_weight: [quantity, "*", unit_price]    # a line's share of an order-level value
+cost_roles: [cost, unit_cost, profit]       # margin or profit talk needs one of these
+location_role: store                        # stores opening or closing: total vs comparable growth
+row_labels: {sale: sales, return: returns, refunded: refunded orders, cancel: cancelled orders,
+             test: test orders, non_product: non-product lines}
+row_flags:
+  return: "return or credit lines (a negative quantity or amount, or a credit note): netted in net sales"
+  refunded: "lines of refunded orders: left out of net sales"
+  cancel: "lines of cancelled or voided orders: left out of sales"
+  test: "test-order lines: left out of sales"
+  non_product: "postage, fee or adjustment lines: left out of product and sales figures"
+text:
+  rows_brief: "Sales figures use sale rows; net figures sale and return rows."
+  grain_line: "One row is an order line: count orders as distinct {key}, never rows; an average per order divides by orders."
+  unsupported_alternatives: "I can answer with what the data has: net sales, units sold or returns by product. Which would help?"
+  kpis_default: its sales columns
+  causal_removed: "{n} sentence(s) saying a promotion or discount caused a change were removed: without a control group that can't be shown."
+  return_rule: a return (netted in net sales)
+  refunded_rule: refunded (left out)
+  cancel_rule: cancelled (left out)
                                                                          # carried down is counted per line
 
 kpis:

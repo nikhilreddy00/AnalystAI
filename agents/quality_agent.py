@@ -167,7 +167,8 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     contract = session.data_contract
     pack = defaults_pack(contract)   # pack conventions: strong matches only (a weak one only hedges)
     triggers = pack.causal_triggers if pack else ()
-    has_cost = not pack or bool({"cost", "unit_cost", "profit"} & set(contract.roles))
+    # the profit rule is a pack's: only one that names its cost roles has it
+    has_cost = not (pack and pack.cost_roles) or bool(set(pack.cost_roles) & set(contract.roles))
     flags: list[ReviewFlag] = []
     for i, c in enumerate(report_claims(report)):
         text, ids = c["text"], [x for x in c["ids"] if x in evidence]

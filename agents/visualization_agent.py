@@ -38,7 +38,15 @@ from agents.utils import (
     partial_last_month,
     weekly_cadence,
 )
-from domain_pack import compute_kpi, defaults_pack, describe_kpi, main_currency, money_rows, row_kinds
+from domain_pack import (
+    compute_kpi,
+    defaults_pack,
+    describe_kpi,
+    main_currency,
+    money_columns,
+    money_rows,
+    row_kinds,
+)
 from guardrails import chart_lint
 from llm.client import trace_verdict
 
@@ -1151,8 +1159,8 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     _, currency, other = main_currency(df, roles)
     present = set(row_kinds(df, roles, pack).unique())
-    money = currency or next((c.unit for c in contract.columns if is_currency(c.unit) and c.name in {
-        roles.get("revenue"), roles.get("unit_price"), roles.get("order_total")}), None)
+    money = currency or next((c.unit for c in contract.columns if is_currency(c.unit) and c.name in
+                              money_columns(pack, roles)), None)
     tiles = []
     for k in pack.kpis:
         if not k.tile:

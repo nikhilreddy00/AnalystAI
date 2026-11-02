@@ -771,6 +771,9 @@ def score_cleaning_run(case: dict, output: dict | None, error: str | None) -> di
 # The text of every LLM request a run makes (system + messages), for the PII canary scan.
 LLM_REQUESTS: ContextVar[list | None] = ContextVar("llm_requests", default=None)
 LLM_SENT: ContextVar[list | None] = ContextVar("llm_sent", default=None)
+# Each reply as the model sent it (PII still tokenized): stored in the report, so tests/test_replay.py
+# can run every deterministic step after the model again at $0.
+LLM_REPLIES: ContextVar[list | None] = ContextVar("llm_replies", default=None)
 E2B_UPLOADS: ContextVar[list | None] = ContextVar("e2b_uploads", default=None)
 
 
@@ -821,7 +824,11 @@ class RecordingClient:
             sent.append(json.dumps({"system": kw.get("system"),
                                     "messages": pseudonymize(kw.get("messages"))[0]},
                                    ensure_ascii=False, default=str))
-        return await self.inner.complete(**kw)
+        result = await self.inner.complete(**kw)
+        if (replies := LLM_REPLIES.get()) is not None:
+            replies.append({"text": pseudonymize(result.text)[0], "stop_reason": result.stop_reason,
+                            "tool_calls": pseudonymize(result.tool_calls)[0]})
+        return result
 
 
 def _ingestion_facts(df: pd.DataFrame, roles: dict[str, list[str]]) -> dict:
@@ -1202,6 +1209,8 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
             return None   # over budget: don't start more runs
         meter: list[dict] = []
         trace_meter.set(meter)   # each asyncio task has its own context copy
+        replies: list[dict] = []
+        LLM_REPLIES.set(replies)
         start = time.perf_counter()
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
                   "intake": run_intake_case, "visualization": run_visualization_case,
@@ -1224,6 +1233,8 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         out["llm_calls"] = len(calls)
         out["truncated_calls"] = sum(r["stop_reason"] == "max_tokens" for r in calls)
         out["rejections"] = [r["guardrail"] for r in meter if "guardrail" in r]
+        if replies:
+            out["replies"] = replies
         out["passed"] = run_passed(suite, case, out)
         _budget["spent"] += out["cost_usd"]
         print(f"  {case['id']}: {'PASS' if out['passed'] else 'fail'} ({out['latency_s']}s)", flush=True)
@@ -1796,8 +1807,8 @@ async def main() -> None:
     _budget["max"] = args.max_usd
     if args.suite == "sql":
         _sql_setup()
-    if args.suite in ("ingestion", "e2e", "analysis"):   # the PII canary scans every request
-        set_client(RecordingClient(get_client()))
+    # every suite: replies kept for the $0 replay; ingestion/e2e/analysis: the PII canary too
+    set_client(RecordingClient(get_client()))
     if args.suite in ("e2e", "analysis"):   # …and every frame uploaded to E2B
         record_e2b_uploads()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

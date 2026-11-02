@@ -365,8 +365,7 @@ async def run_intake_agent(
         data["clarification_needed"] = True
         data["clarification_question"] = (
             f"{unsupported[0].replace('_', '-').capitalize()} needs "
-            f"{pack.unsupported[unsupported[0]]}. I can answer with what the data has: "
-            "net sales, units sold or returns by product. Which would help?")
+            f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives')}")
 
     if is_overview_request:   # the first run is always a full overview, never a question
         data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
