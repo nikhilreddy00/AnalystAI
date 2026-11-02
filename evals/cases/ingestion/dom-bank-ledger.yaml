@@ -1,0 +1,40 @@
+id: dom-bank-ledger
+category: domain
+dataset:
+  name: card_ledger
+  seed: 1
+roles:
+  Transaction ID: id
+  Account ID: id
+  IBAN:
+  - category
+  - id
+  Posting Date: date
+  Transaction Date: date
+  Description: category
+  Merchant Category: category
+  Transaction Type: category
+  Amount: metric
+  Currency: category
+  Status: category
+  Balance After: metric
+  Channel: category
+pii:
+  IBAN: iban
+traps:
+- IBAN
+- Posting Date
+expect_domain: banking
+expect_roles:
+  date: Posting Date
+  account: Account ID
+  txn_id: Transaction ID
+  balance_after: Balance After
+  amount: Amount
+  txn_type: Transaction Type
+  merchant_category: Merchant Category
+  merchant: Description
+  channel: Channel
+  status: Status
+  currency: Currency
+label_note: 'A current-account ledger: the posting date is the books'' date; IBANs are personal data.'

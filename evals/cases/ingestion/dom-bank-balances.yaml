@@ -1,0 +1,21 @@
+id: dom-bank-balances
+category: domain
+dataset:
+  name: bank_balances
+  seed: 1
+roles:
+  account_id: id
+  snapshot_date: date
+  segment: category
+  branch: category
+  balance: metric
+  deposits: metric
+expect_domain: banking
+expect_roles:
+  date: snapshot_date
+  account: account_id
+  balance: balance
+  credit: deposits
+  segment: segment
+  branch: branch
+label_note: 'Weekly deposit snapshots (Domain 2: banking, strong).'

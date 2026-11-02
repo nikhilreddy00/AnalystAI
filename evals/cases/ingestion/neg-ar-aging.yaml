@@ -1,0 +1,16 @@
+id: neg-ar-aging
+category: domain
+file: ar_aging.csv
+truth_read: {}
+roles:
+  Customer Account:
+  - category
+  - id
+  Invoice Number: id
+  Invoice Date: date
+  Due Date: date
+  Amount: metric
+  Balance: metric
+  Days Overdue: metric
+expect_domain: null
+label_note: 'Accounts-receivable aging: an account, a balance and days overdue, but invoices: not banking.'

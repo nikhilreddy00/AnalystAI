@@ -1,0 +1,4 @@
+Customer Account,Invoice Number,Invoice Date,Due Date,Amount,Balance,Days Overdue
+C-100,INV-501,2026-08-01,2026-08-31,1200.00,1200.00,62
+C-101,INV-502,2026-09-05,2026-10-05,880.50,440.25,27
+C-102,INV-503,2026-09-20,2026-10-20,300.00,0.00,0

@@ -187,7 +187,14 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         facts.append(f"{contract.row_count:,} rows.")
     if contract:
         facts.append(f"{contract.column_count} columns.")
-    if narrative:
+    levels = [c for c in (contract.columns if contract else [])
+              if c.aggregation in ("last", "first") and c.aggregation_by and c.aggregation_time]
+    if levels:   # snapshots: the grain is the data's, not a guessed noun ("one loan" was a loan-month)
+        names = ", ".join(c.name for c in levels)
+        facts.append(f"One row is one {', '.join(levels[0].aggregation_by)} at one "
+                     f"{levels[0].aggregation_time} (a snapshot); levels (never added across dates): "
+                     f"{names}.")
+    elif narrative:
         facts.append(f"One row is one {narrative.entity_singular}.")
     first = last = None
     months = 0

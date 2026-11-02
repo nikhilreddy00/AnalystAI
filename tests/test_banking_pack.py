@@ -223,6 +223,9 @@ def test_a_drill_down_on_a_weak_match_is_checked_and_one_with_no_pack_is_not():
     ("gb82west12345698765432", True),                 # lower case
     ("GB82WEST12345698765433", False),                # bad checksum: a code, not an IBAN
     ("SKU AB12CDEFGHIJKLMN", False),
+    ("RU0204452560040702810412345678901", True),     # a registry country beyond Europe
+    ("REFAB12GB82WEST12345698765432", True),          # inside a failed candidate
+    ("id dc296822a02cb0f de76627c71637faa", False),   # hex pseudonyms
 ])
 def test_an_iban_is_masked_wherever_it_sits(text, masked):
     from guardrails import MASK, mask_pii, pii_strings

@@ -961,6 +961,7 @@ def make_loan_tape(seed: int) -> tuple[pd.DataFrame, dict]:
         "avg_balance_by_branch": (book.groupby("Branch")["Outstanding Principal"].mean()).to_dict(),
         "naive_avg_by_branch": df.groupby("Branch")["Outstanding Principal"].mean().to_dict(),
         "charged_off_rows": int(df["Loan Status"].eq("Charged Off").sum()),
+        "closed_rows": int(df["Loan Status"].isin(_ON_BOOKS_OUT).sum()),
         "paid_off_rows": int(df["Loan Status"].eq("Paid Off").sum()),
         "dpd_sentinel_rows": len(sentinel),
         "naive_original_amount_sum": float(df["Original Amount"].sum()),
@@ -1072,8 +1073,12 @@ def make_card_ledger(seed: int) -> tuple[pd.DataFrame, dict]:
         "Account ID")["Balance After"].last()
     truth = {
         "row_count": len(df), "pii_columns": ["IBAN"],
-        "duplicate_rows": len(dup), "pending_rows": len(pend), "reversed_rows": len(rev),
-        "reversal_entries": len(rev), "eur_rows": int(df["Currency"].eq("EUR").sum()),
+        # as exported (a reversed row in the last days can show as pending): the flags' counts
+        "duplicate_rows": len(dup), "pending_rows": int(clean["Status"].eq("pending").sum()),
+        "reversed_rows": int(clean["Status"].eq("reversed").sum()),
+        "reversal_entries": int((clean["Transaction Type"].eq("REVERSAL")
+                                 & clean["Status"].ne("pending")).sum()),
+        "eur_rows": int(clean["Currency"].eq("EUR").sum()),
         "fee_income_total": float(-fee["Amount"].sum()),
         "fee_income_naive": float(-naive_fee["Amount"].sum()),
         "fee_income_by_month": {str(k): float(-v) for k, v in

@@ -1,0 +1,22 @@
+id: dom-bank-debit-credit
+category: domain
+file: bank_statement_debit_credit.csv
+truth_read: {}
+roles:
+  Date: date
+  Description: category
+  Debit: metric
+  Credit: metric
+  Balance: metric
+  Account Number:
+  - category
+  - id
+expect_domain: banking
+expect_roles:
+  date: Date
+  account: Account Number
+  balance: Balance
+  debit: Debit
+  credit: Credit
+  merchant: Description
+label_note: A bank statement with Debit / Credit columns (each blank on the other side).

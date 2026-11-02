@@ -917,37 +917,45 @@ _INTL_PHONE_RE = re.compile(r"(?<![\w+])\+(?:\d{1,3}(?:[\s.-]\(?\d{1,8}\)?){1,5}
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 # An IBAN (GB82 WEST 1234 5698 7654 32): country, check digits, 11–30 letters/digits; masked only
 # when its mod-97 checksum holds, so a product code of the same shape is left alone.
-_IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}", re.I)
-
-
+# An IBAN start: country letters and check digits; every start is tried (overlapping), so an
+# IBAN inside a longer token or after a failed candidate is still found.
+_IBAN_START = re.compile(r"(?=[A-Z]{2}\d{2})", re.I)
+_IBAN_BODY = re.compile(r"[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}", re.I)
 # Each country's IBAN length (ISO 13616 registry): with the checksum, a random code (a 16-digit
-# hex pseudonym "de76627c71637faa") is never read as one.
+# hex pseudonym "de76627c71637faa") is never read as one. A code not listed here is checked by
+# the checksum alone, when written in capitals as IBANs are.
 _IBAN_LEN = dict(x.split(":") for x in (
-    "AD:24 AE:23 AL:28 AT:20 AZ:28 BA:20 BE:16 BG:22 BH:22 BR:29 BY:28 CH:21 CR:22 CY:28 CZ:24 "
-    "DE:22 DK:18 DO:28 EE:20 EG:29 ES:24 FI:18 FO:18 FR:27 GB:22 GE:22 GI:23 GL:18 GR:27 GT:28 "
-    "HR:21 HU:28 IE:22 IL:23 IQ:23 IS:26 IT:27 JO:30 KW:30 KZ:20 LB:28 LC:32 LI:21 LT:20 LU:20 "
-    "LV:21 MC:27 MD:24 ME:22 MK:19 MR:27 MT:31 MU:30 NL:18 NO:15 PK:24 PL:28 PS:29 PT:25 QA:29 "
-    "RO:24 RS:22 SA:24 SC:31 SE:24 SI:19 SK:24 SM:27 ST:25 SV:28 TL:23 TN:24 TR:26 UA:29 VA:22 "
-    "VG:24 XK:20").split())
+    "AD:24 AE:23 AL:28 AT:20 AZ:28 BA:20 BE:16 BG:22 BH:22 BI:27 BR:29 BY:28 CH:21 CR:22 CY:28 "
+    "CZ:24 DE:22 DJ:27 DK:18 DO:28 EE:20 EG:29 ES:24 FI:18 FK:18 FO:18 FR:27 GB:22 GE:22 GI:23 "
+    "GL:18 GR:27 GT:28 HN:28 HR:21 HU:28 IE:22 IL:23 IQ:23 IS:26 IT:27 JO:30 KW:30 KZ:20 LB:28 "
+    "LC:32 LI:21 LT:20 LU:20 LV:21 LY:25 MC:27 MD:24 ME:22 MK:19 MN:20 MR:27 MT:31 MU:30 NI:28 "
+    "NL:18 NO:15 OM:23 PK:24 PL:28 PS:29 PT:25 QA:29 RO:24 RS:22 RU:33 SA:24 SC:31 SD:18 SE:24 "
+    "SI:19 SK:24 SM:27 SO:23 ST:25 SV:28 TL:23 TN:24 TR:26 UA:29 VA:22 VG:24 XK:20 YE:30"
+).split())
 
 
 def _iban_ok(t: str) -> bool:
-    t = t.upper()
-    if str(len(t)) != _IBAN_LEN.get(t[:2]):
+    want = _IBAN_LEN.get(t[:2].upper())
+    if (want is None and not t.isupper()) or (want is not None and str(len(t)) != want):
         return False
-    return int("".join(str(int(ch, 36)) for ch in t[4:] + t[:4])) % 97 == 1
+    return int("".join(str(int(ch, 36)) for ch in (t[4:] + t[:4]).upper())) % 97 == 1
 
 
 def _iban_spans(text: str) -> list[tuple[int, int]]:
-    """Where IBANs are: for each candidate, the longest prefix (15–34 characters, spaces
-    aside) whose mod-97 checksum holds, so a trailing word or number never hides one."""
-    spans = []
-    for m in _IBAN_RE.finditer(text):
-        ends = [m.start() + i + 1 for i, ch in enumerate(m.group()) if ch != " "]
+    """Where IBANs are: from every candidate start, the longest prefix (15–34 characters,
+    spaces aside) whose length and mod-97 checksum hold."""
+    spans: list[tuple[int, int]] = []
+    for s in _IBAN_START.finditer(text):
+        i = s.start()
+        if spans and i < spans[-1][1]:
+            continue
+        m = _IBAN_BODY.match(text, i)
+        if not m:
+            continue
+        ends = [i + k + 1 for k, ch in enumerate(m.group()) if ch != " "]
         for n in range(min(34, len(ends)), 14, -1):
-            end = ends[n - 1]
-            if _iban_ok(text[m.start():end].replace(" ", "")):
-                spans.append((m.start(), end))
+            if _iban_ok(text[i:ends[n - 1]].replace(" ", "")):
+                spans.append((i, ends[n - 1]))
                 break
     return spans
 
