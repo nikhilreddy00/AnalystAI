@@ -24,7 +24,8 @@ export default function KPICard({ label, value, sublabel, filteredValue, hasActi
       <span className="text-xs text-muted-foreground truncate">{label}</span>
       <span title={typeof primary === "string" ? primary : undefined}
         className={`font-mono font-medium tabular-nums tracking-tight text-foreground truncate ${
-          String(primary).length > 15 ? "text-sm" : String(primary).length > 11 ? "text-base" : "text-xl"}`}>
+          // five tiles in the report column (~150 px at 1440): "$310,635.46" must fit
+          String(primary).length > 12 ? "text-sm" : String(primary).length > 8 ? "text-base" : "text-xl"}`}>
         {primary}
       </span>
       {showDelta ? (

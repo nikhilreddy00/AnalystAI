@@ -111,6 +111,7 @@ order_key: order_id
 item_roles: [sku, product]                  # order + item = one line (export-overlap dedup)
 line_weight: [quantity, "*", unit_price]    # a line's share of an order-level value
 cost_roles: [cost, unit_cost, profit]       # margin or profit talk needs one of these
+overview_groups: [category, product, sku, store, channel]   # net sales by the first present
 location_role: store                        # stores opening or closing: total vs comparable growth
 row_labels: {sale: sales, return: returns, refunded: refunded orders, cancel: cancelled orders,
              test: test orders, non_product: non-product lines}

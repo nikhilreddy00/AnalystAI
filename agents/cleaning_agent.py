@@ -49,7 +49,7 @@ from agents.data_cleaning import (
 from agents.errors import GuardrailViolation
 from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
-from domain_pack import Pack, main_currency, pack_for, row_kinds
+from domain_pack import Pack, first_line_only, main_currency, pack_for, row_kinds
 from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
 from llm.client import trace_verdict
 from orchestrator.state import (
@@ -163,18 +163,6 @@ def _whole_orders(flat: pd.DataFrame, dup: pd.Series, order: str) -> set:
     counts = rows.groupby(list(rows.columns), dropna=False).size()
     per = counts.groupby(level=list(rows.columns).index(order)).agg(["nunique", "min"])
     return set(per.index[(per["nunique"] == 1) & (per["min"] >= 2)])
-
-
-def _first_line_only(df: pd.DataFrame, by: pd.Series, col: str) -> bool:
-    """The export writes `col` on an order's first line and leaves the rest blank, in at least 80%
-    of the orders with several lines (Shopify): a layout, not missing data."""
-    multi = by.notna() & by.duplicated(keep=False)
-    if not multi.any():
-        return False
-    first = ~by[multi].duplicated()
-    filled = df.loc[multi, col].notna()
-    per = pd.DataFrame({"o": by[multi], "first_only": filled.eq(first)}).groupby("o")["first_only"].all()
-    return bool(per.mean() >= 0.8)
 
 
 def _null_pct(s: pd.Series) -> float:
@@ -381,7 +369,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         by = df[order]
         for role in ctx.pack.order_fields:
             col = ctx.roles.get(role)
-            if col is None or col == order or not df[col].isna().any() or not _first_line_only(df, by, col):
+            if col is None or col == order or not df[col].isna().any() or not first_line_only(df, by, col):
                 continue
             values = df[col].groupby(by).transform("nunique")
             gap = df[col].isna() & by.notna() & values.eq(1)
@@ -417,7 +405,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         known = len(df) - missing
         first = df[order].notna() & ~df[order].duplicated() if ctx.pack and order else None
         first_pct = _null_pct(df.loc[first, col]) if first is not None and first.any() else 0.0
-        if (ctx.pack and order and col != order and _first_line_only(df, df[order], col)
+        if (ctx.pack and order and col != order and first_line_only(df, df[order], col)
                 and first_pct <= HIGH_NULL_PCT):
             # an order-level field written on each order's first line (Shopify's discount, total,
             # billing name): blank later lines are the layout, never "missing" or "Unknown". What

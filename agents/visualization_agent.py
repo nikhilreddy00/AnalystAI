@@ -40,6 +40,7 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    computable,
     compute_kpi,
     defaults_pack,
     describe_kpi,
@@ -64,6 +65,7 @@ from orchestrator.state import (
     Evidence,
     KPI,
     KPIRecipe,
+    QuestionIntent,
     TargetedParams,
 )
 
@@ -2607,6 +2609,33 @@ def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
 
 # ── Public entry point ───────────────────────────────────────────────────────
 
+def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]:
+    """A strong-matched domain's overview opens with its headline KPI (the pack's first money
+    tile) by month and by its first `overview_groups` role present: the charts its analyst reads
+    first. Built by the KPI answers' code (handle_kpi), so a chart and an answer are one number.
+    No pack, or a KPI the data can't compute: none."""
+    from agents.targeted_analysis_agent import handle_kpi   # it imports this module
+
+    pack = defaults_pack(ctx.contract)
+    roles = ctx.contract.roles if ctx.contract else {}
+    kpi = next((k for k in pack.kpis if k.tile and k.unit == "money"
+                and computable(pack, k.name, roles)), None) if pack else None
+    if kpi is None:
+        return []
+    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in df.columns), None)
+    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=kpi.name, frequency="M"))]
+    if group:
+        asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=kpi.name, segment_column=group,
+                                                          group_by=group)))
+    out = []
+    for intent, params in asks:
+        try:
+            out += handle_kpi(df, params, ctx.contract, ctx, intent=intent).chart_configs[:1]
+        except Exception:   # a chart the KPI code can't make is left out, never a failed run
+            trace_verdict("visualization", "pack", "pack_chart_failed")
+    return out
+
+
 async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]:
     """One chart per finding (charts_for_findings), topped up with data-profile charts when there
     are fewer than 4, then linted (finalize_charts). Falls back to contract metadata when the
@@ -2625,7 +2654,8 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
 
     ctx = build_context(df, session.task_plan, session.analysis_findings, session.narrative,
                         session.data_contract)
-    charts = charts_for_findings(ctx)
+    overview = session.task_plan and session.task_plan.question_intent == QuestionIntent.OVERVIEW
+    charts = (pack_overview_charts(df, ctx) if overview else []) + charts_for_findings(ctx)
     if len(charts) < 4:
         query = session.task_plan.raw_query if session.task_plan else ""
         shown = {(c.rationale.x, c.rationale.y) for c in charts if c.rationale}

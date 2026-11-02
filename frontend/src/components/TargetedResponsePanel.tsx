@@ -79,6 +79,11 @@ export default function TargetedResponsePanel({ response, sessionId, onFollowUp,
         />
       ))}
 
+      {/* an answer with no chart or table (a single value): its text, never an empty report */}
+      {response.chart_configs.length === 0 && response.table_data.length === 0 && (
+        <p className="text-sm leading-relaxed text-foreground">{response.answer_text}</p>
+      )}
+
       {/* TableRenderer now has its own light card chrome — no outer wrapper needed */}
       {response.table_data.length > 0 && response.table_columns.length > 0 && (
         <TableRenderer

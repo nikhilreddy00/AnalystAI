@@ -1075,6 +1075,16 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                    f"({change(now, prior)} year over year, {_basis(prior_period)})."
                    + stores_note(contract, full, date, (prior_df, rows)) if both
                    else "" if auto else f" No year-earlier comparison: {why or 'nothing to compare'}.")
+        if both:   # the two periods side by side: the answer's own numbers
+            chart = _chart(ChartType.BAR, f"{kpi.label}{where}: against a year earlier",
+                           [{"period": prior_period.split(",")[0], kpi.label: float(prior)},
+                            {"period": days, kpi.label: float(now)}],
+                           x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
+                           source="kpi")
+            _why(chart, ctx, "targeted:kpi→bars", f"{kpi.label} in the period asked and the same "
+                 f"period a year earlier. {how}", date, kpi.label, "none", len(rows))
+            return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
+                                    chart_configs=[chart])
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")
 
 
