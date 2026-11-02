@@ -2013,7 +2013,8 @@ def test_a_packs_trend_has_year_over_year_when_the_same_month_last_year_is_there
                     "Lineitem price")
     t = {t["period"]: t for t in g["result"]["trends"] if not t.get("segment")}
     m = pd.to_datetime(df["Created at"].astype(str), utc=True).dt.tz_localize(None).dt.to_period("M")
-    tot = df.groupby(m.values)["Lineitem price"].sum()
+    # a unit price is averaged, never summed (Domain 2 audit: the pack's additive: false)
+    tot = df.groupby(m.values)["Lineitem price"].mean()
     jan26, jan25 = tot[pd.Period("2026-01")], tot[pd.Period("2025-01")]
     assert t["YoY"]["pct_change"] == round((jan26 / jan25 - 1) * 100, 2)
     assert "trend:Lineitem price:YoY" in g["result"]["builtin"]

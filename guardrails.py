@@ -922,8 +922,7 @@ _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 _IBAN_START = re.compile(r"(?=[A-Z]{2}\d{2})", re.I | re.A)   # ASCII: no Kelvin sign as a K
 _IBAN_BODY = re.compile(r"[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}", re.I | re.A)
 # Each country's IBAN length (ISO 13616 registry): with the checksum, a random code (a 16-digit
-# hex pseudonym "de76627c71637faa") is never read as one. A code not listed here is checked by
-# the checksum alone, when written in capitals as IBANs are.
+# hex pseudonym "de76627c71637faa") is never read as one; a code not listed is no IBAN.
 _IBAN_LEN = dict(x.split(":") for x in (
     "AD:24 AE:23 AL:28 AT:20 AZ:28 BA:20 BE:16 BG:22 BH:22 BI:27 BR:29 BY:28 CH:21 CR:22 CY:28 "
     "CZ:24 DE:22 DJ:27 DK:18 DO:28 EE:20 EG:29 ES:24 FI:18 FK:18 FO:18 FR:27 GB:22 GE:22 GI:23 "
@@ -935,8 +934,7 @@ _IBAN_LEN = dict(x.split(":") for x in (
 
 
 def _iban_ok(t: str) -> bool:
-    want = _IBAN_LEN.get(t[:2].upper())
-    if (want is None and not t.isupper()) or (want is not None and str(len(t)) != want):
+    if str(len(t)) != _IBAN_LEN.get(t[:2].upper()):   # the registry is the definition
         return False
     return int("".join(str(int(ch, 36)) for ch in (t[4:] + t[:4]).upper())) % 97 == 1
 
@@ -954,7 +952,9 @@ def _iban_spans(text: str) -> list[tuple[int, int]]:
             continue
         ends = [i + k + 1 for k, ch in enumerate(m.group()) if ch != " "]
         for n in range(min(34, len(ends)), 14, -1):
-            if _iban_ok(text[i:ends[n - 1]].replace(" ", "")):
+            end = ends[n - 1]   # it ends a token: never the head of a longer code
+            if not (end < len(text) and text[end].isascii() and text[end].isalnum()) \
+                    and _iban_ok(text[i:end].replace(" ", "")):
                 spans.append((i, ends[n - 1]))
                 break
     return spans

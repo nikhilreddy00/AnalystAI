@@ -212,6 +212,21 @@ def _grain(dates: pd.Series) -> str:
                                    (95, "quarterly"), (float("inf"), "yearly")) if med <= limit)
 
 
+def _cadence(df: pd.DataFrame, by: list[str], time: str) -> str | None:
+    """A level's snapshot cadence per entity ('monthly' for staggered statement days, which are
+    'daily' across the whole file): the median of each entity's median gap."""
+    if not by or any(c not in df.columns for c in [*by, time]):
+        return None
+    t = _as_dates(df[time])
+    d = df.assign(_t=t).dropna(subset=["_t"]).sort_values("_t", kind="stable")
+    gaps = d.groupby(by)["_t"].diff().dt.days.dropna()
+    if gaps.empty:
+        return None
+    med = gaps.groupby([d.loc[gaps.index, e] for e in by]).median().median()
+    return next(g for limit, g in ((1.5, "daily"), (8, "weekly"), (32, "monthly"),
+                                   (95, "quarterly"), (float("inf"), "yearly")) if med <= limit)
+
+
 def _names(cols: list[str], cap: int = 12) -> str:
     return ", ".join(cols[:cap]) + (f" (+{len(cols) - cap} more)" if len(cols) > cap else "")
 
@@ -375,11 +390,17 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
                 c.is_id, c.is_metric = True, False
                 c.role_reason = f"id: the {domain} {role.replace('_', ' ')}"
         key, date = roles.get(pack.snapshot_key), roles.get(pack.date_role)
-        if key and date:   # a balance is a level on any match: summing it is never right
-            for c in cols:   # (a semantic-layer hint on the same column wins)
-                role = next((r for r, col in roles.items() if col == c.name), None)
-                if role and pack.roles[role].over_time == "last" and not c.aggregation:
-                    c.aggregation, c.aggregation_by, c.aggregation_time = "last", [key], date
+        for c in cols:   # the pack's meaning, as the semantic layer's (a layer hint wins)
+            role = next((r for r, col in roles.items() if col == c.name), None)
+            if not role or c.aggregation or not c.is_metric:
+                continue
+            if pack.roles[role].over_time == "last" and key and date:   # a balance: a level
+                c.aggregation, c.aggregation_by, c.aggregation_time = "last", [key], date
+            elif not pack.roles[role].additive:   # a rate, a price, days past due: averaged
+                c.aggregation = "mean"
+    for c in cols:   # a level's cadence, whichever source made it one
+        if c.aggregation in ("last", "first") and c.aggregation_time:
+            c.aggregation_every = _cadence(df, c.aggregation_by, c.aggregation_time)
     return DataContract(
         source_type=source_type, row_count=len(df), column_count=df.shape[1], columns=cols,
         sample_rows=[mask_row(r, pii) for r in rows],
@@ -637,8 +658,8 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
         r = raw_cols.get(c.name)
         if r and not c.aggregation and r.aggregation and all(
                 x in out.columns for x in [*r.aggregation_by, r.aggregation_time] if x):
-            c.aggregation, c.aggregation_by, c.aggregation_time = (
-                r.aggregation, r.aggregation_by, r.aggregation_time)
+            c.aggregation, c.aggregation_by, c.aggregation_time, c.aggregation_every = (
+                r.aggregation, r.aggregation_by, r.aggregation_time, r.aggregation_every)
         if r and not c.unit and r.unit:
             c.unit = r.unit
     rebuilt.schema_summary = _summary(out, rebuilt.columns, layout_columns(

@@ -335,3 +335,111 @@ def test_a_correlation_on_snapshot_data_counts_each_account_once(tape):
     s = __import__("orchestrator.state", fromlist=["AnalysisSession"]).AnalysisSession(
         session_id="t", data_contract=c, task_plan=task)
     assert "one row per Loan ID (its latest snapshot)" in analysis_agent.build_context(s).render()
+
+
+def test_a_state_kpi_by_month_is_each_month_end(tape):
+    """Audit B2: 'NPL ratio by month' collapsed to one point (latest rows over the whole frame)."""
+    df, c = tape
+    frame = df.assign(_period=pd.to_datetime(df["As Of Date"]).dt.to_period("M"))
+    got = compute_kpi(frame, c.roles, BANK, "total_balance", by="_period", full=df)
+    assert {str(k): v for k, v in got.items()} == {"2026-09": 2400.0, "2026-10": OCT}
+    npl = compute_kpi(frame, c.roles, BANK, "npl_ratio", by="_period", full=df)
+    assert npl[pd.Period("2026-09")] == pytest.approx((300 + 400) / 2400)   # L3 120 DPD, L5 non-accrual
+
+
+def test_audit_pass_1_kpis_refusals_and_unknowns(tape):
+    """M2 charge-offs are a KPI; M3 a concept with no KPI is refused in its own words; M6 a
+    one-date extract totals; M7 no matching rows anywhere is unknown, never $0.00."""
+    from orchestrator.state import QuestionIntent as Q
+    df, c = tape
+    assert compute_kpi(df, c.roles, BANK, "charge_offs") == pytest.approx(290.0)   # L3, once
+    one = pd.DataFrame({"account_id": [1, 2, 3], "account_type": ["a", "b", "a"],
+                        "balance": [2500.0, 10400.5, 800.2]})
+    oc = _contract(one)
+    assert compute_kpi(one, oc.roles, BANK, "total_balance") == pytest.approx(13700.7)
+    assert compute_kpi(LEDGER, _contract(LEDGER).roles, BANK, "interest_charged") is None
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisSession, AnalysisTask, TargetedParams
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s = AnalysisSession(session_id="t", data_contract=c, task_plan=AnalysisTask(
+        raw_query="What is our NIM by product?", analysis_types=["eda"], target_metrics=[],
+        question_intent=Q.SEGMENT_COMPARE,
+        targeted_params=TargetedParams(kpi="nim", segment_column="Product")))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    r = run_targeted_analysis(s)
+    assert "interest income and interest expense" in (r.unanswerable_reason or r.answer_text)
+
+
+def test_a_balance_by_segment_is_built_in_and_matches_the_tile(tape):
+    """Audit M5: the model's own 'last' kept closed loans' rows (Card $859,390 vs $856,530)."""
+    import contextlib
+    import io
+    import json
+
+    from agents import analysis_agent
+    from orchestrator.state import AnalysisTask
+    df, c = tape
+    frame, _ = domain_pack.with_row_kind(df, c)
+    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
+            + "result['segments'].append({'segment_column': 'Product', 'metric_column': "
+              "'Outstanding Principal', 'aggregation': 'last', 'results': [{'name': 'card', 'value': 780.0}]})\n"
+            + analysis_agent._build_standard_code(c, AnalysisTask(
+                raw_query="q", target_metrics=["Outstanding Principal"], segments=["Product"],
+                analysis_types=["segmentation"]))
+            + analysis_agent._CODE_FOOTER)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        exec(code, {"df": frame})
+    segs = [x for x in json.loads(out.getvalue())["segments"] if x["metric_column"] == "Outstanding Principal"]
+    assert len(segs) == 1
+    assert {r["name"]: r["value"] for r in segs[0]["results"]} == {"auto": 1340.0, "card": 480.0,
+                                                                     "mortgage": 2000.0}
+
+
+def test_a_state_by_month_on_weekly_snapshots_is_never_an_average_week():
+    """Rehearsal: 'total balance by month' on weekly snapshots was divided by its weeks
+    ($589,590.76 'average week'); a balance is as of the month's last snapshot."""
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from evals import datagen
+    from orchestrator.state import AnalysisSession, AnalysisTask, QuestionIntent, TargetedParams
+    df, truth = datagen.make("bank_balances", 1)
+    c = _contract(df)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s = AnalysisSession(session_id="t", data_contract=c, task_plan=AnalysisTask(
+        raw_query="total balance by month", analysis_types=["eda"], target_metrics=[],
+        question_intent=QuestionIntent.TIME_SERIES,
+        targeted_params=TargetedParams(kpi="total_balance", frequency="M")))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    r = run_targeted_analysis(s)
+    assert f"${truth['month_end_total_last']:,.2f}" in r.answer_text and "average week" not in r.answer_text
+    assert f"{truth['balance_mom_pct']:+.1f}%" in r.answer_text
+
+
+def test_a_ledger_says_no_balance_as_of_date():
+    """Audit minor: 'Balances are as of 3 Nov 2026' on a ledger with no balance KPI."""
+    from orchestrator.state import CleaningAudit
+    c = _contract(LEDGER)
+    audit = CleaningAudit(decisions=[], rows_before=8, rows_after=8, columns_coerced=[],
+                          duplicates_removed=0, outliers_flagged=[], high_null_columns=[],
+                          summary="", date_ranges={"Posting Date": ["2026-10-01", "2026-10-04", 1]})
+    assert not any("as of" in x for x in domain_pack.pack_caveats(BANK, audit, c.roles, "strong"))
+
+
+def test_a_levels_mean_by_group_is_one_number_in_the_answer_and_its_chart():
+    """Builder audit M1: SaaS 'mean MRR by plan' answered 1,132.90 and charted 1,013.20."""
+    from agents.targeted_analysis_agent import handle_segment_compare
+    from evals import datagen
+    from orchestrator.state import TargetedParams
+    df = datagen.make("saas_accounts", 1)[0]
+    c = _contract(df)
+    r = handle_segment_compare(df, TargetedParams(metric_column="mrr", segment_column="plan",
+                                                  aggregation="mean"), c)
+    bars = {row["plan"]: row["mrr"] for row in r.chart_configs[0].data}
+    lead = max(bars, key=bars.get)
+    assert f"'{lead}' leads at {bars[lead]:,.2f}" in r.answer_text

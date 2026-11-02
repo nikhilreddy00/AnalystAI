@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
-from agents.utils import pii_columns, strip_markdown_fences
+from agents.utils import pii_columns, strip_markdown_fences, with_display_names
 from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
     _SENTENCE_RE,
@@ -617,25 +617,7 @@ def _clean_for_executive(text: str, narrative: DataNarrative | None) -> str:
     if not text:
         return ""
     out = text.replace("`", "")
-    # One pass, longest first, so 'order_date' wins over 'order' and a display name already
-    # written ('Order Total' for Total) is kept, not renamed again ('Order Order Total').
-    if narrative and narrative.column_display_names:
-        shown = {raw.lower(): d for raw, d in narrative.column_display_names.items()
-                 if raw and raw.lower() != d.lower()}
-        keep = {d.lower() for d in shown.values()}
-        if shown:
-            pat = "|".join(re.escape(k) for k in sorted(shown.keys() | keep, key=len,
-                                                       reverse=True))
-            plain = {r for r, d in narrative.column_display_names.items()
-                     if r and re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", r)}
-
-            def swap(m: re.Match[str]) -> str:
-                w = m.group(0)
-                # a plain-word name ('Total') only as written: 'total' is the English word
-                if w.lower() in keep or (w not in plain and w.lower() in {p.lower() for p in plain}):
-                    return w
-                return shown.get(w.lower(), w)
-            out = re.sub(rf"\b(?:{pat})\b", swap, out, flags=re.IGNORECASE)
+    out = with_display_names(out, narrative.column_display_names if narrative else None)
     for needle, replacement in _EXECUTIVE_REPLACEMENTS.items():
         out = re.sub(re.escape(needle), replacement, out, flags=re.IGNORECASE)
 

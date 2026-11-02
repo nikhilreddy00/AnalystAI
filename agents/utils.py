@@ -206,11 +206,8 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
     import pandas as pd
     hint = column_hint(contract, column)
     names = [k for k in (keys if isinstance(keys, list) else [keys]) if isinstance(k, str)]
-    if agg not in _LEVEL and hint is not None and hint.aggregation in _LEVEL and not over_time \
-            and hint.aggregation_time not in names:
-        # an average balance by branch: per account at its latest snapshot, never every week's
-        # snapshot of it (an account weighted by its history, a closed one still averaged in)
-        return latest_rows(df, column, contract).groupby(keys)[column].agg(agg)
+    if agg not in _LEVEL and not over_time and (hint is None or hint.aggregation_time not in names):
+        return level_rows(df, column, contract).groupby(keys)[column].agg(agg)
     if agg not in _LEVEL or hint is None:
         return df.groupby(keys)[column].agg("sum" if agg in _LEVEL else agg)
     if not over_time and hint.aggregation_time not in names:
@@ -220,6 +217,45 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
     per = d.groupby([*(k.loc[d.index] if isinstance(k, pd.Series) else k for k in keys),
                      *(d[e] for e in hint.aggregation_by)])[column].agg(agg)
     return per.groupby(level=list(range(len(keys)))).sum()
+
+
+def with_display_names(text: str, display: dict[str, str] | None) -> str:
+    """Raw column names (also with spaces for underscores) → their display names, in one pass,
+    longest first: 'order_date' wins over 'order', and a display name already written ('Order
+    Total' for Total, 'Loan Product' for Product) is kept, never renamed again. A plain-word
+    name ('Total', 'Product') is renamed only as written: 'total' is the English word. The one
+    rename for every text a user reads (insight, expert review)."""
+    import re
+    if not text or not display:
+        return text
+    shown: dict[str, str] = {}
+    for raw, d in display.items():
+        if raw and raw.lower() != d.lower():
+            for form in dict.fromkeys((raw, raw.replace("_", " "))):
+                shown.setdefault(form.lower(), d)
+    if not shown:
+        return text
+    keep = {d.lower() for d in shown.values()}
+    plain = {r for r in display if r and re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", r)}
+    low_plain = {p.lower() for p in plain}
+    pat = "|".join(re.escape(k) for k in sorted(shown.keys() | keep, key=len, reverse=True))
+
+    def swap(m: re.Match[str]) -> str:
+        w = m.group(0)
+        if w.lower() in keep or (w not in plain and w.lower() in low_plain):
+            return w
+        return shown.get(w.lower(), w)
+    return re.sub(rf"(?<!\w)(?:{pat})(?!\w)", swap, text, flags=re.IGNORECASE)
+
+
+def level_rows(df, column: str, contract):
+    """The rows a statistic of `column` by group (mean, median, count …) reads: a level's latest
+    snapshot per entity (an average balance by branch, never every week's snapshot of it: an
+    account weighted by its history, a closed one still averaged in); anything else: all rows.
+    The one selector for answers and their charts."""
+    hint = column_hint(contract, column)
+    return latest_rows(df, column, contract) if hint is not None and hint.aggregation in _LEVEL \
+        else df
 
 
 def latest_rows(df, column: str, contract):
@@ -244,12 +280,13 @@ def _in_time_order(d):
     return d.sort_values("_t", kind="stable")
 
 
-def snapshot_rows(df, by: list[str], time: str, window: str = "last"):
+def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: bool = True):
     """Each entity's latest snapshot (or first, for a 'first' window): the one rule for a level's
     current rows (a balance's tile, bars, answers). An entity whose latest snapshot is a full
     usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
     data: not in the newest complete month); staggered snapshots (each account on its own day)
-    all count. Undated rows are out (one can't be the latest)."""
+    all count. Undated rows are out (one can't be the latest). `current=False`: each entity's
+    latest row in each `by` group, no stopped cut (a period's own month-end, not today's)."""
     import pandas as pd
     t = pd.to_datetime(df[time], format="mixed", errors="coerce")
     d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
@@ -264,7 +301,7 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last"):
     regular = len(gaps) and (per.std().fillna(0) / per.mean()).median() <= REGULAR_CV
     last = g.tail(1)
     newest = d["_t"].max()
-    if cadence and cadence == cadence and regular:
+    if current and cadence and cadence == cadence and regular:
         if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month,
             # or the one before while the newest is still partial (a 4 Nov export of accounts
             # billed on their own day: most have only October so far)

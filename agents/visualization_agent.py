@@ -33,6 +33,7 @@ from agents.utils import (
     column_hint,
     effective_agg,
     latest_rows,
+    level_rows,
     time_axis,
     looks_like_sequential_id,
     pandas_freq,
@@ -1179,11 +1180,25 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
+        if k.at == "latest" and kind == "percent":   # a book's ratio hides its mix: say the spread
+            context = "; ".join(x for x in (_spread(df, roles, pack, k.name), context) if x)
         tiles.append(KPI(label=k.label, value=_format_value(v, kind, unit), context=context,
                          recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
                                           **_unit_fields(kind, unit)),
                          how=describe_kpi(pack, k.name, roles, present)))
     return tiles[:5] if len(tiles) >= 2 else []   # one tile is no strip: the generic tiles
+
+
+def _spread(df: pd.DataFrame, roles: dict, pack, name: str) -> str:
+    """'highest Credit Card 10.4%, lowest Mortgage 0.0%' over the pack's first overview group the
+    data has: a portfolio ratio of 0.5% can hide a product at 10%."""
+    group = next((roles[g] for g in pack.overview_groups if g in roles), None)
+    by = compute_kpi(df, roles, pack, name, by=group) if group else None
+    if by is None or len(by) < 2:
+        return ""
+    order = ranked(by)
+    return (f"by {group}: highest {order.index[0]} {order.iloc[0]:.1%}, "
+            f"lowest {order.index[-1]} {order.iloc[-1]:.1%}")
 
 
 def generate_smart_kpis(
@@ -2157,6 +2172,11 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
         agg = "mean"
     df, _ = money_rows(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
     level = None
+    if agg not in ("last", "first") and not split:   # a level's mean: the answer's rows (utils)
+        try:
+            df = level_rows(df, metric, ctx.contract)
+        except LevelUnavailable:
+            return None
     if agg in ("last", "first"):   # a balance by group: each account's latest snapshot, added up
         hint = level = column_hint(ctx.contract, metric)
         if hint and x == hint.aggregation_time:

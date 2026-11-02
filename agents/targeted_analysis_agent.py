@@ -112,6 +112,13 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if params and conventions and intent in _KPI_INTENTS and not params.kpi and grouped and \
             (params.aggregation or "sum").lower() == "sum" and (kpi := _summed_kpi(pack, contract, params, df)):
         params = params.model_copy(update={"kpi": kpi})   # "sales by country": the pack's net sales
+    if params and params.kpi and pack and not pack.kpi(params.kpi) and (
+            params.kpi in pack.unsupported or params.kpi in pack.definitions):
+        # a concept with no KPI (NIM, roll rate): its own words, never another column's figure
+        why = (f"{params.kpi.replace('_', ' ')} needs {pack.unsupported[params.kpi]}"
+               if params.kpi in pack.unsupported else
+               f"{params.kpi.replace('_', ' ')} isn't one figure here: {pack.definitions[params.kpi]}")
+        return _unanswerable(intent, why, [pack.say("unsupported_alternatives")])
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS and grouped:
         roles = {r: c for r, c in contract.roles.items() if c in df.columns}
         if not computable(pack, params.kpi, roles):   # named, but the data lacks what it needs
@@ -256,7 +263,7 @@ def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataC
     )
 
     # The pair asked about (else the strongest) as a scatter: a bar of r values hides the data.
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     a, b = (requested[0], requested[1]) if len(requested) == 2 else strongest[:2]
     chart = oriented_scatter(df, a, b, ctx)
     if chart and chart.rationale:
@@ -616,7 +623,7 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
         # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
         value = float(full[full.index.astype(str) == group].sum())
         answer = f"{_of(agg, metric, False)} for {segment} '{group}': {_num(value)}. " + answer
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     chart = group_bars(df, segment, metric, agg, ctx, top=20)
     if chart and chart.rationale:
         r = chart.rationale
@@ -728,7 +735,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
     )
     # Group means with 95% CIs; within each stratum when the plan names one, because a pooled
     # comparison can reverse inside every stratum (Simpson's paradox).
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     stratum = next((c for c in strata if c in df.columns and c != variant), None)
     chart = group_bars(df, stratum or variant, metric, "mean", ctx, split=variant if stratum else None)
     if chart and chart.rationale:
@@ -790,7 +797,7 @@ def handle_outlier_scan(df: pd.DataFrame, params: TargetedParams, contract: Data
            if worst else "No outliers detected.")
     )
     # The worst column's distribution with the same 1.5×IQR fences as the table.
-    ctx = ctx or build_context(df)
+    ctx = ctx or build_context(df, contract=contract)
     chart = fence_histogram(df, worst["column"], ctx, k=1.5) if worst else None
     if chart and chart.rationale:
         r = chart.rationale
@@ -885,6 +892,12 @@ def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
             "growth leaves them out.")
 
 
+def _as_of(rows: pd.DataFrame, date: str) -> str:
+    """'as of 31 Oct 2026': a state's date, the newest snapshot in these rows."""
+    t = _local(pd.to_datetime(rows[date], format="mixed", errors="coerce")).max()
+    return f"as of {t:%-d %b %Y}" if pd.notna(t) else ""
+
+
 def _basis(prior_period: str) -> str:
     """'same days', or 'same months' when a leap February makes the day counts differ."""
     return "same months" if "days against" in prior_period else "same days"
@@ -941,6 +954,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     date = _date_of(contract, params, df)
     weekly = bool(date) and weekly_cadence(full[date])   # YoY: 52 weeks back, same week-endings
     period = filter_period(full, date, params.period_start, params.period_end)[1]
+    state = kpi.at == "latest" and date is not None   # a balance is as of a date, not over days
+    if state and period:
+        period = _as_of(df, date)
     where = f" ({period})" if period else ""
     present = set(row_kinds(df, roles, pack).unique())
     # every KPI answer on a weak match says how the file was read
@@ -988,7 +1004,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     # against the same period a year earlier, below; a frequency asked: the trend in that window
     one_period = asked and (params.compare == "yoy" or not params.frequency)
     if intent == QuestionIntent.TIME_SERIES and date and not one_period:
-        flow = kpi.den is None and kind != "percent"
+        # a flow (sales, fees) sums over a period; a state (a balance) is as of its end
+        flow = kpi.den is None and kind != "percent" and kpi.at == "all"
         default = _default_freq(df[date], "sum" if flow else "ratio") if defaults_pack(contract) else "M"
         freq = (params.frequency or default).upper()
         # a KPI is reported by week at the finest (a day's AOV or return rate is noise); a daily
@@ -1073,9 +1090,12 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         rows, days, cut = current_window(full, date, params.period_start, params.period_end, weekly)
         now = compute_kpi(rows, roles, pack, kpi.name, full=full)   # the same days as the year-earlier window
         both = prior is not None and now is not None and (kind == "percent" or prior != 0)
+        if state:   # two dates, not two windows of days
+            prior_period, days, cut = _as_of(prior_df, date), _as_of(rows, date), False
         same = f" On the same days ({days}): {fmt(now)}." if cut and both else ""
         answer += same + (f" A year earlier ({prior_period}): {fmt(prior)} "
-                   f"({change(now, prior)} year over year, {_basis(prior_period)})."
+                   f"({change(now, prior)} year over year"
+                   f"{'' if state else ', ' + _basis(prior_period)})."
                    + stores_note(contract, full, date, (prior_df, rows)) if both
                    else "" if auto else f" No year-earlier comparison: {why or 'nothing to compare'}.")
         if both:   # the two periods side by side: the answer's own numbers

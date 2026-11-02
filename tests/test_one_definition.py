@@ -76,4 +76,19 @@ def test_a_kpi_label_in_a_sentence_is_kpi_phrase():
     assert _hits(r"\.label\.lower\(\)") == [], "use KPI.phrase"
     bank, retail = domain_pack.pack_for("banking"), domain_pack.pack_for("retail")
     assert (bank.kpi("npl_ratio").phrase, retail.kpi("net_sales").phrase) == (
-        "NPL ratio (90+ DPD)", "net sales")
+        "NPL ratio", "net sales")
+
+
+def test_one_rename_to_display_names():
+    """Domain 1 fixed 'Order Order Total' in the insight; the expert review kept its own rename
+    and wrote 'Loan Loan Product' (Domain 2 smoke run)."""
+    from agents.utils import with_display_names
+    names = {"Product": "Loan Product", "order_date": "Order Date", "Total": "Order Total"}
+    assert with_display_names("Days Past Due by Loan Product and Product", names) == \
+        "Days Past Due by Loan Product and Loan Product"
+    assert with_display_names("order_date and order date; the total Total", names) == \
+        "Order Date and order date; the total Order Total"   # a display name as written stays
+    # chart titles (visualization_agent) are built from raw names, never model prose, and also fix
+    # casing ('revenue' → 'Revenue'): their own rule
+    assert _hits(r"column_display_names\.items\(\)|names_re", {"visualization_agent.py"}) == [], \
+        "use utils.with_display_names"

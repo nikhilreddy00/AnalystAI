@@ -476,6 +476,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     met = _meets(df, roles, term.where) if term.where else None
     if met is not None:
         rows &= met
+        whole = kinds.attrs.get("frame", df)
+        if not met.any() and not _meets(whole, roles, term.where).any():
+            return None   # no interest rows anywhere in the data: unknown, never a $0.00
     part = df[rows]
     # no rows of these kinds here (no returns this month, in this store) while the data has them
     # elsewhere: 0, and a group keeps its place (a 0% return rate ranks lowest); none anywhere in
@@ -538,10 +541,14 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
     if kpi.at == "latest":   # a state: each entity's latest row of any kind, then the filters
         from agents.utils import snapshot_rows
         key, date = roles.get(pack.snapshot_key), roles.get(pack.date_role)
-        if key is None or date is None:
-            return None
+        if key is None or (date is None and df[key].duplicated().any()):
+            return None   # undated snapshots of one account: which is the latest is unknown
         present = kinds.attrs.get("present")
-        df = snapshot_rows(df, [key], date)
+        # by period: each account's latest row in each period (its month-end); by a group: its
+        # latest row overall, in the group it is in now
+        periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
+        if date is not None:   # undated: one row per account already (a one-date extract)
+            df = snapshot_rows(df, [key, by] if periodic else [key], date, current=not periodic)
         kinds = kinds.loc[df.index]
         if present is not None:
             kinds.attrs["present"] = present
@@ -567,10 +574,11 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if kpi is None or df.empty:
         return None
     keep, _, _ = main_currency(df, roles)
-    df = df[keep]
-    kinds = row_kinds(df, roles, pack)
+    # another currency is a kind of row no KPI counts: a state's latest row is judged first
+    kinds = row_kinds(df, roles, pack).where(keep, "other_currency")
     whole = kinds if full is None else row_kinds(full, roles, pack)
     kinds.attrs["present"] = set(whole.unique())
+    kinds.attrs["frame"] = df if full is None else full
     value = _kpi_value(df, kinds, roles, pack, kpi, by)
     if value is None:
         return None
@@ -605,7 +613,8 @@ def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
     def side(alts) -> bool:   # every needed term, and at least one term there (all optional: any)
         return any(all(t.optional or has(t) for t in alt) and any(has(t) for t in alt)
                    for alt in alts)
-    state = kpi is not None and (kpi.at == "all" or {pack.snapshot_key, pack.date_role} <= roles.keys())
+    # a state needs its accounts (and their dates, or one row each: _kpi_value checks)
+    state = kpi is not None and (kpi.at == "all" or pack.snapshot_key in roles)
     return state and side(kpi.num) and (kpi.den is None or side(kpi.den))
 
 
@@ -794,8 +803,8 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     full = span[2] - bool(audit.partial_months.get(date)) if span else 0   # a partial month isn't one
     if 1 < full < 13:
         facts["months_lt_13"] = {"months": full}
-    levels = [r for r in roles if r in pack.roles and pack.roles[r].over_time == "last"]
-    if span and levels and pack.snapshot_key in roles:   # a balance is a state at a date
+    states = [k for k in pack.kpis if k.at == "latest" and computable(pack, k.name, roles)]
+    if span and states:   # a balance is a state at a date (a ledger's running balance is no KPI)
         facts["level_as_of"] = {"date": pd.Timestamp(span[1]).strftime("%-d %b %Y")}
     if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",

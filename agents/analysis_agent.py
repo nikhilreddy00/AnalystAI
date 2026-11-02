@@ -242,6 +242,8 @@ def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
 # ─── Standard statistics (deterministic) ───
 result['builtin'] = []
 _targets, _segs, _date, _hints = {targets!r}, {segments!r}, {date!r}, {hints!r}
+# a domain's money columns count sale and return rows in the main currency (as its tiles)
+_money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
 try:
     if {bool(types & {"correlation", "hypothesis"})!r}:
         # snapshot data (a level): one row per entity, its latest snapshot (never each one again)
@@ -285,8 +287,6 @@ try:
         # compare fairly (agents.utils.weekly_cadence).
         _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
         _weekly = _yoy and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
-        # a domain's money columns count sale and return rows in the main currency (as its tiles)
-        _money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
         def _mom(_frame, _col):
             _h = _hints.get(_col)
             _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
@@ -350,6 +350,28 @@ try:
             result['segments'].append({{'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',
                                        'results': [{{'name': f'{{_a}}|{{_b}}', 'value': round(float(_g[(_a, _b)]), 4)}} for _a, _b in _n]}})
             result['builtin'].append(f'seg:{{_joint}}/{{_c}}')
+except Exception:
+    pass
+try:
+    # A level by segment (a balance by product): each entity's latest row first, a row left out
+    # blanks its value, then summed (as its tile); replaces the model's own breakdown of it.
+    # ponytail: no stopped-account cut here (utils.snapshot_rows has it); stale accounts count
+    if 'segmentation' in {sorted(types)!r}:
+        for _c in _targets:
+            _h = _hints.get(_c)
+            if not (_h and _h[0] in ('last', 'first') and _h[1] and all(_e in df.columns for _e in [*_h[1], _h[2]])):
+                continue
+            _f = df.assign(_t=pd.to_datetime(df[_h[2]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable')
+            if _c in _money and _kind in _f.columns:
+                _f[_c] = _f[_c].where(_f[_kind].isin(['sale', 'return']))
+            _g = _f.groupby(_h[1])
+            _w = _g.tail(1) if _h[0] == 'last' else _g.head(1)
+            for _s in [_x for _x in _segs if _x in df.columns]:
+                _tot = _w.groupby(_s)[_c].sum(min_count=1).dropna()
+                result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c)]
+                result['segments'].append({{'segment_column': _s, 'metric_column': _c, 'aggregation': 'last',
+                                           'results': [{{'name': str(_k), 'value': round(float(_v), 4)}} for _k, _v in _tot.items()]}})
+                result['builtin'].append(f'seg:{{_s}}/{{_c}}')
 except Exception:
     pass
 """
@@ -494,9 +516,12 @@ def _aggregation_line(c, names: set[str], correlates: bool = False) -> str:
         if not all(n in names for n in need):
             return (f"{c.name}{unit} is a level, but a column it needs ({', '.join(need)}) was "
                     "removed: never total it across dates or rows")
+        every = (f"; one snapshot per {', '.join(c.aggregation_by)} {c.aggregation_every}, so "
+                 f"periods are {c.aggregation_every} or longer (never daily or rolling-day windows)"
+                 if c.aggregation_every and c.aggregation_every != "daily" else "")
         return (f"{c.name}{unit} is a level: per period take each {', '.join(c.aggregation_by)}'s "
                 f"{c.aggregation} value (by {c.aggregation_time}), then sum; never sum it across "
-                "dates" + (f". Correlations on this snapshot data use one row per "
+                f"dates{every}" + (f". Correlations on this snapshot data use one row per "
                            f"{', '.join(c.aggregation_by)} (its latest snapshot): every snapshot "
                            "would count it many times" if correlates else ""))
     if c.aggregation == "mean":

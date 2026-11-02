@@ -143,7 +143,7 @@ kpis:
   # Non-performing: 90+ days past due OR non-accrual, by balance (a count ratio overstates small
   # card loans). DPD 999 is read as unknown (Cleaning): in the denominator, not the numerator.
   - name: npl_ratio
-    label: NPL ratio (90+ DPD)
+    label: NPL ratio
     unit: percent
     tile: true
     at: latest
@@ -194,6 +194,14 @@ kpis:
     unit: money
     num: [[{sum_abs: amount, where: [[{role: amount, lt: 0}, {role: txn_type, not_in: [transfer, internal transfer, fee, fees, interest, interest charge, payment]}]]}]]
   - {name: transactions, label: Transactions, unit: count, tile: true, num: [[{nunique: txn_id}]]}
+  # Charge-offs: the balance on each loan's charged-off row (left out of outstanding from then on).
+  # ponytail: a tape that repeats a charged-off loan every month counts it each month; dedupe by
+  # its first charged-off row (or the charge-off date) when such a tape shows up.
+  - name: charge_offs
+    label: Charge-offs
+    unit: money
+    rows: [cancel]
+    num: [[{sum: balance, where: [[{role: status, in: [charged off, charged-off, charge off, written off, write off]}]]}]]
 
 glossary:
   total_balance: [outstanding balance, outstanding, total balance, book size, loan book,
@@ -226,7 +234,6 @@ consumed: [balance sheet, accounts payable, accounts receivable, account manager
 definitions:
   utilisation: "Credit utilisation = the balance on revolving accounts with a limit / their credit limits, both at the latest snapshot (never limits summed across months)."
   roll_rate: "Roll rate = the share of balances in one delinquency bucket last month that are in the next bucket this month (30-59 → 60-89): follow each account from one as-of date to the next; never compare bucket totals."
-  charge_offs: "Charge-offs are balances written off in the period (status charged off): the balance at charge-off, by the charge-off month. They are left out of the outstanding balance from then on."
   originations: "Originations are loans first seen in the period by their origination date (original amount, once per loan), never the original amount summed over snapshots."
   adb: "Average daily balance = the mean of an account's end-of-day balances over the period's days; with weekly or monthly snapshots it is the mean of those snapshots: say which."
   yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
@@ -255,6 +262,7 @@ first_questions:
   - {q: "What share of the book is non-performing (90+ days past due), and is it rising?", needs: [npl_ratio]}
   - {q: "Which products or branches carry the most 30+ day delinquency?", needs: [delinquency_30, product|branch]}
   - {q: "What is the average balance per account by segment?", needs: [avg_balance, segment|product]}
+  - {q: "How much did we charge off this year, and in which products?", needs: [charge_offs]}
   - {q: "How much fee income did we earn each month?", needs: [fee_income]}
   - {q: "Where is spend going, by merchant category?", needs: [spend, merchant_category]}
   - {q: "How do inflows compare with outflows each month?", needs: [inflows, outflows]}
