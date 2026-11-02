@@ -906,6 +906,15 @@ def _span_of(contract: DataContract, df: pd.DataFrame, date: str | None) -> str 
         else None
 
 
+def _percent_axis(chart: ChartConfig, kind: str, key: str) -> None:
+    """A percent KPI's chart in percent (10.4, axis '10.4%'), never a fraction (0.104)."""
+    if kind == "percent":
+        for row in chart.data:
+            if isinstance(row.get(key), (int, float)):
+                row[key] = round(float(row[key]) * 100, 4)
+        chart.value_format = "percent"
+
+
 def _as_of(rows: pd.DataFrame, date: str) -> str:
     """'as of 31 Oct 2026': a state's date, the newest snapshot in these rows."""
     t = _local(pd.to_datetime(rows[date], format="mixed", errors="coerce")).max()
@@ -1008,6 +1017,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        [{group: str(k), kpi.label: float(v)} for k, v in by.items()],
                        x_key=group, y_keys=[kpi.label], x_label=group, y_label=kpi.label,
                        source="kpi")
+        _percent_axis(chart, kind, kpi.label)
         _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked. {how}",
              group, kpi.label, "sum" if kpi.den is None else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
@@ -1088,6 +1098,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                              kpi.label: float(v)} for k, v in series.items()],
                            x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
                            source="kpi")
+            _percent_axis(chart, kind, kpi.label)
             _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date,
                  kpi.label, "sum" if kpi.den is None else "none", len(df))
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
@@ -1124,6 +1135,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                             {"period": days, kpi.label: float(now)}],
                            x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
                            source="kpi")
+            _percent_axis(chart, kind, kpi.label)
             _why(chart, ctx, "targeted:kpi→bars", f"{kpi.label} in the period asked and the same "
                  f"period a year earlier. {how}", date, kpi.label, "none", len(rows))
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
