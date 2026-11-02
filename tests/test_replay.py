@@ -61,6 +61,9 @@ CHANGED = {
         "Domain 2 intake gate: a default prediction is an unsupported concept: asked",
     ("intake-20261102T204144Z.json", "intake-bank-11"):
         "Domain 2 intake gate: 'average account balance' is the avg_balance KPI's word",
+    **{(r, "intake-bank-08"): "Domain 2 intake: case reworded to one KPI ('money coming in' is "
+                               "the inflows KPI's word); old replies replay against the new question"
+       for r in ("intake-20261102T204144Z.json", "intake-20261102T205448Z.json")},
 }
 
 
