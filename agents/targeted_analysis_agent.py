@@ -1061,6 +1061,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             prior = whole.get(latest - back) if freq != "Y" else None
             if base(prior):   # (by year, "a year earlier" is the period before: said once)
                 answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
+            elif prior is not None and not pd.isna(prior):   # a $0 month a year earlier is said
+                answer += f"; a year earlier {fmt(prior)} (no % change from zero)"
             compared = latest - back if base(prior) else latest - 1 if (
                 before is not None and not pd.isna(before)) else None
             if compared is None:

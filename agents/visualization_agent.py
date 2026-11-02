@@ -2730,8 +2730,13 @@ def build_single_chart(
     agg = month_agg(df[y], contract) if numeric_y else "count"
 
     chart: ChartConfig | None = None
+    used: tuple[int, str] | None = None   # (rows, code) when the chart reads other rows than df
     if chart_type == ChartType.SCATTER and numeric_y:
-        chart = _build_scatter(entity_rows(df, contract), x_key, y)   # one point per account
+        points = entity_rows(df, contract)   # snapshot data: one point per account
+        chart = _build_scatter(points, x_key, y)
+        used = (int(points[[x_key, y]].dropna().shape[0]),
+                f"df[[{x_key!r}, {y!r}]].dropna()" if points is df else
+                f"entity_rows(df, contract)[[{x_key!r}, {y!r}]].dropna()  # latest snapshot per account")
         if chart:
             chart.colors, agg = [], "none"
     elif chart_type == ChartType.HISTOGRAM:
@@ -2754,6 +2759,7 @@ def build_single_chart(
     r = chart.rationale
     _why(chart, ctx, "user:chart_request", f"Drawn as you asked: {chart_type.value} of "
          f"{agg if agg not in ('none', 'count') else ''} {y} by {x_key}.".replace("  ", " "),
-         r.x if r else x_key, r.y if r else y, agg, r.n_rows if r else len(df),
-         code=r.code if r else "")
+         r.x if r else x_key, r.y if r else y, agg,
+         r.n_rows if r else used[0] if used else len(df),
+         code=r.code if r else used[1] if used else "")
     return finalize_charts([chart], ctx, user_chosen=True)[0]
