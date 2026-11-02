@@ -217,6 +217,10 @@ the stored outputs, not on a new run.
 Each new domain has 3–4 analysis cases and 2 E2E cases, and only 1–2 of its analysis cases depend
 on the model (the rest pass on built-in code alone), so read these as first evidence, not as
 broad coverage.
+
+Domain depth (Phase 5.7: a domain pack, an expert brief and every agent tested end to end):
+**retail** (sales KPIs, returns, periods and year-over-year, three realistic exports; 7 analysis
+cases k=3, 25 E2E cases, 13 intake cases k=3; `docs/baselines/phase5_7_sales.md`).
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one

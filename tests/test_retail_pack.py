@@ -1929,6 +1929,8 @@ def test_the_report_scorer_reads_a_shopify_date_column():
     raw = datagen.make("retail_lines", 1)[0]
     d = any_dates(raw["Created at"])
     assert d.notna().all() and d.min().year == 2025 and d.max() < pd.Timestamp("2026-02-14")
+    from connectors.base import parse_text_dates   # diff review m5: the product's own reading
+    assert d.equals(parse_text_dates(raw["Created at"]))
 
 
 def test_a_shopify_export_raises_no_high_null_gate_for_order_level_fields():
@@ -1949,3 +1951,42 @@ def test_the_report_alerts_neither_layout_blanks_nor_zero_extremes():
     s, _ = _session("retail_lines")
     titles = [a.title for a in _alerts(s)[0]]
     assert not any("missing" in t or "0 extreme" in t for t in titles), titles
+
+
+def test_a_first_line_field_blank_on_most_orders_still_raises_the_gate():
+    """Diff review (gate/live fixes, M1): Total blank on every single-line order is a real gap
+    (most orders have no total); the layout excuses later lines only."""
+    import asyncio
+    import io
+
+    from agents.cleaning_agent import run_cleaning_agent
+    raw = _gen("retail_lines")
+    single = ~raw["Name"].duplicated(keep=False)
+    raw.loc[single, "Total"] = None
+    s = AnalysisSession(session_id="t", data_contract=_contract(raw),
+                        task_plan=AnalysisTask(raw_query="o", analysis_types=["eda"], target_metrics=[]))
+    buf = io.BytesIO()
+    raw.to_parquet(buf, index=False)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    audit = asyncio.run(run_cleaning_agent(s))[1]
+    assert "Total" in audit.high_null_columns, audit.high_null_columns
+
+
+@pytest.mark.parametrize("question", ["How many items were sent back in January 2026?",
+                                      "Which products do customers send back the most?"])
+def test_sent_back_is_explained_not_filled_as_the_return_rate(question):
+    """Diff review (gate fixes, M3): 'sent back' asks for a count or units as often as a share;
+    the model is told the difference, the return rate is never filled in for it."""
+    from agents.intake_agent import _pack_params, domain_notes
+    c = _contract(_gen("retail_lines"))
+    assert not _pack_params({}, c, question).get("kpi")
+    assert 'kpi = "return_rate"' in domain_notes(c, question)   # intake-retail-07 k=3: named key
+
+
+def test_a_short_window_total_carries_no_left_out_note(shop):
+    """Diff review (gate fixes, m4): 1-7 Feb asked by day is the window's total; it never also
+    says 'the last month (2026-02) is left out'."""
+    s, _ = shop
+    text = _ask(s, "daily net sales 1-7 Feb 2026", QuestionIntent.TIME_SERIES, kpi="net_sales",
+                frequency="D", period_start="2026-02-01", period_end="2026-02-07").answer_text
+    assert "left out:" not in text.split("How:")[0] and "(01 Feb 2026 to 07 Feb 2026): $" in text, text

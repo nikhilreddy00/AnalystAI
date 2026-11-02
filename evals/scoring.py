@@ -1010,12 +1010,17 @@ def _date_cols(df: pd.DataFrame, contract=None) -> list[str]:
 
 
 def any_dates(s: pd.Series) -> pd.Series:
-    """Dates however written; mixed UTC offsets (a Shopify export across daylight saving) read as
-    UTC instants with the offset dropped, never an error that loses the run."""
+    """Dates however written; mixed UTC offsets (a Shopify export across daylight saving) are
+    read as the product reads them (connectors.base.parse_text_dates: a daylight-saving pair is
+    local wall time), never an error that loses the run."""
     try:
         return pd.to_datetime(s, format="mixed", errors="coerce")
     except ValueError:
-        return pd.to_datetime(s, format="mixed", errors="coerce", utc=True).dt.tz_localize(None)
+        from connectors.base import parse_text_dates
+        got = parse_text_dates(s, share=0.8)
+        if got is None:
+            return pd.to_datetime(s, format="mixed", errors="coerce", utc=True).dt.tz_localize(None)
+        return got.dt.tz_localize(None) if getattr(got.dt, "tz", None) is not None else got
 
 
 def bundle_facts(session: AnalysisSession, df: pd.DataFrame, past: list[str] = ()) -> dict:

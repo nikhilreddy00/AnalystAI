@@ -1048,7 +1048,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             note = "".join(f" {x}" for x in re.findall(r"[^.]+\.", note)
                            if buckets.get(m.group(1) if (m := re.search(r"\(([^)]*)\)", x)) else "", True))
         if series.empty or (len(series) == 1 and asked):
-            carry = note if series.empty else ""   # one period: answered (and compared) below
+            # one period: answered (and compared) below; an asked window's total leaves nothing out
+            carry = note if series.empty and not asked else ""
         else:
             latest = series.index[-1]
 

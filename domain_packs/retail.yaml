@@ -177,8 +177,8 @@ glossary:
         items in a typical basket]
   asp: [average selling price, avg selling price, asp, average unit price]
   gross_margin_pct: [gross margin, margin, gm%, margin rate]
-  return_rate: [return rate, returns rate, refund rate, sales returns rate, sales return rate,
-                sends back, sent back, send back]
+  return_rate: [return rate, returns rate, refund rate, sales returns rate, sales return rate]
+  sent_back: [sends back, sent back, send back]
   comp: [like for like, like-for-like, lfl, comp sales, comparable sales, same store sales,
          same-store sales]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
@@ -190,6 +190,7 @@ consumed: [sales tax, cost of sales, sales rep, sales reps, sales per square foo
 definitions:
   comp: "Like-for-like (comp) growth counts only stores, channels or products selling through BOTH periods compared (a store that opened or closed in either period is left out); total growth includes them. Say which one a number is."
   yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
+  sent_back: "Items customers sent back are return rows: a count or units returned is a count or sum of them. Sent back 'as a share of sales' is the return rate: set targeted_params.kpi = \"return_rate\" (returned value / gross sales), not net sales. Supplier returns are not in sales data."
   repeat_rate: "Repeat rate = customers with 2 or more orders (distinct order ids, not lines) / customers with 1 or more, in a stated window; orders with no customer id (guests) are left out of both."
 unsupported:
   sell_through: inventory on hand (units received), which this data does not have

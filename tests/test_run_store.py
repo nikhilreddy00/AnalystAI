@@ -185,13 +185,31 @@ async def test_api_and_worker_starting_together_on_a_new_database_both_start():
     async with admin.connect() as conn:
         await conn.execute(text(f"CREATE DATABASE {name}"))
     url = make_url(PG).set(database=name).render_as_string(hide_password=False)
+    from orchestrator.runner import open_deps
     stores = [SessionStore(url), RunStore(url), SessionStore(url), RunStore(url)]
+    deps = []
     try:
         assert [r for r in await asyncio.gather(*(s.init() for s in stores), return_exceptions=True)
                 if isinstance(r, Exception)] == []
+        # the whole start-up, checkpoint tables included (diff review: saver.setup raced too)
+        name2 = name + "_deps"
+        async with admin.connect() as conn:
+            await conn.execute(text(f"CREATE DATABASE {name2}"))
+        url2 = make_url(PG).set(database=name2).render_as_string(hide_password=False)
+        got = await asyncio.gather(*(open_deps("production", url2, vector=False) for _ in range(3)),
+                                   return_exceptions=True)
+        deps = [d for d in got if not isinstance(d, Exception)]
+        assert len(deps) == 3, [repr(d) for d in got if isinstance(d, Exception)]
     finally:
         for s in stores:
             await s._engine.dispose()
+        for d in deps:
+            for close in d.closers:
+                await close()
+            await d.run_store._engine.dispose()
+            await d.session_store._engine.dispose()
         async with admin.connect() as conn:
-            await conn.execute(text(f"DROP DATABASE {name}"))
+            await conn.execute(text(f"DROP DATABASE IF EXISTS {name}_deps WITH (FORCE)"))
+        async with admin.connect() as conn:
+            await conn.execute(text(f"DROP DATABASE {name} WITH (FORCE)"))
         await admin.dispose()

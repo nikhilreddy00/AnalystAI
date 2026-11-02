@@ -40,8 +40,25 @@ def test_the_readme_domain_lists_match_the_reports():
     e2e = _runs(E2E)
     assert all(r["passed"] for rs in e2e.values() for r in rs)
     block = (ROOT / "README.md").read_text().split("<!-- domains:start -->")[1].split("<!-- domains:end -->")[0]
-    first, second = block.split("Passed by majority")
+    first, rest = block.split("Passed by majority")
+    second, depth = rest.split("Domain depth")
     assert (_listed(first), _listed(second)) == (every, most)
+    # Phase 5.7: a domain listed with depth passed every run of its committed depth reports (a
+    # later re-run of a case, after a diagnosed fix, replaces its earlier runs)
+    assert _listed(depth) == set(DEPTH)
+    for d, names in DEPTH.items():
+        runs = {}
+        for name in names:
+            runs |= _runs(name)
+        assert all(r["passed"] for rs in runs.values() for r in rs), d
+
+
+DEPTH = {"retail": ["analysis-20261102T002211Z.json",           # 7 retail cases, k=3
+                    "e2e-20261102T002956Z-rescored.json",       # 25 E2E cases, k=1
+                    "e2e-20261102T004453Z-rescored.json",       # the 10 re-run after their fixes
+                    "intake-20261102T004821Z.json",             # 13 intake cases, k=3
+                    "intake-20261102T011951Z.json",             # intake-retail-07 k=3 after its note named the KPI
+                    "insight-20261102T004752Z.json"]}           # the 5 changed overviews
 
 
 def _listed(text: str) -> set[str]:

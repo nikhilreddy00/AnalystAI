@@ -123,7 +123,18 @@ async def open_deps(app_env: str, database_url: str, *, vector: bool = True) -> 
                                            "row_factory": dict_row})
         await pool.open(wait=True, timeout=10)
         saver = AsyncPostgresSaver(pool, serde=SERDE)
-        await saver.setup()
+        # the checkpoint tables, one process at a time (their own key: the stores' blocking
+        # schema_lock must never wait in a cycle with this setup's index build)
+        # Polled, never a blocking pg_advisory_lock: setup's CREATE INDEX CONCURRENTLY waits for
+        # every open snapshot, a blocked lock statement included (a deadlock no one detects)
+        async with pool.connection() as lock:
+            while not (await (await lock.execute(
+                    "SELECT pg_try_advisory_lock(hashtext('analystai-checkpoints')) AS ok")).fetchone())["ok"]:
+                await asyncio.sleep(0.2)
+            try:
+                await saver.setup()
+            finally:
+                await lock.execute("SELECT pg_advisory_unlock(hashtext('analystai-checkpoints'))")
         deps = Deps(graph=build_graph(saver), run_store=runs, session_store=sessions,
                     persistent=True, closers=[pool.close])
     except Exception as exc:

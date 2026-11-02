@@ -22,6 +22,8 @@ checks:
   truth_key: naive_margin_mean_of_rows_pct   # (paid E2E gate) from colliding with the trap
   rel_tol: 0.0015
   unit: '%'
+- kind: must_not_match   # ... and rounded unsigned ('34%', '34.2%'); a signed change is no margin
+  pattern: (?<![+\-\d.])34(?:\.[12]\d?)?\s?%
 - kind: number_in_answer
   truth_key: net_sales
   rel_tol: 0.005

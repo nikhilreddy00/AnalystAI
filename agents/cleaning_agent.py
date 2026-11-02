@@ -413,11 +413,16 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             continue
         pct = _null_pct(df[col])
         known = len(df) - missing
-        if ctx.pack and order and col != order and _first_line_only(df, df[order], col):
+        first = df[order].notna() & ~df[order].duplicated() if ctx.pack and order else None
+        first_pct = _null_pct(df.loc[first, col]) if first is not None and first.any() else 0.0
+        if (ctx.pack and order and col != order and _first_line_only(df, df[order], col)
+                and first_pct <= HIGH_NULL_PCT):
             # an order-level field written on each order's first line (Shopify's discount, total,
-            # billing name): blank later lines are the layout, never "missing" or "Unknown"
-            log(col, "keep", "order_level", f"Written on each order's first line only ({pct:g}% of "
-                "lines blank by the export's layout): an order-level field, kept as it is.", 0, pct, pct)
+            # billing name): blank later lines are the layout, never "missing" or "Unknown". What
+            # is missing is judged on the orders' first lines (a blank there is a real gap)
+            log(col, "keep", "order_level", f"Written on each order's first line only, so later "
+                f"lines are blank by the export's layout; {first_pct:g}% of orders have no value. "
+                "An order-level field, kept as it is.", 0, pct, first_pct)
             continue
         if pct > HIGH_NULL_PCT:
             high_null.append(col)
