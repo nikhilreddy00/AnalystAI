@@ -1,0 +1,19 @@
+id: e2e-51
+domain: banking
+dataset:
+  name: bank_balances
+  seed: 1
+question: What is the average balance per account by segment?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: avg_balance_by_segment.business
+  rel_tol: 0.002
+- kind: must_not_number
+  truth_key: naive_avg_by_segment.business
+  rel_tol: 0.005
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error

@@ -102,7 +102,7 @@ conditional_fields: {charge_off_date: [charged off, charged_off, charged-off, ch
 snapshot_key: account
 cost_roles: [interest_expense]              # margin or NIM talk needs funding costs
 overview_groups: [product, segment, branch, merchant_category, txn_type]
-row_labels: {sale: posted rows, refunded: reversed transactions,
+row_labels: {sale: on-book rows, refunded: reversed transactions,
              cancel: "pending, declined or closed rows", test: test accounts,
              non_product: reversal entries}
 row_flags:
@@ -111,13 +111,14 @@ row_flags:
   non_product: "reversal entries (the reversing side of a reversed transaction): left out of money figures"
   test: "test-account rows: left out"
 text:
-  rows_brief: "Money figures and balances use rows of kind 'sale' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: each account's latest row per period, summed across accounts, never across dates."
+  rows_brief: "Money figures and balances use rows of kind 'sale' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: per period take each account's latest row of ANY kind first (a loan charged off this month is out, never its last month's balance), then keep kind 'sale', and sum across accounts, never across dates."
   unsupported_alternatives: "I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?"
   kpis_default: its balance and transaction columns
   causal_removed: "{n} sentence(s) saying a rate change, campaign or offer caused a change were removed: without a control group that can't be shown."
   refunded_rule: reversed (left out)
   cancel_rule: pending, declined or closed (left out)
   non_product_rule: a reversal entry (left out)
+  money_rows_note: "On-book rows{currency} only: {n} other rows (pending, reversed, closed or in another currency) left out."
 
 kpis:
   - name: total_balance

@@ -30,7 +30,7 @@ RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
 # A pack's own sentences; each has a domain-neutral default (TEXT_DEFAULTS).
 TextKey = Literal["rows_brief", "grain_line", "unsupported_alternatives", "kpis_default",
                   "causal_removed", "return_rule", "refunded_rule", "cancel_rule",
-                  "non_product_rule"]
+                  "non_product_rule", "money_rows_note"]
 TEXT_DEFAULTS = {
     "rows_brief": "Figures use sale rows; net figures sale and return rows.",
     "grain_line": "One row is a line of a larger record: count records as distinct {key}, never "
@@ -43,6 +43,8 @@ TEXT_DEFAULTS = {
     "refunded_rule": "reversed (left out)",
     "cancel_rule": "cancelled (left out)",
     "non_product_rule": "non-product (left out)",
+    "money_rows_note": "Sale and return rows{currency} only: {n} other rows (test, cancelled, "
+                       "other currencies …) left out.",
 }
 
 
@@ -471,8 +473,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     rows = kinds.isin(term.rows or kpi.rows)
     if term.kpi:
         return _kpi_value(df, kinds, roles, pack, pack.kpi(term.kpi), by)
-    if term.where:
-        rows &= _meets(df, roles, term.where)
+    met = _meets(df, roles, term.where) if term.where else None
+    if met is not None:
+        rows &= met
     part = df[rows]
     # no rows of these kinds here (no returns this month, in this store) while the data has them
     # elsewhere: 0, and a group keeps its place (a 0% return rate ranks lowest); none anywhere in
@@ -481,6 +484,8 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         return None
     # the groups this KPI's rows have (a postage-only code or a test customer is no group at $0)
     counted = kinds.isin({"sale", "return", "refunded", *kpi.rows})
+    if met is not None and kpi.den is None:   # spend by category: no "Transfer" at $0
+        counted &= met
     groups = pd.unique(df.loc[counted, by].dropna()) if by else None
     if term.nunique:
         col = part[roles[term.nunique]]
@@ -638,7 +643,18 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
             f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""
-        return f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}"
+        return f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}" + (
+            f" where {where(t.where)}" if t.where else "")
+
+    def where(groups: list[list[Cond]]) -> str:
+        def cond(c: Cond) -> str:
+            if c.in_ is not None or c.not_in is not None:
+                return f"{roles[c.role]} {'is' if c.in_ is not None else 'is not'} " + \
+                    " / ".join(c.in_ if c.in_ is not None else c.not_in)
+            op, v = next((o, v) for o, v in (("> ", c.gt), ("≥ ", c.ge), ("< ", c.lt), ("≤ ", c.le))
+                         if v is not None)
+            return f"{roles[c.role]} {op}{v:g}"
+        return " or ".join(" and ".join(cond(c) for c in g) for g in groups)
 
     def side(name_: str) -> str:
         terms = used_terms(pack, kpi, roles, name_)
@@ -646,6 +662,8 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                         for i, t in enumerate(terms))
 
     text = side("num") + (f", divided by {side('den')}" if kpi.den else "")
+    if kpi.at == "latest" and pack.snapshot_key in roles:
+        text += f", at each {roles[pack.snapshot_key]}'s latest snapshot"
     if any(not t.kpi for t in used_terms(pack, kpi, roles)):   # a ratio of KPIs says it there
         left_out = [pack.label(k) for k in ROW_KINDS if k not in kpi.rows and k in present]
         text += f"; over {' and '.join(pack.label(k) for k in kpi.rows)}"
@@ -870,8 +888,13 @@ def money_rows(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, s
     kept = keep & row_kinds(df, roles, pack).isin(["sale", "return"])
     if kept.all():
         return df, ""
-    return df[kept], (f"Sale and return rows{f' in {currency}' if currency else ''} only: "
-                      f"{int((~kept).sum()):,} other rows (test, cancelled, other currencies …) left out.")
+    # a level (a balance) keeps every row, its value blank where the row is left out: each
+    # account's latest row is judged first (a loan charged off this month is out, never its last
+    # month's balance; utils.latest_rows), exactly as the tiles do (KPI.at latest)
+    out = df.assign(**{column: df[column].where(kept)}) if pack.roles[role].over_time == "last" \
+        else df[kept]
+    return out, pack.say("money_rows_note", currency=f" in {currency}" if currency else "",
+                              n=f"{int((~kept).sum()):,}")
 
 
 def defaults_pack(contract) -> Pack | None:

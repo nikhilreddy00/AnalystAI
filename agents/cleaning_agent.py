@@ -504,7 +504,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         duplicates_removed=duplicates,
         outliers_flagged=outliers,
         high_null_columns=[] if ctx.drop_high_null else high_null,
-        summary=_build_summary(decisions, outliers, high_null, rows_before, rows_after,
+        summary=_build_summary(decisions, [f.column for f in anomaly_report.flags], high_null,
+                               rows_before, rows_after,
                                anomaly_report.methodology_note),
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
@@ -552,10 +553,8 @@ def _build_summary(decisions: list[CleaningDecision], outliers: list[str], high_
     kept = [d.column for d in decisions if d.operation == "keep" and d.strategy == "left_missing"]
     if kept:
         parts.append(f"Left missing values as missing in {len(kept)} column(s); nothing was imputed.")
-    if outliers:
-        names = sorted({f.split(" in ")[1].split()[0] if " in " in f else f.split()[0]
-                        for f in outliers})
-        parts.append(f"Outliers flagged (kept) in: {', '.join(names)}.")
+    if outliers:   # column names, never a word of a message ("Outstanding" for Outstanding Principal)
+        parts.append(f"Outliers flagged (kept) in: {', '.join(sorted(set(outliers)))}.")
     if anomaly_methodology:
         parts.append(anomaly_methodology)
     if high_null:
@@ -568,9 +567,10 @@ def build_evidence(audit: CleaningAudit) -> Evidence:
     """One Evidence item for what cleaning changed, from the audit only: counts and the
     decisions' reasons, no cell values beyond masked labels."""
     # Medium only when it matters: a mostly-empty column, or > 5% of a column unreadable.
-    risky = [d.column for d in audit.decisions
-             if d.after_null_pct > HIGH_NULL_PCT
-             or (d.operation == "type_coerce" and d.after_null_pct - d.before_null_pct > 5)]
+    layout = {d.column for d in audit.decisions if d.strategy in ("order_level", "conditional")}
+    risky = [d.column for d in audit.decisions if d.column not in layout and (
+             d.after_null_pct > HIGH_NULL_PCT
+             or (d.operation == "type_coerce" and d.after_null_pct - d.before_null_pct > 5))]
     level, why = (("medium", f"many missing or unreadable values in {', '.join(risky[:3])}")
                   if risky else ("high", "rule-based; every change below is logged"))
     return Evidence(

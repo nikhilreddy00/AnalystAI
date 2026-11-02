@@ -350,6 +350,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     asked = asked if asked in valid_aggs else None
     agg = effective_agg(contract, metric, asked) or "sum"   # a balance is its current total
     asc = (params.order or "desc").lower() == "asc"
+    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         grouped = ranked(aggregate(df, [group], metric, agg, contract), ascending=asc).head(n)
@@ -368,7 +369,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     answer = (
         f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}. "
         f"Leader: {grouped.index[0]} = {_num(grouped.iloc[0])}."
-    )
+    ) + (f" {kept}" if kept else "")
     chart = _chart(
         ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}",
         chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=_with_unit(_of(agg, metric, False), metric, contract),
@@ -592,6 +593,7 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     asked = (params.aggregation or "").lower() or None
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "mean"
+    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         full = aggregate(df, [segment], metric, agg, contract)
@@ -607,7 +609,8 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
                              f"{metric}", [f"Distribution of {metric}", "Pick a different segment"])
 
     order = ranked(full)
-    answer = f"{_of(agg, metric, False)} by {segment}: {_lead_and_last(order)}."
+    answer = f"{_of(agg, metric, False)} by {segment}: {_lead_and_last(order)}." + (
+        f" {kept}" if kept else "")
     group = _named_group(df, params)
     if group is not None:
         # from the same totals as the comparison (a group that stopped reporting is 0, not stale)

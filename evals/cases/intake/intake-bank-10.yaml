@@ -1,0 +1,27 @@
+id: intake-bank-10
+category: followup
+pipeline: production
+source:
+  dataset: loan_tape
+  seed: 1
+overview_done: true
+history:
+- role: user
+  content: What's the NPL ratio by branch?
+- role: assistant
+  content: Airport has the highest NPL ratio, then Riverside.
+prior_task:
+  question_intent: segment_compare
+  targeted_params:
+    kpi: npl_ratio
+    segment_column: Branch
+question: and for Auto loans only?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: npl_ratio
+rationale: A follow-up keeps the KPI.

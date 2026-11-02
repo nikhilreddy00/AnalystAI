@@ -18,9 +18,10 @@ PLATFORM_FLOATS = {"ins-15-gap-not-significant", "ins-39-region-null", "ins-40-m
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
 _BANK = "Domain 2: bank_balances is now strong banking (pack KPIs, level hints, caveats)"
 _LAYOUT = "Domain 2 R4: the schema summary says first-line-only blanks are layout, not missing"
+_OUTLIERS = "Domain 2: the cleaning summary names outlier columns in full ('Lineitem price', not 'Lineitem')"
 CHANGES: dict[str, dict[str, str]] = {
     "deterministic": {"bank_balances-1": _BANK, "bank_balances-2": _BANK, "bank_balances-3": _BANK,
-                      "retail_lines-1": _LAYOUT},
+                      "retail_lines-1": f"{_LAYOUT}; {_OUTLIERS}", "store_weeks-1": _OUTLIERS},
     "analysis": {"bank-1": _BANK, "bank-2": _BANK},
     "intake": {"intake-clear-sql-03": "Domain 2: account_id + balance is a weak banking match",
                **{f"intake-retail-0{i}": _LAYOUT for i in (1, 2, 3, 5, 6, 7, 8)}},

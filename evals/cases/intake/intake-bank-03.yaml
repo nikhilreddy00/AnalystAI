@@ -1,0 +1,19 @@
+id: intake-bank-03
+category: clear
+pipeline: production
+source:
+  dataset: loan_tape
+  seed: 1
+overview_done: true
+question: How much is 30+ days past due at each branch?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: delinquency_30
+  columns:
+    by: Branch
+rationale: 30+ past due is the delinquency KPI.

@@ -1,0 +1,29 @@
+id: bank-6
+domain: banking
+category: ratio
+pipeline: production
+dataset:
+  name: card_ledger
+  seed: 1
+question: Where did card spend go by merchant category from August to October 2026?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Amount
+  segments:
+  - Merchant Category
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Merchant Category
+  truth_key: spend_by_category_q
+  abs_tol: 1.0
+  scales:
+  - 1
+  - -1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Posted USD purchases only: duplicates, pending, reversed, EUR accounts out.'

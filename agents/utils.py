@@ -230,8 +230,10 @@ def latest_rows(df, column: str, contract):
     if hint is None or hint.aggregation not in _LEVEL:
         return df
     _snapshots(df, hint)   # the entity and time columns are there, or LevelUnavailable
-    return snapshot_rows(df.dropna(subset=[column]), hint.aggregation_by, hint.aggregation_time,
-                         hint.aggregation)
+    # the latest snapshot first, then its value: a blank latest balance (a row left out, an
+    # account closed) is never replaced by an older one (never carried forward)
+    rows = snapshot_rows(df, hint.aggregation_by, hint.aggregation_time, hint.aggregation)
+    return rows.dropna(subset=[column])
 
 
 def snapshot_rows(df, by: list[str], time: str, window: str = "last"):

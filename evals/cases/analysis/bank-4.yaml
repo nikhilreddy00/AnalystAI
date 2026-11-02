@@ -1,0 +1,30 @@
+id: bank-4
+domain: banking
+category: ratio
+pipeline: production
+dataset:
+  name: loan_tape
+  seed: 1
+question: What is the non-performing loan ratio by product?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Outstanding Principal
+  segments:
+  - Product
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Product
+  truth_key: npl_by_product_pct
+  abs_tol: 0.05
+  scales:
+  - 1
+  - 0.01
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: NPL = 90+ DPD or non-accrual, by balance at the latest month-end; charged-off / paid-off out;
+  DPD 999 unknown.

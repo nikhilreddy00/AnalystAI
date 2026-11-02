@@ -1,0 +1,18 @@
+id: intake-bank-07
+category: clear
+pipeline: production
+source:
+  dataset: loan_tape
+  seed: 1
+overview_done: true
+question: How does the outstanding balance compare with the same month last year?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: total_balance
+    compare: yoy
+rationale: Outstanding = the total balance KPI; same month last year = yoy.

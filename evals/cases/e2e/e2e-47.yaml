@@ -1,0 +1,20 @@
+id: e2e-47
+domain: banking
+dataset:
+  name: card_ledger
+  seed: 1
+question: How much fee income did we earn in October 2026?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: fee_income_oct
+  rel_tol: 0.002
+- kind: must_not_number
+  truth_key: fee_income_oct_naive
+  rel_tol: 0.002
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: Reversed fees and their reversal entries, pending, duplicates and EUR rows are out.

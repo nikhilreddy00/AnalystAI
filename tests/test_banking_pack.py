@@ -214,3 +214,34 @@ def test_a_drill_down_on_a_weak_match_is_checked_and_one_with_no_pack_is_not():
     plain = AnalysisSession(session_id="t", data_contract=_contract(
         pd.DataFrame({"x": ["a", "b"], "y": [1.0, 2.0]})))
     assert checked_answer("It was 99,999.", plain, shown) == "It was 99,999."
+
+
+@pytest.mark.parametrize("text, masked", [
+    ("GB82WEST12345698765432", True),
+    ("pay GB82 WEST 1234 5698 7654 32 now", True),
+    ("GB82 WEST 1234 5698 7654 32 1234", True),       # a trailing number never hides it
+    ("gb82west12345698765432", True),                 # lower case
+    ("GB82WEST12345698765433", False),                # bad checksum: a code, not an IBAN
+    ("SKU AB12CDEFGHIJKLMN", False),
+])
+def test_an_iban_is_masked_wherever_it_sits(text, masked):
+    from guardrails import MASK, mask_pii, pii_strings
+    assert (MASK in mask_pii(text)) is masked
+    assert bool(pii_strings(text)) is masked
+    if masked:
+        assert "5698" not in mask_pii(text)
+
+
+def test_a_balance_chart_and_answer_count_the_rows_the_tile_counts(tape):
+    """The chart path took each loan's latest row without the row filter: L3, charged off in
+    October, kept its September balance in 'card' (the tile left it out)."""
+    from agents.targeted_analysis_agent import handle_segment_compare
+    from agents.visualization_agent import build_context, group_bars
+    from orchestrator.state import TargetedParams
+    df, c = tape
+    r = handle_segment_compare(df, TargetedParams(metric_column="Outstanding Principal",
+                                                  segment_column="Product", aggregation="sum"), c)
+    assert "'mortgage' leads at 2,000.00; 'card' is lowest at 480.00" in r.answer_text
+    bars = group_bars(df, "Product", "Outstanding Principal", "last", build_context(df, contract=c))
+    got = {row["Product"]: row["Outstanding Principal"] for row in bars.data}
+    assert got == {"auto": 1340.0, "card": 480.0, "mortgage": 2000.0}   # the tile's numbers

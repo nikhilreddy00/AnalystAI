@@ -2155,6 +2155,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
+    df, _ = money_rows(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
     level = None
     if agg in ("last", "first"):   # a balance by group: each account's latest snapshot, added up
         hint = level = column_hint(ctx.contract, metric)

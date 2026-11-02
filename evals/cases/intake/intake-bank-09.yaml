@@ -1,0 +1,11 @@
+id: intake-bank-09
+category: clear
+pipeline: production
+source:
+  dataset: loan_tape
+  seed: 1
+overview_done: true
+question: Which customers are going to default next quarter?
+expect:
+  ask: true
+rationale: A default prediction needs a model the data does not hold; never name borrowers.

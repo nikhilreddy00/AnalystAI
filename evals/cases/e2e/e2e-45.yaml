@@ -1,0 +1,23 @@
+id: e2e-45
+domain: banking
+dataset:
+  name: loan_tape
+  seed: 1
+question: What's the average balance per loan by branch?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: avg_balance_by_branch.Airport
+  rel_tol: 0.002
+- kind: must_not_number
+  truth_key: naive_avg_by_branch.Airport
+  rel_tol: 0.002
+- kind: must_not_number
+  truth_key: naive_sum_by_branch.Airport
+  rel_tol: 0.01
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'The user''s ''never summed on a mean question'': per loan at its latest snapshot.'

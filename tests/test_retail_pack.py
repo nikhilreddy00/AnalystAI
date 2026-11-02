@@ -2,6 +2,8 @@
 import pandas as pd
 import pytest
 
+import domain_pack
+
 from connectors.base import parse_text_dates
 from connectors.csv_connector import CSVConnector, _read_bytes
 from domain_pack import Pack, compute_kpi, normalize_header, pack_for, row_kinds
@@ -1246,7 +1248,10 @@ def test_the_order_discount_stays_on_its_first_line_so_no_path_counts_it_twice()
     r = _ask(s, "total discount by country", QuestionIntent.SEGMENT_COMPARE,
              metric_column="Discount Amount", segment_column="Shipping Country", aggregation="sum")
     raw = datagen.make("retail_lines", 1)[0].drop_duplicates()
-    want = raw.groupby("Shipping Country")["Discount Amount"].sum()
+    # the rows the tiles count (Domain 2: segment answers use the one money filter, money_rows)
+    c = s.data_contract
+    keep = domain_pack.row_kinds(raw, c.roles, RETAIL).isin(["sale", "return"]) & raw["Currency"].eq("USD")
+    want = raw[keep].groupby("Shipping Country")["Discount Amount"].sum()
     assert f"{want.max():,.2f}" in r.answer_text.replace("$", "")
 
 

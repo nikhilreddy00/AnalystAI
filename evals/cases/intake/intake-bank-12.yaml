@@ -1,0 +1,19 @@
+id: intake-bank-12
+category: clear
+pipeline: production
+source:
+  dataset: card_ledger
+  seed: 1
+overview_done: true
+question: How many transactions did each channel have last month?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: transactions
+  columns:
+    by: Channel
+rationale: Transaction count by channel (a distinct count).

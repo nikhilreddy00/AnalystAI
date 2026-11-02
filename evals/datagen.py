@@ -229,6 +229,11 @@ def make_bank_balances(seed: int) -> tuple[pd.DataFrame, dict]:
         "month_end_total_last": float(true.iloc[-1]), "naive_last_month_sum": float(naive.iloc[-1]),
         # a breakdown by segment summing every snapshot: the trap a model finding can fall in
         "naive_balance_by_segment": df.groupby("segment")["balance"].sum().to_dict(),
+        # an average per account: each account's latest snapshot (every account reports on the
+        # last Friday), never the mean of all 52 weekly snapshots
+        "avg_balance_by_segment": df[df["snapshot_date"] == df["snapshot_date"].max()].groupby(
+            "segment")["balance"].mean().to_dict(),
+        "naive_avg_by_segment": df.groupby("segment")["balance"].mean().to_dict(),
         "pii_columns": [],
     }
     assert abs(truth["naive_balance_mom_pct"] - truth["balance_mom_pct"]) > 10
@@ -961,6 +966,12 @@ def make_loan_tape(seed: int) -> tuple[pd.DataFrame, dict]:
         "naive_original_amount_sum": float(df["Original Amount"].sum()),
     }
     truth["naive_sum_by_branch"] = df.groupby("Branch")["Outstanding Principal"].sum().to_dict()
+    truth["delinq30_by_product_pct"] = {
+        p: 100 * float(b.loc[(dpd_known >= 30).loc[b.index], "Outstanding Principal"].sum()
+                       / b["Outstanding Principal"].sum()) for p, b in book.groupby("Product")}
+    truth["npl_count_by_product_pct"] = {p: 100 * float(npl.loc[b.index].mean())
+                                         for p, b in book.groupby("Product")}
+    truth["balance_by_product_last"] = book.groupby("Product")["Outstanding Principal"].sum().to_dict()
     assert truth["npl_count_pct"] > 1.5 * truth["npl_ratio_pct"]
     assert truth["naive_balance_sum"] > 10 * total
     return df, truth
@@ -1067,7 +1078,10 @@ def make_card_ledger(seed: int) -> tuple[pd.DataFrame, dict]:
         "fee_income_naive": float(-naive_fee["Amount"].sum()),
         "fee_income_by_month": {str(k): float(-v) for k, v in
                                 fee.groupby(fee["Posting Date"].dt.to_period("M"))["Amount"].sum().items()},
-        "fee_income_oct": float(-fee[fee["Posting Date"] >= "2026-10-01"]["Amount"].sum()),
+        "fee_income_oct": float(-fee[(fee["Posting Date"] >= "2026-10-01")
+                                     & (fee["Posting Date"] < "2026-11-01")]["Amount"].sum()),
+        "fee_income_oct_naive": float(-naive_fee[naive_fee["Posting Date"].between(
+            "2026-10-01", "2026-10-31")]["Amount"].sum()),
         "spend_by_category_q": {k: float(-v) for k, v in
                                 spend.groupby("Merchant Category")["Amount"].sum().items()},
         "spend_q_total": float(-spend["Amount"].sum()),

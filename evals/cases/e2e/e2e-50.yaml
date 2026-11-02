@@ -1,0 +1,15 @@
+id: e2e-50
+domain: banking
+dataset:
+  name: loan_tape
+  seed: 1
+question: What is our net interest margin?
+overview_done: true
+trap: true
+checks:
+- kind: must_match
+  pattern: interest expense|cost of funds|funding cost
+- kind: must_not_match
+  pattern: net interest margin (?:is|was|of) [\d.]+
+hard_rules:
+- non_empty_or_error

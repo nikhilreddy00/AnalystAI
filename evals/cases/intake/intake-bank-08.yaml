@@ -1,0 +1,17 @@
+id: intake-bank-08
+category: clear
+pipeline: production
+source:
+  dataset: card_ledger
+  seed: 1
+overview_done: true
+question: Compare money in and money out by month.
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: inflows
+rationale: Money in is inflows; the model picks a time series.

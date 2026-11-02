@@ -917,13 +917,45 @@ _INTL_PHONE_RE = re.compile(r"(?<![\w+])\+(?:\d{1,3}(?:[\s.-]\(?\d{1,8}\)?){1,5}
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 # An IBAN (GB82 WEST 1234 5698 7654 32): country, check digits, 11–30 letters/digits; masked only
 # when its mod-97 checksum holds, so a product code of the same shape is left alone.
-_IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b")
+_IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}", re.I)
 
 
-def _iban(text: str) -> bool:
-    t = text.replace(" ", "")
-    n = "".join(str(int(ch, 36)) for ch in t[4:] + t[:4])
-    return int(n) % 97 == 1
+# Each country's IBAN length (ISO 13616 registry): with the checksum, a random code (a 16-digit
+# hex pseudonym "de76627c71637faa") is never read as one.
+_IBAN_LEN = dict(x.split(":") for x in (
+    "AD:24 AE:23 AL:28 AT:20 AZ:28 BA:20 BE:16 BG:22 BH:22 BR:29 BY:28 CH:21 CR:22 CY:28 CZ:24 "
+    "DE:22 DK:18 DO:28 EE:20 EG:29 ES:24 FI:18 FO:18 FR:27 GB:22 GE:22 GI:23 GL:18 GR:27 GT:28 "
+    "HR:21 HU:28 IE:22 IL:23 IQ:23 IS:26 IT:27 JO:30 KW:30 KZ:20 LB:28 LC:32 LI:21 LT:20 LU:20 "
+    "LV:21 MC:27 MD:24 ME:22 MK:19 MR:27 MT:31 MU:30 NL:18 NO:15 PK:24 PL:28 PS:29 PT:25 QA:29 "
+    "RO:24 RS:22 SA:24 SC:31 SE:24 SI:19 SK:24 SM:27 ST:25 SV:28 TL:23 TN:24 TR:26 UA:29 VA:22 "
+    "VG:24 XK:20").split())
+
+
+def _iban_ok(t: str) -> bool:
+    t = t.upper()
+    if str(len(t)) != _IBAN_LEN.get(t[:2]):
+        return False
+    return int("".join(str(int(ch, 36)) for ch in t[4:] + t[:4])) % 97 == 1
+
+
+def _iban_spans(text: str) -> list[tuple[int, int]]:
+    """Where IBANs are: for each candidate, the longest prefix (15–34 characters, spaces
+    aside) whose mod-97 checksum holds, so a trailing word or number never hides one."""
+    spans = []
+    for m in _IBAN_RE.finditer(text):
+        ends = [m.start() + i + 1 for i, ch in enumerate(m.group()) if ch != " "]
+        for n in range(min(34, len(ends)), 14, -1):
+            end = ends[n - 1]
+            if _iban_ok(text[m.start():end].replace(" ", "")):
+                spans.append((m.start(), end))
+                break
+    return spans
+
+
+def _mask_spans(text: str, spans: list[tuple[int, int]]) -> str:
+    for a, b in reversed(spans):
+        text = text[:a] + MASK + text[b:]
+    return text
 
 
 _IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)"
@@ -1026,7 +1058,7 @@ def mask_pii(value: Any) -> Any:
     v = _EMAIL_RE.sub(MASK, value)
     v = _SSN_RE.sub(MASK, v)
     v = _CARD_RE.sub(lambda m: MASK if _luhn(re.sub(r"\D", "", m.group())) else m.group(), v)
-    v = _IBAN_RE.sub(lambda m: MASK if _iban(m.group()) else m.group(), v)
+    v = _mask_spans(v, _iban_spans(v))
     v = _PHONE_RE.sub(MASK, v)
     v = _INTL_PHONE_RE.sub(_intl_phone, v)
     return _IPV4_RE.sub(MASK, v)
@@ -1088,7 +1120,7 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 hits["phone"] = hits.get("phone", 0) + 1
             elif any(_luhn(re.sub(r"\D", "", m.group())) for m in _CARD_RE.finditer(t)):
                 hits["card"] = hits.get("card", 0) + 1
-            elif any(_iban(m.group()) for m in _IBAN_RE.finditer(t)):
+            elif _iban_spans(t):
                 hits["iban"] = hits.get("iban", 0) + 1
     if sum(hits.values()) >= 0.3 * len(vals):
         kind = max(hits, key=hits.get)
@@ -1231,7 +1263,7 @@ def pii_strings(value: Any) -> list[str]:
     found = [m.group() for rx in (_EMAIL_RE, _SSN_RE, _PHONE_RE, _IPV4_RE) for m in rx.finditer(text)]
     found += [m.group() for m in _INTL_PHONE_RE.finditer(text) if _intl_phone(m) == MASK]
     found += [m.group() for m in _CARD_RE.finditer(text) if _luhn(re.sub(r"\D", "", m.group()))]
-    found += [m.group() for m in _IBAN_RE.finditer(text) if _iban(m.group())]
+    found += [text[a:b] for a, b in _iban_spans(text)]
     return found
 
 

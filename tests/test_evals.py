@@ -197,7 +197,7 @@ def test_numbers_grounded_hard_rule(sales):
 def test_every_case_is_well_formed():
     for suite, kinds in (("analysis", ANALYSIS_CHECKS), ("e2e", E2E_CHECKS)):
         cases = load_cases(suite, None)
-        assert len(cases) == {"analysis": 75, "e2e": 42}[suite]   # 5.5: +22 analysis, +14 E2E; 5.7: +7, +8
+        assert len(cases) == {"analysis": 79, "e2e": 51}[suite]   # 5.5: +22/+14; 5.7 retail +7/+8, banking +4/+9
         assert len({c["id"] for c in cases}) == len(cases)
         for c in cases:
             _, truth = datagen.make(c["dataset"]["name"], c["dataset"]["seed"])
@@ -296,9 +296,9 @@ INTAKE = load_cases("intake", None)
 
 def test_intake_case_mix_matches_the_plan():
     from collections import Counter
-    assert len(INTAKE) == 72 and sum(c["id"].endswith("holdout") for c in INTAKE) == 13   # 5.7: +12
+    assert len(INTAKE) == 84 and sum(c["id"].endswith("holdout") for c in INTAKE) == 13   # 5.7: +12, +12
     assert Counter(c["category"] for c in INTAKE) == {
-        "clear": 30, "ambiguous": 10, "out_of_scope": 9, "injected": 8, "followup": 15}   # 5.7 retail: +10, +1, +1
+        "clear": 41, "ambiguous": 10, "out_of_scope": 9, "injected": 8, "followup": 16}   # 5.7 retail: +10, +1, +1; banking: +11 clear (2 ask), +1 followup
     sql = [c for c in INTAKE if "-sql-" in c["id"]]                   # database-result cases
     assert len(sql) == 18 and all("frame" in c["source"] for c in sql)
     assert sum(not c["overview_done"] for c in INTAKE) == 4           # first-run override

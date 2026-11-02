@@ -407,11 +407,17 @@ def score_intake_run(case: dict, output: dict | None, error: str | None) -> dict
 
 # ── Visualization (Phase 5): deterministic, $0 ──────────────────────────────────────────────
 
-def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = ()
+def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), contract=None
                  ) -> tuple[AnalysisFindings, list[str]]:
     """AnalysisFindings for a case's `findings:` fixture, valued from the frame (as the analysis
     agent would report them), with evidence from the real build_evidence. Returns the evidence id
-    of each fixture entry, in order."""
+    of each fixture entry, in order. A level (a balance) goes through the one rule
+    (utils.aggregate): never summed across dates."""
+    from agents.utils import aggregate, effective_agg
+    from domain_pack import money_rows
+
+    def rows(frame, col):   # a domain's money: the rows its tiles and charts count
+        return money_rows(frame, contract, col)[0] if contract is not None else frame
     from scipy import stats
 
     from agents.analysis_agent import build_evidence, segment_id
@@ -426,7 +432,10 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = ()
             col, seg = f["column"], f.get("segment")
             frame = df[df[plan["segments"][0]].astype(str) == seg] if seg else df
             agg = "mean" if df[col].dropna().between(0, 1).all() else "sum"   # analysis MoM rule
-            tot = frame.groupby(month.loc[frame.index])[col].agg(agg).sort_index()
+            agg = effective_agg(contract, col, agg) or agg
+            frame = rows(frame, col)
+            tot = aggregate(frame, [month.loc[frame.index]], col, agg, contract,
+                            over_time=True).sort_index()
             # MoM: last month vs the one before. YoY: vs the same month a year earlier.
             # YoY_calendar: calendar-year totals, the partial-year shape the analysis model wrote.
             kind = f.get("period", "MoM")
@@ -441,7 +450,8 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = ()
             ids.append(f"trend:{col}" + (f" ({seg})" if seg else "") + f":{period}")
         elif f["kind"] == "segment":
             cols = f["segment_column"].split("|")
-            g = df.groupby(cols)[f["metric"]].agg(f["aggregation"])
+            g = aggregate(rows(df, f["metric"]), cols, f["metric"], effective_agg(contract, f["metric"],
+                                                               f["aggregation"]), contract)
             segs.append(SegmentResult(
                 segment_column=f["segment_column"], metric_column=f["metric"],
                 aggregation=f["aggregation"],
@@ -590,7 +600,7 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     clean_df, audit = await run_cleaning_agent(session)
     session.cleaning_audit = audit
 
-    findings, _ = viz_findings(case, clean_df, plan["target_metrics"])
+    findings, _ = viz_findings(case, clean_df, plan["target_metrics"], session.data_contract)
     findings.missing_pct = {str(c): round(float(clean_df[c].isna().mean() * 100), 2)
                             for c in clean_df.columns}
     findings.evidence.insert(0, cleaning_evidence(audit))
