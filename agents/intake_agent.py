@@ -19,7 +19,16 @@ from pydantic import BaseModel, ValidationError
 
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
-from domain_pack import computable, defaults_pack, describe_kpi, first_questions, glossary_hits, pack_for
+from domain_pack import (
+    computable,
+    defaults_pack,
+    describe_kpi,
+    first_questions,
+    glossary_hits,
+    kpi_roles,
+    normalize_header,
+    pack_for,
+)
 from guardrails import (
     PLAN_LIST_FIELDS,
     PLAN_SCALAR_FIELDS,
@@ -165,7 +174,9 @@ def domain_notes(contract: DataContract | None, message: str) -> str:
         lines.append("- A calendar period: set targeted_params.period_start and period_end (ISO "
                      "dates, inclusive). Anchor 'last quarter', 'this year' on the data's last date "
                      "in the schema (a period after it is incomplete). For 'vs last year' / "
-                     'year over year set targeted_params.compare = "yoy".')
+                     'year over year set targeted_params.compare = "yoy" and the period to the '
+                     "current one only (Q3 2025 vs a year earlier: 2025-07-01 to 2025-09-30); "
+                     "the year-earlier window follows from compare.")
     return "\n".join(lines)
 
 
@@ -177,8 +188,13 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
         return {k: v for k, v in params.items() if k not in _NEW_PARAMS}
     if params.get("kpi") and not pack.kpi(params["kpi"]):
         params["kpi"] = None
-    kpis = [c for c, _ in glossary_hits(pack, message, [c.name for c in contract.columns])
-            if pack.kpi(c)]
+    # a KPI named by a column's own name counts when that column is one of the KPI's roles
+    # ("net sales" in a file with a Net Sales revenue column is the net sales KPI, its periods
+    # and year-earlier comparison included); another column's name is the column
+    by_name = {normalize_header(c): r for r, c in contract.roles.items()}
+    kpis = [c for c, w in glossary_hits(pack, message, []) if pack.kpi(c)
+            and (normalize_header(w) not in {normalize_header(x.name) for x in contract.columns}
+                 or by_name.get(normalize_header(w)) in kpi_roles(pack, c))]
     # a phrase that isn't the KPI ("sales tax") is the pack's `consumed`, never a KPI hit
     if not params.get("kpi") and len(kpis) == 1:
         params["kpi"] = kpis[0]

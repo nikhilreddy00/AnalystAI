@@ -1276,7 +1276,9 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     assert _pack_params({"metric_column": "Tax"}, c, "How much sales tax did we collect by location?") \
         == {"metric_column": "Tax"}
     assert _pack_params({"metric_column": "Net Sales"}, c, "sales by location")["kpi"] == "net_sales"
-    assert _pack_params({}, c, "What were gross sales by location?") == {}   # its own column: none
+    # its own column, and that column is the KPI's role (gross revenue): the KPI, the same number
+    # with the pack's rows and periods (paid intake gate: 'net sales' on store_weeks' Net Sales)
+    assert _pack_params({}, c, "What were gross sales by location?") == {"kpi": "gross_sales"}
     assert _pack_params({}, c, "How much sales tax by location?") == {}
 
 
@@ -1867,3 +1869,14 @@ def test_the_brief_says_why_the_row_kind_column_must_be_used():
     text = " ".join(pack_brief(RETAIL, roles, ["aov"], "line", {"sale", "test"}))
     assert "pseudonyms" in text and "only this column marks them" in text
     assert "one column more than the schema shows: 'row_kind'" in text   # smoke rerun: 'not present
+
+
+def test_net_sales_named_by_its_own_column_is_the_kpi():
+    """Paid intake gate (intake-retail-04): store_weeks has a 'Net Sales' column; 'net sales in Q1
+    2026 vs the year before' must be the KPI (it answered 'No segment column specified')."""
+    from agents.intake_agent import _pack_params
+    c = _contract(_gen("store_weeks"))
+    got = _pack_params({"metric_column": "Net Sales", "compare": "yoy", "period_start": "2026-01-01",
+                        "period_end": "2026-03-31"}, c,
+                       "What were net sales in Q1 2026 compared with the same quarter the year before?")
+    assert got["kpi"] == "net_sales"

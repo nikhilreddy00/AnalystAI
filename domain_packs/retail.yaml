@@ -177,7 +177,8 @@ glossary:
         items in a typical basket]
   asp: [average selling price, avg selling price, asp, average unit price]
   gross_margin_pct: [gross margin, margin, gm%, margin rate]
-  return_rate: [return rate, returns rate, refund rate, sales returns rate, sales return rate]
+  return_rate: [return rate, returns rate, refund rate, sales returns rate, sales return rate,
+                sends back, sent back, send back]
   comp: [like for like, like-for-like, lfl, comp sales, comparable sales, same store sales,
          same-store sales]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
