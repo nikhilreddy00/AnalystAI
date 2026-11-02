@@ -918,13 +918,14 @@ def snapshot_entity(contract, columns) -> tuple[list[str], str] | None:
 def entity_rows(df: pd.DataFrame, contract) -> pd.DataFrame:
     """Rows for a statistic over entities (a correlation) on snapshot data: each entity's latest
     snapshot (any kind first), then only rows the tiles count (on the books, main currency);
-    every snapshot would count an account 14 times. Not snapshot data: the frame as it is.
+    every snapshot would count an account 14 times. An account that stopped reporting keeps its
+    last row (dropping it would bias toward survivors). Not snapshot data: the frame as it is.
     Mirrored in the analysis sandbox's built-in correlation."""
     ent = snapshot_entity(contract, df.columns)
     if ent is None:
         return df
     from agents.utils import snapshot_rows
-    rows = snapshot_rows(df, ent[0], ent[1])
+    rows = snapshot_rows(df, ent[0], ent[1], current=False)
     pack = pack_for(contract.domain)
     if pack is None:
         return rows

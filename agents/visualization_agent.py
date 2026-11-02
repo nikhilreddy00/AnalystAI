@@ -1787,7 +1787,7 @@ def generate_dashboard_charts(
 
     # ── Priority 4: relationships ────────────────────────────────────────
     if len(charts) < 8 and len(continuous) >= 2:
-        pair = _best_correlated_pair(df, continuous)
+        pair = _best_correlated_pair(entity_rows(df, ctx.contract if ctx else None), continuous)
         if pair:
             ch = oriented_scatter(df, pair[0], pair[1], ctx)
             if ch:
@@ -1873,8 +1873,11 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
              f"{ch.rationale.reason}.", ch.rationale.x, ch.rationale.y, "none", ch.rationale.n_rows,
              code=ch.rationale.code)
     elif src == "correlation_heatmap":
+        rows = entity_rows(ctx.df, ctx.contract)   # the rows the matrix was computed on
         _why(ch, ctx, "profile:correlation_matrix", "Pearson r for every pair of numeric columns.",
-             "numeric columns", "pearson r", "none", len(ctx.df), code="df.corr(numeric_only=True)")
+             "numeric columns", "pearson r", "none", len(rows),
+             code="df.corr(numeric_only=True)" if rows is ctx.df else
+             "entity_rows(df, contract).corr(numeric_only=True)  # one row per account: its latest snapshot")
     elif src == "distribution":
         col = ch.x_label if ch.x_label in ctx.df.columns else col
         if ch.title.startswith(str(col)):
@@ -1981,6 +1984,7 @@ def compute_briefing_extras(
     out["target_col"] = target_col
     corrs: dict[str, float] = {}
     if target_col and target_col in df.columns:
+        df = entity_rows(df, contract)   # snapshot data: one row per account (shown on the dashboard)
         t = _to_01(df[target_col])
         if t is not None:
             for col in df.columns:
@@ -2727,7 +2731,7 @@ def build_single_chart(
 
     chart: ChartConfig | None = None
     if chart_type == ChartType.SCATTER and numeric_y:
-        chart = _build_scatter(df, x_key, y)
+        chart = _build_scatter(entity_rows(df, contract), x_key, y)   # one point per account
         if chart:
             chart.colors, agg = [], "none"
     elif chart_type == ChartType.HISTOGRAM:

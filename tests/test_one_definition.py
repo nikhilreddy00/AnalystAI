@@ -95,12 +95,20 @@ def test_one_rename_to_display_names():
 
 
 def test_a_correlation_on_snapshot_data_counts_each_entity_once():
-    """Pass 1 and pass 2 both found correlations over every snapshot (each loan 14 times),
-    three definitions with three r values: answers and charts read domain_pack.entity_rows; the
-    sandbox mirrors it (_cdf). A new .corr( must take one of them."""
-    allowed = {"analysis_agent.py:_cdf", "targeted_analysis_agent.py:entity_rows",
-               "visualization_agent.py:entity_rows"}
-    for p in SHARED:
-        text = p.read_text()
-        if ".corr(" in text and "domain_pack" not in p.name and p.name != "guardrails.py":
-            assert any(a.startswith(p.name) and a.split(":")[1] in text for a in allowed), p.name
+    """Passes 1–3 each found correlations over every snapshot (each loan 14 times): every r a
+    user sees reads domain_pack.entity_rows (the sandbox mirrors it as _cdf). Per function: one
+    that computes r takes entity_rows, is handed its rows by one that does, or is a column-role
+    heuristic (which outcome column; no r is shown)."""
+    import inspect
+
+    from agents import targeted_analysis_agent as t
+    from agents import visualization_agent as v
+    handed = {"_best_correlated_pair", "_build_correlation_heatmap", "_build_scatter"}
+    roles_only = {"classify_columns", "_rank_continuous_by_target_assoc"}
+    for mod in (t, v):
+        for name, fn in inspect.getmembers(mod, inspect.isfunction):
+            if fn.__module__ != mod.__name__ or name in handed | roles_only:
+                continue
+            src = inspect.getsource(fn)
+            assert ".corr(" not in src or "entity_rows" in src, f"{name}: r on domain_pack.entity_rows"
+    assert "_cdf" in inspect.getsource(__import__("agents.analysis_agent", fromlist=["x"])._build_standard_code)

@@ -119,7 +119,7 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
         name = pack.glossary.get(params.kpi, [params.kpi.replace("_", " ")])[0]
         name = name[0].upper() + name[1:]   # 'Net interest margin', never 'nim'
         why = (f"{name} needs {pack.unsupported[params.kpi]}." if params.kpi in pack.unsupported
-               else f"{name} isn't one figure here: {pack.definitions[params.kpi]}")
+               else f"This isn't one figure here. {pack.definitions[params.kpi]}")
         return _unanswerable(intent, why, [pack.say("unsupported_alternatives")])
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS and grouped:
         roles = {r: c for r, c in contract.roles.items() if c in df.columns}
@@ -1056,10 +1056,13 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             before = whole.get(latest - 1)   # by label: a missing period is no "period before"
             if base(before):
                 answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"
+            elif before is not None and not pd.isna(before):   # a $0 month is a month
+                answer += f", vs {fmt(before)} the period before (no % change from zero)"
             prior = whole.get(latest - back) if freq != "Y" else None
             if base(prior):   # (by year, "a year earlier" is the period before: said once)
                 answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
-            compared = latest - back if base(prior) else latest - 1 if base(before) else None
+            compared = latest - back if base(prior) else latest - 1 if (
+                before is not None and not pd.isna(before)) else None
             if compared is None:
                 answer += "; there is no earlier complete period to compare with"
             answer += "." + note + (stores_note(contract, full, date, (

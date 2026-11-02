@@ -521,3 +521,25 @@ def test_audit_pass_2_periods_joint_levels_and_one_correlation(tape):
     assert res["correlations"]["Outstanding Principal__Days Past Due"] == pytest.approx(want, abs=1e-4)
     r = handle_correlation(df, TargetedParams(target_columns=["Outstanding Principal", "Days Past Due"]), c)
     assert f"{want:.3f}".lstrip("0") in r.answer_text or f"{want:.2f}" in r.answer_text
+
+
+def test_pass_3_stopped_accounts_count_once_and_a_zero_month_is_a_month(tape):
+    """M1: a correlation keeps an account that stopped reporting (its last row), as the sandbox
+    does; M2: 'vs $0.00 the period before', never 'no earlier period'."""
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisSession, AnalysisTask, QuestionIntent, TargetedParams
+    df, c = tape
+    stopped = df[~((df["Loan ID"] == "L1") & (df["As Of Date"] == "2026-10-31"))]
+    assert "L1" in set(domain_pack.entity_rows(stopped, c)["Loan ID"])
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s = AnalysisSession(session_id="t", data_contract=c, task_plan=AnalysisTask(
+        raw_query="charge-offs by month", analysis_types=["eda"], target_metrics=[],
+        question_intent=QuestionIntent.TIME_SERIES,
+        targeted_params=TargetedParams(kpi="charge_offs", frequency="M")))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    r = run_targeted_analysis(s)
+    assert "vs $0.00 the period before (no % change from zero)" in r.answer_text
+    assert "no earlier complete period" not in r.answer_text
