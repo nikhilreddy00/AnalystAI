@@ -1083,7 +1083,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             answer += "." + note + (stores_note(contract, full, date, (
                 frame[frame["_period"] == compared], frame[frame["_period"] == latest]))
                 if compared is not None else "")
-            chart = _chart(ChartType.LINE, f"{kpi.label} over time{where}",
+            chart = _chart(ChartType.LINE, f"{kpi.label} over time{'' if state else where}",
                            [{"period": f"{k.end_time:%Y-%m-%d}" if freq == "W" else str(k),
                              kpi.label: float(v)} for k, v in series.items()],
                            x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,

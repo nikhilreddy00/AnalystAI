@@ -665,8 +665,13 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     def where(groups: list[list[Cond]]) -> str:
         def cond(c: Cond) -> str:
             if c.in_ is not None or c.not_in is not None:
-                return f"{roles[c.role]} {'is' if c.in_ is not None else 'is not'} " + \
-                    " / ".join(c.in_ if c.in_ is not None else c.not_in)
+                # each spelling once ('non-accrual', not also 'nonaccrual' and 'non accrual')
+                vals, seen = [], set()
+                for v in c.in_ if c.in_ is not None else c.not_in:
+                    if (key := re.sub(r"[^a-z0-9+]", "", v.lower())) not in seen:
+                        seen.add(key)
+                        vals.append(v)
+                return f"{roles[c.role]} {'is' if c.in_ is not None else 'is not'} " + " / ".join(vals)
             op, v = next((o, v) for o, v in (("> ", c.gt), ("≥ ", c.ge), ("< ", c.lt), ("≤ ", c.le))
                          if v is not None)
             return f"{roles[c.role]} {op}{v:g}"

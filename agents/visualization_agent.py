@@ -2655,6 +2655,12 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     if group:
         asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=kpi.name, segment_column=group,
                                                           group_by=group)))
+        # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
+        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
+                      and computable(pack, k.name, roles)), None)
+        if ratio:
+            asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=ratio.name, segment_column=group,
+                                                              group_by=group)))
     out = []
     for intent, params in asks:
         try:

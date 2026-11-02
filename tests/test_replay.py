@@ -73,6 +73,8 @@ CHANGED = {
                "(Pack.name_of: 'Net interest margin', never 'Nim')"
        for r in ("intake-20261102T204144Z.json", "intake-20261102T205448Z.json")
        for c in ("intake-bank-05", "intake-bank-09")},
+    ("insight-20261102T210024Z.json", "ins-41-loan-tape-overview"):
+        "Domain 2 browser check: a pack overview adds its first state ratio (NPL) by product",
 }
 
 

@@ -31,10 +31,11 @@ export default function KPICard({ label, value, sublabel, filteredValue, hasActi
       {showDelta ? (
         <span className="text-xs text-muted-foreground">vs {value} overall</span>
       ) : (
-        sublabel && <span className="text-xs text-muted-foreground truncate">{sublabel}</span>
+        // the context wraps: "by Product: highest Credit Card 10.4%" is the tile's point
+        sublabel && <span className="text-xs text-muted-foreground break-words">{sublabel}</span>
       )}
       {how && (
-        <span className="text-[11px] leading-snug text-muted-foreground" title={how}>
+        <span className="text-[11px] leading-snug text-muted-foreground line-clamp-3" title={how}>
           {how}
         </span>
       )}
