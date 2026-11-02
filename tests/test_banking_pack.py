@@ -551,3 +551,26 @@ def test_pass_3_stopped_accounts_count_once_and_a_zero_month_is_a_month(tape):
     r = run_targeted_analysis(s)
     assert "vs $0.00 the period before (no % change from zero)" in r.answer_text
     assert "no earlier complete period" not in r.answer_text
+
+
+def test_a_period_on_an_event_date_reads_the_datas_coverage_from_its_time_axis():
+    """Live run: 'charged off this year' sliced by Charge Off Date said 'the data starts 28 Feb
+    2026, so the period is incomplete' (the first charge-off); the tape starts Sep 2025."""
+    import io
+
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from evals import datagen
+    from orchestrator.state import AnalysisSession, AnalysisTask, QuestionIntent, TargetedParams
+    df = datagen.make("loan_tape", 1)[0]
+    c = _contract(df)
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    s = AnalysisSession(session_id="t", data_contract=c, task_plan=AnalysisTask(
+        raw_query="How much did we charge off this year, by product?", analysis_types=["eda"],
+        target_metrics=[], question_intent=QuestionIntent.SEGMENT_COMPARE,
+        targeted_params=TargetedParams(kpi="charge_offs", segment_column="Product",
+                                       date_column="Charge Off Date", period_start="2026-01-01",
+                                       period_end="2026-12-31")))
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    r = run_targeted_analysis(s)
+    assert "the data starts" not in r.answer_text and "$21,767.95" in r.answer_text

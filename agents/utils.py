@@ -334,8 +334,10 @@ def _bound(text: str, end: bool):
     return ts
 
 
-def period_window(df, date: str | None, start: str | None, end: str | None):
-    """(lo, hi, data start, data end, error): the period asked, as bounds, and the data's span."""
+def period_window(df, date: str | None, start: str | None, end: str | None,
+                  span: str | None = None):
+    """(lo, hi, data start, data end, error): the period asked, as bounds, and the data's span
+    (`span`: the column the data's coverage is read from, when `date` is an event's own date)."""
     import pandas as pd
 
     if not date or date not in df.columns:
@@ -348,10 +350,12 @@ def period_window(df, date: str | None, start: str | None, end: str | None):
         hi = _bound(end, True) if end else t.max()
     except (ValueError, TypeError):
         return None, None, None, None, f"I couldn't read the period ({start} to {end}) as dates"
-    return lo, hi, t.min(), t.max(), None
+    s = _local(pd.to_datetime(df[span], errors="coerce")) if span and span in df.columns else t
+    return lo, hi, s.min(), s.max(), None
 
 
-def filter_period(df, date: str | None, start: str | None, end: str | None):
+def filter_period(df, date: str | None, start: str | None, end: str | None,
+                  span: str | None = None):
     """(rows in [start, end], a note, or an error) for a period the user named. Inclusive ISO
     dates (a year or a month means all of it); reversed bounds are swapped; a period the data
     doesn't reach, or doesn't fully cover, is said, never an empty or silent answer. No period:
@@ -360,7 +364,7 @@ def filter_period(df, date: str | None, start: str | None, end: str | None):
 
     if not (start or end):
         return df, "", None
-    lo, hi, first, last, why = period_window(df, date, start, end)
+    lo, hi, first, last, why = period_window(df, date, start, end, span)
     if why:
         return df.iloc[:0], "", why
     t = _local(pd.to_datetime(df[date], errors="coerce"))

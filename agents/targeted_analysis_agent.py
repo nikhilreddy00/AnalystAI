@@ -53,6 +53,7 @@ from scipy import stats
 from domain_pack import (
     additive,
     entity_rows,
+    layout_columns,
     money_rows,
     compute_kpi,
     computable,
@@ -141,7 +142,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     full, period = df, ""
     if params and (params.period_start or params.period_end):
         date = _date_of(contract, params, df)
-        df, period, why = filter_period(df, date, params.period_start, params.period_end)
+        df, period, why = filter_period(df, date, params.period_start, params.period_end,
+                                        _span_of(contract, df, date))
         if why:
             return _unanswerable(intent, why, ["Ask about a period the data covers",
                                                "Ask without a period (the whole data)"])
@@ -894,6 +896,17 @@ def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
             "growth leaves them out.")
 
 
+def _span_of(contract: DataContract, df: pd.DataFrame, date: str | None) -> str | None:
+    """The column the data's coverage is read from when `date` is an event's own date (a
+    charge-off date, filled only on charged-off rows): the time axis. Otherwise None (itself)."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack is None or not date:
+        return None
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    return roles.get(pack.date_role) if layout_columns(df, pack, roles).get(date) == "conditional" \
+        else None
+
+
 def _as_of(rows: pd.DataFrame, date: str) -> str:
     """'as of 31 Oct 2026': a state's date, the newest snapshot in these rows."""
     t = _local(pd.to_datetime(rows[date], format="mixed", errors="coerce")).max()
@@ -955,7 +968,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
 
     date = _date_of(contract, params, df)
     weekly = bool(date) and weekly_cadence(full[date])   # YoY: 52 weeks back, same week-endings
-    period = filter_period(full, date, params.period_start, params.period_end)[1]
+    period = filter_period(full, date, params.period_start, params.period_end,
+                           _span_of(contract, full, date))[1]
     state = kpi.at == "latest" and date is not None   # a balance is as of a date, not over days
     if state:   # asked for a period or not: a balance is as of a date
         period = _as_of(df, date)
