@@ -202,6 +202,12 @@ class Pack(_Strict):
     def label(self, kind: str) -> str:
         return self.row_labels.get(kind, kind.replace("_", "-") + " rows")
 
+    def name_of(self, concept: str) -> str:
+        """A concept in a sentence: its first glossary word, capitalized ('Net interest margin',
+        'Sell-through'), never its key ('Nim')."""
+        n = (self.glossary.get(concept) or [concept.replace("_", " ")])[0]
+        return n[0].upper() + n[1:]
+
     def say(self, which: str, **kw) -> str:
         return self.text.get(which, TEXT_DEFAULTS[which]).format(**kw)
 

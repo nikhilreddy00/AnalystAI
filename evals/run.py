@@ -1271,6 +1271,11 @@ def rescore(path: Path) -> Path:
     report = json.loads(path.read_text())
     suite = report["meta"]["suite"]
     cases = {c["id"]: c for c in load_cases(suite, None)}
+    gone = sorted(set(report["runs"]) - set(cases))   # a case removed since: out, and said
+    for cid in gone:
+        report["runs"].pop(cid)
+    if gone:
+        report["meta"]["cases_removed"] = gone
     for cid, rs in report["runs"].items():
         for r in rs:
             if "output" not in r:

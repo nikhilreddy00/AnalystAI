@@ -365,7 +365,7 @@ async def run_intake_agent(
     if unsupported and not is_overview_request:   # sell-through: never computed from sales alone
         data["clarification_needed"] = True
         data["clarification_question"] = (
-            f"{unsupported[0].replace('_', '-').capitalize()} needs "
+            f"{pack.name_of(unsupported[0])} needs "
             f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives')}")
 
     named = (data.get("targeted_params") or {}).get("kpi") if isinstance(

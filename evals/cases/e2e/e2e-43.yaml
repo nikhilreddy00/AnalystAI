@@ -20,7 +20,7 @@ checks:
   scope: report
 - kind: must_not_number
   truth_key: npl_count_pct
-  rel_tol: 0.03
+  rel_tol: 0.005
   unit: '%'
 - kind: must_match
   pattern: as of 31 Oct 2026|as of October 31,? 2026

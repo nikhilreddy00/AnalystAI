@@ -230,7 +230,7 @@ glossary:
   adb: [average daily balance, adb]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
   nim: [net interest margin, nim]
-  default_prediction: [going to default, will default, likely to default, predict default,
+  default_prediction: [default prediction, going to default, will default, likely to default, predict default,
                        predicted default, probability of default, default risk score, pd model]
 consumed: [balance sheet, accounts payable, accounts receivable, account manager, interest rate,
            fee schedule]

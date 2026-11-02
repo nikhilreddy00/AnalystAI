@@ -69,6 +69,10 @@ CHANGED = {
     **{(r, "intake-bank-08"): "Domain 2 intake: case reworded to one KPI ('money coming in' is "
                                "the inflows KPI's word); old replies replay against the new question"
        for r in ("intake-20261102T204144Z.json", "intake-20261102T205448Z.json")},
+    **{(r, c): "Domain 2 E2E gate: a concept's name in a clarification is its glossary word "
+               "(Pack.name_of: 'Net interest margin', never 'Nim')"
+       for r in ("intake-20261102T204144Z.json", "intake-20261102T205448Z.json")
+       for c in ("intake-bank-05", "intake-bank-09")},
 }
 
 

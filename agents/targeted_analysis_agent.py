@@ -117,8 +117,7 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if params and params.kpi and pack and not pack.kpi(params.kpi) and (
             params.kpi in pack.unsupported or params.kpi in pack.definitions):
         # a concept with no KPI (NIM, roll rate): its own words, never another column's figure
-        name = pack.glossary.get(params.kpi, [params.kpi.replace("_", " ")])[0]
-        name = name[0].upper() + name[1:]   # 'Net interest margin', never 'nim'
+        name = pack.name_of(params.kpi)   # 'Net interest margin', never 'nim'
         why = (f"{name} needs {pack.unsupported[params.kpi]}." if params.kpi in pack.unsupported
                else f"This isn't one figure here. {pack.definitions[params.kpi]}")
         return _unanswerable(intent, why, [pack.say("unsupported_alternatives")])
