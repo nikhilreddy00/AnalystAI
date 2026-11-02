@@ -167,3 +167,31 @@ async def test_a_query_cancelled_mid_flight_does_not_break_the_next_request(stor
     with pytest.raises(asyncio.CancelledError):
         await task
     assert await store.active_for_session("s1", "u1") is None   # served, not "connection is closed"
+
+
+async def test_api_and_worker_starting_together_on_a_new_database_both_start():
+    """Phase 5.7 live run: the API and the worker both ran CREATE TABLE IF NOT EXISTS on a fresh
+    database and the worker died on a duplicate type; schema setup now holds an advisory lock."""
+    if not PG:
+        pytest.skip("TEST_PG_URL not set")
+    import uuid
+
+    from sqlalchemy.engine import make_url
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from memory.session_store import SessionStore
+    name = f"init_race_{uuid.uuid4().hex[:8]}"
+    admin = create_async_engine(PG, isolation_level="AUTOCOMMIT")
+    async with admin.connect() as conn:
+        await conn.execute(text(f"CREATE DATABASE {name}"))
+    url = make_url(PG).set(database=name).render_as_string(hide_password=False)
+    stores = [SessionStore(url), RunStore(url), SessionStore(url), RunStore(url)]
+    try:
+        assert [r for r in await asyncio.gather(*(s.init() for s in stores), return_exceptions=True)
+                if isinstance(r, Exception)] == []
+    finally:
+        for s in stores:
+            await s._engine.dispose()
+        async with admin.connect() as conn:
+            await conn.execute(text(f"DROP DATABASE {name}"))
+        await admin.dispose()

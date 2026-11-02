@@ -413,6 +413,12 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             continue
         pct = _null_pct(df[col])
         known = len(df) - missing
+        if ctx.pack and order and col != order and _first_line_only(df, df[order], col):
+            # an order-level field written on each order's first line (Shopify's discount, total,
+            # billing name): blank later lines are the layout, never "missing" or "Unknown"
+            log(col, "keep", "order_level", f"Written on each order's first line only ({pct:g}% of "
+                "lines blank by the export's layout): an order-level field, kept as it is.", 0, pct, pct)
+            continue
         if pct > HIGH_NULL_PCT:
             high_null.append(col)
             share = ">99.9%" if known and pct >= 99.9 else f"{pct:g}%"   # never "100%" with data

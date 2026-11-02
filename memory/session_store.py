@@ -38,6 +38,14 @@ _SECRET_FIELDS = ("connection_string", "service_account_json", "auth_value")
 _ENC_PREFIX = "enc:"
 
 
+async def schema_lock(conn) -> None:
+    """Postgres: one process at a time creates or alters the tables. The API and a worker
+    starting together on a fresh database both ran CREATE TABLE IF NOT EXISTS, and one died
+    on a duplicate type (Phase 5.7 live run). Released with the transaction."""
+    if conn.dialect.name == "postgresql":
+        await conn.execute(text("SELECT pg_advisory_xact_lock(hashtext('analystai-schema'))"))
+
+
 def _fernet():
     from cryptography.fernet import Fernet
     from api.config import settings
@@ -620,6 +628,7 @@ class SessionStore:
 
     async def init(self) -> None:
         async with self._engine.begin() as conn:
+            await schema_lock(conn)
             await conn.run_sync(Base.metadata.create_all, tables=[
                 SessionRecord.__table__, DashboardChart.__table__, DatasetRow.__table__,
                 DatasetVersionRow.__table__])

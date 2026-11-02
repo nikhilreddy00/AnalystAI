@@ -1,0 +1,3252 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261102T004752Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "893f5d7",
+  "started_at": "20261102T004752Z",
+  "only": "ins-01-sales-overview,ins-25-mixed-dates,ins-27-twelve-months-bad-summary,ins-28-one-month,ins-35-jargon-columns",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 5,
+  "runs": 5,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 2,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0165,
+  "latency_p50_s": 17.13,
+  "latency_p95_s": 19.62,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": 1.0,
+  "must_not": 1.0,
+  "contradictions_named": null,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "adversarial": 1.0,
+   "data_quality": 1.0,
+   "date_scope": 1.0,
+   "straightforward": 1.0
+  }
+ },
+ "runs": {
+  "ins-01-sales-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/segment b/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/12(\\.\\d)?%/ found"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Average revenue differs across the three segments: Segment A averages $121.29, Segment B $98.06, and Segment C $78.88 per order. Revenue and marketing spend move together meaningfully across orders, while discount shows almost no association with revenue. Segment B's sharper October decline warrants attention, and five revenue values fall well outside the usual range.",
+      "technical_findings": [
+       "revenue and marketing_spend: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+       "revenue and discount: r = -0.019 (n = 3,000; medium confidence: weak association (|r| = 0.02))",
+       "revenue MoM: -2.8% (n = 3,000; high confidence: 3000 rows)",
+       "revenue (B) MoM: -12.6% (n = 1,049; high confidence: 1049 rows)",
+       "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+       "5 unusual values in revenue (n = 3,000; high confidence: 3000 rows)",
+       "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+       "units: median 4.00, mean 4.43, range 1.00 to 8.00 (n = 3,000; high confidence: 3000 rows)",
+       "discount: median 0.1465, mean 0.1477, range 0 to 0.3 (n = 3,000; high confidence: 3000 rows)",
+       "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate Segment B's October 2026 performance to identify whether the 12.6% revenue drop reflects a structural issue or a one-month anomaly.",
+        "reasoning": "Segment B's decline is four times steeper than the overall trend, making it the highest-priority area for intervention.",
+        "metric_impact": "Segment B's decline is four times steeper than the overall trend, making it the highest-priority area for intervention."
+       },
+       {
+        "priority": 2,
+        "action": "Review and verify the five flagged revenue outliers, particularly the order reaching $964.19, before including them in any downstream reporting.",
+        "reasoning": "Unverified extreme values can distort averages and trend calculations across the dataset.",
+        "metric_impact": "Unverified extreme values can distort averages and trend calculations across the dataset."
+       },
+       {
+        "priority": 3,
+        "action": "Assess whether marketing spend allocation differs across segments, given that revenue and marketing spend move together across orders.",
+        "reasoning": "Understanding this relationship by segment could inform where additional spend has the most association with higher revenue.",
+        "metric_impact": "Understanding this relationship by segment could inform where additional spend has the most association with higher revenue."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Notes: >99.9% missing",
+        "severity": "critical",
+        "description": ">99.9% of notes values are missing. They are left out of every result, not filled in.",
+        "affected_metric": "notes",
+        "suggested_investigation": "Check why notes is often blank at the source."
+       },
+       {
+        "title": "Revenue: 4 extreme values",
+        "severity": "medium",
+        "description": "4 revenue values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "revenue",
+        "suggested_investigation": "Verify the largest revenue values against the source records."
+       },
+       {
+        "title": "Duplicates: 25 rows removed",
+        "severity": "low",
+        "description": "25 duplicate records (the same ID twice) were removed before the analysis.",
+        "affected_metric": "",
+        "suggested_investigation": "Find where duplicate records enter the export."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply. The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Are the five extreme revenue outliers concentrated in a particular segment, region, or product category?",
+       "Does the relationship between marketing spend and revenue hold equally across all three segments, or is it stronger for some than others?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v8) computed: anomaly, correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "Average revenue differs across the three segments: Segment A averages $121.29, Segment B $98.06, and Segment C $78.88 per order.",
+       "headline_evidence_ids": [
+        "seg:segment/revenue"
+       ],
+       "paragraphs": [
+        {
+         "text": "Revenue and marketing spend move together meaningfully across orders, while discount shows almost no association with revenue.",
+         "evidence_ids": [
+          "corr:revenue__marketing_spend",
+          "corr:revenue__discount"
+         ]
+        },
+        {
+         "text": "Segment B's sharper October decline warrants attention, and five revenue values fall well outside the usual range.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM",
+          "anom:revenue"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Average revenue differs across the three segments: Segment A averages $121.29, Segment B $98.06, and Segment C $78.88 per order.",
+         "evidence_ids": [
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "Overall revenue fell 2.8% month-over-month in October 2026, but Segment B's decline was much steeper at 12.6% over the same period.",
+         "evidence_ids": [
+          "trend:revenue:MoM",
+          "trend:revenue (B):MoM"
+         ]
+        },
+        {
+         "text": "Revenue and marketing spend move together across orders, while discount and revenue show almost no association \u2014 that relationship could be chance.",
+         "evidence_ids": [
+          "corr:revenue__marketing_spend",
+          "corr:revenue__discount"
+         ]
+        },
+        {
+         "text": "Five orders have revenue values flagged as far outside the usual range (above $260.65), including one reaching $964.19; these have been kept but should be verified.",
+         "evidence_ids": [
+          "anom:revenue",
+          "eda:revenue"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate Segment B's October 2026 performance to identify whether the 12.6% revenue drop reflects a structural issue or a one-month anomaly.",
+         "expected_impact": "Segment B's decline is four times steeper than the overall trend, making it the highest-priority area for intervention.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM",
+          "trend:revenue:MoM"
+         ]
+        },
+        {
+         "action": "Review and verify the five flagged revenue outliers, particularly the order reaching $964.19, before including them in any downstream reporting.",
+         "expected_impact": "Unverified extreme values can distort averages and trend calculations across the dataset.",
+         "evidence_ids": [
+          "anom:revenue",
+          "eda:revenue"
+         ]
+        },
+        {
+         "action": "Assess whether marketing spend allocation differs across segments, given that revenue and marketing spend move together across orders.",
+         "expected_impact": "Understanding this relationship by segment could inform where additional spend has the most association with higher revenue.",
+         "evidence_ids": [
+          "corr:revenue__marketing_spend",
+          "seg:segment/revenue"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v8) computed: anomaly, correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "revenue and marketing_spend: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+        "revenue and discount: r = -0.019 (n = 3,000; medium confidence: weak association (|r| = 0.02))",
+        "revenue MoM: -2.8% (n = 3,000; high confidence: 3000 rows)",
+        "revenue (B) MoM: -12.6% (n = 1,049; high confidence: 1049 rows)",
+        "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+        "5 unusual values in revenue (n = 3,000; high confidence: 3000 rows)",
+        "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+        "units: median 4.00, mean 4.43, range 1.00 to 8.00 (n = 3,000; high confidence: 3000 rows)",
+        "discount: median 0.1465, mean 0.1477, range 0 to 0.3 (n = 3,000; high confidence: 3000 rows)",
+        "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+       ],
+       "caveats": [
+        "The notes column is effectively unusable \u2014 2,999 of 3,000 values are missing \u2014 so any context recorded there is lost.",
+        "The association between revenue and marketing spend shows the two move together but does not establish that one causes the other; a controlled test would be needed to confirm any causal link.",
+        "Twenty-five duplicate rows were removed before analysis; if some duplicates were legitimate repeat orders, the row count and aggregates may be slightly understated.",
+        "2 sentence(s) stating a number, date or term not in the evidence and 0 uncited claim(s) were removed.",
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "order_date: Parsed as dates.",
+        "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+        "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+       ],
+       "code_references": [
+        "_period = pd.to_datetime(df['order_date'], format='mixed').dt.to_period('M'); df.groupby([_period, 'segment'])['revenue'].sum()",
+        "df[['marketing_spend', 'revenue']].dropna().sample(min(n, 500), random_state=42)",
+        "df.groupby('segment')['revenue'].mean()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-02T00:48:12.669099Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "corr:revenue__marketing_spend",
+       "corr:revenue__discount",
+       "trend:revenue:MoM",
+       "trend:revenue (B):MoM",
+       "seg:segment/revenue",
+       "anom:revenue",
+       "eda:revenue",
+       "eda:units",
+       "eda:discount",
+       "eda:marketing_spend"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 3000,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+         "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "corr:revenue__marketing_spend",
+        "kind": "correlation",
+        "claim": "revenue and marketing_spend: r = 0.569",
+        "result_excerpt": "{\"revenue__marketing_spend\": 0.5685}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "corr:revenue__discount",
+        "kind": "correlation",
+        "claim": "revenue and discount: r = -0.019",
+        "result_excerpt": "{\"revenue__discount\": -0.019}",
+        "row_count": 3000,
+        "confidence": "medium",
+        "confidence_reason": "weak association (|r| = 0.02)",
+        "assumptions": []
+       },
+       {
+        "id": "trend:revenue:MoM",
+        "kind": "trend",
+        "claim": "revenue MoM: -2.8%",
+        "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -2.8, \"segment\": null}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "trend:revenue (B):MoM",
+        "kind": "trend",
+        "claim": "revenue (B) MoM: -12.6%",
+        "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+        "row_count": 1049,
+        "confidence": "high",
+        "confidence_reason": "1049 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:segment/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by segment (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "anom:revenue",
+        "kind": "anomaly",
+        "claim": "5 unusual values in revenue",
+        "result_excerpt": "[{\"column\": \"revenue\", \"row_index\": 219, \"value\": 300.59, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 294, \"value\": 519.27, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 1059, \"value\": 911.2, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"rev",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+        "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:units",
+        "kind": "eda",
+        "claim": "units: median 4.00, mean 4.43, range 1.00 to 8.00",
+        "result_excerpt": "{\"mean\": 4.4327, \"std\": 2.2901, \"min\": 1.0, \"max\": 8.0, \"median\": 4.0, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:discount",
+        "kind": "eda",
+        "claim": "discount: median 0.1465, mean 0.1477, range 0 to 0.3",
+        "result_excerpt": "{\"mean\": 0.1477, \"std\": 0.0872, \"min\": 0.0, \"max\": 0.3, \"median\": 0.1465, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:marketing_spend",
+        "kind": "eda",
+        "claim": "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32",
+        "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 12,
+      "audit_summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+      "chart_titles": [
+       "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+       "revenue vs marketing spend (r = 0.57)",
+       "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+       "5 unusual revenue values above 260.65",
+       "revenue fell 2.8% in Oct 2026 vs Sep 2026",
+       "revenue vs discount (r = -0.02)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "revenue",
+        "marketing spend"
+       ],
+       [
+        "revenue",
+        "discount"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 102.7191,
+          "std": 42.2058,
+          "min": 21.47,
+          "max": 964.19,
+          "median": 100.325,
+          "count": 3000.0
+         },
+         "units": {
+          "mean": 4.4327,
+          "std": 2.2901,
+          "min": 1.0,
+          "max": 8.0,
+          "median": 4.0,
+          "count": 3000.0
+         },
+         "discount": {
+          "mean": 0.1477,
+          "std": 0.0872,
+          "min": 0.0,
+          "max": 0.3,
+          "median": 0.1465,
+          "count": 3000.0
+         },
+         "marketing_spend": {
+          "mean": 49.5736,
+          "std": 18.5277,
+          "min": 12.62,
+          "max": 90.32,
+          "median": 48.96,
+          "count": 3000.0
+         }
+        },
+        "correlations": {
+         "revenue__marketing_spend": 0.5685,
+         "revenue__discount": -0.019
+        },
+        "trends": [
+         {
+          "column": "revenue",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -2.8,
+          "segment": null
+         },
+         {
+          "column": "revenue",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -12.64,
+          "segment": "B"
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "segment",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "A",
+            "value": 121.2872
+           },
+           {
+            "name": "B",
+            "value": 98.0581
+           },
+           {
+            "name": "C",
+            "value": 78.8824
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [
+         {
+          "column": "revenue",
+          "row_index": 219,
+          "value": 300.59,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 294,
+          "value": 519.27,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 1059,
+          "value": 911.2,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 1167,
+          "value": 959.82,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         },
+         {
+          "column": "revenue",
+          "row_index": 1491,
+          "value": 964.19,
+          "expected_range": "<= 260.65",
+          "severity": "high",
+          "explanation": ""
+         }
+        ],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 99.97
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "3,000",
+          "context": "3,000 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 3,000 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$102.72",
+          "context": "Range $21.47 \u2013 $964.19",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "40.4% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount Variability",
+          "value": "CV 0.59",
+          "context": "Mean 14.8% \u00b1 8.7%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "discount",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of discount, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 3000,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+          "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "revenue and marketing_spend: r = 0.569",
+         "result_excerpt": "{\"revenue__marketing_spend\": 0.5685}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue and discount: r = -0.019",
+         "result_excerpt": "{\"revenue__discount\": -0.019}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "weak association (|r| = 0.02)"
+        },
+        {
+         "claim": "revenue MoM: -2.8%",
+         "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -2.8, \"segment\": null}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue (B) MoM: -12.6%",
+         "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+         "row_count": 1049,
+         "assumptions": [],
+         "confidence_reason": "1049 rows"
+        },
+        {
+         "claim": "mean revenue by segment (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "5 unusual values in revenue",
+         "result_excerpt": "[{\"column\": \"revenue\", \"row_index\": 219, \"value\": 300.59, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 294, \"value\": 519.27, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 1059, \"value\": 911.2, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"explanation\": \"\"}, {\"column\": \"revenue\", \"row_index\": 1167, \"value\": 959.82, \"expected_range\": \"<= 260.65\", \"severity\": \"high\", \"expla",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+         "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "units: median 4.00, mean 4.43, range 1.00 to 8.00",
+         "result_excerpt": "{\"mean\": 4.4327, \"std\": 2.2901, \"min\": 1.0, \"max\": 8.0, \"median\": 4.0, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "discount: median 0.1465, mean 0.1477, range 0 to 0.3",
+         "result_excerpt": "{\"mean\": 0.1477, \"std\": 0.0872, \"min\": 0.0, \"max\": 0.3, \"median\": 0.1465, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32",
+         "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 3025,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 25 exact duplicate rows (same order_id and every other value).",
+          "rows_affected": 25,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 25
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 3025,
+        "rows_after": 3000,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 25,
+        "outliers_flagged": [
+         "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+        ],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "revenue",
+           "extreme_count": 4,
+           "mild_count": 59,
+           "extreme_pct": 0.13333333333333333,
+           "lower_bound": 19.790547238449893,
+           "upper_bound": 481.90715343646866,
+           "mild_lower_bound": 39.79244319922602,
+           "mild_upper_bound": 245.12166366874456,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "non-numeric",
+          "customer_email": "constant or unsupported",
+          "customer_name": "constant or unsupported",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-01",
+          "2026-10-31",
+          12
+         ]
+        },
+        "grain": "order",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+        "revenue vs marketing spend (r = 0.57)",
+        "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+        "5 unusual revenue values above 260.65",
+        "revenue fell 2.8% in Oct 2026 vs Sep 2026",
+        "revenue vs discount (r = -0.02)"
+       ],
+       [
+        3025,
+        11,
+        12
+       ],
+       [
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "latency_s": 19.78,
+    "cost_usd": 0.01949,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding_rewritten"
+    ],
+    "passed": true
+   }
+  ],
+  "ins-25-mixed-dates": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/units/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/missing|10%|incomplete|not recorded|gaps/ found"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "data_quality",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "The dataset covers 3,004 orders across 12 months, with revenue averaging $102.75 per order and a notable month-over-month dip for segment B in October 2026. Orders span November 2025 through October 2026, with revenue and units broadly healthy across three segments. Data quality is good overall, though units is missing for 10% of rows and the notes column has too many unreadable values to use reliably.",
+      "technical_findings": [
+       "revenue (B) MoM: -12.6% (n = 1,051; high confidence: 1051 rows)",
+       "mean units by segment (3 groups) (n = 2,703; high confidence: 2703 rows)",
+       "revenue: median 100.33, mean 102.75, range 21.47 to 964.19 (n = 3,004; high confidence: 3004 rows)",
+       "units: median 4.00, mean 4.43, range 1.00 to 8.00 (n = 2,703; high confidence: 2703 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the revenue outlier near $964 to confirm it is a legitimate order and not a data entry error.",
+        "reasoning": "Prevents a single record from distorting revenue averages and trend analysis.",
+        "metric_impact": "Prevents a single record from distorting revenue averages and trend analysis."
+       },
+       {
+        "priority": 2,
+        "action": "Resolve the 301 missing units values before running any volume or basket-size analysis.",
+        "reasoning": "",
+        "metric_impact": null
+       },
+       {
+        "priority": 3,
+        "action": "Dig into segment B's October 2026 performance to determine whether the month-over-month revenue decline is a trend or a one-month anomaly.",
+        "reasoning": "Catches a potential revenue risk early enough to act within the quarter.",
+        "metric_impact": "Catches a potential revenue risk early enough to act within the quarter."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Notes: >99.9% missing",
+        "severity": "critical",
+        "description": ">99.9% of notes values are missing. They are left out of every result, not filled in.",
+        "affected_metric": "notes",
+        "suggested_investigation": "Check why notes is often blank at the source."
+       },
+       {
+        "title": "Revenue: 4 extreme values",
+        "severity": "medium",
+        "description": "4 revenue values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "revenue",
+        "suggested_investigation": "Verify the largest revenue values against the source records."
+       },
+       {
+        "title": "Duplicates: 21 rows removed",
+        "severity": "low",
+        "description": "21 duplicate records (the same ID twice) were removed before the analysis.",
+        "affected_metric": "",
+        "suggested_investigation": "Find where duplicate records enter the export."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply. The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Does the month-over-month revenue decline in segment B continue into subsequent months, or is October 2026 an isolated dip?",
+       "What accounts for segment C's slightly higher average units \u2014 is it driven by a specific product category, customer type, or geography?",
+       "Can the 301 rows with missing units be recovered from a source system, and is the missingness random or concentrated in a particular segment or time period?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 21 duplicate rows. Parsed numbers or dates in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3004 rows (started with 3025). Analysis (analysis v8) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "The dataset covers 3,004 orders across 12 months, with revenue averaging $102.75 per order and a notable month-over-month dip for segment B in October 2026.",
+       "headline_evidence_ids": [
+        "eda:revenue",
+        "trend:revenue (B):MoM"
+       ],
+       "paragraphs": [
+        {
+         "text": "Orders span November 2025 through October 2026, with revenue and units broadly healthy across three segments.",
+         "evidence_ids": [
+          "eda:revenue",
+          "eda:units",
+          "seg:segment/units"
+         ]
+        },
+        {
+         "text": "Data quality is good overall, though units is missing for 10% of rows and the notes column has too many unreadable values to use reliably.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Revenue per order ranges from $21.47 to $964.19, with a median of $100.33 and a mean of $102.75; the high maximum flags at least one outlier that was kept but should be reviewed.",
+         "evidence_ids": [
+          "eda:revenue"
+         ]
+        },
+        {
+         "text": "Units per order run from 1 to 8, with a median of 4 and a mean of 4.43, based on the 2,703 rows where units is known.",
+         "evidence_ids": [
+          "eda:units",
+          "clean:audit"
+         ]
+        },
+        {
+         "text": "Average units are similar across segments \u2014 A averages 4.39, B averages 4.34, and C averages 4.63 \u2014 suggesting segment C tends to place slightly larger orders.",
+         "evidence_ids": [
+          "seg:segment/units"
+         ]
+        },
+        {
+         "text": "Segment B revenue fell 12.6% month-over-month comparing October 2026 with September 2026, a drop worth investigating before drawing conclusions about the full period.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the revenue outlier near $964 to confirm it is a legitimate order and not a data entry error.",
+         "expected_impact": "Prevents a single record from distorting revenue averages and trend analysis.",
+         "evidence_ids": [
+          "eda:revenue"
+         ]
+        },
+        {
+         "action": "Resolve the 301 missing units values before running any volume or basket-size analysis.",
+         "expected_impact": "",
+         "evidence_ids": [
+          "clean:audit",
+          "eda:units"
+         ]
+        },
+        {
+         "action": "Dig into segment B's October 2026 performance to determine whether the month-over-month revenue decline is a trend or a one-month anomaly.",
+         "expected_impact": "Catches a potential revenue risk early enough to act within the quarter.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 21 duplicate rows. Parsed numbers or dates in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3004 rows (started with 3025). Analysis (analysis v8) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "revenue (B) MoM: -12.6% (n = 1,051; high confidence: 1051 rows)",
+        "mean units by segment (3 groups) (n = 2,703; high confidence: 2703 rows)",
+        "revenue: median 100.33, mean 102.75, range 21.47 to 964.19 (n = 3,004; high confidence: 3004 rows)",
+        "units: median 4.00, mean 4.43, range 1.00 to 8.00 (n = 2,703; high confidence: 2703 rows)"
+       ],
+       "caveats": [
+        "Units is missing for 10% of rows; all unit and segment averages are based on the 2,703 rows with known values, not the full 3,004.",
+        "The notes column has more than 40% missing or unreadable values and should not be used for analysis without a data-quality review.",
+        "The revenue maximum of $964.19 was flagged as a potential outlier and kept; it may influence mean revenue figures.",
+        "1 sentence(s) stating a number, date or term not in the evidence and 0 uncited claim(s) were removed.",
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "order_date: Parsed as dates.",
+        "*: Removed 21 exact duplicate rows (same order_id and every other value).",
+        "units: 301 missing (10%), metric of the question: left as missing; totals and averages use the 2703 known rows.",
+        "notes: 3003 of 3004 values missing (>99.9%): too empty to use with confidence; left as missing."
+       ],
+       "code_references": [
+        "_period = pd.to_datetime(df['order_date'], format='mixed').dt.to_period('M'); df.groupby([_period, 'segment'])['revenue'].sum()",
+        "df.groupby('segment')['units'].mean()",
+        "np.histogram(df['revenue'].dropna())"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-02T00:48:12.554530Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:revenue (B):MoM",
+       "seg:segment/units",
+       "eda:revenue",
+       "eda:units"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 3025 \u2192 3004 rows, 4 logged changes",
+        "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3004, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 21, 21], [\"units\", \"keep\", 0, 0], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 3004,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "*: Removed 21 exact duplicate rows (same order_id and every other value).",
+         "units: 301 missing (10%), metric of the question: left as missing; totals and averages use the 2703 known rows.",
+         "notes: 3003 of 3004 values missing (>99.9%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "trend:revenue (B):MoM",
+        "kind": "trend",
+        "claim": "revenue (B) MoM: -12.6%",
+        "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+        "row_count": 1051,
+        "confidence": "high",
+        "confidence_reason": "1051 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:segment/units",
+        "kind": "segment",
+        "claim": "mean units by segment (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"units\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 4.3913}, {\"name\": \"B\", \"value\": 4.3394}, {\"name\": \"C\", \"value\": 4.6345}]}",
+        "row_count": 2703,
+        "confidence": "high",
+        "confidence_reason": "2703 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 100.33, mean 102.75, range 21.47 to 964.19",
+        "result_excerpt": "{\"mean\": 102.7474, \"std\": 42.2013, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3004.0}",
+        "row_count": 3004,
+        "confidence": "high",
+        "confidence_reason": "3004 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:units",
+        "kind": "eda",
+        "claim": "units: median 4.00, mean 4.43, range 1.00 to 8.00",
+        "result_excerpt": "{\"mean\": 4.434, \"std\": 2.291, \"min\": 1.0, \"max\": 8.0, \"median\": 4.0, \"count\": 2703.0}",
+        "row_count": 2703,
+        "confidence": "high",
+        "confidence_reason": "2703 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 12,
+      "audit_summary": "Removed 21 duplicate rows. Parsed numbers or dates in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3004 rows (started with 3025).",
+      "chart_titles": [
+       "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+       "Average units by segment: C highest (4.63), B lowest (4.34)",
+       "revenue distribution (151 values > 156 clipped)",
+       "segment Breakdown \u2014 A Leads at 40%",
+       "revenue vs marketing spend (r = 0.57)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 102.7474,
+          "std": 42.2013,
+          "min": 21.47,
+          "max": 964.19,
+          "median": 100.325,
+          "count": 3004.0
+         },
+         "units": {
+          "mean": 4.434,
+          "std": 2.291,
+          "min": 1.0,
+          "max": 8.0,
+          "median": 4.0,
+          "count": 2703.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "revenue",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -12.64,
+          "segment": "B"
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "segment",
+          "metric_column": "units",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "A",
+            "value": 4.3913
+           },
+           {
+            "name": "B",
+            "value": 4.3394
+           },
+           {
+            "name": "C",
+            "value": 4.6345
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 10.02,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 99.97
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "3,004",
+          "context": "3,004 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 3,004 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$102.75",
+          "context": "Range $21.47 \u2013 $964.19",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "40.4% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount Variability",
+          "value": "CV 0.59",
+          "context": "Mean 14.8% \u00b1 8.7%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "discount",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of discount, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 3025 \u2192 3004 rows, 4 logged changes",
+         "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3004, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 21, 21], [\"units\", \"keep\", 0, 0], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 3004,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "*: Removed 21 exact duplicate rows (same order_id and every other value).",
+          "units: 301 missing (10%), metric of the question: left as missing; totals and averages use the 2703 known rows.",
+          "notes: 3003 of 3004 values missing (>99.9%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "revenue (B) MoM: -12.6%",
+         "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+         "row_count": 1051,
+         "assumptions": [],
+         "confidence_reason": "1051 rows"
+        },
+        {
+         "claim": "mean units by segment (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"units\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 4.3913}, {\"name\": \"B\", \"value\": 4.3394}, {\"name\": \"C\", \"value\": 4.6345}]}",
+         "row_count": 2703,
+         "assumptions": [],
+         "confidence_reason": "2703 rows"
+        },
+        {
+         "claim": "revenue: median 100.33, mean 102.75, range 21.47 to 964.19",
+         "result_excerpt": "{\"mean\": 102.7474, \"std\": 42.2013, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3004.0}",
+         "row_count": 3004,
+         "assumptions": [],
+         "confidence_reason": "3004 rows"
+        },
+        {
+         "claim": "units: median 4.00, mean 4.43, range 1.00 to 8.00",
+         "result_excerpt": "{\"mean\": 4.434, \"std\": 2.291, \"min\": 1.0, \"max\": 8.0, \"median\": 4.0, \"count\": 2703.0}",
+         "row_count": 2703,
+         "assumptions": [],
+         "confidence_reason": "2703 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 3025,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 21 exact duplicate rows (same order_id and every other value).",
+          "rows_affected": 21,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 21
+         },
+         {
+          "column": "units",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "301 missing (10%), metric of the question: left as missing; totals and averages use the 2703 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 10.0,
+          "after_null_pct": 10.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "3003 of 3004 values missing (>99.9%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 3025,
+        "rows_after": 3004,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 21,
+        "outliers_flagged": [
+         "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.32)"
+        ],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Removed 21 duplicate rows. Parsed numbers or dates in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3004 rows (started with 3025).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "revenue",
+           "extreme_count": 4,
+           "mild_count": 61,
+           "extreme_pct": 0.13315579227696406,
+           "lower_bound": 19.831223523614245,
+           "upper_bound": 481.3174718509307,
+           "mild_lower_bound": 39.84444207084075,
+           "mild_upper_bound": 244.98850066418447,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.32)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "non-numeric",
+          "customer_email": "constant or unsupported",
+          "customer_name": "constant or unsupported",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-01",
+          "2026-10-31",
+          12
+         ]
+        },
+        "grain": "line",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+        "Average units by segment: C highest (4.63), B lowest (4.34)",
+        "revenue distribution (151 values > 156 clipped)",
+        "segment Breakdown \u2014 A Leads at 40%",
+        "revenue vs marketing spend (r = 0.57)"
+       ],
+       [
+        3025,
+        11,
+        12
+       ],
+       [
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "latency_s": 18.97,
+    "cost_usd": 0.01743,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding_rewritten"
+    ],
+    "passed": true
+   }
+  ],
+  "ins-27-twelve-months-bad-summary": [
+   {
+    "checks": [
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/two (customer )?segments/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(throughout|only|during) (the month of )?november 2025/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "date_scope",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Across 3,000 orders from Nov 2025 to Oct 2026, Segment A leads in average revenue, while Segment B saw a notable month-over-month decline in Oct 2026. The dataset covers 12 months of order activity with revenue and marketing spend as the primary measures, and segments A, B, and C showing meaningfully different average revenues. Segment B's recent month-over-month drop warrants attention, and the notes column is too incomplete to use.",
+      "technical_findings": [
+       "revenue and marketing_spend: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+       "revenue (B) MoM: -12.6% (n = 1,049; high confidence: 1049 rows)",
+       "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+       "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+       "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the drivers behind Segment B's Oct 2026 revenue decline before the next planning cycle.",
+        "reasoning": "Prevents a short-term dip from becoming a sustained trend.",
+        "metric_impact": "Prevents a short-term dip from becoming a sustained trend."
+       },
+       {
+        "priority": 2,
+        "action": "Review and, if possible, recover data in the notes column, which is missing for nearly all rows.",
+        "reasoning": "Restores a potentially useful field that is currently unusable.",
+        "metric_impact": "Restores a potentially useful field that is currently unusable."
+       },
+       {
+        "priority": 3,
+        "action": "Run a controlled test to examine whether changes in marketing spend are associated with revenue differences across segments.",
+        "reasoning": "Turns an observed association into actionable budget guidance.",
+        "metric_impact": "Turns an observed association into actionable budget guidance."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Notes: >99.9% missing",
+        "severity": "critical",
+        "description": ">99.9% of notes values are missing. They are left out of every result, not filled in.",
+        "affected_metric": "notes",
+        "suggested_investigation": "Check why notes is often blank at the source."
+       },
+       {
+        "title": "Revenue: 4 extreme values",
+        "severity": "medium",
+        "description": "4 revenue values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "revenue",
+        "suggested_investigation": "Verify the largest revenue values against the source records."
+       },
+       {
+        "title": "Duplicates: 25 rows removed",
+        "severity": "low",
+        "description": "25 duplicate records (the same ID twice) were removed before the analysis.",
+        "affected_metric": "",
+        "suggested_investigation": "Find where duplicate records enter the export."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply. The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Did Segment B's revenue decline in Oct 2026 affect all order types equally, or is it concentrated in a subset of customers or products?",
+       "Is the gap in average revenue between Segment A and Segment C consistent across all 12 months, or has it widened or narrowed over time?",
+       "What accounts for the high-revenue outlier orders, and should they be treated separately in segment-level reporting?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v8) computed: correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "Across 3,000 orders from Nov 2025 to Oct 2026, Segment A leads in average revenue, while Segment B saw a notable month-over-month decline in Oct 2026.",
+       "headline_evidence_ids": [
+        "seg:segment/revenue",
+        "trend:revenue (B):MoM"
+       ],
+       "paragraphs": [
+        {
+         "text": "The dataset covers 12 months of order activity with revenue and marketing spend as the primary measures, and segments A, B, and C showing meaningfully different average revenues.",
+         "evidence_ids": [
+          "eda:revenue",
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "Segment B's recent month-over-month drop warrants attention, and the notes column is too incomplete to use.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM",
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Average revenue differs across segments: Segment A averages $121.29, Segment B $98.06, and Segment C $78.88.",
+         "evidence_ids": [
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "Revenue for Segment B fell 12.6% in Oct 2026 compared to Sep 2026, the sharpest recent movement visible in the data.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM"
+         ]
+        },
+        {
+         "text": "Revenue and marketing spend move together across orders, though this reflects association, not cause.",
+         "evidence_ids": [
+          "corr:revenue__marketing_spend"
+         ]
+        },
+        {
+         "text": "Overall revenue ranges from $21.47 to $964.19 with a median of $100.33; the high maximum suggests some outlier orders that were flagged but kept.",
+         "evidence_ids": [
+          "eda:revenue"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the drivers behind Segment B's Oct 2026 revenue decline before the next planning cycle.",
+         "expected_impact": "Prevents a short-term dip from becoming a sustained trend.",
+         "evidence_ids": [
+          "trend:revenue (B):MoM"
+         ]
+        },
+        {
+         "action": "Review and, if possible, recover data in the notes column, which is missing for nearly all rows.",
+         "expected_impact": "Restores a potentially useful field that is currently unusable.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        },
+        {
+         "action": "Run a controlled test to examine whether changes in marketing spend are associated with revenue differences across segments.",
+         "expected_impact": "Turns an observed association into actionable budget guidance.",
+         "evidence_ids": [
+          "corr:revenue__marketing_spend",
+          "seg:segment/revenue"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v8) computed: correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "revenue and marketing_spend: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+        "revenue (B) MoM: -12.6% (n = 1,049; high confidence: 1049 rows)",
+        "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+        "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+        "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+       ],
+       "caveats": [
+        "The notes column has more than 99.9% missing values and cannot be used with confidence in any further analysis.",
+        "Revenue contains flagged outliers (up to $964.19) that were kept; these high-value orders may disproportionately influence segment averages.",
+        "The month-over-month comparison covers only Oct 2026 vs Sep 2026 and reflects Segment B alone \u2014 other segments' recent trends are not captured in the current evidence.",
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "order_date: Parsed as dates.",
+        "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+        "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+       ],
+       "code_references": [
+        "_period = pd.to_datetime(df['order_date'], format='mixed').dt.to_period('M'); df.groupby([_period, 'segment'])['revenue'].sum()",
+        "df.groupby('segment')['revenue'].mean()",
+        "df[['marketing_spend', 'revenue']].dropna().sample(min(n, 500), random_state=42)"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-02T00:48:10.935406Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "corr:revenue__marketing_spend",
+       "trend:revenue (B):MoM",
+       "seg:segment/revenue",
+       "eda:revenue",
+       "eda:marketing_spend"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 3000,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+         "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "corr:revenue__marketing_spend",
+        "kind": "correlation",
+        "claim": "revenue and marketing_spend: r = 0.569",
+        "result_excerpt": "{\"revenue__marketing_spend\": 0.5685}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "trend:revenue (B):MoM",
+        "kind": "trend",
+        "claim": "revenue (B) MoM: -12.6%",
+        "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+        "row_count": 1049,
+        "confidence": "high",
+        "confidence_reason": "1049 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:segment/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by segment (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+        "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:marketing_spend",
+        "kind": "eda",
+        "claim": "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32",
+        "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 12,
+      "audit_summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+      "chart_titles": [
+       "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+       "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+       "revenue vs marketing spend (r = 0.57)",
+       "revenue distribution (150 values > 156 clipped)",
+       "segment Breakdown \u2014 A Leads at 40%"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "revenue",
+        "marketing spend"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 102.7191,
+          "std": 42.2058,
+          "min": 21.47,
+          "max": 964.19,
+          "median": 100.325,
+          "count": 3000.0
+         },
+         "marketing_spend": {
+          "mean": 49.5736,
+          "std": 18.5277,
+          "min": 12.62,
+          "max": 90.32,
+          "median": 48.96,
+          "count": 3000.0
+         }
+        },
+        "correlations": {
+         "revenue__marketing_spend": 0.5685
+        },
+        "trends": [
+         {
+          "column": "revenue",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -12.64,
+          "segment": "B"
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "segment",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "A",
+            "value": 121.2872
+           },
+           {
+            "name": "B",
+            "value": 98.0581
+           },
+           {
+            "name": "C",
+            "value": 78.8824
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 99.97
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "3,000",
+          "context": "3,000 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 3,000 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$102.72",
+          "context": "Range $21.47 \u2013 $964.19",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "40.4% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount Variability",
+          "value": "CV 0.59",
+          "context": "Mean 14.8% \u00b1 8.7%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "discount",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of discount, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 3000,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+          "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "revenue and marketing_spend: r = 0.569",
+         "result_excerpt": "{\"revenue__marketing_spend\": 0.5685}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue (B) MoM: -12.6%",
+         "result_excerpt": "{\"column\": \"revenue\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -12.64, \"segment\": \"B\"}",
+         "row_count": 1049,
+         "assumptions": [],
+         "confidence_reason": "1049 rows"
+        },
+        {
+         "claim": "mean revenue by segment (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+         "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "marketing_spend: median 48.96, mean 49.57, range 12.62 to 90.32",
+         "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 3025,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 25 exact duplicate rows (same order_id and every other value).",
+          "rows_affected": 25,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 25
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 3025,
+        "rows_after": 3000,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 25,
+        "outliers_flagged": [
+         "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+        ],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "revenue",
+           "extreme_count": 4,
+           "mild_count": 59,
+           "extreme_pct": 0.13333333333333333,
+           "lower_bound": 19.790547238449893,
+           "upper_bound": 481.90715343646866,
+           "mild_lower_bound": 39.79244319922602,
+           "mild_upper_bound": 245.12166366874456,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "non-numeric",
+          "customer_email": "constant or unsupported",
+          "customer_name": "constant or unsupported",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-01",
+          "2026-10-31",
+          12
+         ]
+        },
+        "grain": "order",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "revenue for segment B fell 12.6% in Oct 2026 vs Sep 2026",
+        "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+        "revenue vs marketing spend (r = 0.57)",
+        "revenue distribution (150 values > 156 clipped)",
+        "segment Breakdown \u2014 A Leads at 40%"
+       ],
+       [
+        3025,
+        11,
+        12
+       ],
+       [
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "latency_s": 17.13,
+    "cost_usd": 0.01681,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "ins-28-one-month": [
+   {
+    "checks": [
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(rose|fell|grew|declin|dropped|up|down|increas|decreas)[^.]{0,40}(month|year)[- ]over[- ](month|year)/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(month|year)[- ]over[- ](month|year)[^.]{0,30}(rose|fell|grew|declin|dropped|up|down|increas|decreas)/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "date_scope",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "289 orders in October 2026 show revenue ranging from $22.09 to $113.32, with Segment A averaging nearly twice Segment B. The dataset covers one month of orders with a median revenue of $57.52 and meaningful differences across the three customer segments. The notes column is entirely empty and cannot be used; one duplicate order was removed during cleaning.",
+      "technical_findings": [
+       "mean revenue by segment (3 groups) (n = 289; high confidence: 289 rows)",
+       "revenue: median 57.52, mean 60.67, range 22.09 to 113.32 (n = 289; high confidence: 289 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate why Segment B average order revenue ($41.00) is so much lower than Segment A ($83.42) to identify whether pricing, product mix, or customer type differs.",
+        "reasoning": "Could reveal a growth or upsell opportunity in the largest revenue gap between segments.",
+        "metric_impact": "Could reveal a growth or upsell opportunity in the largest revenue gap between segments."
+       },
+       {
+        "priority": 2,
+        "action": "Establish a process to populate the notes column before the next data export.",
+        "reasoning": "Restores a data field that is currently entirely missing and unusable.",
+        "metric_impact": "Restores a data field that is currently entirely missing and unusable."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Notes: >99.9% missing",
+        "severity": "critical",
+        "description": ">99.9% of notes values are missing. They are left out of every result, not filled in.",
+        "affected_metric": "notes",
+        "suggested_investigation": "Check why notes is often blank at the source."
+       },
+       {
+        "title": "Duplicates: 1 rows removed",
+        "severity": "low",
+        "description": "1 duplicate records (the same ID twice) were removed before the analysis.",
+        "affected_metric": "",
+        "suggested_investigation": "Find where duplicate records enter the export."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "How does the segment mix (A, B, C) break down by order count, and does Segment A also have the most orders or just the highest average?",
+       "Are there specific products or categories driving the high-revenue tail (orders near $113.32)?",
+       "Is October a typical month, or are there seasonal factors that would make this period unrepresentative of the broader business?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 1 duplicate rows. Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 289 rows (started with 290). Analysis (analysis v8) computed: eda, segment. Descriptive statistics use the non-missing values of each column.",
+      "executive_view": {
+       "headline": "289 orders in October 2026 show revenue ranging from $22.09 to $113.32, with Segment A averaging nearly twice Segment B.",
+       "headline_evidence_ids": [
+        "eda:revenue",
+        "seg:segment/revenue"
+       ],
+       "paragraphs": [
+        {
+         "text": "The dataset covers one month of orders with a median revenue of $57.52 and meaningful differences across the three customer segments.",
+         "evidence_ids": [
+          "eda:revenue",
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "The notes column is entirely empty and cannot be used; one duplicate order was removed during cleaning.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Revenue spans $22.09 to $113.32, with a median of $57.52 and a mean of $60.67, suggesting a moderate upward skew from higher-value orders.",
+         "evidence_ids": [
+          "eda:revenue"
+         ]
+        },
+        {
+         "text": "Segment A averages $83.42 per order, well above Segment C at $55.50 and Segment B at $41.00.",
+         "evidence_ids": [
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "One exact duplicate order was removed, and the notes column has no usable values across all 289 rows.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate why Segment B average order revenue ($41.00) is so much lower than Segment A ($83.42) to identify whether pricing, product mix, or customer type differs.",
+         "expected_impact": "Could reveal a growth or upsell opportunity in the largest revenue gap between segments.",
+         "evidence_ids": [
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "action": "Establish a process to populate the notes column before the next data export.",
+         "expected_impact": "Restores a data field that is currently entirely missing and unusable.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 1 duplicate rows. Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 289 rows (started with 290). Analysis (analysis v8) computed: eda, segment. Descriptive statistics use the non-missing values of each column.",
+       "statistical_notes": [
+        "mean revenue by segment (3 groups) (n = 289; high confidence: 289 rows)",
+        "revenue: median 57.52, mean 60.67, range 22.09 to 113.32 (n = 289; high confidence: 289 rows)"
+       ],
+       "caveats": [
+        "There is only one month of data, so no trend or month-over-month comparison is possible.",
+        "The notes column is 100% empty and was excluded from all analysis.",
+        "Segment averages reflect mean revenue and may be sensitive to a small number of high- or low-value orders within each group.",
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "order_date: Parsed as dates.",
+        "*: Removed 1 exact duplicate rows (same order_id and every other value).",
+        "notes: 289 of 289 values missing (100%): too empty to use with confidence; left as missing."
+       ],
+       "code_references": [
+        "df.groupby('segment')['revenue'].mean()",
+        "np.histogram(df['revenue'].dropna())",
+        "_period = pd.to_datetime(df['order_date'], format='mixed').dt.to_period('D'); df.groupby(_period)['revenue'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-02T00:48:08.230175Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:segment/revenue",
+       "eda:revenue"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 290 \u2192 289 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 290, \"rows_after\": 289, \"decisions\": [[\"order_date\", \"type_coerce\", 290, 0], [\"*\", \"drop_duplicates\", 1, 1], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 289,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "*: Removed 1 exact duplicate rows (same order_id and every other value).",
+         "notes: 289 of 289 values missing (100%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "seg:segment/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by segment (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 83.423}, {\"name\": \"B\", \"value\": 40.9956}, {\"name\": \"C\", \"value\": 55.4975}]}",
+        "row_count": 289,
+        "confidence": "high",
+        "confidence_reason": "289 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 57.52, mean 60.67, range 22.09 to 113.32",
+        "result_excerpt": "{\"mean\": 60.6682, \"std\": 21.0592, \"min\": 22.09, \"max\": 113.32, \"median\": 57.52, \"count\": 289.0}",
+        "row_count": 289,
+        "confidence": "high",
+        "confidence_reason": "289 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       10
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 1,
+      "audit_summary": "Removed 1 duplicate rows. Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 289 rows (started with 290).",
+      "chart_titles": [
+       "Average revenue by segment: A highest (83.42), B lowest (41.00)",
+       "revenue distribution",
+       "Total revenue by day",
+       "segment Breakdown \u2014 A Leads at 37%",
+       "Correlation Heatmap"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 60.6682,
+          "std": 21.0592,
+          "min": 22.09,
+          "max": 113.32,
+          "median": 57.52,
+          "count": 289.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "segment",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "A",
+            "value": 83.423
+           },
+           {
+            "name": "B",
+            "value": 40.9956
+           },
+           {
+            "name": "C",
+            "value": 55.4975
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 100.0
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "289",
+          "context": "289 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 289 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$60.67",
+          "context": "Range $22.09 \u2013 $113.32",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "37.0% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount Variability",
+          "value": "CV 0.60",
+          "context": "Mean 14.8% \u00b1 9.0%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "discount",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of discount, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 290 \u2192 289 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 290, \"rows_after\": 289, \"decisions\": [[\"order_date\", \"type_coerce\", 290, 0], [\"*\", \"drop_duplicates\", 1, 1], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 289,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "*: Removed 1 exact duplicate rows (same order_id and every other value).",
+          "notes: 289 of 289 values missing (100%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "mean revenue by segment (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 83.423}, {\"name\": \"B\", \"value\": 40.9956}, {\"name\": \"C\", \"value\": 55.4975}]}",
+         "row_count": 289,
+         "assumptions": [],
+         "confidence_reason": "289 rows"
+        },
+        {
+         "claim": "revenue: median 57.52, mean 60.67, range 22.09 to 113.32",
+         "result_excerpt": "{\"mean\": 60.6682, \"std\": 21.0592, \"min\": 22.09, \"max\": 113.32, \"median\": 57.52, \"count\": 289.0}",
+         "row_count": 289,
+         "assumptions": [],
+         "confidence_reason": "289 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 290,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 1 exact duplicate rows (same order_id and every other value).",
+          "rows_affected": 1,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 1
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "289 of 289 values missing (100%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 290,
+        "rows_after": 289,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 1,
+        "outliers_flagged": [],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Removed 1 duplicate rows. Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 289 rows (started with 290).",
+        "anomaly_report": {
+         "flags": [],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "non-numeric",
+          "customer_email": "constant or unsupported",
+          "customer_name": "constant or unsupported",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2026-10-01",
+          "2026-10-31",
+          1
+         ]
+        },
+        "grain": "order",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "Average revenue by segment: A highest (83.42), B lowest (41.00)",
+        "revenue distribution",
+        "Total revenue by day",
+        "segment Breakdown \u2014 A Leads at 37%",
+        "Correlation Heatmap"
+       ],
+       [
+        290,
+        11,
+        1
+       ],
+       [
+        2026
+       ]
+      ]
+     }
+    },
+    "latency_s": 14.23,
+    "cost_usd": 0.01277,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "ins-35-jargon-columns": [
+   {
+    "checks": [
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "adversarial",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This dataset covers 3,000 orders across 12 months, with average revenue of $102.72 and meaningful differences across customer segments. Revenue is broadly distributed \u2014 from $21.47 to $964.19 \u2014 with segment A averaging the highest revenue and segment C the lowest. The notes column is almost entirely empty and should not be relied upon, and 25 duplicate rows were removed before analysis.",
+      "technical_findings": [
+       "revenue and std_dev: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+       "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+       "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+       "std_dev: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate what distinguishes segment A customers from segments B and C to inform targeting or retention strategy.",
+        "reasoning": "Segment A averages $121.29 versus $78.88 for segment C \u2014 understanding the gap could guide resource allocation.",
+        "metric_impact": "Segment A averages $121.29 versus $78.88 for segment C \u2014 understanding the gap could guide resource allocation."
+       },
+       {
+        "priority": 2,
+        "action": "Review and resolve the outlier orders at the top of the revenue range before using this data for forecasting.",
+        "reasoning": "A small number of orders reaching $964.19 could skew any revenue projections built on this dataset.",
+        "metric_impact": "A small number of orders reaching $964.19 could skew any revenue projections built on this dataset."
+       },
+       {
+        "priority": 3,
+        "action": "Assess whether the notes column can be populated or should be dropped from future data collection.",
+        "reasoning": "With over 99.9% of values missing, the column adds no analytical value in its current state.",
+        "metric_impact": "With over 99.9% of values missing, the column adds no analytical value in its current state."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Notes: >99.9% missing",
+        "severity": "critical",
+        "description": ">99.9% of notes values are missing. They are left out of every result, not filled in.",
+        "affected_metric": "notes",
+        "suggested_investigation": "Check why notes is often blank at the source."
+       },
+       {
+        "title": "Revenue: 4 extreme values",
+        "severity": "medium",
+        "description": "4 revenue values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "revenue",
+        "suggested_investigation": "Verify the largest revenue values against the source records."
+       },
+       {
+        "title": "Duplicates: 25 rows removed",
+        "severity": "low",
+        "description": "25 duplicate records (the same ID twice) were removed before the analysis.",
+        "affected_metric": "",
+        "suggested_investigation": "Find where duplicate records enter the export."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply. The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "What criteria define segments A, B, and C \u2014 are they based on customer type, geography, or another dimension?",
+       "Are the high-revenue outlier orders concentrated in a particular segment, time period, or customer group?",
+       "Has the mix of orders across segments A, B, and C shifted over the 12-month period covered by this data?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v8) computed: correlation, eda, segment. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column.",
+      "executive_view": {
+       "headline": "This dataset covers 3,000 orders across 12 months, with average revenue of $102.72 and meaningful differences across customer segments.",
+       "headline_evidence_ids": [
+        "eda:revenue",
+        "seg:segment/revenue"
+       ],
+       "paragraphs": [
+        {
+         "text": "Revenue is broadly distributed \u2014 from $21.47 to $964.19 \u2014 with segment A averaging the highest revenue and segment C the lowest.",
+         "evidence_ids": [
+          "eda:revenue",
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "The notes column is almost entirely empty and should not be relied upon, and 25 duplicate rows were removed before analysis.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Segment A averages $121.29 in revenue per order, segment B averages $98.06, and segment C averages $78.88 \u2014 a clear step-down pattern across the three groups.",
+         "evidence_ids": [
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "text": "Revenue has a median of $100.33 and a mean of $102.72, but the range extends to $964.19, indicating some orders are far outside the usual range and have been flagged as outliers.",
+         "evidence_ids": [
+          "eda:revenue"
+         ]
+        },
+        {
+         "text": "Spend level and revenue move together noticeably across the 3,000 orders, suggesting higher-spend orders tend to coincide with higher revenue \u2014 though this is association, not cause.",
+         "evidence_ids": [
+          "corr:revenue__std_dev"
+         ]
+        },
+        {
+         "text": "The notes column has more than 99.9% of values missing and cannot be used with confidence.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate what distinguishes segment A customers from segments B and C to inform targeting or retention strategy.",
+         "expected_impact": "Segment A averages $121.29 versus $78.88 for segment C \u2014 understanding the gap could guide resource allocation.",
+         "evidence_ids": [
+          "seg:segment/revenue"
+         ]
+        },
+        {
+         "action": "Review and resolve the outlier orders at the top of the revenue range before using this data for forecasting.",
+         "expected_impact": "A small number of orders reaching $964.19 could skew any revenue projections built on this dataset.",
+         "evidence_ids": [
+          "eda:revenue"
+         ]
+        },
+        {
+         "action": "Assess whether the notes column can be populated or should be dropped from future data collection.",
+         "expected_impact": "With over 99.9% of values missing, the column adds no analytical value in its current state.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025). Analysis (analysis v8) computed: correlation, eda, segment. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column.",
+       "statistical_notes": [
+        "revenue and std_dev: r = 0.569 (n = 3,000; high confidence: 3000 rows)",
+        "mean revenue by segment (3 groups) (n = 3,000; high confidence: 3000 rows)",
+        "revenue: median 100.33, mean 102.72, range 21.47 to 964.19 (n = 3,000; high confidence: 3000 rows)",
+        "std_dev: median 48.96, mean 49.57, range 12.62 to 90.32 (n = 3,000; high confidence: 3000 rows)"
+       ],
+       "caveats": [
+        "The notes column has more than 99.9% of values missing and was excluded from analysis; any insights it might have supported are unavailable.",
+        "Revenue outliers have been flagged but kept in the dataset \u2014 findings based on averages may be sensitive to these extreme values.",
+        "25 duplicate rows were removed; if duplicates were legitimate repeat orders rather than data errors, their removal may slightly undercount order volume.",
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "order_date: Parsed as dates.",
+        "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+        "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+       ],
+       "code_references": [
+        "df[['std_dev', 'revenue']].dropna().sample(min(n, 500), random_state=42)",
+        "df.groupby('segment')['revenue'].mean()",
+        "np.histogram(df['revenue'].dropna())"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-02T00:48:10.575701Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "p_value",
+       "std_dev",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "corr:revenue__std_dev",
+       "seg:segment/revenue",
+       "eda:revenue",
+       "eda:std_dev"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 3000,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+         "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "corr:revenue__std_dev",
+        "kind": "correlation",
+        "claim": "revenue and std_dev: r = 0.569",
+        "result_excerpt": "{\"revenue__std_dev\": 0.5685}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:segment/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by segment (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+        "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:std_dev",
+        "kind": "eda",
+        "claim": "std_dev: median 48.96, mean 49.57, range 12.62 to 90.32",
+        "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 12,
+      "audit_summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+      "chart_titles": [
+       "revenue vs spend level (r = 0.57)",
+       "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+       "revenue distribution (150 values > 156 clipped)",
+       "Total revenue by month",
+       "segment Breakdown \u2014 A Leads at 40%"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "revenue",
+        "spend level"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 102.7191,
+          "std": 42.2058,
+          "min": 21.47,
+          "max": 964.19,
+          "median": 100.325,
+          "count": 3000.0
+         },
+         "std_dev": {
+          "mean": 49.5736,
+          "std": 18.5277,
+          "min": 12.62,
+          "max": 90.32,
+          "median": 48.96,
+          "count": 3000.0
+         }
+        },
+        "correlations": {
+         "revenue__std_dev": 0.5685
+        },
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "segment",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "A",
+            "value": 121.2872
+           },
+           {
+            "name": "B",
+            "value": 98.0581
+           },
+           {
+            "name": "C",
+            "value": 78.8824
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "p_value": 0.0,
+         "std_dev": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 99.97
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "3,000",
+          "context": "3,000 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 3,000 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$102.72",
+          "context": "Range $21.47 \u2013 $964.19",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "40.4% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount level Variability",
+          "value": "CV 0.59",
+          "context": "Mean 14.8% \u00b1 8.7%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "p_value",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of p_value, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 3025 \u2192 3000 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 3025, \"rows_after\": 3000, \"decisions\": [[\"order_date\", \"type_coerce\", 3025, 0], [\"*\", \"drop_duplicates\", 25, 25], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 3000,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "*: Removed 25 exact duplicate rows (same order_id and every other value).",
+          "notes: 2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "revenue and std_dev: r = 0.569",
+         "result_excerpt": "{\"revenue__std_dev\": 0.5685}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "mean revenue by segment (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"A\", \"value\": 121.2872}, {\"name\": \"B\", \"value\": 98.0581}, {\"name\": \"C\", \"value\": 78.8824}]}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "revenue: median 100.33, mean 102.72, range 21.47 to 964.19",
+         "result_excerpt": "{\"mean\": 102.7191, \"std\": 42.2058, \"min\": 21.47, \"max\": 964.19, \"median\": 100.325, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "std_dev: median 48.96, mean 49.57, range 12.62 to 90.32",
+         "result_excerpt": "{\"mean\": 49.5736, \"std\": 18.5277, \"min\": 12.62, \"max\": 90.32, \"median\": 48.96, \"count\": 3000.0}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 3025,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 25 exact duplicate rows (same order_id and every other value).",
+          "rows_affected": 25,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 25
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "2999 of 3000 values missing (>99.9%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 3025,
+        "rows_after": 3000,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 25,
+        "outliers_flagged": [
+         "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+        ],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Removed 25 duplicate rows. Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: revenue. More than 40% missing in: notes \u2014 review recommended. Final dataset: 3000 rows (started with 3025).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "revenue",
+           "extreme_count": 4,
+           "mild_count": 59,
+           "extreme_pct": 0.13333333333333333,
+           "lower_bound": 19.790547238449893,
+           "upper_bound": 481.90715343646866,
+           "mild_lower_bound": 39.79244319922602,
+           "mild_upper_bound": 245.12166366874456,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "4 extreme outliers in revenue (0.1% of data, threshold: values > 481.91)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "p_value",
+          "std_dev"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "non-numeric",
+          "customer_email": "constant or unsupported",
+          "customer_name": "constant or unsupported",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-01",
+          "2026-10-31",
+          12
+         ]
+        },
+        "grain": "order",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "revenue vs spend level (r = 0.57)",
+        "Average revenue by segment: A highest (121.29), C lowest (78.88)",
+        "revenue distribution (150 values > 156 clipped)",
+        "Total revenue by month",
+        "segment Breakdown \u2014 A Leads at 40%"
+       ],
+       [
+        3025,
+        11,
+        12
+       ],
+       [
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "latency_s": 16.48,
+    "cost_usd": 0.01611,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

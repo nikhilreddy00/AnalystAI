@@ -1929,3 +1929,14 @@ def test_the_report_scorer_reads_a_shopify_date_column():
     raw = datagen.make("retail_lines", 1)[0]
     d = any_dates(raw["Created at"])
     assert d.notna().all() and d.min().year == 2025 and d.max() < pd.Timestamp("2026-02-14")
+
+
+def test_a_shopify_export_raises_no_high_null_gate_for_order_level_fields():
+    """Live run (API + worker): an overview of the Shopify-style export stopped at the high-null
+    modal for Discount Amount, Billing Name and Total, which the export writes on each order's
+    first line only. They are kept as they are, with a decision saying why."""
+    s, _ = _session("retail_lines")
+    audit = s.cleaning_audit
+    assert audit.high_null_columns == [], audit.high_null_columns
+    layout = {d.column for d in audit.decisions if d.strategy == "order_level"}
+    assert {"Discount Amount", "Total"} <= layout, layout
