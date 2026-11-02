@@ -1372,12 +1372,19 @@ def test_the_markdown_export_carries_how_the_numbers_were_counted():
     assert "### How these numbers are counted" in md and "12 test" in md
 
 
-def test_a_conversation_is_priced_per_turn_and_overviews_from_a_full_report():
-    from pathlib import Path
+def test_a_conversation_is_priced_per_turn_and_overviews_from_a_full_report(tmp_path):
+    """Hermetic (a committed report changed what the repo's reports folder priced): a full report
+    with one overview ($0.10) and one targeted question ($0.01); e2e-35 (an overview) and
+    e2e-42 (overview + 2 turns) never ran."""
+    import json
+
     from evals.run import estimate_usd
-    one = estimate_usd("e2e", 1, Path("evals/reports"), ["e2e-35"], 1)
-    three = estimate_usd("e2e", 1, Path("evals/reports"), ["e2e-42"], 1)
-    assert three > one   # the conversation's later turns are priced (targeted questions)
+    report = {"meta": {}, "summary": {"cost_per_question_usd": 0.055},
+              "runs": {"e2e-01": [{"cost_usd": 0.10}], "e2e-06": [{"cost_usd": 0.01}]}}
+    (tmp_path / "e2e-20260101T000000Z.json").write_text(json.dumps(report))
+    one = estimate_usd("e2e", 1, tmp_path, ["e2e-35"], 1)
+    three = estimate_usd("e2e", 1, tmp_path, ["e2e-42"], 1)
+    assert three > one   # the conversation's later turns are priced
 
 
 def test_every_retail_intake_case_measures_the_model():
