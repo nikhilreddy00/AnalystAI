@@ -231,6 +231,17 @@ Changed against the Domain 1 pin, each listed in `CHANGES` while building:
   - the dashboard shows DPD as category chips.
 - **Gates.** E2E, insight and quality ran at k=1.
 
+## CI before merge (2026-11-02)
+
+The branch's final CI run failed: `card_ledger-1`'s contract and frame, and the ins-42 replay,
+differed on Linux. A temporary diagnostic printed per-column hashes on both machines. Only
+`Amount` differed. The generator's salaries were `float(rng.lognormal(...))`, never rounded to
+cents, and `exp()` differs in its last digits between macOS and Linux. They are now rounded, like
+every other amount. `round` draws nothing from the random stream, so every fee, spend, reversal
+and transaction truth is unchanged; inflow and balance totals move by cents. A test pins cents for
+every ledger amount. The golden was re-pinned for `card_ledger-1`, and ins-42 was listed in the
+replay's `CHANGED`. No paid case depends on the moved values.
+
 ## What to carry into the next domain
 - **Recalibrate the estimator from the smoke run** (actual ÷ estimate per suite) and apply it to
   every later estimate. A new domain's contexts are not the old average.
@@ -247,3 +258,5 @@ Changed against the Domain 1 pin, each listed in `CHANGES` while building:
   percent chart, a missing domain chart.
 - **Intended post-model changes go in the replay test's `CHANGED`,** each required to pass.
   Unintended ones fail it.
+- **A generator's values must not depend on the machine:** round every float that comes from
+  `exp`/`log` before it is stored. CI on Linux is the check; push before the final pin.

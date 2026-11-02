@@ -75,6 +75,9 @@ CHANGED = {
        for c in ("intake-bank-05", "intake-bank-09")},
     ("insight-20261102T210024Z.json", "ins-41-loan-tape-overview"):
         "Domain 2 browser check: a pack overview adds its first state ratio (NPL) by product",
+    ("insight-20261102T210024Z.json", "ins-42-ledger-overview"):
+        "Domain 2 CI: card_ledger's salaries in cents (an unrounded exp() differed on Linux); "
+        "inflow totals move by cents",
 }
 
 

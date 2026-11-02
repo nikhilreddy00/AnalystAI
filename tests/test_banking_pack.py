@@ -574,3 +574,13 @@ def test_a_period_on_an_event_date_reads_the_datas_coverage_from_its_time_axis()
     s.__dict__["_df_parquet"] = buf.getvalue()
     r = run_targeted_analysis(s)
     assert "the data starts" not in r.answer_text and "$21,767.95" in r.answer_text
+
+
+def test_the_ledger_generator_is_the_same_on_every_machine():
+    """CI (Linux) generated another card_ledger than macOS: salaries were an unrounded exp(),
+    whose last digits differ by platform. Every amount is in cents."""
+    from evals import datagen
+    for name, col in (("card_ledger", "Amount"), ("card_ledger", "Balance After"),
+                      ("loan_tape", "Outstanding Principal")):
+        s = datagen.make(name, 1)[0][col].dropna()
+        assert (s.round(2) == s).all(), (name, col)

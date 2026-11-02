@@ -1008,8 +1008,9 @@ def make_card_ledger(seed: int) -> tuple[pd.DataFrame, dict]:
     rows = []
     tid = 500000
     for a in range(n_acc):
-        balance = float(rng.lognormal(7.8, 0.7))
-        salary = float(rng.lognormal(7.9, 0.3))
+        # in cents: an unrounded exp() differs in its last digits between macOS and Linux (CI)
+        balance = round(float(rng.lognormal(7.8, 0.7)), 2)
+        salary = round(float(rng.lognormal(7.9, 0.3)), 2)
         for month in pd.period_range("2025-07", "2026-10", freq="M"):
             mdays = days[(days >= month.start_time) & (days <= month.end_time)]
             events = [(mdays[0], "DEPOSIT", "Income", "Payroll", salary)]
