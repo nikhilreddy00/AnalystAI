@@ -1801,7 +1801,7 @@ def test_a_daily_kpi_ask_is_shown_by_month_and_says_so(shop):
     s, truth = shop
     text = _ask(s, "How were net sales in January 2026?", QuestionIntent.TIME_SERIES, kpi="net_sales",
                 frequency="D", period_start="2026-01-01", period_end="2026-01-31").answer_text
-    assert f"{truth['jan26_yoy_pct']:+.1f}%" in text and "shown by month" in text, text
+    assert f"{truth['jan26_yoy_pct']:+.1f}%" in text and "shown by month" not in text, text   # a total
     trend = _answer(_daily("2025-01-01", "2025-03-31"), QuestionIntent.TIME_SERIES, kpi="net_sales",
                     frequency="D").answer_text
     assert "shown by month" in trend and "latest 2025-03" in trend, trend
@@ -1857,3 +1857,12 @@ def test_two_month_start_rows_are_two_complete_months():
     t = pd.Series(pd.to_datetime(["2025-11-01", "2025-12-01"]))
     m = pd.Series([1.0, 2.0], index=pd.PeriodIndex(["2025-11", "2025-12"], freq="M"))
     assert _cut_partial(m, t, "M")[0].equals(m)
+
+
+def test_the_brief_says_why_the_row_kind_column_must_be_used():
+    """Smoke retail-1: the model re-derived test orders with an email regex, but emails reach the
+    sandbox as pseudonyms; the brief gives that reason."""
+    from domain_pack import pack_brief
+    roles = {"order_id": "Name", "email": "Email", "quantity": "Q", "unit_price": "P"}
+    text = " ".join(pack_brief(RETAIL, roles, ["aov"], "line", {"sale", "test"}))
+    assert "pseudonyms" in text and "only this column marks them" in text

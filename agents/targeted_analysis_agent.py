@@ -1049,7 +1049,6 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                            if buckets.get(m.group(1) if (m := re.search(r"\(([^)]*)\)", x)) else "", True))
         if series.empty or (len(series) == 1 and asked):
             carry = note if series.empty else ""   # one period: answered (and compared) below
-            where += by_month if not series.empty else ""
         else:
             latest = series.index[-1]
 

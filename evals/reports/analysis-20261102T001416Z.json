@@ -1,0 +1,1728 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261102T001416Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "448c598",
+  "started_at": "20261102T001416Z",
+  "only": "retail-1,retail-4,retail-5",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 3,
+  "runs": 3,
+  "pass_rate": 0.6667,
+  "case_majority_pass_rate": 0.6667,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 4,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0295,
+  "latency_p50_s": 21.76,
+  "latency_p95_s": 30.04,
+  "numeric_accuracy": 0.6667,
+  "insight_recall": 0.6667,
+  "false_finding_rate": 0.2424,
+  "verifiable_claims": 66,
+  "by_domain": {
+   "retail": {
+    "cases": 3,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 2,
+    "pass_rate": 0.6667,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 4,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 2,
+    "model_dependent_cases": 3,
+    "numeric_accuracy": 0.6667,
+    "insight_recall": 0.6667,
+    "false_finding_rate": 0.2424,
+    "verifiable_claims": 66,
+    "model_dependent_quality": {
+     "numeric_accuracy": 0.6667,
+     "insight_recall": 0.6667,
+     "false_finding_rate": 0.2424,
+     "verifiable_claims": 66
+    }
+   }
+  }
+ },
+ "runs": {
+  "retail-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no Shipping Country breakdown matches aov_by_country (tried ['Name', 'Lineitem price', 'Lineitem quantity', 'Name'])",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 5,
+     "verifiable": 29,
+     "details": [
+      "Lineitem quantity.count",
+      "Lineitem price.count",
+      "mean Lineitem price[Germany]",
+      "mean Lineitem price[United Kingdom]",
+      "mean Lineitem price[Australia]"
+     ]
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 2590,
+    "output": {
+     "eda_summary": {
+      "Lineitem quantity": {
+       "mean": 1.6112,
+       "std": 0.8025,
+       "min": 1.0,
+       "max": 3.0,
+       "median": 1.0,
+       "count": 4455
+      },
+      "Lineitem price": {
+       "mean": 48.7468,
+       "std": 34.1627,
+       "min": 9.06,
+       "max": 179.47,
+       "median": 36.4,
+       "count": 4455
+      },
+      "Discount Amount": {
+       "mean": 4.2359,
+       "std": 9.3613,
+       "min": 0.0,
+       "max": 84.37,
+       "median": 0.0,
+       "count": 2510
+      },
+      "Total": {
+       "mean": 136.1307,
+       "std": 114.5275,
+       "min": 9.72,
+       "max": 848.9,
+       "median": 103.135,
+       "count": 2510
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Shipping Country",
+       "metric_column": "Name",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Germany",
+         "value": 162.6644
+        },
+        {
+         "name": "United Kingdom",
+         "value": 150.068
+        },
+        {
+         "name": "United States",
+         "value": 133.99
+        },
+        {
+         "name": "Australia",
+         "value": 126.4375
+        },
+        {
+         "name": "Canada",
+         "value": 118.0232
+        }
+       ],
+       "label": "avg_order_value"
+      },
+      {
+       "segment_column": "Shipping Country",
+       "metric_column": "Lineitem price",
+       "aggregation": "mean",
+       "results": [
+        {
+         "name": "Germany",
+         "value": 57.7428
+        },
+        {
+         "name": "United Kingdom",
+         "value": 55.7423
+        },
+        {
+         "name": "United States",
+         "value": 46.7906
+        },
+        {
+         "name": "Australia",
+         "value": 46.6995
+        },
+        {
+         "name": "Canada",
+         "value": 41.7106
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "Shipping Country",
+       "metric_column": "Lineitem quantity",
+       "aggregation": "mean",
+       "results": [
+        {
+         "name": "Australia",
+         "value": 1.6299
+        },
+        {
+         "name": "United States",
+         "value": 1.6229
+        },
+        {
+         "name": "United Kingdom",
+         "value": 1.6221
+        },
+        {
+         "name": "Germany",
+         "value": 1.6094
+        },
+        {
+         "name": "Canada",
+         "value": 1.5711
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "Shipping Country",
+       "metric_column": "Name",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "United States",
+         "value": 1213.0
+        },
+        {
+         "name": "United Kingdom",
+         "value": 350.0
+        },
+        {
+         "name": "Canada",
+         "value": 269.0
+        },
+        {
+         "name": "Germany",
+         "value": 250.0
+        },
+        {
+         "name": "Australia",
+         "value": 201.0
+        }
+       ],
+       "label": "order_count"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Lineitem quantity": [
+       {
+        "label": "(0.998, 1.667]",
+        "count": 2637
+       },
+       {
+        "label": "(1.667, 2.333]",
+        "count": 913
+       },
+       {
+        "label": "(2.333, 3.0]",
+        "count": 905
+       }
+      ],
+      "Lineitem price": [
+       {
+        "label": "(8.89, 26.101]",
+        "count": 1448
+       },
+       {
+        "label": "(26.101, 43.142]",
+        "count": 1127
+       },
+       {
+        "label": "(43.142, 60.183]",
+        "count": 663
+       },
+       {
+        "label": "(60.183, 77.224]",
+        "count": 215
+       },
+       {
+        "label": "(77.224, 94.265]",
+        "count": 335
+       },
+       {
+        "label": "(94.265, 111.306]",
+        "count": 326
+       },
+       {
+        "label": "(111.306, 128.347]",
+        "count": 235
+       },
+       {
+        "label": "(128.347, 145.388]",
+        "count": 71
+       },
+       {
+        "label": "(145.388, 162.429]",
+        "count": 32
+       },
+       {
+        "label": "(162.429, 179.47]",
+        "count": 3
+       }
+      ],
+      "Discount Amount": [
+       {
+        "label": "(-0.0844, 8.437]",
+        "count": 2074
+       },
+       {
+        "label": "(8.437, 16.874]",
+        "count": 208
+       },
+       {
+        "label": "(16.874, 25.311]",
+        "count": 116
+       },
+       {
+        "label": "(25.311, 33.748]",
+        "count": 49
+       },
+       {
+        "label": "(33.748, 42.185]",
+        "count": 35
+       },
+       {
+        "label": "(42.185, 50.622]",
+        "count": 15
+       },
+       {
+        "label": "(50.622, 59.059]",
+        "count": 7
+       },
+       {
+        "label": "(59.059, 67.496]",
+        "count": 5
+       },
+       {
+        "label": "(75.933, 84.37]",
+        "count": 1
+       }
+      ],
+      "Total": [
+       {
+        "label": "(8.881, 93.638]",
+        "count": 1149
+       },
+       {
+        "label": "(93.638, 177.556]",
+        "count": 676
+       },
+       {
+        "label": "(177.556, 261.474]",
+        "count": 341
+       },
+       {
+        "label": "(261.474, 345.392]",
+        "count": 176
+       },
+       {
+        "label": "(345.392, 429.31]",
+        "count": 101
+       },
+       {
+        "label": "(429.31, 513.228]",
+        "count": 42
+       },
+       {
+        "label": "(513.228, 597.146]",
+        "count": 18
+       },
+       {
+        "label": "(597.146, 681.064]",
+        "count": 3
+       },
+       {
+        "label": "(681.064, 764.982]",
+        "count": 2
+       },
+       {
+        "label": "(764.982, 848.9]",
+        "count": 2
+       }
+      ],
+      "Lineitem name": [
+       {
+        "label": "Beanie",
+        "count": 410
+       },
+       {
+        "label": "Wool Scarf",
+        "count": 389
+       },
+       {
+        "label": "Cotton Tee",
+        "count": 384
+       },
+       {
+        "label": "Rain Jacket",
+        "count": 383
+       },
+       {
+        "label": "Denim Jeans",
+        "count": 380
+       },
+       {
+        "label": "Socks 3-pack",
+        "count": 379
+       },
+       {
+        "label": "Linen Shirt",
+        "count": 377
+       },
+       {
+        "label": "Leather Belt",
+        "count": 373
+       },
+       {
+        "label": "Sun Hat",
+        "count": 373
+       },
+       {
+        "label": "Canvas Tote",
+        "count": 357
+       }
+      ],
+      "Lineitem sku": [
+       {
+        "label": "SKU-012",
+        "count": 410
+       },
+       {
+        "label": "SKU-002",
+        "count": 389
+       },
+       {
+        "label": "SKU-005",
+        "count": 384
+       },
+       {
+        "label": "SKU-006",
+        "count": 383
+       },
+       {
+        "label": "SKU-007",
+        "count": 380
+       },
+       {
+        "label": "SKU-011",
+        "count": 379
+       },
+       {
+        "label": "SKU-001",
+        "count": 377
+       },
+       {
+        "label": "SKU-004",
+        "count": 373
+       },
+       {
+        "label": "SKU-009",
+        "count": 373
+       },
+       {
+        "label": "SKU-003",
+        "count": 357
+       }
+      ],
+      "Financial Status": [
+       {
+        "label": "paid",
+        "count": 3988
+       },
+       {
+        "label": "refunded",
+        "count": 179
+       },
+       {
+        "label": "voided",
+        "count": 98
+       },
+       {
+        "label": "pending",
+        "count": 96
+       },
+       {
+        "label": "partially_refunded",
+        "count": 94
+       }
+      ],
+      "Billing Name": [
+       {
+        "label": "Ben Park",
+        "count": 43
+       },
+       {
+        "label": "Ivo Novak",
+        "count": 43
+       },
+       {
+        "label": "Jun Okafor",
+        "count": 42
+       },
+       {
+        "label": "Hana Novak",
+        "count": 41
+       },
+       {
+        "label": "Ana Moss",
+        "count": 41
+       },
+       {
+        "label": "Ben Kaur",
+        "count": 41
+       },
+       {
+        "label": "Ana Novak",
+        "count": 40
+       },
+       {
+        "label": "Dara Okafor",
+        "count": 40
+       },
+       {
+        "label": "Gus Park",
+        "count": 39
+       },
+       {
+        "label": "Gus Kaur",
+        "count": 38
+       }
+      ],
+      "Shipping Country": [
+       {
+        "label": "United States",
+        "count": 2390
+       },
+       {
+        "label": "United Kingdom",
+        "count": 650
+       },
+       {
+        "label": "Canada",
+        "count": 533
+       },
+       {
+        "label": "Germany",
+        "count": 485
+       },
+       {
+        "label": "Australia",
+        "count": 397
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Standard statistics (deterministic) \u2500\u2500\u2500\nresult['builtin'] = []\n_targets, _segs, _date, _hints = ['Lineitem price', 'Lineitem quantity'], ['Shipping Country'], 'Created at', {}\ntry:\n    if False:\n        for _i, _a in enumerate(_targets):\n            for _b in _targets[_i + 1:]:\n                if f'{_a}__{_b}' not in result['correlations'] and f'{_b}__{_a}' not in result['correlations']:\n                    _r = df[_a].corr(df[_b])\n                    if _r == _r:\n                        result['correlations'][f'{_a}__{_b}'] = round(float(_r), 4)\n                        result['builtin'].append(f'corr:{_a}__{_b}')\nexcept Exception:\n    pass\ntry:\n    if (_date or _hints) and False:\n        # A mid-month export compares the last two complete months (agents.utils.partial_last_month).\n        def _cut(_t):\n            _mm = _t.dt.to_period('M')\n            _d = _t.dropna()\n            if _d.empty:\n                return _mm\n            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()\n            _g = _d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()\n            _regular = len(_g) >= 3 and _g.std() <= 0.25 * _g.mean()\n            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and (_days.iloc[:-1].median() >= 4 or _regular) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():\n                _mm = _mm.where(_mm != _days.index[-1])\n            return _mm\n        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')\n        def _level_months(_tc):\n            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))\n        # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.\n        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]\n        # ponytail: values all in [0, 1] \u2192 a rate or flag, compared by month mean; anything else\n        # by month total. A semantic layer (Phase 4) can declare the aggregation instead.\n        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's\n        # last value in the month, summed; a reading is a mean.\n        # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months\n        # compare fairly (agents.utils.weekly_cadence).\n        _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')\n        _weekly = True and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7\n        # a domain's money columns count sale and return rows in the main currency (as its tiles)\n        _money, _kind = [], 'row_kind'\n        def _mom(_frame, _col):\n            _h = _hints.get(_col)\n            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')\n            _mon = _month\n            if _agg in ('last', 'first'):\n                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:\n                    return None, 0   # its account (or time) column is gone: no total, never a sum\n                _mon = _level_months(_h[2])   # the level's own months, partial last month out\n                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),\n                                   _m=_mon.loc[_frame.index])\n                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')\n                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()\n            else:\n                if _col in _money and _kind in _frame.columns:\n                    _frame = _frame[_frame[_kind].isin(['sale', 'return'])]\n                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()\n                if _weekly and _agg == 'sum':\n                    _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)\n                    if 'weekly' not in ' '.join(result['assumptions']):\n                        result['assumptions'].append('Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).')\n            if len(_tot) < 2 or _tot.iloc[-2] == 0:\n                return None, 0\n            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])\n            _n = int(_frame.loc[_last2, _col].notna().sum())\n            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n\n        for _c in _targets:\n            _jobs = [(None, df)]\n            if _segs:\n                _top = df[_segs[0]].value_counts().head(10).index\n                _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]\n            for _seg, _frame in _jobs:\n                _p, _n = _mom(_frame, _c)\n                if _p is not None:\n                    result['trends'].append({'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,\n                                             'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'})\n                    result['builtin'].append(f'trend:{_c}' + (f' ({_seg})' if _seg else '') + ':MoM')\nexcept Exception:\n    pass\ntry:\n    if len(_segs) >= 2 and 'segmentation' in ['segmentation']:\n        _joint = '|'.join(_segs[:2])\n        for _c in _targets:\n            if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):\n                continue\n            _g = df.groupby(_segs[:2])[_c].mean()\n            _n = df.groupby(_segs[:2]).size().sort_values(ascending=False).head(20).index\n            result['segments'].append({'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',\n                                       'results': [{'name': f'{_a}|{_b}', 'value': round(float(_g[(_a, _b)]), 4)} for _a, _b in _n]})\n            result['builtin'].append(f'seg:{_joint}/{_c}')\nexcept Exception:\n    pass\n\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Lineitem quantity' in df.columns and pd.api.types.is_numeric_dtype(df['Lineitem quantity']):\n        _s = df['Lineitem quantity'].dropna()\n        if len(_s) > 0 and 'Lineitem quantity' not in result['eda_summary']:\n            result['eda_summary']['Lineitem quantity'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Lineitem price' in df.columns and pd.api.types.is_numeric_dtype(df['Lineitem price']):\n        _s = df['Lineitem price'].dropna()\n        if len(_s) > 0 and 'Lineitem price' not in result['eda_summary']:\n            result['eda_summary']['Lineitem price'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Discount Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Discount Amount']):\n        _s = df['Discount Amount'].dropna()\n        if len(_s) > 0 and 'Discount Amount' not in result['eda_summary']:\n            result['eda_summary']['Discount Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Total' in df.columns and pd.api.types.is_numeric_dtype(df['Total']):\n        _s = df['Total'].dropna()\n        if len(_s) > 0 and 'Total' not in result['eda_summary']:\n            result['eda_summary']['Total'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Lineitem quantity' in df.columns and pd.api.types.is_numeric_dtype(df['Lineitem quantity']):\n        _col_data = df['Lineitem quantity'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Lineitem quantity'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Lineitem price' in df.columns and pd.api.types.is_numeric_dtype(df['Lineitem price']):\n        _col_data = df['Lineitem price'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Lineitem price'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Discount Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Discount Amount']):\n        _col_data = df['Discount Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Discount Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Total' in df.columns and pd.api.types.is_numeric_dtype(df['Total']):\n        _col_data = df['Total'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Total'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Lineitem name' in df.columns:\n        _vc = df['Lineitem name'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Lineitem name'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Lineitem sku' in df.columns:\n        _vc = df['Lineitem sku'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Lineitem sku'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Financial Status' in df.columns:\n        _vc = df['Financial Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Financial Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Billing Name' in df.columns:\n        _vc = df['Billing Name'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Billing Name'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Shipping Country' in df.columns:\n        _vc = df['Shipping Country'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Shipping Country'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Name": "#1001",
+       "Created at": "2025-01-15 15:40:00",
+       "Lineitem name": "Socks 3-pack",
+       "Lineitem sku": "SKU-011",
+       "Lineitem quantity": 1,
+       "Lineitem price": 12.6,
+       "Discount Amount": 12.08,
+       "Financial Status": "paid",
+       "Email": "ivo.lopez1001@example.com",
+       "Billing Name": "Ivo Lopez",
+       "Shipping Country": "Australia",
+       "Total": 108.67,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Name": "#1001",
+       "Created at": "2025-01-15 15:40:00",
+       "Lineitem name": "Canvas Tote",
+       "Lineitem sku": "SKU-003",
+       "Lineitem quantity": 2,
+       "Lineitem price": 25.2,
+       "Discount Amount": null,
+       "Financial Status": "paid",
+       "Email": "ivo.lopez1001@example.com",
+       "Billing Name": null,
+       "Shipping Country": "Australia",
+       "Total": null,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Name": "#1001",
+       "Created at": "2025-01-15 15:40:00",
+       "Lineitem name": "Leather Belt",
+       "Lineitem sku": "SKU-004",
+       "Lineitem quantity": 1,
+       "Lineitem price": 57.75,
+       "Discount Amount": null,
+       "Financial Status": "paid",
+       "Email": "ivo.lopez1001@example.com",
+       "Billing Name": null,
+       "Shipping Country": "Australia",
+       "Total": null,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Name": "#1002",
+       "Created at": "2025-01-03 08:24:00",
+       "Lineitem name": "Rain Jacket",
+       "Lineitem sku": "SKU-006",
+       "Lineitem quantity": 1,
+       "Lineitem price": 108.0,
+       "Discount Amount": 10.8,
+       "Financial Status": "paid",
+       "Email": "hana.ito1002@example.com",
+       "Billing Name": "Hana Ito",
+       "Shipping Country": "Canada",
+       "Total": 97.2,
+       "Currency": "USD",
+       "row_kind": "sale"
+      },
+      {
+       "Name": "#1003",
+       "Created at": "2025-01-04 14:48:00",
+       "Lineitem name": "Denim Jeans",
+       "Lineitem sku": "SKU-007",
+       "Lineitem quantity": 2,
+       "Lineitem price": 78.0,
+       "Discount Amount": 15.6,
+       "Financial Status": "paid",
+       "Email": "chen.ito1003@example.com",
+       "Billing Name": "Chen Ito",
+       "Shipping Country": "United States",
+       "Total": 140.4,
+       "Currency": "USD",
+       "row_kind": "sale"
+      }
+     ],
+     "dtypes_summary": {
+      "Name": "object",
+      "Created at": "object",
+      "Lineitem name": "object",
+      "Lineitem sku": "object",
+      "Lineitem quantity": "int64",
+      "Lineitem price": "float64",
+      "Discount Amount": "float64",
+      "Financial Status": "object",
+      "Email": "object",
+      "Billing Name": "object",
+      "Shipping Country": "object",
+      "Total": "float64",
+      "Currency": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Name": 0.0,
+      "Created at": 0.0,
+      "Lineitem name": 0.0,
+      "Lineitem sku": 0.0,
+      "Lineitem quantity": 0.0,
+      "Lineitem price": 0.0,
+      "Discount Amount": 43.66,
+      "Financial Status": 0.0,
+      "Email": 0.0,
+      "Billing Name": 43.66,
+      "Shipping Country": 0.0,
+      "Total": 43.66,
+      "Currency": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Shipping Country/Name:ratio:avg_order_value",
+       "kind": "segment",
+       "claim": "avg_order_value (from Name) by Shipping Country (5 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Shipping Country\", \"metric_column\": \"Name\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Germany\", \"value\": 162.6644}, {\"name\": \"United Kingdom\", \"value\": 150.068}, {\"name\": \"United States\", \"value\": 133.99}, {\"name\": \"Australia\", \"value\": 126.4375}, {\"name\": \"Canada\", \"value\": 118.0232}], \"label\": \"avg_order_value\"}",
+       "row_count": 4455,
+       "confidence": "high",
+       "confidence_reason": "4455 rows",
+       "assumptions": [
+        "48 duplicate rows were removed first"
+       ]
+      },
+      {
+       "id": "seg:Shipping Country/Lineitem price",
+       "kind": "segment",
+       "claim": "mean Lineitem price by Shipping Country (5 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Shipping Country\", \"metric_column\": \"Lineitem price\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Germany\", \"value\": 57.7428}, {\"name\": \"United Kingdom\", \"value\": 55.7423}, {\"name\": \"United States\", \"value\": 46.7906}, {\"name\": \"Australia\", \"value\": 46.6995}, {\"name\": \"Canada\", \"value\": 41.7106}]}",
+       "row_count": 4455,
+       "confidence": "high",
+       "confidence_reason": "4455 rows",
+       "assumptions": [
+        "48 duplicate rows were removed first"
+       ]
+      },
+      {
+       "id": "seg:Shipping Country/Lineitem quantity",
+       "kind": "segment",
+       "claim": "mean Lineitem quantity by Shipping Country (5 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Shipping Country\", \"metric_column\": \"Lineitem quantity\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Australia\", \"value\": 1.6299}, {\"name\": \"United States\", \"value\": 1.6229}, {\"name\": \"United Kingdom\", \"value\": 1.6221}, {\"name\": \"Germany\", \"value\": 1.6094}, {\"name\": \"Canada\", \"value\": 1.5711}]}",
+       "row_count": 4455,
+       "confidence": "high",
+       "confidence_reason": "4455 rows",
+       "assumptions": [
+        "48 duplicate rows were removed first"
+       ]
+      },
+      {
+       "id": "seg:Shipping Country/Name:count",
+       "kind": "segment",
+       "claim": "count Name by Shipping Country (5 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Shipping Country\", \"metric_column\": \"Name\", \"aggregation\": \"count\", \"results\": [{\"name\": \"United States\", \"value\": 1213.0}, {\"name\": \"United Kingdom\", \"value\": 350.0}, {\"name\": \"Canada\", \"value\": 269.0}, {\"name\": \"Germany\", \"value\": 250.0}, {\"name\": \"Australia\", \"value\": 201.0}], \"label\": \"order_count\"}",
+       "row_count": 4455,
+       "confidence": "high",
+       "confidence_reason": "4455 rows",
+       "assumptions": [
+        "48 duplicate rows were removed first"
+       ]
+      },
+      {
+       "id": "eda:Lineitem quantity",
+       "kind": "eda",
+       "claim": "Lineitem quantity: median 1.00, mean 1.61, range 1.00 to 3.00",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1.6112, \"std\": 0.8025, \"min\": 1.0, \"max\": 3.0, \"median\": 1.0, \"count\": 4455}",
+       "row_count": 4455,
+       "confidence": "high",
+       "confidence_reason": "4455 rows",
+       "assumptions": [
+        "48 duplicate rows were removed first"
+       ]
+      },
+      {
+       "id": "eda:Lineitem price",
+       "kind": "eda",
+       "claim": "Lineitem price: median 36.40, mean 48.75, range 9.06 to 179.47",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 48.7468, \"std\": 34.1627, \"min\": 9.06, \"max\": 179.47, \"median\": 36.4, \"count\": 4455}",
+       "row_count": 4455,
+       "confidence": "high",
+       "confidence_reason": "4455 rows",
+       "assumptions": [
+        "48 duplicate rows were removed first"
+       ]
+      },
+      {
+       "id": "eda:Discount Amount",
+       "kind": "eda",
+       "claim": "Discount Amount: median 0, mean 4.24, range 0 to 84.37",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 4.2359, \"std\": 9.3613, \"min\": 0.0, \"max\": 84.37, \"median\": 0.0, \"count\": 2510}",
+       "row_count": 2510,
+       "confidence": "high",
+       "confidence_reason": "2510 rows",
+       "assumptions": [
+        "Discount Amount: 44% missing, left out of this result",
+        "Discount Amount treated as order-level; first value per order used to avoid double-counting.",
+        "48 duplicate rows were removed first"
+       ]
+      },
+      {
+       "id": "eda:Total",
+       "kind": "eda",
+       "claim": "Total: median 103.14, mean 136.13, range 9.72 to 848.90",
+       "code": "try:\n    import numpy as np\n\n    # Apply domain filters: USD only, exclude refunded/cancelled/test\n    # row_kind column not present \u2014 derive filter from Financial Status and known flags\n    # Use cleaning audit flags: refunded, cancel, test, other_currency already flagged\n    # Since row_kind is not in schema, filter by Financial Status and currency\n    valid_statuses = ['paid', 'partially_paid', 'partially_refunded']\n    \n    df_work = df.copy()\n    df_work['Created at'] = pd.to_datetime(df_work['Created at'], errors='coerce')\n    \n    # Filter: USD only\n    df_usd = df_work[df_work['Currency'] == 'USD'].copy()\n    \n    # Filter: exclude refunded/returned, cancelled/voided, test orders\n    exclude_status = ['refunded', 'returned', 'cancelled', 'canceled', 'voided', 'void']\n    df_sale = df_usd[~df_usd['Financial Status'].str.lower().isin(exclude_status)].copy()\n    \n    # Exclude test orders by Email and Name pattern\n    import re\n    test_pattern = r'^test(?:@|\\+|$|[-_ ]?(?:order|\\d))|@test\\.'\n    mask_test_email = df_sale['Email'].astype(str).str.match(test_pattern, case=False, na=False)\n    mask_test_name = df_sale['Name'].astype(str).str.match(test_pattern, case=False, na=False)\n    df_sale = df_sale[~(mask_test_email | mask_test_name)].copy()\n\n    # Net sales per order: sum(quantity * unit_price) - sum(discount once per order)\n    # Discount Amount is per order (same value repeated for multi-line orders)\n    # Compute line revenue\n    df_sale['line_revenue'] = df_sale['Lineitem quantity'] * df_sale['Lineitem price']\n    \n    # Per order: sum line revenues, and discount (deduplicated per order)\n    order_revenue = df_sale.groupby('Name')['line_revenue'].sum()\n    \n    # Discount: take first value per order (it's an order-level field repeated)\n    order_discount = df_sale.groupby('Name')['Discount Amount'].first().fillna(0)\n    order_country = df_sale.groupby('Name')['Shipping Country'].first()\n    \n    order_net = (order_revenue - order_discount).rename('net_sales')\n    orders_df = pd.concat([order_net, order_country], axis=1)\n    orders_df.columns = ['net_sales', 'Shipping Country']\n\n    # AOV by country: net_sales / order_count\n    country_net = orders_df.groupby('Shipping Country')['net_sales'].sum()\n    country_orders = orders_df.groupby('Shipping Country')['net_sales'].count()\n    country_aov = (country_net / country_orders).reset_index()\n    country_aov.columns = ['Shipping Country', 'aov']\n    country_aov = country_aov.sort_values('aov', ascending=False)\n\n    # Top 10 by order count\n    top10_countries = country_orders.nlargest(10).index\n    country_aov_top10 = country_aov[country_aov['Shipping Country'].isin(top10_countries)]\n\n    aov_results = [\n        {\"name\": str(row['Shipping Country']), \"value\": round(float(row['aov']), 4)}\n        for _, row in country_aov_top10.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"avg_order_value\",\n        \"results\": aov_results\n    })\n\n    # Also: Lineitem price mean by country (top 10 by count)\n    country_price = df_sale.groupby('Shipping Country')['Lineitem price'].mean()\n    top10_price = country_price[country_price.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem price\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_price.items()]\n    })\n\n    # Lineitem quantity mean by country (top 10)\n    country_qty = df_sale.groupby('Shipping Country')['Lineitem quantity'].mean()\n    top10_qty = country_qty[country_qty.index.isin(top10_countries)].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Lineitem quantity\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(k), \"value\": round(float(v), 4)} for k, v in top10_qty.items()]\n    })\n\n    # Order count by country (top 10)\n    top10_order_counts = country_orders[top10_countries].sort_values(ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"Shipping Country\",\n        \"metric_column\": \"Name\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(k), \"value\": float(v)} for k, v in top10_order_counts.items()]\n    })\n\n    result['assumptions'].append(\"Discount Amount treated as order-level; first value per order used to avoid double-counting.\")\n    result['assumptions'].append(\"Net sales = sum(qty * unit_price) - discount per order; AOV = net_sales / distinct orders.\")\n    result['assumptions'].append(\"Rows with Financial Status in refunded/returned/cancelled/voided excluded; USD only.\")\n    result['assumptions'].append(\"Top 10 countries by order count shown for each segment breakdown.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 136.1307, \"std\": 114.5275, \"min\": 9.72, \"max\": 848.9, \"median\": 103.135, \"count\": 2510}",
+       "row_count": 2510,
+       "confidence": "high",
+       "confidence_reason": "2510 rows",
+       "assumptions": [
+        "Total: 44% missing, left out of this result",
+        "48 duplicate rows were removed first"
+       ]
+      }
+     ]
+    },
+    "domain": "retail",
+    "latency_s": 30.96,
+    "cost_usd": 0.03444,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "retail-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Net Sales)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 11,
+     "verifiable": 26,
+     "details": [
+      "Units.max",
+      "Units.mean",
+      "Units.std",
+      "sum Net Sales[East]",
+      "sum Net Sales[North]",
+      "sum Net Sales[South]",
+      "sum Net Sales[Overall (comp)]",
+      "sum Net Sales[East]",
+      "sum Net Sales[North]",
+      "sum Net Sales[South]"
+     ]
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Net Sales": {
+       "mean": 9814.8695,
+       "std": 5510.6523,
+       "min": 3622.94,
+       "max": 27842.79,
+       "median": 7479.82,
+       "count": 3896
+      },
+      "Units": {
+       "mean": 890.6465,
+       "std": 1294.1188,
+       "min": 37.0,
+       "max": 4639.0,
+       "median": 205.0,
+       "count": 3890
+      },
+      "COGS": {
+       "mean": 6970.1482,
+       "std": 4853.8137,
+       "min": 1562.45,
+       "max": 25185.2,
+       "median": 5437.33,
+       "count": 3896
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Region",
+       "metric_column": "Net Sales",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "East",
+         "value": 0.022492
+        },
+        {
+         "name": "North",
+         "value": 0.020931
+        },
+        {
+         "name": "South",
+         "value": 0.016216
+        },
+        {
+         "name": "Overall (comp)",
+         "value": 0.02
+        }
+       ],
+       "label": "comp_sales_growth_last52_vs_prior52"
+      },
+      {
+       "segment_column": "Region",
+       "metric_column": "Net Sales",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "East",
+         "value": 6140947.13
+        },
+        {
+         "name": "North",
+         "value": 6457489.09
+        },
+        {
+         "name": "South",
+         "value": 5632861.02
+        },
+        {
+         "name": "Overall (comp)",
+         "value": 18231297.24
+        }
+       ],
+       "label": "comp_net_sales_prior_52wk"
+      },
+      {
+       "segment_column": "Region",
+       "metric_column": "Net Sales",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "East",
+         "value": 6279067.46
+        },
+        {
+         "name": "North",
+         "value": 6592652.96
+        },
+        {
+         "name": "South",
+         "value": 5724202.82
+        },
+        {
+         "name": "Overall (comp)",
+         "value": 18595923.24
+        }
+       ],
+       "label": "comp_net_sales_last_52wk"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Net Sales": [
+       {
+        "label": "(3598.72, 6044.925]",
+        "count": 1318
+       },
+       {
+        "label": "(6044.925, 8466.91]",
+        "count": 921
+       },
+       {
+        "label": "(8466.91, 10888.895]",
+        "count": 583
+       },
+       {
+        "label": "(10888.895, 13310.88]",
+        "count": 97
+       },
+       {
+        "label": "(13310.88, 15732.865]",
+        "count": 138
+       },
+       {
+        "label": "(15732.865, 18154.85]",
+        "count": 321
+       },
+       {
+        "label": "(18154.85, 20576.835]",
+        "count": 276
+       },
+       {
+        "label": "(20576.835, 22998.82]",
+        "count": 201
+       },
+       {
+        "label": "(22998.82, 25420.805]",
+        "count": 29
+       },
+       {
+        "label": "(25420.805, 27842.79]",
+        "count": 12
+       }
+      ],
+      "Units": [
+       {
+        "label": "(32.398, 497.2]",
+        "count": 2916
+       },
+       {
+        "label": "(1877.8, 2338.0]",
+        "count": 11
+       },
+       {
+        "label": "(2338.0, 2798.2]",
+        "count": 279
+       },
+       {
+        "label": "(2798.2, 3258.4]",
+        "count": 309
+       },
+       {
+        "label": "(3258.4, 3718.6]",
+        "count": 315
+       },
+       {
+        "label": "(3718.6, 4178.8]",
+        "count": 43
+       },
+       {
+        "label": "(4178.8, 4639.0]",
+        "count": 17
+       }
+      ],
+      "COGS": [
+       {
+        "label": "(1538.827, 3924.725]",
+        "count": 1802
+       },
+       {
+        "label": "(3924.725, 6287.0]",
+        "count": 251
+       },
+       {
+        "label": "(6287.0, 8649.275]",
+        "count": 476
+       },
+       {
+        "label": "(8649.275, 11011.55]",
+        "count": 564
+       },
+       {
+        "label": "(11011.55, 13373.825]",
+        "count": 298
+       },
+       {
+        "label": "(13373.825, 15736.1]",
+        "count": 203
+       },
+       {
+        "label": "(15736.1, 18098.375]",
+        "count": 248
+       },
+       {
+        "label": "(18098.375, 20460.65]",
+        "count": 28
+       },
+       {
+        "label": "(20460.65, 22822.925]",
+        "count": 19
+       },
+       {
+        "label": "(22822.925, 25185.2]",
+        "count": 7
+       }
+      ],
+      "Dept": [
+       {
+        "label": "Grocery",
+        "count": 974
+       },
+       {
+        "label": "Apparel",
+        "count": 974
+       },
+       {
+        "label": "Home",
+        "count": 974
+       },
+       {
+        "label": "Electronics",
+        "count": 974
+       }
+      ],
+      "Region": [
+       {
+        "label": "East",
+        "count": 1328
+       },
+       {
+        "label": "North",
+        "count": 1296
+       },
+       {
+        "label": "South",
+        "count": 1272
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    df['Wk_End_Dt'] = pd.to_datetime(df['Wk_End_Dt'])\n\n    max_date = df['Wk_End_Dt'].max()\n    period2_end = max_date\n    period2_start = period2_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n    period1_end = period2_start - pd.Timedelta(days=1)\n    period1_start = period1_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n\n    df_p1 = df[(df['Wk_End_Dt'] >= period1_start) & (df['Wk_End_Dt'] <= period1_end)].copy()\n    df_p2 = df[(df['Wk_End_Dt'] >= period2_start) & (df['Wk_End_Dt'] <= period2_end)].copy()\n\n    stores_p1 = set(df_p1['Store_No'].unique())\n    stores_p2 = set(df_p2['Store_No'].unique())\n    comp_stores = stores_p1 & stores_p2\n\n    df_p1_comp = df_p1[df_p1['Store_No'].isin(comp_stores)]\n    df_p2_comp = df_p2[df_p2['Store_No'].isin(comp_stores)]\n\n    regions = sorted(df['Region'].dropna().unique())\n\n    comp_results_p1 = []\n    comp_results_p2 = []\n    growth_results = []\n\n    for region in regions:\n        r_p1 = df_p1_comp[df_p1_comp['Region'] == region]['Net Sales'].sum()\n        r_p2 = df_p2_comp[df_p2_comp['Region'] == region]['Net Sales'].sum()\n        comp_results_p1.append({\"name\": region, \"value\": round(float(r_p1), 2)})\n        comp_results_p2.append({\"name\": region, \"value\": round(float(r_p2), 2)})\n        if r_p1 != 0:\n            growth = (r_p2 - r_p1) / abs(r_p1)\n        else:\n            growth = float('nan')\n        growth_results.append({\"name\": region, \"value\": round(float(growth), 6) if not np.isnan(growth) else 0.0})\n\n    overall_p1 = df_p1_comp['Net Sales'].sum()\n    overall_p2 = df_p2_comp['Net Sales'].sum()\n    overall_growth = (overall_p2 - overall_p1) / abs(overall_p1) if overall_p1 != 0 else 0.0\n\n    growth_results.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_growth), 6)})\n    comp_results_p1.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p1), 2)})\n    comp_results_p2.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p2), 2)})\n\n    n_comp = len(comp_stores)\n    n_p1_stores = len(stores_p1)\n    n_p2_stores = len(stores_p2)\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"comp_sales_growth_last52_vs_prior52\",\n        \"results\": growth_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_prior_52wk\",\n        \"results\": comp_results_p1\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_last_52wk\",\n        \"results\": comp_results_p2\n    })\n\n    result['assumptions'].append(\n        f\"Comp stores: {n_comp} stores present in both 52-week periods (of {n_p1_stores} prior, {n_p2_stores} last); stores absent from either period excluded per like-for-like definition.\"\n    )\n    result['assumptions'].append(\n        f\"Period 1 (prior 52 wk): {period1_start.date()} to {period1_end.date()}; Period 2 (last 52 wk): {period2_start.date()} to {period2_end.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included.\"\n    )\n    result['assumptions'].append(\n        \"Growth values are fractions (e.g. 0.05 = 5% growth); ratio label used per segmentation schema.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Standard statistics (deterministic) \u2500\u2500\u2500\nresult['builtin'] = []\n_targets, _segs, _date, _hints = ['Net Sales'], ['Region'], 'Wk_End_Dt', {}\ntry:\n    if False:\n        for _i, _a in enumerate(_targets):\n            for _b in _targets[_i + 1:]:\n                if f'{_a}__{_b}' not in result['correlations'] and f'{_b}__{_a}' not in result['correlations']:\n                    _r = df[_a].corr(df[_b])\n                    if _r == _r:\n                        result['correlations'][f'{_a}__{_b}'] = round(float(_r), 4)\n                        result['builtin'].append(f'corr:{_a}__{_b}')\nexcept Exception:\n    pass\ntry:\n    if (_date or _hints) and False:\n        # A mid-month export compares the last two complete months (agents.utils.partial_last_month).\n        def _cut(_t):\n            _mm = _t.dt.to_period('M')\n            _d = _t.dropna()\n            if _d.empty:\n                return _mm\n            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()\n            _g = _d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()\n            _regular = len(_g) >= 3 and _g.std() <= 0.25 * _g.mean()\n            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and (_days.iloc[:-1].median() >= 4 or _regular) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():\n                _mm = _mm.where(_mm != _days.index[-1])\n            return _mm\n        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')\n        def _level_months(_tc):\n            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))\n        # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.\n        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]\n        # ponytail: values all in [0, 1] \u2192 a rate or flag, compared by month mean; anything else\n        # by month total. A semantic layer (Phase 4) can declare the aggregation instead.\n        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's\n        # last value in the month, summed; a reading is a mean.\n        # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months\n        # compare fairly (agents.utils.weekly_cadence).\n        _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')\n        _weekly = True and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7\n        # a domain's money columns count sale and return rows in the main currency (as its tiles)\n        _money, _kind = ['Net Sales'], 'row_kind'\n        def _mom(_frame, _col):\n            _h = _hints.get(_col)\n            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')\n            _mon = _month\n            if _agg in ('last', 'first'):\n                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:\n                    return None, 0   # its account (or time) column is gone: no total, never a sum\n                _mon = _level_months(_h[2])   # the level's own months, partial last month out\n                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),\n                                   _m=_mon.loc[_frame.index])\n                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')\n                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()\n            else:\n                if _col in _money and _kind in _frame.columns:\n                    _frame = _frame[_frame[_kind].isin(['sale', 'return'])]\n                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()\n                if _weekly and _agg == 'sum':\n                    _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)\n                    if 'weekly' not in ' '.join(result['assumptions']):\n                        result['assumptions'].append('Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).')\n            if len(_tot) < 2 or _tot.iloc[-2] == 0:\n                return None, 0\n            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])\n            _n = int(_frame.loc[_last2, _col].notna().sum())\n            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n\n        for _c in _targets:\n            _jobs = [(None, df)]\n            if _segs:\n                _top = df[_segs[0]].value_counts().head(10).index\n                _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]\n            for _seg, _frame in _jobs:\n                _p, _n = _mom(_frame, _c)\n                if _p is not None:\n                    result['trends'].append({'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,\n                                             'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'})\n                    result['builtin'].append(f'trend:{_c}' + (f' ({_seg})' if _seg else '') + ':MoM')\nexcept Exception:\n    pass\ntry:\n    if len(_segs) >= 2 and 'segmentation' in ['segmentation']:\n        _joint = '|'.join(_segs[:2])\n        for _c in _targets:\n            if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):\n                continue\n            _g = df.groupby(_segs[:2])[_c].mean()\n            _n = df.groupby(_segs[:2]).size().sort_values(ascending=False).head(20).index\n            result['segments'].append({'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',\n                                       'results': [{'name': f'{_a}|{_b}', 'value': round(float(_g[(_a, _b)]), 4)} for _a, _b in _n]})\n            result['builtin'].append(f'seg:{_joint}/{_c}')\nexcept Exception:\n    pass\n\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Net Sales' in df.columns and pd.api.types.is_numeric_dtype(df['Net Sales']):\n        _s = df['Net Sales'].dropna()\n        if len(_s) > 0 and 'Net Sales' not in result['eda_summary']:\n            result['eda_summary']['Net Sales'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Units' in df.columns and pd.api.types.is_numeric_dtype(df['Units']):\n        _s = df['Units'].dropna()\n        if len(_s) > 0 and 'Units' not in result['eda_summary']:\n            result['eda_summary']['Units'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'COGS' in df.columns and pd.api.types.is_numeric_dtype(df['COGS']):\n        _s = df['COGS'].dropna()\n        if len(_s) > 0 and 'COGS' not in result['eda_summary']:\n            result['eda_summary']['COGS'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Net Sales' in df.columns and pd.api.types.is_numeric_dtype(df['Net Sales']):\n        _col_data = df['Net Sales'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Net Sales'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Units' in df.columns and pd.api.types.is_numeric_dtype(df['Units']):\n        _col_data = df['Units'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Units'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'COGS' in df.columns and pd.api.types.is_numeric_dtype(df['COGS']):\n        _col_data = df['COGS'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['COGS'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Dept' in df.columns:\n        _vc = df['Dept'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Dept'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Region' in df.columns:\n        _vc = df['Region'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Region'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Store_No": 101,
+       "Wk_End_Dt": "2024-07-06 00:00:00",
+       "Dept": "Grocery",
+       "Net Sales": 18679.48,
+       "Units": 3113.0,
+       "COGS": 13582.56,
+       "Region": "East",
+       "row_kind": "sale"
+      },
+      {
+       "Store_No": 101,
+       "Wk_End_Dt": "2024-07-06 00:00:00",
+       "Dept": "Apparel",
+       "Net Sales": 5714.14,
+       "Units": 190.0,
+       "COGS": 2631.68,
+       "Region": "East",
+       "row_kind": "sale"
+      },
+      {
+       "Store_No": 101,
+       "Wk_End_Dt": "2024-07-06 00:00:00",
+       "Dept": "Home",
+       "Net Sales": 5113.34,
+       "Units": 204.0,
+       "COGS": 2794.1,
+       "Region": "East",
+       "row_kind": "sale"
+      },
+      {
+       "Store_No": 101,
+       "Wk_End_Dt": "2024-07-06 00:00:00",
+       "Dept": "Electronics",
+       "Net Sales": 9252.75,
+       "Units": 51.0,
+       "COGS": 8223.83,
+       "Region": "East",
+       "row_kind": "sale"
+      },
+      {
+       "Store_No": 101,
+       "Wk_End_Dt": "2024-07-13 00:00:00",
+       "Dept": "Grocery",
+       "Net Sales": 18297.89,
+       "Units": 3049.0,
+       "COGS": 13225.26,
+       "Region": "East",
+       "row_kind": "sale"
+      }
+     ],
+     "dtypes_summary": {
+      "Store_No": "int64",
+      "Wk_End_Dt": "datetime64[ns]",
+      "Dept": "object",
+      "Net Sales": "float64",
+      "Units": "float64",
+      "COGS": "float64",
+      "Region": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Store_No": 0.0,
+      "Wk_End_Dt": 0.0,
+      "Dept": 0.0,
+      "Net Sales": 0.0,
+      "Units": 0.15,
+      "COGS": 0.0,
+      "Region": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Region/Net Sales:ratio:comp_sales_growth_last52_vs_prior52",
+       "kind": "segment",
+       "claim": "comp_sales_growth_last52_vs_prior52 (from Net Sales) by Region (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    df['Wk_End_Dt'] = pd.to_datetime(df['Wk_End_Dt'])\n\n    max_date = df['Wk_End_Dt'].max()\n    period2_end = max_date\n    period2_start = period2_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n    period1_end = period2_start - pd.Timedelta(days=1)\n    period1_start = period1_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n\n    df_p1 = df[(df['Wk_End_Dt'] >= period1_start) & (df['Wk_End_Dt'] <= period1_end)].copy()\n    df_p2 = df[(df['Wk_End_Dt'] >= period2_start) & (df['Wk_End_Dt'] <= period2_end)].copy()\n\n    stores_p1 = set(df_p1['Store_No'].unique())\n    stores_p2 = set(df_p2['Store_No'].unique())\n    comp_stores = stores_p1 & stores_p2\n\n    df_p1_comp = df_p1[df_p1['Store_No'].isin(comp_stores)]\n    df_p2_comp = df_p2[df_p2['Store_No'].isin(comp_stores)]\n\n    regions = sorted(df['Region'].dropna().unique())\n\n    comp_results_p1 = []\n    comp_results_p2 = []\n    growth_results = []\n\n    for region in regions:\n        r_p1 = df_p1_comp[df_p1_comp['Region'] == region]['Net Sales'].sum()\n        r_p2 = df_p2_comp[df_p2_comp['Region'] == region]['Net Sales'].sum()\n        comp_results_p1.append({\"name\": region, \"value\": round(float(r_p1), 2)})\n        comp_results_p2.append({\"name\": region, \"value\": round(float(r_p2), 2)})\n        if r_p1 != 0:\n            growth = (r_p2 - r_p1) / abs(r_p1)\n        else:\n            growth = float('nan')\n        growth_results.append({\"name\": region, \"value\": round(float(growth), 6) if not np.isnan(growth) else 0.0})\n\n    overall_p1 = df_p1_comp['Net Sales'].sum()\n    overall_p2 = df_p2_comp['Net Sales'].sum()\n    overall_growth = (overall_p2 - overall_p1) / abs(overall_p1) if overall_p1 != 0 else 0.0\n\n    growth_results.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_growth), 6)})\n    comp_results_p1.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p1), 2)})\n    comp_results_p2.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p2), 2)})\n\n    n_comp = len(comp_stores)\n    n_p1_stores = len(stores_p1)\n    n_p2_stores = len(stores_p2)\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"comp_sales_growth_last52_vs_prior52\",\n        \"results\": growth_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_prior_52wk\",\n        \"results\": comp_results_p1\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_last_52wk\",\n        \"results\": comp_results_p2\n    })\n\n    result['assumptions'].append(\n        f\"Comp stores: {n_comp} stores present in both 52-week periods (of {n_p1_stores} prior, {n_p2_stores} last); stores absent from either period excluded per like-for-like definition.\"\n    )\n    result['assumptions'].append(\n        f\"Period 1 (prior 52 wk): {period1_start.date()} to {period1_end.date()}; Period 2 (last 52 wk): {period2_start.date()} to {period2_end.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included.\"\n    )\n    result['assumptions'].append(\n        \"Growth values are fractions (e.g. 0.05 = 5% growth); ratio label used per segmentation schema.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Region\", \"metric_column\": \"Net Sales\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"East\", \"value\": 0.022492}, {\"name\": \"North\", \"value\": 0.020931}, {\"name\": \"South\", \"value\": 0.016216}, {\"name\": \"Overall (comp)\", \"value\": 0.02}], \"label\": \"comp_sales_growth_last52_vs_prior52\"}",
+       "row_count": 3896,
+       "confidence": "high",
+       "confidence_reason": "3896 rows",
+       "assumptions": [
+        "Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included."
+       ]
+      },
+      {
+       "id": "seg:Region/Net Sales:sum",
+       "kind": "segment",
+       "claim": "sum Net Sales by Region (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    df['Wk_End_Dt'] = pd.to_datetime(df['Wk_End_Dt'])\n\n    max_date = df['Wk_End_Dt'].max()\n    period2_end = max_date\n    period2_start = period2_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n    period1_end = period2_start - pd.Timedelta(days=1)\n    period1_start = period1_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n\n    df_p1 = df[(df['Wk_End_Dt'] >= period1_start) & (df['Wk_End_Dt'] <= period1_end)].copy()\n    df_p2 = df[(df['Wk_End_Dt'] >= period2_start) & (df['Wk_End_Dt'] <= period2_end)].copy()\n\n    stores_p1 = set(df_p1['Store_No'].unique())\n    stores_p2 = set(df_p2['Store_No'].unique())\n    comp_stores = stores_p1 & stores_p2\n\n    df_p1_comp = df_p1[df_p1['Store_No'].isin(comp_stores)]\n    df_p2_comp = df_p2[df_p2['Store_No'].isin(comp_stores)]\n\n    regions = sorted(df['Region'].dropna().unique())\n\n    comp_results_p1 = []\n    comp_results_p2 = []\n    growth_results = []\n\n    for region in regions:\n        r_p1 = df_p1_comp[df_p1_comp['Region'] == region]['Net Sales'].sum()\n        r_p2 = df_p2_comp[df_p2_comp['Region'] == region]['Net Sales'].sum()\n        comp_results_p1.append({\"name\": region, \"value\": round(float(r_p1), 2)})\n        comp_results_p2.append({\"name\": region, \"value\": round(float(r_p2), 2)})\n        if r_p1 != 0:\n            growth = (r_p2 - r_p1) / abs(r_p1)\n        else:\n            growth = float('nan')\n        growth_results.append({\"name\": region, \"value\": round(float(growth), 6) if not np.isnan(growth) else 0.0})\n\n    overall_p1 = df_p1_comp['Net Sales'].sum()\n    overall_p2 = df_p2_comp['Net Sales'].sum()\n    overall_growth = (overall_p2 - overall_p1) / abs(overall_p1) if overall_p1 != 0 else 0.0\n\n    growth_results.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_growth), 6)})\n    comp_results_p1.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p1), 2)})\n    comp_results_p2.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p2), 2)})\n\n    n_comp = len(comp_stores)\n    n_p1_stores = len(stores_p1)\n    n_p2_stores = len(stores_p2)\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"comp_sales_growth_last52_vs_prior52\",\n        \"results\": growth_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_prior_52wk\",\n        \"results\": comp_results_p1\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_last_52wk\",\n        \"results\": comp_results_p2\n    })\n\n    result['assumptions'].append(\n        f\"Comp stores: {n_comp} stores present in both 52-week periods (of {n_p1_stores} prior, {n_p2_stores} last); stores absent from either period excluded per like-for-like definition.\"\n    )\n    result['assumptions'].append(\n        f\"Period 1 (prior 52 wk): {period1_start.date()} to {period1_end.date()}; Period 2 (last 52 wk): {period2_start.date()} to {period2_end.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included.\"\n    )\n    result['assumptions'].append(\n        \"Growth values are fractions (e.g. 0.05 = 5% growth); ratio label used per segmentation schema.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Region\", \"metric_column\": \"Net Sales\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"East\", \"value\": 6140947.13}, {\"name\": \"North\", \"value\": 6457489.09}, {\"name\": \"South\", \"value\": 5632861.02}, {\"name\": \"Overall (comp)\", \"value\": 18231297.24}], \"label\": \"comp_net_sales_prior_52wk\"}",
+       "row_count": 3896,
+       "confidence": "high",
+       "confidence_reason": "3896 rows",
+       "assumptions": [
+        "Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included."
+       ]
+      },
+      {
+       "id": "seg:Region/Net Sales:sum",
+       "kind": "segment",
+       "claim": "sum Net Sales by Region (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    df['Wk_End_Dt'] = pd.to_datetime(df['Wk_End_Dt'])\n\n    max_date = df['Wk_End_Dt'].max()\n    period2_end = max_date\n    period2_start = period2_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n    period1_end = period2_start - pd.Timedelta(days=1)\n    period1_start = period1_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n\n    df_p1 = df[(df['Wk_End_Dt'] >= period1_start) & (df['Wk_End_Dt'] <= period1_end)].copy()\n    df_p2 = df[(df['Wk_End_Dt'] >= period2_start) & (df['Wk_End_Dt'] <= period2_end)].copy()\n\n    stores_p1 = set(df_p1['Store_No'].unique())\n    stores_p2 = set(df_p2['Store_No'].unique())\n    comp_stores = stores_p1 & stores_p2\n\n    df_p1_comp = df_p1[df_p1['Store_No'].isin(comp_stores)]\n    df_p2_comp = df_p2[df_p2['Store_No'].isin(comp_stores)]\n\n    regions = sorted(df['Region'].dropna().unique())\n\n    comp_results_p1 = []\n    comp_results_p2 = []\n    growth_results = []\n\n    for region in regions:\n        r_p1 = df_p1_comp[df_p1_comp['Region'] == region]['Net Sales'].sum()\n        r_p2 = df_p2_comp[df_p2_comp['Region'] == region]['Net Sales'].sum()\n        comp_results_p1.append({\"name\": region, \"value\": round(float(r_p1), 2)})\n        comp_results_p2.append({\"name\": region, \"value\": round(float(r_p2), 2)})\n        if r_p1 != 0:\n            growth = (r_p2 - r_p1) / abs(r_p1)\n        else:\n            growth = float('nan')\n        growth_results.append({\"name\": region, \"value\": round(float(growth), 6) if not np.isnan(growth) else 0.0})\n\n    overall_p1 = df_p1_comp['Net Sales'].sum()\n    overall_p2 = df_p2_comp['Net Sales'].sum()\n    overall_growth = (overall_p2 - overall_p1) / abs(overall_p1) if overall_p1 != 0 else 0.0\n\n    growth_results.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_growth), 6)})\n    comp_results_p1.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p1), 2)})\n    comp_results_p2.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p2), 2)})\n\n    n_comp = len(comp_stores)\n    n_p1_stores = len(stores_p1)\n    n_p2_stores = len(stores_p2)\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"comp_sales_growth_last52_vs_prior52\",\n        \"results\": growth_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_prior_52wk\",\n        \"results\": comp_results_p1\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_last_52wk\",\n        \"results\": comp_results_p2\n    })\n\n    result['assumptions'].append(\n        f\"Comp stores: {n_comp} stores present in both 52-week periods (of {n_p1_stores} prior, {n_p2_stores} last); stores absent from either period excluded per like-for-like definition.\"\n    )\n    result['assumptions'].append(\n        f\"Period 1 (prior 52 wk): {period1_start.date()} to {period1_end.date()}; Period 2 (last 52 wk): {period2_start.date()} to {period2_end.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included.\"\n    )\n    result['assumptions'].append(\n        \"Growth values are fractions (e.g. 0.05 = 5% growth); ratio label used per segmentation schema.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Region\", \"metric_column\": \"Net Sales\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"East\", \"value\": 6279067.46}, {\"name\": \"North\", \"value\": 6592652.96}, {\"name\": \"South\", \"value\": 5724202.82}, {\"name\": \"Overall (comp)\", \"value\": 18595923.24}], \"label\": \"comp_net_sales_last_52wk\"}",
+       "row_count": 3896,
+       "confidence": "high",
+       "confidence_reason": "3896 rows",
+       "assumptions": [
+        "Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included."
+       ]
+      },
+      {
+       "id": "eda:Net Sales",
+       "kind": "eda",
+       "claim": "Net Sales: median 7,479.82, mean 9,814.87, range 3,622.94 to 27,842.79",
+       "code": "try:\n    import numpy as np\n\n    df['Wk_End_Dt'] = pd.to_datetime(df['Wk_End_Dt'])\n\n    max_date = df['Wk_End_Dt'].max()\n    period2_end = max_date\n    period2_start = period2_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n    period1_end = period2_start - pd.Timedelta(days=1)\n    period1_start = period1_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n\n    df_p1 = df[(df['Wk_End_Dt'] >= period1_start) & (df['Wk_End_Dt'] <= period1_end)].copy()\n    df_p2 = df[(df['Wk_End_Dt'] >= period2_start) & (df['Wk_End_Dt'] <= period2_end)].copy()\n\n    stores_p1 = set(df_p1['Store_No'].unique())\n    stores_p2 = set(df_p2['Store_No'].unique())\n    comp_stores = stores_p1 & stores_p2\n\n    df_p1_comp = df_p1[df_p1['Store_No'].isin(comp_stores)]\n    df_p2_comp = df_p2[df_p2['Store_No'].isin(comp_stores)]\n\n    regions = sorted(df['Region'].dropna().unique())\n\n    comp_results_p1 = []\n    comp_results_p2 = []\n    growth_results = []\n\n    for region in regions:\n        r_p1 = df_p1_comp[df_p1_comp['Region'] == region]['Net Sales'].sum()\n        r_p2 = df_p2_comp[df_p2_comp['Region'] == region]['Net Sales'].sum()\n        comp_results_p1.append({\"name\": region, \"value\": round(float(r_p1), 2)})\n        comp_results_p2.append({\"name\": region, \"value\": round(float(r_p2), 2)})\n        if r_p1 != 0:\n            growth = (r_p2 - r_p1) / abs(r_p1)\n        else:\n            growth = float('nan')\n        growth_results.append({\"name\": region, \"value\": round(float(growth), 6) if not np.isnan(growth) else 0.0})\n\n    overall_p1 = df_p1_comp['Net Sales'].sum()\n    overall_p2 = df_p2_comp['Net Sales'].sum()\n    overall_growth = (overall_p2 - overall_p1) / abs(overall_p1) if overall_p1 != 0 else 0.0\n\n    growth_results.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_growth), 6)})\n    comp_results_p1.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p1), 2)})\n    comp_results_p2.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p2), 2)})\n\n    n_comp = len(comp_stores)\n    n_p1_stores = len(stores_p1)\n    n_p2_stores = len(stores_p2)\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"comp_sales_growth_last52_vs_prior52\",\n        \"results\": growth_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_prior_52wk\",\n        \"results\": comp_results_p1\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_last_52wk\",\n        \"results\": comp_results_p2\n    })\n\n    result['assumptions'].append(\n        f\"Comp stores: {n_comp} stores present in both 52-week periods (of {n_p1_stores} prior, {n_p2_stores} last); stores absent from either period excluded per like-for-like definition.\"\n    )\n    result['assumptions'].append(\n        f\"Period 1 (prior 52 wk): {period1_start.date()} to {period1_end.date()}; Period 2 (last 52 wk): {period2_start.date()} to {period2_end.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included.\"\n    )\n    result['assumptions'].append(\n        \"Growth values are fractions (e.g. 0.05 = 5% growth); ratio label used per segmentation schema.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 9814.8695, \"std\": 5510.6523, \"min\": 3622.94, \"max\": 27842.79, \"median\": 7479.82, \"count\": 3896}",
+       "row_count": 3896,
+       "confidence": "high",
+       "confidence_reason": "3896 rows",
+       "assumptions": [
+        "Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included."
+       ]
+      },
+      {
+       "id": "eda:Units",
+       "kind": "eda",
+       "claim": "Units: median 205.00, mean 890.65, range 37.00 to 4,639.00",
+       "code": "try:\n    import numpy as np\n\n    df['Wk_End_Dt'] = pd.to_datetime(df['Wk_End_Dt'])\n\n    max_date = df['Wk_End_Dt'].max()\n    period2_end = max_date\n    period2_start = period2_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n    period1_end = period2_start - pd.Timedelta(days=1)\n    period1_start = period1_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n\n    df_p1 = df[(df['Wk_End_Dt'] >= period1_start) & (df['Wk_End_Dt'] <= period1_end)].copy()\n    df_p2 = df[(df['Wk_End_Dt'] >= period2_start) & (df['Wk_End_Dt'] <= period2_end)].copy()\n\n    stores_p1 = set(df_p1['Store_No'].unique())\n    stores_p2 = set(df_p2['Store_No'].unique())\n    comp_stores = stores_p1 & stores_p2\n\n    df_p1_comp = df_p1[df_p1['Store_No'].isin(comp_stores)]\n    df_p2_comp = df_p2[df_p2['Store_No'].isin(comp_stores)]\n\n    regions = sorted(df['Region'].dropna().unique())\n\n    comp_results_p1 = []\n    comp_results_p2 = []\n    growth_results = []\n\n    for region in regions:\n        r_p1 = df_p1_comp[df_p1_comp['Region'] == region]['Net Sales'].sum()\n        r_p2 = df_p2_comp[df_p2_comp['Region'] == region]['Net Sales'].sum()\n        comp_results_p1.append({\"name\": region, \"value\": round(float(r_p1), 2)})\n        comp_results_p2.append({\"name\": region, \"value\": round(float(r_p2), 2)})\n        if r_p1 != 0:\n            growth = (r_p2 - r_p1) / abs(r_p1)\n        else:\n            growth = float('nan')\n        growth_results.append({\"name\": region, \"value\": round(float(growth), 6) if not np.isnan(growth) else 0.0})\n\n    overall_p1 = df_p1_comp['Net Sales'].sum()\n    overall_p2 = df_p2_comp['Net Sales'].sum()\n    overall_growth = (overall_p2 - overall_p1) / abs(overall_p1) if overall_p1 != 0 else 0.0\n\n    growth_results.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_growth), 6)})\n    comp_results_p1.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p1), 2)})\n    comp_results_p2.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p2), 2)})\n\n    n_comp = len(comp_stores)\n    n_p1_stores = len(stores_p1)\n    n_p2_stores = len(stores_p2)\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"comp_sales_growth_last52_vs_prior52\",\n        \"results\": growth_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_prior_52wk\",\n        \"results\": comp_results_p1\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_last_52wk\",\n        \"results\": comp_results_p2\n    })\n\n    result['assumptions'].append(\n        f\"Comp stores: {n_comp} stores present in both 52-week periods (of {n_p1_stores} prior, {n_p2_stores} last); stores absent from either period excluded per like-for-like definition.\"\n    )\n    result['assumptions'].append(\n        f\"Period 1 (prior 52 wk): {period1_start.date()} to {period1_end.date()}; Period 2 (last 52 wk): {period2_start.date()} to {period2_end.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included.\"\n    )\n    result['assumptions'].append(\n        \"Growth values are fractions (e.g. 0.05 = 5% growth); ratio label used per segmentation schema.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 890.6465, \"std\": 1294.1188, \"min\": 37.0, \"max\": 4639.0, \"median\": 205.0, \"count\": 3890}",
+       "row_count": 3890,
+       "confidence": "high",
+       "confidence_reason": "3890 rows",
+       "assumptions": [
+        "Units: 0% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:COGS",
+       "kind": "eda",
+       "claim": "COGS: median 5,437.33, mean 6,970.15, range 1,562.45 to 25,185.20",
+       "code": "try:\n    import numpy as np\n\n    df['Wk_End_Dt'] = pd.to_datetime(df['Wk_End_Dt'])\n\n    max_date = df['Wk_End_Dt'].max()\n    period2_end = max_date\n    period2_start = period2_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n    period1_end = period2_start - pd.Timedelta(days=1)\n    period1_start = period1_end - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)\n\n    df_p1 = df[(df['Wk_End_Dt'] >= period1_start) & (df['Wk_End_Dt'] <= period1_end)].copy()\n    df_p2 = df[(df['Wk_End_Dt'] >= period2_start) & (df['Wk_End_Dt'] <= period2_end)].copy()\n\n    stores_p1 = set(df_p1['Store_No'].unique())\n    stores_p2 = set(df_p2['Store_No'].unique())\n    comp_stores = stores_p1 & stores_p2\n\n    df_p1_comp = df_p1[df_p1['Store_No'].isin(comp_stores)]\n    df_p2_comp = df_p2[df_p2['Store_No'].isin(comp_stores)]\n\n    regions = sorted(df['Region'].dropna().unique())\n\n    comp_results_p1 = []\n    comp_results_p2 = []\n    growth_results = []\n\n    for region in regions:\n        r_p1 = df_p1_comp[df_p1_comp['Region'] == region]['Net Sales'].sum()\n        r_p2 = df_p2_comp[df_p2_comp['Region'] == region]['Net Sales'].sum()\n        comp_results_p1.append({\"name\": region, \"value\": round(float(r_p1), 2)})\n        comp_results_p2.append({\"name\": region, \"value\": round(float(r_p2), 2)})\n        if r_p1 != 0:\n            growth = (r_p2 - r_p1) / abs(r_p1)\n        else:\n            growth = float('nan')\n        growth_results.append({\"name\": region, \"value\": round(float(growth), 6) if not np.isnan(growth) else 0.0})\n\n    overall_p1 = df_p1_comp['Net Sales'].sum()\n    overall_p2 = df_p2_comp['Net Sales'].sum()\n    overall_growth = (overall_p2 - overall_p1) / abs(overall_p1) if overall_p1 != 0 else 0.0\n\n    growth_results.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_growth), 6)})\n    comp_results_p1.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p1), 2)})\n    comp_results_p2.append({\"name\": \"Overall (comp)\", \"value\": round(float(overall_p2), 2)})\n\n    n_comp = len(comp_stores)\n    n_p1_stores = len(stores_p1)\n    n_p2_stores = len(stores_p2)\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"comp_sales_growth_last52_vs_prior52\",\n        \"results\": growth_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_prior_52wk\",\n        \"results\": comp_results_p1\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Region\",\n        \"metric_column\": \"Net Sales\",\n        \"aggregation\": \"sum\",\n        \"label\": \"comp_net_sales_last_52wk\",\n        \"results\": comp_results_p2\n    })\n\n    result['assumptions'].append(\n        f\"Comp stores: {n_comp} stores present in both 52-week periods (of {n_p1_stores} prior, {n_p2_stores} last); stores absent from either period excluded per like-for-like definition.\"\n    )\n    result['assumptions'].append(\n        f\"Period 1 (prior 52 wk): {period1_start.date()} to {period1_end.date()}; Period 2 (last 52 wk): {period2_start.date()} to {period2_end.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Net Sales summed over all rows (sale and return) per domain rule; no row_kind column present so all rows included.\"\n    )\n    result['assumptions'].append(\n        \"Growth values are fractions (e.g. 0.05 = 5% growth); ratio label used per segmentation schema.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 6970.1482, \"std\": 4853.8137, \"min\": 1562.45, \"max\": 25185.2, \"median\": 5437.33, \"count\": 3896}",
+       "row_count": 3896,
+       "confidence": "high",
+       "confidence_reason": "3896 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "retail",
+    "latency_s": 21.76,
+    "cost_usd": 0.0294,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "retail-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (CustomerID)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 11,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Quantity": {
+       "mean": 13.6321,
+       "std": 19.2198,
+       "min": -49.0,
+       "max": 98.0,
+       "median": 8.0,
+       "count": 2887
+      },
+      "UnitPrice": {
+       "mean": 10.552,
+       "std": 12.2151,
+       "min": 1.76,
+       "max": 150.0,
+       "median": 7.8,
+       "count": 2885
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Country",
+       "metric_column": "CustomerID",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "United Kingdom",
+         "value": 0.764
+        },
+        {
+         "name": "Germany",
+         "value": 0.5714
+        },
+        {
+         "name": "France",
+         "value": 1.0
+        },
+        {
+         "name": "EIRE",
+         "value": 1.0
+        },
+        {
+         "name": "Netherlands",
+         "value": 1.0
+        }
+       ],
+       "label": "repeat_customer_rate"
+      },
+      {
+       "segment_column": "Country",
+       "metric_column": "CustomerID",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "United Kingdom",
+         "value": 89.0
+        },
+        {
+         "name": "Germany",
+         "value": 7.0
+        },
+        {
+         "name": "France",
+         "value": 5.0
+        },
+        {
+         "name": "EIRE",
+         "value": 2.0
+        },
+        {
+         "name": "Netherlands",
+         "value": 2.0
+        }
+       ],
+       "label": "total_customers_per_country"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Quantity": [
+       {
+        "label": "(-49.147, -34.3]",
+        "count": 5
+       },
+       {
+        "label": "(-34.3, -19.6]",
+        "count": 7
+       },
+       {
+        "label": "(-19.6, -4.9]",
+        "count": 52
+       },
+       {
+        "label": "(-4.9, 9.8]",
+        "count": 1511
+       },
+       {
+        "label": "(9.8, 24.5]",
+        "count": 948
+       },
+       {
+        "label": "(24.5, 39.2]",
+        "count": 143
+       },
+       {
+        "label": "(39.2, 53.9]",
+        "count": 51
+       },
+       {
+        "label": "(53.9, 68.6]",
+        "count": 46
+       },
+       {
+        "label": "(68.6, 83.3]",
+        "count": 66
+       },
+       {
+        "label": "(83.3, 98.0]",
+        "count": 58
+       }
+      ],
+      "UnitPrice": [
+       {
+        "label": "(1.612, 16.584]",
+        "count": 2619
+       },
+       {
+        "label": "(31.408, 46.232]",
+        "count": 258
+       },
+       {
+        "label": "(135.176, 150.0]",
+        "count": 8
+       }
+      ],
+      "Description": [
+       {
+        "label": "POSTAGE",
+        "count": 258
+       },
+       {
+        "label": "PRODUCT 08",
+        "count": 85
+       },
+       {
+        "label": "PRODUCT 25",
+        "count": 85
+       },
+       {
+        "label": "PRODUCT 00",
+        "count": 83
+       },
+       {
+        "label": "PRODUCT 37",
+        "count": 81
+       },
+       {
+        "label": "PRODUCT 16",
+        "count": 74
+       },
+       {
+        "label": "PRODUCT 24",
+        "count": 74
+       },
+       {
+        "label": "PRODUCT 39",
+        "count": 73
+       },
+       {
+        "label": "PRODUCT 35",
+        "count": 73
+       },
+       {
+        "label": "PRODUCT 03",
+        "count": 72
+       }
+      ],
+      "Country": [
+       {
+        "label": "United Kingdom",
+        "count": 2402
+       },
+       {
+        "label": "France",
+        "count": 200
+       },
+       {
+        "label": "Netherlands",
+        "count": 101
+       },
+       {
+        "label": "Germany",
+        "count": 95
+       },
+       {
+        "label": "EIRE",
+        "count": 89
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    # Use sale rows only for repeat customer analysis (net figures include returns)\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    # Need CustomerID to be non-null for customer-level analysis\n    sale_df = sale_df[sale_df['CustomerID'].notna()]\n\n    # Count distinct orders per customer per country\n    # A customer's country = the country they appear in most (or any, since we segment by country)\n    # We compute repeat rate by country: share of customers with >1 distinct order\n\n    # Get per-customer order counts, keeping country association\n    # A customer may appear in multiple countries; assign each customer to their modal country\n    cust_country = (\n        sale_df.groupby(['CustomerID', 'Country'])['InvoiceNo']\n        .nunique()\n        .reset_index(name='order_count_in_country')\n    )\n\n    # Total orders per customer across all countries\n    cust_orders = (\n        sale_df.groupby('CustomerID')['InvoiceNo']\n        .nunique()\n        .reset_index(name='total_orders')\n    )\n\n    # Assign each customer to their modal country (most orders placed from)\n    cust_modal_country = (\n        cust_country.sort_values('order_count_in_country', ascending=False)\n        .drop_duplicates(subset='CustomerID', keep='first')[['CustomerID', 'Country']]\n    )\n\n    cust_data = cust_orders.merge(cust_modal_country, on='CustomerID')\n    cust_data['is_repeat'] = (cust_data['total_orders'] > 1).astype(int)\n\n    # By country: repeat rate = share of customers with >1 order\n    country_stats = (\n        cust_data.groupby('Country')\n        .agg(total_customers=('CustomerID', 'count'),\n             repeat_customers=('is_repeat', 'sum'))\n        .reset_index()\n    )\n    country_stats['repeat_rate'] = country_stats['repeat_customers'] / country_stats['total_customers']\n\n    # Top 10 countries by customer count\n    top10 = country_stats.nlargest(10, 'total_customers')\n\n    repeat_results = [\n        {\"name\": str(row['Country']), \"value\": round(float(row['repeat_rate']), 4)}\n        for _, row in top10.iterrows()\n    ]\n\n    # Overall repeat rate\n    overall_repeat = float(cust_data['is_repeat'].sum()) / float(len(cust_data))\n\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"repeat_customer_rate\",\n        \"results\": repeat_results\n    })\n\n    # Also store overall as a single-group segment for reference\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"count\",\n        \"label\": \"total_customers_per_country\",\n        \"results\": [\n            {\"name\": str(row['Country']), \"value\": float(row['total_customers'])}\n            for _, row in top10.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"Repeat customer rate = share of customers (with known CustomerID) having >1 distinct InvoiceNo on sale rows.\"\n    )\n    result['assumptions'].append(\n        f\"Overall repeat customer rate across all countries: {overall_repeat:.4f} ({cust_data['is_repeat'].sum()} of {len(cust_data)} customers).\"\n    )\n    result['assumptions'].append(\n        \"Each customer assigned to their modal country (country with most order lines). Top 10 countries by customer count shown.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Standard statistics (deterministic) \u2500\u2500\u2500\nresult['builtin'] = []\n_targets, _segs, _date, _hints = ['Quantity'], ['Country'], 'InvoiceDate', {}\ntry:\n    if False:\n        for _i, _a in enumerate(_targets):\n            for _b in _targets[_i + 1:]:\n                if f'{_a}__{_b}' not in result['correlations'] and f'{_b}__{_a}' not in result['correlations']:\n                    _r = df[_a].corr(df[_b])\n                    if _r == _r:\n                        result['correlations'][f'{_a}__{_b}'] = round(float(_r), 4)\n                        result['builtin'].append(f'corr:{_a}__{_b}')\nexcept Exception:\n    pass\ntry:\n    if (_date or _hints) and False:\n        # A mid-month export compares the last two complete months (agents.utils.partial_last_month).\n        def _cut(_t):\n            _mm = _t.dt.to_period('M')\n            _d = _t.dropna()\n            if _d.empty:\n                return _mm\n            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()\n            _g = _d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()\n            _regular = len(_g) >= 3 and _g.std() <= 0.25 * _g.mean()\n            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and (_days.iloc[:-1].median() >= 4 or _regular) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():\n                _mm = _mm.where(_mm != _days.index[-1])\n            return _mm\n        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')\n        def _level_months(_tc):\n            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))\n        # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.\n        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') == 'MoM' and t.get('column') in _targets)]\n        # ponytail: values all in [0, 1] \u2192 a rate or flag, compared by month mean; anything else\n        # by month total. A semantic layer (Phase 4) can declare the aggregation instead.\n        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's\n        # last value in the month, summed; a reading is a mean.\n        # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months\n        # compare fairly (agents.utils.weekly_cadence).\n        _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')\n        _weekly = True and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7\n        # a domain's money columns count sale and return rows in the main currency (as its tiles)\n        _money, _kind = [], 'row_kind'\n        def _mom(_frame, _col):\n            _h = _hints.get(_col)\n            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')\n            _mon = _month\n            if _agg in ('last', 'first'):\n                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:\n                    return None, 0   # its account (or time) column is gone: no total, never a sum\n                _mon = _level_months(_h[2])   # the level's own months, partial last month out\n                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),\n                                   _m=_mon.loc[_frame.index])\n                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')\n                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()\n            else:\n                if _col in _money and _kind in _frame.columns:\n                    _frame = _frame[_frame[_kind].isin(['sale', 'return'])]\n                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()\n                if _weekly and _agg == 'sum':\n                    _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)\n                    if 'weekly' not in ' '.join(result['assumptions']):\n                        result['assumptions'].append('Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).')\n            if len(_tot) < 2 or _tot.iloc[-2] == 0:\n                return None, 0\n            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])\n            _n = int(_frame.loc[_last2, _col].notna().sum())\n            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n\n        for _c in _targets:\n            _jobs = [(None, df)]\n            if _segs:\n                _top = df[_segs[0]].value_counts().head(10).index\n                _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]\n            for _seg, _frame in _jobs:\n                _p, _n = _mom(_frame, _c)\n                if _p is not None:\n                    result['trends'].append({'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,\n                                             'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'})\n                    result['builtin'].append(f'trend:{_c}' + (f' ({_seg})' if _seg else '') + ':MoM')\nexcept Exception:\n    pass\ntry:\n    if len(_segs) >= 2 and 'segmentation' in ['segmentation']:\n        _joint = '|'.join(_segs[:2])\n        for _c in _targets:\n            if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):\n                continue\n            _g = df.groupby(_segs[:2])[_c].mean()\n            _n = df.groupby(_segs[:2]).size().sort_values(ascending=False).head(20).index\n            result['segments'].append({'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',\n                                       'results': [{'name': f'{_a}|{_b}', 'value': round(float(_g[(_a, _b)]), 4)} for _a, _b in _n]})\n            result['builtin'].append(f'seg:{_joint}/{_c}')\nexcept Exception:\n    pass\n\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Quantity' in df.columns and pd.api.types.is_numeric_dtype(df['Quantity']):\n        _s = df['Quantity'].dropna()\n        if len(_s) > 0 and 'Quantity' not in result['eda_summary']:\n            result['eda_summary']['Quantity'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'UnitPrice' in df.columns and pd.api.types.is_numeric_dtype(df['UnitPrice']):\n        _s = df['UnitPrice'].dropna()\n        if len(_s) > 0 and 'UnitPrice' not in result['eda_summary']:\n            result['eda_summary']['UnitPrice'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Quantity' in df.columns and pd.api.types.is_numeric_dtype(df['Quantity']):\n        _col_data = df['Quantity'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Quantity'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'UnitPrice' in df.columns and pd.api.types.is_numeric_dtype(df['UnitPrice']):\n        _col_data = df['UnitPrice'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['UnitPrice'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Description' in df.columns:\n        _vc = df['Description'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Description'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Country' in df.columns:\n        _vc = df['Country'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Country'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "InvoiceNo": "536366",
+       "InvoiceDate": "2025-01-02 11:17:00",
+       "StockCode": "33392",
+       "Description": "PRODUCT 37",
+       "Quantity": 11,
+       "UnitPrice": 10.39,
+       "CustomerID": 16065.0,
+       "Country": "United Kingdom",
+       "row_kind": "sale"
+      },
+      {
+       "InvoiceNo": "536366",
+       "InvoiceDate": "2025-01-02 11:17:00",
+       "StockCode": "45765",
+       "Description": "PRODUCT 26",
+       "Quantity": 17,
+       "UnitPrice": 8.0,
+       "CustomerID": 16065.0,
+       "Country": "United Kingdom",
+       "row_kind": "sale"
+      },
+      {
+       "InvoiceNo": "536366",
+       "InvoiceDate": "2025-01-02 11:17:00",
+       "StockCode": "83271A",
+       "Description": "PRODUCT 12",
+       "Quantity": 14,
+       "UnitPrice": 3.77,
+       "CustomerID": 16065.0,
+       "Country": "United Kingdom",
+       "row_kind": "sale"
+      },
+      {
+       "InvoiceNo": "536365",
+       "InvoiceDate": "2025-01-02 14:38:00",
+       "StockCode": "77228",
+       "Description": "PRODUCT 08",
+       "Quantity": 16,
+       "UnitPrice": 9.64,
+       "CustomerID": 14879.0,
+       "Country": "France",
+       "row_kind": "sale"
+      },
+      {
+       "InvoiceNo": "536365",
+       "InvoiceDate": "2025-01-02 14:38:00",
+       "StockCode": "72437",
+       "Description": "PRODUCT 16",
+       "Quantity": 1,
+       "UnitPrice": 8.93,
+       "CustomerID": 14879.0,
+       "Country": "France",
+       "row_kind": "sale"
+      }
+     ],
+     "dtypes_summary": {
+      "InvoiceNo": "object",
+      "InvoiceDate": "object",
+      "StockCode": "object",
+      "Description": "object",
+      "Quantity": "int64",
+      "UnitPrice": "float64",
+      "CustomerID": "float64",
+      "Country": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "InvoiceNo": 0.0,
+      "InvoiceDate": 0.0,
+      "StockCode": 0.0,
+      "Description": 0.0,
+      "Quantity": 0.0,
+      "UnitPrice": 0.07,
+      "CustomerID": 18.43,
+      "Country": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Country/CustomerID:ratio:repeat_customer_rate",
+       "kind": "segment",
+       "claim": "repeat_customer_rate (from CustomerID) by Country (5 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Use sale rows only for repeat customer analysis (net figures include returns)\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    # Need CustomerID to be non-null for customer-level analysis\n    sale_df = sale_df[sale_df['CustomerID'].notna()]\n\n    # Count distinct orders per customer per country\n    # A customer's country = the country they appear in most (or any, since we segment by country)\n    # We compute repeat rate by country: share of customers with >1 distinct order\n\n    # Get per-customer order counts, keeping country association\n    # A customer may appear in multiple countries; assign each customer to their modal country\n    cust_country = (\n        sale_df.groupby(['CustomerID', 'Country'])['InvoiceNo']\n        .nunique()\n        .reset_index(name='order_count_in_country')\n    )\n\n    # Total orders per customer across all countries\n    cust_orders = (\n        sale_df.groupby('CustomerID')['InvoiceNo']\n        .nunique()\n        .reset_index(name='total_orders')\n    )\n\n    # Assign each customer to their modal country (most orders placed from)\n    cust_modal_country = (\n        cust_country.sort_values('order_count_in_country', ascending=False)\n        .drop_duplicates(subset='CustomerID', keep='first')[['CustomerID', 'Country']]\n    )\n\n    cust_data = cust_orders.merge(cust_modal_country, on='CustomerID')\n    cust_data['is_repeat'] = (cust_data['total_orders'] > 1).astype(int)\n\n    # By country: repeat rate = share of customers with >1 order\n    country_stats = (\n        cust_data.groupby('Country')\n        .agg(total_customers=('CustomerID', 'count'),\n             repeat_customers=('is_repeat', 'sum'))\n        .reset_index()\n    )\n    country_stats['repeat_rate'] = country_stats['repeat_customers'] / country_stats['total_customers']\n\n    # Top 10 countries by customer count\n    top10 = country_stats.nlargest(10, 'total_customers')\n\n    repeat_results = [\n        {\"name\": str(row['Country']), \"value\": round(float(row['repeat_rate']), 4)}\n        for _, row in top10.iterrows()\n    ]\n\n    # Overall repeat rate\n    overall_repeat = float(cust_data['is_repeat'].sum()) / float(len(cust_data))\n\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"repeat_customer_rate\",\n        \"results\": repeat_results\n    })\n\n    # Also store overall as a single-group segment for reference\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"count\",\n        \"label\": \"total_customers_per_country\",\n        \"results\": [\n            {\"name\": str(row['Country']), \"value\": float(row['total_customers'])}\n            for _, row in top10.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"Repeat customer rate = share of customers (with known CustomerID) having >1 distinct InvoiceNo on sale rows.\"\n    )\n    result['assumptions'].append(\n        f\"Overall repeat customer rate across all countries: {overall_repeat:.4f} ({cust_data['is_repeat'].sum()} of {len(cust_data)} customers).\"\n    )\n    result['assumptions'].append(\n        \"Each customer assigned to their modal country (country with most order lines). Top 10 countries by customer count shown.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Country\", \"metric_column\": \"CustomerID\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"United Kingdom\", \"value\": 0.764}, {\"name\": \"Germany\", \"value\": 0.5714}, {\"name\": \"France\", \"value\": 1.0}, {\"name\": \"EIRE\", \"value\": 1.0}, {\"name\": \"Netherlands\", \"value\": 1.0}], \"label\": \"repeat_customer_rate\"}",
+       "row_count": 2355,
+       "confidence": "high",
+       "confidence_reason": "2355 rows",
+       "assumptions": [
+        "CustomerID: 18% missing, left out of this result",
+        "Repeat customer rate = share of customers (with known CustomerID) having >1 distinct InvoiceNo on sale rows."
+       ]
+      },
+      {
+       "id": "seg:Country/CustomerID:count",
+       "kind": "segment",
+       "claim": "count CustomerID by Country (5 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Use sale rows only for repeat customer analysis (net figures include returns)\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    # Need CustomerID to be non-null for customer-level analysis\n    sale_df = sale_df[sale_df['CustomerID'].notna()]\n\n    # Count distinct orders per customer per country\n    # A customer's country = the country they appear in most (or any, since we segment by country)\n    # We compute repeat rate by country: share of customers with >1 distinct order\n\n    # Get per-customer order counts, keeping country association\n    # A customer may appear in multiple countries; assign each customer to their modal country\n    cust_country = (\n        sale_df.groupby(['CustomerID', 'Country'])['InvoiceNo']\n        .nunique()\n        .reset_index(name='order_count_in_country')\n    )\n\n    # Total orders per customer across all countries\n    cust_orders = (\n        sale_df.groupby('CustomerID')['InvoiceNo']\n        .nunique()\n        .reset_index(name='total_orders')\n    )\n\n    # Assign each customer to their modal country (most orders placed from)\n    cust_modal_country = (\n        cust_country.sort_values('order_count_in_country', ascending=False)\n        .drop_duplicates(subset='CustomerID', keep='first')[['CustomerID', 'Country']]\n    )\n\n    cust_data = cust_orders.merge(cust_modal_country, on='CustomerID')\n    cust_data['is_repeat'] = (cust_data['total_orders'] > 1).astype(int)\n\n    # By country: repeat rate = share of customers with >1 order\n    country_stats = (\n        cust_data.groupby('Country')\n        .agg(total_customers=('CustomerID', 'count'),\n             repeat_customers=('is_repeat', 'sum'))\n        .reset_index()\n    )\n    country_stats['repeat_rate'] = country_stats['repeat_customers'] / country_stats['total_customers']\n\n    # Top 10 countries by customer count\n    top10 = country_stats.nlargest(10, 'total_customers')\n\n    repeat_results = [\n        {\"name\": str(row['Country']), \"value\": round(float(row['repeat_rate']), 4)}\n        for _, row in top10.iterrows()\n    ]\n\n    # Overall repeat rate\n    overall_repeat = float(cust_data['is_repeat'].sum()) / float(len(cust_data))\n\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"repeat_customer_rate\",\n        \"results\": repeat_results\n    })\n\n    # Also store overall as a single-group segment for reference\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"count\",\n        \"label\": \"total_customers_per_country\",\n        \"results\": [\n            {\"name\": str(row['Country']), \"value\": float(row['total_customers'])}\n            for _, row in top10.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"Repeat customer rate = share of customers (with known CustomerID) having >1 distinct InvoiceNo on sale rows.\"\n    )\n    result['assumptions'].append(\n        f\"Overall repeat customer rate across all countries: {overall_repeat:.4f} ({cust_data['is_repeat'].sum()} of {len(cust_data)} customers).\"\n    )\n    result['assumptions'].append(\n        \"Each customer assigned to their modal country (country with most order lines). Top 10 countries by customer count shown.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Country\", \"metric_column\": \"CustomerID\", \"aggregation\": \"count\", \"results\": [{\"name\": \"United Kingdom\", \"value\": 89.0}, {\"name\": \"Germany\", \"value\": 7.0}, {\"name\": \"France\", \"value\": 5.0}, {\"name\": \"EIRE\", \"value\": 2.0}, {\"name\": \"Netherlands\", \"value\": 2.0}], \"label\": \"total_customers_per_country\"}",
+       "row_count": 2355,
+       "confidence": "high",
+       "confidence_reason": "2355 rows",
+       "assumptions": [
+        "CustomerID: 18% missing, left out of this result",
+        "Repeat customer rate = share of customers (with known CustomerID) having >1 distinct InvoiceNo on sale rows."
+       ]
+      },
+      {
+       "id": "eda:Quantity",
+       "kind": "eda",
+       "claim": "Quantity: median 8.00, mean 13.63, range -49.00 to 98.00",
+       "code": "try:\n    import numpy as np\n\n    # Use sale rows only for repeat customer analysis (net figures include returns)\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    # Need CustomerID to be non-null for customer-level analysis\n    sale_df = sale_df[sale_df['CustomerID'].notna()]\n\n    # Count distinct orders per customer per country\n    # A customer's country = the country they appear in most (or any, since we segment by country)\n    # We compute repeat rate by country: share of customers with >1 distinct order\n\n    # Get per-customer order counts, keeping country association\n    # A customer may appear in multiple countries; assign each customer to their modal country\n    cust_country = (\n        sale_df.groupby(['CustomerID', 'Country'])['InvoiceNo']\n        .nunique()\n        .reset_index(name='order_count_in_country')\n    )\n\n    # Total orders per customer across all countries\n    cust_orders = (\n        sale_df.groupby('CustomerID')['InvoiceNo']\n        .nunique()\n        .reset_index(name='total_orders')\n    )\n\n    # Assign each customer to their modal country (most orders placed from)\n    cust_modal_country = (\n        cust_country.sort_values('order_count_in_country', ascending=False)\n        .drop_duplicates(subset='CustomerID', keep='first')[['CustomerID', 'Country']]\n    )\n\n    cust_data = cust_orders.merge(cust_modal_country, on='CustomerID')\n    cust_data['is_repeat'] = (cust_data['total_orders'] > 1).astype(int)\n\n    # By country: repeat rate = share of customers with >1 order\n    country_stats = (\n        cust_data.groupby('Country')\n        .agg(total_customers=('CustomerID', 'count'),\n             repeat_customers=('is_repeat', 'sum'))\n        .reset_index()\n    )\n    country_stats['repeat_rate'] = country_stats['repeat_customers'] / country_stats['total_customers']\n\n    # Top 10 countries by customer count\n    top10 = country_stats.nlargest(10, 'total_customers')\n\n    repeat_results = [\n        {\"name\": str(row['Country']), \"value\": round(float(row['repeat_rate']), 4)}\n        for _, row in top10.iterrows()\n    ]\n\n    # Overall repeat rate\n    overall_repeat = float(cust_data['is_repeat'].sum()) / float(len(cust_data))\n\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"repeat_customer_rate\",\n        \"results\": repeat_results\n    })\n\n    # Also store overall as a single-group segment for reference\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"count\",\n        \"label\": \"total_customers_per_country\",\n        \"results\": [\n            {\"name\": str(row['Country']), \"value\": float(row['total_customers'])}\n            for _, row in top10.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"Repeat customer rate = share of customers (with known CustomerID) having >1 distinct InvoiceNo on sale rows.\"\n    )\n    result['assumptions'].append(\n        f\"Overall repeat customer rate across all countries: {overall_repeat:.4f} ({cust_data['is_repeat'].sum()} of {len(cust_data)} customers).\"\n    )\n    result['assumptions'].append(\n        \"Each customer assigned to their modal country (country with most order lines). Top 10 countries by customer count shown.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 13.6321, \"std\": 19.2198, \"min\": -49.0, \"max\": 98.0, \"median\": 8.0, \"count\": 2887}",
+       "row_count": 2887,
+       "confidence": "high",
+       "confidence_reason": "2887 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:UnitPrice",
+       "kind": "eda",
+       "claim": "UnitPrice: median 7.80, mean 10.55, range 1.76 to 150.00",
+       "code": "try:\n    import numpy as np\n\n    # Use sale rows only for repeat customer analysis (net figures include returns)\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    # Need CustomerID to be non-null for customer-level analysis\n    sale_df = sale_df[sale_df['CustomerID'].notna()]\n\n    # Count distinct orders per customer per country\n    # A customer's country = the country they appear in most (or any, since we segment by country)\n    # We compute repeat rate by country: share of customers with >1 distinct order\n\n    # Get per-customer order counts, keeping country association\n    # A customer may appear in multiple countries; assign each customer to their modal country\n    cust_country = (\n        sale_df.groupby(['CustomerID', 'Country'])['InvoiceNo']\n        .nunique()\n        .reset_index(name='order_count_in_country')\n    )\n\n    # Total orders per customer across all countries\n    cust_orders = (\n        sale_df.groupby('CustomerID')['InvoiceNo']\n        .nunique()\n        .reset_index(name='total_orders')\n    )\n\n    # Assign each customer to their modal country (most orders placed from)\n    cust_modal_country = (\n        cust_country.sort_values('order_count_in_country', ascending=False)\n        .drop_duplicates(subset='CustomerID', keep='first')[['CustomerID', 'Country']]\n    )\n\n    cust_data = cust_orders.merge(cust_modal_country, on='CustomerID')\n    cust_data['is_repeat'] = (cust_data['total_orders'] > 1).astype(int)\n\n    # By country: repeat rate = share of customers with >1 order\n    country_stats = (\n        cust_data.groupby('Country')\n        .agg(total_customers=('CustomerID', 'count'),\n             repeat_customers=('is_repeat', 'sum'))\n        .reset_index()\n    )\n    country_stats['repeat_rate'] = country_stats['repeat_customers'] / country_stats['total_customers']\n\n    # Top 10 countries by customer count\n    top10 = country_stats.nlargest(10, 'total_customers')\n\n    repeat_results = [\n        {\"name\": str(row['Country']), \"value\": round(float(row['repeat_rate']), 4)}\n        for _, row in top10.iterrows()\n    ]\n\n    # Overall repeat rate\n    overall_repeat = float(cust_data['is_repeat'].sum()) / float(len(cust_data))\n\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"repeat_customer_rate\",\n        \"results\": repeat_results\n    })\n\n    # Also store overall as a single-group segment for reference\n    result['segments'].append({\n        \"segment_column\": \"Country\",\n        \"metric_column\": \"CustomerID\",\n        \"aggregation\": \"count\",\n        \"label\": \"total_customers_per_country\",\n        \"results\": [\n            {\"name\": str(row['Country']), \"value\": float(row['total_customers'])}\n            for _, row in top10.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"Repeat customer rate = share of customers (with known CustomerID) having >1 distinct InvoiceNo on sale rows.\"\n    )\n    result['assumptions'].append(\n        f\"Overall repeat customer rate across all countries: {overall_repeat:.4f} ({cust_data['is_repeat'].sum()} of {len(cust_data)} customers).\"\n    )\n    result['assumptions'].append(\n        \"Each customer assigned to their modal country (country with most order lines). Top 10 countries by customer count shown.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 10.552, \"std\": 12.2151, \"min\": 1.76, \"max\": 150.0, \"median\": 7.8, \"count\": 2885}",
+       "row_count": 2885,
+       "confidence": "high",
+       "confidence_reason": "2885 rows",
+       "assumptions": [
+        "UnitPrice: 0% missing, left out of this result"
+       ]
+      }
+     ]
+    },
+    "domain": "retail",
+    "latency_s": 20.91,
+    "cost_usd": 0.02458,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}
