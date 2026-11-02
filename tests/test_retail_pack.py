@@ -1315,6 +1315,10 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     ("The November promotion was responsible for the spike in units.", True),
     ("The coupon campaign contributed to the 15% rise in orders.", True),
     ("Discounting raised order volume in March.", True),
+    # audit pass 4 (m4, m5): a share is no cause; 'non-discounted' is not a discount
+    ("Discounted orders were responsible for 30% of net sales in Q4.", False),
+    ("Coupon orders contributed to 12% of December net sales.", False),
+    ("Net sales rose 8% in Q4, driven by full-price demand for non-discounted lines.", False),
 ])
 def test_promotions_given_credit_anywhere_in_the_claim(sentence, flagged):
     from guardrails import claim_causal_overreach
@@ -1349,6 +1353,8 @@ def test_profit_claims_need_a_cost_or_profit_column():
     assert claim_profit_without_cost("Profit rose 20% while shipping costs fell.", has_cost=False)
     assert claim_profit_without_cost("Upload unit costs to see margin by product.", has_cost=False) is None
     assert claim_profit_without_cost("Gross margin is unknown.", has_cost=False) is None   # pass 3 m5
+    assert claim_profit_without_cost(   # pass 4 m6: 'unknown' about something else
+        "Gross margin rose to 42% in November; the reason for the jump is unknown.", has_cost=False)
 
 
 def test_the_markdown_export_carries_how_the_numbers_were_counted():
@@ -1778,7 +1784,7 @@ def test_february_against_a_leap_february_counts_the_29th():
     text = _answer(_daily("2024-01-01", "2025-03-31"), QuestionIntent.SEGMENT_COMPARE,
                    kpi="net_sales", period_start="2025-02-01", period_end="2025-02-28",
                    compare="yoy").answer_text
-    assert "01 Feb 2024 to 29 Feb 2024): $290.00" in text, text
+    assert "01 Feb 2024 to 29 Feb 2024, 29 days against 28): $290.00" in text, text
 
 
 def test_a_missing_kpi_names_every_way_to_compute_it():
@@ -1808,3 +1814,40 @@ def test_the_trend_stores_note_reads_the_weeks_compared():
     c = _contract(df).model_copy(update={"domain_confidence": "strong"})
     text = _answer(df, QuestionIntent.TIME_SERIES, contract=c, kpi="net_sales", frequency="W").answer_text
     assert "a year earlier" in text and "opened or closed" not in text, text
+
+
+def test_a_postage_code_is_no_product_at_zero():
+    """Audit pass 4 (M1): 'bottom 3 products' never lists POST at $0: its rows are not sales."""
+    df = _load("InvoiceNo,InvoiceDate,StockCode,Description,Quantity,UnitPrice,CustomerID,Country\n"
+               "536365,01/12/2024 08:26,A1,Mug,6,2.55,17850,UK\n536366,01/12/2024 08:28,B2,Tin,2,1.85,17850,UK\n"
+               "536367,01/12/2024 08:34,C3,Box,4,3.10,13047,UK\n536367,01/12/2024 08:34,POST,POSTAGE,1,18.00,13047,UK\n")
+    r = _answer(df, QuestionIntent.TOP_N, kpi="net_sales", group_by="StockCode", order="asc", n=3)
+    assert "POST" not in r.answer_text and all(row["StockCode"] != "POST" for row in r.table_data), r.answer_text
+
+
+def test_february_against_a_leap_february_is_said_as_months():
+    """Audit pass 4 (M2): Feb 2025 (28 days) against Feb 2024 (29): 'same months', never 'same days'."""
+    text = _answer(_daily("2024-01-01", "2025-03-31"), QuestionIntent.SEGMENT_COMPARE,
+                   kpi="net_sales", period_start="2025-02-01", period_end="2025-02-28",
+                   compare="yoy").answer_text
+    assert "29 days against 28" in text and "same months" in text and "same days" not in text, text
+
+
+def test_a_window_answer_speaks_of_its_own_buckets():
+    """Audit pass 4 (m3): monthly 2024 from data 15 Jan 2023 to 15 Dec 2025 says nothing of
+    2023-01 or 2025-12; weekly October 2024 shows only weeks inside October."""
+    df = _daily("2023-01-15", "2025-12-15")
+    text = _answer(df, QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="M",
+                   period_start="2024-01-01", period_end="2024-12-31").answer_text
+    assert "left out" not in text and "latest 2024-12" in text, text
+    weeks = _answer(df, QuestionIntent.TIME_SERIES, kpi="net_sales", frequency="W",
+                    period_start="2024-10-01", period_end="2024-10-31").answer_text
+    assert "2024-11" not in weeks.split("How:")[0], weeks
+
+
+def test_two_month_start_rows_are_two_complete_months():
+    """Audit pass 4 (m7): 1 Nov and 1 Dec rows: both months complete (a month on, not 30 days)."""
+    from agents.targeted_analysis_agent import _cut_partial
+    t = pd.Series(pd.to_datetime(["2025-11-01", "2025-12-01"]))
+    m = pd.Series([1.0, 2.0], index=pd.PeriodIndex(["2025-11", "2025-12"], freq="M"))
+    assert _cut_partial(m, t, "M")[0].equals(m)

@@ -342,7 +342,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     # the data (returns may not be exported at all): unknown
     if part.empty and not set(term.rows or kpi.rows) & kinds.attrs.get("present", set(kinds)):
         return None
-    groups = pd.unique(df[by].dropna()) if by else None
+    # the groups this KPI's rows have (a postage-only code or a test customer is no group at $0)
+    counted = kinds.isin({"sale", "return", "refunded", *kpi.rows})
+    groups = pd.unique(df.loc[counted, by].dropna()) if by else None
     if term.nunique:
         col = part[roles[term.nunique]]
         return col.groupby(part[by]).nunique().reindex(groups, fill_value=0) if by else col.nunique()

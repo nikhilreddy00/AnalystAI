@@ -866,6 +866,11 @@ def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
             "growth leaves them out.")
 
 
+def _basis(prior_period: str) -> str:
+    """'same days', or 'same months' when a leap February makes the day counts differ."""
+    return "same months" if "days against" in prior_period else "same days"
+
+
 def _window_days(df: pd.DataFrame, date: str, start: str | None, end: str | None) -> int:
     """Days of the asked window the data covers (0 when none)."""
     lo, hi, first, last, why = period_window(df, date, start, end)
@@ -913,6 +918,8 @@ def _cut_partial(series: pd.Series, t: pd.Series, freq: str, rule: str | None = 
         cut_first = missing(start, d.min() - pd.Timedelta(days=1)) > slack
         cut_last = missing(d.max() + pd.Timedelta(days=1), end) > slack
     else:   # weekly or monthly rows: the next expected date falls outside the bucket
+        if pd.Timedelta(days=28) <= step <= pd.Timedelta(days=31):
+            step = pd.Timedelta(days=31)   # monthly rows: a month on, whatever the month's length
         cut_first = d.min() - step >= start
         cut_last = d.max() + step <= end
     if freq == "M" and len(series) >= 3:   # a month's end: the shared rule
@@ -992,7 +999,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             elif lead in prior.index and lead in now.index and (kind == "percent" or prior[lead]):
                 same = f" On the same days ({days}) {lead} was {fmt(now[lead])};" if cut else ""
                 answer += (f"{same} A year earlier ({prior_period}) {lead} was {fmt(prior[lead])} "
-                           f"({change(now[lead], prior[lead])}, same days)."
+                           f"({change(now[lead], prior[lead])}, {_basis(prior_period)})."
                            + stores_note(contract, full, date, (prior_df, rows)))
         chart = _chart(ChartType.HORIZONTAL_BAR, f"{kpi.label} by {group}{where}",
                        [{group: str(k), kpi.label: float(v)} for k, v in by.items()],
@@ -1029,9 +1036,14 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
         whole, note = _cut_partial(series, t, freq, rule if freq == "W" else None)
         series = whole
-        if asked:   # the asked window's complete buckets; comparisons still read `whole`
+        if asked:   # the buckets inside the asked window; comparisons still read `whole`
             lo, hi = period_window(full, date, params.period_start, params.period_end)[:2]
-            series = whole[[p.end_time >= lo and p.start_time <= hi for p in whole.index]]
+            series = whole[[p.start_time >= lo.normalize() and p.end_time.normalize() <= hi.normalize()
+                            for p in whole.index]]
+            # a bucket cut outside the window is not this answer's business
+            buckets = {str(p): p.end_time >= lo and p.start_time <= hi for p in frame["_period"].dropna().unique()}
+            note = "".join(f" {x}" for x in re.findall(r"[^.]+\.", note)
+                           if buckets.get(m.group(1) if (m := re.search(r"\(([^)]*)\)", x)) else "", True))
         if series.empty or (len(series) == 1 and asked):
             carry = note if series.empty else ""   # one period: answered (and compared) below
         else:
@@ -1087,7 +1099,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         both = prior is not None and now is not None and (kind == "percent" or prior != 0)
         same = f" On the same days ({days}): {fmt(now)}." if cut and both else ""
         answer += same + (f" A year earlier ({prior_period}): {fmt(prior)} "
-                   f"({change(now, prior)} year over year, same days)."
+                   f"({change(now, prior)} year over year, {_basis(prior_period)})."
                    + stores_note(contract, full, date, (prior_df, rows)) if both
                    else "" if auto else f" No year-earlier comparison: {why or 'nothing to compare'}.")
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")

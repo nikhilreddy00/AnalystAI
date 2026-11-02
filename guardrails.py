@@ -730,7 +730,11 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
 _SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
 # the trigger path only (a domain pack's words): more ways to give a cause than the shared rule
 _TRIGGER_CAUSAL_RE = re.compile(_CAUSAL_RE.pattern[:-3] + r"|due to|owing to|as a result of|"
-                                r"attributable to|responsible for|contribut(?:ed|es|ing) to)\b", re.I)
+                                r"attributable to|"
+                                # a share is no cause: 'responsible for 30% of net sales'
+                                r"(?:responsible for|contribut(?:ed|es|ing) to)(?!\s+(?:about |around "
+                                r"|roughly |nearly |over |under )?\$?\d|\s+(?:a|the)\s+(?:\w+\s+)?share))\b",
+                                re.I)
 _PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|over|across"
 # a verb with an object ('increased units', 'increased 2025 holiday sales'): what ends the verb
 # phrase instead ('Discounts increased 15%', '… markedly', '… as a share', '… while') is the
@@ -777,8 +781,8 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
             if subject:
                 span = sentence[start:v.start()]
             word = next((t for t in triggers if re.search(
-                rf"^(?:(?!\b(?:{_PREPOSITIONS})\b).)*\b{re.escape(t)}(?:s|es|ing|ed)?\s*$" if subject
-                else rf"\b{re.escape(t)}(?:ing|ed)?\b",
+                rf"^(?:(?!\b(?:{_PREPOSITIONS})\b).)*(?<![-\w]){re.escape(t)}(?:s|es|ing|ed)?\s*$"
+                if subject else rf"(?<![-\w]){re.escape(t)}(?:ing|ed)?\b",   # never 'non-discounted'
                 span.strip() if subject else span, re.I)), None)
             if word:
                 return (f"says the {word} caused a change ('{v.group(0)}'); without a control group "
@@ -789,7 +793,8 @@ def claim_causal_overreach(text: str, cited_kinds: list[str],
 # asking for the missing data ('Add cost data to measure margin'), not any sentence naming a cost
 _COST_ASK_RE = re.compile(r"\b(?:add|adding|upload|provide|include|collect|track|capture|need(?:s|ed)?|"
                           r"without|missing|requires?|no)\b[^.]*\b(?:costs?|cogs)\b|"
-                          r"\b(?:unknown|unavailable|not available|not known)\b", re.I)
+                          r"\b(?:margin|profit|markup)s?\b[^.;]{0,30}\b(?:unknown|unavailable|not "
+                          r"available|not known)\b", re.I)
 _PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
 
 
