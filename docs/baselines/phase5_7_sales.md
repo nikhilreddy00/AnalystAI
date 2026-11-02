@@ -18,7 +18,7 @@ up to that review's 3 majors and 4 minors (see the ledger). That review's fixes 
 again. Partial periods and year-over-year logic produced majors in every pass until
 the rule was replaced by one coverage rule in pass 3.
 
-## Paid gates (spend $3.60 of the $5 cap)
+## Paid gates (spend $3.60 of the $5 cap; $4.26 with the post-domain browser check)
 
 | run | report | result | cost (est.) |
 |---|---|---|---|
@@ -207,6 +207,51 @@ Bugs came from three areas:
 - **Harness.** A crash in the harness after the pipeline ran stores no output, so it cannot be
   rescored and needs a paid re-run (e2e-35/42).
 
+## Post-domain audit and browser check (2026-11-02, after sign-off; $0.66)
+
+Before banking the user asked for a senior audit (repeated bugs to their root cause; code reusable
+by the next packs without changing retail) and a real browser run. One read-only audit reviewer
+tried a toy second pack beside retail. Then I opened the app in Playwright at 390 px (real API +
+separate worker, asyncpg, `APP_ENV=production`, frontend on a mocked Supabase session with a real
+HS256 token), uploaded three files and read every number against the generator's truth.
+
+| upload | checked | result |
+|---|---|---|
+| `retail_lines` overview (twice) | tiles vs truth: net sales $310,635.46, orders 2,272, AOV $136.72, units 6,548; partial Feb, refunds, voids, CAD, test orders said | all match. Run 1 led with "January −30% MoM" (the seasonal trap): no YoY was built. Fixed; run 2 says "up 8.0% YoY but down 30.0% MoM" |
+| `b2b_invoices` overview + "average basket value by country?" | net sales £277,046.81, return rate 2.6%, 119 credits netted, 266 postage lines out; AOV by country recomputed from the raw file | all match (UK £293.92, Germany £125.44 to the penny) |
+| `shipments` (logistics, no pack) overview | no retail wording, tiles or caveats; on-time 79.5% (truth 0.795), distance 851.24 km | no leakage |
+| dashboard page | `/dashboard/latest/data` | 500 before the fix, 200 after |
+
+**Bugs found and fixed** (each with a failing-first test; snapshot: every non-retail dataset
+byte-identical):
+
+| # | sev | where | bug | root-cause fix |
+|---|---|---|---|---|
+| 1 | major | `api/routes/dashboard.py` | NaN/inf floats made the dashboard data a 500 (every domain) | `json_rows`: object dtype, inf → null |
+| 2 | major | `analysis_agent` built-in trend | MoM only: the overview led with a seasonal drop | under a pack, built-in YoY beside MoM (replaces the model's) |
+| 3 | major | `analysis_agent.build_evidence` | an order-level field was "44% missing"; the report asked to fix the export | the order-level decision says "one value per order" |
+| 4 | major | `domain_pack` + agents | shared code read retail role names (`quantity`, `order_id`, `"date"`, `cost`, `store` …) and retail words | pack fields: `negative_is_return`, `order_key`, `item_roles`, `line_weight`, `cost_roles`, `location_role`, `row_labels`, `row_flags`, `text`, a required date role (inert when absent) |
+| 5 | major | `domain_pack.detect` | two matching packs = no pack, silently | strong beats weak; a tie is traced `domain_ambiguous` |
+| 6 | major | `quality_agent` | margin talk flagged under any pack (banking's "net interest margin") | the profit rule needs the pack's `cost_roles` |
+| 7 | major | guardrails / insight / drill-down | three sentence splitters, two hedge lists (repeated-bug class) | one `_SENTENCE_RE`, one not-asserted set; the profit rule no longer skips "before" |
+| 8 | major | analysis + charts | "units sold rose 26.6%" included postage lines; the Units tile doesn't | additive count roles use the KPI rows (`domain_pack.counted`) |
+| 9 | minor | `guardrails._label_hits` | "partially refunded" read as group "refunded" (false review flag) | `_`/`-`/space match; a label inside a longer one is not named |
+| 10 | minor | `insight._clean_for_executive` | "Order Order Total"; "net sales total" → "Order Total" | one rename pass; plain-word names only as written |
+| 11 | minor | `first_questions` | its own 13-month rule (repeated-bug class) | the shared `utils.cut_partial` |
+| 12 | process | evals | post-model steps had no $0 replay (repeated-bug class) | every suite stores model replies; `tests/test_replay.py` replays them through `RecordedClient` |
+
+**Repeated-bug classes, root causes now closed:** one coverage rule (`utils.cut_partial`) for
+answers and first questions (the sandbox mirror stays pinned to `partial_last_month`;
+`year_earlier` keeps its 7-day window slack, documented); one sentence rule and one not-asserted
+set for every claim check; a $0 replay of stored replies (fills from the next paid intake or
+insight run).
+
+**Left for banking (schema, not retail):** a balance is semi-additive (`_asked_agg` sums any
+money role on a "mean" question) — add a pack-level role flag first; drill-down grounding is still
+gated to strong matches; `evals/run.py` exempts `domain: retail` E2E cases from hard rules
+(predates 5.7). The audit bar for this addendum is the snapshot + full suite + the browser check,
+not another audit pass.
+
 ## What to carry into the next domain
 - Put every deterministic step that runs after the model under a $0 regression check over the
   old cases. The intake fill-in is the one the snapshot missed.
@@ -216,3 +261,8 @@ Bugs came from three areas:
   patch by patch.
 - Set the estimate cap below any amount you don't intend to spend: an estimate equal to the cap
   runs.
+- Open the real app in a browser at phone width and read the numbers against the generator's
+  truth before calling a domain done: the gates passed, yet the browser found a seasonal headline,
+  a false "missing" claim, a 500 and a label bug.
+- A new pack declares its layout (`order_key`, `negative_is_return`, `cost_roles` …) in YAML;
+  shared code must never name a role. `tests/test_second_pack.py` is the guard.
