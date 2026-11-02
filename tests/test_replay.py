@@ -25,7 +25,12 @@ def _stored_runs():
 
 
 def _same(a, b):
-    return json.loads(json.dumps(a, default=str)) == json.loads(json.dumps(b, default=str))
+    """Equal outputs, a report's own timestamp aside (generated_at is when, not what)."""
+    def plain(x):
+        if isinstance(x, dict):
+            return {k: plain(v) for k, v in x.items() if k != "generated_at"}
+        return [plain(v) for v in x] if isinstance(x, list) else x
+    return plain(json.loads(json.dumps(a, default=str))) == plain(json.loads(json.dumps(b, default=str)))
 
 
 async def _replay(suite: str, case: dict, replies: list[dict]) -> dict:
