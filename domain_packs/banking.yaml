@@ -111,7 +111,7 @@ row_flags:
   non_product: "reversal entries (the reversing side of a reversed transaction): left out of money figures"
   test: "test-account rows: left out"
 text:
-  rows_brief: "Money figures and balances use rows of kind 'sale' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: per period take each account's latest row of ANY kind first (a loan charged off this month is out, never its last month's balance), then keep kind 'sale', and sum across accounts, never across dates."
+  rows_brief: "Money figures and balances use rows of kind 'sale' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: per period take each account's latest row of ANY kind first (a loan charged off this month is out, never its last month's balance), then keep kind 'sale', and sum across accounts, never across dates. An average per account divides by the accounts left after that step: a paid-off, charged-off or closed account is not in the denominator."
   unsupported_alternatives: "I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?"
   kpis_default: its balance and transaction columns
   causal_removed: "{n} sentence(s) saying a rate change, campaign or offer caused a change were removed: without a control group that can't be shown."

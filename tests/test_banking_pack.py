@@ -397,9 +397,12 @@ def test_a_balance_by_segment_is_built_in_and_matches_the_tile(tape):
     with contextlib.redirect_stdout(out):
         exec(code, {"df": frame})
     every = [x for x in json.loads(out.getvalue())["segments"] if x["metric_column"] == "Outstanding Principal"]
-    assert [x["aggregation"] for x in every if x["aggregation"] != "last"] == ["ratio"]   # kept
+    assert [x["aggregation"] for x in every if x["aggregation"] not in ("last", "mean")] == ["ratio"]
     segs = [x for x in every if x["aggregation"] == "last"]
     assert len(segs) == 1
+    avg = next(x for x in every if x["aggregation"] == "mean")   # per loan on the books
+    assert {r["name"]: r["value"] for r in avg["results"]} == {"auto": 670.0, "card": 480.0,
+                                                                "mortgage": 2000.0}
     assert {r["name"]: r["value"] for r in segs[0]["results"]} == {"auto": 1340.0, "card": 480.0,
                                                                      "mortgage": 2000.0}
 
@@ -518,7 +521,7 @@ def test_audit_pass_2_periods_joint_levels_and_one_correlation(tape):
         exec(code, {"df": kinds})
     res = json.loads(out.getvalue())
     joint = [x for x in res["segments"] if x["segment_column"] == "Product|Branch"
-             and x["metric_column"] == "Outstanding Principal"]
+             and x["metric_column"] == "Outstanding Principal" and x["aggregation"] == "last"]
     assert len(joint) == 1 and joint[0]["aggregation"] == "last"
     book = domain_pack.entity_rows(kinds, c2)
     assert sorted(book["Loan ID"]) == ["L1", "L2", "L5", "L6"]
