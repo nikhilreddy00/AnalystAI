@@ -443,3 +443,44 @@ def test_a_levels_mean_by_group_is_one_number_in_the_answer_and_its_chart():
     bars = {row["plan"]: row["mrr"] for row in r.chart_configs[0].data}
     lead = max(bars, key=bars.get)
     assert f"'{lead}' leads at {bars[lead]:,.2f}" in r.answer_text
+
+
+def test_masking_fails_closed_and_column_detection_does_not_over_match():
+    """Security review: an IBAN glued to more characters is still masked; only the column
+    classifier needs a whole token (codes are not called IBAN columns)."""
+    from guardrails import MASK, mask_pii, pii_kind
+    assert MASK in mask_pii("GB82WEST12345698765432X9")
+    assert pii_kind("ref", ["GB82WEST12345698765432X9"] * 3) is None
+    assert pii_kind("ref", ["GB82WEST12345698765432"] * 3)[0] == "iban"
+
+
+@pytest.mark.parametrize("days, label", [(7, "weekly"), (14, "fortnightly"), (30, "monthly"),
+                                         (10, None), (1, "daily")])
+def test_a_levels_cadence_is_a_clean_one_or_none(days, label):
+    from agents.ingestion_agent import _cadence
+    t = pd.date_range("2026-01-01", periods=6, freq=f"{days}D")
+    df = pd.DataFrame({"a": ["x"] * 6 + ["y"] * 6, "t": list(t) * 2})
+    assert _cadence(df, ["a"], "t") == label
+
+
+def test_an_undated_row_is_never_an_accounts_latest_snapshot_in_a_correlation(tape):
+    import contextlib
+    import io
+    import json
+
+    from agents import analysis_agent
+    from orchestrator.state import AnalysisTask
+    df, c = tape
+    bad = pd.concat([df, pd.DataFrame([{"Loan ID": "L1", "As Of Date": None,
+                                        "Outstanding Principal": 1e9, "Days Past Due": 999.0}])],
+                    ignore_index=True)
+    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
+            + analysis_agent._build_standard_code(c, AnalysisTask(
+                raw_query="q", target_metrics=["Outstanding Principal", "Days Past Due"],
+                analysis_types=["correlation"])) + analysis_agent._CODE_FOOTER)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        exec(code, {"df": bad})
+    latest = df[df["As Of Date"] == "2026-10-31"]
+    got = json.loads(out.getvalue())["correlations"]["Outstanding Principal__Days Past Due"]
+    assert got == pytest.approx(latest["Outstanding Principal"].corr(latest["Days Past Due"]), abs=1e-4)

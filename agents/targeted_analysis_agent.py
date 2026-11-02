@@ -955,7 +955,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     weekly = bool(date) and weekly_cadence(full[date])   # YoY: 52 weeks back, same week-endings
     period = filter_period(full, date, params.period_start, params.period_end)[1]
     state = kpi.at == "latest" and date is not None   # a balance is as of a date, not over days
-    if state and period:
+    if state:   # asked for a period or not: a balance is as of a date
         period = _as_of(df, date)
     where = f" ({period})" if period else ""
     present = set(row_kinds(df, roles, pack).unique())

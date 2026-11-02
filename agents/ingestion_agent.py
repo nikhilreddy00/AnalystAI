@@ -223,8 +223,10 @@ def _cadence(df: pd.DataFrame, by: list[str], time: str) -> str | None:
     if gaps.empty:
         return None
     med = gaps.groupby([d.loc[gaps.index, e] for e in by]).median().median()
-    return next(g for limit, g in ((1.5, "daily"), (8, "weekly"), (32, "monthly"),
-                                   (95, "quarterly"), (float("inf"), "yearly")) if med <= limit)
+    # a clean cadence or none (a 14-day cycle is no "monthly")
+    return next((g for lo, hi, g in ((0, 1.5, "daily"), (6, 8, "weekly"), (13, 15, "fortnightly"),
+                                     (27, 32, "monthly"), (85, 95, "quarterly"), (360, 370, "yearly"))
+                 if lo <= med <= hi), None)
 
 
 def _names(cols: list[str], cap: int = 12) -> str:

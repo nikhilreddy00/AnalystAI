@@ -249,7 +249,7 @@ try:
         # snapshot data (a level): one row per entity, its latest snapshot (never each one again)
         _lv = next((_h for _h in _hints.values() if _h[0] in ('last', 'first') and _h[1]
                     and all(_e in df.columns for _e in [*_h[1], _h[2]])), None)
-        _cdf = df.assign(_t=pd.to_datetime(df[_lv[2]], format='mixed', errors='coerce')).sort_values('_t', kind='stable').groupby(_lv[1]).tail(1) if _lv else df
+        _cdf = df.assign(_t=pd.to_datetime(df[_lv[2]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable').groupby(_lv[1]).tail(1) if _lv else df
         for _i, _a in enumerate(_targets):
             for _b in _targets[_i + 1:]:
                 if f'{{_a}}__{{_b}}' not in result['correlations'] and f'{{_b}}__{{_a}}' not in result['correlations']:
@@ -885,7 +885,12 @@ def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
             continue
         cols = [c for c in s.segment_column.split("|") if c]
         if hint.aggregation_time in cols:   # by its own snapshot time: a total per date, right
-            totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+            try:
+                totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
+            except (LevelUnavailable, KeyError):   # its account column is gone: no total
+                f.segments.remove(s)
+                notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
+                continue
             s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                           "value": round(float(v), 4)} for k, v in totals.items()]
             s.aggregation = hint.aggregation

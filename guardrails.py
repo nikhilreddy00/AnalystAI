@@ -939,9 +939,10 @@ def _iban_ok(t: str) -> bool:
     return int("".join(str(int(ch, 36)) for ch in (t[4:] + t[:4]).upper())) % 97 == 1
 
 
-def _iban_spans(text: str) -> list[tuple[int, int]]:
+def _iban_spans(text: str, whole_token: bool = False) -> list[tuple[int, int]]:
     """Where IBANs are: from every candidate start, the longest prefix (15–34 characters,
-    spaces aside) whose length and mod-97 checksum hold."""
+    spaces aside) whose registry length and mod-97 checksum hold. Masking takes one even inside
+    a longer token (fail closed); `whole_token` (is this column IBANs?) needs it to end one."""
     spans: list[tuple[int, int]] = []
     for s in _IBAN_START.finditer(text):
         i = s.start()
@@ -952,9 +953,9 @@ def _iban_spans(text: str) -> list[tuple[int, int]]:
             continue
         ends = [i + k + 1 for k, ch in enumerate(m.group()) if ch != " "]
         for n in range(min(34, len(ends)), 14, -1):
-            end = ends[n - 1]   # it ends a token: never the head of a longer code
-            if not (end < len(text) and text[end].isascii() and text[end].isalnum()) \
-                    and _iban_ok(text[i:end].replace(" ", "")):
+            end = ends[n - 1]
+            inside = end < len(text) and text[end].isascii() and text[end].isalnum()
+            if not (whole_token and inside) and _iban_ok(text[i:end].replace(" ", "")):
                 spans.append((i, ends[n - 1]))
                 break
     return spans
@@ -1128,7 +1129,7 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 hits["phone"] = hits.get("phone", 0) + 1
             elif any(_luhn(re.sub(r"\D", "", m.group())) for m in _CARD_RE.finditer(t)):
                 hits["card"] = hits.get("card", 0) + 1
-            elif _iban_spans(t):
+            elif _iban_spans(t, whole_token=True):
                 hits["iban"] = hits.get("iban", 0) + 1
     if sum(hits.values()) >= 0.3 * len(vals):
         kind = max(hits, key=hits.get)
