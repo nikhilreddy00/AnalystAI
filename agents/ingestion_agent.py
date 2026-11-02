@@ -375,7 +375,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
                 c.is_id, c.is_metric = True, False
                 c.role_reason = f"id: the {domain} {role.replace('_', ' ')}"
         key, date = roles.get(pack.snapshot_key), roles.get(pack.date_role)
-        if confidence == "strong" and key and date:   # a balance: the layer's level rule
+        if key and date:   # a balance is a level on any match: summing it is never right
             for c in cols:   # (a semantic-layer hint on the same column wins)
                 role = next((r for r, col in roles.items() if col == c.name), None)
                 if role and pack.roles[role].over_time == "last" and not c.aggregation:

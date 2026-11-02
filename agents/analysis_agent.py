@@ -293,8 +293,11 @@ try:
                 _mon = _level_months(_h[2])   # the level's own months, partial last month out
                 _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),
                                    _m=_mon.loc[_frame.index])
-                _f = _f.dropna(subset=['_m', '_t', _col]).sort_values('_t', kind='stable')
-                _tot = _f.groupby(['_m', *_h[1]])[_col].agg(_agg).groupby(level=0).sum().sort_index()
+                if _col in _money and _kind in _f.columns:   # a row left out blanks its value
+                    _f[_col] = _f[_col].where(_f[_kind].isin(['sale', 'return']))
+                # each entity's latest row in the month, of any kind, then its value (as the tiles)
+                _g = _f.dropna(subset=['_m', '_t']).sort_values('_t', kind='stable').groupby(['_m', *_h[1]])
+                _tot = (_g.tail(1) if _agg == 'last' else _g.head(1)).groupby('_m')[_col].sum(min_count=1).dropna().sort_index()
             else:
                 if _col in _money and _kind in _frame.columns:
                     _frame = _frame[_frame[_kind].isin(['sale', 'return'])]

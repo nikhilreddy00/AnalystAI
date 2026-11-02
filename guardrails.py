@@ -919,8 +919,8 @@ _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 # when its mod-97 checksum holds, so a product code of the same shape is left alone.
 # An IBAN start: country letters and check digits; every start is tried (overlapping), so an
 # IBAN inside a longer token or after a failed candidate is still found.
-_IBAN_START = re.compile(r"(?=[A-Z]{2}\d{2})", re.I)
-_IBAN_BODY = re.compile(r"[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}", re.I)
+_IBAN_START = re.compile(r"(?=[A-Z]{2}\d{2})", re.I | re.A)   # ASCII: no Kelvin sign as a K
+_IBAN_BODY = re.compile(r"[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}", re.I | re.A)
 # Each country's IBAN length (ISO 13616 registry): with the checksum, a random code (a 16-digit
 # hex pseudonym "de76627c71637faa") is never read as one. A code not listed here is checked by
 # the checksum alone, when written in capitals as IBANs are.

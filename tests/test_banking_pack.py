@@ -248,3 +248,63 @@ def test_a_balance_chart_and_answer_count_the_rows_the_tile_counts(tape):
     bars = group_bars(df, "Product", "Outstanding Principal", "last", build_context(df, contract=c))
     got = {row["Product"]: row["Outstanding Principal"] for row in bars.data}
     assert got == {"auto": 1340.0, "card": 480.0, "mortgage": 2000.0}   # the tile's numbers
+
+
+def test_the_built_in_trend_of_a_balance_counts_the_tiles_rows(tape):
+    """Review: the sandbox's level branch skipped the row kinds, so its MoM counted L3's
+    charge-off-month balance that the tile leaves out."""
+    import contextlib
+    import io
+    import json
+
+    from agents import analysis_agent
+    from orchestrator.state import AnalysisTask
+    df, c = tape
+    frame, _ = domain_pack.with_row_kind(df, c)
+    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
+            + analysis_agent._build_standard_code(c, AnalysisTask(
+                raw_query="q", target_metrics=["Outstanding Principal"], analysis_types=["trend"]))
+            + analysis_agent._CODE_FOOTER)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        exec(code, {"df": frame})
+    mom = next(t["pct_change"] for t in json.loads(out.getvalue())["trends"]
+               if t["column"] == "Outstanding Principal" and t["period"] == "MoM")
+    assert mom == pytest.approx((OCT / 2400 - 1) * 100, abs=0.01)
+
+
+def test_a_ledgers_running_balance_keeps_its_quiet_accounts():
+    """Review: a running balance is no snapshot; an account that last moved weeks ago is not
+    closed (the stopped-account cut is for snapshots at a cadence)."""
+    from agents.utils import latest_rows
+    busy = [("A1", f"2026-10-{d:02d}", 100.0 + d) for d in (1, 2, 6, 7, 15, 16, 24, 31)]
+    quiet = [("A2", "2026-09-03", 500.0), ("A2", "2026-09-21", 450.0), ("A2", "2026-10-02", 400.0)]
+    df = pd.DataFrame(busy + quiet, columns=["Account ID", "Posting Date", "Balance"])
+    df["Amount"] = 1.0
+    c = _contract(df)
+    assert c.domain == "banking"
+    rows = latest_rows(df, "Balance", c)
+    assert sorted(rows["Balance"]) == [131.0, 400.0]   # A2 kept
+
+
+def test_a_newest_first_statements_last_row_of_a_day_is_its_last_transaction():
+    from agents.utils import latest_rows
+    df = pd.DataFrame({"Account ID": ["A1"] * 4, "Posting Date": ["2026-10-02", "2026-10-02",
+                                                                  "2026-10-01", "2026-10-01"],
+                       "Amount": [-5.0, -10.0, -20.0, 100.0], "Balance": [65.0, 70.0, 80.0, 100.0]})
+    c = _contract(df)
+    assert list(latest_rows(df, "Balance", c)["Balance"]) == [65.0]
+
+
+def test_a_weak_banking_match_still_never_sums_a_balance():
+    weak = pd.DataFrame({"account_id": [1, 2, 1, 2], "month": ["2026-09-30"] * 2 + ["2026-10-31"] * 2,
+                         "balance": [10.0, 20.0, 11.0, 21.0]})
+    c = _contract(weak)
+    assert c.domain_confidence == "weak"
+    bal = next(x for x in c.columns if x.name == "balance")
+    assert (bal.aggregation, bal.aggregation_by) == ("last", ["account_id"])
+
+
+def test_the_iban_scan_ignores_non_ascii_lookalikes():
+    from guardrails import mask_pii
+    assert mask_pii("GB82WESTK2345698765432") == "GB82WESTK2345698765432"   # no crash

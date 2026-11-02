@@ -185,7 +185,7 @@ def _snapshots(df, hint):
                                f"{', '.join(missing or ['entity'])} it needs is no longer in the "
                                "data, so it can't be totalled")
     t = pd.to_datetime(df[hint.aggregation_time], format="mixed", errors="coerce")
-    return df.loc[t.notna()].assign(_t=t[t.notna()]).sort_values("_t", kind="stable")
+    return _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
 
 
 def time_axis(contract, metric: str | None = None, df=None) -> str | None:
@@ -236,6 +236,14 @@ def latest_rows(df, column: str, contract):
     return rows.dropna(subset=[column])
 
 
+def _in_time_order(d):
+    """Rows by `_t`, ties in file order; a newest-first export (a bank statement) is reversed
+    first, so a day's last row is its last transaction."""
+    if len(d) > 1 and d["_t"].is_monotonic_decreasing and not d["_t"].is_monotonic_increasing:
+        d = d.iloc[::-1]
+    return d.sort_values("_t", kind="stable")
+
+
 def snapshot_rows(df, by: list[str], time: str, window: str = "last"):
     """Each entity's latest snapshot (or first, for a 'first' window): the one rule for a level's
     current rows (a balance's tile, bars, answers). An entity whose latest snapshot is a full
@@ -244,16 +252,19 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last"):
     all count. Undated rows are out (one can't be the latest)."""
     import pandas as pd
     t = pd.to_datetime(df[time], format="mixed", errors="coerce")
-    d = df.loc[t.notna()].assign(_t=t[t.notna()]).sort_values("_t", kind="stable")
+    d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
     g = d.groupby(by, sort=False)
     if window == "first":
         return g.head(1).drop(columns="_t")
     gaps = g["_t"].diff().dt.total_seconds().dropna()
-    cadence = gaps.groupby([d.loc[gaps.index, e] for e in by]).median().median() \
-        if len(gaps) else 0.0
+    per = gaps.groupby([d.loc[gaps.index, e] for e in by])
+    cadence = per.median().median() if len(gaps) else 0.0
+    # snapshots come at a cadence (weekly, each account's statement day); a ledger's running
+    # balance does not: a quiet account there is no closed one, so nothing is cut
+    regular = len(gaps) and (per.std().fillna(0) / per.mean()).median() <= REGULAR_CV
     last = g.tail(1)
     newest = d["_t"].max()
-    if cadence and cadence == cadence:
+    if cadence and cadence == cadence and regular:
         if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month,
             # or the one before while the newest is still partial (a 4 Nov export of accounts
             # billed on their own day: most have only October so far)

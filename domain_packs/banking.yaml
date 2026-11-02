@@ -29,7 +29,7 @@ roles:
   date:          {kind: date, headers: [as_of_date, asof_date, snapshot_date, statement_date,
                                         reporting_date, report_date, balance_date, month_end,
                                         posting_date, posted_date, post_date, booking_date,
-                                        transaction_date, txn_date, trans_date, value_date, date]}
+                                        transaction_date, txn_date, trans_date, value_date, date, month]}
   account:       {kind: id, headers: [loan_id, loan_number, loan_no, account_id, acct_id,
                                       account_no, acct_no, account_number, facility_id, card_id,
                                       card_account_id, contract_id]}
@@ -160,7 +160,7 @@ kpis:
     at: latest
     num:
       - [{sum: balance, where: [[{role: dpd, ge: 30}]]}]
-      - [{sum: balance, where: [[{role: delinquency_bucket, not_in: [current, "0", 0-29, 1-29, "1-29 dpd", none]}]]}]
+      - [{sum: balance, where: [[{role: delinquency_bucket, in: [30-59, 60-89, 90+, 90-119, 120+, 90-179, 180+, 30+, 60+, 30 plus, 60 plus, 90 plus, 30-59 dpd, 60-89 dpd, 90+ dpd]}]]}]
     den: [[{kpi: total_balance}]]
   - name: net_flow
     label: Net flow
