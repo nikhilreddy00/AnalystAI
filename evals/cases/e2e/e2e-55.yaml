@@ -9,7 +9,8 @@ trap: true
 checks:
 - kind: must_not_number
   truth_key: naive_paid_total
-  rel_tol: 0.005
+  # 0.2%: allowed on Paid claims (282,033.82) is a right number 0.45% from the naive paid total
+  rel_tol: 0.002
   scope: report
 - kind: must_not_number
   truth_key: naive_header_billed_sum
