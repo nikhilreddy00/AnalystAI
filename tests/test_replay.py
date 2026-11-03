@@ -85,6 +85,9 @@ CHANGED = {
     **{("intake-20261103T175225Z.json", c): "Domain 3 intake gate: 'we pay' is the paid KPI's "
                                              "word (the verb was missing from the glossary)"
        for c in ("intake-health-10", "intake-health-12")},
+    **{("insight-20261103T191036Z.json", c): "Domain 3 re-gate: the read-as-healthcare caveat writes "
+                                            "'thirty days' (a digit there is ungrounded on a claims file)"
+       for c in ("ins-43-inpatient-overview", "ins-44-claims-overview")},
     ("insight-20261103T182036Z.json", "ins-43-inpatient-overview"):
         "Domain 3 live run: the pooled small-groups bucket is never ranked lowest (guardrails.rankable)",
     ("insight-20261103T182036Z.json", "ins-44-claims-overview"):

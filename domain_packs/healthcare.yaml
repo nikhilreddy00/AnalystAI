@@ -236,7 +236,7 @@ unsupported:
   clinical_advice: "clinical judgement about a patient: this tool analyses data and gives no diagnosis, treatment or dosing advice"
 
 caveats:
-  read_as_domain: "Read as healthcare data ({kpis}). Rates are crude (not risk-adjusted; case mix differs between groups, so a higher rate is no judgement of quality); readmission is all-cause within 30 days of an inpatient discharge, planned readmissions not removed; money by payer or plan follows member volume (no member months here). This file has exact dates: a limited data set, not de-identified."
+  read_as_domain: "Read as healthcare data ({kpis}). Rates are crude (not risk-adjusted; case mix differs between groups, so a higher rate is no judgement of quality); readmission is all-cause within thirty days of an inpatient discharge, planned readmissions not removed; money by payer or plan follows member volume (no member months here). This file has exact dates: a limited data set, not de-identified."
   read_as_domain_weak: "Read as healthcare data because it has {roles} columns; if these are not patient stays or claims, the healthcare figures here don't apply."
   repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
   partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
