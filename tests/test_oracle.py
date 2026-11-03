@@ -472,3 +472,11 @@ def test_alos_is_written_in_days():
     assert any(k.recipe.kpi == "alos" and k.value.endswith(" days")
                for k in __import__("agents.visualization_agent", fromlist=["pack_kpis"]).pack_kpis(
                    *_built("inpatient")[1:3]))
+
+
+def test_procedure_codes_survive_cleaning_as_written():
+    """Analysis gate (health-8): cleaning parsed CPT/HCPCS as numbers (95% parse), so 344 HCPCS
+    codes (J1100) became missing and CPT codes read '99213.0'. A pack label role is never parsed."""
+    _, clean, _, _ = _built("health_claims")
+    codes = set(clean["CPT/HCPCS"].dropna().astype(str))
+    assert "J1100" in codes and "99213" in codes and clean["CPT/HCPCS"].notna().all()

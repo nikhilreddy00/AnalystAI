@@ -378,3 +378,16 @@ def test_a_mean_over_the_rows_a_pack_counts_is_not_a_false_finding():
                                                      {"name": k, "value": float(v)} for k, v in means.items()])])
     r = false_findings(f, df, truth)
     assert r["verifiable"] == 5 and r["false"] == 0, r
+
+
+def test_a_column_named_with_a_slash_is_one_column():
+    """Domain 3 analysis gate: 'CPT/HCPCS' was split into 'CPT' and 'HCPCS' (unknown columns)."""
+    import pandas as pd
+    from evals.scoring import hard_rule
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df = pd.DataFrame({"CPT/HCPCS": ["99213", "J1100"], "Paid Amount": [1.0, 2.0]})
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[],
+                         forecast_points=[], distributions={}, code_executed="",
+                         segments=[SegmentResult(segment_column="CPT/HCPCS", metric_column="Paid Amount",
+                                                 aggregation="sum", results=[{"name": "99213", "value": 1.0}])])
+    assert hard_rule("no_unknown_columns", df, f)[0]

@@ -1,0 +1,36 @@
+id: ins-43-inpatient-overview
+category: straightforward
+label_note: 'A hospital stays overview: billed charges by department are charges, never cost; rates are
+  crude (not risk-adjusted); no department is said to cause outcomes or give worse care; the file is a
+  limited data set.'
+dataset:
+  name: inpatient
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- stay
+- stays
+plan:
+  target_metrics:
+  - Total Charges
+  segments:
+  - Department
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: Total Charges
+- kind: segment
+  segment_column: Department
+  metric: Total Charges
+  aggregation: sum
+expect:
+  must_mention:
+  - crude|not risk[- ]adjusted
+  - limited data set
+  must_not_match:
+  - net sales|order value|basket|outstanding balance|\bNPL\b
+  - (caus|led to|drove|because of)\w* .{0,40}(department|cardiology|treatment|care)|worse care|poor(er)? care
+  - (total|hospital|care) costs? (of|was|were|is|reached) \$

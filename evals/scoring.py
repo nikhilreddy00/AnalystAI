@@ -221,8 +221,11 @@ def check_segment_trend(f: AnalysisFindings, truth: dict, column: str, segment: 
 _SPLIT = re.compile(r"\s*[|:/,]\s*|\s+x\s+")
 
 
-def _strata(seg_column: str) -> list[str]:
-    """Stratified segments name their columns joined by '|' (e.g. 'department|group')."""
+def _strata(seg_column: str, columns=()) -> list[str]:
+    """Stratified segments name their columns joined by '|' (e.g. 'department|group'). A name
+    that is one of the data's columns is that column ('CPT/HCPCS', Domain 3 analysis gate)."""
+    if seg_column in columns:
+        return [seg_column]
     return [c for c in _SPLIT.split(seg_column) if c]
 
 
@@ -282,7 +285,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                     want = float(s.count() if stat == "count" else getattr(s, stat)())
                     claims.append((f"{col}.{stat}", not _close(stats[stat], want, 0.01)))
     for seg in f.segments:
-        cols = _strata(seg.segment_column)
+        cols = _strata(seg.segment_column, df.columns)
         if not set(cols) <= set(df.columns) or seg.metric_column not in numeric:
             continue
         # A derived metric (a loss ratio, a readmission rate) can't be recomputed from one
@@ -453,13 +456,13 @@ def check_must_match(session: AnalysisSession, pattern: str,
 
 # ── Hard rules (recorded; gating starts in Phase 2/3) ─────────────────────────
 
-def _referenced_columns(f: AnalysisFindings) -> set[str]:
+def _referenced_columns(f: AnalysisFindings, columns=()) -> set[str]:
     cols = set(f.eda_summary)
     for key in f.correlations:
         cols.update(key.split("__"))
     cols.update(t.column for t in f.trends)
     for s in f.segments:
-        cols.update(_strata(s.segment_column) + ([s.metric_column] if s.metric_column else []))
+        cols.update(_strata(s.segment_column, columns) + ([s.metric_column] if s.metric_column else []))
     cols.update(a.column for a in f.anomalies)
     return cols
 
@@ -486,7 +489,7 @@ def hard_rule(rule: str, df: pd.DataFrame, findings: AnalysisFindings | None,
     if rule == "no_unknown_columns":
         if findings is None:
             return True, "no findings"
-        unknown = _referenced_columns(findings) - set(df.columns)
+        unknown = _referenced_columns(findings, df.columns) - set(df.columns)
         return not unknown, f"unknown columns {sorted(unknown)}" if unknown else "ok"
     if rule == "non_empty_or_error":
         has_error = bool(session and session.error_message)

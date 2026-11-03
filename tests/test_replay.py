@@ -77,6 +77,9 @@ CHANGED = {
                "(Pack.name_of: 'Net interest margin', never 'Nim')"
        for r in ("intake-20261102T204144Z.json", "intake-20261102T205448Z.json")
        for c in ("intake-bank-05", "intake-bank-09")},
+    **{("intake-20261103T175225Z.json", c): "Domain 3 intake gate: 'we pay' is the paid KPI's "
+                                             "word (the verb was missing from the glossary)"
+       for c in ("intake-health-10", "intake-health-12")},
     ("insight-20261102T210024Z.json", "ins-41-loan-tape-overview"):
         "Domain 2 browser check: a pack overview adds its first state ratio (NPL) by product",
     ("insight-20261102T210024Z.json", "ins-42-ledger-overview"):

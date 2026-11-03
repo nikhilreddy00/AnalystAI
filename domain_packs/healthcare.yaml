@@ -203,7 +203,7 @@ glossary:
                census, cases]
   patients: [patients, unique patients, distinct patients, number of patients]
   billed_charges: [charges, billed charges, gross charges, billed amount, total charges, billed]
-  paid: [paid, paid amount, payments, claims paid, spend, medical spend, claims cost, cost,
+  paid: [paid, pay, we pay, paying, paid out, paid amount, payments, claims paid, spend, medical spend, claims cost, cost,
          total paid, net paid]
   allowed: [allowed, allowed amount, cost of care, total cost of care, contracted amount]
   claims: [claims, claim count, number of claims, claim volume]

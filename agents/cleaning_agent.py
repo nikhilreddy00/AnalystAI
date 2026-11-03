@@ -252,10 +252,13 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                 f"{n} placeholder values ('-', '?', 'N/A' …) read as missing.",
                 n, pct, _null_pct(df[col]))
 
-    # 3. Types: numbers, then dates. IDs and codes stay as they are.
+    # 3. Types: numbers, then dates. IDs and codes stay as they are, and so does a column the
+    # domain pack names as a label (a procedure code: 95% digits, yet J1100 is a code too)
+    labels = {ctx.roles[r] for r, x in ctx.pack.roles.items() if r in ctx.roles
+              and x.kind in ("category", "status", "id", "text", "currency")} if ctx.pack else set()
     coerced: list[str] = []
     for col in df.columns:
-        if col in skip or col in ids:
+        if col in skip or col in ids or (col in labels and col not in ctx.dates):
             continue
         s = df[col]
         new, strategy, how = None, "", ""

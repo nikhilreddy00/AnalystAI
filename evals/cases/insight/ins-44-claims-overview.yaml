@@ -1,0 +1,35 @@
+id: ins-44-claims-overview
+category: straightforward
+label_note: 'A payer claims overview: paid on each claim line''s last version, recent service months
+  incomplete (claims still arriving), billed charges never called cost.'
+dataset:
+  name: health_claims
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- claim
+- claims
+plan:
+  target_metrics:
+  - Paid Amount
+  - Allowed Amount
+  segments:
+  - Payer
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: Paid Amount
+- kind: segment
+  segment_column: Payer
+  metric: Paid Amount
+  aggregation: sum
+expect:
+  must_mention:
+  - incomplete|still arriving|run[- ]?out|lag
+  - northwind
+  must_not_match:
+  - net sales|order value|basket|outstanding balance|\bNPL\b
+  - billed (charges|amounts?) .{0,30}(cost|spend)
