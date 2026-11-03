@@ -564,17 +564,21 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
 def _versions(df: pd.DataFrame, roles: dict[str, str], pack: Pack, kind: pd.Series) -> pd.Series:
     """The version-chain rule (Pack.version_key): earlier versions → non_product; a chain whose
     last version is a void → cancel. Off unless the pack declares it and the data has the roles."""
-    keys = [roles.get(r) for r in pack.version_key]
-    if not keys or None in keys or pack.version_order not in roles:
+    # the key roles the data has, the first (a claim id) required: a header-level extract (no
+    # line column) chains on the claim alone
+    keys = [roles[r] for r in pack.version_key if r in roles]
+    if not pack.version_key or pack.version_key[0] not in roles or pack.version_order not in roles:
         return kind
-    order = pd.to_numeric(df[roles[pack.version_order]], errors="coerce")
+    # a blank or non-numeric version (an original claim's empty adjustment number) is the
+    # earliest: a chain without any version keeps all its rows
+    order = pd.to_numeric(df[roles[pack.version_order]], errors="coerce").fillna(-1)
     chain = df.groupby(keys, dropna=False, sort=False).ngroup()
     last = order.eq(order.groupby(chain).transform("max"))
     kind = kind.mask(~last, "non_product")
     void = pd.Series(False, index=df.index)
     for role, values in pack.version_void.items():
-        if role in roles:
-            void |= df[roles[role]].astype(str).str.strip().isin([str(v) for v in values])
+        if role in roles:   # THE value comparison (words): '8', 8 and 8.0 are one void code
+            void |= words(df[roles[role]]).isin(set(words(pd.Series(values, dtype=str))))
     voided = (void & last).groupby(chain).transform("any")
     return kind.mask(voided, "cancel")
 
@@ -854,7 +858,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
         if t.kpi:
             return pack.kpi(t.kpi).phrase
         if t.nunique:
-            return f"distinct {roles[t.nunique]}"
+            return f"distinct {roles[t.nunique]}" + (f" where {where(t.where)}" if t.where else "")
         if w := t.within:
             then = f" (the next must have {where(w.follow)})" if w.follow else ""
             rows = (f"rows whose {roles[w.end]} is at least {w.days} days before the last "
@@ -873,6 +877,8 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
 
     def where(groups: list[list[Cond]]) -> str:
         def cond(c: Cond) -> str:
+            if c.not_in == []:   # "not in nothing": the row has a value
+                return f"{roles[c.role]} has a value"
             if c.in_ is not None or c.not_in is not None:
                 # each spelling once ('non-accrual', not also 'nonaccrual' and 'non accrual')
                 vals, seen = [], set()

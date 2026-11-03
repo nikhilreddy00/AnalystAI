@@ -384,6 +384,9 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
             if role and pack.roles[role].kind == "category" and c.is_metric:   # a code (DRG 470)
                 c.is_metric = False
                 c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a code)"
+            if role and role in (*pack.version_key, pack.version_order) and c.is_metric:
+                c.is_metric = False   # a claim's line or adjustment number: never a measure
+                c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a version)"
             if not role or pack.roles[role].kind != "id" or c.is_id:
                 continue
             s = as_text(df[c.name].dropna())   # text: a nested value can't break nunique

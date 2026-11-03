@@ -51,7 +51,14 @@ from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
 from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
                          words)
-from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
+from guardrails import (
+    is_pii_column,
+    is_zip_column,
+    mask_pii,
+    protected_filled,
+    unlogged_changes,
+    unreconciled_rows,
+)
 from llm.client import trace_verdict
 from orchestrator.state import (
     AgentCard,
@@ -258,8 +265,8 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
               and x.kind in ("category", "status", "id", "text", "currency")} if ctx.pack else set()
     coerced: list[str] = []
     for col in df.columns:
-        if col in skip or col in ids or (col in labels and col not in ctx.dates):
-            continue
+        if col in skip or col in ids or (col in labels and col not in ctx.dates) or is_zip_column(col):
+            continue   # a ZIP (or a ZIP3 '077') is a code: as a number it loses its zero
         s = df[col]
         new, strategy, how = None, "", ""
         if pd.api.types.is_string_dtype(s):
@@ -473,7 +480,10 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log(col, "drop_column", "user_choice", "Dropped at your request (mostly empty).", 0)
 
     # 9. Outliers: flagged, never removed.
-    flat = df.drop(columns=[c for c in nested if c in df.columns])
+    # a code the pack names (a disposition 07, a DRG 470) or a ZIP has no outliers: never a measure
+    codes = [c for c in labels if c in df.columns and c not in ids and pd.api.types.is_numeric_dtype(df[c])]
+    flat = df.drop(columns=[c for c in nested if c in df.columns] + codes
+                   + [c for c in df.columns if is_zip_column(str(c)) and c not in codes])
     _, anomaly_report = detect_anomalies(flat, classify_columns(flat))
     outliers = [f.message for f in anomaly_report.flags]
 

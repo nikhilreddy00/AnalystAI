@@ -182,9 +182,7 @@ def check_claims(session: AnalysisSession, report: InsightReport,
         anywhere = ungrounded_numbers(without_dates(text, has_dates), pool) if nums else []
         unknown = [x for x in c["ids"] if x not in evidence]
         found = None
-        if r := claim_small_cell(text, nouns):
-            found = ("small_cell", "privacy", r)
-        elif dates := ungrounded_dates(text, ctx.first, ctx.last):
+        if dates := ungrounded_dates(text, ctx.first, ctx.last):
             span = next((ln for ln in ctx.facts.splitlines()
                          if ln.startswith(("Date range", "There is"))), "")
             found = ("date", "contradicted", f"names {dates[0]}, outside the data. {span}")
@@ -210,6 +208,8 @@ def check_claims(session: AnalysisSession, report: InsightReport,
             found = ("certainty", "overstated", r)
         elif r := claim_profit_without_cost(text, has_cost):
             found = ("basis", "unsupported", r)
+        elif r := claim_small_cell(text, nouns):   # after the contradictions: never hides one
+            found = ("small_cell", "privacy", r)
         if found:
             flags.append(ReviewFlag(index=i, section=c["section"], claim=text, kind=found[0],
                                     label=found[1], reason=str(mask_pii(found[2])),

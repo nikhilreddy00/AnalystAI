@@ -839,6 +839,13 @@ _SMALL_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, 
                 "eight": 8, "nine": 9, "ten": 10}
 
 
+# Between a small number and a people noun, these say the number counts something else
+_NOT_PEOPLE = {"day", "days", "week", "weeks", "month", "months", "year", "years", "hour", "hours",
+               "point", "points", "percent", "pct", "times", "department", "departments", "unit",
+               "units", "group", "groups", "after", "before", "with", "for", "of", "in", "among",
+               "per", "to", "from", "since", "than", "the", "and", "or"}
+
+
 def claim_small_cell(text: str, nouns: list[str]) -> str | None:
     """A reported count of 1–10 people (the pack's `small_cell_nouns`: patients, deaths …) on
     patient data: a small cell (CMS suppresses 1–10). "7 of 412 encounters" counts too; a
@@ -847,8 +854,10 @@ def claim_small_cell(text: str, nouns: list[str]) -> str | None:
         return None
     noun = "|".join(re.escape(n) for n in sorted(nouns, key=len, reverse=True))
     rx = re.compile(rf"(?<![\d.,%$])\b(\d{{1,2}}|{'|'.join(_SMALL_WORDS)})(?![\d.,%])"
-                    rf"(\s+of\s+[\d,]+)?\s+(?:[a-z-]+\s+){{0,2}}?(?:{noun})\b", re.I)
+                    rf"(\s+of\s+[\d,]+)?\s+((?:[a-z-]+\s+){{0,2}}?)(?:{noun})\b", re.I)
     for m in rx.finditer(text):
+        if set(m.group(3).lower().split()) & _NOT_PEOPLE:   # "3 days after discharge"
+            continue
         word = m.group(1).lower()
         if 1 <= (_SMALL_WORDS.get(word) or int(word if word.isdigit() else 0)) <= 10:
             return (f"reports '{m.group(0)}', a group of fewer than 11: small groups of patients "

@@ -19,10 +19,16 @@ PACK = ("Domain 3: the healthcare pack strong-matches make_encounters (PHI on, r
         "discharges, ALOS, crude 30-day readmission, patients; LOS averaged, never summed)")
 MONTHS = ("Domain 3: a built-in trend that skips a partial (or still-arriving) last month names "
           "the months it compares, so the report never guesses them")
+HOW = "Domain 3 audit: a distinct count's 'How' line says its filter ('where balance has a value')"
+EDA = ("Domain 3 audit: a column's summary reads the rows its tiles count (test and cancelled rows "
+       "out), as every answer and chart")
 CHANGES: dict[str, dict[str, str]] = {
     "deterministic": {**{f"encounters-{n}": PACK for n in (1, 2, 3)},
                       **{d: MONTHS for d in ("employees-1", "employees-2", "employees-3",
-                                             "retail_lines-1", "card_ledger-1")}},
+                                             "retail_lines-1", "card_ledger-1")},
+                      **{d: HOW for d in ("bank_balances-1", "bank_balances-2", "bank_balances-3",
+                                          "loan_tape-1")},
+                      "b2b_invoices-1": EDA},
     "analysis": {"health-1": "Domain 3: the healthcare pack brief (readmission rule, LOS) joins the context"},
     "insight": {"ins-42-ledger-overview": MONTHS},
     "e2e": {"e2e-23": "Domain 3: healthcare pack roles on make_encounters",

@@ -154,18 +154,24 @@ kpis:
       - [{within: {entity: patient, start: admit_date, end: date, days: 30,
                    follow: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]},
           where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]},
-                   {role: disposition, not_in: ["20", "7", "07", "2", "02", "82", expired, died,
+                   {role: disposition, not_in: ["20", "7", "07", "2", "02", "5", "05", "43", "66", "82", "85", "88", "93", "94", expired, died,
                                                 deceased, ama, left against medical advice,
                                                 against medical advice, transferred,
                                                 transfer to acute care, transfer acute]}]]}]
+      # no disposition column: inpatient stays and inpatient readmissions still
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30,
+                   follow: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]},
+          where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]}]
       - [{within: {entity: patient, start: admit_date, end: date, days: 30}}]
     den:
       - [{within: {entity: patient, start: admit_date, end: date, days: 30, base: true},
           where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]},
-                   {role: disposition, not_in: ["20", "7", "07", "2", "02", "82", expired, died,
+                   {role: disposition, not_in: ["20", "7", "07", "2", "02", "5", "05", "43", "66", "82", "85", "88", "93", "94", expired, died,
                                                 deceased, ama, left against medical advice,
                                                 against medical advice, transferred,
                                                 transfer to acute care, transfer acute]}]]}]
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30, base: true},
+          where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]}]
       - [{within: {entity: patient, start: admit_date, end: date, days: 30, base: true}}]
   - name: mortality_rate
     label: In-hospital mortality
@@ -200,7 +206,7 @@ glossary:
   mortality_rate: [mortality, mortality rate, in-hospital mortality, deaths, death rate, died,
                    expired]
   discharges: [discharges, inpatient discharges, admissions, stays, inpatient stays, volume,
-               census, cases]
+               cases]
   patients: [patients, unique patients, distinct patients, number of patients]
   billed_charges: [charges, billed charges, gross charges, billed amount, total charges, billed]
   paid: [paid, pay, we pay, paying, paid out, paid amount, payments, claims paid, spend, medical spend, claims cost, cost,
@@ -230,7 +236,7 @@ unsupported:
   clinical_advice: "clinical judgement about a patient: this tool analyses data and gives no diagnosis, treatment or dosing advice"
 
 caveats:
-  read_as_domain: "Read as healthcare data ({kpis}). Rates are crude (not risk-adjusted). This file has exact dates: a limited data set, not de-identified."
+  read_as_domain: "Read as healthcare data ({kpis}). Rates are crude (not risk-adjusted; case mix differs between groups, so a higher rate is no judgement of quality); readmission is all-cause within 30 days of an inpatient discharge, planned readmissions not removed; money by payer or plan follows member volume (no member months here). This file has exact dates: a limited data set, not de-identified."
   read_as_domain_weak: "Read as healthcare data because it has {roles} columns; if these are not patient stays or claims, the healthcare figures here don't apply."
   repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
   partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
@@ -243,7 +249,10 @@ caveats:
 causal_triggers: [treatment, treatments, therapy, medication, medications, drug, drugs,
                   intervention, program, programs, care management, discharge planning,
                   protocol, staffing, physician, physicians, surgeon, department, hospital,
-                  follow-up call, follow up call, telehealth]
+                  follow-up call, follow up call, telehealth, performs, perform, performing,
+                  performance, better care, worse care, poorer care, quality of care,
+                  in need of attention, underperform, underperforms, underperforming,
+                  coding patterns, contract terms]
 small_cell_nouns: [patients, patient, encounters, encounter, stays, stay, admissions, admission,
                    discharges, discharge, deaths, death, readmissions, readmission, members,
                    member, people, cases, beneficiaries]

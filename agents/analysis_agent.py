@@ -231,6 +231,16 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     names = set(df.columns)
     targets = [c for c in task.target_metrics if c in contract.metric_columns and c in names]
     segs = [c for c in task.segments if c in names]
+    # a column's summary over the rows its tiles count (a claim's replaced and voided versions
+    # out, as every answer and chart): replaces the sandbox's every-row summary of that column
+    for c in (c for c in contract.metric_columns if c in names):
+        rows, how = rows_for(df, contract, c)
+        s = pd.to_numeric(rows[c], errors="coerce").dropna()
+        if how and len(s) and len(rows) < len(df):
+            raw.setdefault("eda_summary", {})[c] = {
+                "mean": round(float(s.mean()), 4), "std": round(float(s.std()), 4),
+                "min": round(float(s.min()), 4), "max": round(float(s.max()), 4),
+                "median": round(float(s.median()), 4), "count": int(s.count())}
     for key, empty in (("builtin", []), ("correlations", {}), ("trends", []), ("segments", []),
                        ("assumptions", [])):
         raw.setdefault(key, empty)

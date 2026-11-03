@@ -397,3 +397,99 @@ def test_a_column_that_already_says_total_is_not_totalled_twice():
     from agents.visualization_agent import _label, build_context
     df = pd.DataFrame({"Total Charges": [1.0, 2.0], "Dept": ["A", "B"]})
     assert "total total" not in _label("Total Charges", "sum", build_context(df)).lower()
+
+
+# ── Audit pass 1 ──────────────────────────────────────────────────────────────────────────────
+
+def _hc():
+    domain_pack.load_packs.cache_clear()
+    return domain_pack.pack_for("healthcare")
+
+
+def test_readmission_without_a_disposition_column_still_counts_inpatient_stays_only():
+    """CR1: without a disposition column the fallback dropped the inpatient filter: an ED visit
+    became both an index stay and a readmission (0.50 instead of 0.33)."""
+    df = pd.DataFrame({
+        "mrn": ["A", "A", "B", "C", "D"],
+        "admit": ["2026-01-01", "2026-01-10", "2026-01-02", "2026-01-03", "2026-04-01"],
+        "disch": ["2026-01-04", "2026-01-12", "2026-01-05", "2026-01-06", "2026-04-02"],
+        "type": ["Inpatient", "Emergency", "Inpatient", "Inpatient", "Inpatient"]})
+    roles = {"patient": "mrn", "admit_date": "admit", "date": "disch", "encounter_type": "type"}
+    assert domain_pack.compute_kpi(df, roles, _hc(), "readmission_rate") == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("seq, freq, kinds", [
+    ([None, None, None], ["1", "1", "1"], ["sale", "sale", "sale"]),        # CR2: blank versions
+    ([0, 1, 0], [1.0, 8.0, None], ["non_product", "cancel", "sale"]),      # CR3: 8.0 is a void
+])
+def test_version_chains_survive_blanks_and_floats(seq, freq, kinds):
+    df = pd.DataFrame({"cid": ["C1", "C1", "C2"], "ln": ["1", "1", "1"], "v": seq, "f": freq,
+                       "paid": [10.0, -10.0, 5.0]})
+    roles = {"claim_id": "cid", "line": "ln", "version": "v", "frequency": "f", "paid": "paid"}
+    k = domain_pack.row_kinds(df, roles, _hc()).tolist()
+    assert k == kinds or (kinds[1] == "cancel" and k[:2] == ["cancel", "cancel"] and k[2] == "sale")
+
+
+def test_a_header_level_claims_extract_chains_on_the_claim_id():
+    """CR4: one row per claim (no line column): replaced and voided versions still resolve."""
+    df = pd.DataFrame({"cid": ["C1", "C1", "C2", "C2"], "v": [0, 1, 0, 1], "f": ["1", "7", "1", "8"],
+                       "paid": [100.0, 90.0, 50.0, -50.0]})
+    roles = {"claim_id": "cid", "version": "v", "frequency": "f", "paid": "paid"}
+    assert domain_pack.row_kinds(df, roles, _hc()).tolist() == ["non_product", "sale", "cancel", "cancel"]
+
+
+def test_a_distinct_count_says_its_filter():
+    """EX6: 'Distinct Encounter ID, divided by discharges' hid the 'expired' filter."""
+    pack = _hc()
+    roles = {r: r for r in ("encounter", "encounter_type", "disposition", "date")}
+    assert "where" in domain_pack.describe_kpi(pack, "mortality_rate", roles)
+
+
+def test_version_roles_are_never_a_measure():
+    """EX8: 'Average Adjustment Sequence by Payer' and 'Adjustment Seq fell 100%' in the live run."""
+    from evals import datagen
+    df, _ = datagen.make("health_claims", 1)
+    c = build_contract(df, ConnectorType.CSV)
+    assert "Adjustment Seq" not in c.metric_columns and "Line No" not in c.metric_columns
+
+
+@pytest.mark.parametrize("text", [
+    "Readmissions peak in the 3 days after discharge.",
+    "ALOS rose 2 days for discharge to home.",
+    "Readmission rate fell 2 points among members.",
+    "Cardiology is one of 4 departments with patients over 90.",
+])
+def test_a_unit_between_number_and_people_is_not_a_small_cell(text):
+    """CR5: '3 days after discharge' read as 3 discharges."""
+    from guardrails import claim_small_cell
+    assert claim_small_cell(text, ["patients", "discharges", "discharge", "members", "deaths"]) is None
+
+
+def test_eda_summary_reads_the_rows_the_tiles_count():
+    """EX1: 'Paid Amount ranges from -$442.37' came from voids and replaced versions; the counted
+    rows have no negative paid."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import builtin
+    res = builtin("health_claims", ["Paid Amount"], [], ["eda"])
+    assert res["eda_summary"]["Paid Amount"]["min"] >= 0, res["eda_summary"]["Paid Amount"]
+
+
+def test_codes_and_zip3_stay_text_through_cleaning():
+    """EX2: Discharge Disposition read as int (07 -> 7) and flagged for outliers; ZIP3 '077' -> 77."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built
+    s, clean, _, _ = _built("inpatient")
+    assert not pd.api.types.is_numeric_dtype(clean["Patient ZIP"])
+    assert not any(d.column == "Discharge Disposition" and "outlier" in d.reason.lower()
+                   for d in s.cleaning_audit.decisions)
+
+
+def test_the_pooled_bucket_is_never_a_reported_group():
+    """EX5: a lone 7-stay department pooled as 'Other (fewer than 11 each)' still showed its
+    0.0% rate: the bucket is never a group in a ranked answer."""
+    from agents.utils import ranked
+    from guardrails import POOLED_LABEL
+    s = pd.Series([0.14, 0.0, 0.07], index=["Cardiology", POOLED_LABEL, "Neurology"])
+    assert POOLED_LABEL not in ranked(s).index
