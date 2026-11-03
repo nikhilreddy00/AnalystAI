@@ -22,7 +22,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
-from agents.utils import pii_columns, safe_column_name, strip_markdown_fences
+from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
     ROW_KIND_COLUMN,
     ROW_KINDS,
@@ -1036,7 +1036,7 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         relevant = [m for m in model_notes if not cols or any(c in m for c in cols)]
         return Evidence(id=id_, kind=kind, claim=claim,
                         code=standard if id_ in builtin else body,
-                        result_excerpt=json.dumps(payload, default=str)[:500], row_count=n,
+                        result_excerpt=json.dumps(display_values(payload), default=str)[:500], row_count=n,
                         confidence=level, confidence_reason=why,
                         assumptions=notes + relevant + audit_notes)
 

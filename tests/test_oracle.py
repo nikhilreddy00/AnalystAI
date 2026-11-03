@@ -322,3 +322,17 @@ def test_a_model_breakdown_of_a_money_column_is_recomputed_from_its_rows():
     assert repair_breakdowns(f, clean, contract)
     assert close(segment({"segments": [s.model_dump() for s in f.segments]}, by, "Amount", "sum"),
                  rows.groupby(by)["Amount"].sum().round(4).to_dict())
+
+
+# ── R4: machine-independent data ──────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("name", sorted(datagen.DATASETS))
+def test_every_generated_float_has_at_most_4_decimals(name):
+    """A float from exp()/log() differs in its last digits between macOS and Linux (the card
+    ledger's salaries broke CI); a generator rounds what it emits, so pins are the same everywhere."""
+    import numpy as np
+    df, _ = datagen.make(name, 1)
+    for c in df.columns:
+        v = pd.to_numeric(df[c], errors="coerce") if df[c].dtype == object else df[c]
+        if pd.api.types.is_float_dtype(v) and len(x := v.dropna()):
+            assert np.allclose(x, x.round(4), rtol=0, atol=1e-9), c

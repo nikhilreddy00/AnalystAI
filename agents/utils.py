@@ -514,6 +514,19 @@ def cut_partial(series, t, freq: str, rule: str | None = None):
 _UNIT = {"W": "week", "Q": "quarter", "Y": "year"}
 
 
+def display_values(obj):
+    """Floats at 10 significant digits before they are rendered for a model or a person: a
+    statistic's last digits (of 16) differ between machines (exp, log, BLAS) and are noise to
+    any reader (plan v2 R4); money to the cent and 4-decimal results are left as they are."""
+    if isinstance(obj, float):
+        return float(f"{obj:.10g}") if obj == obj else obj
+    if isinstance(obj, dict):
+        return {k: display_values(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [display_values(v) for v in obj]
+    return obj
+
+
 def ranked(series, ascending: bool = False):
     """A ranking that is the same on every machine: by label first, then a stable sort by
     value, so tied groups keep their name order (numpy's default sort is not stable, and Linux

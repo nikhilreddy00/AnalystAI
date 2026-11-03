@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
-from agents.utils import pii_columns, strip_markdown_fences, with_display_names
+from agents.utils import display_values, pii_columns, strip_markdown_fences, with_display_names
 from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
     _SENTENCE_RE,
@@ -165,8 +165,8 @@ def _values(e: Evidence, by_id: dict) -> str:
     if more > 0:
         found = found.model_copy(update={"results": found.results[:_MAX_GROUPS]})
     drop = {"label"} if getattr(found, "label", 1) is None else None   # as before Phase 5.5
-    return json.dumps(found.model_dump(exclude=drop), default=str) + (f" (+{more} more groups not shown)"
-                                                                      if more > 0 else "")
+    return json.dumps(display_values(found.model_dump(exclude=drop)), default=str) + (
+        f" (+{more} more groups not shown)" if more > 0 else "")
 
 
 def _prev(ym: tuple[int, int]) -> tuple[int, int]:

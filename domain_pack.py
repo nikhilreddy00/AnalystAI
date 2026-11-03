@@ -31,20 +31,19 @@ RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
 TextKey = Literal["rows_brief", "grain_line", "unsupported_alternatives", "kpis_default",
                   "causal_removed", "return_rule", "refunded_rule", "cancel_rule",
                   "non_product_rule", "money_rows_note"]
-TEXT_DEFAULTS = {
-    "rows_brief": "Figures use sale rows; net figures sale and return rows.",
+TEXT_DEFAULTS = {   # fit every domain: a pack says its own words (tests/test_pseudo_pack.py)
+    "rows_brief": "Figures use the rows these rules keep; net figures also the netted rows.",
     "grain_line": "One row is a line of a larger record: count records as distinct {key}, never "
                   "rows; an average per record divides by records.",
     "unsupported_alternatives": "I can answer with what the data has. Which would help?",
     "kpis_default": "its main columns",
     "causal_removed": "{n} sentence(s) saying an action caused a change were removed: without a "
                       "control group that can't be shown.",
-    "return_rule": "a return (netted in net figures)",
+    "return_rule": "netted (in net figures)",
     "refunded_rule": "reversed (left out)",
-    "cancel_rule": "cancelled (left out)",
-    "non_product_rule": "non-product (left out)",
-    "money_rows_note": "Sale and return rows{currency} only: {n} other rows (test, cancelled, "
-                       "other currencies …) left out.",
+    "cancel_rule": "excluded (left out)",
+    "non_product_rule": "not an item (left out)",
+    "money_rows_note": "Only the rows the figures count{currency}: {n} other rows left out.",
 }
 
 
@@ -204,6 +203,9 @@ class Pack(_Strict):
     running_balance: RunningBalance | None = None
     # Words: each row kind's name ("refunded orders") and its cleaning flag; `text` for the rest.
     row_labels: dict[RowKind, str] = Field(default_factory=dict)
+    # The codes the model's frame and brief use for each kind (a banking model filters on
+    # 'on_book', never a retail 'sale'); unset: the internal names
+    kind_codes: dict[RowKind, str] = Field(default_factory=dict)
     row_flags: dict[RowKind, str] = Field(default_factory=dict)
     text: dict[TextKey, str] = Field(default_factory=dict)
     kpis: list[KPI] = Field(default_factory=list)
@@ -223,6 +225,9 @@ class Pack(_Strict):
     def date_role(self) -> str:
         """The domain's time role: the first role of kind date (the validator requires one)."""
         return next(r for r, x in self.roles.items() if x.kind == "date")
+
+    def code(self, kind: str) -> str:
+        return self.kind_codes.get(kind, kind)
 
     def label(self, kind: str) -> str:
         return self.row_labels.get(kind, kind.replace("_", "-") + " rows")
@@ -270,6 +275,10 @@ class Pack(_Strict):
             errors += [f"role {r}: over_time last needs snapshot_key" for r, x in self.roles.items()
                        if x.over_time == "last"]
             errors += [f"kpi {k.name}: at latest needs snapshot_key" for k in self.kpis if k.at == "latest"]
+        codes = [self.code(k) for k in ROW_KINDS]
+        if len(set(codes)) != len(codes) or "other_currency" in codes or \
+                not all(re.fullmatch(r"[a-z][a-z0-9_]*", c) for c in codes):
+            errors.append(f"kind_codes: distinct snake_case codes, never other_currency: {codes}")
         if self.conditional_fields and "status" not in self.roles:
             errors.append("conditional_fields: needs a status role")
         if not any(r.kind == "date" for r in self.roles.values()):
@@ -818,8 +827,8 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     lines = []
     if present - {"sale"} or concepts:   # rows to leave out, or a KPI to compute
         lines.append(f"`df` has one column more than the schema shows: '{kind_column}', each row's "
-                     "kind (sale, return, refunded, "
-                     "cancel, test, non_product, other_currency), computed by these rules: filter on "
+                     f"kind ({', '.join(pack.code(k) for k in ROW_KINDS)}, other_currency), "
+                     "computed by these rules: filter on "
                      "it, never re-derive it. Personal columns (email, names) reach you as "
                      f"pseudonyms, so {pack.label('test')} cannot be found from them: only this "
                      f"column marks them. {pack.say('rows_brief')} Column "
@@ -964,7 +973,7 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     kinds = row_kinds(df, roles, pack)
     keep, _, _ = main_currency(df, roles)
-    return df.assign(**{name: kinds.where(keep, "other_currency")}), name
+    return df.assign(**{name: kinds.map(pack.code).where(keep, "other_currency")}), name
 
 
 def counted(pack: Pack, role: str) -> bool:

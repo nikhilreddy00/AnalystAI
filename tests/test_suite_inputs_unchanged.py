@@ -12,11 +12,15 @@ import json
 
 from evals.snapshot import GOLDEN, snapshot
 
-# Insight contexts quoting test statistics whose last float digits differ between macOS (where
-# the golden is pinned) and CI's Linux.
-PLATFORM_FLOATS = {"ins-15-gap-not-significant", "ins-39-region-null", "ins-40-minutes-null-holdout"}
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-CHANGES: dict[str, dict[str, str]] = {}
+CHANGES: dict[str, dict[str, str]] = {"analysis": {
+    "bank-1": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
+    "bank-2": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
+    "bank-4": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
+    "bank-5": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
+    "bank-6": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
+    "bank-7": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
+}}
 
 
 async def test_every_finished_domain_gets_the_same_inputs_and_outputs():
@@ -25,7 +29,7 @@ async def test_every_finished_domain_gets_the_same_inputs_and_outputs():
     broken = {}
     for suite, cases in golden.items():
         for cid, pinned in cases.items():
-            if cid in PLATFORM_FLOATS or cid in CHANGES.get(suite, {}):
+            if cid in CHANGES.get(suite, {}):
                 continue
             got = now.get(suite, {}).get(cid)
             # the pinned stages only: a probe added since the pin is checked from the next pin on

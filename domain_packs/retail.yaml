@@ -123,6 +123,8 @@ row_flags:
   non_product: "postage, fee or adjustment lines: left out of product and sales figures"
 text:
   rows_brief: "Sales figures use sale rows; net figures sale and return rows."
+  money_rows_note: "Sale and return rows{currency} only: {n} other rows (test, cancelled, other currencies …) left out."
+  non_product_rule: "non-product (left out)"
   grain_line: "One row is an order line: count orders as distinct {key}, never rows; an average per order divides by orders."
   unsupported_alternatives: "I can answer with what the data has: net sales, units sold or returns by product. Which would help?"
   kpis_default: its sales columns
