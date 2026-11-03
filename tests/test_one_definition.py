@@ -206,12 +206,32 @@ def test_one_version_chain_rule():
 
 
 def test_every_highest_lowest_sentence_leaves_the_pooled_group_out():
-    """Domain 3 live run: 'Other (fewer than 11 each) lowest (0.00)'. A pooled privacy bucket is
-    never ranked: each 'highest …' sentence filters through guardrails.rankable."""
-    for p in SHARED:
-        src = p.read_text()
-        if re.search(r"\} highest \(", src):
-            assert "rankable(" in src, f"{p.name}: rank through guardrails.rankable"
+    """Domain 3 live run: 'Other (fewer than 11 each) lowest (0.00)'. Per function (a file-level
+    grep passed with one compliant site beside two that weren't, retro 2026-11-03): every function
+    that writes a highest / lowest / leads sentence filters its groups through guardrails.rankable."""
+    import inspect
+
+    from agents import drill_down_agent, insight_agent, targeted_analysis_agent, visualization_agent
+    sentence = re.compile(r"(?:highest|lowest|leads)(?: at)? \(?\{|\{[^}]*\} (?:highest|leads) |is lowest at")
+    bad = [f"{m.__name__}.{n}" for m in (targeted_analysis_agent, visualization_agent, insight_agent,
+                                         drill_down_agent)
+           for n, fn in inspect.getmembers(m, inspect.isfunction)
+           if fn.__module__ == m.__name__ and sentence.search(inspect.getsource(fn))
+           and "rankable(" not in inspect.getsource(fn)
+           and n not in {"_kpi_how"}]   # describes a method ("the highest and lowest <column>"), names no group
+    assert bad == [], f"filter the groups through guardrails.rankable: {bad}"
+
+
+def test_a_pooled_department_is_never_named_in_an_answer():
+    """Behaviour, on the real stays data (PHI mode pools the 7-stay department)."""
+    from tests.test_oracle import _built, answer
+    from guardrails import POOLED_LABEL
+    _built("inpatient")
+    for kpi in ("readmission_rate", "mortality_rate", "alos"):
+        for order in ("desc", "asc"):
+            text, _ = answer("inpatient", "top_n", f"{kpi} by department", kpi=kpi, order=order,
+                             segment_column="Department", group_by="Department")
+            assert POOLED_LABEL not in text, (kpi, order, text)
 
 
 def test_version_roles_are_named_once():

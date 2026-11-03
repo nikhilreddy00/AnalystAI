@@ -21,6 +21,9 @@ from agents.visualization_agent import (
 from evals.run import load_cases, viz_session
 
 OUT = sys.argv[1]
+# CI: write only the git-ignored dashboard JSON; the committed recordings (full.sse …) stay as
+# committed (a spec replays a pre-5.5 run on purpose)
+DASHBOARD_ONLY = "--dashboard-only" in sys.argv
 evidence = next(
     json.loads(line[6:])["data"]
     for line in open(f"{OUT}/full.sse")
@@ -170,6 +173,8 @@ ev += [
 
 
 def w(path, evs):
+    if DASHBOARD_ONLY:
+        return
     open(path, "w").write("".join(f"data: {json.dumps(e, default=str)}\n\n" for e in evs))
 
 
