@@ -1521,7 +1521,7 @@
    }
   },
   "health-1": {
-   "context": "bd7b6b1dd3940f23",
+   "context": "87e01128de87c6c4",
    "roles": {
     "admit_date": {
      "date": true,
@@ -1710,6 +1710,481 @@
     "zip_code": {
      "date": false,
      "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "health-4": {
+   "context": "f62792adb2eaafbf",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "health-5": {
+   "context": "2e3f3da36ea03374",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "health-6": {
+   "context": "af087d57a90a07d3",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "health-7": {
+   "context": "f021fa6b84ea745e",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "health-8": {
+   "context": "5a54757d950a4df1",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
      "id": false,
      "metric": false
     }
@@ -4882,7 +5357,7 @@
    "extras": "05081e9b7d26ec5e",
    "frame": "26b15556b32b9292",
    "kpis": "cbe989cf6adf5f35",
-   "standard_code": "1933245aa55b70c6"
+   "standard_code": "08ecac2e5dc51325"
   },
   "bank_balances-1": {
    "answers": "d1dda253399faa8f",
@@ -4892,7 +5367,7 @@
    "contract": "4cecca5cf3dde118",
    "extras": "dd06533359059630",
    "frame": "81ebaf4fb5e1ba79",
-   "kpis": "0e93e5d9d981edd0",
+   "kpis": "2d38fca08a1c6d05",
    "standard_code": "33afb6f9f986b89c"
   },
   "bank_balances-2": {
@@ -4903,7 +5378,7 @@
    "contract": "d43329f0d7aa8a73",
    "extras": "5192f0c9403591be",
    "frame": "6529b5ab7cece8d1",
-   "kpis": "44029723c4860cc5",
+   "kpis": "fbedb5c573dada14",
    "standard_code": "7f9a85951c9d9f44"
   },
   "bank_balances-3": {
@@ -4914,7 +5389,7 @@
    "contract": "63bb54292be5e258",
    "extras": "b1302ca719471746",
    "frame": "0ff8cafd06441073",
-   "kpis": "892c6099a0ba6de1",
+   "kpis": "078aa44ccdd4a687",
    "standard_code": "38a366581a344f29"
   },
   "card_ledger-1": {
@@ -4926,7 +5401,7 @@
    "extras": "ef60df9984339cdb",
    "frame": "b9dbeed61752e789",
    "kpis": "ef7d6d4a861f8d5a",
-   "standard_code": "76347762529a1a24"
+   "standard_code": "d1ed489eb498be01"
   },
   "claims-1": {
    "answers": "f4ca7a447f608991",
@@ -4970,7 +5445,7 @@
    "extras": "43f3cb09b925e77a",
    "frame": "d90dfcf32be42829",
    "kpis": "0f4ea242d3396432",
-   "standard_code": "c38c68271dc6f4ba"
+   "standard_code": "ac3d6a1d7e993321"
   },
   "employees-2": {
    "answers": "7d1f327299e9b80e",
@@ -4981,7 +5456,7 @@
    "extras": "2bf721e16d23c921",
    "frame": "f9b9b0f94521af25",
    "kpis": "82f5f0ea5dc64404",
-   "standard_code": "7031c0e7df6dd45a"
+   "standard_code": "d00d863cf6d4cb86"
   },
   "employees-3": {
    "answers": "7148e9fb2fe53cb8",
@@ -4992,40 +5467,62 @@
    "extras": "232cf7e24483265d",
    "frame": "45de1f5f827349b5",
    "kpis": "c5b98bd8c9453518",
-   "standard_code": "2a4395327cb0d30d"
+   "standard_code": "ffe22cb1bdb42ac7"
   },
   "encounters-1": {
-   "answers": "cf023254b90e2ab9",
-   "answers_by_group": "4d61342ae69c5577",
-   "audit": "fc2d4bec3a25d674",
-   "chart": "eb07a78a97de1e95",
-   "contract": "c428ecef8af7b456",
+   "answers": "29ea85bec6621a3e",
+   "answers_by_group": "de5b79e449fd27a3",
+   "audit": "61141d20fbb9696a",
+   "chart": "72aff840eb1975a3",
+   "contract": "49379972eaa35cf6",
    "extras": "ec4bbd4ff8f57784",
    "frame": "ead451fa4d7c9bf2",
-   "kpis": "1a879cba3d58326c",
-   "standard_code": "f7b752fa0f6c1e33"
+   "kpis": "87f129f1ad4eaa9b",
+   "standard_code": "a7169378fc3c32c0"
   },
   "encounters-2": {
-   "answers": "342ca2d40c20cf85",
-   "answers_by_group": "4038f22c71f89693",
-   "audit": "97549727a18f4cc5",
-   "chart": "4f40522efbed9731",
-   "contract": "b382642107698489",
+   "answers": "3b57df3d94e41f10",
+   "answers_by_group": "a81d6769a5cc41d5",
+   "audit": "873e02a3e30cee2c",
+   "chart": "a234ee648ca85719",
+   "contract": "42e00e2027ed152c",
    "extras": "2c98aa993ecf404a",
    "frame": "c72c2938afccc061",
-   "kpis": "09aefb3d52d390a3",
-   "standard_code": "361fb621d5a94993"
+   "kpis": "c7f30dfa7595321f",
+   "standard_code": "f9a1ce08107bab30"
   },
   "encounters-3": {
-   "answers": "56eb2fc9acc5e5ed",
-   "answers_by_group": "1671a2790107fe1d",
-   "audit": "3a8bb7bba410a24f",
-   "chart": "da7534cd08c9ffa6",
-   "contract": "37e5a75f8f031d46",
+   "answers": "c2fd6fde04fe96b0",
+   "answers_by_group": "2d3b7a430af4a39b",
+   "audit": "2aa76482fb72da49",
+   "chart": "b3b953b31715a585",
+   "contract": "4ee00293fb309126",
    "extras": "ee9a1647ed5205ec",
    "frame": "d86d900556c7ac31",
-   "kpis": "ee45a6508d7f7e3f",
-   "standard_code": "a958240c4ec73840"
+   "kpis": "3775357e5e917c9e",
+   "standard_code": "b70474da424113d2"
+  },
+  "health_claims-1": {
+   "answers": "e53c7730b372e12d",
+   "answers_by_group": "5e9855a4c4f94b8b",
+   "audit": "90b4ead0545a9e96",
+   "chart": "a6fd26ab3750f27f",
+   "contract": "7801033731c2bf9f",
+   "extras": "9e929ffcb152dbd3",
+   "frame": "daf4593dc78cead2",
+   "kpis": "ba4960001dc66b87",
+   "standard_code": "c478b06389b95606"
+  },
+  "inpatient-1": {
+   "answers": "a4ba8ea185610563",
+   "answers_by_group": "235643583a94f4a2",
+   "audit": "2012b66990fe3e3c",
+   "chart": "aac173cce6caaa09",
+   "contract": "e88e2fbdcd0f6adf",
+   "extras": "f6e466f4f8a87b90",
+   "frame": "fffa7578eada0e36",
+   "kpis": "4a42d0e572f32145",
+   "standard_code": "cf64b33c3bf82f8a"
   },
   "loan_tape-1": {
    "answers": "bb014230652760d6",
@@ -5035,7 +5532,7 @@
    "contract": "98cdca58e380729a",
    "extras": "bac2945dbabdcdf7",
    "frame": "14392165574b6c7b",
-   "kpis": "923564efb05026e6",
+   "kpis": "af0f4bbd8a9cef13",
    "standard_code": "6d0b6eb8316adbe4"
   },
   "mixed_dates-1": {
@@ -5069,7 +5566,7 @@
    "extras": "25c43c24b00f4f0f",
    "frame": "155ca7e0d68d1e4d",
    "kpis": "649ee3dbb39af880",
-   "standard_code": "5ce267f1238426d7"
+   "standard_code": "ffe1838906928144"
   },
   "saas_accounts-1": {
    "answers": "912dacf8d903c9fd",
@@ -6719,7 +7216,7 @@
     "mrn": {
      "date": false,
      "dtype": "str",
-     "id": false,
+     "id": true,
      "metric": false
     },
     "notes": {
@@ -6807,7 +7304,7 @@
     "mrn": {
      "date": false,
      "dtype": "str",
-     "id": false,
+     "id": true,
      "metric": false
     },
     "notes": {
@@ -8475,6 +8972,870 @@
      "metric": false
     },
     "snapshot_date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-52": {
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-53": {
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-54": {
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-55": {
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-56": {
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-57": {
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-58": {
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-59": {
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-60": {
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
      "date": true,
      "dtype": "datetime64[us]",
      "id": false,
@@ -11060,7 +12421,7 @@
    }
   },
   "ins-42-ledger-overview": {
-   "context": "b318814e3cc31849",
+   "context": "9ca446f1caf2b27a",
    "roles": {
     "Account ID": {
      "date": false,
@@ -11136,6 +12497,190 @@
     },
     "Transaction Type": {
      "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-43-inpatient-overview": {
+   "context": "c426458f5e6127e5",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "object",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "ins-44-claims-overview": {
+   "context": "0db99811229626a3",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
      "dtype": "str",
      "id": false,
      "metric": false
@@ -14331,6 +15876,1360 @@
      "dtype": "float64",
      "id": false,
      "metric": true
+    }
+   }
+  },
+  "intake-health-01": {
+   "context": "c5339376a807f45f",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-02": {
+   "context": "47bf8a8fb066b508",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-03": {
+   "context": "04d3c5ad1312adcf",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-04": {
+   "context": "97dd350a7d1f0977",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-05": {
+   "context": "f6805528c7704897",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-06": {
+   "context": "43c090d75b39138d",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-07": {
+   "context": "9c898f90d6da2e49",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-08": {
+   "context": "18441adcbcb21e06",
+   "roles": {
+    "Admit Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Attending NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "DOB": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Discharge Disposition": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Encounter ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Encounter Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "MRN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "MS-DRG": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": false
+    },
+    "Patient Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Patient ZIP": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Principal Dx": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charges": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-health-09": {
+   "context": "5d8eab812ae5b05a",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-health-10": {
+   "context": "ac601da861692a1e",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-health-11": {
+   "context": "bf2046e6428ec3f0",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-health-12": {
+   "context": "6665d7d1375a6c24",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-health-13": {
+   "context": "27dc5ad355455e8b",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-health-14": {
+   "context": "5704d51ac32962bc",
+   "roles": {
+    "Adjustment Seq": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Allowed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Billed Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "CPT/HCPCS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Frequency": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Claim ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Total Billed": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Member ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Paid Amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Paid Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Payer": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Place of Service": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rendering NPI": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Rev Code": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Service From": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
     }
    }
   },

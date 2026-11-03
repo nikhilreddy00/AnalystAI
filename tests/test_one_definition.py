@@ -189,3 +189,8 @@ def test_every_highest_lowest_sentence_leaves_the_pooled_group_out():
         src = p.read_text()
         if re.search(r"\} highest \(", src):
             assert "rankable(" in src, f"{p.name}: rank through guardrails.rankable"
+
+
+def test_version_roles_are_named_once():
+    """Pass 3: shared code asks domain_pack.version_roles, never re-lists a pack's version fields."""
+    assert _hits(r"\(\*?pack\.version_key|pack\.version_order\)", {"domain_pack.py"}) == []

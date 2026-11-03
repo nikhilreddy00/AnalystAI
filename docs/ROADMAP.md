@@ -541,6 +541,9 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   audit pass finds 0 major and ≤ 2 minor, and the README's domain list is regenerated from the
   reports (`tests/test_readme_domains.py`).
 
+- **Status (2026-11-03):** 1 retail, 2 banking, 3 healthcare done (`docs/baselines/phase5_7_*.md`);
+  next 4 insurance.
+
 ### Phase 5.8: Data sources (added 2026-11-03 at the user's request)
 - **Why:** every domain was proven on CSV uploads only, while small companies keep data in
   spreadsheets, SaaS exports, Postgres (56% of developers), MySQL (41%) and SQL Server (30%)

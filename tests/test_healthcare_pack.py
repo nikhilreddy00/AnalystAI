@@ -513,3 +513,24 @@ def test_ranked_keeps_every_group():
     from guardrails import POOLED_LABEL
     s = pd.Series([200.0, 5.0], index=[POOLED_LABEL, "A"])
     assert len(ranked(s)) == 2
+
+
+def test_trend_months_are_normalised_and_free_text_is_dropped():
+    """Pass 3: a model's '2025-03-01' is the month 2025-03; 'last month' names nothing."""
+    from agents.analysis_agent import _months
+    assert _months("2025-03-01", "2025-02") == {"latest": "2025-03", "previous": "2025-02"}
+    assert _months("last month", "2025-02") == {}
+
+
+def test_only_a_ratio_reads_as_a_percent():
+    """Pass 2/3: a 'pct' mean of 0.4 (already a percent) must not read as 40.0%."""
+    from agents.analysis_agent import segment_id
+    from agents.insight_agent import _plain
+    from orchestrator.state import AnalysisFindings, Evidence, SegmentResult
+    seg = SegmentResult(segment_column="Dept", metric_column="share", aggregation="pct",
+                        results=[{"name": "A", "value": 0.4}, {"name": "B", "value": 0.2}])
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg], anomalies=[],
+                         statistical_tests=[], forecast_points=[], distributions={}, code_executed="")
+    e = Evidence(id=segment_id("Dept", "share", "pct", None), kind="segment", claim="x", code="",
+                 result_excerpt="", row_count=10, confidence="high", confidence_reason="r")
+    assert "40.0%" not in _plain(e, f, None)

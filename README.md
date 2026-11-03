@@ -234,7 +234,12 @@ cases k=3, 25 E2E cases, 13 intake cases k=3; `docs/baselines/phase5_7_sales.md`
 **banking** (balances as levels: period-end, never added across dates; NPL and delinquency by
 balance, charge-offs, reversals, pending and fees on ledgers; a loan tape, a transaction ledger
 and deposit snapshots; 7 analysis cases k=3, 10 E2E cases, 12 intake cases k=3;
-`docs/baselines/phase5_7_banking.md`).
+`docs/baselines/phase5_7_banking.md`);
+**healthcare** (hospital stays: ALOS by discharge, crude 30-day readmission with the CMS index
+exclusions and censoring, mortality; payer claims: each claim line's last version, paid vs
+allowed vs billed, the denial rate on claims, claims lag; patient data protected, small groups
+flagged; 8 analysis cases k=3, 9 E2E cases (incl. SQLite and JSON sources), 14 intake cases;
+`docs/baselines/phase5_7_healthcare.md`).
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one

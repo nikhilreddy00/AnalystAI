@@ -839,10 +839,17 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                 # the last attempt: entries naming no column of this data (a KPI filed as a
                 # column) are left out, never the whole analysis; the rest still passes review
                 trace_verdict("analysis", PROMPT_VERSION, "unknown_findings_dropped")
+                for k in dropped:   # out of raw too: prose quoting them is never "grounded"
+                    if isinstance(raw.get("eda_summary"), dict):
+                        raw["eda_summary"].pop(k, None)
+                    if isinstance(raw.get("correlations"), dict):
+                        raw["correlations"] = {p: v for p, v in raw["correlations"].items()
+                                               if k not in p.split("__")}
                 raw["assumptions"] = [*(raw.get("assumptions") or []),
                                       f"Left out findings that name no column of this data: "
                                       f"{', '.join(dropped[:6])}."]
-                reason = review_findings(findings, raw, known, set(ctx.analysis_types))
+                # nothing left: the cause stays the unknown columns, never "empty"
+                reason = review_findings(findings, raw, known, set(ctx.analysis_types)) and reason
             if reason is None:
                 if repaired := ground_prose(findings, raw):
                     trace_verdict("analysis", PROMPT_VERSION, "grounding_rewritten")
@@ -1185,6 +1192,14 @@ def _plain_names(s: dict) -> list:
         r.get("name"), str) and r["name"].startswith(prefix) else r for r in rows]
 
 
+def _months(latest, previous) -> dict:
+    try:
+        return {"latest": str(pd.Period(str(latest), "M")),
+                "previous": str(pd.Period(str(previous), "M"))} if latest and previous else {}
+    except (ValueError, TypeError):
+        return {}
+
+
 def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) -> AnalysisFindings:
     """Parse the JSON output from E2B into an AnalysisFindings object."""
 
@@ -1232,11 +1247,9 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
                               or ("up" if pct > 0 else "down" if pct < 0 else "flat")),
                 pct_change=pct,
                 segment=None if t.get("segment") is None else str(t["segment"]),
-                # the months compared, when not the last two: 'YYYY-MM' only (a model's free
-                # text would break every place that names them)
-                **({"latest": str(t["latest"]), "previous": str(t["previous"])}
-                   if all(re.fullmatch(r"\d{4}-\d{2}", str(t.get(k) or "")) for k in ("latest", "previous"))
-                   else {}),
+                # the months compared, when not the last two, as 'YYYY-MM' (a model's
+                # '2025-03-01' too); free text is dropped, never allowed to break the naming
+                **_months(t.get("latest"), t.get("previous")),
             ))
 
     distributions_raw = raw.get("distributions", {})

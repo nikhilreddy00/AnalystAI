@@ -295,7 +295,7 @@ _TOTAL_RE = re.compile(r"\b(?:in total|totals?|overall|altogether|all time|grand
 # a time grain or trend word: the question wants periods ("total revenue each month")
 _GRAIN_RE = re.compile(r"\b(?:each|every|per|by) (?:day|week|month|quarter|year)\b|\b(?:daily|"
                        r"weekly|monthly|quarterly|yearly|annual|trend\w*|over time|month over month|"
-                       r"ris\w*|fall\w*|fell|grow\w*|chang\w*|increas\w*|decreas\w*|since|vs|"
+                       r"ris(?:e|es|ing|en)|rose|fall\w*|fell|grow\w*|chang\w*|increas\w*|decreas\w*|since|vs|"
                        r"versus|compared?|last (?:month|quarter|year|week)|this (?:month|quarter|"
                        r"year|week)|for 20\d\d|"
                        r"year over year|mom|yoy|in (?:january|february|march|april|may|june|july|"

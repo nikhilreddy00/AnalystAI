@@ -102,8 +102,8 @@ version_order: version
 version_void: {frequency: ["8"]}
 order_key: claim_id
 ranges: {los: {ge: 0}}
-runout: {role: paid_date, months: 3}
-derived: {los: [date, days, admit_date]}   # no LOS column: length_of_stay = discharge − admit   # claims keep arriving for ~3 months after service (CMS)
+runout: {role: paid_date, months: 3}   # claims keep arriving for ~3 months after service (CMS)
+derived: {los: [date, days, admit_date]}   # no LOS column: length_of_stay = discharge − admit
 
 overview_groups: [department, payer, drg, facility, procedure]
 overview_kpis: [discharges, paid, readmission_rate, alos, denial_rate]
