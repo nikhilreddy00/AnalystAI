@@ -452,6 +452,7 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
     date = (time_axis(contract, None, df) if contract is not None else None) or _viz_date(df)
     month = any_dates(df[date]).dt.to_period("M") if date else None
     from domain_pack import runout_months   # claims still arriving: as analysis_agent's MoM
+    data_last = month.max() if month is not None else None
     if month is not None and contract is not None and (runout := runout_months(contract)):
         month = month.where(month < month.max() - runout + 1)
     corr, trends, raw_trends, segs, anoms, tests, ids = {}, [], [], [], [], [], []
@@ -472,7 +473,9 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
             base = tot.iloc[-13] if kind == "YoY" else tot.iloc[-2]
             pct = round(float((tot.iloc[-1] / base - 1) * 100), 2)
             period = "MoM" if kind == "MoM" else "YoY"
-            trends.append(TrendResult(column=col, period=period, pct_change=pct, segment=seg,
+            named = ({"latest": str(tot.index[-1]), "previous": str(tot.index[-13 if kind == "YoY" else -2])}
+                     if kind != "YoY_calendar" and tot.index[-1] != data_last else {})   # as the built-in
+            trends.append(TrendResult(column=col, period=period, pct_change=pct, segment=seg, **named,
                                       direction="up" if pct > 0 else "down" if pct < 0 else "flat"))
             raw_trends.append({"column": col, "period": period, "segment": seg, "n": int(len(frame))})
             ids.append(f"trend:{col}" + (f" ({seg})" if seg else "") + f":{period}")

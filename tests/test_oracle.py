@@ -490,3 +490,21 @@ def test_stays_trend_over_the_discharge_date_and_claims_over_the_service_date():
     for name, want in (("inpatient", "Discharge Date"), ("health_claims", "Service From")):
         _, clean, contract, _ = _built(name)
         assert time_axis(contract, None, clean) == want, name
+
+
+def test_a_trend_that_skips_incomplete_months_names_the_months_it_compares():
+    """Insight gate: the evidence said 'Paid Amount MoM: +6.3%' and the report wrote 'from Aug to
+    Sep 2026'; the built-in compared Jul with Jun (Aug-Oct still arriving). It names them."""
+    from agents.analysis_agent import build_evidence
+    from orchestrator.state import AnalysisFindings, TrendResult
+    res = builtin("health_claims", ["Paid Amount"], [], ["trend"])
+    mom = next(t for t in res["trends"] if t["period"] == "MoM" and not t["segment"])
+    assert (mom["latest"], mom["previous"]) == ("2026-07", "2026-06")
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[TrendResult(**{
+        k: v for k, v in mom.items() if k != "n"})], segments=[], anomalies=[], statistical_tests=[],
+        forecast_points=[], distributions={}, code_executed="")
+    ev = build_evidence(f, res, "", "", None)
+    assert any("(Jul 2026 vs Jun 2026)" in e.claim for e in ev), [e.claim for e in ev]
+    # a stays trend over the data's own last two months names nothing (contexts stay pinned)
+    res = builtin("inpatient", ["Total Charges"], [], ["trend"])
+    assert all("latest" not in t for t in res["trends"])

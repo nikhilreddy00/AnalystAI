@@ -85,6 +85,8 @@ CHANGED = {
     **{("intake-20261103T175225Z.json", c): "Domain 3 intake gate: 'we pay' is the paid KPI's "
                                              "word (the verb was missing from the glossary)"
        for c in ("intake-health-10", "intake-health-12")},
+    ("insight-20261103T182036Z.json", "ins-44-claims-overview"):
+        "Domain 3: the trend evidence names the months it compares (Jul vs Jun 2026)",
     **{("insight-20261103T180921Z.json", c): "Domain 3: the time axis is the pack's date role "
                                             "(discharge, service date), never Admit/Paid Date"
        for c in ("ins-43-inpatient-overview", "ins-44-claims-overview")},

@@ -295,6 +295,9 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             overall = series_of(rows, c, agg, weeks)
             if overall is None or len(overall) < 2:
                 continue
+            # the data's own last month (before partial / run-out months were left out)
+            data_last = pd.to_datetime(rows[time_axis(contract, c, df)], format="mixed",
+                                       errors="coerce").dt.to_period("M").max()
             # every segment compares the same months as the whole file (never its own last two,
             # which can be a stale pair); a flow's month with no rows is 0
             last = overall.index[-1]
@@ -319,8 +322,9 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                         continue
                     pct = round(float(pct), 2)   # the direction says the stated figure
                     n = int(part.loc[part["_m"].isin([last, then]), c].notna().sum())
+                    named = {"latest": str(last), "previous": str(then)} if last != data_last else {}
                     raw["trends"].append({"column": c, "period": period, "pct_change": pct,
-                                          "segment": seg, "n": n,
+                                          "segment": seg, "n": n, **named,
                                           "direction": "up" if pct > 0 else "down" if pct < 0 else "flat"})
                     raw["builtin"].append(f"{tag}:{period}")
 
@@ -1084,8 +1088,10 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                for t in raw.get("trends", []) if isinstance(t, dict) and isinstance(t.get("n"), int)}
     for t in f.trends:
         seg = f" ({t.segment})" if t.segment else ""
+        months = (f" ({pd.Period(t.latest, 'M').strftime('%b %Y')} vs "
+                  f"{pd.Period(t.previous, 'M').strftime('%b %Y')})") if t.latest and t.previous else ""
         out.append(item("trend", f"trend:{t.column}{seg}:{t.period}",
-                        f"{t.column}{seg} {t.period}: {t.pct_change:+.1f}%", [t.column],
+                        f"{t.column}{seg} {t.period}{months}: {t.pct_change:+.1f}%", [t.column],
                         t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]

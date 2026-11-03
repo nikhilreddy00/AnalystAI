@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_serializer, model_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────────
@@ -329,6 +329,15 @@ class TrendResult(BaseModel):
     direction: str = "flat"                # up | down | flat
     pct_change: float = 0.0
     segment: str | None = None             # set for a per-segment trend (e.g. segment "B")
+    # The months compared ("2026-07", "2026-06"), set when they aren't the data's last two (a
+    # partial or still-arriving month was left out): the report names them, never guesses
+    latest: str | None = None
+    previous: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _no_unset_months(self, handler):   # unset: every dump as before the fields existed
+        out = handler(self)
+        return {k: v for k, v in out.items() if k not in ("latest", "previous") or v is not None}
 
 
 class SegmentResult(BaseModel):
