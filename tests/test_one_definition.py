@@ -144,3 +144,32 @@ def test_every_number_a_user_reads_takes_its_rows_from_rows_for():
     # the guard itself catches a new site that forgets the rule (a planted violation)
     assert _forgets_rows_for("by_branch", "def by_branch(df, c):\n    return aggregate(df, ['b'], 'x', 'mean', c)\n")
     assert not _forgets_rows_for("ok", "def ok(df, c):\n    df, _ = rows_for(df, c, 'x')\n    return aggregate(df)\n")
+
+
+def test_a_question_without_its_number_asks_never_guesses_the_first_column():
+    """Plan v2 R3: 'the balance' on a loan tape read Original Amount (metric_columns[0]). One
+    resolver (targeted_analysis_agent._metric); the guess appears nowhere else."""
+    import inspect
+    import re
+    from pathlib import Path
+
+    import pandas as pd
+
+    from agents import targeted_analysis_agent as t
+    from orchestrator.state import TargetedParams
+    for f in Path("agents").glob("*.py"):
+        src = f.read_text()
+        if f.name == "targeted_analysis_agent.py":
+            src = src.replace(inspect.getsource(t._metric), "")
+        assert not re.search(r"metric_columns\[0\]", src), f.name
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    df = pd.DataFrame({"d": pd.to_datetime(["2026-01-31", "2026-02-28", "2026-03-31"] * 4),
+                       "a": [1.5, 2.25, 3.75, 4.5] * 3, "b": [3.5, 4.25, 5.75, 6.5] * 3})
+    build = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract
+    two = build(df)
+    assert set(two.metric_columns) == {"a", "b"}
+    r = t.handle_time_series(df, TargetedParams(frequency="M"), two)
+    assert r.unanswerable_reason and "a or b" in r.unanswerable_reason
+    one = build(df.drop(columns="b"))
+    assert not t.handle_time_series(df, TargetedParams(frequency="M"), one).unanswerable_reason

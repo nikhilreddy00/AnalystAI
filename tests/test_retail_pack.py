@@ -987,6 +987,7 @@ def test_distributions_stay_histograms_and_mean_is_an_average(shop):
     r = _ask(s, "show the distribution of order totals", QuestionIntent.DISTRIBUTION,
              metric_column="Total")
     assert r.chart_configs and not r.answer_text.startswith("Net sales")
+    assert "Total" in r.chart_configs[0].title   # the named column, never the first one's guess
     m = _ask(s, "What is the mean price by country?", QuestionIntent.SEGMENT_COMPARE,
              metric_column="Lineitem quantity", segment_column="Shipping Country", aggregation="mean")
     assert m.answer_text.startswith("mean(")

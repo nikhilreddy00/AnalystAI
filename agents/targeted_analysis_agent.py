@@ -222,6 +222,21 @@ def _numeric_cols(df: pd.DataFrame, contract: DataContract) -> list[str]:
     return [c for c in contract.metric_columns if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
 
 
+def _metric(named: str | None, contract: DataContract) -> str | None:
+    """The number a question is about: the one it names, or the only one there is. Several and
+    none named: None, and the answer asks which (plan v2 R3: never the first column's guess,
+    which read a loan's original amount for "the balance")."""
+    return named or (contract.metric_columns[0] if len(contract.metric_columns) == 1 else None)
+
+
+def _no_metric(contract: DataContract) -> str:
+    cols = contract.metric_columns
+    if not cols:
+        return "No numeric column to use."
+    pick = ", ".join(cols[:-1][:4]) + (f" or {cols[-1]}" if len(cols) > 1 else cols[-1])
+    return f"Which number should I use: {pick}?"
+
+
 def _suggest_metric_questions(contract: DataContract) -> list[str]:
     return [f"Show the distribution of {c}" for c in contract.metric_columns[:2]]
 
@@ -286,12 +301,12 @@ def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataC
 
 def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                         ctx: VizContext | None = None) -> TargetedResponse:
-    col = (params.target_columns[0] if params.target_columns else None) \
-        or (contract.metric_columns[0] if contract.metric_columns else None)
+    col = _metric((params.target_columns[0] if params.target_columns else None) or params.metric_column,
+                  contract)
     if not col or col not in df.columns:
         return _unanswerable(
             QuestionIntent.DISTRIBUTION,
-            f"Column '{col}' not found." if col else "No column to plot a distribution of.",
+            f"Column '{col}' not found." if col else _no_metric(contract),
             _suggest_metric_questions(contract) or ["Specify a column to plot"],
         )
 
@@ -339,12 +354,12 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
 
 def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                  ctx: VizContext | None = None) -> TargetedResponse:
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     group = params.group_by
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.TOP_N,
-            f"Metric column '{metric}' not found." if metric else "No metric column specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             [f"Top 10 by {c}" for c in contract.metric_columns[:2]] or ["Specify a numeric column to rank"],
         )
     if not group or group not in df.columns:
@@ -454,12 +469,12 @@ def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
 
 def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        ctx: VizContext | None = None) -> TargetedResponse:
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     date = params.date_column or time_axis(contract, metric, df)
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
-            f"Metric column '{metric}' not found." if metric else "No metric column specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             _suggest_metric_questions(contract),
         )
     if not date or date not in df.columns:
@@ -587,12 +602,12 @@ def _lead_and_last(order: pd.Series) -> str:
 
 def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                            ctx: VizContext | None = None) -> TargetedResponse:
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     segment = params.segment_column
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.SEGMENT_COMPARE,
-            f"Metric column '{metric}' not found." if metric else "No metric column specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             _suggest_metric_questions(contract),
         )
     if not segment or segment not in df.columns:
@@ -699,7 +714,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
                            ctx: VizContext | None = None,
                            strata: list[str] | tuple = ()) -> TargetedResponse:
     variant = params.variant_column
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     if not variant or variant not in df.columns:
         return _unanswerable(
             QuestionIntent.AB_SIGNIFICANCE,
@@ -709,7 +724,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.AB_SIGNIFICANCE,
-            f"Metric column '{metric}' not found." if metric else "No metric specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             _suggest_metric_questions(contract),
         )
 
