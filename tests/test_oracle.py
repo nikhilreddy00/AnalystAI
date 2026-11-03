@@ -28,12 +28,16 @@ LIVE = {"strict": True}
 def _built(name: str, seed: int = 1, transform: str = ""):
     """(session, cleaned frame, contract, truth) through the production reader and cleaning."""
     from agents.cleaning_agent import run_cleaning_agent
+    from agents.ingestion_agent import prepare_frame
     from connectors.csv_connector import CSVConnector, _read_bytes
     from orchestrator.state import AnalysisSession, AnalysisTask, ConnectorConfig, ConnectorType
     raw, truth = datagen.make(name, seed)
     raw = TRANSFORMS[transform](raw) if transform else raw
     df = _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0]
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    # patient data: the PHI-protected copy, as production builds it (smoke run: pooling a
+    # float code column broke parquet; this adapter skipped the step)
+    df, contract = prepare_frame(df, contract, ConnectorType.CSV, scope="oracle")
     s = AnalysisSession(session_id="oracle", data_contract=contract, task_plan=AnalysisTask(
         raw_query="o", analysis_types=["eda"], target_metrics=[]))
     s.__dict__["_df_parquet"] = _parquet(df)

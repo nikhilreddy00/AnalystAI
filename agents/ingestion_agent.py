@@ -662,7 +662,8 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
         # 9 of 300 → 0%); diagnosis codes are pooled however many categories they have.
         if out[col].nunique() <= 2 or (key.nunique() > 50 and not dx) or not small.any():
             continue
-        out[col] = out[col].astype(object).where(~small, POOLED_LABEL)
+        # a code read as numbers (DRG 313.0) becomes its text first: one type per column
+        out[col] = as_text(out[col]).where(out[col].notna()).astype(object).where(~small, POOLED_LABEL)
         decisions.append(_decision(col, "pool", "small_cells", f"groups under {SMALL_CELL} records "
                                    f"grouped as '{POOLED_LABEL}'", int(small.sum()), out))
     notes = [*((info or {}).get("notes", [])),

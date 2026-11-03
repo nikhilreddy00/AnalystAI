@@ -314,3 +314,13 @@ def test_describe_kpi_says_within_and_days_in_words():
     assert "followed by another row of the same who starting 1–30 days after day_out" in back
     assert "kind_of is in" in back and "how_left is not died" in back
     assert "days from day_in to day_out" in domain_pack.describe_kpi(pack, "avg_stay", roles)
+
+
+def test_pooling_a_code_column_read_as_numbers_keeps_a_storable_frame(toy_clinic):
+    """Smoke run: small MS-DRG groups (a float column: blanks on observation stays) pooled into
+    'Other (fewer than 11 each)' made a float/str column parquet can't store (ArrowInvalid)."""
+    import io
+    df = _stays().assign(group_code=[470.0] * 150 + [871.0] * 140 + [291.0] * 5 + [None] * 5)
+    out, _ = prepare_frame(df, build_contract(df, ConnectorType.CSV), ConnectorType.CSV)
+    out.to_parquet(io.BytesIO(), index=False)
+    assert set(out["group_code"].dropna()) == {"470", "871", "Other (fewer than 11 each)"}
