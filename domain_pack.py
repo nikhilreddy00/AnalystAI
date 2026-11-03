@@ -101,6 +101,19 @@ class RunningBalance(_Strict):
     minus: list[str] = Field(default_factory=list)
 
 
+class Within(_Strict):
+    """Rows followed by another row of the same entity starting (0, days] after this row's end
+    (a 30-day readmission). Follow-ups are found anywhere in the data and must meet `follow`;
+    a row whose window runs past the data's last start is censored (in neither count). `base`:
+    count the uncensored rows instead (the rate's denominator)."""
+    entity: str
+    start: str
+    end: str
+    days: int = Field(gt=0)
+    follow: list[list[Cond]] = Field(default_factory=list)
+    base: bool = False
+
+
 class Term(_Strict):
     """One summand: sum / sum_abs of a role or a 2-role product or difference, nunique of a
     role, or another KPI; over the given row kinds (default: the KPI's)."""
@@ -108,6 +121,7 @@ class Term(_Strict):
     sum_abs: str | list[str] | None = None
     nunique: str | None = None
     kpi: str | None = None
+    within: Within | None = None
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] | None = None
     sign: Literal[1, -1] = 1
     optional: bool = False        # a missing role drops this term (and a blank value counts 0)
@@ -118,17 +132,20 @@ class Term(_Strict):
 
     @model_validator(mode="after")
     def _one(self) -> Term:
-        if sum(x is not None for x in (self.sum, self.sum_abs, self.nunique, self.kpi)) != 1:
-            raise ValueError("a term needs exactly one of sum, sum_abs, nunique, kpi")
+        if sum(x is not None for x in (self.sum, self.sum_abs, self.nunique, self.kpi,
+                                       self.within)) != 1:
+            raise ValueError("a term needs exactly one of sum, sum_abs, nunique, kpi, within")
         expr = self.sum if self.sum is not None else self.sum_abs
-        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in ("*", "-")):
-            raise ValueError(f"a term's expression is [role, '*' or '-', role], not {expr}")
+        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in ("*", "-", "days")):
+            raise ValueError(f"a term's expression is [role, '*', '-' or 'days', role], not {expr}")
         return self
 
     def roles(self) -> list[str]:
         expr = self.sum if self.sum is not None else self.sum_abs
         own = [self.nunique] if self.nunique else [] if expr is None else [expr] if isinstance(
             expr, str) else [expr[0], expr[2]]
+        if w := self.within:
+            own = [w.entity, w.start, w.end, *(c.role for g in w.follow for c in g)]
         return list(dict.fromkeys([*own, *([self.net_of] if self.net_of else []),
                                    *(c.role for g in self.where for c in g)]))
 
@@ -564,9 +581,34 @@ def main_currency(df: pd.DataFrame, roles: dict[str, str]) -> tuple[pd.Series, s
 def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str]) -> pd.Series:
     if isinstance(expr, str):
         return pd.to_numeric(df[roles[expr]], errors="coerce")
+    if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
+        d = (_day(df[roles[expr[0]]]) - _day(df[roles[expr[2]]])).dt.days
+        return d.where(d >= 0).astype(float)
     a, op, b = (pd.to_numeric(df[roles[expr[0]]], errors="coerce"), expr[1],
                 pd.to_numeric(df[roles[expr[2]]], errors="coerce"))
     return a * b if op == "*" else a - b
+
+
+def _day(s: pd.Series) -> pd.Series:
+    return pd.to_datetime(s, format="mixed", errors="coerce").dt.normalize()
+
+
+def _within(df: pd.DataFrame, whole: pd.DataFrame, roles: dict[str, str], w: Within) -> pd.Series:
+    """1.0 per `df` row counted by `w` (a hit, or with `base` an uncensored row), else 0.0."""
+    end = _day(df[roles[w.end]])
+    starts = _day(whole[roles[w.start]])
+    keep = (end <= starts.max() - pd.Timedelta(days=w.days)) & end.notna()
+    if w.base:
+        return keep.astype(float)
+    follow = _meets(whole, roles, w.follow) if w.follow else pd.Series(True, index=whole.index)
+    nxt = pd.DataFrame({"e": whole.loc[follow, roles[w.entity]].astype(str),
+                        "t": starts[follow]}).dropna().sort_values("t", kind="stable")
+    idx = pd.DataFrame({"e": df[roles[w.entity]].astype(str), "t": end, "i": df.index}
+                       ).dropna(subset=["t"]).sort_values("t", kind="stable")
+    hit = pd.merge_asof(idx, nxt.rename(columns={"t": "n"}), left_on="t", right_on="n", by="e",
+                        direction="forward", allow_exact_matches=False)
+    hit = hit.set_index("i")["n"].sub(hit.set_index("i")["t"]).dt.days.le(w.days)
+    return (keep & hit.reindex(df.index, fill_value=False)).astype(float)
 
 
 def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> bool:
@@ -626,6 +668,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     if met is not None and kpi.den is None and not periodic:   # spend by category: no "Transfer"
         counted &= met   # at $0; but a month with no charge-offs is a month at $0
     groups = pd.unique(df.loc[counted, by].dropna()) if by else None
+    if term.within:   # follow-ups anywhere in the data, never only in this month or group
+        values = _within(part, kinds.attrs.get("frame", df), roles, term.within)
+        return values.groupby(part[by]).sum().reindex(groups, fill_value=0) if by else values.sum()
     if term.nunique:
         col = part[roles[term.nunique]]
         return col.groupby(part[by]).nunique().reindex(groups, fill_value=0) if by else col.nunique()

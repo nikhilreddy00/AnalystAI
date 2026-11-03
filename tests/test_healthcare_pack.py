@@ -214,3 +214,54 @@ def test_without_overview_kpis_retail_and_banking_keep_their_charts():
     assert asks[0] == ("time_series", "total_balance", None)
     assert [a[1] for a in asks[1:]] == ["total_balance", "npl_ratio"]
     assert not bank.overview_kpis and not domain_pack.pack_for("retail").overview_kpis
+
+
+WARD = {
+    "domain": "toyward2", "signals": [{"a": ["who"], "b": ["day_in"]}],
+    "roles": {"who": {"kind": "id", "headers": ["who"]},
+              "day_out": {"kind": "date", "headers": ["day_out"]},
+              "day_in": {"kind": "date", "headers": ["day_in"]},
+              "kind_of": {"kind": "category", "headers": ["kind_of"]},
+              "how_left": {"kind": "category", "headers": ["how_left"]}},
+    "kpis": [
+        {"name": "back", "label": "Back within 30 days", "unit": "percent",
+         "num": [[{"within": {"entity": "who", "start": "day_in", "end": "day_out", "days": 30,
+                              "follow": [[{"role": "kind_of", "in": ["in"]}]]},
+                   "where": [[{"role": "how_left", "not_in": ["died"]}]]}]],
+         "den": [[{"within": {"entity": "who", "start": "day_in", "end": "day_out", "days": 30,
+                              "base": True},
+                   "where": [[{"role": "how_left", "not_in": ["died"]}]]}]]},
+        {"name": "avg_stay", "label": "Average stay", "unit": "number",
+         "num": [[{"sum": ["day_out", "days", "day_in"]}]], "den": [[{"nunique": "who"}]]}],
+    "caveats": {"read_as_domain_weak": "x"}}
+
+STAYS = pd.DataFrame([
+    # who, in, out, kind, left
+    ("A", "2026-01-01", "2026-01-05", "in", "home"),   # index → A back on 01-20 (15 d): hit
+    ("A", "2026-01-20", "2026-01-22", "in", "home"),   # index → no follow-up: no
+    ("B", "2026-01-03", "2026-01-03", "in", "home"),   # same-day stay; B back 02-03 (31 d): no
+    ("B", "2026-02-03", "2026-02-04", "in", "home"),   # index → none
+    ("C", "2026-01-10", "2026-01-12", "in", "home"),   # follow-up is an observation stay: no
+    ("C", "2026-01-15", "2026-01-15", "obs", "home"),  # index (obs stays are filtered by where
+    ("D", "2026-01-02", "2026-01-06", "in", "died"),   #   in a real pack) ; died: not an index
+    ("E", "2026-03-01", "2026-03-04", "in", "home"),   # window passes the last start: censored
+    ("E", "2026-03-10", "2026-03-12", "in", "home"),   # last start 03-10; censored too
+], columns=["who", "day_in", "day_out", "kind_of", "how_left"])
+
+
+def _ward_kpi(name, by=None):
+    pack = domain_pack.Pack.model_validate(WARD)
+    roles = {r: r for r in pack.roles}
+    return domain_pack.compute_kpi(STAYS, roles, pack, name, by=by)
+
+
+def test_within_counts_a_follow_up_in_the_window_and_censors_unfinished_windows():
+    """D2: index = not died, discharge ≤ last admit − 30 d (A×2, B×2, C×2 = 6); back = a later
+    inpatient admit of the same patient in (0, 30] days after discharge (A's first only)."""
+    assert _ward_kpi("back") == pytest.approx(1 / 6)
+
+
+def test_days_between_two_dates_is_whole_days_and_same_day_is_zero():
+    """m3: LOS = discharge − admit in days (HCUP: same day = 0); 5 people, 9 stays."""
+    los = [4, 2, 0, 1, 2, 0, 4, 3, 2]
+    assert _ward_kpi("avg_stay") == pytest.approx(sum(los) / 5)

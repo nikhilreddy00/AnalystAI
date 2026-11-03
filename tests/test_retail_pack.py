@@ -70,7 +70,7 @@ _BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"kpi": "k"}]]}]}, "refers to itself"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "zzz"}]]}]}, "unknown role zzz"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "r", "nunique": "s"}]]}]}, "exactly one"),
-    ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": ["r", "/", "s"]}]]}]}, "'\\*' or '-'"),
+    ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": ["r", "/", "s"]}]]}]}, "'\\*', '-' or 'days'"),
     ({"surprise": 1}, "Extra inputs"),
     ({"caveats": {}}, "read_as_domain_weak"),   # a weak match must be able to hedge
     ({"week_ends": "SATURDAY"}, "week_ends"),   # audit pass 3 (m8)
