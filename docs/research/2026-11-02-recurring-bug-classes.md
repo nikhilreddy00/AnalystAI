@@ -282,3 +282,19 @@ guard (bug → invariant).
   tokens, and the corpus must carry negatives from every other domain.
 - **R4 renames row kinds.** That touches the analysis brief and the sandbox's `row_kind` column,
   so retail and banking contexts change and need one paid re-check (in R6).
+
+## Status (2026-11-02, branch fix-final-banking-audit; all $0)
+| step | commit | what landed | evidence |
+|---|---|---|---|
+| R0 | 4c45d38 | oracle against truth: 4 new datasets, truth / differential / metamorphic relations, live bugs as strict xfails | 12 pass, 12 xfail |
+| R1 | 85ceceb | `rows_for` the one row rule; per-period month-ends; dashboard `__counted`; AST guard | 2 xfails flipped |
+| R2 | bc18c09 | built-ins in-process (`standard_stats`); `repair_breakdowns` recomputes model breakdowns of money columns; ADR-0004 addendum | differential vs the old sandbox code: 25/38 identical, rest explained; 1 xfail flipped |
+| R3 | 1357877, 3e5a4a8, d51bb73, 1678e9c | pack abbreviations (validator refuses dead abbreviated headers); value roles: `signed_by` (Dr/Cr), `running_balance` + `one_series` (a statement), `paired_fields` (Debit/Credit blanks), `strong_panel` (deposit book); one metric resolver (asks, never `metric_columns[0]`); one word rule (`domain_pack.words`) | **0 live xfails**; header corpus + other domains' negatives |
+| R4 | fa971b1 | pseudo-pack test (found 2 leaks: retail `TEXT_DEFAULTS`, internal kind codes in the brief); `kind_codes`; `display_values` (10 significant digits), `PLATFORM_FLOATS` deleted; datagen float policy | pseudo-pack green; golden: retail unchanged |
+| R6 | — | paid re-check: banking analysis contexts (CHANGES), E2E banking + retail, insight 4 | pending the user's go-ahead (~$1.35) |
+
+Deviations: R2's "anything else labelled model-computed" (model trends other than MoM/YoY) not
+done: those trends have no shared rule to recompute them yet. R3's "$0-no-later-rows" was
+already covered by R1's stopped-account cut (the messy tape's sold loans). Bugs found on the way
+and pinned: per-segment MoM compared each segment's own last two months (a stale pair);
+`handle_distribution` ignored the named metric; statuses compared case-only in row kinds.
