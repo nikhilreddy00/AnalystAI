@@ -1,0 +1,11 @@
+id: intake-health-13
+category: clear
+pipeline: production
+source:
+  dataset: health_claims
+  seed: 1
+overview_done: true
+question: What's our utilization per 1,000 members?
+expect:
+  ask: true
+rationale: 'Per-1,000 needs enrollment: unsupported.'

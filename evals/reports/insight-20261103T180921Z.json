@@ -1,0 +1,1646 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261103T180921Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "759c7c0",
+  "started_at": "20261103T180921Z",
+  "only": "ins-43-inpatient-overview,ins-44-claims-overview",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 1,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0236,
+  "latency_p50_s": 21.46,
+  "latency_p95_s": 21.95,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": 1.0,
+  "must_not": 1.0,
+  "contradictions_named": null,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "straightforward": 1.0
+  },
+  "by_domain": {
+   "healthcare": {
+    "cases": 2,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 2,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "ins-43-inpatient-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/crude|not risk[- ]adjusted/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/limited data set/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|basket|outstanding balance|\\bNPL\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(caus|led to|drove|because of)\\w* .{0,40}(department|cardiology|treatment|care)|worse care|poor(er)? care/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(total|hospital|care) costs? (of|was|were|is|reached) \\$/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This dataset covers 4,203 inpatient stays across 12 months, with a 30-day readmission rate of 9.0%, in-hospital mortality of 2.4%, and an average length of stay of 3.72 days. Across 3,455 discharges involving 1,707 patients, Cardiology accounts for the largest share of total charges among all departments, while total charges fell sharply in Oct 2026 compared with Sep 2026. Rates are crude and not risk-adjusted, and the file contains exact dates, meaning it is a limited dataset rather than a fully de-identified one.",
+      "technical_findings": [
+       "Total Charges MoM: -26.0% (n = 4,203; high confidence: 4203 rows)",
+       "sum Total Charges by Department (6 groups) (n = 4,203; high confidence: 4203 rows)",
+       "Total Charges: median 22,216.05, mean 32,105.12, range 3,500.23 to 827,622.78 (n = 4,203; high confidence: 4203 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the Oct 2026 drop in total charges by reviewing admission volumes and case mix for that month before drawing conclusions.",
+        "reasoning": "Determines whether the decline is seasonal, operational, or a data artefact.",
+        "metric_impact": "Determines whether the decline is seasonal, operational, or a data artefact."
+       },
+       {
+        "priority": 2,
+        "action": "Review the small number of stays with charges near $827,623 to confirm they are clinically valid and not data errors.",
+        "reasoning": "High-cost outliers can distort department-level and facility-level cost reporting.",
+        "metric_impact": "High-cost outliers can distort department-level and facility-level cost reporting."
+       },
+       {
+        "priority": 3,
+        "action": "Apply risk adjustment to the 9.0% readmission rate and 2.4% mortality rate before using them for benchmarking or performance reporting.",
+        "reasoning": "Crude rates without risk adjustment can misrepresent quality of care across departments with different patient acuity.",
+        "metric_impact": "Crude rates without risk adjustment can misrepresent quality of care across departments with different patient acuity."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Ms-drg: missing labels grouped",
+        "severity": "low",
+        "description": "16.6% of MS-DRG labels were missing and are grouped as Unknown.",
+        "affected_metric": "MS-DRG",
+        "suggested_investigation": "Fill in MS-DRG at the source."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as healthcare data (discharges, ALOS, 30-day readmission rate, in-hospital mortality, patients). Rates are crude (not risk-adjusted). This file has exact dates: a limited data set, not de-identified. The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Which departments or discharge dispositions are driving the highest 30-day readmission rates?",
+       "Is the Oct 2026 drop in total charges explained by fewer admissions, shorter stays, or a shift in case mix toward lower-acuity patients?",
+       "What clinical or demographic factors are associated with the very high-cost stays near the top of the charges range?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Patient data protected first (9 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 3 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Discharge Disposition, Total Charges. Final dataset: 4203 rows (started with 4203). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "This dataset covers 4,203 inpatient stays across 12 months, with a 30-day readmission rate of 9.0%, in-hospital mortality of 2.4%, and an average length of stay of 3.72 days.",
+       "headline_evidence_ids": [
+        "clean:audit"
+       ],
+       "paragraphs": [
+        {
+         "text": "Across 3,455 discharges involving 1,707 patients, Cardiology accounts for the largest share of total charges among all departments, while total charges fell sharply in Oct 2026 compared with Sep 2026.",
+         "evidence_ids": [
+          "seg:Department/Total Charges:sum",
+          "trend:Total Charges:MoM"
+         ]
+        },
+        {
+         "text": "Rates are crude and not risk-adjusted, and the file contains exact dates, meaning it is a limited dataset rather than a fully de-identified one.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Cardiology generated the highest total charges at $41,663,189, followed by Orthopedics at $33,207,579 and General Medicine at $24,167,064.",
+         "evidence_ids": [
+          "seg:Department/Total Charges:sum"
+         ]
+        },
+        {
+         "text": "Total charges dropped 26.0% from Sep 2026 to Oct 2026; because the data spans only 12 months with no prior-year comparison, this shift may reflect seasonality rather than a sustained trend.",
+         "evidence_ids": [
+          "trend:Total Charges:MoM"
+         ]
+        },
+        {
+         "text": "Per-stay charges vary widely: the median is $22,216 while the mean is $32,105 and the maximum reaches $827,623, indicating a small number of very high-cost stays pulling the average up \u2014 these outliers have been flagged but kept in the data.",
+         "evidence_ids": [
+          "eda:Total Charges"
+         ]
+        },
+        {
+         "text": "Cleaning: 4203 \u2192 4203 rows, 14 logged changes",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the Oct 2026 drop in total charges by reviewing admission volumes and case mix for that month before drawing conclusions.",
+         "expected_impact": "Determines whether the decline is seasonal, operational, or a data artefact.",
+         "evidence_ids": [
+          "trend:Total Charges:MoM"
+         ]
+        },
+        {
+         "action": "Review the small number of stays with charges near $827,623 to confirm they are clinically valid and not data errors.",
+         "expected_impact": "High-cost outliers can distort department-level and facility-level cost reporting.",
+         "evidence_ids": [
+          "eda:Total Charges"
+         ]
+        },
+        {
+         "action": "Apply risk adjustment to the 9.0% readmission rate and 2.4% mortality rate before using them for benchmarking or performance reporting.",
+         "expected_impact": "Crude rates without risk adjustment can misrepresent quality of care across departments with different patient acuity.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Patient data protected first (9 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 3 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Discharge Disposition, Total Charges. Final dataset: 4203 rows (started with 4203). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "Total Charges MoM: -26.0% (n = 4,203; high confidence: 4203 rows)",
+        "sum Total Charges by Department (6 groups) (n = 4,203; high confidence: 4203 rows)",
+        "Total Charges: median 22,216.05, mean 32,105.12, range 3,500.23 to 827,622.78 (n = 4,203; high confidence: 4203 rows)"
+       ],
+       "caveats": [
+        "All rates (readmission, mortality) are crude and not risk-adjusted; comparisons across departments or to external benchmarks should be made with caution.",
+        "The dataset spans only 12 months with no same-month prior-year data, so month-over-month changes cannot be separated from seasonal patterns.",
+        "The file contains exact dates and is classified as a limited dataset, not fully de-identified; access and sharing should follow applicable data governance rules.",
+        "1 sentence(s) stating a number, date or term not in the evidence and 0 uncited claim(s) were removed.",
+        "Read as healthcare data (discharges, ALOS, 30-day readmission rate, in-hospital mortality, patients). Rates are crude (not risk-adjusted). This file has exact dates: a limited data set, not de-identified.",
+        "The data covers 12 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "Patient Name: personal, free text or too specific to be a category: withheld from analysis",
+        "DOB: personal, free text or too specific to be a category: withheld from analysis",
+        "Encounter ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "MRN: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "Patient ZIP: ZIP reduced to its first 3 digits (000 for sparsely populated areas)",
+        "Department: groups under 11 records grouped as 'Other (fewer than 11 each)'"
+       ],
+       "code_references": [
+        "_period = pd.to_datetime(df['Admit Date'], format='mixed').dt.to_period('M'); df.groupby(_period)['Total Charges'].sum()",
+        "df.groupby('Department')['Total Charges'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-03T18:09:42.032153Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Encounter ID",
+       "MRN",
+       "Patient ZIP",
+       "Admit Date",
+       "Discharge Date",
+       "Encounter Type",
+       "Department",
+       "MS-DRG",
+       "Principal Dx",
+       "Discharge Disposition",
+       "Attending NPI",
+       "Total Charges"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Total Charges:MoM",
+       "seg:Department/Total Charges:sum",
+       "eda:Total Charges"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 4203 \u2192 4203 rows, 14 logged changes",
+        "result_excerpt": "{\"rows_before\": 4203, \"rows_after\": 4203, \"decisions\": [[\"Patient Name\", \"withhold\", 4203, 0], [\"DOB\", \"withhold\", 4203, 0], [\"Encounter ID\", \"pseudonymize\", 4203, 0], [\"MRN\", \"pseudonymize\", 4203, 0], [\"Patient ZIP\", \"generalize\", 4203, 0], [\"Department\", \"pool\", 7, 0], [\"MS-DRG\", \"pool\", 7, 0], [\"Principal Dx\", \"pool\", 7, 0], [\"Attending NPI\", \"pool\", 7, 0], [\"Patient ZIP\", \"type_coerce\", 4203, ",
+        "row_count": 4203,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Patient Name: personal, free text or too specific to be a category: withheld from analysis",
+         "DOB: personal, free text or too specific to be a category: withheld from analysis",
+         "Encounter ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+         "MRN: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+         "Patient ZIP: ZIP reduced to its first 3 digits (000 for sparsely populated areas)",
+         "Department: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+         "MS-DRG: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+         "Principal Dx: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+         "Attending NPI: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+         "Patient ZIP: Parsed as numeric.",
+         "Admit Date: Parsed as dates.",
+         "Discharge Date: Parsed as dates.",
+         "Discharge Date: 52 missing (1.2%), date: left as missing; totals and averages use the 4151 known rows.",
+         "MS-DRG: 698 missing labels grouped as 'Unknown' (not guessed)."
+        ]
+       },
+       {
+        "id": "trend:Total Charges:MoM",
+        "kind": "trend",
+        "claim": "Total Charges MoM: -26.0%",
+        "result_excerpt": "{\"column\": \"Total Charges\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -26.0, \"segment\": null}",
+        "row_count": 4203,
+        "confidence": "high",
+        "confidence_reason": "4203 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Department/Total Charges:sum",
+        "kind": "segment",
+        "claim": "sum Total Charges by Department (6 groups)",
+        "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"Total Charges\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Cardiology\", \"value\": 41663189.13}, {\"name\": \"General Medicine\", \"value\": 24167064.42}, {\"name\": \"Neurology\", \"value\": 14422030.35}, {\"name\": \"Orthopedics\", \"value\": 33207578.7}, {\"name\": \"Other (fewer than 11 each)\", \"value\": 381716.86}, {\"name\": \"Pulmonology\", \"value\": 21096247.88}]}",
+        "row_count": 4203,
+        "confidence": "high",
+        "confidence_reason": "4203 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Total Charges",
+        "kind": "eda",
+        "claim": "Total Charges: median 22,216.05, mean 32,105.12, range 3,500.23 to 827,622.78",
+        "result_excerpt": "{\"mean\": 32105.1219, \"std\": 39347.4396, \"min\": 3500.23, \"max\": 827622.78, \"median\": 22216.05, \"count\": 4203.0}",
+        "row_count": 4203,
+        "confidence": "high",
+        "confidence_reason": "4203 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 12,
+      "audit_summary": "Patient data protected first (9 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 3 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Discharge Disposition, Total Charges. Final dataset: 4203 rows (started with 4203).",
+      "chart_titles": [
+       "Discharges over time",
+       "Discharges by Department",
+       "30-day readmission rate by Department",
+       "ALOS by Department",
+       "total charges fell 26.0% in Oct 2026 vs Sep 2026",
+       "Total total charges by department: Cardiology highest (41,663,189.13), Other (fewer than 11 each) lowest (381,716.86)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Total Charges": {
+          "mean": 32105.1219,
+          "std": 39347.4396,
+          "min": 3500.23,
+          "max": 827622.78,
+          "median": 22216.05,
+          "count": 4203.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Total Charges",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -26.0,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Department",
+          "metric_column": "Total Charges",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Cardiology",
+            "value": 41663189.13
+           },
+           {
+            "name": "General Medicine",
+            "value": 24167064.42
+           },
+           {
+            "name": "Neurology",
+            "value": 14422030.35
+           },
+           {
+            "name": "Orthopedics",
+            "value": 33207578.7
+           },
+           {
+            "name": "Other (fewer than 11 each)",
+            "value": 381716.86
+           },
+           {
+            "name": "Pulmonology",
+            "value": 21096247.88
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Encounter ID": 0.0,
+         "MRN": 0.0,
+         "Patient ZIP": 0.0,
+         "Admit Date": 0.0,
+         "Discharge Date": 1.24,
+         "Encounter Type": 0.0,
+         "Department": 0.0,
+         "MS-DRG": 0.0,
+         "Principal Dx": 0.0,
+         "Discharge Disposition": 0.0,
+         "Attending NPI": 0.0,
+         "Total Charges": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Discharges",
+          "value": "3,455",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "discharges",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Encounter ID; over counted rows."
+         },
+         {
+          "label": "ALOS",
+          "value": "3.72 days",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "alos",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "number",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of days from Admit Date to Discharge Date where Encounter Type is inpatient / ip / inpt / i, divided by discharges; over counted rows."
+         },
+         {
+          "label": "30-day readmission rate",
+          "value": "9.0%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "readmission_rate",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Rows whose Discharge Date is at least 30 days before the last Admit Date followed by another row of the same MRN starting 1\u201330 days after Discharge Date (the next must have Encounter Type is inpatient / ip / inpt / i) where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 82 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute, divided by rows whose Discharge Date is at least 30 days before the last Admit Date where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 82 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute; over counted rows."
+         },
+         {
+          "label": "In-hospital mortality",
+          "value": "2.4%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mortality_rate",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Encounter ID, divided by discharges; over counted rows."
+         },
+         {
+          "label": "Patients",
+          "value": "1,707",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "patients",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct MRN; over counted rows."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 4203 \u2192 4203 rows, 14 logged changes",
+         "result_excerpt": "{\"rows_before\": 4203, \"rows_after\": 4203, \"decisions\": [[\"Patient Name\", \"withhold\", 4203, 0], [\"DOB\", \"withhold\", 4203, 0], [\"Encounter ID\", \"pseudonymize\", 4203, 0], [\"MRN\", \"pseudonymize\", 4203, 0], [\"Patient ZIP\", \"generalize\", 4203, 0], [\"Department\", \"pool\", 7, 0], [\"MS-DRG\", \"pool\", 7, 0], [\"Principal Dx\", \"pool\", 7, 0], [\"Attending NPI\", \"pool\", 7, 0], [\"Patient ZIP\", \"type_coerce\", 4203, 0], [\"Admit Date\", \"type_coerce\", 4203, 0], [\"Discharge Date\", \"type_coerce\", 4151, 0], [\"Discharge ",
+         "row_count": 4203,
+         "assumptions": [
+          "Patient Name: personal, free text or too specific to be a category: withheld from analysis",
+          "DOB: personal, free text or too specific to be a category: withheld from analysis",
+          "Encounter ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "MRN: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "Patient ZIP: ZIP reduced to its first 3 digits (000 for sparsely populated areas)",
+          "Department: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "MS-DRG: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "Principal Dx: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "Attending NPI: groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "Patient ZIP: Parsed as numeric.",
+          "Admit Date: Parsed as dates.",
+          "Discharge Date: Parsed as dates.",
+          "Discharge Date: 52 missing (1.2%), date: left as missing; totals and averages use the 4151 known rows.",
+          "MS-DRG: 698 missing labels grouped as 'Unknown' (not guessed)."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Total Charges MoM: -26.0%",
+         "result_excerpt": "{\"column\": \"Total Charges\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -26.0, \"segment\": null}",
+         "row_count": 4203,
+         "assumptions": [],
+         "confidence_reason": "4203 rows"
+        },
+        {
+         "claim": "sum Total Charges by Department (6 groups)",
+         "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"Total Charges\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Cardiology\", \"value\": 41663189.13}, {\"name\": \"General Medicine\", \"value\": 24167064.42}, {\"name\": \"Neurology\", \"value\": 14422030.35}, {\"name\": \"Orthopedics\", \"value\": 33207578.7}, {\"name\": \"Other (fewer than 11 each)\", \"value\": 381716.86}, {\"name\": \"Pulmonology\", \"value\": 21096247.88}]}",
+         "row_count": 4203,
+         "assumptions": [],
+         "confidence_reason": "4203 rows"
+        },
+        {
+         "claim": "Total Charges: median 22,216.05, mean 32,105.12, range 3,500.23 to 827,622.78",
+         "result_excerpt": "{\"mean\": 32105.1219, \"std\": 39347.4396, \"min\": 3500.23, \"max\": 827622.78, \"median\": 22216.05, \"count\": 4203.0}",
+         "row_count": 4203,
+         "assumptions": [],
+         "confidence_reason": "4203 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Patient Name",
+          "operation": "withhold",
+          "strategy": "drop_column",
+          "reason": "personal, free text or too specific to be a category: withheld from analysis",
+          "rows_affected": 4203,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "DOB",
+          "operation": "withhold",
+          "strategy": "drop_column",
+          "reason": "personal, free text or too specific to be a category: withheld from analysis",
+          "rows_affected": 4203,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Encounter ID",
+          "operation": "pseudonymize",
+          "strategy": "keyed_hash",
+          "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "rows_affected": 4203,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "MRN",
+          "operation": "pseudonymize",
+          "strategy": "keyed_hash",
+          "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "rows_affected": 4203,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Patient ZIP",
+          "operation": "generalize",
+          "strategy": "zip3",
+          "reason": "ZIP reduced to its first 3 digits (000 for sparsely populated areas)",
+          "rows_affected": 4203,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Department",
+          "operation": "pool",
+          "strategy": "small_cells",
+          "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "rows_affected": 7,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "MS-DRG",
+          "operation": "pool",
+          "strategy": "small_cells",
+          "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "rows_affected": 7,
+          "before_null_pct": 16.6,
+          "after_null_pct": 16.6,
+          "rows_removed": 0
+         },
+         {
+          "column": "Principal Dx",
+          "operation": "pool",
+          "strategy": "small_cells",
+          "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "rows_affected": 7,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Attending NPI",
+          "operation": "pool",
+          "strategy": "small_cells",
+          "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+          "rows_affected": 7,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Patient ZIP",
+          "operation": "type_coerce",
+          "strategy": "to_numeric",
+          "reason": "Parsed as numeric.",
+          "rows_affected": 4203,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Admit Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 4203,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Discharge Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 4151,
+          "before_null_pct": 1.2,
+          "after_null_pct": 1.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Discharge Date",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "52 missing (1.2%), date: left as missing; totals and averages use the 4151 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 1.2,
+          "after_null_pct": 1.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "MS-DRG",
+          "operation": "fill_unknown",
+          "strategy": "unknown_label",
+          "reason": "698 missing labels grouped as 'Unknown' (not guessed).",
+          "rows_affected": 698,
+          "before_null_pct": 16.6,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 4203,
+        "rows_after": 4203,
+        "columns_coerced": [
+         "Patient ZIP",
+         "Admit Date",
+         "Discharge Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "134 mild outliers in Discharge Disposition (threshold: values outside [-0.750, 31.00]) \u2014 see analyst tab",
+         "15 mild outliers in Total Charges (threshold: values outside [240.44, 1.86M]) \u2014 see analyst tab"
+        ],
+        "high_null_columns": [],
+        "summary": "Patient data protected first (9 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 3 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Discharge Disposition, Total Charges. Final dataset: 4203 rows (started with 4203).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Discharge Disposition",
+           "extreme_count": 0,
+           "mild_count": 134,
+           "extreme_pct": 0.0,
+           "lower_bound": -0.7499999999999999,
+           "upper_bound": 30.999999999999986,
+           "mild_lower_bound": -0.2928932188134524,
+           "mild_upper_bound": 10.31370849898476,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "134 mild outliers in Discharge Disposition (threshold: values outside [-0.750, 31.00]) \u2014 see analyst tab"
+          },
+          {
+           "column": "Total Charges",
+           "extreme_count": 0,
+           "mild_count": 15,
+           "extreme_pct": 0.0,
+           "lower_bound": 240.44370657232548,
+           "upper_bound": 1860775.0919124754,
+           "mild_lower_bound": 1642.3057203106225,
+           "mild_upper_bound": 273394.6750589241,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "15 mild outliers in Total Charges (threshold: values outside [240.44, 1.86M]) \u2014 see analyst tab"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Patient ZIP",
+          "Discharge Disposition",
+          "Total Charges"
+         ],
+         "skipped_columns": {
+          "Encounter ID": "constant or unsupported",
+          "MRN": "constant or unsupported",
+          "Admit Date": "datetime column",
+          "Discharge Date": "datetime column",
+          "Encounter Type": "binary column (only 2 values)",
+          "Department": "non-numeric",
+          "MS-DRG": "non-numeric",
+          "Principal Dx": "non-numeric",
+          "Attending NPI": "non-numeric"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Admit Date": [
+          "2025-11-01",
+          "2026-10-31",
+          12
+         ],
+         "Discharge Date": [
+          "2025-11-02",
+          "2026-10-31",
+          12
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "Discharges over time",
+        "Discharges by Department",
+        "30-day readmission rate by Department",
+        "ALOS by Department",
+        "total charges fell 26.0% in Oct 2026 vs Sep 2026",
+        "Total total charges by department: Cardiology highest (41,663,189.13), Other (fewer than 11 each) lowest (381,716.86)"
+       ],
+       [
+        4203,
+        12,
+        12
+       ],
+       [
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "domain": "healthcare",
+    "latency_s": 20.92,
+    "cost_usd": 0.02302,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding_rewritten"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"This dataset covers 4,203 inpatient stays across 12 months, with a 30-day readmission rate of 9.0%, in-hospital mortality of 2.4%, and an average length of stay of 3.72 days.\",\n    \"evidence\": [\"clean:audit\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Across 3,455 discharges involving 1,707 patients, Cardiology accounts for the largest share of total charges among all departments, while total charges fell sharply in Oct 2026 compared with Sep 2026.\",\n      \"evidence\": [\"seg:Department/Total Charges:sum\", \"trend:Total Charges:MoM\"]\n    },\n    {\n      \"text\": \"Rates are crude and not risk-adjusted, and the file contains exact dates, meaning it is a limited dataset rather than a fully de-identified one.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Cardiology generated the highest total charges at $41,663,189, followed by Orthopedics at $33,207,579 and General Medicine at $24,167,064.\",\n      \"evidence\": [\"seg:Department/Total Charges:sum\"]\n    },\n    {\n      \"text\": \"Total charges dropped 26.0% from Sep 2026 to Oct 2026; because the data spans only 12 months with no prior-year comparison, this shift may reflect seasonality rather than a sustained trend.\",\n      \"evidence\": [\"trend:Total Charges:MoM\"]\n    },\n    {\n      \"text\": \"Per-stay charges vary widely: the median is $22,216 while the mean is $32,105 and the maximum reaches $827,623, indicating a small number of very high-cost stays pulling the average up \u2014 these outliers have been flagged but kept in the data.\",\n      \"evidence\": [\"eda:Total Charges\"]\n    },\n    {\n      \"text\": \"Patient Name, Date of Birth, and Encounter ID were withheld or pseudonymised during cleaning; all other changes are logged, and no values were imputed.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the Oct 2026 drop in total charges by reviewing admission volumes and case mix for that month before drawing conclusions.\",\n      \"impact\": \"Determines whether the decline is seasonal, operational, or a data artefact.\",\n      \"evidence\": [\"trend:Total Charges:MoM\"]\n    },\n    {\n      \"action\": \"Review the small number of stays with charges near $827,623 to confirm they are clinically valid and not data errors.\",\n      \"impact\": \"High-cost outliers can distort department-level and facility-level cost reporting.\",\n      \"evidence\": [\"eda:Total Charges\"]\n    },\n    {\n      \"action\": \"Apply risk adjustment to the 9.0% readmission rate and 2.4% mortality rate before using them for benchmarking or performance reporting.\",\n      \"impact\": \"Crude rates without risk adjustment can misrepresent quality of care across departments with different patient acuity.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"caveats\": [\n    \"All rates (readmission, mortality) are crude and not risk-adjusted; comparisons across departments or to external benchmarks should be made with caution.\",\n    \"The dataset spans only 12 months with no same-month prior-year data, so month-over-month changes cannot be separated from seasonal patterns.\",\n    \"The file contains exact dates and is classified as a limited dataset, not fully de-identified; access and sharing should follow applicable data governance rules.\"\n  ],\n  \"questions\": [\n    \"Which departments or discharge dispositions are driving the highest 30-day readmission rates?\",\n    \"Is the Oct 2026 drop in total charges explained by fewer admissions, shorter stays, or a shift in case mix toward lower-acuity patients?\",\n    \"What clinical or demographic factors are associated with the very high-cost stays near the top of the charges range?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-44-claims-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/incomplete|still arriving|run[- ]?out|lag/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/northwind/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|basket|outstanding balance|\\bNPL\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/billed (charges|amounts?) .{0,30}(cost|spend)/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This healthcare claims dataset covers 12 months of service, with $257,150.19 paid across 2,668 claims for 403 members and a 9.5% claim denial rate. Northwind Health accounts for the largest share of paid spend at $113,095.83, while paid amounts fell month-over-month in the most recent comparable period. Recent service months should be read with caution: claims continue arriving for roughly three months after service, so apparent drops in Aug 2026 onward reflect reporting lag, not a true trend.",
+      "technical_findings": [
+       "Paid Amount MoM: -17.7% (n = 5,336; high confidence: 5336 rows)",
+       "sum Paid Amount by Payer (5 groups) (n = 5,121; high confidence: 5121 rows)",
+       "Paid Amount: median 23.79, mean 55.32, range -442.37 to 506.26 (n = 5,121; high confidence: 5121 rows)",
+       "Allowed Amount: median 25.42, mean 63.19, range -451.30 to 558.07 (n = 5,121; high confidence: 5121 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the drivers of Northwind Health's disproportionately high paid spend relative to other payers before the next contract review.",
+        "reasoning": "Northwind Health paid total is more than double the next-highest payer, making it the single largest cost lever.",
+        "metric_impact": "Northwind Health paid total is more than double the next-highest payer, making it the single largest cost lever."
+       },
+       {
+        "priority": 2,
+        "action": "Review the 9.5% denial rate by payer and service type to identify where resubmission or process changes could recover revenue.",
+        "reasoning": "Reducing denials directly increases collected revenue without adding volume.",
+        "metric_impact": "Reducing denials directly increases collected revenue without adding volume."
+       },
+       {
+        "priority": 3,
+        "action": "Audit claims with negative paid or allowed amounts to confirm they are legitimate adjustments and not data errors before using this dataset for financial reporting.",
+        "reasoning": "Unresolved negative values distort total spend and per-claim averages.",
+        "metric_impact": "Unresolved negative values distort total spend and per-claim averages."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Allowed amount: 6 extreme values",
+        "severity": "medium",
+        "description": "6 Allowed Amount values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Allowed Amount",
+        "suggested_investigation": "Verify the largest Allowed Amount values against the source records."
+       },
+       {
+        "title": "Paid amount: 10 extreme values",
+        "severity": "medium",
+        "description": "10 Paid Amount values (0.2% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Paid Amount",
+        "suggested_investigation": "Verify the largest Paid Amount values against the source records."
+       },
+       {
+        "title": "Billed amount: a long tail of large values",
+        "severity": "low",
+        "description": "A few very large Billed Amount values are normal for this data; they were kept.",
+        "affected_metric": "Billed Amount",
+        "suggested_investigation": "Report the typical Billed Amount alongside the average."
+       },
+       {
+        "title": "Claim total billed: a long tail of large values",
+        "severity": "low",
+        "description": "A few very large Claim Total Billed values are normal for this data; they were kept.",
+        "affected_metric": "Claim Total Billed",
+        "suggested_investigation": "Report the typical Claim Total Billed alongside the average."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as healthcare data (paid, allowed, claims, members with claims, denial rate (claims)). Rates are crude (not risk-adjusted). This file has exact dates: a limited data set, not de-identified. Oct 2026 is partial (data through the 25th) and is left out of period comparisons. 230 voided claim rows are left out of claims, money and the denial rate. The data covers 11 months, so month-over-month changes may be seasonal; there is no same month last year to compare with. 433 earlier versions of replaced claim lines are left out: only each line's last version counts. Service months from Aug 2026 on are incomplete: claims keep arriving for about 3 months after the service, so a drop there is lag, not a trend.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "What is driving the 9.5% denial rate, and does it vary meaningfully by payer or service type?",
+       "Are the negative paid and allowed amounts concentrated in specific payers or time periods, and do they net out correctly against positive claims?",
+       "How does the payer mix or utilization pattern differ across the 403 members with claims \u2014 are a small number of members accounting for a large share of spend?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Patient data protected first (2 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 2 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Allowed Amount, Billed Amount, Claim Total Billed, Paid Amount. Final dataset: 5999 rows (started with 5999). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "This healthcare claims dataset covers 12 months of service, with $257,150.19 paid across 2,668 claims for 403 members and a 9.5% claim denial rate.",
+       "headline_evidence_ids": [
+        "clean:audit"
+       ],
+       "paragraphs": [
+        {
+         "text": "Northwind Health accounts for the largest share of paid spend at $113,095.83, while paid amounts fell month-over-month in the most recent comparable period.",
+         "evidence_ids": [
+          "seg:Payer/Paid Amount:sum",
+          "trend:Paid Amount:MoM"
+         ]
+        },
+        {
+         "text": "Recent service months should be read with caution: claims continue arriving for roughly three months after service, so apparent drops in Aug 2026 onward reflect reporting lag, not a true trend.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Northwind Health leads all payers with $113,095.83 in paid amounts; Crescent Health is lowest at $21,891.69, with Harbor Senior Plans ($34,968.60), Lakeside Care ($38,167.93), and Summit Mutual ($49,026.14) in between.",
+         "evidence_ids": [
+          "seg:Payer/Paid Amount:sum"
+         ]
+        },
+        {
+         "text": "Paid amounts fell 17.7% month-over-month comparing Sep 2026 with Aug 2026, though both months are in the lag window where claims are still arriving and the drop may not reflect a real change in utilization.",
+         "evidence_ids": [
+          "trend:Paid Amount:MoM"
+         ]
+        },
+        {
+         "text": "Claim-level paid amounts are wide-ranging \u2014 from -$442.37 to $506.26 with a median of $23.79 \u2014 and outliers have been flagged; negative values likely represent adjustments or reversals.",
+         "evidence_ids": [
+          "eda:Paid Amount"
+         ]
+        },
+        {
+         "text": "The 9.5% claim denial rate and the exclusion of 230 voided rows and 433 superseded claim-line versions mean the figures here reflect only finalized, active claims.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the drivers of Northwind Health's disproportionately high paid spend relative to other payers before the next contract review.",
+         "expected_impact": "Northwind Health paid total is more than double the next-highest payer, making it the single largest cost lever.",
+         "evidence_ids": [
+          "seg:Payer/Paid Amount:sum"
+         ]
+        },
+        {
+         "action": "Review the 9.5% denial rate by payer and service type to identify where resubmission or process changes could recover revenue.",
+         "expected_impact": "Reducing denials directly increases collected revenue without adding volume.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        },
+        {
+         "action": "Audit claims with negative paid or allowed amounts to confirm they are legitimate adjustments and not data errors before using this dataset for financial reporting.",
+         "expected_impact": "Unresolved negative values distort total spend and per-claim averages.",
+         "evidence_ids": [
+          "eda:Paid Amount",
+          "eda:Allowed Amount"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Patient data protected first (2 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 2 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Allowed Amount, Billed Amount, Claim Total Billed, Paid Amount. Final dataset: 5999 rows (started with 5999). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "Paid Amount MoM: -17.7% (n = 5,336; high confidence: 5336 rows)",
+        "sum Paid Amount by Payer (5 groups) (n = 5,121; high confidence: 5121 rows)",
+        "Paid Amount: median 23.79, mean 55.32, range -442.37 to 506.26 (n = 5,121; high confidence: 5121 rows)",
+        "Allowed Amount: median 25.42, mean 63.19, range -451.30 to 558.07 (n = 5,121; high confidence: 5121 rows)"
+       ],
+       "caveats": [
+        "Service months from Aug 2026 onward are incomplete due to claims-lag of roughly three months; month-over-month figures for that window should not be treated as settled trends.",
+        "Rates are crude and not risk-adjusted, so payer or member comparisons do not account for differences in population health or benefit design.",
+        "This file contains exact service dates and is flagged as a limited dataset, not de-identified; access and sharing should follow applicable privacy requirements.",
+        "Read as healthcare data (paid, allowed, claims, members with claims, denial rate (claims)). Rates are crude (not risk-adjusted). This file has exact dates: a limited data set, not de-identified.",
+        "Oct 2026 is partial (data through the 25th) and is left out of period comparisons.",
+        "230 voided claim rows are left out of claims, money and the denial rate.",
+        "The data covers 11 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "433 earlier versions of replaced claim lines are left out: only each line's last version counts.",
+        "Service months from Aug 2026 on are incomplete: claims keep arriving for about 3 months after the service, so a drop there is lag, not a trend.",
+        "Claim ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "Member ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "Service From: Parsed as dates."
+       ],
+       "code_references": [
+        "# rows: Last versions of claim lines only: 663 other rows (earlier versions or voided claims) left out.\n_period = pd.to_datetime(df['Service From'], format='mixed').dt.to_period('M'); df.groupby(_period)['Paid Amount'].sum()",
+        "df.groupby('Payer')['Paid Amount'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-03T18:09:44.091641Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Claim ID",
+       "Line No",
+       "Adjustment Seq",
+       "Claim Frequency",
+       "Member ID",
+       "Service From",
+       "Paid Date",
+       "Payer",
+       "Claim Status",
+       "CPT/HCPCS",
+       "Rev Code",
+       "Rendering NPI",
+       "Place of Service",
+       "Billed Amount",
+       "Allowed Amount",
+       "Paid Amount",
+       "Claim Total Billed"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Paid Amount:MoM",
+       "seg:Payer/Paid Amount:sum",
+       "eda:Paid Amount",
+       "eda:Allowed Amount"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 5999 \u2192 5999 rows, 9 logged changes",
+        "result_excerpt": "{\"rows_before\": 5999, \"rows_after\": 5999, \"decisions\": [[\"Claim ID\", \"pseudonymize\", 5999, 0], [\"Member ID\", \"pseudonymize\", 5999, 0], [\"Service From\", \"type_coerce\", 5999, 0], [\"Paid Date\", \"type_coerce\", 5121, 0], [\"Paid Date\", \"keep\", 0, 0], [\"Allowed Amount\", \"keep\", 0, 0], [\"Paid Amount\", \"keep\", 0, 0], [\"*\", \"flag\", 230, 0], [\"*\", \"flag\", 433, 0]]}",
+        "row_count": 5999,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Claim ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+         "Member ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+         "Service From: Parsed as dates.",
+         "Paid Date: Parsed as dates.",
+         "Paid Date: 878 missing (14.6%), date: left as missing; totals and averages use the 5121 known rows.",
+         "Allowed Amount: 878 missing (14.6%), metric of the question: left as missing; totals and averages use the 5121 known rows.",
+         "Paid Amount: 878 missing (14.6%), metric of the question: left as missing; totals and averages use the 5121 known rows.",
+         "*: 230 voided claims: left out of claims, money and the denial rate; kept in the data.",
+         "*: 433 earlier versions of claim lines that were later replaced: only the last version counts; kept in the data."
+        ]
+       },
+       {
+        "id": "trend:Paid Amount:MoM",
+        "kind": "trend",
+        "claim": "Paid Amount MoM: -17.7%",
+        "result_excerpt": "{\"column\": \"Paid Amount\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -17.68, \"segment\": null}",
+        "row_count": 5336,
+        "confidence": "high",
+        "confidence_reason": "5336 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Payer/Paid Amount:sum",
+        "kind": "segment",
+        "claim": "sum Paid Amount by Payer (5 groups)",
+        "result_excerpt": "{\"segment_column\": \"Payer\", \"metric_column\": \"Paid Amount\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Crescent Health\", \"value\": 21891.69}, {\"name\": \"Harbor Senior Plans\", \"value\": 34968.6}, {\"name\": \"Lakeside Care\", \"value\": 38167.93}, {\"name\": \"Northwind Health\", \"value\": 113095.83}, {\"name\": \"Summit Mutual\", \"value\": 49026.14}]}",
+        "row_count": 5121,
+        "confidence": "high",
+        "confidence_reason": "5121 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Paid Amount",
+        "kind": "eda",
+        "claim": "Paid Amount: median 23.79, mean 55.32, range -442.37 to 506.26",
+        "result_excerpt": "{\"mean\": 55.3217, \"std\": 71.4047, \"min\": -442.37, \"max\": 506.26, \"median\": 23.79, \"count\": 5121.0}",
+        "row_count": 5121,
+        "confidence": "high",
+        "confidence_reason": "5121 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Allowed Amount",
+        "kind": "eda",
+        "claim": "Allowed Amount: median 25.42, mean 63.19, range -451.30 to 558.07",
+        "result_excerpt": "{\"mean\": 63.1929, \"std\": 81.2594, \"min\": -451.3, \"max\": 558.07, \"median\": 25.42, \"count\": 5121.0}",
+        "row_count": 5121,
+        "confidence": "high",
+        "confidence_reason": "5121 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 12,
+      "audit_summary": "Patient data protected first (2 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 2 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Allowed Amount, Billed Amount, Claim Total Billed, Paid Amount. Final dataset: 5999 rows (started with 5999).",
+      "chart_titles": [
+       "Paid over time",
+       "Paid by Payer",
+       "Denial rate (claims) by Payer",
+       "paid amount fell 19.7% in Jun 2026 vs May 2026",
+       "Total paid amount by payer: Northwind Health highest (113,095.83), Crescent Health lowest (21,891.69)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Paid Amount": {
+          "mean": 55.3217,
+          "std": 71.4047,
+          "min": -442.37,
+          "max": 506.26,
+          "median": 23.79,
+          "count": 5121.0
+         },
+         "Allowed Amount": {
+          "mean": 63.1929,
+          "std": 81.2594,
+          "min": -451.3,
+          "max": 558.07,
+          "median": 25.42,
+          "count": 5121.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Paid Amount",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -17.68,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Payer",
+          "metric_column": "Paid Amount",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Crescent Health",
+            "value": 21891.69
+           },
+           {
+            "name": "Harbor Senior Plans",
+            "value": 34968.6
+           },
+           {
+            "name": "Lakeside Care",
+            "value": 38167.93
+           },
+           {
+            "name": "Northwind Health",
+            "value": 113095.83
+           },
+           {
+            "name": "Summit Mutual",
+            "value": 49026.14
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Claim ID": 0.0,
+         "Line No": 0.0,
+         "Adjustment Seq": 0.0,
+         "Claim Frequency": 0.0,
+         "Member ID": 0.0,
+         "Service From": 0.0,
+         "Paid Date": 14.64,
+         "Payer": 0.0,
+         "Claim Status": 0.0,
+         "CPT/HCPCS": 0.0,
+         "Rev Code": 0.0,
+         "Rendering NPI": 0.0,
+         "Place of Service": 0.0,
+         "Billed Amount": 0.0,
+         "Allowed Amount": 14.64,
+         "Paid Amount": 14.64,
+         "Claim Total Billed": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Paid",
+          "value": "$257,150.19",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paid",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Paid Amount; over counted rows (voided claims, earlier versions of replaced claim lines left out)."
+         },
+         {
+          "label": "Allowed",
+          "value": "$293,787.43",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "allowed",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Allowed Amount; over counted rows (voided claims, earlier versions of replaced claim lines left out)."
+         },
+         {
+          "label": "Claims",
+          "value": "2,668",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "claims",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Claim ID; over counted rows (voided claims, earlier versions of replaced claim lines left out)."
+         },
+         {
+          "label": "Members with claims",
+          "value": "403",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "members",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Member ID; over counted rows (voided claims, earlier versions of replaced claim lines left out)."
+         },
+         {
+          "label": "Denial rate (claims)",
+          "value": "9.5%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "denial_rate",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Claim ID, divided by distinct Claim ID; over counted rows (voided claims, earlier versions of replaced claim lines left out)."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 5999 \u2192 5999 rows, 9 logged changes",
+         "result_excerpt": "{\"rows_before\": 5999, \"rows_after\": 5999, \"decisions\": [[\"Claim ID\", \"pseudonymize\", 5999, 0], [\"Member ID\", \"pseudonymize\", 5999, 0], [\"Service From\", \"type_coerce\", 5999, 0], [\"Paid Date\", \"type_coerce\", 5121, 0], [\"Paid Date\", \"keep\", 0, 0], [\"Allowed Amount\", \"keep\", 0, 0], [\"Paid Amount\", \"keep\", 0, 0], [\"*\", \"flag\", 230, 0], [\"*\", \"flag\", 433, 0]]}",
+         "row_count": 5999,
+         "assumptions": [
+          "Claim ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "Member ID: identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "Service From: Parsed as dates.",
+          "Paid Date: Parsed as dates.",
+          "Paid Date: 878 missing (14.6%), date: left as missing; totals and averages use the 5121 known rows.",
+          "Allowed Amount: 878 missing (14.6%), metric of the question: left as missing; totals and averages use the 5121 known rows.",
+          "Paid Amount: 878 missing (14.6%), metric of the question: left as missing; totals and averages use the 5121 known rows.",
+          "*: 230 voided claims: left out of claims, money and the denial rate; kept in the data.",
+          "*: 433 earlier versions of claim lines that were later replaced: only the last version counts; kept in the data."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Paid Amount MoM: -17.7%",
+         "result_excerpt": "{\"column\": \"Paid Amount\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -17.68, \"segment\": null}",
+         "row_count": 5336,
+         "assumptions": [],
+         "confidence_reason": "5336 rows"
+        },
+        {
+         "claim": "sum Paid Amount by Payer (5 groups)",
+         "result_excerpt": "{\"segment_column\": \"Payer\", \"metric_column\": \"Paid Amount\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Crescent Health\", \"value\": 21891.69}, {\"name\": \"Harbor Senior Plans\", \"value\": 34968.6}, {\"name\": \"Lakeside Care\", \"value\": 38167.93}, {\"name\": \"Northwind Health\", \"value\": 113095.83}, {\"name\": \"Summit Mutual\", \"value\": 49026.14}]}",
+         "row_count": 5121,
+         "assumptions": [],
+         "confidence_reason": "5121 rows"
+        },
+        {
+         "claim": "Paid Amount: median 23.79, mean 55.32, range -442.37 to 506.26",
+         "result_excerpt": "{\"mean\": 55.3217, \"std\": 71.4047, \"min\": -442.37, \"max\": 506.26, \"median\": 23.79, \"count\": 5121.0}",
+         "row_count": 5121,
+         "assumptions": [],
+         "confidence_reason": "5121 rows"
+        },
+        {
+         "claim": "Allowed Amount: median 25.42, mean 63.19, range -451.30 to 558.07",
+         "result_excerpt": "{\"mean\": 63.1929, \"std\": 81.2594, \"min\": -451.3, \"max\": 558.07, \"median\": 25.42, \"count\": 5121.0}",
+         "row_count": 5121,
+         "assumptions": [],
+         "confidence_reason": "5121 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Claim ID",
+          "operation": "pseudonymize",
+          "strategy": "keyed_hash",
+          "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "rows_affected": 5999,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Member ID",
+          "operation": "pseudonymize",
+          "strategy": "keyed_hash",
+          "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+          "rows_affected": 5999,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Service From",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 5999,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Paid Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 5121,
+          "before_null_pct": 14.6,
+          "after_null_pct": 14.6,
+          "rows_removed": 0
+         },
+         {
+          "column": "Paid Date",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "878 missing (14.6%), date: left as missing; totals and averages use the 5121 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 14.6,
+          "after_null_pct": 14.6,
+          "rows_removed": 0
+         },
+         {
+          "column": "Allowed Amount",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "878 missing (14.6%), metric of the question: left as missing; totals and averages use the 5121 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 14.6,
+          "after_null_pct": 14.6,
+          "rows_removed": 0
+         },
+         {
+          "column": "Paid Amount",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "878 missing (14.6%), metric of the question: left as missing; totals and averages use the 5121 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 14.6,
+          "after_null_pct": 14.6,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "cancel",
+          "reason": "230 voided claims: left out of claims, money and the denial rate; kept in the data.",
+          "rows_affected": 230,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "non_product",
+          "reason": "433 earlier versions of claim lines that were later replaced: only the last version counts; kept in the data.",
+          "rows_affected": 433,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 5999,
+        "rows_after": 5999,
+        "columns_coerced": [
+         "Service From",
+         "Paid Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "Billed Amount has a heavy-tailed distribution \u2014 5.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies.",
+         "6 extreme outliers in Allowed Amount (0.1% of data, threshold: values outside [-191.45, 529.94])",
+         "10 extreme outliers in Paid Amount (0.2% of data, threshold: values outside [-177.84, 464.10])",
+         "Claim Total Billed has a heavy-tailed distribution \u2014 5.5% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        ],
+        "high_null_columns": [],
+        "summary": "Patient data protected first (2 steps: identifiers withheld or pseudonymised, small groups pooled). Parsed numbers or dates in 2 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Allowed Amount, Billed Amount, Claim Total Billed, Paid Amount. Final dataset: 5999 rows (started with 5999).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Billed Amount",
+           "extreme_count": 0,
+           "mild_count": 0,
+           "extreme_pct": 5.4175695949324885,
+           "lower_bound": -364.5773634284883,
+           "upper_bound": 784.9952362792276,
+           "mild_lower_bound": -173.69619018151184,
+           "mild_upper_bound": 476.3736412832866,
+           "used_log_transform": true,
+           "heavy_tailed": true,
+           "message": "Billed Amount has a heavy-tailed distribution \u2014 5.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+          },
+          {
+           "column": "Allowed Amount",
+           "extreme_count": 6,
+           "mild_count": 134,
+           "extreme_pct": 0.11716461628588166,
+           "lower_bound": -191.45030891276275,
+           "upper_bound": 529.9378601709222,
+           "mild_lower_bound": -105.73740570535352,
+           "mild_upper_bound": 287.00783823166086,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "6 extreme outliers in Allowed Amount (0.1% of data, threshold: values outside [-191.45, 529.94])"
+          },
+          {
+           "column": "Paid Amount",
+           "extreme_count": 10,
+           "mild_count": 131,
+           "extreme_pct": 0.19527436047646943,
+           "lower_bound": -177.84409229542848,
+           "upper_bound": 464.0964550922241,
+           "mild_lower_bound": -97.84755699209126,
+           "mild_upper_bound": 253.99672414772033,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "10 extreme outliers in Paid Amount (0.2% of data, threshold: values outside [-177.84, 464.10])"
+          },
+          {
+           "column": "Claim Total Billed",
+           "extreme_count": 0,
+           "mild_count": 0,
+           "extreme_pct": 5.500916819469912,
+           "lower_bound": -954.9099999999999,
+           "upper_bound": 1717.62,
+           "mild_lower_bound": -382.2249999999999,
+           "mild_upper_bound": 1144.935,
+           "used_log_transform": false,
+           "heavy_tailed": true,
+           "message": "Claim Total Billed has a heavy-tailed distribution \u2014 5.5% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Rev Code",
+          "Rendering NPI",
+          "Billed Amount",
+          "Allowed Amount",
+          "Paid Amount",
+          "Claim Total Billed"
+         ],
+         "skipped_columns": {
+          "Claim ID": "constant or unsupported",
+          "Line No": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Adjustment Seq": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Claim Frequency": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Member ID": "constant or unsupported",
+          "Service From": "datetime column",
+          "Paid Date": "datetime column",
+          "Payer": "non-numeric",
+          "Claim Status": "non-numeric",
+          "CPT/HCPCS": "non-numeric",
+          "Place of Service": "ordinal (low-cardinality numeric, e.g. Likert/class)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Service From": [
+          "2025-11-01",
+          "2026-10-25",
+          12
+         ],
+         "Paid Date": [
+          "2025-11-23",
+          "2026-10-31",
+          12
+         ]
+        },
+        "grain": "line",
+        "partial_months": {
+         "Service From": [
+          "2026-10",
+          25
+         ]
+        },
+        "main_currency": null
+       },
+       [
+        "Paid over time",
+        "Paid by Payer",
+        "Denial rate (claims) by Payer",
+        "paid amount fell 19.7% in Jun 2026 vs May 2026",
+        "Total paid amount by payer: Northwind Health highest (113,095.83), Crescent Health lowest (21,891.69)"
+       ],
+       [
+        5999,
+        17,
+        12
+       ],
+       [
+        2025,
+        2026
+       ]
+      ]
+     }
+    },
+    "domain": "healthcare",
+    "latency_s": 22.0,
+    "cost_usd": 0.02413,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"This healthcare claims dataset covers 12 months of service, with $257,150.19 paid across 2,668 claims for 403 members and a 9.5% claim denial rate.\",\n    \"evidence\": [\"clean:audit\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Northwind Health accounts for the largest share of paid spend at $113,095.83, while paid amounts fell month-over-month in the most recent comparable period.\",\n      \"evidence\": [\"seg:Payer/Paid Amount:sum\", \"trend:Paid Amount:MoM\"]\n    },\n    {\n      \"text\": \"Recent service months should be read with caution: claims continue arriving for roughly three months after service, so apparent drops in Aug 2026 onward reflect reporting lag, not a true trend.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Northwind Health leads all payers with $113,095.83 in paid amounts; Crescent Health is lowest at $21,891.69, with Harbor Senior Plans ($34,968.60), Lakeside Care ($38,167.93), and Summit Mutual ($49,026.14) in between.\",\n      \"evidence\": [\"seg:Payer/Paid Amount:sum\"]\n    },\n    {\n      \"text\": \"Paid amounts fell 17.7% month-over-month comparing Sep 2026 with Aug 2026, though both months are in the lag window where claims are still arriving and the drop may not reflect a real change in utilization.\",\n      \"evidence\": [\"trend:Paid Amount:MoM\"]\n    },\n    {\n      \"text\": \"Claim-level paid amounts are wide-ranging \u2014 from -$442.37 to $506.26 with a median of $23.79 \u2014 and outliers have been flagged; negative values likely represent adjustments or reversals.\",\n      \"evidence\": [\"eda:Paid Amount\"]\n    },\n    {\n      \"text\": \"The 9.5% claim denial rate and the exclusion of 230 voided rows and 433 superseded claim-line versions mean the figures here reflect only finalized, active claims.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the drivers of Northwind Health's disproportionately high paid spend relative to other payers before the next contract review.\",\n      \"impact\": \"Northwind Health paid total is more than double the next-highest payer, making it the single largest cost lever.\",\n      \"evidence\": [\"seg:Payer/Paid Amount:sum\"]\n    },\n    {\n      \"action\": \"Review the 9.5% denial rate by payer and service type to identify where resubmission or process changes could recover revenue.\",\n      \"impact\": \"Reducing denials directly increases collected revenue without adding volume.\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"action\": \"Audit claims with negative paid or allowed amounts to confirm they are legitimate adjustments and not data errors before using this dataset for financial reporting.\",\n      \"impact\": \"Unresolved negative values distort total spend and per-claim averages.\",\n      \"evidence\": [\"eda:Paid Amount\", \"eda:Allowed Amount\"]\n    }\n  ],\n  \"caveats\": [\n    \"Service months from Aug 2026 onward are incomplete due to claims-lag of roughly three months; month-over-month figures for that window should not be treated as settled trends.\",\n    \"Rates are crude and not risk-adjusted, so payer or member comparisons do not account for differences in population health or benefit design.\",\n    \"This file contains exact service dates and is flagged as a limited dataset, not de-identified; access and sharing should follow applicable privacy requirements.\"\n  ],\n  \"questions\": [\n    \"What is driving the 9.5% denial rate, and does it vary meaningfully by payer or service type?\",\n    \"Are the negative paid and allowed amounts concentrated in specific payers or time periods, and do they net out correctly against positive claims?\",\n    \"How does the payer mix or utilization pattern differ across the 403 members with claims \u2014 are a small number of members accounting for a large share of spend?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

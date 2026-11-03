@@ -190,10 +190,15 @@ def _snapshots(df, hint):
 
 def time_axis(contract, metric: str | None = None, df=None) -> str | None:
     """The date a metric is plotted and trended over: a level's own snapshot time when the layer
-    names one, else the data's first time axis (never a birth date). One rule for charts,
-    answers and the built-in trend."""
+    names one, else the domain pack's time role (a stay's discharge, a claim's service date),
+    else the data's first time axis (never a birth date). One rule for charts, answers and the
+    built-in trend."""
+    from domain_pack import pack_for
     hint = column_hint(contract, metric) if metric else None
     cands = [hint.aggregation_time] if hint and hint.aggregation_time else []
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack and (own := contract.roles.get(pack.date_role)) in contract.date_columns:
+        cands.append(own)
     cands += list(contract.date_columns) if contract is not None else []
     return next((c for c in cands if c and (df is None or c in df.columns)), None)
 
@@ -462,7 +467,7 @@ def current_window(df, date: str, start: str | None, end: str | None, weekly: bo
     return df[(t >= twin) & (t <= hi)], f"{twin:%d %b %Y} to {hi:%d %b %Y}", twin > lo
 
 
-def cut_partial(series, t, freq: str, rule: str | None = None):
+def cut_partial(series, t, freq: str, rule: str | None = None, runout: int = 0):
     """Leave out a first or last bucket the dates don't cover from its start to its end, by the
     data's own spacing: daily data by the weekdays it trades (a Mon-Fri week ends on Friday; a
     month may open on the 2nd or 3rd), weekly or monthly rows by whether the next expected date
@@ -470,7 +475,9 @@ def cut_partial(series, t, freq: str, rule: str | None = None):
     data covers its quarter). A middle bucket
     is never partial (a closed week is a fact to show). A month's end: the shared rule
     (utils.partial_last_month, also in the sandbox and the charts). May leave nothing: the note
-    then says no complete period is covered, and the caller answers without a comparison."""
+    then says no complete period is covered, and the caller answers without a comparison.
+    `runout`: records keep arriving for that many months after their period (claims paid after
+    service, domain_pack.runout_months): every bucket from the last such month on is left out."""
     import pandas as pd
 
     if freq not in ("W", "M", "Q", "Y") or series.empty:
@@ -506,6 +513,14 @@ def cut_partial(series, t, freq: str, rule: str | None = None):
     if cut_first and (len(series) > 1 or not cut_last):
         note += f" The first {unit} ({first}) is left out: it is covered only from {d.min():%d %b %Y}."
     series = series.iloc[int(cut_first): len(series) - int(cut_last)]
+    if runout and not series.empty:   # still arriving: a drop there is lag, not a trend
+        since = d.max().to_period("M") - runout + 1
+        idx = series.index if isinstance(series.index, pd.PeriodIndex) else series.index.to_period(period)
+        late = [p.end_time.to_period("M") >= since for p in idx]
+        if any(late):
+            series = series[[not x for x in late]]
+            note += (f" {since.strftime('%b %Y')} on is left out: records for those months are still arriving"
+                     f" (about {runout} months after the period).")
     if series.empty:
         note = f" No complete {unit} is covered ({d.min():%d %b %Y} to {d.max():%d %b %Y})."
     return series, note

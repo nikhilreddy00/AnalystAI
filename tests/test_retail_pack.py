@@ -70,7 +70,7 @@ _BASE = {"domain": "x", "signals": [{"a": ["r"], "b": ["s"]}],
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"kpi": "k"}]]}]}, "refers to itself"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "zzz"}]]}]}, "unknown role zzz"),
     ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": "r", "nunique": "s"}]]}]}, "exactly one"),
-    ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": ["r", "/", "s"]}]]}]}, "'\\*' or '-'"),
+    ({"kpis": [{"name": "k", "label": "K", "num": [[{"sum": ["r", "/", "s"]}]]}]}, "'\\*', '-' or 'days'"),
     ({"surprise": 1}, "Extra inputs"),
     ({"caveats": {}}, "read_as_domain_weak"),   # a weak match must be able to hedge
     ({"week_ends": "SATURDAY"}, "week_ends"),   # audit pass 3 (m8)
@@ -649,7 +649,9 @@ async def test_sell_through_is_asked_never_computed(recorded_llm):
     "A-2,W2,5,8,2025-01-02,5\n",                                              # stock count
 ])
 def test_other_domains_tables_are_not_retail(csv):
-    assert _contract(_load(csv)).domain is None
+    # a domain with its own pack reads as that domain (Domain 3: the claims table is healthcare)
+    assert _contract(_load(csv)).domain in (None, "healthcare") if "cpt_code" in csv \
+        else _contract(_load(csv)).domain is None
 
 
 def test_superstore_order_ids_are_orders_not_credit_notes():

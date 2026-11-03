@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import httpx
 import pandas as pd
 
-from connectors.base import DataConnector
+from connectors.base import DataConnector, truncation_note
 
 MAX_PAGES = 20          # safety cap to prevent infinite pagination loops
 PAGE_SIZE = 1000
@@ -52,6 +52,31 @@ def _assert_public_url(url: str) -> None:
             )
 
 
+_RECORD_KEYS = ("data", "results", "items", "records")
+
+
+def _records(data: Any, nested: bool = True) -> list | None:
+    """The records in one response: a list; the list under a usual key ({"data": [...]}); the one
+    list of objects under any key ({"orders": [...]}); or any of those one level down
+    ({"data": {"items": [...]}})."""
+    if isinstance(data, list):
+        return data
+    if not isinstance(data, dict):
+        return None
+    for key in _RECORD_KEYS:
+        if isinstance(data.get(key), list):
+            return data[key]
+    lists = [v for v in data.values()
+             if isinstance(v, list) and v and all(isinstance(r, dict) for r in v)]
+    if len(lists) == 1:
+        return lists[0]
+    if nested:
+        for v in data.values():
+            if (found := _records(v, nested=False)) is not None:
+                return found
+    return None
+
+
 class APIConnector(DataConnector):
     def _build_headers(self) -> dict[str, str]:
         auth_type = (self.config.auth_type or "").lower()
@@ -61,7 +86,7 @@ class APIConnector(DataConnector):
         if auth_type == "bearer":
             headers["Authorization"] = f"Bearer {auth_value}"
         elif auth_type == "api_key":
-            headers["X-API-Key"] = auth_value
+            headers[self.config.api_key_header or "X-API-Key"] = auth_value
         elif auth_type == "basic":
             import base64
             encoded = base64.b64encode(auth_value.encode()).decode()
@@ -91,41 +116,31 @@ class APIConnector(DataConnector):
                 response.raise_for_status()
                 data = response.json()
 
-                # Handle common response shapes: list, {"data": [...]}, {"results": [...]}
-                if isinstance(data, list):
-                    records.extend(data)
+                records.extend(_records(data) or [])
+                if not isinstance(data, dict):   # a bare list (or a scalar) has no next page
+                    next_url = None
                     break
-                elif isinstance(data, dict):
-                    items = (
-                        data.get("data")
-                        or data.get("results")
-                        or data.get("items")
-                        or data.get("records")
-                        or []
-                    )
-                    records.extend(items)
-
-                    # Pagination: follow next_url / next / links.next
-                    pagination_key = self.config.pagination_key
-                    if pagination_key:
-                        next_url = data.get(pagination_key)
-                    else:
-                        next_url = (
-                            data.get("next")
-                            or data.get("next_url")
-                            or (data.get("links") or {}).get("next")
-                        )
+                # Pagination: follow next_url / next / links.next
+                pagination_key = self.config.pagination_key
+                if pagination_key:
+                    next_url = data.get(pagination_key)
                 else:
-                    break
+                    next_url = (
+                        data.get("next")
+                        or data.get("next_url")
+                        or (data.get("links") or {}).get("next")
+                    )
 
                 page += 1
 
         if not records:
             return pd.DataFrame()
 
-        # Truncate if we blew past MAX_RECORDS on the final page
-        if len(records) > MAX_RECORDS:
+        if next_url or len(records) > MAX_RECORDS:   # stopped at a cap, not at the last page
             records = records[:MAX_RECORDS]
+            self.read_info = {"notes": [truncation_note(
+                len(records), None,
+                f"an API load stops at {MAX_PAGES} pages or {MAX_RECORDS:,} records")]}
 
         return pd.json_normalize(records)
 

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_serializer, model_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────────
@@ -125,6 +125,7 @@ class ConnectorConfig(BaseModel):
     url: str | None = None
     auth_type: str | None = None           # bearer | api_key | basic
     auth_value: str | None = None
+    api_key_header: str | None = None      # api_key: the header it goes in (default X-API-Key)
     pagination_key: str | None = None
 
 
@@ -328,6 +329,15 @@ class TrendResult(BaseModel):
     direction: str = "flat"                # up | down | flat
     pct_change: float = 0.0
     segment: str | None = None             # set for a per-segment trend (e.g. segment "B")
+    # The months compared ("2026-07", "2026-06"), set when they aren't the data's last two (a
+    # partial or still-arriving month was left out): the report names them, never guesses
+    latest: str | None = None
+    previous: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _no_unset_months(self, handler):   # unset: every dump as before the fields existed
+        out = handler(self)
+        return {k: v for k, v in out.items() if k not in ("latest", "previous") or v is not None}
 
 
 class SegmentResult(BaseModel):
@@ -585,8 +595,8 @@ class ReviewFlag(BaseModel):
     index: int
     section: Literal["headline", "paragraph", "finding", "action"]
     claim: str
-    label: Literal["unsupported", "contradicted", "overstated"]
-    kind: str            # number | date | direction | period | group | citation | causal | certainty | critic
+    label: Literal["unsupported", "contradicted", "overstated", "privacy"]
+    kind: str            # number | date | direction | period | group | citation | causal | certainty | small_cell | critic
     reason: str
     evidence_ids: list[str] = Field(default_factory=list)
     source: Literal["check", "critic"]

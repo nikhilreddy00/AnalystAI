@@ -1,0 +1,19 @@
+id: intake-health-09
+category: clear
+pipeline: production
+source:
+  dataset: health_claims
+  seed: 1
+overview_done: true
+question: What's the denial rate by payer?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: denial_rate
+  columns:
+    by: Payer
+rationale: Denial rate KPI by payer.

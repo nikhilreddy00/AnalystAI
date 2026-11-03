@@ -135,7 +135,7 @@ export function EvidenceChips({ ids, onEvidence }: { ids?: string[]; onEvidence?
   );
 }
 
-const LABEL = { unsupported: "Not supported", contradicted: "Contradicted", overstated: "Overstated" };
+const LABEL = { unsupported: "Not supported", contradicted: "Contradicted", overstated: "Overstated", privacy: "Small group" };
 
 // A flagged claim says so where it is read; the reason is one click away (the Review tab).
 function FlagMark({ flag, onFlag }: { flag?: ReviewFlag; onFlag?: () => void }) {

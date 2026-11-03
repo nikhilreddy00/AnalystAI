@@ -23,7 +23,8 @@ ROW_KIND_COLUMN = "row_kind"
 RESERVED_ROLES = ("status", "currency")   # each row's kind, in the frame analysis code gets
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
 CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
-              "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded", "level_as_of")
+              "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded", "level_as_of",
+              "recent_incomplete")
 
 
 RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
@@ -101,6 +102,26 @@ class RunningBalance(_Strict):
     minus: list[str] = Field(default_factory=list)
 
 
+class Runout(_Strict):
+    """Records keep arriving after the period they belong to (claims paid months after service):
+    with `role` (the arrival date) in the data, the last `months` months are incomplete."""
+    role: str
+    months: int = Field(gt=0)
+
+
+class Within(_Strict):
+    """Rows followed by another row of the same entity starting (0, days] after this row's end
+    (a 30-day readmission). Follow-ups are found anywhere in the data and must meet `follow`;
+    a row whose window runs past the data's last start is censored (in neither count). `base`:
+    count the uncensored rows instead (the rate's denominator)."""
+    entity: str
+    start: str
+    end: str
+    days: int = Field(gt=0)
+    follow: list[list[Cond]] = Field(default_factory=list)
+    base: bool = False
+
+
 class Term(_Strict):
     """One summand: sum / sum_abs of a role or a 2-role product or difference, nunique of a
     role, or another KPI; over the given row kinds (default: the KPI's)."""
@@ -108,6 +129,7 @@ class Term(_Strict):
     sum_abs: str | list[str] | None = None
     nunique: str | None = None
     kpi: str | None = None
+    within: Within | None = None
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] | None = None
     sign: Literal[1, -1] = 1
     optional: bool = False        # a missing role drops this term (and a blank value counts 0)
@@ -118,17 +140,20 @@ class Term(_Strict):
 
     @model_validator(mode="after")
     def _one(self) -> Term:
-        if sum(x is not None for x in (self.sum, self.sum_abs, self.nunique, self.kpi)) != 1:
-            raise ValueError("a term needs exactly one of sum, sum_abs, nunique, kpi")
+        if sum(x is not None for x in (self.sum, self.sum_abs, self.nunique, self.kpi,
+                                       self.within)) != 1:
+            raise ValueError("a term needs exactly one of sum, sum_abs, nunique, kpi, within")
         expr = self.sum if self.sum is not None else self.sum_abs
-        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in ("*", "-")):
-            raise ValueError(f"a term's expression is [role, '*' or '-', role], not {expr}")
+        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in ("*", "-", "days")):
+            raise ValueError(f"a term's expression is [role, '*', '-' or 'days', role], not {expr}")
         return self
 
     def roles(self) -> list[str]:
         expr = self.sum if self.sum is not None else self.sum_abs
         own = [self.nunique] if self.nunique else [] if expr is None else [expr] if isinstance(
             expr, str) else [expr[0], expr[2]]
+        if w := self.within:
+            own = [w.entity, w.start, w.end, *(c.role for g in w.follow for c in g)]
         return list(dict.fromkeys([*own, *([self.net_of] if self.net_of else []),
                                    *(c.role for g in self.where for c in g)]))
 
@@ -141,11 +166,16 @@ class KPI(_Strict):
     den: list[list[Term]] | None = None
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] = ["sale"]
     unit: Literal["money", "percent", "count", "number"] = "number"
+    unit_word: str | None = None  # a number's unit, written after it ("3.72 days")
     tile: bool = False            # one of the domain's KPI tiles (when computable)
     # "latest": a state at a date (outstanding balance, accounts, NPL): each snapshot_key's latest
     # row in the period, of any kind, THEN the kind / currency / where filters (a loan charged off
     # this month is out, never its last month's balance)
     at: Literal["all", "latest"] = "all"
+
+    def written(self, value: str) -> str:
+        """A formatted value with its unit word: THE way a KPI's number is written."""
+        return f"{value} {self.unit_word}" if self.unit_word else value
 
     @property
     def phrase(self) -> str:
@@ -158,6 +188,9 @@ class KPI(_Strict):
 
 class Pack(_Strict):
     domain: str
+    # Patient data: any match of this pack (strong or weak) turns PHI mode on, whatever the
+    # headers say (fail closed: a claims extract has member ids and codes, no MRN or name)
+    phi: bool = False
     # Detection: the data is this domain when, for one alternative, every group has a role in it
     # (independent signals: a product AND a money column, or an orders export's own shape) and
     # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).
@@ -193,6 +226,9 @@ class Pack(_Strict):
     # An overview opens with the first money tile KPI by month and by the first of these the
     # data has (the charts the domain's analyst reads first)
     overview_groups: list[str] = Field(default_factory=list)
+    # The KPIs an overview charts (the first by month and by group, the rest by group); unset:
+    # the first money tile and a state ratio. A hospital opens on stays and readmission, not charges.
+    overview_kpis: list[str] = Field(default_factory=list)
     location_role: str | None = None   # sites that open and close (comparable-store growth)
     snapshot_key: str | None = None    # the role naming one level's series (an account, a loan)
     # A column filled only on rows of these statuses (a charge-off date): its blanks are the
@@ -201,6 +237,17 @@ class Pack(_Strict):
     # Roles a row fills one of (Debit or Credit): the other's blank is the layout, never missing
     paired_fields: list[list[str]] = Field(default_factory=list)
     running_balance: RunningBalance | None = None
+    runout: Runout | None = None
+    # A role the data may lack but can derive ({los: [date, days, admit_date]}): the analysis
+    # frame gets it as a column named after the role's first header, so the model never invents
+    # one ("LOS (derived)" was rejected as an unknown column)
+    derived: dict[str, list[str]] = Field(default_factory=dict)
+    # A version chain (a claim line adjudicated, replaced, voided): the rows sharing these roles'
+    # values, ordered by `version_order`; only the last counts, earlier ones are non_product, and
+    # a chain whose last row carries a `version_void` value is cancelled (every row)
+    version_key: list[str] = Field(default_factory=list)
+    version_order: str | None = None
+    version_void: dict[str, list[str]] = Field(default_factory=dict)
     # Words: each row kind's name ("refunded orders") and its cleaning flag; `text` for the rest.
     row_labels: dict[RowKind, str] = Field(default_factory=dict)
     # The codes the model's frame and brief use for each kind (a banking model filters on
@@ -215,11 +262,29 @@ class Pack(_Strict):
     unsupported: dict[str, str] = Field(default_factory=dict)      # concept → what it needs
     caveats: dict[str, str] = Field(default_factory=dict)          # condition → text
     causal_triggers: list[str] = Field(default_factory=list)
+    # On patient data: a reported count of 1–10 of these (patients, deaths …) is a small cell
+    small_cell_nouns: list[str] = Field(default_factory=list)
     # Plain text, or {q, needs: [KPI…]}: offered only when the data supports what it needs
     first_questions: list[str | dict[str, str | list[str]]] = Field(default_factory=list)
 
     def kpi(self, name: str) -> KPI | None:
         return next((k for k in self.kpis if k.name == name), None)
+
+    def value_words(self) -> dict[str, set[str]]:
+        """role → the written values a pack rule reads (a KPI's `where` words, status words,
+        version voids, non-product codes), as `words()` compares them: pooling these values
+        would change the answers (5 'expired' pooled → mortality 0)."""
+        out: dict[str, set[str]] = {}
+        for k in self.kpis:
+            for t in (t for alt in [*k.num, *(k.den or [])] for t in alt):
+                for c in (c for g in t.where for c in g):
+                    out.setdefault(c.role, set()).update(c.in_ or c.not_in or [])
+        status = [v for vs in self.status_values.values() for v in vs]
+        for r in (r for r, x in self.roles.items() if x.kind == "status"):
+            out.setdefault(r, set()).update(status)
+        for r, vs in [*self.version_void.items(), *self.non_product.items()]:
+            out.setdefault(r, set()).update(vs)
+        return {r: set(words(pd.Series(sorted(vs), dtype=str))) for r, vs in out.items() if vs}
 
     @property
     def date_role(self) -> str:
@@ -258,8 +323,10 @@ class Pack(_Strict):
                 seen.setdefault(h, role)
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
-                *(r for r in (self.order_key, self.location_role, self.snapshot_key) if r),
-                *self.conditional_fields, *(r for g in self.paired_fields for r in g),
+                *(r for r in (self.order_key, self.location_role, self.snapshot_key,
+                              self.version_order) if r),
+                *self.version_key, *self.version_void, *self.conditional_fields,
+                *([self.runout.role] if self.runout else []), *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
                 *self.signed_by, *(x.indicator for x in self.signed_by.values()),
@@ -267,6 +334,12 @@ class Pack(_Strict):
                 *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g),
                 *self.strong_panel]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
+        for r, expr in self.derived.items():
+            if r not in self.roles or len(expr) != 3 or expr[1] not in ("*", "-", "days") \
+                    or expr[0] not in self.roles or expr[2] not in self.roles:
+                errors.append(f"derived {r}: a role and [role, '*', '-' or 'days', role]")
+        if bool(self.version_key) != bool(self.version_order):
+            errors.append("version_key and version_order go together")
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
             errors.append(f"line_weight is [role, '*' or '-', role], not {self.line_weight}")
         errors += [f"role {r}: a {x.kind} role is named {x.kind!r} (reserved)" for r, x in
@@ -318,6 +391,7 @@ class Pack(_Strict):
                         errors.append(f"kpi {k.name}: unknown kpi {t.kpi}")
             if self._cycle(k.name, ()):
                 errors.append(f"kpi {k.name}: refers to itself")
+        errors += [f"overview_kpis: unknown kpi {n}" for n in self.overview_kpis if n not in names]
         if errors:
             raise ValueError(f"invalid domain pack {self.domain}:\n- " + "\n- ".join(errors))
         return self
@@ -356,7 +430,7 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
     if vals.empty:
         return False
     if role.pattern:   # a capped sample of short values: a pack regex never runs on a whole upload
-        text = vals.head(1000).astype(str)
+        text = as_text(vals.head(1000))
         if text.str.len().gt(40).any() or text.str.fullmatch(role.pattern).mean() < 0.9:
             return False
     numeric = pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s)
@@ -379,8 +453,8 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
             return words(vals).isin(known).mean() >= 0.5
         case "currency":   # "usd" as well as "USD"
             return vals.astype(str).str.strip().str.upper().str.fullmatch(r"[A-Z]{3}").mean() >= 0.9
-        case "category" | "text":
-            return not numeric
+        case "category" | "text":   # a code written as a number (470) fits when its pattern does
+            return not numeric or bool(role.pattern)
     return True   # id
 
 
@@ -484,6 +558,7 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
             kind[vals.isin([v.upper() for v in values])] = "non_product"
     if "status" in roles:
         kind[status.isin(set(words(pd.Series(pack.status_values.get("cancel", [])))))] = "cancel"
+    kind = _versions(df, roles, pack, kind)
     if pack.test_marker:
         for role in pack.test_roles:
             if role in roles:   # short values only: a pack regex never runs on long text
@@ -492,6 +567,28 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
                     pack.test_marker, case=False, regex=True, na=False)
                 kind[hit] = "test"
     return kind
+
+
+def _versions(df: pd.DataFrame, roles: dict[str, str], pack: Pack, kind: pd.Series) -> pd.Series:
+    """The version-chain rule (Pack.version_key): earlier versions → non_product; a chain whose
+    last version is a void → cancel. Off unless the pack declares it and the data has the roles."""
+    # the key roles the data has, the first (a claim id) required: a header-level extract (no
+    # line column) chains on the claim alone
+    keys = [roles[r] for r in pack.version_key if r in roles]
+    if not pack.version_key or pack.version_key[0] not in roles or pack.version_order not in roles:
+        return kind
+    # a blank or non-numeric version (an original claim's empty adjustment number) is the
+    # earliest: a chain without any version keeps all its rows
+    order = pd.to_numeric(df[roles[pack.version_order]], errors="coerce").fillna(-1)
+    chain = df.groupby(keys, dropna=False, sort=False).ngroup()
+    last = order.eq(order.groupby(chain).transform("max"))
+    kind = kind.mask(~last, "non_product")
+    void = pd.Series(False, index=df.index)
+    for role, values in pack.version_void.items():
+        if role in roles:   # THE value comparison (words): '8', 8 and 8.0 are one void code
+            void |= words(df[roles[role]]).isin(set(words(pd.Series(values, dtype=str))))
+    voided = (void & last).groupby(chain).transform("any")
+    return kind.mask(voided, "cancel")
 
 
 def main_currency(df: pd.DataFrame, roles: dict[str, str]) -> tuple[pd.Series, str | None, int]:
@@ -511,9 +608,34 @@ def main_currency(df: pd.DataFrame, roles: dict[str, str]) -> tuple[pd.Series, s
 def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str]) -> pd.Series:
     if isinstance(expr, str):
         return pd.to_numeric(df[roles[expr]], errors="coerce")
+    if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
+        d = (_day(df[roles[expr[0]]]) - _day(df[roles[expr[2]]])).dt.days
+        return d.where(d >= 0).astype(float)
     a, op, b = (pd.to_numeric(df[roles[expr[0]]], errors="coerce"), expr[1],
                 pd.to_numeric(df[roles[expr[2]]], errors="coerce"))
     return a * b if op == "*" else a - b
+
+
+def _day(s: pd.Series) -> pd.Series:
+    return pd.to_datetime(s, format="mixed", errors="coerce").dt.normalize()
+
+
+def _within(df: pd.DataFrame, whole: pd.DataFrame, roles: dict[str, str], w: Within) -> pd.Series:
+    """1.0 per `df` row counted by `w` (a hit, or with `base` an uncensored row), else 0.0."""
+    end = _day(df[roles[w.end]])
+    starts = _day(whole[roles[w.start]])
+    keep = (end <= starts.max() - pd.Timedelta(days=w.days)) & end.notna()
+    if w.base:
+        return keep.astype(float)
+    follow = _meets(whole, roles, w.follow) if w.follow else pd.Series(True, index=whole.index)
+    nxt = pd.DataFrame({"e": whole.loc[follow, roles[w.entity]].astype(str),
+                        "t": starts[follow]}).dropna().sort_values("t", kind="stable")
+    idx = pd.DataFrame({"e": df[roles[w.entity]].astype(str), "t": end, "i": df.index}
+                       ).dropna(subset=["t"]).sort_values("t", kind="stable")
+    hit = pd.merge_asof(idx, nxt.rename(columns={"t": "n"}), left_on="t", right_on="n", by="e",
+                        direction="forward", allow_exact_matches=False)
+    hit = hit.set_index("i")["n"].sub(hit.set_index("i")["t"]).dt.days.le(w.days)
+    return (keep & hit.reindex(df.index, fill_value=False)).astype(float)
 
 
 def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> bool:
@@ -525,10 +647,18 @@ def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> b
     return bool(len(per)) and int(per.max()) <= 1
 
 
+def as_text(s: pd.Series) -> pd.Series:
+    """Values as written: a whole number read as float (a code column with a blank: DRG 313.0)
+    is its digits, '313'."""
+    if pd.api.types.is_float_dtype(s) and (s.dropna() % 1 == 0).all():
+        return s.astype("Int64").astype(str)
+    return s.astype(str)
+
+
 def words(s: pd.Series) -> pd.Series:
     """'Non Accrual', 'non-accrual', 'NON_ACCRUAL' → 'non accrual': a value as a word list. THE
     comparison of a data value with a pack's words (statuses, conditions, indicators)."""
-    return s.astype(str).str.strip().str.lower().str.replace(r"[\s_\-]+", " ", regex=True)
+    return as_text(s).str.strip().str.lower().str.replace(r"[\s_\-]+", " ", regex=True)
 
 
 def _meets(df: pd.DataFrame, roles: dict[str, str], where: list[list[Cond]]) -> pd.Series:
@@ -573,6 +703,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     if met is not None and kpi.den is None and not periodic:   # spend by category: no "Transfer"
         counted &= met   # at $0; but a month with no charge-offs is a month at $0
     groups = pd.unique(df.loc[counted, by].dropna()) if by else None
+    if term.within:   # follow-ups anywhere in the data, never only in this month or group
+        values = _within(part, kinds.attrs.get("frame", df), roles, term.within)
+        return values.groupby(part[by]).sum().reindex(groups, fill_value=0) if by else values.sum()
     if term.nunique:
         col = part[roles[term.nunique]]
         return col.groupby(part[by]).nunique().reindex(groups, fill_value=0) if by else col.nunique()
@@ -733,9 +866,17 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
         if t.kpi:
             return pack.kpi(t.kpi).phrase
         if t.nunique:
-            return f"distinct {roles[t.nunique]}"
+            return f"distinct {roles[t.nunique]}" + (f" where {where(t.where)}" if t.where else "")
+        if w := t.within:
+            then = f" (the next must have {where(w.follow)})" if w.follow else ""
+            rows = (f"rows whose {roles[w.end]} is at least {w.days} days before the last "
+                    f"{roles[w.start]}")
+            return (rows if w.base else f"{rows} followed by another row of the same "
+                    f"{roles[w.entity]} starting 1–{w.days} days after {roles[w.end]}{then}") + (
+                f" where {where(t.where)}" if t.where else "")
         expr = t.sum if t.sum is not None else t.sum_abs
         cols = roles[expr] if isinstance(expr, str) else (
+            f"days from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] == "days" else
             f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""
@@ -744,6 +885,8 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
 
     def where(groups: list[list[Cond]]) -> str:
         def cond(c: Cond) -> str:
+            if c.not_in == []:   # "not in nothing": the row has a value
+                return f"{roles[c.role]} has a value"
             if c.in_ is not None or c.not_in is not None:
                 # each spelling once ('non-accrual', not also 'nonaccrual' and 'non accrual')
                 vals, seen = [], set()
@@ -803,13 +946,22 @@ def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(R
         rules.append(pack.say("return_rule") + ": " + " or ".join(
             ([f"a negative {neg}"] if neg else []) + credit))
     sv = pack.status_values
-    if "status" in roles and "refunded" in present:
-        rules.append(f"{pack.say('refunded_rule')}: status in {sv.get('return', [])}")
-    if "status" in roles and "cancel" in present:
-        rules.append(f"{pack.say('cancel_rule')}: status in {sv.get('cancel', [])}")
+    if "status" in roles and "refunded" in present and sv.get("return"):
+        rules.append(f"{pack.say('refunded_rule')}: status in {sv['return']}")
+    if "status" in roles and "cancel" in present and sv.get("cancel"):
+        rules.append(f"{pack.say('cancel_rule')}: status in {sv['cancel']}")
+    chain = pack.version_order in roles and all(r in roles for r in pack.version_key)
+    if chain and "cancel" in present and (void := {r: v for r, v in pack.version_void.items()
+                                                   if r in roles}):
+        rules.append(f"{pack.say('cancel_rule')}: every row of a " + " + ".join(pack.version_key)
+                     + " whose last " + pack.version_order + " has "
+                     + " or ".join(f"{r} in {v}" for r, v in void.items()))
     if "non_product" in present:
         rules += [f"{pack.say('non_product_rule')}: {r} in {v}" for r, v in pack.non_product.items()
                   if r in roles]
+        if chain:
+            rules.append(f"{pack.say('non_product_rule')}: a row with a later {pack.version_order} "
+                         "for the same " + " + ".join(pack.version_key))
     test = [r for r in pack.test_roles if r in roles]
     if pack.test_marker and test and "test" in present:
         rules.append(f"a {pack.label('test').removesuffix('s')} (left out): {' or '.join(test)} "
@@ -851,6 +1003,12 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
             lines.append(f"{c}: {pack.definitions[c]}")
         elif c in pack.unsupported:
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
+    for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
+        if r not in roles and expr[0] in roles and expr[2] in roles:
+            how = (f"days from {named[expr[2]]} to {named[expr[0]]} (same day = 0)" if expr[1] == "days"
+                   else f"{named[expr[0]]} {'×' if expr[1] == '*' else '−'} {named[expr[2]]}")
+            lines.append(f"Column {pack.roles[r].headers[0]} is in the data for you: {how}. Use it; "
+                         "never compute your own, and never report a KPI as if it were a column.")
     return lines
 
 
@@ -898,11 +1056,27 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     states = [k for k in pack.kpis if k.at == "latest" and computable(pack, k.name, roles)]
     if span and states:   # a balance is a state at a date (a ledger's running balance is no KPI)
         facts["level_as_of"] = {"date": pd.Timestamp(span[1]).strftime("%-d %b %Y")}
+    if span and pack.runout and pack.runout.role in roles:   # claims still arriving
+        last = pd.Period(span[1], "M")
+        facts["recent_incomplete"] = {"from_month": (last - pack.runout.months + 1).strftime("%b %Y"),
+                                      "months": pack.runout.months}
     if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}
     return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
 
+
+
+def version_roles(pack: Pack | None) -> set[str]:
+    """The roles of a version chain (a claim's line and adjustment number): labels, never measures."""
+    return {*pack.version_key, *([pack.version_order] if pack.version_order else [])} if pack else set()
+
+
+def runout_months(contract) -> int:
+    """Months whose records are still arriving (Pack.runout, when its arrival date is in the
+    data): every period answer leaves them out (utils.cut_partial)."""
+    pack = defaults_pack(contract)
+    return pack.runout.months if pack and pack.runout and pack.runout.role in contract.roles else 0
 
 
 def first_line_only(df: pd.DataFrame, by: pd.Series, col: str) -> bool:
@@ -958,6 +1132,24 @@ def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
     pack = pack_for(contract.domain) if contract is not None else None
     return list(layout_columns(df, pack, {r: c for r, c in (contract.roles if pack else {}).items()
                                           if c in df.columns}))
+
+
+def with_derived(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, list[str]]:
+    """The frame with each derivable role the data lacks (Pack.derived) as a column named after
+    the role's first header (length_of_stay = discharge − admit in days), and the names added.
+    Never replaces a column; no pack or nothing to derive: the frame unchanged."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack is None:
+        return df, []
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    added = []
+    for r, expr in pack.derived.items():
+        name = pack.roles[r].headers[0]
+        if r in roles or name in df.columns or expr[0] not in roles or expr[2] not in roles:
+            continue
+        df = df.assign(**{name: _column(df, roles, expr)})
+        added.append(name)
+    return df, added
 
 
 def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]:

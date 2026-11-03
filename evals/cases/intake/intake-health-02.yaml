@@ -1,0 +1,17 @@
+id: intake-health-02
+category: clear
+pipeline: production
+source:
+  dataset: inpatient
+  seed: 1
+overview_done: true
+question: How has our readmission rate moved month to month?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: readmission_rate
+rationale: Readmission rate KPI over time.

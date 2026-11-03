@@ -1,0 +1,35 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-43-inpatient-overview
+insight_case: ins-43-inpatient-overview
+category: straightforward
+source:
+  report: insight-20261103T182036Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 4
+  kind: number
+  label: contradicted
+  text: Cardiology generated the highest total charges ($51,663,189.13), followed by Orthopedics
+    ($33,207,578.70) and General Medicine ($24,167,064.42).
+- op: replace
+  i: 2
+  kind: causal
+  label: overstated
+  text: Cardiology's higher readmissions were caused by poorer care in the department, so its
+    discharge planning should be overhauled.
+- op: replace
+  i: 3
+  kind: small_cell
+  label: privacy
+  text: The dataset contains 4,203 stays from 1,707 patients; Vascular Surgery had only 7 stays,
+    with 2 deaths among its patients.
+- op: replace
+  i: 6
+  kind: small_cell
+  label: privacy
+  text: Per-stay charges vary widely, and three patients were readmitted twice within one week of
+    discharge.
+natural: []

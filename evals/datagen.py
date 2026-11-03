@@ -1245,6 +1245,383 @@ def make_deposits_daily(seed: int) -> tuple[pd.DataFrame, dict]:
     return df, truth
 
 
+# ── Domain 3 healthcare (Phase 5.7): inpatient stays v2, payer claim lines, member months ────
+
+def _r6(x) -> float:
+    return round(float(x), 6)
+
+
+_IP_DEPTS = {   # share of patients; MS-DRG -> (share of the department's stays, 30-day readmit)
+    # Simpson: Cardiology's crude readmission is higher only because its mix is mostly heart
+    # failure (291); within 291 and chest pain (313) General Medicine's rate is higher.
+    "Cardiology": (0.30, {291: (0.92, 0.20), 313: (0.08, 0.02)}),
+    "General Medicine": (0.30, {291: (0.15, 0.30), 313: (0.55, 0.09), 392: (0.3, 0.05)}),
+    "Orthopedics": (0.15, {470: (1.0, 0.04)}),
+    "Pulmonology": (0.13, {194: (0.7, 0.10), 871: (0.3, 0.16)}),
+    "Neurology": (0.12, {101: (1.0, 0.08)}),
+}
+_IP_DRG = {   # MS-DRG -> (mean LOS days, principal ICD-10 codes, base charge, in-hospital death)
+    291: (5.0, ("I50.9", "I50.23"), 38_000, 0.04), 313: (1.5, ("R07.9", "R07.89"), 14_000, 0.0),
+    392: (3.0, ("K21.9", "K52.9"), 22_000, 0.01), 470: (2.2, ("M17.11", "M16.11"), 61_000, 0.0),
+    194: (4.0, ("J18.9",), 29_000, 0.02), 871: (7.0, ("A41.9",), 72_000, 0.09),
+    101: (3.5, ("G40.909",), 31_000, 0.01), 254: (3.0, ("I70.213",), 55_000, 0.0),
+}
+_IP_DISPO = {"01": 0.64, "06": 0.14, "03": 0.12, "02": 0.05, "07": 0.05}   # + "20" from the DRG
+_IP_NOT_INDEX = ("20", "07", "02")   # expired, against medical advice, transferred to acute care
+
+
+def make_inpatient(seed: int) -> tuple[pd.DataFrame, dict]:
+    """Hospital inpatient + observation stays ("encounters v2"), admitted 2025-11-01 ..
+    2026-10-31, with PHI (name, MRN, DOB, ZIP+4) and coded fields kept as codes.
+
+    Traps: no LOS column (discharge − admit, same-day = 0); observation stays are outpatient (not
+    in ALOS or readmissions); disposition is UB-04 text ("07" not 7; "30" = still a patient, no
+    discharge date); readmission index excludes died / AMA / transferred and discharges within 30
+    days of the last admit (censored); Cardiology vs General Medicine is a case-mix (Simpson)
+    pair; long-stay outliers; ages 90+; Vascular Surgery has 7 stays (a small cell)."""
+    rng = np.random.default_rng(seed)
+    start, last_day = pd.Timestamp("2025-11-01"), 364   # day 364 = 2026-10-31
+    n_pat = 1700
+    depts = list(_IP_DEPTS)
+    home = rng.choice(depts, n_pat, p=[_IP_DEPTS[d][0] for d in depts])
+    dob = pd.Timestamp("1933-01-01") + pd.to_timedelta(rng.integers(0, 26_500, n_pat + 7), unit="D")
+    zips = [f"{int(z):05d}-{int(p):04d}" for z, p in zip(rng.integers(10_000, 99_999, n_pat + 7),
+                                                         rng.integers(1000, 9999, n_pat + 7))]
+    names = [f"{a} {b}" for a, b in zip(rng.choice(_FIRST, n_pat + 7), rng.choice(_LAST, n_pat + 7))]
+    npis = {d: [int(x) for x in rng.integers(1_000_000_000, 2_000_000_000, 4)]
+            for d in [*depts, "Vascular Surgery"]}
+    quota: dict = {}   # a fractional quota per stratum: planted rates are exact, not Bernoulli noise
+    rows = []
+
+    def stay(i, dept, drg, day, los, kind, dispo):
+        mean, icd, base, _ = _IP_DRG[drg]
+        charge = (base * (los + 1) / (mean + 1) * rng.lognormal(0, 0.15) if kind == "Inpatient"
+                  else rng.uniform(3_500, 9_000))
+        rows.append((f"H{4_100_000 + i}", names[i], dob[i], zips[i], start + pd.Timedelta(days=day),
+                     None if dispo == "30" else start + pd.Timedelta(days=day + los), kind, dept,
+                     drg if kind == "Inpatient" else None, str(rng.choice(icd)), dispo,
+                     int(rng.choice(npis[dept])), round(float(charge), 2)))
+
+    for i in range(n_pat):
+        dept = str(home[i])
+        mix = _IP_DEPTS[dept][1]
+        drgs = list(mix)
+        day, returning = int(rng.integers(0, 330)), False
+        while day <= last_day:
+            drg = int(rng.choice(drgs, p=[mix[d][0] for d in drgs]))
+            obs = rng.random() < (0.25 if returning else 0.15)
+            r = rng.random()
+            if obs:
+                los = int(rng.random() < 0.45)
+            elif r < 0.03:
+                los = 0   # same-day inpatient stay
+            elif r < 0.04:
+                los = int(rng.integers(25, 50))   # long-stay outlier
+            else:
+                los = max(1, int(round(rng.gamma(2.0, _IP_DRG[drg][0] / 2))))
+            kind = "Observation" if obs else "Inpatient"
+            if day + los > last_day:
+                stay(i, dept, drg, day, los, kind, "30")
+                break
+            if obs:
+                dispo = str(rng.choice(["01", "07", "02"], p=[0.93, 0.04, 0.03]))
+            elif rng.random() < _IP_DRG[drg][3]:
+                dispo = "20"
+            else:
+                dispo = str(rng.choice(list(_IP_DISPO), p=list(_IP_DISPO.values())))
+            stay(i, dept, drg, day, los, kind, dispo)
+            if dispo == "20":
+                break
+            p = 0.30 if obs else 0.0 if dispo == "02" else 0.60 if dispo == "07" else mix[drg][1]
+            key = (dept, drg, obs, dispo == "07")
+            quota[key] = quota.get(key, float(rng.random())) + p
+            returning = quota[key] >= 1
+            if returning:
+                quota[key] -= 1
+            day += los + int(rng.integers(2, 29) if returning else rng.integers(45, 200))
+    for j in range(7):   # a small department: 7 stays, no readmissions
+        stay(n_pat + j, "Vascular Surgery", 254, 120 + 17 * j, int(rng.integers(2, 5)),
+             "Inpatient", "01")
+    df = pd.DataFrame(rows, columns=["MRN", "Patient Name", "DOB", "Patient ZIP", "Admit Date",
+                                     "Discharge Date", "Encounter Type", "Department", "MS-DRG",
+                                     "Principal Dx", "Discharge Disposition", "Attending NPI",
+                                     "Total Charges"])
+    df = df.sort_values("Admit Date", kind="stable").reset_index(drop=True)
+    df.insert(0, "Encounter ID", np.arange(5_200_001, 5_200_001 + len(df)))
+    df["MS-DRG"] = df["MS-DRG"].astype("Int64")   # blank on observation stays (outpatient)
+
+    # Truth, from the frame alone.
+    adm, dis = df["Admit Date"], df["Discharge Date"]
+    los = (dis - adm).dt.days
+    ip = df["Encounter Type"].eq("Inpatient")
+    discharged = ip & dis.notna()
+    last_admit = adm.max()
+    index = discharged & ~df["Discharge Disposition"].isin(_IP_NOT_INDEX) & (
+        dis <= last_admit - pd.Timedelta(days=30))
+    pairs = df.loc[index, ["Encounter ID", "MRN"]].assign(dis=dis[index]).merge(
+        df.loc[ip, ["MRN"]].assign(adm=adm[ip]), on="MRN")
+    gap = (pairs["adm"] - pairs["dis"]).dt.days
+    hit = set(pairs.loc[(gap > 0) & (gap <= 30), "Encounter ID"])
+    ix = df[index].assign(readmit=df.loc[index, "Encounter ID"].isin(hit))
+    # naive: every row, next row of the same MRN (any type) within 30 days of this discharge
+    order = df.sort_values(["MRN", "Admit Date"], kind="stable")
+    nxt = order.groupby("MRN")["Admit Date"].shift(-1)
+    ngap = (nxt - order["Discharge Date"]).dt.days
+    naive_readmit = float(((ngap > 0) & (ngap <= 30)).mean())
+    by_drg = ix.groupby(["MS-DRG", "Department"])["readmit"].mean()
+    simpson = {"higher_crude": "Cardiology", "lower_crude": "General Medicine",
+               "by_drg": {str(g): {d: _r6(by_drg[(g, d)]) for d in ("Cardiology", "General Medicine")}
+                          for g in (291, 313)}}
+    dob_ = df["DOB"]
+    age = adm.dt.year - dob_.dt.year - ((adm.dt.month * 100 + adm.dt.day)
+                                        < (dob_.dt.month * 100 + dob_.dt.day))
+    readmit_by_dept = {d: _r6(v) for d, v in ix.groupby("Department")["readmit"].mean().items()}
+    # per-department truths as they may be published: groups under 11 stays are pooled (PHI)
+    shown = {d for d, n in df["Department"].value_counts().items() if n >= 11}
+    readmit_by_dept = {d: v for d, v in readmit_by_dept.items() if d in shown}
+    truth = {
+        "row_count": len(df),
+        "pii_columns": ["Patient Name", "MRN", "DOB", "Patient ZIP"],
+        "date_range": ["2025-11-01", "2026-10-31"], "last_admit_date": last_admit.strftime("%Y-%m-%d"),
+        "alos_inpatient": _r6(los[discharged].mean()),
+        "median_los_inpatient": _r6(los[discharged].median()),
+        "naive_alos_all_rows": _r6(los.mean()),
+        "alos_by_dept": {d: _r6(v) for d, v in los[discharged].groupby(df["Department"]).mean().items()
+                         if d in shown},
+        "same_day_inpatient_stays": int((discharged & los.eq(0)).sum()),
+        "index_stays": int(index.sum()),
+        "readmit_rate_crude": _r6(ix["readmit"].mean()),
+        "readmit_by_dept": readmit_by_dept,
+        "naive_readmit_rate": _r6(naive_readmit),
+        "simpson": simpson,
+        "mortality_rate_crude": _r6(df.loc[discharged, "Discharge Disposition"].eq("20").mean()),
+        "encounters_by_dept": {d: int(v) for d, v in df["Department"].value_counts().items()},
+        "inpatient_discharges": int(discharged.sum()),
+        "observation_rows": int(df["Encounter Type"].eq("Observation").sum()),
+        "still_patient_rows": int(df["Discharge Disposition"].eq("30").sum()),
+        "charges_total": _r6(df["Total Charges"].sum()),
+        "drg_values": sorted(int(v) for v in df["MS-DRG"].dropna().unique()),
+        "patients": int(df["MRN"].nunique()),
+        "patients_90_plus": int(df.loc[age >= 90, "MRN"].nunique()),
+        "small_department": "Vascular Surgery",
+    }
+    for c in ("DOB", "Admit Date", "Discharge Date"):
+        df[c] = df[c].dt.strftime("%Y-%m-%d")
+    assert abs(truth["naive_alos_all_rows"] - truth["alos_inpatient"]) > 0.3
+    assert abs(truth["naive_readmit_rate"] - truth["readmit_rate_crude"]) > 0.02
+    assert readmit_by_dept["Cardiology"] > readmit_by_dept["General Medicine"] + 0.02
+    assert all(v["Cardiology"] < v["General Medicine"] for v in simpson["by_drg"].values())
+    assert truth["still_patient_rows"] > 0 and truth["same_day_inpatient_stays"] > 0
+    assert truth["patients_90_plus"] > 0 and truth["encounters_by_dept"]["Vascular Surgery"] < 11
+    assert truth["alos_inpatient"] - truth["median_los_inpatient"] > 0.5   # outliers pull the mean
+    return df, truth
+
+
+_HP_PLANS = {   # plan -> (payer, share of members, claim-level denial rate)
+    "Northwind PPO": ("Northwind Health", 0.25, 0.05),
+    "Northwind HMO": ("Northwind Health", 0.15, 0.05),
+    "Summit Choice": ("Summit Mutual", 0.20, 0.08),
+    "Lakeside Medicaid": ("Lakeside Care", 0.15, 0.14),
+    "Harbor Medicare Advantage": ("Harbor Senior Plans", 0.15, 0.10),
+    "Crescent EPO": ("Crescent Health", 0.10, 0.22),
+}
+_HP_CPT = {   # code -> (billed, allowed share of billed, revenue code, place of service, weight)
+    "99213": (185.0, 0.52, "0510", "11", 0.22), "99214": (265.0, 0.50, "0510", "11", 0.14),
+    "99203": (210.0, 0.50, "0510", "11", 0.06), "80053": (62.0, 0.22, "0300", "81", 0.12),
+    "85025": (41.0, 0.25, "0300", "81", 0.10), "36415": (22.0, 0.15, "0300", "81", 0.10),
+    "71046": (155.0, 0.28, "0320", "22", 0.07), "93000": (92.0, 0.22, "0730", "11", 0.06),
+    "J1100": (26.0, 0.15, "0636", "11", 0.05), "99285": (1250.0, 0.35, "0450", "23", 0.025),
+    "70450": (1480.0, 0.14, "0350", "22", 0.025),
+}
+_HP_MONTHS = pd.period_range("2025-11", "2026-10", freq="M")
+_HP_AS_OF = pd.Timestamp("2026-10-31")
+
+
+def _health_members(seed: int) -> pd.DataFrame:
+    """The enrolled members behind make_health_claims and make_member_months (one seed, one
+    population): a plan, an enrollment span (month indexes) and a monthly claim rate."""
+    rng = np.random.default_rng([seed, 31])
+    n = 700
+    ids = rng.permutation(np.unique(rng.integers(100_000_000, 999_999_999, 2 * n)))[:n]
+    plans = list(_HP_PLANS)
+    joiner = rng.random(n) < 0.2   # joins mid-year and stays; 30% of the others leave
+    s = np.where(joiner, rng.integers(1, 12, n), 0)
+    e = np.where(~joiner & (rng.random(n) < 0.3), rng.integers(0, 11, n), 11)
+    lam = np.where(rng.random(n) < 0.35, 0.0, rng.gamma(1.5, 0.45, n))   # 35% never claim
+    return pd.DataFrame({"member": [f"M{i}" for i in ids],
+                         "plan": rng.choice(plans, n, p=[_HP_PLANS[p][1] for p in plans]),
+                         "start": s, "end": e, "lam": lam})
+
+
+def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
+    """Payer claim LINES, service 2025-11-01 .. 2026-10-31, extract as of 2026-10-31.
+
+    Traps: version chains (same Claim ID + Line No, Adjustment Seq up; frequency "1" original,
+    "7" replacement, "8" void: only the final row counts, a voided chain counts zero; voids carry
+    negative amounts); `Claim Total Billed` is the header total repeated on every line; billed is
+    not cost; paid lags service by 14–120 days, so the last 3 service months are incomplete
+    (IBNR: unreceived claims are absent, received-unpaid ones are Pending with blank amounts);
+    denial rate is claim-level over adjudicated claims; codes are text. Member IDs are the only
+    identifier (no name/DOB/ICD) and must still be protected."""
+    mem = _health_members(seed)
+    rng = np.random.default_rng([seed, 32])
+    npis = [int(x) for x in rng.integers(1_000_000_000, 2_000_000_000, 60)]
+    codes = list(_HP_CPT)
+    w = np.array([_HP_CPT[c][4] for c in codes])
+    w = w / w.sum()
+    incurred = {str(m): 0 for m in _HP_MONTHS}
+    rows = []
+    n_claims = 0
+
+    def lines_for(n_lines, status, billed_codes):
+        out = []
+        bad = int(rng.integers(0, n_lines)) if status == "Partially Paid" else -1
+        for j, (code, billed) in enumerate(billed_codes):
+            if status == "Pending":
+                out.append((code, billed, None, None))
+            elif status == "Denied" or j == bad:
+                out.append((code, billed, 0.0, 0.0))
+            else:
+                allowed = round(billed * _HP_CPT[code][1] * rng.uniform(0.9, 1.1), 2)
+                out.append((code, billed, allowed, round(allowed * rng.uniform(0.75, 1.0), 2)))
+        return out
+
+    for m in mem.itertuples():
+        payer, _, deny = _HP_PLANS[m.plan]
+        for k in range(m.start, m.end + 1):
+            month = _HP_MONTHS[k]
+            for _ in range(rng.poisson(m.lam)):
+                incurred[str(month)] += 1
+                svc = month.start_time + pd.Timedelta(days=int(rng.integers(0, month.days_in_month)))
+                paid_lag = int(14 + 106 * rng.beta(2.0, 1.3))
+                recv = svc + pd.Timedelta(days=int(min(paid_lag - 7, rng.integers(3, 40))))
+                paid_on = svc + pd.Timedelta(days=paid_lag)
+                n_lines = int(rng.choice([1, 2, 3, 4], p=[0.4, 0.3, 0.18, 0.12]))
+                picked = rng.choice(codes, n_lines, p=w)
+                billed_codes = [(str(c), round(_HP_CPT[c][0] * rng.lognormal(0, 0.08), 2))
+                                for c in picked]
+                r = rng.random()
+                if recv > _HP_AS_OF:
+                    continue   # not received yet: absent from the extract (IBNR)
+                n_claims += 1
+                cid, npi = f"C{26_000_000 + n_claims}", int(rng.choice(npis))
+                # single-service claims (imaging, ED) are denied more often than multi-line visits
+                p_deny = deny * (2.0 if n_lines == 1 else 0.4)
+                status = ("Pending" if paid_on > _HP_AS_OF else "Denied" if r < p_deny
+                          else "Partially Paid" if r < p_deny + 0.07 and n_lines > 1 else "Paid")
+                total = round(sum(b for _, b in billed_codes), 2)
+
+                def emit(seq, freq, st, lines, paid_date, sign=1):
+                    for j, (code, billed, allowed, paid) in enumerate(lines, start=1):
+                        rows.append((cid, j, seq, freq, m.member, svc, paid_date, payer, st, code,
+                                     _HP_CPT[code][2], npi, _HP_CPT[code][3], sign * billed,
+                                     None if allowed is None else sign * allowed,
+                                     None if paid is None else sign * paid, sign * total))
+
+                lines = lines_for(n_lines, status, billed_codes)
+                emit(0, "1", status, lines, None if status == "Pending" else paid_on)
+                if status == "Pending" or paid_on + pd.Timedelta(days=60) > _HP_AS_OF:
+                    continue
+                r2, later = rng.random(), paid_on + pd.Timedelta(days=int(rng.integers(15, 60)))
+                if r2 < 0.03:   # void: the whole claim reversed
+                    emit(1, "8", status, lines, later, sign=-1)
+                elif r2 < 0.11:   # replacement(s): overturned denial or re-priced lines
+                    new = "Paid" if status == "Denied" and rng.random() < 0.8 else status
+                    for seq in (1, 2) if rng.random() < 0.25 else (1,):
+                        lines = (lines_for(n_lines, new, billed_codes) if new != status else
+                                 [(c, b, a, round(p * rng.uniform(0.85, 1.15), 2)) for c, b, a, p in lines])
+                        status = new
+                        emit(seq, "7", status, lines, later + pd.Timedelta(days=10 * (seq - 1)))
+    df = pd.DataFrame(rows, columns=["Claim ID", "Line No", "Adjustment Seq", "Claim Frequency",
+                                     "Member ID", "Service From", "Paid Date", "Payer",
+                                     "Claim Status", "CPT/HCPCS", "Rev Code", "Rendering NPI",
+                                     "Place of Service", "Billed Amount", "Allowed Amount",
+                                     "Paid Amount", "Claim Total Billed"])
+    df = df.sort_values(["Service From", "Claim ID", "Adjustment Seq", "Line No"],
+                        kind="stable").reset_index(drop=True)
+    for c in ("Billed Amount", "Allowed Amount", "Paid Amount", "Claim Total Billed"):
+        df[c] = df[c].astype(float).round(2)
+    for c in ("Service From", "Paid Date"):
+        df[c] = df[c].dt.strftime("%Y-%m-%d")
+
+    # Truth: the final version of each (claim, line); a chain ending in a void counts zero.
+    final = df.loc[df.groupby(["Claim ID", "Line No"])["Adjustment Seq"].idxmax()]
+    live = final[final["Claim Frequency"] != "8"]
+    claim_status = live.groupby("Claim ID")["Claim Status"].agg(lambda s: (
+        "Pending" if s.eq("Pending").any() else "Denied" if s.eq("Denied").all() else "Paid"))
+    claims = claim_status.to_frame("status").join(live.groupby("Claim ID")["Payer"].first())
+    adjudicated = claims[claims["status"] != "Pending"]
+    month = live["Service From"].str[:7]
+    paid_by_month = live.groupby(month)["Paid Amount"].sum()
+    top_cpt = live.groupby("CPT/HCPCS")["Paid Amount"].sum().sort_values(ascending=False).head(5)
+    truth = {
+        "row_count": len(df), "pii_columns": ["Member ID"], "as_of": "2026-10-31",
+        "paid_total_final": _r6(live["Paid Amount"].sum()),
+        "naive_paid_total": _r6(df["Paid Amount"].sum()),
+        "allowed_total_final": _r6(live["Allowed Amount"].sum()),
+        "billed_total_final": _r6(live["Billed Amount"].sum()),
+        "naive_billed_total": _r6(df["Billed Amount"].sum()),
+        "naive_header_billed_sum": _r6(df["Claim Total Billed"].sum()),
+        "claims_final": int(live["Claim ID"].nunique()),
+        "naive_claim_rows": int(df["Claim ID"].nunique()),
+        "voided_claims": int(final.loc[final["Claim Frequency"] == "8", "Claim ID"].nunique()),
+        "replaced_claims": int(df.loc[df["Claim Frequency"] == "7", "Claim ID"].nunique()),
+        "pending_claims": int((claims["status"] == "Pending").sum()),
+        "adjudicated_claims": len(adjudicated),
+        "denial_rate_claims": _r6((adjudicated["status"] == "Denied").mean()),
+        "denial_rate_by_payer": {p: _r6(v) for p, v in
+                                 adjudicated["status"].eq("Denied").groupby(adjudicated["Payer"]).mean().items()},
+        "naive_denial_rate": _r6(df["Claim Status"].eq("Denied").mean()),
+        "paid_by_payer": {p: _r6(v) for p, v in live.groupby("Payer")["Paid Amount"].sum().items()},
+        "naive_paid_by_payer": {p: _r6(v) for p, v in df.groupby("Payer")["Paid Amount"].sum().items()},
+        "paid_by_service_month": {k: _r6(v) for k, v in paid_by_month.items()},
+        "claims_by_service_month": {k: int(v) for k, v in live.groupby(month)["Claim ID"].nunique().items()},
+        "claims_incurred_by_service_month": incurred,   # incl. not yet received (not in the frame)
+        "incomplete_months": [str(m) for m in _HP_MONTHS[-3:]],
+        "top_cpt_by_paid": {c: _r6(v) for c, v in top_cpt.items()},
+        "members": int(live["Member ID"].nunique()),   # members with a claim that counts
+        "negative_paid_rows": int((df["Paid Amount"] < 0).sum()),
+    }
+    prior6 = paid_by_month[[str(m) for m in _HP_MONTHS[-9:-3]]].mean()
+    inc6 = np.mean([incurred[str(m)] for m in _HP_MONTHS[-9:-3]])
+    for m in truth["incomplete_months"]:
+        assert paid_by_month[m] < 0.7 * prior6   # the drop is run-out ...
+        assert incurred[m] > 0.8 * inc6           # ... volume was flat
+    assert abs(truth["naive_paid_total"] / truth["paid_total_final"] - 1) > 0.03
+    assert truth["naive_header_billed_sum"] > 1.5 * truth["billed_total_final"]
+    assert truth["billed_total_final"] > 2 * truth["allowed_total_final"]
+    assert abs(truth["naive_denial_rate"] - truth["denial_rate_claims"]) > 0.02
+    assert truth["negative_paid_rows"] > 0 and truth["voided_claims"] > 0
+    return df, truth
+
+
+def make_member_months(seed: int) -> tuple[pd.DataFrame, dict]:
+    """Enrollment, one row per member per enrolled month (2025-11 .. 2026-10), the PMPM
+    denominator for make_health_claims(seed); many members have no claims at all.
+
+    Trap: member months counted from claims (member × service month) miss every month without a
+    claim."""
+    mem = _health_members(seed)
+    rows = [(m.member, str(_HP_MONTHS[k]), m.plan) for m in mem.itertuples()
+            for k in range(m.start, m.end + 1)]
+    df = pd.DataFrame(rows, columns=["Member ID", "Month", "Plan"])
+    claims, ct = make_health_claims(seed)
+    naive = claims.assign(m=claims["Service From"].str[:7])[["Member ID", "m"]].drop_duplicates()
+    truth = {
+        "row_count": len(df), "pii_columns": ["Member ID"],
+        "member_months_total": len(df), "members_enrolled": int(df["Member ID"].nunique()),
+        "members_without_claims": int((~df["Member ID"].drop_duplicates()
+                                       .isin(claims["Member ID"])).sum()),
+        "member_months_by_plan": {p: int(v) for p, v in df["Plan"].value_counts().items()},
+        "paid_total_final": ct["paid_total_final"],
+        "pmpm_paid": _r6(ct["paid_total_final"] / len(df)),
+        "naive_member_months_from_claims": len(naive),
+        "naive_pmpm_paid": _r6(ct["paid_total_final"] / len(naive)),
+    }
+    assert truth["naive_member_months_from_claims"] < 0.6 * truth["member_months_total"]
+    return df, truth
+
+
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
@@ -1253,7 +1630,9 @@ DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mi
             "store_weeks": make_store_weeks, "b2b_invoices": make_b2b_invoices,
             "loan_tape": make_loan_tape, "card_ledger": make_card_ledger,
             "loan_tape_messy": make_loan_tape_messy, "bank_statement": make_bank_statement,
-            "ledger_drcr": make_ledger_drcr, "deposits_daily": make_deposits_daily}
+            "ledger_drcr": make_ledger_drcr, "deposits_daily": make_deposits_daily,
+            "inpatient": make_inpatient, "health_claims": make_health_claims,
+            "member_months": make_member_months}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

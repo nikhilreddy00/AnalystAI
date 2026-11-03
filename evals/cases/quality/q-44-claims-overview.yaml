@@ -1,0 +1,29 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-44-claims-overview
+insight_case: ins-44-claims-overview
+category: straightforward
+source:
+  report: insight-20261103T182036Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 2
+  kind: number
+  label: contradicted
+  text: Northwind Health is the largest payer by paid amount at $131,095.83, followed by Summit
+    Mutual at $49,026.14 and Lakeside Care at $38,167.93.
+- op: replace
+  i: 4
+  kind: direction
+  label: contradicted
+  text: Month-over-month, paid amount fell 6.3%, and the decline should be treated as a settled
+    trend in utilization.
+- op: replace
+  i: 5
+  kind: small_cell
+  label: privacy
+  text: The overall claim denial rate stands at 9.5%; at Crescent Health only 4 members had a claim
+    denied.
+natural: []

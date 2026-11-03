@@ -1,0 +1,27 @@
+id: e2e-53
+domain: healthcare
+dataset:
+  name: inpatient
+  seed: 1
+question: What is the 30-day readmission rate by department?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: readmit_by_dept.Cardiology
+  rel_tol: 0.03
+  unit: '%'
+  scales:
+  - 100
+- kind: must_not_match
+  pattern: (caus|led to|drove|result of|because of) .{0,40}(department|cardiology|treatment|care)|worse
+    care|poor(er)? care|clinical(ly)? (worse|inferior)
+  scope: report
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|loss ratio
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: Cardiology's crude rate; a sicker DRG mix, never 'worse care'.

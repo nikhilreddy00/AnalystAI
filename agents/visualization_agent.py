@@ -41,6 +41,7 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    runout_months,
     computable,
     compute_kpi,
     defaults_pack,
@@ -51,7 +52,7 @@ from domain_pack import (
     rows_for,
     row_kinds,
 )
-from guardrails import chart_lint
+from guardrails import chart_lint, rankable
 from llm.client import trace_verdict
 
 from orchestrator.state import (
@@ -1183,7 +1184,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
         if k.at == "latest" and kind == "percent":   # a book's ratio hides its mix: say the spread
             context = "; ".join(x for x in (_spread(df, roles, pack, k.name), context) if x)
-        tiles.append(KPI(label=k.label, value=_format_value(v, kind, unit), context=context,
+        tiles.append(KPI(label=k.label, value=k.written(_format_value(v, kind, unit)), context=context,
                          recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
                                           **_unit_fields(kind, unit)),
                          how=describe_kpi(pack, k.name, roles, present)))
@@ -2138,7 +2139,10 @@ def _label(metric: str, agg: str, ctx: VizContext) -> str:
         return f"{_rate_label(metric, ctx.narrative)} (%)"
     unit = next((c.unit for c in (ctx.contract.columns if ctx.contract else []) if c.name == metric
                  and c.unit), None)
-    label = f"{_AGG_WORD.get(agg, agg.title())} {disp.lower() if agg == 'count' else disp}"
+    word = _AGG_WORD.get(agg, agg.title())
+    # "Total Charges" summed is "Total charges", never "Total total charges"
+    label = disp if disp.lower().startswith(word.lower() + " ") else \
+        f"{word} {disp.lower() if agg == 'count' else disp}"
     return f"{label} ({unit})" if unit else label
 
 
@@ -2267,6 +2271,11 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         note = (f"{cut.strftime('%b %Y')} is left out: the data ends "
                 f"{sub[date].max():%d %b %Y}, so that month is incomplete.")
         sub = sub[sub[date].dt.to_period("M") < cut]
+    if monthly and (runout := runout_months(ctx.contract)) and not sub.empty:   # still arriving
+        since = sub[date].dt.to_period("M").max() - runout + 1
+        note += (f" {since.strftime('%b %Y')} on is left out: records for those months are still "
+                 f"arriving (about {runout} months after the period).")
+        sub = sub[sub[date].dt.to_period("M") < since]
     period = sub[date].dt.to_period("M" if monthly else "D").astype(str)
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0
@@ -2440,8 +2449,8 @@ def _finding_title(kind: str, chart: ChartConfig, ctx: VizContext, args: tuple) 
                 f"vs {_month_name(d[-2]['period'])}")
     if kind in ("segment", "test") and not r.split and len(d) >= 2:
         y = chart.y_keys[0]
-        ranked = sorted((row for row in d if isinstance(row.get(y), (int, float))),
-                        key=lambda row: -row[y])
+        ranked = sorted((row for row in d if isinstance(row.get(y), (int, float))
+                         and rankable(row.get(r.x))), key=lambda row: -row[y])
         if len(ranked) < 2:
             return None
         fmt = (lambda v: f"{v:.1f}%") if chart.value_format == "percent" else (lambda v: f"{v:,.2f}")
@@ -2637,6 +2646,28 @@ def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
 
 # ── Public entry point ───────────────────────────────────────────────────────
 
+def _overview_asks(pack, roles: dict[str, str], columns) -> list[tuple[QuestionIntent, TargetedParams]]:
+    """The overview's KPI charts: the headline by month and by the first `overview_groups` role
+    present, then each other headline KPI by that group. Headlines: the pack's `overview_kpis`
+    the data can compute; unset, its first money tile and a state ratio (NPL) by group."""
+    can = [k for k in (pack.kpi(n) for n in pack.overview_kpis) if k and computable(pack, k.name, roles)]
+    if not pack.overview_kpis:
+        money = next((k for k in pack.kpis if k.tile and k.unit == "money"
+                      and computable(pack, k.name, roles)), None)
+        # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
+        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
+                      and computable(pack, k.name, roles)), None)
+        can = [money, ratio] if money and ratio else [money] if money else []
+    if not can:
+        return []
+    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in columns), None)
+    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=can[0].name, frequency="M"))]
+    if group:
+        asks += [(QuestionIntent.TOP_N, TargetedParams(kpi=k.name, segment_column=group,
+                                                       group_by=group)) for k in can]
+    return asks
+
+
 def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]:
     """A strong-matched domain's overview opens with its headline KPI (the pack's first money
     tile) by month and by its first `overview_groups` role present: the charts its analyst reads
@@ -2645,22 +2676,7 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     from agents.targeted_analysis_agent import handle_kpi   # it imports this module
 
     pack = defaults_pack(ctx.contract)
-    roles = ctx.contract.roles if ctx.contract else {}
-    kpi = next((k for k in pack.kpis if k.tile and k.unit == "money"
-                and computable(pack, k.name, roles)), None) if pack else None
-    if kpi is None:
-        return []
-    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in df.columns), None)
-    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=kpi.name, frequency="M"))]
-    if group:
-        asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=kpi.name, segment_column=group,
-                                                          group_by=group)))
-        # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
-        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
-                      and computable(pack, k.name, roles)), None)
-        if ratio:
-            asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=ratio.name, segment_column=group,
-                                                              group_by=group)))
+    asks = _overview_asks(pack, ctx.contract.roles if ctx.contract else {}, df.columns) if pack else []
     out = []
     for intent, params in asks:
         try:

@@ -28,7 +28,7 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
-from domain_pack import layout_columns, one_series, pack_for
+from domain_pack import as_text, layout_columns, one_series, pack_for, version_roles, words
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -377,12 +377,19 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     fp = fingerprint(df)
     phi = _patient_signal(cols, lambda n: _profiled(df[n]).dropna().head(_SAMPLE).tolist())
     domain, roles, confidence = detect_domain(df, {c.name for c in cols if c.is_date}, set(pii))
+    phi = phi or bool((p := pack_for(domain)) and p.phi)
     if pack := pack_for(domain):   # the pack knows a store number is a label, not a quantity
         for c in cols:
             role = next((r for r, col in roles.items() if col == c.name), None)
+            if role and pack.roles[role].kind == "category" and c.is_metric:   # a code (DRG 470)
+                c.is_metric = False
+                c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a code)"
+            if role and role in version_roles(pack) and c.is_metric:
+                c.is_metric = False   # a claim's line or adjustment number: never a measure
+                c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a version)"
             if not role or pack.roles[role].kind != "id" or c.is_id:
                 continue
-            s = df[c.name].dropna().astype(str)   # text: a nested value can't break nunique
+            s = as_text(df[c.name].dropna())   # text: a nested value can't break nunique
             shaped = bool(pack.roles[role].pattern) and \
                 s.head(1000).str.fullmatch(pack.roles[role].pattern).mean() >= 0.9
             # many digit-bearing codes (SKU 85123A, customer numbers); "Store 1".."Store 3" are labels
@@ -482,7 +489,7 @@ async def _seed_guard_from_last_turn(session: AnalysisSession, llm: LLMClient) -
     await seed_phi_guard(session, llm)
 
 
-# ── PHI mode (Phase 5.5): a de-identified working copy ──────────────────────────
+# ── PHI mode (Phase 5.5): a PHI-protected working copy (not de-identified: exact dates stay) ──────────────────────────
 
 _NOTE_NAME_RE = re.compile(r"(?:^|_)(?:notes?|comments?|remarks?|descr\w*|text|memo|narrative|"
                            r"messages?|summary|observations?)(?:$|_)", re.I)
@@ -539,6 +546,13 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
     Fail closed: kept are only numbers, non-personal dates, ZIPs (generalised), diagnosis codes
     and short categories that neither look like people's names nor follow the patient 1:1."""
     roles = {c.name: c for c in contract.columns}
+    pack = pack_for(contract.domain)
+    coded = {col for r, col in contract.roles.items() if pack and r in pack.roles
+             and pack.roles[r].pattern and pack.roles[r].kind != "id" and col in df.columns
+             and (v := as_text(_profiled(df[col]).dropna()).str.strip()).str.fullmatch(
+                 pack.roles[r].pattern).all() and v.str.contains(r"\d").all()}
+    # procedure codes, DRGs: EVERY value matches and carries a digit (a phrase or one free-text
+    # value is never a code: the column keeps every withholding rule)
     patient = next((str(n) for n in df.columns if is_phi_identifier(str(n))), None)
     n_patients = df[patient].nunique() if patient else 0
     withheld, ids = [], []
@@ -550,7 +564,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
         elif not c.is_metric and _person_share(s, df[patient] if patient else None) >= 0.5:
             withheld.append(n)   # people's names under any header ("Pt", "Resident"), however few
         elif c.is_id or is_phi_identifier(n) or _ID_HEADER_RE.search(_norm(n)) or (
-                _ID_SUFFIX_RE.search(_norm(n)) and not (
+                n not in coded and _ID_SUFFIX_RE.search(_norm(n)) and not (
                     c.is_metric and pd.to_numeric(s, errors="coerce").abs().max() < 100_000)):
             ids.append(n)
         elif c.is_date or is_zip_column(n):
@@ -561,9 +575,9 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
                 ids.append(n)
         elif is_diagnosis_column(n, s.dropna().head(_SAMPLE).tolist()):
             continue   # the clinical content analysed (not an identifier); generalised later
-        elif _is_free_text(s, n) or s.nunique() > 50:
+        elif _is_free_text(s, n) or (s.nunique() > 50 and n not in coded):
             withheld.append(n)   # notes, places: anything too specific to be a category
-        elif patient and n_patients >= 2 and s.nunique() >= 0.5 * n_patients \
+        elif patient and n not in coded and n_patients >= 2 and s.nunique() >= 0.5 * n_patients \
                 and df.groupby(patient)[n].nunique().max() <= 1:
             withheld.append(n)   # one value per patient: it identifies them like a name (the
             # fewer the patients, the more so)
@@ -572,7 +586,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
 
 def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: ConnectorType,
                   info: dict | None = None, scope: str = "") -> tuple[pd.DataFrame, DataContract]:
-    """The frame every agent works on. For patient data (`contract.phi`) a de-identified copy,
+    """The frame every agent works on. For patient data (`contract.phi`) a PHI-protected copy,
     built from an allowlist (fail closed: what isn't known safe is withheld):
     - kept: numbers (ages ≥ 90 → 90), dates that aren't personal, and short category columns
       (≤ 50 values, not free text; groups under 11 rows pooled);
@@ -629,6 +643,12 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
             decisions.append(_decision(col, "cap", "age_90_plus", f"ages over {AGE_CAP} shown as "
                                        f"{AGE_CAP} (90+)", high, out))
     roles = {c.name: c for c in contract.columns}
+    pack = pack_for(contract.domain)
+    # the values a pack rule reads stay as written (pooling 5 'expired' erases mortality); every
+    # other rare value is still pooled, and small counts in what is reported are flagged by the
+    # quality check
+    exact = {contract.roles[r]: vs for r, vs in (pack.value_words() if pack else {}).items()
+             if r in contract.roles}
     for col in (str(n) for n in out.columns):
         c = roles.get(col)
         if c is None or c.is_date or c.is_id or c.is_metric or col in ids or is_zip_column(col):
@@ -636,12 +656,18 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
         key = out[col].astype(str).str.strip().str.casefold().where(out[col].notna(), "\x00missing")
         counts = key.map(key.value_counts())
         small = (counts < SMALL_CELL) & out[col].notna()   # missing stays missing, never a group
+        if col in exact and (kept := small & words(out[col]).isin(exact[col])).any():
+            small &= ~kept
+            decisions.append(_decision(col, "keep", "rule_values", "values a KPI counts kept as "
+                                       f"written although under {SMALL_CELL} records (small "
+                                       "counts in reports are flagged instead)", int(kept.sum()), out))
         dx = is_diagnosis_column(col, _profiled(out[col]).dropna().head(_SAMPLE).tolist())
         # A yes/no outcome is never pooled: pooling its rare side would erase it (readmitted
         # 9 of 300 → 0%); diagnosis codes are pooled however many categories they have.
         if out[col].nunique() <= 2 or (key.nunique() > 50 and not dx) or not small.any():
             continue
-        out[col] = out[col].astype(object).where(~small, POOLED_LABEL)
+        # a code read as numbers (DRG 313.0) becomes its text first: one type per column
+        out[col] = as_text(out[col]).where(out[col].notna()).astype(object).where(~small, POOLED_LABEL)
         decisions.append(_decision(col, "pool", "small_cells", f"groups under {SMALL_CELL} records "
                                    f"grouped as '{POOLED_LABEL}'", int(small.sum()), out))
     notes = [*((info or {}).get("notes", [])),
@@ -775,7 +801,7 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
             raise
         except Exception as exc:   # fail closed: never continue on the raw patient data
             raise IngestionError(f"de-identification failed: {type(exc).__name__}",
-                                 "This data holds patient records and couldn't be de-identified, "
+                                 "This data holds patient records and couldn't be protected, "
                                  "so it wasn't analysed. Check the file opens as a plain table and "
                                  "upload it again; if it keeps failing, ask your administrator.") from exc
         if contract.phi and source_query is not None:   # its excerpt quotes raw result rows

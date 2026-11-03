@@ -173,3 +173,24 @@ def test_a_question_without_its_number_asks_never_guesses_the_first_column():
     assert r.unanswerable_reason and "a or b" in r.unanswerable_reason
     one = build(df.drop(columns="b"))
     assert not t.handle_time_series(df, TargetedParams(frequency="M"), one).unanswerable_reason
+
+
+def test_one_version_chain_rule():
+    """Domain 3: a claim's replaced and voided versions are resolved once, in
+    domain_pack._versions (inside row_kinds); every answer, tile and chart reads row kinds."""
+    assert _hits(r"version_(?:key|order|void)", {"domain_pack.py"}) == [], \
+        "read domain_pack.row_kinds / rows_for; never re-derive version chains"
+
+
+def test_every_highest_lowest_sentence_leaves_the_pooled_group_out():
+    """Domain 3 live run: 'Other (fewer than 11 each) lowest (0.00)'. A pooled privacy bucket is
+    never ranked: each 'highest …' sentence filters through guardrails.rankable."""
+    for p in SHARED:
+        src = p.read_text()
+        if re.search(r"\} highest \(", src):
+            assert "rankable(" in src, f"{p.name}: rank through guardrails.rankable"
+
+
+def test_version_roles_are_named_once():
+    """Pass 3: shared code asks domain_pack.version_roles, never re-lists a pack's version fields."""
+    assert _hits(r"\(\*?pack\.version_key|pack\.version_order\)", {"domain_pack.py"}) == []

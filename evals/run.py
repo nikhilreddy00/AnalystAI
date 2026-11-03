@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+from sqlalchemy import create_engine
 import yaml
 from scipy.stats import binomtest
 
@@ -207,6 +208,34 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
             **({"builtin_only": builtin_only(case)} if baseline and "domain" in case else {})}
 
 
+def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
+    """Write the case's table as its `source` (csv by default | xlsx | json | parquet | sqlite)
+    and name it as POST /chat would: an upload, or a database with a table. Sync, so cases
+    running together never interleave a write."""
+    source = case.get("source", "csv")
+    UPLOADS.mkdir(parents=True, exist_ok=True)
+    stem = f"{case['dataset']['name']}-{case['dataset']['seed']}"
+    if source == "sqlite":
+        path = UPLOADS / f"{stem}.sqlite"
+        path.unlink(missing_ok=True)
+        df.to_sql("data", create_engine(f"sqlite:///{path}"), index=False)
+        return ConnectorConfig(type=ConnectorType.SQL, connection_string=f"sqlite:///{path}",
+                               table_name="data")
+    path = UPLOADS / f"{stem}.{source}"
+    if source == "csv":
+        if not path.exists() or path.read_text() != csv:
+            path.write_text(csv)
+    elif source == "xlsx":
+        df.to_excel(path, index=False)
+    elif source == "json":
+        df.to_json(path, orient="records", date_format="iso")
+    elif source == "parquet":
+        df.to_parquet(path, index=False)
+    else:
+        raise ValueError(f"unknown source: {source}")
+    return ConnectorConfig(type=ConnectorType.CSV, file_path=str(path))
+
+
 _DEPS = None
 
 
@@ -222,14 +251,9 @@ async def run_e2e_case(case: dict) -> dict:
     deps = replace(_DEPS, run_store=InMemoryRunStore())   # this case's queue: claims stay its own
 
     df, truth, csv = dataset(case)
-    UPLOADS.mkdir(parents=True, exist_ok=True)
-    path = UPLOADS / f"{case['dataset']['name']}-{case['dataset']['seed']}.csv"
-    if not path.exists() or path.read_text() != csv:   # sync, so no interleaving between tasks
-        path.write_text(csv)
-
     session = AnalysisSession(
         session_id=str(uuid.uuid4()),
-        connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)),
+        connector_config=source_config(case, df, csv),
         overview_done=case.get("overview_done", False),
     )
     await deps.session_store.create(session)   # as POST /chat does: save() never inserts
@@ -423,9 +447,14 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
     from agents.analysis_agent import build_evidence, segment_id
     from orchestrator.state import AnomalyRecord, SegmentResult, StatisticalResult, TrendResult
 
+    from agents.utils import time_axis
     plan = case["plan"]
-    date = _viz_date(df)
+    date = (time_axis(contract, None, df) if contract is not None else None) or _viz_date(df)
     month = any_dates(df[date]).dt.to_period("M") if date else None
+    from domain_pack import runout_months   # claims still arriving: as analysis_agent's MoM
+    data_last = month.max() if month is not None else None
+    if month is not None and contract is not None and (runout := runout_months(contract)):
+        month = month.where(month < month.max() - runout + 1)
     corr, trends, raw_trends, segs, anoms, tests, ids = {}, [], [], [], [], [], []
     for f in case.get("findings") or []:
         if f["kind"] == "trend":
@@ -444,7 +473,9 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
             base = tot.iloc[-13] if kind == "YoY" else tot.iloc[-2]
             pct = round(float((tot.iloc[-1] / base - 1) * 100), 2)
             period = "MoM" if kind == "MoM" else "YoY"
-            trends.append(TrendResult(column=col, period=period, pct_change=pct, segment=seg,
+            named = ({"latest": str(tot.index[-1]), "previous": str(tot.index[-13 if kind == "YoY" else -2])}
+                     if kind != "YoY_calendar" and tot.index[-1] != data_last else {})   # as the built-in
+            trends.append(TrendResult(column=col, period=period, pct_change=pct, segment=seg, **named,
                                       direction="up" if pct > 0 else "down" if pct < 0 else "flat"))
             raw_trends.append({"column": col, "period": period, "segment": seg, "n": int(len(frame))})
             ids.append(f"trend:{col}" + (f" ({seg})" if seg else "") + f":{period}")
@@ -579,11 +610,17 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import DataNarrative, QuestionIntent
 
+    from agents.ingestion_agent import prepare_frame
+
     plan = case["plan"]
     df = insight_frame(case)
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    if contract.phi:   # patient data: the insight agent reads the PHI-protected copy, as in production
+        df, contract = prepare_frame(df, contract, ConnectorType.CSV, {},
+                                     AnalysisSession(session_id="x").user_id)
     session = AnalysisSession(
         session_id=str(uuid.uuid4()),
-        data_contract=CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df),
+        data_contract=contract,
         task_plan=AnalysisTask(raw_query=case["question"], target_metrics=plan["target_metrics"],
                                segments=plan.get("segments", []),
                                analysis_types=plan.get("analysis_types") or ["eda"],

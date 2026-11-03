@@ -1,0 +1,17 @@
+id: intake-health-03
+category: clear
+pipeline: production
+source:
+  dataset: inpatient
+  seed: 1
+overview_done: true
+question: How many discharges did we have each month?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: discharges
+rationale: Discharges KPI.

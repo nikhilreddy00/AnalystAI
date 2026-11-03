@@ -21,6 +21,8 @@ from __future__ import annotations
 import json
 import logging
 import re
+
+import pandas as pd
 from datetime import date
 from pathlib import Path
 
@@ -28,9 +30,11 @@ from pydantic import BaseModel
 
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
+from connectors.base import TRUNCATED
 from agents.utils import display_values, pii_columns, strip_markdown_fences, with_display_names
 from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
+    rankable,
     _SENTENCE_RE,
     UNTRUSTED_NOTE,
     delimit_untrusted,
@@ -433,22 +437,29 @@ def _plain(e: Evidence, findings, narrative: DataNarrative | None) -> str:
             seg = f" for {_label(t.segment)}" if t.segment else ""
             way = "rose" if t.pct_change > 0 else "fell" if t.pct_change < 0 else "was flat"
             period = "month over month" if t.period == "MoM" else "year over year"
-            text = f"{_name(t.column, narrative)}{seg} {way} {abs(t.pct_change):.1f}% {period}."
+            months = (f" ({pd.Period(t.latest, 'M').strftime('%b %Y')} vs "
+                      f"{pd.Period(t.previous, 'M').strftime('%b %Y')})") if t.latest and t.previous else ""
+            text = f"{_name(t.column, narrative)}{seg} {way} {abs(t.pct_change):.1f}% {period}{months}."
     elif e.kind == "segment":
         s = next((s for s in findings.segments
                   if segment_id(s.segment_column, s.metric_column, s.aggregation, s.label) == e.id), None)
-        vals = [r for r in (s.results if s else []) if isinstance(r.get("value"), (int, float))]
+        vals = [r for r in (s.results if s else []) if isinstance(r.get("value"), (int, float))
+                and rankable(r.get("name"))]
         if vals:
             hi = max(vals, key=lambda r: r["value"])
             lo = min(vals, key=lambda r: r["value"])
+            rate = s.aggregation == "ratio" and all(0 <= r["value"] <= 1 for r in vals)
+
+            def show(v: float) -> str:   # a 0-1 ratio reads as a percent
+                return f"{v * 100:.1f}%" if rate else f"{v:,.2f}"
             what = {"mean": "Average", "sum": "Total", "count": "Number of rows for"}.get(
                 s.aggregation, s.aggregation.title())
             head = (_name(s.label or f"{s.metric_column}_ratio", narrative).capitalize()
                     if s.aggregation == "ratio" else f"{what} {_name(s.metric_column, narrative)}")
             text = (f"{head} by "
                     f"{_name(s.segment_column.replace('|', ' and '), narrative)}: "
-                    f"{_label(hi.get('name'))} highest ({hi['value']:,.2f}), "
-                    f"{_label(lo.get('name'))} lowest ({lo['value']:,.2f}).")
+                    f"{_label(hi.get('name'))} highest ({show(hi['value'])}), "
+                    f"{_label(lo.get('name'))} lowest ({show(lo['value'])}).")
     elif e.kind == "correlation":
         a, _, b = e.id.removeprefix("corr:").partition("__")
         r = findings.correlations.get(f"{a}__{b}", 0.0)
@@ -515,15 +526,22 @@ def _pct(p: float) -> str:
 
 
 def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
-    """Data-quality alerts from the cleaning audit, severity by the numeric triggers."""
+    """Data-quality alerts from the source's load and the cleaning audit, severity by the
+    numeric triggers."""
     audit, narrative = session.cleaning_audit, session.narrative
-    if audit is None:
-        return [], ""
     out: list[AnomalyAlert] = []
 
     def alert(sev: Severity, col: str, title: str, desc: str, todo: str) -> None:
         out.append(AnomalyAlert(title=title, severity=sev, description=desc, affected_metric=col,
                                 suggested_investigation=todo))
+
+    src = session.data_contract.source_evidence if session.data_contract else None
+    for note in [a for a in (src.assumptions if src else []) if a.startswith(TRUNCATED)]:
+        alert(Severity.HIGH, "", "Only part of the data was loaded", note,
+              "Narrow the source, or connect the database without a table so questions are "
+              "answered in the database.")
+    if audit is None:
+        return _compress_alerts(out)
 
     for d in audit.decisions:
         name = _name(d.column, narrative)

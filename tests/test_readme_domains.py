@@ -67,7 +67,18 @@ DEPTH = {"retail": ["analysis-20261102T002211Z.json",           # 7 retail cases
                      "insight-20261102T210024Z.json",           # 2 banking overviews
                      "quality-20261102T210206Z.json",           # 2 seeded banking reports
                      "e2e-20261102T212128Z-rescored.json",      # 10 banking E2E cases, k=1
-                     "e2e-20261102T213308Z.json"]}              # 4 retail E2E cases whose context changed
+                     "e2e-20261102T213308Z.json"],              # 4 retail E2E cases whose context changed
+         "healthcare": ["analysis-20261103T174405Z-rescored.json",   # smoke: health-4/6/7 k=1
+                        "analysis-20261103T174902Z.json",            # health-4 after its fix
+                        "analysis-20261103T175226Z-rescored.json",   # 8 healthcare cases, k=3
+                        "analysis-20261103T180918Z.json",            # health-8 k=3 on prompt v9
+                        "intake-20261103T175225Z.json",              # 14 healthcare intake cases
+                        "intake-20261103T194212Z.json",              # health-10/12 k=3 after the glossary fix
+                        "insight-20261103T182036Z.json",             # 2 healthcare overviews
+                        "quality-20261103T182408Z.json",             # 2 seeded healthcare reports
+                        "e2e-20261103T184600Z-rescored.json",        # 9 healthcare E2E cases, k=1
+                        "e2e-20261103T191033Z.json",                 # 4 re-gated after the audit
+                        "e2e-20261103T192807Z.json"]}                # e2e-52 after its fix
 
 
 def _listed(text: str) -> set[str]:

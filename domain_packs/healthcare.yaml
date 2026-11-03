@@ -1,0 +1,269 @@
+# Healthcare (Phase 5.7, domain 3): hospital encounters (one row per stay: admit, discharge,
+# disposition) and payer claims (one row per claim line: versions, billed/allowed/paid, lag).
+# Headers are normalized (domain_pack.normalize_header): lower case, "_" for spaces, units dropped.
+# Cited definitions and traps: docs/research/2026-11-03-healthcare.md.
+domain: healthcare
+
+# Patient data: any match turns PHI mode on (a claims extract has member ids and codes, no name).
+phi: true
+
+# Strong: a stay (a patient, an admission and a discharge), or a claim line (a claim, a member or
+# patient, a clinical code and a payer amount). Hotels have stays and insurers have claims; the
+# admission and the clinical code are healthcare's own.
+strong:
+  - {patient: [patient], admitted: [admit_date], discharged: [date]}
+  - {claim: [claim_id], person: [member, patient], code: [procedure, drg, rev_code, diagnosis],
+     money: [paid, allowed, billed]}
+signals:
+  - {patient: [patient], admitted: [admit_date]}
+  - {person: [member, patient], code: [procedure, drg, rev_code]}
+# Another domain's headers (all words in ONE header): retail, banking, insurance (P&C), HR, SaaS.
+exclude_headers: [[sku], [order, id], [lineitem], [balance], [loan], [dpd], [policy, id],
+                  [policyholder], [premium], [earned], [loss, date], [reserve], [vin],
+                  [employee, id], [payroll], [mrr], [arr], [subscription], [seats], [sensor],
+                  [meter], [shipment], [ticker], [cusip], [invoiceno], [vendor], [supplier]]
+abbreviations: {adm: admit, disch: discharge,
+                discharged: discharge, dc: discharge, dx: diagnosis, px: procedure,
+                pt: patient, svc: service, dos: date_of_service, amt: amount, pd: paid,
+                alw: allowed, allow: allowed, chg: charges, chgs: charges, rev: revenue,
+                cd: code, dt: date, num: number, nbr: number, "no": number, freq: frequency,
+                seq: sequence, adj: adjustment, dispo: disposition, enc: encounter}
+
+roles:
+  # The time role first: discharge date for stays (ALOS and readmission are discharge-based),
+  # date of service for claims (incurred month; paid month lags).
+  date:        {kind: date, headers: [discharge_date, date_of_discharge, discharge, service_from,
+                                      service_from_date, service_date, date_of_service,
+                                      service_start_date, from_date, first_date_of_service]}
+  admit_date:  {kind: date, headers: [admit_date, admit, admission_date, date_of_admission,
+                                      admitted_date, admit_date_time, encounter_date,
+                                      visit_date]}
+  paid_date:   {kind: date, headers: [paid_date, payment_date, check_date, remit_date,
+                                      adjudication_date, processed_date]}
+  patient:     {kind: id, headers: [mrn, patient_id, patient_number, medical_record_number,
+                                    patient, patient_key, pat_id, person_id]}
+  member:      {kind: id, headers: [member_id, member_number, subscriber_id, member,
+                                    beneficiary_id, enrollee_id, insured_id]}
+  encounter:   {kind: id, headers: [encounter_id, encounter_number, visit_id, admission_id,
+                                    stay_id, account_number, encounter]}
+  claim_id:    {kind: id, headers: [claim_id, claim_number, claim, icn]}
+  line:        {kind: category, pattern: '\d{1,3}', headers: [line_number, line, claim_line,
+                                                              claim_line_number]}
+  version:     {kind: count, headers: [adjustment_sequence, adjustment_number, version,
+                                       claim_version, sequence]}
+  frequency:   {kind: category, pattern: '[0-9A-Z]',
+                headers: [claim_frequency, frequency_code, claim_frequency_code, bill_frequency]}
+  encounter_type: {kind: category, headers: [encounter_type, patient_type, visit_type,
+                                             admission_type, patient_class, stay_type, setting]}
+  disposition: {kind: category, pattern: '(?i)\d{1,2}|[a-z][a-z /,-]{1,38}',
+                headers: [discharge_disposition, disposition, discharge_status,
+                          patient_status, discharge_status_code]}
+  department:  {kind: category, headers: [department, service_line, unit, specialty,
+                                          clinical_service, ward, service]}
+  facility:    {kind: category, headers: [facility, hospital, site, facility_name, campus]}
+  payer:       {kind: category, headers: [payer, payer_name, insurer, plan, health_plan,
+                                          payor, line_of_business, financial_class]}
+  drg:         {kind: category, pattern: '\d{3}', headers: [ms_drg, drg, drg_code, apr_drg]}
+  procedure:   {kind: category, pattern: '[0-9A-Z]\d{3}[0-9A-Z]',
+                headers: [cpt_hcpcs, cpt, hcpcs, cpt_code, hcpcs_code, procedure_code, procedure]}
+  rev_code:    {kind: category, pattern: '0?\d{3}', headers: [revenue_code]}
+  diagnosis:   {kind: category, pattern: '[A-TV-Z]\d[0-9A-Z](?:\.?[0-9A-Z]{1,4})?',
+                headers: [principal_diagnosis, diagnosis_code, diagnosis, primary_diagnosis,
+                          icd10, icd_10, icd_code, icd10_code]}
+  provider:    {kind: category, pattern: '\d{10}',
+                headers: [attending_npi, rendering_npi, npi, provider_npi, billing_npi]}
+  place_of_service: {kind: category, pattern: '\d{1,2}', headers: [place_of_service, pos]}
+  los:         {kind: count, additive: false,   # a stay's duration: averaged, never summed
+                headers: [length_of_stay, los, los_days, length_of_stay_days]}
+  charges:     {kind: money, headers: [total_charges, charges, billed_charges, gross_charges]}
+  billed:      {kind: money, headers: [billed_amount, billed, charge_amount, line_charges,
+                                       submitted_amount, line_billed]}
+  allowed:     {kind: money, headers: [allowed_amount, allowed, contracted_amount]}
+  paid:        {kind: money, headers: [paid_amount, paid, plan_paid, net_paid, payment_amount,
+                                       amount_paid]}
+  # The claim's total, repeated on every line (a header field): counted once per claim.
+  claim_total: {kind: money, level: order, headers: [claim_total_billed, claim_total,
+                                                     total_claim_charges, claim_billed]}
+  status:      {kind: status, headers: [claim_status, status, adjudication_status,
+                                        line_status]}
+
+# Compared as words (case, spaces, dashes ignored). Denied and pending claims are received claims
+# (counted in claims and billed; paid 0 or not yet); only adjudicated ones are in the denial rate.
+status_values:
+  ok: [paid, partially paid, partial paid, partial, denied, rejected, approved, adjudicated,
+       processed, finalized, final, closed, adjusted, pending, pended, in process, in review,
+       suspended, received, open]
+  cancel: [void, voided, cancelled, canceled, reversed]
+
+# Claim versions: one claim line adjudicated, replaced (frequency 7), voided (8); only the last
+# version counts, and a chain whose last version is a void counts nothing.
+version_key: [claim_id, line]
+version_order: version
+version_void: {frequency: ["8"]}
+order_key: claim_id
+ranges: {los: {ge: 0}}
+runout: {role: paid_date, months: 3}   # claims keep arriving for ~3 months after service (CMS)
+derived: {los: [date, days, admit_date]}   # no LOS column: length_of_stay = discharge − admit
+
+overview_groups: [department, payer, drg, facility, procedure]
+overview_kpis: [discharges, paid, readmission_rate, alos, denial_rate]
+kind_codes: {sale: counted, return: netted, refunded: reversed, cancel: voided,
+             test: test, non_product: superseded_version}
+row_labels: {sale: counted rows, cancel: voided claims,
+             non_product: earlier versions of replaced claim lines, test: test records}
+row_flags:
+  cancel: "voided claims: left out of claims, money and the denial rate"
+  non_product: "earlier versions of claim lines that were later replaced: only the last version counts"
+  test: "test records: left out"
+text:
+  rows_brief: "Figures use rows of kind 'counted'. For claims, only each claim line's LAST version counts (kind 'superseded_version' = an earlier version, left out) and voided claims are left out (kind 'voided'); pending claims are received claims (counted, paid not yet) but not in the denial rate (denied ÷ claims not pending). Money is line-level: never sum a claim's total that repeats on every line. Billed charges are not cost: paid (payer view) or allowed (total cost of care) is. For stays: length of stay = discharge date − admit date in days (same day = 0); ALOS and readmission count inpatient stays with a discharge date (observation stays are outpatient); a 30-day readmission is a later inpatient admission of the same patient within 30 days of a discharge, left out when the patient died, left against medical advice or was transferred, and discharges in the last 30 days of the data can't be followed (left out of the rate)."
+  grain_line: "One row is a claim line: count claims as distinct {key}, never rows; an average per claim divides by claims."
+  unsupported_alternatives: "I can answer with what the data has: stays, length of stay, readmissions and mortality by department or month, or paid amounts and denials by payer or procedure. Which would help?"
+  kpis_default: its stays and claims columns
+  causal_removed: "{n} sentence(s) saying a treatment, program or department caused an outcome were removed: from observational data without risk adjustment that can't be shown."
+  cancel_rule: voided (left out)
+  non_product_rule: an earlier version of a replaced claim line (left out)
+  money_rows_note: "Last versions of claim lines{currency} only: {n} other rows (earlier versions or voided claims) left out."
+
+kpis:
+  - name: discharges
+    label: Discharges
+    unit: count
+    tile: true
+    num:
+      - [{nunique: encounter, where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}, {role: date, not_in: []}]]}]
+      - [{nunique: encounter, where: [[{role: date, not_in: []}]]}]
+  - name: alos
+    label: ALOS
+    unit: number
+    unit_word: days
+    tile: true
+    num:
+      - [{sum: los, where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]}]
+      - [{sum: [date, days, admit_date], where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]}]
+      - [{sum: los}]
+      - [{sum: [date, days, admit_date]}]
+    den: [[{kpi: discharges}]]
+  # Crude 30-day all-cause readmission (CMS/HCUP index rules): index = an inpatient discharge
+  # whose patient didn't die (20), leave against medical advice (07) or transfer to acute care
+  # (02, 82); readmitted = a later inpatient admission of the same patient in (0, 30] days.
+  - name: readmission_rate
+    label: 30-day readmission rate
+    unit: percent
+    tile: true
+    num:
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30,
+                   follow: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]},
+          where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]},
+                   {role: disposition, not_in: ["20", "7", "07", "2", "02", "5", "05", "43", "66", "82", "85", "88", "93", "94", expired, died,
+                                                deceased, ama, left against medical advice,
+                                                against medical advice, transferred,
+                                                transfer to acute care, transfer acute]}]]}]
+      # no disposition column: inpatient stays and inpatient readmissions still
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30,
+                   follow: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]},
+          where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]}]
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30}}]
+    den:
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30, base: true},
+          where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]},
+                   {role: disposition, not_in: ["20", "7", "07", "2", "02", "5", "05", "43", "66", "82", "85", "88", "93", "94", expired, died,
+                                                deceased, ama, left against medical advice,
+                                                against medical advice, transferred,
+                                                transfer to acute care, transfer acute]}]]}]
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30, base: true},
+          where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]}]
+      - [{within: {entity: patient, start: admit_date, end: date, days: 30, base: true}}]
+  - name: mortality_rate
+    label: In-hospital mortality
+    unit: percent
+    tile: true
+    num: [[{nunique: encounter, where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]},
+                                          {role: disposition, in: ["20", expired, died, deceased]}]]}]]
+    den: [[{kpi: discharges}]]
+  - {name: patients, label: Patients, unit: count, tile: true, num: [[{nunique: patient}]]}
+  - name: billed_charges
+    label: Billed charges (not cost)
+    unit: money
+    num: [[{sum: charges}], [{sum: billed}]]
+  - {name: paid, label: Paid, unit: money, tile: true, num: [[{sum: paid}]]}
+  - {name: allowed, label: Allowed, unit: money, tile: true, num: [[{sum: allowed}]]}
+  - {name: claims, label: Claims, unit: count, tile: true, num: [[{nunique: claim_id}]]}
+  - {name: members, label: Members with claims, unit: count, tile: true, num: [[{nunique: member}]]}
+  # HFMA remittance denial rate, by count, on each claim's last version: denied ÷ adjudicated.
+  - name: denial_rate
+    label: Denial rate (claims)
+    unit: percent
+    tile: true
+    num: [[{nunique: claim_id, where: [[{role: status, in: [denied, rejected]}]]}]]
+    den:
+      - [{nunique: claim_id, where: [[{role: status, not_in: [pending, pended, in process, in review, suspended, received, open]}]]}]
+
+glossary:
+  alos: [alos, average length of stay, avg length of stay, mean length of stay, length of stay,
+         los, average los, days in hospital]
+  readmission_rate: [readmission, readmissions, readmission rate, readmit, readmits, readmit rate,
+                     30-day readmission, 30 day readmission, readmitted, bounce back, bounce backs]
+  mortality_rate: [mortality, mortality rate, in-hospital mortality, deaths, death rate, died,
+                   expired]
+  discharges: [discharges, inpatient discharges, admissions, stays, inpatient stays, volume,
+               cases]
+  patients: [patients, unique patients, distinct patients, number of patients]
+  billed_charges: [charges, billed charges, gross charges, billed amount, total charges, billed]
+  paid: [paid, pay, we pay, paying, paid out, paid amount, payments, claims paid, spend, medical spend, claims cost, cost,
+         total paid, net paid]
+  allowed: [allowed, allowed amount, cost of care, total cost of care, contracted amount]
+  claims: [claims, claim count, number of claims, claim volume]
+  members: [members, members with claims, utilizers]
+  denial_rate: [denial rate, denials, denied claims, denied, rejection rate, rejected claims]
+  pmpm: [pmpm, per member per month, cost per member, cost per member per month]
+  per_1000: [per 1000, per thousand, per 1,000 members, utilization per 1000]
+  risk_adjusted: [risk adjusted, risk-adjusted, risk standardized, risk-standardized, rsrr,
+                  expected readmissions, o/e, observed to expected, case mix adjusted]
+  hrrp: [hrrp, readmission penalty, readmissions reduction program, cms penalty]
+  clinical_advice: [should we treat, which treatment, what dose, dosage, prescribe,
+                    best medication, should the patient]
+  ibnr: [ibnr, incurred but not reported, run out, runout, claims lag, completion factor]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+consumed: [patient name, date of birth, account manager]
+definitions:
+  ibnr: "Claims keep arriving for months after the service (Medicare: ~93% complete after 3 months, 99.9% after 12). The last 3 service months here are incomplete: a drop there is lag, not a trend. Completing them needs a completion-factor model, which is not done here."
+  yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
+unsupported:
+  pmpm: "member months from an enrollment table (members with no claims count too); a claims file alone can't give the denominator"
+  per_1000: "member months or members enrolled from an enrollment table; a claims file alone can't give the denominator"
+  risk_adjusted: "a risk model (CMS uses patient age, conditions and history to set expected rates); the rates here are crude, not risk-adjusted"
+  hrrp: "CMS's risk-standardized rates and national comparisons; the rates here are crude and can't be compared with CMS's"
+  clinical_advice: "clinical judgement about a patient: this tool analyses data and gives no diagnosis, treatment or dosing advice"
+
+caveats:
+  read_as_domain: "Read as healthcare data ({kpis}). Rates are crude (not risk-adjusted; case mix differs between groups, so a higher rate is no judgement of quality); readmission is all-cause within thirty days of an inpatient discharge, planned readmissions not removed; money by payer or plan follows member volume (no member months here). This file has exact dates: a limited data set, not de-identified."
+  read_as_domain_weak: "Read as healthcare data because it has {roles} columns; if these are not patient stays or claims, the healthcare figures here don't apply."
+  repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
+  cancelled_excluded: "{n} voided claim rows are left out of claims, money and the denial rate."
+  non_product_excluded: "{n} earlier versions of replaced claim lines are left out: only each line's last version counts."
+  months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+  test_excluded: "{n} test records are left out."
+  recent_incomplete: "Service months from {from_month} on are incomplete: claims keep arriving for about {months} months after the service, so a drop there is lag, not a trend."
+
+causal_triggers: [treatment, treatments, therapy, medication, medications, drug, drugs,
+                  intervention, program, programs, care management, discharge planning,
+                  protocol, staffing, physician, physicians, surgeon, department, hospital,
+                  follow-up call, follow up call, telehealth, performs, perform, performing,
+                  performance, better care, worse care, poorer care, quality of care,
+                  in need of attention, underperform, underperforms, underperforming,
+                  coding patterns, contract terms]
+small_cell_nouns: [patients, patient, encounters, encounter, stays, stay, admissions, admission,
+                   discharges, discharge, deaths, death, readmissions, readmission, members,
+                   member, people, cases, beneficiaries]
+
+first_questions:
+  - {q: "What is the average length of stay by department, and how has it moved by month?", needs: [alos, department]}
+  - {q: "What is the 30-day readmission rate, and which departments are highest?", needs: [readmission_rate, department]}
+  - {q: "How many inpatient discharges did we have each month?", needs: [discharges]}
+  - {q: "What is in-hospital mortality by department?", needs: [mortality_rate, department]}
+  - {q: "How much was paid by month of service (recent months are still incomplete)?", needs: [paid]}
+  - {q: "What is the claim denial rate by payer?", needs: [denial_rate, payer]}
+  - {q: "Which procedures account for the most paid?", needs: [paid, procedure]}
+  - {q: "How does allowed compare with paid by payer?", needs: [allowed, paid, payer]}

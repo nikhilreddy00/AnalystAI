@@ -1,0 +1,47 @@
+id: e2e-52
+domain: healthcare
+dataset:
+  name: inpatient
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: must_not_number
+  truth_key: naive_readmit_rate
+  rel_tol: 0.01
+  unit: '%'
+  scope: report
+  scales:
+  - 100
+- kind: must_not_number
+  truth_key: naive_alos_all_rows
+  rel_tol: 0.005
+  scope: report
+  unit: days
+- kind: must_match
+  pattern: crude|not risk[- ]adjusted
+  scope: report
+- kind: must_match
+  pattern: limited data set
+  scope: report
+- kind: must_not_match
+  pattern: (caus|led to|drove|result of|because of) .{0,40}(department|cardiology|treatment|care)|worse
+    care|poor(er)? care|clinical(ly)? (worse|inferior)
+  scope: report
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|loss ratio
+  scope: report
+- kind: must_not_match
+  pattern: Vascular Surgery
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'A hospital stays file: ALOS discharge-based, crude readmission, never naive rates; small
+  department pooled; no causal or quality-of-care claim; the limited-data-set line.'

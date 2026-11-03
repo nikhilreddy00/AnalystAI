@@ -357,3 +357,51 @@ def test_unseen_e2e_cases_are_priced_by_their_kind(tmp_path):
             shutil.copy(p, tmp_path)
     assert estimate_usd("e2e", len(cases), tmp_path, cases, 1) > 0.8   # 7 overviews + 7 targeted,
     # not 14 × the average
+
+
+def test_a_mean_over_the_rows_a_pack_counts_is_not_a_false_finding():
+    """Domain 3 smoke run: mean paid per payer over each claim line's last version (what the
+    tiles count) was scored false against every row, replaced versions included."""
+    from domain_pack import rows_for
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from agents.ingestion_agent import build_contract
+    from orchestrator.state import ConnectorType
+    df, truth = datagen.make("health_claims", 1)
+    counted, _ = rows_for(df, build_contract(df, ConnectorType.CSV, {}), "Paid Amount")
+    means = counted.groupby("Payer")["Paid Amount"].mean()
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[],
+                         statistical_tests=[], forecast_points=[], distributions={}, code_executed="",
+                         segments=[SegmentResult(segment_column="Payer", metric_column="Paid Amount",
+                                                 aggregation="mean", results=[
+                                                     {"name": k, "value": float(v)} for k, v in means.items()])])
+    r = false_findings(f, df, truth)
+    assert r["verifiable"] == 5 and r["false"] == 0, r
+
+
+def test_a_column_named_with_a_slash_is_one_column():
+    """Domain 3 analysis gate: 'CPT/HCPCS' was split into 'CPT' and 'HCPCS' (unknown columns)."""
+    import pandas as pd
+    from evals.scoring import hard_rule
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df = pd.DataFrame({"CPT/HCPCS": ["99213", "J1100"], "Paid Amount": [1.0, 2.0]})
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[],
+                         forecast_points=[], distributions={}, code_executed="",
+                         segments=[SegmentResult(segment_column="CPT/HCPCS", metric_column="Paid Amount",
+                                                 aggregation="sum", results=[{"name": "99213", "value": 1.0}])])
+    assert hard_rule("no_unknown_columns", df, f)[0]
+
+
+def test_a_removal_notice_is_not_the_forbidden_claim():
+    """Domain 3 re-measure (e2e-35): the product removed a causal sentence and said so; the
+    notice quoting 'a promotion or discount caused' failed a must_not_match."""
+    from evals.scoring import check_must_not_match
+    from orchestrator.state import AnalysisSession, TargetedResponse, QuestionIntent
+    s = AnalysisSession(session_id="t")
+    s.targeted_response = TargetedResponse(intent=QuestionIntent.OVERVIEW, answer_text=(
+        "Sales rose 4%. 1 sentence(s) saying a promotion or discount caused a change were removed: "
+        "without a control group that can't be shown."))
+    assert check_must_not_match(s, "promotion or discount caused")[0]
+    s.targeted_response.answer_text = "The promotion or discount caused sales to rise."
+    assert not check_must_not_match(s, "promotion or discount caused")[0]

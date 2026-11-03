@@ -1,0 +1,28 @@
+id: health-8
+domain: healthcare
+category: ratio
+pipeline: production
+dataset:
+  name: health_claims
+  seed: 1
+question: Which procedures account for the most paid?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Paid Amount
+  segments:
+  - CPT/HCPCS
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: CPT/HCPCS
+  truth_key: top_cpt_by_paid
+  abs_tol: 1.0
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: CPT codes are labels (a group), paid on last versions; never the code averaged.

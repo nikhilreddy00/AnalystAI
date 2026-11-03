@@ -33,7 +33,7 @@ def _score(report, case=CASE):
 
 
 def test_suite_shape():
-    assert len(CASES) == 42 and len({c["id"] for c in CASES}) == 42   # 5.7 banking: +2
+    assert len(CASES) == 44 and len({c["id"] for c in CASES}) == 44   # 5.7 banking: +2, healthcare: +2
     assert sum(c["id"].endswith("holdout") for c in CASES) == 8
     cats = {c["category"] for c in CASES}
     assert cats == {"straightforward", "contradictory", "data_quality", "date_scope",
@@ -85,3 +85,14 @@ def test_expectations():
     case["expect"] = {"hedge": "fallen"}   # only the headline says it, hedged
     hedged = _report(headline="Segment B revenue may have fallen 12.6%, on few rows.")
     assert _score(hedged, case)[0]["hedge"]
+
+
+async def test_a_patient_data_bundle_is_built_on_the_protected_copy(monkeypatch):
+    """Domain 3 insight gate: the harness gave the insight agent the raw patient table (names,
+    DOB, a 7-stay department), never what production gives it."""
+    import yaml
+    from evals.run import insight_bundle
+    case = yaml.safe_load(open("evals/cases/insight/ins-43-inpatient-overview.yaml"))
+    session, _, _ = await insight_bundle(case)
+    assert session.data_contract.phi and session.data_contract.deidentified
+    assert "Patient Name" not in [c.name for c in session.data_contract.columns]

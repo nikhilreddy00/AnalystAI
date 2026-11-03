@@ -1,5 +1,6 @@
 """
-SQL connector — PostgreSQL (evaluated), MySQL and SQLite via SQLAlchemy.
+SQL connector — PostgreSQL (evaluated) and SQLite (development only) via SQLAlchemy.
+MySQL support is planned (Phase 5.8).
 Questions are turned into SQL by agents/sql_agent.py; this module only loads and executes.
 
 Every model-written query passes four layers, each tested on its own:
@@ -16,15 +17,17 @@ from dataclasses import dataclass
 
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import NullPool
 
-from agents.errors import GuardrailViolation
-from connectors.base import DataConnector
+from agents.errors import GuardrailViolation, IngestionError
+from connectors.base import DataConnector, truncation_note
 from guardrails import check_sql_readonly
 
 MAX_ROWS = 10_000
+LOAD_MAX_ROWS = 50_000   # a named table is loaded whole up to this; past it, the load says so
 TIMEOUT_S = 15
-_DIALECTS = {"postgresql": "postgres", "mysql": "mysql", "sqlite": "sqlite"}
+_DIALECTS = {"postgresql": "postgres", "sqlite": "sqlite"}
 
 
 def sql_dialect(engine) -> str | None:
@@ -47,7 +50,8 @@ class QueryResult:
     truncated: bool          # more than max_rows existed; only the first max_rows are here
 
     def frame(self) -> pd.DataFrame:
-        return pd.DataFrame(self.rows, columns=self.columns)
+        # coerce_float: Postgres NUMERIC arrives as Decimal; numbers, as pd.read_sql gives them
+        return pd.DataFrame.from_records(self.rows, columns=self.columns, coerce_float=True)
 
 
 def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
@@ -59,9 +63,6 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
         if name == "postgresql":
             conn.exec_driver_sql("SET TRANSACTION READ ONLY")
             conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(timeout_s * 1000)}")
-        elif name == "mysql":
-            conn.exec_driver_sql("SET TRANSACTION READ ONLY")
-            conn.exec_driver_sql(f"SET SESSION max_execution_time = {int(timeout_s * 1000)}")
         elif name == "sqlite":
             conn.exec_driver_sql("PRAGMA query_only = ON")
         try:
@@ -75,10 +76,21 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
 
 
 class SQLConnector(DataConnector):
+    def __init__(self, config) -> None:
+        super().__init__(config)
+        from api.config import settings
+        if settings.app_env == "production" and \
+                (config.connection_string or "").lower().startswith("sqlite"):
+            raise IngestionError("sqlite in production", "SQLite is for development only. "
+                                 "Connect a PostgreSQL database instead.")
+
     def _engine(self):
         conn_str = self.config.connection_string
         if not conn_str:
             raise ValueError("connection_string is required for SQL connector")
+        if conn_str.lower().startswith("mysql"):
+            raise IngestionError("mysql", "MySQL support is planned (Phase 5.8). Connect a "
+                                 "PostgreSQL database for now.")
         # Sync engine for pandas; Postgres goes through psycopg 3 (the only sync PG driver installed)
         url = conn_str.replace("+asyncpg", "+psycopg").replace("+aiosqlite", "")
         if url.startswith(("postgresql://", "postgres://")):
@@ -105,12 +117,6 @@ class SQLConnector(DataConnector):
         sql = _assert_single_select(sql, sql_dialect(engine))
         return await asyncio.to_thread(run_readonly, engine, sql, max_rows)
 
-    @staticmethod
-    def _read_sql(engine, statement) -> pd.DataFrame:
-        """Run a SQL statement and return the result; ensures the connection is closed."""
-        with engine.connect() as conn:
-            return pd.read_sql(statement, conn)
-
     async def load(self) -> pd.DataFrame:
         engine = self._engine()
         table = self.config.table_name
@@ -124,9 +130,20 @@ class SQLConnector(DataConnector):
             raise ValueError(
                 f"Table '{table}' does not exist. Available tables: {valid_tables[:20]}"
             )
-        return await asyncio.to_thread(
-            self._read_sql, engine, text(f'SELECT * FROM "{table}" LIMIT 50000')
-        )
+        # The same read-only, timed path as a question (the name was checked just above).
+        res = await asyncio.to_thread(run_readonly, engine, f'SELECT * FROM "{table}"',
+                                      LOAD_MAX_ROWS)
+        if res.truncated:
+            try:
+                count = await asyncio.to_thread(run_readonly, engine,
+                                                f'SELECT COUNT(*) FROM "{table}"', 1)
+                total = int(count.rows[0][0])
+            except SQLAlchemyError:   # a count past the timeout: "the source has more" still holds
+                total = None
+            self.read_info = {"notes": [truncation_note(
+                len(res.rows), total, f"a named table loads at most {LOAD_MAX_ROWS:,} rows; "
+                "connect without a table to have questions answered in the database")]}
+        return res.frame()
 
     async def test_connection(self) -> tuple[bool, str]:
         try:
@@ -145,4 +162,4 @@ class SQLConnector(DataConnector):
                               "database: " + "; ".join(stale[:5]))
             return True, "Connection successful"
         except Exception as e:
-            return False, str(e)
+            return False, getattr(e, "user_message", str(e))

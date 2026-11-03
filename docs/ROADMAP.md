@@ -541,14 +541,37 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   audit pass finds 0 major and ≤ 2 minor, and the README's domain list is regenerated from the
   reports (`tests/test_readme_domains.py`).
 
+- **Status (2026-11-03):** 1 retail, 2 banking, 3 healthcare done (`docs/baselines/phase5_7_*.md`);
+  next 4 insurance.
+
+### Phase 5.8: Data sources (added 2026-11-03 at the user's request)
+- **Why:** every domain was proven on CSV uploads only, while small companies keep data in
+  spreadsheets, SaaS exports, Postgres (56% of developers), MySQL (41%) and SQL Server (30%)
+  (Stack Overflow 2025; `docs/research/2026-11-03-healthcare.md` is the domain file, the source
+  survey is in the Domain 3 review note). Every peer (Metabase, Superset, Vanna, WrenAI) ships
+  PG + MySQL + SQL Server + Snowflake + BigQuery. Domain 3 fixes the existing connectors (silent
+  truncation, SQLite path, Sheets crash, API shapes) and adds a source-invariance oracle.
+- **Work (in order, one session, plan mode, ~$1 paid):** MySQL/MariaDB (`pymysql`); public-link
+  Google Sheets via the CSV export URL (no service account); DuckDB as the file engine (large
+  CSV/Parquet/Excel out of core, S3/GCS; lifts the 50 MB cap); SQL Server (`pymssql`);
+  Shopify/Stripe via `dlt` into DuckDB. Later: Snowflake, BigQuery, Redshift, Databricks.
+- **Done when:** each new source passes the source-invariance oracle for every finished domain,
+  one E2E case per source at k=1, and the browser check connects each one.
+
 ### Phase 6: End-to-end hardening and open-source release (v0.1)
-Order of the remaining work (2026-11-01): Phase 5.7 (domain depth, one domain per session) →
-Phase 6.
+Order of the remaining work (2026-11-03): Phase 5.7 (domain depth, one domain per session) →
+Phase 5.8 (data sources) → Phase 6.
 - **Work:**
   - Run the E2E suite through the API and worker, not only the graph, so durable runs are part
     of the release gate.
   - Raise the E2E eval to 50 questions.
   - Public eval scoreboard page in the app.
+  - Setup friction (added 2026-11-03; the biggest adoption lever): a single-user mode without
+    Supabase; Qdrant/Ollama optional; a local Docker sandbox option instead of E2B (data stays
+    on the machine; only prompts reach Claude); Claude via AWS Bedrock / Google Vertex (HIPAA
+    eligible under a BAA) for healthcare users.
+  - Labs (deferred from Domain 3): lab-results dataset, censored "<5" values kept and disclosed
+    (`agents/data_cleaning.py` `try_numeric_conversion`), `_UNIT_RE` merging "500 mg" with "1 g".
   - README quickstart, CONTRIBUTING (including how to add an agent and an eval case),
     SECURITY.md, CHANGELOG, tagged release, sample data and a sample semantic layer.
 - **Done when:**

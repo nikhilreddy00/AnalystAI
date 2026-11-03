@@ -27,7 +27,7 @@ from agents import insight_agent
 from agents.insight_agent import InsightContext
 from agents.utils import strip_markdown_fences, with_display_names
 from api.config import settings
-from domain_pack import defaults_pack
+from domain_pack import defaults_pack, pack_for
 from guardrails import (
     UNTRUSTED_NOTE,
     check_columns,
@@ -38,6 +38,7 @@ from guardrails import (
     claim_overstated_certainty,
     claim_period_conflict,
     claim_rank_conflict,
+    claim_small_cell,
     delimit_untrusted,
     mask_pii,
     ungrounded_dates,
@@ -168,6 +169,9 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     triggers = pack.causal_triggers if pack else ()
     # the profit rule is a pack's: only one that names its cost roles has it
     has_cost = not (pack and pack.cost_roles) or bool(set(pack.cost_roles) & set(contract.roles))
+    # small cells are a patient-data rule: any phi pack's nouns, strong or weak match
+    phi_pack = pack_for(contract.domain) if contract and contract.phi else None
+    nouns = phi_pack.small_cell_nouns if phi_pack else []
     flags: list[ReviewFlag] = []
     for i, c in enumerate(report_claims(report)):
         text, ids = c["text"], [x for x in c["ids"] if x in evidence]
@@ -204,6 +208,8 @@ def check_claims(session: AnalysisSession, report: InsightReport,
             found = ("certainty", "overstated", r)
         elif r := claim_profit_without_cost(text, has_cost):
             found = ("basis", "unsupported", r)
+        elif r := claim_small_cell(text, nouns):   # after the contradictions: never hides one
+            found = ("small_cell", "privacy", r)
         if found:
             flags.append(ReviewFlag(index=i, section=c["section"], claim=text, kind=found[0],
                                     label=found[1], reason=str(mask_pii(found[2])),

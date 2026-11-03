@@ -1,0 +1,19 @@
+id: intake-health-08
+category: clear
+pipeline: production
+source:
+  dataset: inpatient
+  seed: 1
+overview_done: true
+question: What's the average length of stay for each MS-DRG?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: alos
+  columns:
+    by: MS-DRG
+rationale: ALOS by DRG (a code, a group).

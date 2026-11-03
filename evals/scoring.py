@@ -76,14 +76,18 @@ def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
     """The rows a group value of `metric` can be computed over. A snapshot column (a
     semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
     entity's current snapshot ("seats per account" — production's latest_rows, which the agent
-    is told about). Any other column: every row (a churn rate over latest rows is another number)."""
+    is told about). A domain pack's counted column also has the rows its tiles count
+    (domain_pack.rows_for: a claim line's last version, never a replaced one; Domain 3 smoke run).
+    Any other column: every row (a churn rate over latest rows is another number)."""
     from agents.ingestion_agent import build_contract
     from agents.utils import column_hint, latest_rows
+    from domain_pack import rows_for
     from orchestrator.state import ConnectorType
     contract = build_contract(df, ConnectorType.CSV, {})
     hint = column_hint(contract, metric)
     if hint is None or hint.aggregation not in ("last", "first"):
-        return [df]
+        counted, how = rows_for(df, contract, metric)
+        return [df, counted] if how else [df]
     return [df, latest_rows(df, metric, contract)]
 
 
@@ -217,8 +221,11 @@ def check_segment_trend(f: AnalysisFindings, truth: dict, column: str, segment: 
 _SPLIT = re.compile(r"\s*[|:/,]\s*|\s+x\s+")
 
 
-def _strata(seg_column: str) -> list[str]:
-    """Stratified segments name their columns joined by '|' (e.g. 'department|group')."""
+def _strata(seg_column: str, columns=()) -> list[str]:
+    """Stratified segments name their columns joined by '|' (e.g. 'department|group'). A name
+    that is one of the data's columns is that column ('CPT/HCPCS', Domain 3 analysis gate)."""
+    if seg_column in columns:
+        return [seg_column]
     return [c for c in _SPLIT.split(seg_column) if c]
 
 
@@ -278,7 +285,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                     want = float(s.count() if stat == "count" else getattr(s, stat)())
                     claims.append((f"{col}.{stat}", not _close(stats[stat], want, 0.01)))
     for seg in f.segments:
-        cols = _strata(seg.segment_column)
+        cols = _strata(seg.segment_column, df.columns)
         if not set(cols) <= set(df.columns) or seg.metric_column not in numeric:
             continue
         # A derived metric (a loss ratio, a readmission rate) can't be recomputed from one
@@ -431,11 +438,17 @@ def report_text(session: AnalysisSession) -> str:
                       *(f"{e.claim} {e.result_excerpt}" for e in evidence)])
 
 
+# The product's own notice that it REMOVED such sentences ("1 sentence(s) saying a promotion
+# caused a change were removed"): quoting the forbidden claim to disclose its removal is not
+# making it (Domain 3 re-measure, e2e-35).
+_REMOVAL_NOTICE = re.compile(r"[^.]*\bsentence\(s\)[^.]*\bwere removed\b[^.]*\.?", re.I)
+
+
 def check_must_not_match(session: AnalysisSession, pattern: str,
                          scope: str = "answer") -> tuple[bool, str]:
     """`scope: report` also scans charts and evidence (a small cell can show in a bar)."""
-    m = re.search(pattern, report_text(session) if scope == "report" else answer_text(session),
-                  re.IGNORECASE)
+    text = report_text(session) if scope == "report" else answer_text(session)
+    m = re.search(pattern, _REMOVAL_NOTICE.sub(" ", text), re.IGNORECASE)
     return m is None, f"matched forbidden '{m.group(0)}'" if m else "ok"
 
 
@@ -449,13 +462,13 @@ def check_must_match(session: AnalysisSession, pattern: str,
 
 # ── Hard rules (recorded; gating starts in Phase 2/3) ─────────────────────────
 
-def _referenced_columns(f: AnalysisFindings) -> set[str]:
+def _referenced_columns(f: AnalysisFindings, columns=()) -> set[str]:
     cols = set(f.eda_summary)
     for key in f.correlations:
         cols.update(key.split("__"))
     cols.update(t.column for t in f.trends)
     for s in f.segments:
-        cols.update(_strata(s.segment_column) + ([s.metric_column] if s.metric_column else []))
+        cols.update(_strata(s.segment_column, columns) + ([s.metric_column] if s.metric_column else []))
     cols.update(a.column for a in f.anomalies)
     return cols
 
@@ -482,7 +495,7 @@ def hard_rule(rule: str, df: pd.DataFrame, findings: AnalysisFindings | None,
     if rule == "no_unknown_columns":
         if findings is None:
             return True, "no findings"
-        unknown = _referenced_columns(findings) - set(df.columns)
+        unknown = _referenced_columns(findings, df.columns) - set(df.columns)
         return not unknown, f"unknown columns {sorted(unknown)}" if unknown else "ok"
     if rule == "non_empty_or_error":
         has_error = bool(session and session.error_message)
@@ -1175,7 +1188,7 @@ def score_insight(case: dict, output: dict | None, error: str | None) -> tuple[l
 # `labels` come from the case (seeded defects, hand labels); the scorer only asks whether a flag
 # landed on each claim, so the agent's own checks can't be mirrored into a pass.
 
-DEFECT_LABELS = ("unsupported", "contradicted", "overstated")
+DEFECT_LABELS = ("unsupported", "contradicted", "overstated", "privacy")   # privacy: a small cell (Domain 3)
 
 
 def review_text(review: dict) -> list[str]:

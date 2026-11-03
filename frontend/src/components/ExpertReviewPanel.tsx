@@ -14,7 +14,7 @@ interface Props {
   onEvidence?: (id: string) => void;
 }
 
-const LABEL = { unsupported: "Not supported", contradicted: "Contradicted", overstated: "Overstated" };
+const LABEL = { unsupported: "Not supported", contradicted: "Contradicted", overstated: "Overstated", privacy: "Small group" };
 
 function Flags({ flags, onEvidence }: { flags: ReviewFlag[]; onEvidence?: (id: string) => void }) {
   return (

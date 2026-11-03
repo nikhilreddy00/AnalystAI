@@ -1,0 +1,1518 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261103T174405Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7737d5d",
+  "started_at": "20261103T174405Z",
+  "only": "health-4,health-6,health-7",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 3,
+  "runs": 3,
+  "pass_rate": 0.6667,
+  "case_majority_pass_rate": 0.6667,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 1,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.017,
+  "latency_p50_s": 25.09,
+  "latency_p95_s": 38.36,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0769,
+  "verifiable_claims": 65,
+  "by_domain": {
+   "healthcare": {
+    "cases": 3,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 2,
+    "pass_rate": 0.6667,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 2,
+    "model_dependent_cases": 2,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0769,
+    "verifiable_claims": 65,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0769,
+     "verifiable_claims": 65
+    }
+   }
+  }
+ },
+ "runs": {
+  "health-4": [
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "ArrowInvalid: (\"Could not convert 'Other (fewer than 11 each)' with type str: tried to convert to double\", 'Conversion failed for column MS-DRG with type object')"
+     }
+    ],
+    "hard": [],
+    "error": "harness: ArrowInvalid: (\"Could not convert 'Other (fewer than 11 each)' with type str: tried to convert to double\", 'Conversion failed for column MS-DRG with type object')",
+    "output": null,
+    "category": "ratio",
+    "case": "health-4",
+    "holdout": false,
+    "domain": "healthcare",
+    "latency_s": 1.13,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "health-6": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Claim Status)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 405,
+    "output": {
+     "eda_summary": {
+      "Adjustment Seq": {
+       "mean": 0.1059,
+       "std": 0.3517,
+       "min": 0.0,
+       "max": 2.0,
+       "median": 0.0,
+       "count": 5999
+      },
+      "Billed Amount": {
+       "mean": 193.8365,
+       "std": 302.9989,
+       "min": -1726.93,
+       "max": 1828.7,
+       "median": 158.92,
+       "count": 5999
+      },
+      "Allowed Amount": {
+       "mean": 63.1929,
+       "std": 81.2594,
+       "min": -451.3,
+       "max": 558.07,
+       "median": 25.42,
+       "count": 5121
+      },
+      "Paid Amount": {
+       "mean": 55.3217,
+       "std": 71.4047,
+       "min": -442.37,
+       "max": 506.26,
+       "median": 23.79,
+       "count": 5121
+      },
+      "Claim Total Billed": {
+       "mean": 496.2621,
+       "std": 541.805,
+       "min": -1966.36,
+       "max": 3383.57,
+       "median": 331.99,
+       "count": 5999
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Payer",
+       "metric_column": "Claim Status",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Crescent Health",
+         "value": 0.287037
+        },
+        {
+         "name": "Harbor Senior Plans",
+         "value": 0.127219
+        },
+        {
+         "name": "Lakeside Care",
+         "value": 0.126935
+        },
+        {
+         "name": "Summit Mutual",
+         "value": 0.067961
+        },
+        {
+         "name": "Northwind Health",
+         "value": 0.040127
+        }
+       ],
+       "label": "denial_rate"
+      },
+      {
+       "segment_column": "Payer",
+       "metric_column": "Claim Status",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "overall",
+         "value": 0.094812
+        }
+       ],
+       "label": "denial_rate_overall"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Adjustment Seq": [
+       {
+        "label": "(-0.002, 0.667]",
+        "count": 5451
+       },
+       {
+        "label": "(0.667, 1.333]",
+        "count": 461
+       },
+       {
+        "label": "(1.333, 2.0]",
+        "count": 87
+       }
+      ],
+      "Billed Amount": [
+       {
+        "label": "(-1730.486, -1371.367]",
+        "count": 3
+       },
+       {
+        "label": "(-1371.367, -1015.804]",
+        "count": 1
+       },
+       {
+        "label": "(-660.241, -304.678]",
+        "count": 3
+       },
+       {
+        "label": "(-304.678, 50.885]",
+        "count": 1609
+       },
+       {
+        "label": "(50.885, 406.448]",
+        "count": 4062
+       },
+       {
+        "label": "(762.011, 1117.574]",
+        "count": 11
+       },
+       {
+        "label": "(1117.574, 1473.137]",
+        "count": 217
+       },
+       {
+        "label": "(1473.137, 1828.7]",
+        "count": 93
+       }
+      ],
+      "Allowed Amount": [
+       {
+        "label": "(-452.309, -350.363]",
+        "count": 1
+       },
+       {
+        "label": "(-350.363, -249.426]",
+        "count": 1
+       },
+       {
+        "label": "(-249.426, -148.489]",
+        "count": 5
+       },
+       {
+        "label": "(-148.489, -47.552]",
+        "count": 41
+       },
+       {
+        "label": "(-47.552, 53.385]",
+        "count": 2839
+       },
+       {
+        "label": "(53.385, 154.322]",
+        "count": 1940
+       },
+       {
+        "label": "(154.322, 255.259]",
+        "count": 175
+       },
+       {
+        "label": "(255.259, 356.196]",
+        "count": 7
+       },
+       {
+        "label": "(356.196, 457.133]",
+        "count": 83
+       },
+       {
+        "label": "(457.133, 558.07]",
+        "count": 29
+       }
+      ],
+      "Paid Amount": [
+       {
+        "label": "(-443.319, -347.507]",
+        "count": 1
+       },
+       {
+        "label": "(-252.644, -157.781]",
+        "count": 3
+       },
+       {
+        "label": "(-157.781, -62.918]",
+        "count": 41
+       },
+       {
+        "label": "(-62.918, 31.945]",
+        "count": 2542
+       },
+       {
+        "label": "(31.945, 126.808]",
+        "count": 2128
+       },
+       {
+        "label": "(126.808, 221.671]",
+        "count": 280
+       },
+       {
+        "label": "(221.671, 316.534]",
+        "count": 25
+       },
+       {
+        "label": "(316.534, 411.397]",
+        "count": 75
+       },
+       {
+        "label": "(411.397, 506.26]",
+        "count": 26
+       }
+      ],
+      "Claim Total Billed": [
+       {
+        "label": "(-1971.71, -1431.367]",
+        "count": 12
+       },
+       {
+        "label": "(-1431.367, -896.374]",
+        "count": 4
+       },
+       {
+        "label": "(-896.374, -361.381]",
+        "count": 41
+       },
+       {
+        "label": "(-361.381, 173.612]",
+        "count": 1220
+       },
+       {
+        "label": "(173.612, 708.605]",
+        "count": 3700
+       },
+       {
+        "label": "(708.605, 1243.598]",
+        "count": 264
+       },
+       {
+        "label": "(1243.598, 1778.591]",
+        "count": 484
+       },
+       {
+        "label": "(1778.591, 2313.584]",
+        "count": 246
+       },
+       {
+        "label": "(2313.584, 2848.577]",
+        "count": 10
+       },
+       {
+        "label": "(2848.577, 3383.57]",
+        "count": 18
+       }
+      ],
+      "Line No": [
+       {
+        "label": "1",
+        "count": 2982
+       },
+       {
+        "label": "2",
+        "count": 1785
+       },
+       {
+        "label": "3",
+        "count": 879
+       },
+       {
+        "label": "4",
+        "count": 353
+       }
+      ],
+      "Claim Frequency": [
+       {
+        "label": "1",
+        "count": 5451
+       },
+       {
+        "label": "7",
+        "count": 433
+       },
+       {
+        "label": "8",
+        "count": 115
+       }
+      ],
+      "Payer": [
+       {
+        "label": "Northwind Health",
+        "count": 2530
+       },
+       {
+        "label": "Summit Mutual",
+        "count": 1100
+       },
+       {
+        "label": "Lakeside Care",
+        "count": 893
+       },
+       {
+        "label": "Harbor Senior Plans",
+        "count": 880
+       },
+       {
+        "label": "Crescent Health",
+        "count": 596
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Paid",
+        "count": 4512
+       },
+       {
+        "label": "Pending",
+        "count": 878
+       },
+       {
+        "label": "Denied",
+        "count": 315
+       },
+       {
+        "label": "Partially Paid",
+        "count": 294
+       }
+      ],
+      "CPT/HCPCS": [
+       {
+        "label": "99213.0",
+        "count": 1388
+       },
+       {
+        "label": "99214.0",
+        "count": 845
+       },
+       {
+        "label": "80053.0",
+        "count": 763
+       },
+       {
+        "label": "36415.0",
+        "count": 613
+       },
+       {
+        "label": "85025.0",
+        "count": 570
+       },
+       {
+        "label": "71046.0",
+        "count": 414
+       },
+       {
+        "label": "99203.0",
+        "count": 376
+       },
+       {
+        "label": "93000.0",
+        "count": 361
+       },
+       {
+        "label": "70450.0",
+        "count": 172
+       },
+       {
+        "label": "99285.0",
+        "count": 153
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Adjustment Seq' in df.columns and pd.api.types.is_numeric_dtype(df['Adjustment Seq']):\n        _s = df['Adjustment Seq'].dropna()\n        if len(_s) > 0 and 'Adjustment Seq' not in result['eda_summary']:\n            result['eda_summary']['Adjustment Seq'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Billed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Billed Amount']):\n        _s = df['Billed Amount'].dropna()\n        if len(_s) > 0 and 'Billed Amount' not in result['eda_summary']:\n            result['eda_summary']['Billed Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Allowed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Allowed Amount']):\n        _s = df['Allowed Amount'].dropna()\n        if len(_s) > 0 and 'Allowed Amount' not in result['eda_summary']:\n            result['eda_summary']['Allowed Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Paid Amount']):\n        _s = df['Paid Amount'].dropna()\n        if len(_s) > 0 and 'Paid Amount' not in result['eda_summary']:\n            result['eda_summary']['Paid Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Total Billed' in df.columns and pd.api.types.is_numeric_dtype(df['Claim Total Billed']):\n        _s = df['Claim Total Billed'].dropna()\n        if len(_s) > 0 and 'Claim Total Billed' not in result['eda_summary']:\n            result['eda_summary']['Claim Total Billed'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Adjustment Seq' in df.columns and pd.api.types.is_numeric_dtype(df['Adjustment Seq']):\n        _col_data = df['Adjustment Seq'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Adjustment Seq'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Billed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Billed Amount']):\n        _col_data = df['Billed Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Billed Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Allowed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Allowed Amount']):\n        _col_data = df['Allowed Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Allowed Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Paid Amount']):\n        _col_data = df['Paid Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Total Billed' in df.columns and pd.api.types.is_numeric_dtype(df['Claim Total Billed']):\n        _col_data = df['Claim Total Billed'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Claim Total Billed'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line No' in df.columns:\n        _vc = df['Line No'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line No'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Frequency' in df.columns:\n        _vc = df['Claim Frequency'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Frequency'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Payer' in df.columns:\n        _vc = df['Payer'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Payer'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'CPT/HCPCS' in df.columns:\n        _vc = df['CPT/HCPCS'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['CPT/HCPCS'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim ID": "ID-443841dcf976a390",
+       "Line No": 1,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-2c5a7974c4b45323",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-07",
+       "Payer": "Northwind Health",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99213.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1109921005,
+       "Place of Service": 11,
+       "Billed Amount": 183.45,
+       "Allowed Amount": 97.9,
+       "Paid Amount": 76.82,
+       "Claim Total Billed": 489.59,
+       "row_kind": "counted"
+      },
+      {
+       "Claim ID": "ID-443841dcf976a390",
+       "Line No": 2,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-2c5a7974c4b45323",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-07",
+       "Payer": "Northwind Health",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99214.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1109921005,
+       "Place of Service": 11,
+       "Billed Amount": 306.14,
+       "Allowed Amount": 155.63,
+       "Paid Amount": 127.34,
+       "Claim Total Billed": 489.59,
+       "row_kind": "counted"
+      },
+      {
+       "Claim ID": "ID-ac5bd9e5b8fb1ae9",
+       "Line No": 1,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-6082181104d69496",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-07",
+       "Payer": "Harbor Senior Plans",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99203.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1715901494,
+       "Place of Service": 11,
+       "Billed Amount": 208.09,
+       "Allowed Amount": 109.43,
+       "Paid Amount": 88.55,
+       "Claim Total Billed": 208.09,
+       "row_kind": "counted"
+      },
+      {
+       "Claim ID": "ID-36d9eb2aa3929ff1",
+       "Line No": 1,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-983e06b4efcffb9b",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-28",
+       "Payer": "Lakeside Care",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99203.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1887355818,
+       "Place of Service": 11,
+       "Billed Amount": 222.85,
+       "Allowed Amount": 119.91,
+       "Paid Amount": 115.98,
+       "Claim Total Billed": 246.13,
+       "row_kind": "superseded_version"
+      },
+      {
+       "Claim ID": "ID-36d9eb2aa3929ff1",
+       "Line No": 2,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-983e06b4efcffb9b",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-28",
+       "Payer": "Lakeside Care",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 36415.0,
+       "Rev Code": 300,
+       "Rendering NPI": 1887355818,
+       "Place of Service": 81,
+       "Billed Amount": 23.28,
+       "Allowed Amount": 3.59,
+       "Paid Amount": 3.58,
+       "Claim Total Billed": 246.13,
+       "row_kind": "superseded_version"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim ID": "object",
+      "Line No": "int64",
+      "Adjustment Seq": "int64",
+      "Claim Frequency": "int64",
+      "Member ID": "object",
+      "Service From": "object",
+      "Paid Date": "object",
+      "Payer": "object",
+      "Claim Status": "object",
+      "CPT/HCPCS": "float64",
+      "Rev Code": "int64",
+      "Rendering NPI": "int64",
+      "Place of Service": "int64",
+      "Billed Amount": "float64",
+      "Allowed Amount": "float64",
+      "Paid Amount": "float64",
+      "Claim Total Billed": "float64",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim ID": 0.0,
+      "Line No": 0.0,
+      "Adjustment Seq": 0.0,
+      "Claim Frequency": 0.0,
+      "Member ID": 0.0,
+      "Service From": 0.0,
+      "Paid Date": 14.64,
+      "Payer": 0.0,
+      "Claim Status": 0.0,
+      "CPT/HCPCS": 5.73,
+      "Rev Code": 0.0,
+      "Rendering NPI": 0.0,
+      "Place of Service": 0.0,
+      "Billed Amount": 0.0,
+      "Allowed Amount": 14.64,
+      "Paid Amount": 14.64,
+      "Claim Total Billed": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Payer/Claim Status:ratio:denial_rate",
+       "kind": "segment",
+       "claim": "denial_rate (from Claim Status) by Payer (5 groups)",
+       "code": "try:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]",
+       "result_excerpt": "{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Crescent Health\", \"value\": 0.287037}, {\"name\": \"Harbor Senior Plans\", \"value\": 0.127219}, {\"name\": \"Lakeside Care\", \"value\": 0.126935}, {\"name\": \"Summit Mutual\", \"value\": 0.067961}, {\"name\": \"Northwind Health\", \"value\": 0.040127}], \"label\": \"denial_rate\"}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": []
+      },
+      {
+       "id": "seg:Payer/Claim Status:ratio:denial_rate_overall",
+       "kind": "segment",
+       "claim": "denial_rate_overall (from Claim Status) by Payer (1 groups)",
+       "code": "try:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]",
+       "result_excerpt": "{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"overall\", \"value\": 0.094812}], \"label\": \"denial_rate_overall\"}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Adjustment Seq",
+       "kind": "eda",
+       "claim": "Adjustment Seq: median 0, mean 0.1059, range 0 to 2.00",
+       "code": "try:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 0.1059, \"std\": 0.3517, \"min\": 0.0, \"max\": 2.0, \"median\": 0.0, \"count\": 5999}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Billed Amount",
+       "kind": "eda",
+       "claim": "Billed Amount: median 158.92, mean 193.84, range -1,726.93 to 1,828.70",
+       "code": "try:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 193.8365, \"std\": 302.9989, \"min\": -1726.93, \"max\": 1828.7, \"median\": 158.92, \"count\": 5999}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Allowed Amount",
+       "kind": "eda",
+       "claim": "Allowed Amount: median 25.42, mean 63.19, range -451.30 to 558.07",
+       "code": "try:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 63.1929, \"std\": 81.2594, \"min\": -451.3, \"max\": 558.07, \"median\": 25.42, \"count\": 5121}",
+       "row_count": 5121,
+       "confidence": "high",
+       "confidence_reason": "5121 rows",
+       "assumptions": [
+        "Allowed Amount: 15% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Paid Amount",
+       "kind": "eda",
+       "claim": "Paid Amount: median 23.79, mean 55.32, range -442.37 to 506.26",
+       "code": "try:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 55.3217, \"std\": 71.4047, \"min\": -442.37, \"max\": 506.26, \"median\": 23.79, \"count\": 5121}",
+       "row_count": 5121,
+       "confidence": "high",
+       "confidence_reason": "5121 rows",
+       "assumptions": [
+        "Paid Amount: 15% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Claim Total Billed",
+       "kind": "eda",
+       "claim": "Claim Total Billed: median 331.99, mean 496.26, range -1,966.36 to 3,383.57",
+       "code": "try:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 496.2621, \"std\": 541.805, \"min\": -1966.36, \"max\": 3383.57, \"median\": 331.99, \"count\": 5999}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "healthcare",
+    "latency_s": 39.83,
+    "cost_usd": 0.02712,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted_kinds = {'counted'}\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    # Identify last version per claim_id + line\n    df_counted['_version'] = df_counted['Adjustment Seq']\n    df_counted = df_counted.sort_values(['Claim ID', 'Line No', '_version'])\n    df_counted['_is_last'] = ~df_counted.duplicated(subset=['Claim ID', 'Line No'], keep='last')\n    df_valid = df_counted[df_counted['_is_last']].copy()\n\n    # Denial rate: denied / (all non-pending claims)\n    # Denied = status in denied-like values; pending = status like 'pending'/'in process'\n    denied_statuses = {'denied', 'deny', 'rejection', 'rejected', 'not paid'}\n    pending_statuses = {'pending', 'in process', 'in progress', 'pended', 'suspended'}\n\n    df_valid['_status_lower'] = df_valid['Claim Status'].astype(str).str.lower().str.strip()\n    df_valid['_is_denied'] = df_valid['_status_lower'].isin(denied_statuses)\n    df_valid['_is_pending'] = df_valid['_status_lower'].isin(pending_statuses)\n\n    # Non-pending claims only for denial rate denominator\n    df_nonpending = df_valid[~df_valid['_is_pending']].copy()\n\n    # Per payer: distinct claim_ids denied / distinct claim_ids (non-pending)\n    payer_groups = df_nonpending.groupby('Payer')\n\n    denial_results = []\n    for payer, grp in payer_groups:\n        total_claims = grp['Claim ID'].nunique()\n        denied_claims = grp[grp['_is_denied']]['Claim ID'].nunique()\n        rate = denied_claims / total_claims if total_claims > 0 else 0.0\n        denial_results.append({\"name\": str(payer), \"value\": round(rate, 6)})\n\n    denial_results_sorted = sorted(denial_results, key=lambda x: x['value'], reverse=True)\n\n    # Overall denial rate\n    total_all = df_nonpending['Claim ID'].nunique()\n    denied_all = df_nonpending[df_nonpending['_is_denied']]['Claim ID'].nunique()\n    overall_rate = denied_all / total_all if total_all > 0 else 0.0\n\n    result['segments'] = [\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate\",\n            \"results\": denial_results_sorted\n        },\n        {\n            \"segment_column\": \"Payer\",\n            \"metric_column\": \"Claim Status\",\n            \"aggregation\": \"ratio\",\n            \"label\": \"denial_rate_overall\",\n            \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n        }\n    ]\n\n    result['assumptions'] = [\n        \"Denial rate = distinct denied claim_ids / distinct non-pending claim_ids (voided and superseded versions excluded).\",\n        \"Denied statuses matched: denied, deny, rejection, rejected, not paid (case-insensitive).\",\n        \"Pending statuses excluded from denominator: pending, in process, in progress, pended, suspended.\",\n        \"Only 'counted' row_kind rows used; last version per claim_id+line selected.\",\n        \"Claim-level counts used (distinct Claim ID), not row counts.\"\n    ]\n\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Payer\", \"metric_column\": \"Claim Status\", \"aggregation\": \"ratio\", \"label\": \"denial_rate\", \"results\": [{\"name\": f\"error: {str(e)}\", \"value\": 0.0}]}]\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "health-7": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Paid Amount)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 5,
+     "verifiable": 35,
+     "details": [
+      "mean Paid Amount[Summit Mutual]",
+      "mean Paid Amount[Northwind Health]",
+      "mean Paid Amount[Lakeside Care]",
+      "mean Paid Amount[Harbor Senior Plans]",
+      "mean Paid Amount[Crescent Health]"
+     ]
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 405,
+    "output": {
+     "eda_summary": {
+      "Adjustment Seq": {
+       "mean": 0.1059,
+       "std": 0.3517,
+       "min": 0.0,
+       "max": 2.0,
+       "median": 0.0,
+       "count": 5999
+      },
+      "Billed Amount": {
+       "mean": 193.8365,
+       "std": 302.9989,
+       "min": -1726.93,
+       "max": 1828.7,
+       "median": 158.92,
+       "count": 5999
+      },
+      "Allowed Amount": {
+       "mean": 63.1929,
+       "std": 81.2594,
+       "min": -451.3,
+       "max": 558.07,
+       "median": 25.42,
+       "count": 5121
+      },
+      "Paid Amount": {
+       "mean": 55.3217,
+       "std": 71.4047,
+       "min": -442.37,
+       "max": 506.26,
+       "median": 23.79,
+       "count": 5121
+      },
+      "Claim Total Billed": {
+       "mean": 496.2621,
+       "std": 541.805,
+       "min": -1966.36,
+       "max": 3383.57,
+       "median": 331.99,
+       "count": 5999
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Payer",
+       "metric_column": "Paid Amount",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Northwind Health",
+         "value": 113095.83
+        },
+        {
+         "name": "Summit Mutual",
+         "value": 49026.14
+        },
+        {
+         "name": "Lakeside Care",
+         "value": 38167.93
+        },
+        {
+         "name": "Harbor Senior Plans",
+         "value": 34968.6
+        },
+        {
+         "name": "Crescent Health",
+         "value": 21891.69
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "Payer",
+       "metric_column": "Claim ID",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Northwind Health",
+         "value": 1118.0
+        },
+        {
+         "name": "Summit Mutual",
+         "value": 482.0
+        },
+        {
+         "name": "Harbor Senior Plans",
+         "value": 411.0
+        },
+        {
+         "name": "Lakeside Care",
+         "value": 393.0
+        },
+        {
+         "name": "Crescent Health",
+         "value": 264.0
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "Payer",
+       "metric_column": "Paid Amount",
+       "aggregation": "mean",
+       "results": [
+        {
+         "name": "Summit Mutual",
+         "value": 60.826476426799005
+        },
+        {
+         "name": "Northwind Health",
+         "value": 59.181491365777084
+        },
+        {
+         "name": "Lakeside Care",
+         "value": 58.810369799691834
+        },
+        {
+         "name": "Harbor Senior Plans",
+         "value": 53.30579268292683
+        },
+        {
+         "name": "Crescent Health",
+         "value": 50.21029816513761
+        }
+       ],
+       "label": null
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Adjustment Seq": [
+       {
+        "label": "(-0.002, 0.667]",
+        "count": 5451
+       },
+       {
+        "label": "(0.667, 1.333]",
+        "count": 461
+       },
+       {
+        "label": "(1.333, 2.0]",
+        "count": 87
+       }
+      ],
+      "Billed Amount": [
+       {
+        "label": "(-1730.486, -1371.367]",
+        "count": 3
+       },
+       {
+        "label": "(-1371.367, -1015.804]",
+        "count": 1
+       },
+       {
+        "label": "(-660.241, -304.678]",
+        "count": 3
+       },
+       {
+        "label": "(-304.678, 50.885]",
+        "count": 1609
+       },
+       {
+        "label": "(50.885, 406.448]",
+        "count": 4062
+       },
+       {
+        "label": "(762.011, 1117.574]",
+        "count": 11
+       },
+       {
+        "label": "(1117.574, 1473.137]",
+        "count": 217
+       },
+       {
+        "label": "(1473.137, 1828.7]",
+        "count": 93
+       }
+      ],
+      "Allowed Amount": [
+       {
+        "label": "(-452.309, -350.363]",
+        "count": 1
+       },
+       {
+        "label": "(-350.363, -249.426]",
+        "count": 1
+       },
+       {
+        "label": "(-249.426, -148.489]",
+        "count": 5
+       },
+       {
+        "label": "(-148.489, -47.552]",
+        "count": 41
+       },
+       {
+        "label": "(-47.552, 53.385]",
+        "count": 2839
+       },
+       {
+        "label": "(53.385, 154.322]",
+        "count": 1940
+       },
+       {
+        "label": "(154.322, 255.259]",
+        "count": 175
+       },
+       {
+        "label": "(255.259, 356.196]",
+        "count": 7
+       },
+       {
+        "label": "(356.196, 457.133]",
+        "count": 83
+       },
+       {
+        "label": "(457.133, 558.07]",
+        "count": 29
+       }
+      ],
+      "Paid Amount": [
+       {
+        "label": "(-443.319, -347.507]",
+        "count": 1
+       },
+       {
+        "label": "(-252.644, -157.781]",
+        "count": 3
+       },
+       {
+        "label": "(-157.781, -62.918]",
+        "count": 41
+       },
+       {
+        "label": "(-62.918, 31.945]",
+        "count": 2542
+       },
+       {
+        "label": "(31.945, 126.808]",
+        "count": 2128
+       },
+       {
+        "label": "(126.808, 221.671]",
+        "count": 280
+       },
+       {
+        "label": "(221.671, 316.534]",
+        "count": 25
+       },
+       {
+        "label": "(316.534, 411.397]",
+        "count": 75
+       },
+       {
+        "label": "(411.397, 506.26]",
+        "count": 26
+       }
+      ],
+      "Claim Total Billed": [
+       {
+        "label": "(-1971.71, -1431.367]",
+        "count": 12
+       },
+       {
+        "label": "(-1431.367, -896.374]",
+        "count": 4
+       },
+       {
+        "label": "(-896.374, -361.381]",
+        "count": 41
+       },
+       {
+        "label": "(-361.381, 173.612]",
+        "count": 1220
+       },
+       {
+        "label": "(173.612, 708.605]",
+        "count": 3700
+       },
+       {
+        "label": "(708.605, 1243.598]",
+        "count": 264
+       },
+       {
+        "label": "(1243.598, 1778.591]",
+        "count": 484
+       },
+       {
+        "label": "(1778.591, 2313.584]",
+        "count": 246
+       },
+       {
+        "label": "(2313.584, 2848.577]",
+        "count": 10
+       },
+       {
+        "label": "(2848.577, 3383.57]",
+        "count": 18
+       }
+      ],
+      "Line No": [
+       {
+        "label": "1",
+        "count": 2982
+       },
+       {
+        "label": "2",
+        "count": 1785
+       },
+       {
+        "label": "3",
+        "count": 879
+       },
+       {
+        "label": "4",
+        "count": 353
+       }
+      ],
+      "Claim Frequency": [
+       {
+        "label": "1",
+        "count": 5451
+       },
+       {
+        "label": "7",
+        "count": 433
+       },
+       {
+        "label": "8",
+        "count": 115
+       }
+      ],
+      "Payer": [
+       {
+        "label": "Northwind Health",
+        "count": 2530
+       },
+       {
+        "label": "Summit Mutual",
+        "count": 1100
+       },
+       {
+        "label": "Lakeside Care",
+        "count": 893
+       },
+       {
+        "label": "Harbor Senior Plans",
+        "count": 880
+       },
+       {
+        "label": "Crescent Health",
+        "count": 596
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Paid",
+        "count": 4512
+       },
+       {
+        "label": "Pending",
+        "count": 878
+       },
+       {
+        "label": "Denied",
+        "count": 315
+       },
+       {
+        "label": "Partially Paid",
+        "count": 294
+       }
+      ],
+      "CPT/HCPCS": [
+       {
+        "label": "99213.0",
+        "count": 1388
+       },
+       {
+        "label": "99214.0",
+        "count": 845
+       },
+       {
+        "label": "80053.0",
+        "count": 763
+       },
+       {
+        "label": "36415.0",
+        "count": 613
+       },
+       {
+        "label": "85025.0",
+        "count": 570
+       },
+       {
+        "label": "71046.0",
+        "count": 414
+       },
+       {
+        "label": "99203.0",
+        "count": 376
+       },
+       {
+        "label": "93000.0",
+        "count": 361
+       },
+       {
+        "label": "70450.0",
+        "count": 172
+       },
+       {
+        "label": "99285.0",
+        "count": 153
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Adjustment Seq' in df.columns and pd.api.types.is_numeric_dtype(df['Adjustment Seq']):\n        _s = df['Adjustment Seq'].dropna()\n        if len(_s) > 0 and 'Adjustment Seq' not in result['eda_summary']:\n            result['eda_summary']['Adjustment Seq'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Billed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Billed Amount']):\n        _s = df['Billed Amount'].dropna()\n        if len(_s) > 0 and 'Billed Amount' not in result['eda_summary']:\n            result['eda_summary']['Billed Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Allowed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Allowed Amount']):\n        _s = df['Allowed Amount'].dropna()\n        if len(_s) > 0 and 'Allowed Amount' not in result['eda_summary']:\n            result['eda_summary']['Allowed Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Paid Amount']):\n        _s = df['Paid Amount'].dropna()\n        if len(_s) > 0 and 'Paid Amount' not in result['eda_summary']:\n            result['eda_summary']['Paid Amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Total Billed' in df.columns and pd.api.types.is_numeric_dtype(df['Claim Total Billed']):\n        _s = df['Claim Total Billed'].dropna()\n        if len(_s) > 0 and 'Claim Total Billed' not in result['eda_summary']:\n            result['eda_summary']['Claim Total Billed'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Adjustment Seq' in df.columns and pd.api.types.is_numeric_dtype(df['Adjustment Seq']):\n        _col_data = df['Adjustment Seq'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Adjustment Seq'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Billed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Billed Amount']):\n        _col_data = df['Billed Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Billed Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Allowed Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Allowed Amount']):\n        _col_data = df['Allowed Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Allowed Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid Amount' in df.columns and pd.api.types.is_numeric_dtype(df['Paid Amount']):\n        _col_data = df['Paid Amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid Amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Total Billed' in df.columns and pd.api.types.is_numeric_dtype(df['Claim Total Billed']):\n        _col_data = df['Claim Total Billed'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Claim Total Billed'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line No' in df.columns:\n        _vc = df['Line No'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line No'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Frequency' in df.columns:\n        _vc = df['Claim Frequency'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Frequency'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Payer' in df.columns:\n        _vc = df['Payer'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Payer'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'CPT/HCPCS' in df.columns:\n        _vc = df['CPT/HCPCS'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['CPT/HCPCS'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim ID": "ID-443841dcf976a390",
+       "Line No": 1,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-2c5a7974c4b45323",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-07",
+       "Payer": "Northwind Health",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99213.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1109921005,
+       "Place of Service": 11,
+       "Billed Amount": 183.45,
+       "Allowed Amount": 97.9,
+       "Paid Amount": 76.82,
+       "Claim Total Billed": 489.59,
+       "row_kind": "counted"
+      },
+      {
+       "Claim ID": "ID-443841dcf976a390",
+       "Line No": 2,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-2c5a7974c4b45323",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-07",
+       "Payer": "Northwind Health",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99214.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1109921005,
+       "Place of Service": 11,
+       "Billed Amount": 306.14,
+       "Allowed Amount": 155.63,
+       "Paid Amount": 127.34,
+       "Claim Total Billed": 489.59,
+       "row_kind": "counted"
+      },
+      {
+       "Claim ID": "ID-ac5bd9e5b8fb1ae9",
+       "Line No": 1,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-6082181104d69496",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-07",
+       "Payer": "Harbor Senior Plans",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99203.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1715901494,
+       "Place of Service": 11,
+       "Billed Amount": 208.09,
+       "Allowed Amount": 109.43,
+       "Paid Amount": 88.55,
+       "Claim Total Billed": 208.09,
+       "row_kind": "counted"
+      },
+      {
+       "Claim ID": "ID-36d9eb2aa3929ff1",
+       "Line No": 1,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-983e06b4efcffb9b",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-28",
+       "Payer": "Lakeside Care",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 99203.0,
+       "Rev Code": 510,
+       "Rendering NPI": 1887355818,
+       "Place of Service": 11,
+       "Billed Amount": 222.85,
+       "Allowed Amount": 119.91,
+       "Paid Amount": 115.98,
+       "Claim Total Billed": 246.13,
+       "row_kind": "superseded_version"
+      },
+      {
+       "Claim ID": "ID-36d9eb2aa3929ff1",
+       "Line No": 2,
+       "Adjustment Seq": 0,
+       "Claim Frequency": 1,
+       "Member ID": "ID-983e06b4efcffb9b",
+       "Service From": "2025-11-01",
+       "Paid Date": "2026-01-28",
+       "Payer": "Lakeside Care",
+       "Claim Status": "Paid",
+       "CPT/HCPCS": 36415.0,
+       "Rev Code": 300,
+       "Rendering NPI": 1887355818,
+       "Place of Service": 81,
+       "Billed Amount": 23.28,
+       "Allowed Amount": 3.59,
+       "Paid Amount": 3.58,
+       "Claim Total Billed": 246.13,
+       "row_kind": "superseded_version"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim ID": "object",
+      "Line No": "int64",
+      "Adjustment Seq": "int64",
+      "Claim Frequency": "int64",
+      "Member ID": "object",
+      "Service From": "object",
+      "Paid Date": "object",
+      "Payer": "object",
+      "Claim Status": "object",
+      "CPT/HCPCS": "float64",
+      "Rev Code": "int64",
+      "Rendering NPI": "int64",
+      "Place of Service": "int64",
+      "Billed Amount": "float64",
+      "Allowed Amount": "float64",
+      "Paid Amount": "float64",
+      "Claim Total Billed": "float64",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim ID": 0.0,
+      "Line No": 0.0,
+      "Adjustment Seq": 0.0,
+      "Claim Frequency": 0.0,
+      "Member ID": 0.0,
+      "Service From": 0.0,
+      "Paid Date": 14.64,
+      "Payer": 0.0,
+      "Claim Status": 0.0,
+      "CPT/HCPCS": 5.73,
+      "Rev Code": 0.0,
+      "Rendering NPI": 0.0,
+      "Place of Service": 0.0,
+      "Billed Amount": 0.0,
+      "Allowed Amount": 14.64,
+      "Paid Amount": 14.64,
+      "Claim Total Billed": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Payer/Paid Amount:sum",
+       "kind": "segment",
+       "claim": "sum Paid Amount by Payer (5 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"segment_column\": \"Payer\", \"metric_column\": \"Paid Amount\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Northwind Health\", \"value\": 113095.83}, {\"name\": \"Summit Mutual\", \"value\": 49026.14}, {\"name\": \"Lakeside Care\", \"value\": 38167.93}, {\"name\": \"Harbor Senior Plans\", \"value\": 34968.6}, {\"name\": \"Crescent Health\", \"value\": 21891.69}]}",
+       "row_count": 5121,
+       "confidence": "high",
+       "confidence_reason": "5121 rows",
+       "assumptions": [
+        "Paid Amount: 15% missing, left out of this result",
+        "Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting."
+       ]
+      },
+      {
+       "id": "seg:Payer/Claim ID:count",
+       "kind": "segment",
+       "claim": "count Claim ID by Payer (5 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"segment_column\": \"Payer\", \"metric_column\": \"Claim ID\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Northwind Health\", \"value\": 1118.0}, {\"name\": \"Summit Mutual\", \"value\": 482.0}, {\"name\": \"Harbor Senior Plans\", \"value\": 411.0}, {\"name\": \"Lakeside Care\", \"value\": 393.0}, {\"name\": \"Crescent Health\", \"value\": 264.0}]}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": [
+        "Claim counts use distinct Claim ID per payer group."
+       ]
+      },
+      {
+       "id": "seg:Payer/Paid Amount",
+       "kind": "segment",
+       "claim": "mean Paid Amount by Payer (5 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"segment_column\": \"Payer\", \"metric_column\": \"Paid Amount\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Summit Mutual\", \"value\": 60.82647643}, {\"name\": \"Northwind Health\", \"value\": 59.18149137}, {\"name\": \"Lakeside Care\", \"value\": 58.8103698}, {\"name\": \"Harbor Senior Plans\", \"value\": 53.30579268}, {\"name\": \"Crescent Health\", \"value\": 50.21029817}]}",
+       "row_count": 5121,
+       "confidence": "high",
+       "confidence_reason": "5121 rows",
+       "assumptions": [
+        "Paid Amount: 15% missing, left out of this result",
+        "Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting."
+       ]
+      },
+      {
+       "id": "eda:Adjustment Seq",
+       "kind": "eda",
+       "claim": "Adjustment Seq: median 0, mean 0.1059, range 0 to 2.00",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"mean\": 0.1059, \"std\": 0.3517, \"min\": 0.0, \"max\": 2.0, \"median\": 0.0, \"count\": 5999}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Billed Amount",
+       "kind": "eda",
+       "claim": "Billed Amount: median 158.92, mean 193.84, range -1,726.93 to 1,828.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"mean\": 193.8365, \"std\": 302.9989, \"min\": -1726.93, \"max\": 1828.7, \"median\": 158.92, \"count\": 5999}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Allowed Amount",
+       "kind": "eda",
+       "claim": "Allowed Amount: median 25.42, mean 63.19, range -451.30 to 558.07",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"mean\": 63.1929, \"std\": 81.2594, \"min\": -451.3, \"max\": 558.07, \"median\": 25.42, \"count\": 5121}",
+       "row_count": 5121,
+       "confidence": "high",
+       "confidence_reason": "5121 rows",
+       "assumptions": [
+        "Allowed Amount: 15% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Paid Amount",
+       "kind": "eda",
+       "claim": "Paid Amount: median 23.79, mean 55.32, range -442.37 to 506.26",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"mean\": 55.3217, \"std\": 71.4047, \"min\": -442.37, \"max\": 506.26, \"median\": 23.79, \"count\": 5121}",
+       "row_count": 5121,
+       "confidence": "high",
+       "confidence_reason": "5121 rows",
+       "assumptions": [
+        "Paid Amount: 15% missing, left out of this result",
+        "Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting."
+       ]
+      },
+      {
+       "id": "eda:Claim Total Billed",
+       "kind": "eda",
+       "claim": "Claim Total Billed: median 331.99, mean 496.26, range -1,966.36 to 3,383.57",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")",
+       "result_excerpt": "{\"mean\": 496.2621, \"std\": 541.805, \"min\": -1966.36, \"max\": 3383.57, \"median\": 331.99, \"count\": 5999}",
+       "row_count": 5999,
+       "confidence": "high",
+       "confidence_reason": "5999 rows",
+       "assumptions": [
+        "Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting."
+       ]
+      }
+     ]
+    },
+    "domain": "healthcare",
+    "latency_s": 25.09,
+    "cost_usd": 0.02381,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    counted['Service From'] = pd.to_datetime(counted['Service From'], errors='coerce')\n    counted['Paid Date'] = pd.to_datetime(counted['Paid Date'], errors='coerce')\n    \n    counted = counted.sort_values(['Claim ID', 'Line No', 'Adjustment Seq'])\n    counted = counted.drop_duplicates(subset=['Claim ID', 'Line No'], keep='last')\n    \n    payer_paid = (\n        counted.groupby('Payer')['Paid Amount']\n        .sum()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_paid.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": payer_results\n    })\n    \n    payer_count = (\n        counted.groupby('Payer')['Claim ID']\n        .nunique()\n        .reset_index()\n        .sort_values('Claim ID', ascending=False)\n        .head(10)\n    )\n    \n    payer_count_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Claim ID'])}\n        for _, row in payer_count.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Claim ID\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": payer_count_results\n    })\n    \n    payer_mean = (\n        counted.groupby('Payer')['Paid Amount']\n        .mean()\n        .reset_index()\n        .sort_values('Paid Amount', ascending=False)\n        .head(10)\n    )\n    \n    payer_mean_results = [\n        {\"name\": str(row['Payer']), \"value\": float(row['Paid Amount'])}\n        for _, row in payer_mean.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": \"Payer\",\n        \"metric_column\": \"Paid Amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": payer_mean_results\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)[:120]}\")\n\nresult['assumptions'].append(\"Only 'counted' row_kind rows used; last version per claim+line retained; voided/superseded excluded.\")\nresult['assumptions'].append(\"Paid Amount summed at line level (not Claim Total Billed) to avoid double-counting.\")\nresult['assumptions'].append(\"Claim counts use distinct Claim ID per payer group.\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

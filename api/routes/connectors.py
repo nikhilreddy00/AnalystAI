@@ -10,8 +10,8 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from agents.errors import IngestionError
-from connectors.csv_connector import _read_bytes, check_upload_owner, user_upload_dir
+from agents.errors import AgentError, IngestionError
+from connectors.csv_connector import XLS_REFUSAL, _read_bytes, check_upload_owner, user_upload_dir
 from api.auth import get_current_user, UserProfile
 from pydantic import BaseModel
 
@@ -20,6 +20,7 @@ from guardrails import mask_pii
 from orchestrator.state import ConnectorConfig, ConnectorType
 
 router = APIRouter()
+UPLOAD_SUFFIXES = {".csv", ".xlsx", ".tsv", ".json", ".jsonl", ".parquet"}   # .xls: XLS_REFUSAL
 
 
 class TestConnectionResponse(BaseModel):
@@ -40,6 +41,8 @@ async def test_connection(
         connector = get_connector(config)
         success, message = await connector.test_connection()
         return TestConnectionResponse(success=success, message=mask_pii(message))
+    except AgentError as e:   # a refusal written for the user (SQLite in production, MySQL)
+        return TestConnectionResponse(success=False, message=e.user_message)
     except Exception as e:
         return TestConnectionResponse(success=False, message=mask_pii(str(e)))
 
@@ -56,14 +59,12 @@ async def upload_csv(
     Same bytes → the existing version (no new file). Same name and columns → a new version.
     `dataset_id` ("Upload new version" on the dataset page) always makes a version of it.
     """
-    # PROMPT-8: accept text formats (CSV, TSV, JSON) and binary formats
-    # (Parquet, Excel) the UI now advertises.
-    allowed = {".csv", ".xlsx", ".xls", ".tsv", ".json", ".parquet"}
     # Strip any path components from the attacker-supplied filename before reading the suffix
     safe_name = Path(file.filename or "").name
     suffix = Path(safe_name).suffix.lower()
-    if suffix not in allowed:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {suffix}")
+    if suffix not in UPLOAD_SUFFIXES:
+        raise HTTPException(status_code=400, detail=XLS_REFUSAL if suffix == ".xls"
+                            else f"Unsupported file type: {suffix}")
 
     # Chunked reading with early exit to prevent OOM on large uploads.
     # UploadFile is not async-iterable; read in fixed-size chunks instead.

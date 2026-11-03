@@ -550,7 +550,8 @@ _HEDGE_RE = re.compile(r"\b(?:uncertain|may|might|could|not|n't|no|small sample|
                        r"limited|tentative|inconclusive|unclear|caution|preliminary|whether|"
                        r"chance|indicative|borderline|directional|too (?:few|small)|short of|lacks?|cannot|"
                        r"insufficient|weak|before)\b", re.I)
-_NEGATED_RE = re.compile(r"\b(?:no|not|n't|never|nothing|neither|nor)\b", re.I)
+_NEGATED_RE = re.compile(r"\b(?:no|not|n't|never|nothing|neither|nor)\b|"
+                         r"\brather than (?:a |an )?(?:real|true|genuine|actual)\b", re.I)
 _ORDINAL_RE = re.compile(r"\b(?:second|third|fourth|fifth|next)[- ]$", re.I)
 _EARLIER_RE = re.compile(r"\b(?:earlier|previous|prior|past|last) (?:analys[ie]s|reports?|"
                          r"findings?|review)|previously|was reported|had reported\b", re.I)
@@ -834,6 +835,35 @@ def claim_overstated_certainty(text: str, weak: list[str]) -> str | None:
     return None
 
 
+_SMALL_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
+                "eight": 8, "nine": 9, "ten": 10}
+
+
+# Between a small number and a people noun, these say the number counts something else
+_NOT_PEOPLE = {"day", "days", "week", "weeks", "month", "months", "year", "years", "hour", "hours",
+               "point", "points", "percent", "pct", "times", "department", "departments", "unit",
+               "units", "group", "groups"}
+
+
+def claim_small_cell(text: str, nouns: list[str]) -> str | None:
+    """A reported count of 1–10 people (the pack's `small_cell_nouns`: patients, deaths …) on
+    patient data: a small cell (CMS suppresses 1–10). "7 of 412 encounters" counts too; a
+    percentage or a count above 10 doesn't."""
+    if not nouns:
+        return None
+    noun = "|".join(re.escape(n) for n in sorted(nouns, key=len, reverse=True))
+    rx = re.compile(rf"(?<![\d.,%$])\b(\d{{1,2}}|{'|'.join(_SMALL_WORDS)})(?![\d.,%])"
+                    rf"(\s+of\s+[\d,]+)?\s+((?:[a-z-]+\s+){{0,2}}?)(?:{noun})\b", re.I)
+    for m in rx.finditer(text):
+        if set(m.group(3).lower().split()) & _NOT_PEOPLE:   # "3 days after discharge"
+            continue
+        word = m.group(1).lower()
+        if 1 <= (_SMALL_WORDS.get(word) or int(word if word.isdigit() else 0)) <= 10:
+            return (f"reports '{m.group(0)}', a group of fewer than 11: small groups of patients "
+                    "are not reported (they can identify people)")
+    return None
+
+
 # ── Executive jargon (Phase 5 Insight) ─────────────────────────────────────────
 
 _JARGON_RE = re.compile(
@@ -974,6 +1004,12 @@ MASK = "[REDACTED]"
 # (the CMS cell-size rule), so no reported group can single out a few patients.
 SMALL_CELL = 11
 POOLED_LABEL = "Other (fewer than 11 each)"
+
+
+def rankable(name) -> bool:
+    """A group a sentence may call highest or lowest: never the pooled small groups (a privacy
+    bucket of several groups, not a group). THE rule for every 'highest … lowest' sentence."""
+    return str(name) != POOLED_LABEL
 # Never searched for or tokenized as PII values: "May" or "June" in a first-name column would
 # corrupt every date in a prompt.
 CALENDAR_WORDS = {"January", "February", "March", "April", "May", "June", "July", "August",
@@ -1143,8 +1179,10 @@ _PHI_ID_RE = re.compile(r"(?:^|_)(?:mrn|medical_?record(?:_?(?:no|nr|num|number|
                         r"health_?record(?:_?(?:no|nr|num|number|id))?|"
                         r"patient_?(?:id|no|nr|num|number))(?:$|_)", re.I)
 # A school's `subject_id`, a `chart_id`, a `pt_no` are patient numbers only next to health data.
+# A health plan's member / subscriber / beneficiary number too (a gym also has members).
 _WEAK_PHI_ID_RE = re.compile(r"(?:^|_)(?:chart_?(?:no|nr|num|number|id)|"
-                             r"(?:pt|subject)_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+                             r"(?:pt|subject|member|subscriber|beneficiary|enrollee)_?"
+                             r"(?:id|no|nr|num|number))(?:$|_)", re.I)
 # Words that only health data uses in a header: with a personal or identifier column next to
 # them they mark patient records even without an MRN (a 'patient' name + a 'diagnosis' text).
 _HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|"
@@ -1152,7 +1190,8 @@ _HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*
                         r"lab_?results?|allerg\w*|vaccin\w*|adverse_?events?|ae_\w+|"
                         r"treatment_?arm|hospitaliz\w*|vitals?|bmi|blood_?pressure|systolic|"
                         r"diastolic|heart_?rate|symptoms?|triage|sbp|dbp|los|drg|hba1c|"
-                        r"ecog|crp|inpatient|outpatient)(?:$|_)", re.I)
+                        r"ecog|crp|inpatient|outpatient|cpt|hcpcs|npi|loinc|ndc|rev_?code|revenue_?code)"
+                        r"(?:$|_)", re.I)
 # Words other domains use too (a SaaS `is_trial`, an A/B `arm`, a port of `discharge`, an
 # election `ward`): health only when two different ones appear together.
 _WEAK_HEALTH = (r"trial", r"arm", r"dos(?:es?|age|ing)", r"discharge\w*", r"ward", r"clinic\w*",

@@ -28,12 +28,16 @@ LIVE = {"strict": True}
 def _built(name: str, seed: int = 1, transform: str = ""):
     """(session, cleaned frame, contract, truth) through the production reader and cleaning."""
     from agents.cleaning_agent import run_cleaning_agent
+    from agents.ingestion_agent import prepare_frame
     from connectors.csv_connector import CSVConnector, _read_bytes
     from orchestrator.state import AnalysisSession, AnalysisTask, ConnectorConfig, ConnectorType
     raw, truth = datagen.make(name, seed)
     raw = TRANSFORMS[transform](raw) if transform else raw
     df = _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0]
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    # patient data: the PHI-protected copy, as production builds it (smoke run: pooling a
+    # float code column broke parquet; this adapter skipped the step)
+    df, contract = prepare_frame(df, contract, ConnectorType.CSV, scope="oracle")
     s = AnalysisSession(session_id="oracle", data_contract=contract, task_plan=AnalysisTask(
         raw_query="o", analysis_types=["eda"], target_metrics=[]))
     s.__dict__["_df_parquet"] = _parquet(df)
@@ -366,3 +370,139 @@ def test_each_repair_has_its_own_trace_label():
     assert _repair_label("Amount by Merchant Category recomputed: Posted rows …") == "breakdown_recomputed"
     assert _repair_label("balance by segment recomputed per snapshot") == "level_recomputed"
     assert _repair_label("balance by segment recomputed as the latest total (…)") == "level_recomputed"
+
+
+# ── Source invariance (Domain 3, user request 2026-11-03): the same table through every
+# connector reads as the same domain, roles and PHI mode, and every computable tile agrees.
+
+@pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines"])
+@pytest.mark.parametrize("source", ["xlsx", "json", "parquet", "sqlite"])
+async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
+    import connectors.csv_connector as csvc
+    import domain_pack
+    from connectors.base import get_connector
+    from evals import run
+    monkeypatch.setattr(run, "UPLOADS", tmp_path)
+    monkeypatch.setattr(csvc, "_UPLOADS_DIR", tmp_path.resolve())
+    case = {"dataset": {"name": name, "seed": 1}}
+    df, _, csv = run.dataset(case)
+
+    async def read(src):
+        conn = get_connector(run.source_config({**case, "source": src}, df, csv))
+        frame = await conn.load()
+        return frame, conn.build_data_contract(frame)
+    (want, wc), (got, gc) = await read("csv"), await read(source)
+    assert (gc.domain, gc.domain_confidence, gc.phi) == (wc.domain, wc.domain_confidence, wc.phi)
+    assert gc.roles == wc.roles and len(got) == len(want)
+    pack = domain_pack.pack_for(wc.domain)
+    for k in (k for k in pack.kpis if domain_pack.computable(pack, k.name, wc.roles)):
+        a = domain_pack.compute_kpi(want, wc.roles, pack, k.name)
+        b = domain_pack.compute_kpi(got, gc.roles, pack, k.name)
+        assert (a is None and b is None) or b == pytest.approx(a, rel=1e-9), (source, k.name, a, b)
+
+
+# ── Truth: healthcare (Domain 3) ──────────────────────────────────────────────────────────────
+
+def test_inpatient_tiles_are_the_truth():
+    """Discharge-based ALOS (days from admit, same day 0), crude 30-day readmission with the CMS
+    index exclusions and censoring, crude mortality: never the naive all-rows numbers."""
+    t, truth = tiles("inpatient"), _built("inpatient")[3]
+    assert t["discharges"] == truth["inpatient_discharges"]
+    assert close(t["alos"], truth["alos_inpatient"], tol=0.3)            # shown to 2 dp
+    assert close(t["readmission_rate"], 100 * truth["readmit_rate_crude"], tol=1)
+    assert close(t["mortality_rate"], 100 * truth["mortality_rate_crude"], tol=3)
+    assert abs(t["readmission_rate"] - 100 * truth["naive_readmit_rate"]) > 2
+
+
+def test_inpatient_readmission_and_alos_by_department_are_the_truth():
+    _, rate = answer("inpatient", "top_n", "readmission rate by department", kpi="readmission_rate",
+                     segment_column="Department", group_by="Department")
+    assert close(rate, _built("inpatient")[3]["readmit_by_dept"], tol=0.5)
+    _, alos = answer("inpatient", "top_n", "ALOS by department", kpi="alos",
+                     segment_column="Department", group_by="Department")
+    assert close(alos, _built("inpatient")[3]["alos_by_dept"], tol=0.3)
+
+
+def test_claims_tiles_are_the_truth():
+    """Last version of each claim line, voided chains out, paid not billed, the header total
+    never summed, the denial rate on claims (not rows) excluding pending."""
+    t, truth = tiles("health_claims"), _built("health_claims")[3]
+    assert close(t["paid"], truth["paid_total_final"])
+    assert close(t["allowed"], truth["allowed_total_final"])
+    assert t["claims"] == truth["claims_final"] and t["members"] == truth["members"]
+    assert close(t["denial_rate"], 100 * truth["denial_rate_claims"], tol=1)
+
+
+def test_claims_denial_rate_by_payer_is_the_truth():
+    _, rate = answer("health_claims", "top_n", "denial rate by payer", kpi="denial_rate",
+                     segment_column="Payer", group_by="Payer")
+    assert close(rate, _built("health_claims")[3]["denial_rate_by_payer"], tol=1)
+
+
+def test_claims_paid_by_month_leaves_the_run_out_months_out():
+    """Trap 4 (claims lag): Aug-Oct 2026 service months are still arriving; 'paid by month' must
+    not report their drop as a change. Rehearsal found -64.8% (Sep vs Aug) reported as real."""
+    text, points = answer("health_claims", "time_series", "How much did we pay each month?",
+                          kpi="paid", frequency="M")
+    truth = _built("health_claims")[3]
+    assert not any(k.startswith(m) for k in points for m in truth["incomplete_months"]), points
+    assert "2026-07" in " ".join(points) and "still arriving" in text
+
+
+def test_claims_trend_chart_and_built_in_mom_leave_the_run_out_months_out():
+    """One rule for the run-out on every month comparison: the overview's trend chart and the
+    analysis built-in month over month (the sandbox's numbers), not only the answers."""
+    from agents.visualization_agent import build_context, month_line
+    _, clean, contract, truth = _built("health_claims")
+    date = contract.roles["date"]
+    line = month_line(clean, date, "Paid Amount", build_context(clean, contract=contract), monthly=True)
+    months = [str(r[line.x_key])[:7] for r in line.data]
+    assert months and not set(months) & set(truth["incomplete_months"]), months
+    res = builtin("health_claims", ["Paid Amount"], [], ["trend"])
+    paid = truth["paid_by_service_month"]
+    want = 100 * (paid["2026-07"] / paid["2026-06"] - 1)   # the last month whose claims are in
+    mom = next(t for t in res["trends"] if t["column"] == "Paid Amount" and t["period"] == "MoM")
+    assert abs(mom["pct_change"] - want) < 0.1, (mom, want)
+
+
+def test_alos_is_written_in_days():
+    """'ALOS (days): 3.72' leaves the reader (and a scorer) guessing: the number carries its unit."""
+    text, _ = answer("inpatient", "segment_compare", "What is our average length of stay?", kpi="alos")
+    assert re.search(r"3\.72 days", text), text
+    assert any(k.recipe.kpi == "alos" and k.value.endswith(" days")
+               for k in __import__("agents.visualization_agent", fromlist=["pack_kpis"]).pack_kpis(
+                   *_built("inpatient")[1:3]))
+
+
+def test_procedure_codes_survive_cleaning_as_written():
+    """Analysis gate (health-8): cleaning parsed CPT/HCPCS as numbers (95% parse), so 344 HCPCS
+    codes (J1100) became missing and CPT codes read '99213.0'. A pack label role is never parsed."""
+    _, clean, _, _ = _built("health_claims")
+    codes = set(clean["CPT/HCPCS"].dropna().astype(str))
+    assert "J1100" in codes and "99213" in codes and clean["CPT/HCPCS"].notna().all()
+
+
+def test_stays_trend_over_the_discharge_date_and_claims_over_the_service_date():
+    """Red-team M3: the time axis is the pack's date role (ALOS and readmission are
+    discharge-based; claims are incurred by service date), never the file's first date column
+    (Admit Date) or the first column named '…date' (Paid Date)."""
+    from agents.utils import time_axis
+    for name, want in (("inpatient", "Discharge Date"), ("health_claims", "Service From")):
+        _, clean, contract, _ = _built(name)
+        assert time_axis(contract, None, clean) == want, name
+
+
+def test_a_trend_that_skips_incomplete_months_names_the_months_it_compares():
+    """Insight gate: the evidence said 'Paid Amount MoM: +6.3%' and the report wrote 'from Aug to
+    Sep 2026'; the built-in compared Jul with Jun (Aug-Oct still arriving). It names them."""
+    from agents.analysis_agent import _parse_findings, build_evidence
+    res = builtin("health_claims", ["Paid Amount"], [], ["trend"])
+    mom = next(t for t in res["trends"] if t["period"] == "MoM" and not t["segment"])
+    assert (mom["latest"], mom["previous"]) == ("2026-07", "2026-06")
+    # the production path: the raw result parsed into findings (live run: the parser dropped them)
+    f = _parse_findings(res, "", [])
+    ev = build_evidence(f, res, "", "", None)
+    assert any("(Jul 2026 vs Jun 2026)" in e.claim for e in ev), [e.claim for e in ev]
+    # a stays trend over the data's own last two months names nothing (contexts stay pinned)
+    res = builtin("inpatient", ["Total Charges"], [], ["trend"])
+    assert all("latest" not in t for t in res["trends"])

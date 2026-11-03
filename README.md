@@ -115,14 +115,24 @@ The API runs at `http://localhost:8000` — interactive docs at `http://localhos
 
 ---
 
-## Data sources
+## Data sources and limits
 
-| Source | What to provide |
-|--------|----------------|
-| **CSV / Excel** | Upload the file directly in the UI (max 50 MB) |
-| **SQL database** | Connection string (`postgresql://user:pass@host:5432/db`) + table name |
-| **Google Sheets** | Spreadsheet ID + sheet name + service-account JSON |
-| **REST API** | Endpoint URL + auth type (Bearer / API key / Basic) + optional pagination key |
+| Source | How to connect | Limits |
+|--------|----------------|--------|
+| **File upload** | CSV, TSV, Excel (.xlsx), JSON, JSON Lines, Parquet in the UI | 50 MB per file; old .xls: save as .xlsx first |
+| **PostgreSQL, ask questions** | Connection string, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **PostgreSQL, one table** | Connection string + table name | first 50,000 rows, 15 s, read-only |
+| **SQLite** | `sqlite:///path.db` | development only; refused when `APP_ENV=production` |
+| **Google Sheets** | Spreadsheet ID + sheet name + service-account JSON | read as the sheet's CSV export |
+| **REST API** | URL + auth (Bearer, API key with a configurable header, Basic) + optional pagination key | 20 pages or 100,000 records; public hosts only |
+
+- **Truncation is disclosed.** A load that stops at a cap says so in the source evidence and as
+  a report alert ("Only the first 50,000 of 61,234 rows were loaded …").
+- The dashboard charts at most 25,000 rows. There is no streaming: every source is loaded whole
+  (up to its cap) for each run.
+- **Large or live data:** connect the database without a table, so each question is aggregated
+  in the database instead of loading rows.
+- **Planned (Phase 5.8):** MySQL, SQL Server, DuckDB, and public Google Sheets (no service account).
 
 ---
 
@@ -224,7 +234,12 @@ cases k=3, 25 E2E cases, 13 intake cases k=3; `docs/baselines/phase5_7_sales.md`
 **banking** (balances as levels: period-end, never added across dates; NPL and delinquency by
 balance, charge-offs, reversals, pending and fees on ledgers; a loan tape, a transaction ledger
 and deposit snapshots; 7 analysis cases k=3, 10 E2E cases, 12 intake cases k=3;
-`docs/baselines/phase5_7_banking.md`).
+`docs/baselines/phase5_7_banking.md`);
+**healthcare** (hospital stays: ALOS by discharge, crude 30-day readmission with the CMS index
+exclusions and censoring, mortality; payer claims: each claim line's last version, paid vs
+allowed vs billed, the denial rate on claims, claims lag; patient data protected, small groups
+flagged; 8 analysis cases k=3, 9 E2E cases (incl. SQLite and JSON sources), 14 intake cases;
+`docs/baselines/phase5_7_healthcare.md`).
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one
@@ -232,16 +247,20 @@ gets its meaning, for example that a balance is a level (its latest snapshot, ne
 weeks). A file with other column names doesn't, and you can write your own layer
 (`SEMANTIC_LAYER_PATH`).
 
-**Patient data** (an MRN or patient id, ICD-10 codes, or health columns next to personal data) is
-analysed as a de-identified copy:
+**Patient data** (an MRN or patient id, ICD-10 codes, a health plan's member ids next to procedure
+or provider codes, or health columns next to personal data) is analysed as a PHI-protected copy:
 - names, contacts, DOB, notes and patient-level attributes are withheld;
 - identifiers are pseudonymised;
 - ZIP is cut to ZIP3 and ages over 90 are shown as 90;
 - groups under 11 rows are pooled.
 
-Diagnosis codes and visit dates are kept, because they are what you analyse. **This is not HIPAA
-de-identification**, and AnalystAI makes no HIPAA claim. The limits are listed in
-`docs/adr/0008-phi-and-domain-meaning.md`.
+Diagnosis codes and exact admission, discharge and service dates are kept, because length of
+stay, readmission and claims lag need them. **So the copy is not de-identified** under HIPAA Safe
+Harbor: at best it is a limited data set, and every report on it says so. AnalystAI makes no HIPAA
+claim. Exact dates reach Anthropic (the model) and E2B (the sandbox): a covered entity needs a
+business associate agreement (BAA) with both, and a data use agreement for a limited data set.
+Small counts (1–10 patients or encounters) in a report are flagged by the review. The limits are
+listed in `docs/adr/0008-phi-and-domain-meaning.md`.
 
 The code sandbox (E2B) receives the values of columns detected as personal (by name or by value)
 only as one-way pseudonyms, and emails, phones, SSNs, cards and IPs inside other text are masked.

@@ -1,0 +1,34 @@
+id: e2e-55
+domain: healthcare
+dataset:
+  name: health_claims
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: must_not_number
+  truth_key: naive_paid_total
+  # 0.2%: allowed on Paid claims (282,033.82) is a right number 0.45% from the naive paid total
+  rel_tol: 0.002
+  scope: report
+- kind: must_not_number
+  truth_key: naive_header_billed_sum
+  rel_tol: 0.005
+  scope: report
+- kind: must_match
+  pattern: incomplete|still arriving|run[- ]?out|lag
+  scope: report
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|loss ratio
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Claim lines: last versions only, the header total never summed, recent service months flagged
+  incomplete.'

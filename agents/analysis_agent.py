@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
+    runout_months,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -31,6 +32,7 @@ from domain_pack import (
     glossary_hits,
     pack_brief,
     pack_for,
+    with_derived,
     with_row_kind,
 )
 from guardrails import (
@@ -67,7 +69,7 @@ from orchestrator.state import (
 )
 from sandbox.executor import run_code
 
-PROMPT_VERSION = "v8"
+PROMPT_VERSION = "v9"
 
 ANALYSIS_CARD = AgentCard(
     name="analysis",
@@ -230,6 +232,16 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     names = set(df.columns)
     targets = [c for c in task.target_metrics if c in contract.metric_columns and c in names]
     segs = [c for c in task.segments if c in names]
+    # a column's summary over the rows its tiles count (a claim's replaced and voided versions
+    # out, as every answer and chart): replaces the sandbox's every-row summary of that column
+    for c in (c for c in contract.metric_columns if c in names):
+        rows, how = rows_for(df, contract, c)
+        s = pd.to_numeric(rows[c], errors="coerce").dropna()
+        if how and len(s) and len(rows) < len(df):
+            raw.setdefault("eda_summary", {})[c] = {
+                "mean": round(float(s.mean()), 4), "std": round(float(s.std()), 4),
+                "min": round(float(s.min()), 4), "max": round(float(s.max()), 4),
+                "median": round(float(s.median()), 4), "count": int(s.count())}
     for key, empty in (("builtin", []), ("correlations", {}), ("trends", []), ("segments", []),
                        ("assumptions", [])):
         raw.setdefault(key, empty)
@@ -266,6 +278,8 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             m = t.dt.to_period("M")
             if partial_last_month(t):
                 m = m.where(m != m.max())
+            if runout := runout_months(contract):   # claims still arriving: never a trend
+                m = m.where(m < t.dt.to_period("M").max() - runout + 1)
             weeks = t.groupby(m).nunique() if yoy and agg == "sum" and weekly_cadence(t) else None
             return rows.assign(_m=m), agg, weeks
 
@@ -292,6 +306,9 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             overall = series_of(rows, c, agg, weeks)
             if overall is None or len(overall) < 2:
                 continue
+            # the data's own last month (before partial / run-out months were left out)
+            data_last = pd.to_datetime(rows[time_axis(contract, c, df)], format="mixed",
+                                       errors="coerce").dt.to_period("M").max()
             # every segment compares the same months as the whole file (never its own last two,
             # which can be a stale pair); a flow's month with no rows is 0
             last = overall.index[-1]
@@ -316,8 +333,9 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                         continue
                     pct = round(float(pct), 2)   # the direction says the stated figure
                     n = int(part.loc[part["_m"].isin([last, then]), c].notna().sum())
+                    named = {"latest": str(last), "previous": str(then)} if last != data_last else {}
                     raw["trends"].append({"column": c, "period": period, "pct_change": pct,
-                                          "segment": seg, "n": n,
+                                          "segment": seg, "n": n, **named,
                                           "direction": "up" if pct > 0 else "down" if pct < 0 else "flat"})
                     raw["builtin"].append(f"{tag}:{period}")
 
@@ -715,12 +733,13 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     if ctx.domain or defaults_pack(contract):   # 5.7: row kinds as a column code filters on
         def framed_bytes() -> tuple[bytes, str | None]:
             framed, col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
+            framed, added = with_derived(framed, contract)
             buf = io.BytesIO()
             framed.to_parquet(buf, index=False)
-            return buf.getvalue(), col
-        new_bytes, kind_col = await asyncio.to_thread(framed_bytes)
-        if kind_col:
-            df_parquet, known = new_bytes, known + [kind_col]
+            return buf.getvalue(), [*([col] if col else []), *added]
+        new_bytes, extra = await asyncio.to_thread(framed_bytes)
+        if extra:
+            df_parquet, known = new_bytes, known + extra
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
     back: dict = {}                  # {pseudonym: value}, never leaves this process
@@ -815,6 +834,22 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                     trace_verdict("analysis", PROMPT_VERSION, _repair_label(note))
                 raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
+            if reason and reason.startswith("findings name") and attempt == 1 \
+                    and (dropped := drop_unknown_findings(findings, known)):
+                # the last attempt: entries naming no column of this data (a KPI filed as a
+                # column) are left out, never the whole analysis; the rest still passes review
+                trace_verdict("analysis", PROMPT_VERSION, "unknown_findings_dropped")
+                for k in dropped:   # out of raw too: prose quoting them is never "grounded"
+                    if isinstance(raw.get("eda_summary"), dict):
+                        raw["eda_summary"].pop(k, None)
+                    if isinstance(raw.get("correlations"), dict):
+                        raw["correlations"] = {p: v for p, v in raw["correlations"].items()
+                                               if k not in p.split("__")}
+                raw["assumptions"] = [*(raw.get("assumptions") or []),
+                                      f"Left out findings that name no column of this data: "
+                                      f"{', '.join(dropped[:6])}."]
+                # nothing left: the cause stays the unknown columns, never "empty"
+                reason = review_findings(findings, raw, known, set(ctx.analysis_types)) and reason
             if reason is None:
                 if repaired := ground_prose(findings, raw):
                     trace_verdict("analysis", PROMPT_VERSION, "grounding_rewritten")
@@ -858,6 +893,22 @@ def _finding_columns(f: AnalysisFindings) -> set[str]:
         cols.add(s.metric_column)
     cols.update(a.column for a in f.anomalies)
     return cols - {""}
+
+
+def drop_unknown_findings(f: AnalysisFindings, known: list[str]) -> list[str]:
+    """Remove every finding that names a column the data doesn't have; the names removed."""
+    ok, gone = set(known), []
+
+    def bad(cols) -> bool:
+        miss = [c for c in cols if c and c not in ok]
+        gone.extend(m for m in miss if m not in gone)
+        return bool(miss)
+    f.eda_summary = {k: v for k, v in f.eda_summary.items() if not bad([k])}
+    f.correlations = {k: v for k, v in f.correlations.items() if not bad(k.split("__"))}
+    f.trends = [t for t in f.trends if not bad([t.column])]
+    f.segments = [s for s in f.segments if not bad([*s.segment_column.split("|"), s.metric_column])]
+    f.anomalies = [a for a in f.anomalies if not bad([a.column])]
+    return gone
 
 
 def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
@@ -911,7 +962,8 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
         agg = {"total": "sum", "avg": "mean", "average": "mean"}.get((s.aggregation or "").lower(),
                                                                       (s.aggregation or "").lower())
         if (hint is None or hint.aggregation not in ("last", "first")) and agg in ("sum", "mean") \
-                and s.metric_column in df.columns and all(c in df.columns for c in cols):
+                and s.metric_column in df.columns and all(c in df.columns for c in cols) \
+                and pd.api.types.is_numeric_dtype(df[s.metric_column]):   # never a date's "mean"
             rows, how = rows_for(df, contract, s.metric_column)
             # only the bug itself: the model's values ARE the plain total over every row (no
             # period, no sign or type filter of its own: those stay, they answer the question)
@@ -1081,8 +1133,10 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                for t in raw.get("trends", []) if isinstance(t, dict) and isinstance(t.get("n"), int)}
     for t in f.trends:
         seg = f" ({t.segment})" if t.segment else ""
+        months = (f" ({pd.Period(t.latest, 'M').strftime('%b %Y')} vs "
+                  f"{pd.Period(t.previous, 'M').strftime('%b %Y')})") if t.latest and t.previous else ""
         out.append(item("trend", f"trend:{t.column}{seg}:{t.period}",
-                        f"{t.column}{seg} {t.period}: {t.pct_change:+.1f}%", [t.column],
+                        f"{t.column}{seg} {t.period}{months}: {t.pct_change:+.1f}%", [t.column],
                         t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
@@ -1138,6 +1192,14 @@ def _plain_names(s: dict) -> list:
         r.get("name"), str) and r["name"].startswith(prefix) else r for r in rows]
 
 
+def _months(latest, previous) -> dict:
+    try:
+        return {"latest": str(pd.Period(str(latest), "M")),
+                "previous": str(pd.Period(str(previous), "M"))} if latest and previous else {}
+    except (ValueError, TypeError):
+        return {}
+
+
 def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) -> AnalysisFindings:
     """Parse the JSON output from E2B into an AnalysisFindings object."""
 
@@ -1185,6 +1247,9 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
                               or ("up" if pct > 0 else "down" if pct < 0 else "flat")),
                 pct_change=pct,
                 segment=None if t.get("segment") is None else str(t["segment"]),
+                # the months compared, when not the last two, as 'YYYY-MM' (a model's
+                # '2025-03-01' too); free text is dropped, never allowed to break the naming
+                **_months(t.get("latest"), t.get("previous")),
             ))
 
     distributions_raw = raw.get("distributions", {})

@@ -1,0 +1,28 @@
+id: health-5
+domain: healthcare
+category: ratio
+pipeline: production
+dataset:
+  name: inpatient
+  seed: 1
+question: What is the average length of stay by department?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics: []
+  segments:
+  - Department
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Department
+  truth_key: alos_by_dept
+  abs_tol: 0.1
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: ALOS = discharge - admit in days (same day 0), inpatient discharges only; observation stays
+  and still-in-house patients out. There is no LOS column.

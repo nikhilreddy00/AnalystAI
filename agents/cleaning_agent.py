@@ -51,7 +51,14 @@ from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
 from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
                          words)
-from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
+from guardrails import (
+    is_pii_column,
+    is_zip_column,
+    mask_pii,
+    protected_filled,
+    unlogged_changes,
+    unreconciled_rows,
+)
 from llm.client import trace_verdict
 from orchestrator.state import (
     AgentCard,
@@ -194,7 +201,7 @@ async def run_cleaning_agent(session: AnalysisSession, drop_high_null: bool = Fa
         deid = session.data_contract.deidentification
         audit.decisions = [*deid, *audit.decisions]
         audit.duplicates_removed += sum(d.rows_removed for d in deid if d.operation == "drop_duplicates")
-        audit.summary = (f"Patient data de-identified first ({len(deid)} steps: identifiers "
+        audit.summary = (f"Patient data protected first ({len(deid)} steps: identifiers "
                          f"withheld or pseudonymised, small groups pooled). " + audit.summary)
     dropped = {d.column for d in audit.decisions if d.operation == "drop_column"}
     if dropped and session.data_contract:   # downstream agents read columns from the contract
@@ -252,11 +259,14 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                 f"{n} placeholder values ('-', '?', 'N/A' …) read as missing.",
                 n, pct, _null_pct(df[col]))
 
-    # 3. Types: numbers, then dates. IDs and codes stay as they are.
+    # 3. Types: numbers, then dates. IDs and codes stay as they are, and so does a column the
+    # domain pack names as a label (a procedure code: 95% digits, yet J1100 is a code too)
+    labels = {ctx.roles[r] for r, x in ctx.pack.roles.items() if r in ctx.roles
+              and x.kind in ("category", "status", "id", "text", "currency")} if ctx.pack else set()
     coerced: list[str] = []
     for col in df.columns:
-        if col in skip or col in ids:
-            continue
+        if col in skip or col in ids or (col in labels and col not in ctx.dates) or is_zip_column(col):
+            continue   # a ZIP (or a ZIP3 '077') is a code: as a number it loses its zero
         s = df[col]
         new, strategy, how = None, "", ""
         if pd.api.types.is_string_dtype(s):
@@ -370,7 +380,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
             f"(same {keys[0]} and every other value).", n_dup, removed=n_dup)
     elif n_dup:
-        why = ("the patient data was de-identified first, and duplicates were judged on the "
+        why = ("the patient data was protected first, and duplicates were judged on the "
                "original rows" if ctx.deidentified else
                "there is no ID column to tell a copy from a repeated record")
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
@@ -470,7 +480,10 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log(col, "drop_column", "user_choice", "Dropped at your request (mostly empty).", 0)
 
     # 9. Outliers: flagged, never removed.
-    flat = df.drop(columns=[c for c in nested if c in df.columns])
+    # a code the pack names (a disposition 07, a DRG 470) or a ZIP has no outliers: never a measure
+    codes = [c for c in labels if c in df.columns and c not in ids and pd.api.types.is_numeric_dtype(df[c])]
+    flat = df.drop(columns=[c for c in nested if c in df.columns] + codes
+                   + [c for c in df.columns if is_zip_column(str(c)) and c not in codes])
     _, anomaly_report = detect_anomalies(flat, classify_columns(flat))
     outliers = [f.message for f in anomaly_report.flags]
 
