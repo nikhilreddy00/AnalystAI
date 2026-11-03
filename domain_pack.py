@@ -196,6 +196,9 @@ class Pack(_Strict):
     # An overview opens with the first money tile KPI by month and by the first of these the
     # data has (the charts the domain's analyst reads first)
     overview_groups: list[str] = Field(default_factory=list)
+    # The KPIs an overview charts (the first by month and by group, the rest by group); unset:
+    # the first money tile and a state ratio. A hospital opens on stays and readmission, not charges.
+    overview_kpis: list[str] = Field(default_factory=list)
     location_role: str | None = None   # sites that open and close (comparable-store growth)
     snapshot_key: str | None = None    # the role naming one level's series (an account, a loan)
     # A column filled only on rows of these statuses (a charge-off date): its blanks are the
@@ -348,6 +351,7 @@ class Pack(_Strict):
                         errors.append(f"kpi {k.name}: unknown kpi {t.kpi}")
             if self._cycle(k.name, ()):
                 errors.append(f"kpi {k.name}: refers to itself")
+        errors += [f"overview_kpis: unknown kpi {n}" for n in self.overview_kpis if n not in names]
         if errors:
             raise ValueError(f"invalid domain pack {self.domain}:\n- " + "\n- ".join(errors))
         return self

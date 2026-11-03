@@ -2637,6 +2637,28 @@ def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
 
 # ── Public entry point ───────────────────────────────────────────────────────
 
+def _overview_asks(pack, roles: dict[str, str], columns) -> list[tuple[QuestionIntent, TargetedParams]]:
+    """The overview's KPI charts: the headline by month and by the first `overview_groups` role
+    present, then each other headline KPI by that group. Headlines: the pack's `overview_kpis`
+    the data can compute; unset, its first money tile and a state ratio (NPL) by group."""
+    can = [k for k in (pack.kpi(n) for n in pack.overview_kpis) if k and computable(pack, k.name, roles)]
+    if not pack.overview_kpis:
+        money = next((k for k in pack.kpis if k.tile and k.unit == "money"
+                      and computable(pack, k.name, roles)), None)
+        # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
+        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
+                      and computable(pack, k.name, roles)), None)
+        can = [money, ratio] if money and ratio else [money] if money else []
+    if not can:
+        return []
+    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in columns), None)
+    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=can[0].name, frequency="M"))]
+    if group:
+        asks += [(QuestionIntent.TOP_N, TargetedParams(kpi=k.name, segment_column=group,
+                                                       group_by=group)) for k in can]
+    return asks
+
+
 def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]:
     """A strong-matched domain's overview opens with its headline KPI (the pack's first money
     tile) by month and by its first `overview_groups` role present: the charts its analyst reads
@@ -2645,22 +2667,7 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     from agents.targeted_analysis_agent import handle_kpi   # it imports this module
 
     pack = defaults_pack(ctx.contract)
-    roles = ctx.contract.roles if ctx.contract else {}
-    kpi = next((k for k in pack.kpis if k.tile and k.unit == "money"
-                and computable(pack, k.name, roles)), None) if pack else None
-    if kpi is None:
-        return []
-    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in df.columns), None)
-    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=kpi.name, frequency="M"))]
-    if group:
-        asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=kpi.name, segment_column=group,
-                                                          group_by=group)))
-        # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
-        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
-                      and computable(pack, k.name, roles)), None)
-        if ratio:
-            asks.append((QuestionIntent.TOP_N, TargetedParams(kpi=ratio.name, segment_column=group,
-                                                              group_by=group)))
+    asks = _overview_asks(pack, ctx.contract.roles if ctx.contract else {}, df.columns) if pack else []
     out = []
     for intent, params in asks:
         try:

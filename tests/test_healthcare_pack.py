@@ -175,3 +175,42 @@ def test_one_value_off_the_code_pattern_withholds_the_column(toy_clinic):
     df.loc[299, "procedure"] = "pt Jane Roe called"
     out, _ = prepare_frame(df, build_contract(df, ConnectorType.CSV), ConnectorType.CSV)
     assert "procedure" not in out.columns
+
+
+def _asks(pack, roles):
+    from agents.visualization_agent import _overview_asks
+    return [(i.value, p.kpi, p.group_by) for i, p in _overview_asks(pack, roles, list(roles.values()))]
+
+
+def test_overview_kpis_choose_the_headline_and_the_rates_by_group():
+    """m1: a hospital's overview opens on stays and readmission by department, never on billed
+    charges (the first money tile); KPIs the data can't compute are skipped."""
+    pack = domain_pack.Pack.model_validate({
+        "domain": "toyward", "signals": [{"a": ["stay"], "b": ["charges"]}],
+        "roles": {"stay": {"kind": "id", "headers": ["stay"]},
+                  "charges": {"kind": "money", "headers": ["charges"]},
+                  "dept": {"kind": "category", "headers": ["dept"]},
+                  "died": {"kind": "category", "headers": ["died"]},
+                  "day": {"kind": "date", "headers": ["day"]}},
+        "kpis": [{"name": "billed", "label": "Billed", "num": [[{"sum": "charges"}]], "tile": True},
+                 {"name": "stays", "label": "Stays", "num": [[{"nunique": "stay"}]], "tile": True},
+                 {"name": "mortality", "label": "Mortality", "unit": "percent", "tile": True,
+                  "num": [[{"nunique": "stay", "where": [[{"role": "died", "in": ["y"]}]]}]],
+                  "den": [[{"nunique": "stay"}]]}],
+        "overview_groups": ["dept"], "overview_kpis": ["stays", "mortality"],
+        "caveats": {"read_as_domain_weak": "x"}})
+    roles = {r: r for r in ("stay", "charges", "dept", "died", "day")}
+    assert _asks(pack, roles) == [("time_series", "stays", None), ("top_n", "stays", "dept"),
+                                  ("top_n", "mortality", "dept")]
+    del roles["died"]
+    assert _asks(pack, roles) == [("time_series", "stays", None), ("top_n", "stays", "dept")]
+
+
+def test_without_overview_kpis_retail_and_banking_keep_their_charts():
+    """Unset: the first money tile, and a state ratio by group (byte-identical to before)."""
+    bank = domain_pack.pack_for("banking")
+    roles = {r: r for r in bank.roles}
+    asks = _asks(bank, roles)
+    assert asks[0] == ("time_series", "total_balance", None)
+    assert [a[1] for a in asks[1:]] == ["total_balance", "npl_ratio"]
+    assert not bank.overview_kpis and not domain_pack.pack_for("retail").overview_kpis
