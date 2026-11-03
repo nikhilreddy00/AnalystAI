@@ -49,7 +49,8 @@ from agents.data_cleaning import (
 from agents.errors import GuardrailViolation
 from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
-from domain_pack import Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds
+from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
+                         words)
 from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
 from llm.client import trace_verdict
 from orchestrator.state import (
@@ -298,7 +299,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             if col is None or ind is None or not pd.api.types.is_numeric_dtype(df[col]) \
                     or (df[col] < 0).any():   # already signed: the indicator only repeats it
                 continue
-            out = df[ind].astype(str).str.strip().str.lower().isin([v.lower() for v in rule.negative])
+            out = words(df[ind]).isin(set(words(pd.Series(rule.negative))))
             if n := int((out & df[col].gt(0)).sum()):
                 pct = _null_pct(df[col])
                 df[col] = df[col].mask(out, -df[col])

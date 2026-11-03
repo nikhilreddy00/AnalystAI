@@ -639,3 +639,12 @@ def test_a_balance_is_one_series_only_when_it_chains_with_the_flows():
     two = two.assign(Date=pd.to_datetime(two["Date"], format="%d/%m/%Y"))
     assert not one_series(pd.concat([one, two], ignore_index=True), BANK, roles, "balance")
     assert not one_series(one, BANK, {**roles, "account": "Date"}, "balance")   # accounts: per account
+
+
+@pytest.mark.parametrize("status", ["Charged-Off", "CHARGED_OFF", "charged  off", "Paid-in-Full"])
+def test_a_status_is_its_words_wherever_it_is_read(status):
+    """Plan v2 R3: row kinds compared statuses lower-case only, conditions by their words; one
+    rule now (domain_pack.words)."""
+    from domain_pack import row_kinds
+    df = pd.DataFrame({"s": [status, "Current"]})
+    assert row_kinds(df, {"status": "s"}, BANK).tolist() == ["cancel", "sale"]

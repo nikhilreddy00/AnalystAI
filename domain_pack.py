@@ -366,8 +366,8 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
         case "date":
             return is_date
         case "status":
-            known = {v.lower() for vs in pack.status_values.values() for v in vs}
-            return vals.astype(str).str.strip().str.lower().isin(known).mean() >= 0.5
+            known = set(words(pd.Series([v for vs in pack.status_values.values() for v in vs])))
+            return words(vals).isin(known).mean() >= 0.5
         case "currency":   # "usd" as well as "USD"
             return vals.astype(str).str.strip().str.upper().str.fullmatch(r"[A-Z]{3}").mean() >= 0.9
         case "category" | "text":
@@ -422,10 +422,10 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
     found = []
     norm = {str(c): normalize_header(c) for c in df.columns}
     per_header = [set(n.split("_")) for n in norm.values()]
-    words = set().union(*per_header) if per_header else set()
+    tokens = set().union(*per_header) if per_header else set()
     for pack in load_packs():
         if any(set(v) <= h for v in pack.exclude_headers for h in per_header) or \
-                any(set(v) <= words for v in pack.exclude_pairs):
+                any(set(v) <= tokens for v in pack.exclude_pairs):
             continue
         roles: dict[str, str] = {}
         expanded = {c: expand_header(n, pack) for c, n in norm.items()}
@@ -466,15 +466,15 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
             if ids[~credit].str.fullmatch(r"\d+").mean() >= 0.5:
                 kind[credit] = "return"
     if "status" in roles:   # a reversed sale (positive lines); a negative line stays a netted return
-        status = df[roles["status"]].astype(str).str.strip().str.lower()
-        kind[status.isin([v.lower() for v in pack.status_values.get("return", [])])
+        status = words(df[roles["status"]])
+        kind[status.isin(set(words(pd.Series(pack.status_values.get("return", [])))))
              & kind.eq("sale")] = "refunded"
     for role, values in pack.non_product.items():
         if role in roles:
             vals = df[roles[role]].astype(str).str.strip().str.upper()
             kind[vals.isin([v.upper() for v in values])] = "non_product"
     if "status" in roles:
-        kind[status.isin([v.lower() for v in pack.status_values.get("cancel", [])])] = "cancel"
+        kind[status.isin(set(words(pd.Series(pack.status_values.get("cancel", [])))))] = "cancel"
     if pack.test_marker:
         for role in pack.test_roles:
             if role in roles:   # short values only: a pack regex never runs on long text
@@ -516,8 +516,9 @@ def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> b
     return bool(len(per)) and int(per.max()) <= 1
 
 
-def _words(s: pd.Series) -> pd.Series:
-    """'Non Accrual', 'non-accrual', 'NON_ACCRUAL' → 'non accrual': a value as a word list."""
+def words(s: pd.Series) -> pd.Series:
+    """'Non Accrual', 'non-accrual', 'NON_ACCRUAL' → 'non accrual': a value as a word list. THE
+    comparison of a data value with a pack's words (statuses, conditions, indicators)."""
     return s.astype(str).str.strip().str.lower().str.replace(r"[\s_\-]+", " ", regex=True)
 
 
@@ -529,8 +530,8 @@ def _meets(df: pd.DataFrame, roles: dict[str, str], where: list[list[Cond]]) -> 
         for c in group:
             col = df[roles[c.role]]
             if c.in_ is not None or c.not_in is not None:
-                wanted = _words(pd.Series(c.in_ if c.in_ is not None else c.not_in))
-                inside = _words(col).isin(set(wanted))
+                wanted = words(pd.Series(c.in_ if c.in_ is not None else c.not_in))
+                inside = words(col).isin(set(wanted))
                 ok &= col.notna() & (inside if c.in_ is not None else ~inside)
             else:
                 v = pd.to_numeric(col, errors="coerce")
@@ -769,8 +770,8 @@ def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[s
     q = question.lower()
     own = {normalize_header(c) for c in columns}
     found = [(m.start(), m.end(), concept, w)
-             for concept, words in [*pack.glossary.items(), (None, pack.consumed)]
-             for w in words for m in re.finditer(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q)]
+             for concept, said in [*pack.glossary.items(), (None, pack.consumed)]
+             for w in said for m in re.finditer(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q)]
     taken: list[tuple[int, int]] = []
     hits: dict[str, str] = {}
     # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales")
@@ -859,8 +860,8 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     # the roles that made the match first (an order id, a date), in plain words, no headers
     deciding = [r for alt in [*pack.strong, *pack.signals] for g in alt.values() for r in g]
     ordered = sorted(roles, key=lambda r: deciding.index(r) if r in deciding else len(deciding))
-    words = [r.replace("_", " ") for r in ordered[:5]]
-    shown = ", ".join(words[:-1]) + (" and " if len(words) > 1 else "") + words[-1] if words else ""
+    named = [r.replace("_", " ") for r in ordered[:5]]
+    shown = ", ".join(named[:-1]) + (" and " if len(named) > 1 else "") + named[-1] if named else ""
     # as the tiles show them: a KPI of non-sale rows only (return rate) when the data has some
     kinds = {s for s in flags if s in ROW_KINDS}
     kpis = ", ".join(k.phrase for k in pack.kpis if k.tile and computable(pack, k.name, roles)
@@ -912,7 +913,7 @@ def filled_statuses(df: pd.DataFrame, pack: Pack, roles: dict[str, str], role: s
     charged-off loan); none when the data lacks the status or the field."""
     if role not in roles or "status" not in roles:
         return pd.Series(False, index=df.index)
-    return _words(df[roles["status"]]).isin(set(_words(pd.Series(pack.conditional_fields[role]))))
+    return words(df[roles["status"]]).isin(set(words(pd.Series(pack.conditional_fields[role]))))
 
 
 def layout_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]) -> dict[str, str]:
