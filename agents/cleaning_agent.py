@@ -194,7 +194,7 @@ async def run_cleaning_agent(session: AnalysisSession, drop_high_null: bool = Fa
         deid = session.data_contract.deidentification
         audit.decisions = [*deid, *audit.decisions]
         audit.duplicates_removed += sum(d.rows_removed for d in deid if d.operation == "drop_duplicates")
-        audit.summary = (f"Patient data de-identified first ({len(deid)} steps: identifiers "
+        audit.summary = (f"Patient data protected first ({len(deid)} steps: identifiers "
                          f"withheld or pseudonymised, small groups pooled). " + audit.summary)
     dropped = {d.column for d in audit.decisions if d.operation == "drop_column"}
     if dropped and session.data_contract:   # downstream agents read columns from the contract
@@ -370,7 +370,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
             f"(same {keys[0]} and every other value).", n_dup, removed=n_dup)
     elif n_dup:
-        why = ("the patient data was de-identified first, and duplicates were judged on the "
+        why = ("the patient data was protected first, and duplicates were judged on the "
                "original rows" if ctx.deidentified else
                "there is no ID column to tell a copy from a repeated record")
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "

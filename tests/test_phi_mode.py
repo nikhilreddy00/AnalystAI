@@ -240,7 +240,7 @@ async def test_cleaning_audit_starts_with_the_deidentification(encounters_file):
     s = _session(path)
     s.data_contract = await run_ingestion_agent(s, None)
     _, audit = await run_cleaning_agent(s)
-    assert audit.decisions[0].operation == "withhold" and "de-identified" in audit.summary
+    assert audit.decisions[0].operation == "withhold" and "protected first" in audit.summary
     assert "date_of_birth" not in audit.date_ranges
 
 

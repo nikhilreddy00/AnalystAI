@@ -486,7 +486,7 @@ async def _seed_guard_from_last_turn(session: AnalysisSession, llm: LLMClient) -
     await seed_phi_guard(session, llm)
 
 
-# ── PHI mode (Phase 5.5): a de-identified working copy ──────────────────────────
+# ── PHI mode (Phase 5.5): a PHI-protected working copy (not de-identified: exact dates stay) ──────────────────────────
 
 _NOTE_NAME_RE = re.compile(r"(?:^|_)(?:notes?|comments?|remarks?|descr\w*|text|memo|narrative|"
                            r"messages?|summary|observations?)(?:$|_)", re.I)
@@ -582,7 +582,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
 
 def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: ConnectorType,
                   info: dict | None = None, scope: str = "") -> tuple[pd.DataFrame, DataContract]:
-    """The frame every agent works on. For patient data (`contract.phi`) a de-identified copy,
+    """The frame every agent works on. For patient data (`contract.phi`) a PHI-protected copy,
     built from an allowlist (fail closed: what isn't known safe is withheld):
     - kept: numbers (ages ≥ 90 → 90), dates that aren't personal, and short category columns
       (≤ 50 values, not free text; groups under 11 rows pooled);
@@ -796,7 +796,7 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
             raise
         except Exception as exc:   # fail closed: never continue on the raw patient data
             raise IngestionError(f"de-identification failed: {type(exc).__name__}",
-                                 "This data holds patient records and couldn't be de-identified, "
+                                 "This data holds patient records and couldn't be protected, "
                                  "so it wasn't analysed. Check the file opens as a plain table and "
                                  "upload it again; if it keeps failing, ask your administrator.") from exc
         if contract.phi and source_query is not None:   # its excerpt quotes raw result rows

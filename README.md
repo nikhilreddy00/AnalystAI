@@ -232,16 +232,20 @@ gets its meaning, for example that a balance is a level (its latest snapshot, ne
 weeks). A file with other column names doesn't, and you can write your own layer
 (`SEMANTIC_LAYER_PATH`).
 
-**Patient data** (an MRN or patient id, ICD-10 codes, or health columns next to personal data) is
-analysed as a de-identified copy:
+**Patient data** (an MRN or patient id, ICD-10 codes, a health plan's member ids next to procedure
+or provider codes, or health columns next to personal data) is analysed as a PHI-protected copy:
 - names, contacts, DOB, notes and patient-level attributes are withheld;
 - identifiers are pseudonymised;
 - ZIP is cut to ZIP3 and ages over 90 are shown as 90;
 - groups under 11 rows are pooled.
 
-Diagnosis codes and visit dates are kept, because they are what you analyse. **This is not HIPAA
-de-identification**, and AnalystAI makes no HIPAA claim. The limits are listed in
-`docs/adr/0008-phi-and-domain-meaning.md`.
+Diagnosis codes and exact admission, discharge and service dates are kept, because length of
+stay, readmission and claims lag need them. **So the copy is not de-identified** under HIPAA Safe
+Harbor: at best it is a limited data set, and every report on it says so. AnalystAI makes no HIPAA
+claim. Exact dates reach Anthropic (the model) and E2B (the sandbox): a covered entity needs a
+business associate agreement (BAA) with both, and a data use agreement for a limited data set.
+Small counts (1–10 patients or encounters) in a report are flagged by the review. The limits are
+listed in `docs/adr/0008-phi-and-domain-meaning.md`.
 
 The code sandbox (E2B) receives the values of columns detected as personal (by name or by value)
 only as one-way pseudonyms, and emails, phones, SSNs, cards and IPs inside other text are masked.
