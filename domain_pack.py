@@ -932,13 +932,22 @@ def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(R
         rules.append(pack.say("return_rule") + ": " + " or ".join(
             ([f"a negative {neg}"] if neg else []) + credit))
     sv = pack.status_values
-    if "status" in roles and "refunded" in present:
-        rules.append(f"{pack.say('refunded_rule')}: status in {sv.get('return', [])}")
-    if "status" in roles and "cancel" in present:
-        rules.append(f"{pack.say('cancel_rule')}: status in {sv.get('cancel', [])}")
+    if "status" in roles and "refunded" in present and sv.get("return"):
+        rules.append(f"{pack.say('refunded_rule')}: status in {sv['return']}")
+    if "status" in roles and "cancel" in present and sv.get("cancel"):
+        rules.append(f"{pack.say('cancel_rule')}: status in {sv['cancel']}")
+    chain = pack.version_order in roles and all(r in roles for r in pack.version_key)
+    if chain and "cancel" in present and (void := {r: v for r, v in pack.version_void.items()
+                                                   if r in roles}):
+        rules.append(f"{pack.say('cancel_rule')}: every row of a " + " + ".join(pack.version_key)
+                     + " whose last " + pack.version_order + " has "
+                     + " or ".join(f"{r} in {v}" for r, v in void.items()))
     if "non_product" in present:
         rules += [f"{pack.say('non_product_rule')}: {r} in {v}" for r, v in pack.non_product.items()
                   if r in roles]
+        if chain:
+            rules.append(f"{pack.say('non_product_rule')}: a row with a later {pack.version_order} "
+                         "for the same " + " + ".join(pack.version_key))
     test = [r for r in pack.test_roles if r in roles]
     if pack.test_marker and test and "test" in present:
         rules.append(f"a {pack.label('test').removesuffix('s')} (left out): {' or '.join(test)} "
