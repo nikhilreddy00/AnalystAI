@@ -68,7 +68,7 @@ from orchestrator.state import (
 )
 from sandbox.executor import run_code
 
-PROMPT_VERSION = "v8"
+PROMPT_VERSION = "v9"
 
 ANALYSIS_CARD = AgentCard(
     name="analysis",
