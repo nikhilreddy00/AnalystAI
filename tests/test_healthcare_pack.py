@@ -390,3 +390,10 @@ def test_a_pooled_group_is_never_ranked_and_a_ratio_reads_as_a_percent():
     text = _plain(e, f, None)
     assert "Cardiology highest (14.2%)" in text and "Neurology lowest (7.0%)" in text, text
     assert "fewer than 11" not in text
+
+
+def test_a_column_that_already_says_total_is_not_totalled_twice():
+    """Insight bundle: 'Total total charges by department'."""
+    from agents.visualization_agent import _label, build_context
+    df = pd.DataFrame({"Total Charges": [1.0, 2.0], "Dept": ["A", "B"]})
+    assert "total total" not in _label("Total Charges", "sum", build_context(df)).lower()

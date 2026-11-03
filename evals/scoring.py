@@ -438,11 +438,17 @@ def report_text(session: AnalysisSession) -> str:
                       *(f"{e.claim} {e.result_excerpt}" for e in evidence)])
 
 
+# The product's own notice that it REMOVED such sentences ("1 sentence(s) saying a promotion
+# caused a change were removed"): quoting the forbidden claim to disclose its removal is not
+# making it (Domain 3 re-measure, e2e-35).
+_REMOVAL_NOTICE = re.compile(r"[^.]*\bsentence\(s\)[^.]*\bwere removed\b[^.]*\.?", re.I)
+
+
 def check_must_not_match(session: AnalysisSession, pattern: str,
                          scope: str = "answer") -> tuple[bool, str]:
     """`scope: report` also scans charts and evidence (a small cell can show in a bar)."""
-    m = re.search(pattern, report_text(session) if scope == "report" else answer_text(session),
-                  re.IGNORECASE)
+    text = report_text(session) if scope == "report" else answer_text(session)
+    m = re.search(pattern, _REMOVAL_NOTICE.sub(" ", text), re.IGNORECASE)
     return m is None, f"matched forbidden '{m.group(0)}'" if m else "ok"
 
 

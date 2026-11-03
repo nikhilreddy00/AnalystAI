@@ -2139,7 +2139,10 @@ def _label(metric: str, agg: str, ctx: VizContext) -> str:
         return f"{_rate_label(metric, ctx.narrative)} (%)"
     unit = next((c.unit for c in (ctx.contract.columns if ctx.contract else []) if c.name == metric
                  and c.unit), None)
-    label = f"{_AGG_WORD.get(agg, agg.title())} {disp.lower() if agg == 'count' else disp}"
+    word = _AGG_WORD.get(agg, agg.title())
+    # "Total Charges" summed is "Total charges", never "Total total charges"
+    label = disp if disp.lower().startswith(word.lower() + " ") else \
+        f"{word} {disp.lower() if agg == 'count' else disp}"
     return f"{label} ({unit})" if unit else label
 
 

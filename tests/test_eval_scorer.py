@@ -391,3 +391,17 @@ def test_a_column_named_with_a_slash_is_one_column():
                          segments=[SegmentResult(segment_column="CPT/HCPCS", metric_column="Paid Amount",
                                                  aggregation="sum", results=[{"name": "99213", "value": 1.0}])])
     assert hard_rule("no_unknown_columns", df, f)[0]
+
+
+def test_a_removal_notice_is_not_the_forbidden_claim():
+    """Domain 3 re-measure (e2e-35): the product removed a causal sentence and said so; the
+    notice quoting 'a promotion or discount caused' failed a must_not_match."""
+    from evals.scoring import check_must_not_match
+    from orchestrator.state import AnalysisSession, TargetedResponse, QuestionIntent
+    s = AnalysisSession(session_id="t")
+    s.targeted_response = TargetedResponse(intent=QuestionIntent.OVERVIEW, answer_text=(
+        "Sales rose 4%. 1 sentence(s) saying a promotion or discount caused a change were removed: "
+        "without a control group that can't be shown."))
+    assert check_must_not_match(s, "promotion or discount caused")[0]
+    s.targeted_response.answer_text = "The promotion or discount caused sales to rise."
+    assert not check_must_not_match(s, "promotion or discount caused")[0]
