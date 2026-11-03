@@ -260,6 +260,8 @@ export interface FilteredDashboard {
   charts: Record<string, Record<string, unknown>[]>;
   tiles: Record<string, string>;
   rows: number;
+  /** Patient data filtered below 11 records: no number is shown (a small cell). */
+  suppressed?: boolean;
 }
 
 export async function getFilteredDashboard(filters: Record<string, unknown>): Promise<FilteredDashboard> {

@@ -28,3 +28,9 @@ test("a pack tile shows the server's value under filters", () => {
   assert.equal(tileView("Discharges", true, server), "1,083");
   assert.equal(tileView("Discharges", false, server), null);
 });
+
+test("a suppressed small cell never draws the few records", () => {
+  const v = chartView(kpiChart, true, { ...server, suppressed: true }, []);
+  assert.equal(v.unfiltered, true);
+  assert.deepEqual(v.data, (kpiChart as { data: unknown }).data);
+});

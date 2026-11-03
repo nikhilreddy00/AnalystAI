@@ -22,7 +22,6 @@ import json
 import logging
 import re
 
-import pandas as pd
 from datetime import date
 from pathlib import Path
 
@@ -437,8 +436,7 @@ def _plain(e: Evidence, findings, narrative: DataNarrative | None) -> str:
             seg = f" for {_label(t.segment)}" if t.segment else ""
             way = "rose" if t.pct_change > 0 else "fell" if t.pct_change < 0 else "was flat"
             period = "month over month" if t.period == "MoM" else "year over year"
-            months = (f" ({pd.Period(t.latest, 'M').strftime('%b %Y')} vs "
-                      f"{pd.Period(t.previous, 'M').strftime('%b %Y')})") if t.latest and t.previous else ""
+            months = t.months()
             text = f"{_name(t.column, narrative)}{seg} {way} {abs(t.pct_change):.1f}% {period}{months}."
     elif e.kind == "segment":
         s = next((s for s in findings.segments

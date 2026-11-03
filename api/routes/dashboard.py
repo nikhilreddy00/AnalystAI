@@ -205,11 +205,24 @@ async def _latest_frame(request: Request, user: UserProfile):
         raise HTTPException(status_code=404, detail="No completed analysis yet")
     if not session.cleaned_data_path or not Path(session.cleaned_data_path).is_file():
         raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
-    return session, pd.read_parquet(session.cleaned_data_path)
+    df = pd.read_parquet(session.cleaned_data_path)
+    if len(df) > MAX_ROWS:   # every dashboard view: the rows and their filtered recomputation
+        raise HTTPException(
+            status_code=422,
+            detail=(f"Dataset too large for the interactive dashboard ({len(df):,} rows; limit is "
+                    f"{MAX_ROWS:,}). Run a targeted question via chat instead."))
+    return session, df
+
+
+MAX_ROWS = 25_000
 
 
 class FilterRequest(BaseModel):
     filters: dict[str, dict] = Field(max_length=20)
+
+    def model_post_init(self, _) -> None:   # a filter's list of values is a UI pick, never a dump
+        if any(len(f.get("values") or []) > 500 for f in self.filters.values()):
+            raise ValueError("a filter lists more than 500 values")
 
 
 @router.post("/latest/filtered")
@@ -229,18 +242,22 @@ async def get_latest_dashboard_filtered(
 
     session, df = await _latest_frame(request, current_user)
     charts = list(session.chart_configs)
-    for c in await request.app.state.session_store.get_dashboard(current_user.uid):
+    # this session's pins only: another dataset's chart is never refiltered with these rows
+    for c in await request.app.state.session_store.get_dashboard(current_user.uid,
+                                                                 session_ids={session.session_id}):
         try:
             charts.append(c if isinstance(c, ChartConfig) else ChartConfig.model_validate(c))
         except ValueError:   # a pin saved before a schema change: shown as pinned, not refiltered
             continue
-    kpis = session.analysis_findings.kpis if session.analysis_findings else []
     try:
-        return await asyncio.to_thread(
-            filtered_dashboard, df, session.data_contract, charts, kpis, body.filters,
-            session.task_plan.raw_query if session.task_plan else "", session.narrative)
+        return await asyncio.wait_for(asyncio.to_thread(
+            filtered_dashboard, df, session.data_contract, charts, body.filters,
+            session.task_plan.raw_query if session.task_plan else "", session.narrative), timeout=30)
     except (KeyError, ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=f"Invalid filter: {exc}") from exc
+    except TimeoutError as exc:
+        raise HTTPException(status_code=503, detail="The filtered dashboard took too long; "
+                                                    "narrow the filters or ask in chat.") from exc
 
 
 @router.get("/latest/data")
@@ -253,17 +270,6 @@ async def get_latest_dashboard_data(
     Used by the dashboard page for its filter options; the numbers under filters come from
     POST /latest/filtered (the domain rules live on the server)."""
     session, df = await _latest_frame(request, current_user)
-
-    MAX_ROWS = 25_000
-    if len(df) > MAX_ROWS:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"Dataset too large for the interactive dashboard "
-                f"({len(df):,} rows; limit is {MAX_ROWS:,}). "
-                f"Run a targeted question via chat instead."
-            ),
-        )
 
     from agents.visualization_agent import classify_columns
     roles = classify_columns(df)

@@ -84,7 +84,9 @@ function AutoDashboardInner() {
     [rows, filters],
   );
   const hasActiveFilters = Object.keys(filters).length > 0;
-  const server = useFilteredDashboard(filters);
+  const { data: latestForKey } = useQuery<LatestAnalysis | null>({
+    queryKey: ["dashboard-latest"], queryFn: getLatestAnalysis, refetchInterval: 30_000 });
+  const { data: server } = useFilteredDashboard(filters, latestForKey?.session_id);
 
   const { layout, moveUp, moveDown, hide, restore, reset } = useDashboardLayout();
 
@@ -309,7 +311,7 @@ function AutoDashboardInner() {
           )}
 
           {/* KPI row */}
-          {hasBriefing && latest?.briefing && <KPISection briefing={latest.briefing} />}
+          {hasBriefing && latest?.briefing && <KPISection briefing={latest.briefing} sessionId={latest.session_id} />}
 
           {/* Records indicator — excluded from PNG */}
           {hasActiveFilters && (

@@ -19,6 +19,8 @@ export interface ChartView {
 export function chartView(chart: ChartConfig, active: boolean, server: FilteredDashboard | undefined,
                           filteredRows: Record<string, unknown>[]): ChartView {
   if (!active) return { data: chart.data, unfiltered: false, counted: false };
+  // a small cell on patient data: the whole data's chart with its pill, never the few records
+  if (server?.suppressed) return { data: chart.data, unfiltered: true, counted: false };
   const fresh = server?.charts[chart.id];
   if (fresh) return { data: fresh, unfiltered: false, counted: false };
   const agg = aggregateForChart(filteredRows, chart);

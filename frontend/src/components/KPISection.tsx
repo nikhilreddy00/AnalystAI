@@ -15,9 +15,10 @@ import { evaluateKPI } from "@/lib/evaluateKPI";
 
 interface Props {
   briefing: BriefingData;
+  sessionId?: string;
 }
 
-export default function KPISection({ briefing }: Props) {
+export default function KPISection({ briefing, sessionId }: Props) {
   const kpis: KPI[] = briefing.kpis ?? [];
 
   const { rows } = useDashboardData();
@@ -27,7 +28,7 @@ export default function KPISection({ briefing }: Props) {
     [rows, filters],
   );
   const hasActiveFilters = Object.keys(filters).length > 0;
-  const server = useFilteredDashboard(filters);
+  const { data: server, failed } = useFilteredDashboard(filters, sessionId);
 
   if (kpis.length === 0) {
     // Older sessions persisted before PROMPT-2 may not have kpis. Show a
@@ -51,14 +52,18 @@ export default function KPISection({ briefing }: Props) {
         // the server's recomputation first (a domain's rules); a plain recipe in the browser meanwhile
         const fromServer = tileView(kpi.label, hasActiveFilters, server);
         const evalResult = evaluateKPI(kpi.recipe, filteredRows);
-        const filteredValue = fromServer ?? (evalResult.ok ? evalResult.value : null);
+        // a small cell on patient data shows no number, not even the browser's own count
+        const filteredValue = server?.suppressed ? null
+          : fromServer ?? (evalResult.ok ? evalResult.value : null);
         return (
           <KPICard
             key={`${kpi.label}-${i}`}
             label={kpi.label}
             value={kpi.value}
             sublabel={kpi.recipe?.kind === "pack" && hasActiveFilters && !fromServer
-              ? [server ? "Not available for these filters" : "Recomputing for the filters…",
+              ? [server?.suppressed ? "Fewer than 11 records: not shown (privacy)"
+                   : failed ? "Couldn't recompute for these filters"
+                   : server ? "Not available for these filters" : "Recomputing for the filters…",
                  kpi.context].filter(Boolean).join(" · ")
               : kpi.context || undefined}
             filteredValue={filteredValue}

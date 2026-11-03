@@ -1197,6 +1197,7 @@ def _spread(df: pd.DataFrame, roles: dict, pack, name: str) -> str:
     data has: a portfolio ratio of 0.5% can hide a product at 10%."""
     group = next((roles[g] for g in pack.overview_groups if g in roles), None)
     by = compute_kpi(df, roles, pack, name, by=group) if group else None
+    by = by[[rankable(k) for k in by.index]] if by is not None else None   # never the pooled bucket
     if by is None or len(by) < 2:
         return ""
     order = ranked(by)
@@ -2185,7 +2186,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
-    df, _ = rows_for(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
+    df, _ = rows_for(df, ctx.contract, metric, ctx.full)   # a domain's money: the rows its tiles count
     level = None
     if agg not in ("last", "first") and not split:   # a level's mean: the answer's rows (utils)
         try:
@@ -2261,7 +2262,7 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         monthly = True   # staggered snapshots: a day holds only some accounts, a month all
     extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
-    df, kept = rows_for(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
+    df, kept = rows_for(df, ctx.contract, metric, ctx.full)   # a domain's money: the rows its tiles count
     sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
@@ -2338,7 +2339,10 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
 def fence_histogram(df: pd.DataFrame, col: str, ctx: VizContext, k: float = 3.0) -> ChartConfig | None:
     """Full-range histogram (no tail clipping: the tail is the point) with the Tukey fences
     Q1 - k·IQR and Q3 + k·IQR marked, and the count beyond them in the title."""
-    s = pd.to_numeric(df[col], errors="coerce").dropna() if col in df.columns else pd.Series()
+    if col not in df.columns:
+        return None
+    df, _ = rows_for(df, ctx.contract, col, ctx.full)   # the rows its tiles count (a voided claim's -$442 out)
+    s = pd.to_numeric(df[col], errors="coerce").dropna()
     if len(s) < 4:
         return None
     q1, q3 = float(s.quantile(0.25)), float(s.quantile(0.75))
@@ -2812,9 +2816,11 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
         elif kind == "range":
             n = pd.to_numeric(s, errors="coerce")
             hit = n.between(float(f["min"]), float(f["max"]))
-        elif kind == "date_range":
+        elif kind == "date_range":   # whole days, wall-clock time (an aware column too)
             t = pd.to_datetime(s, format="mixed", errors="coerce")
-            hit = t.between(pd.Timestamp(f["from"]), pd.Timestamp(f["to"]))
+            if getattr(t.dt, "tz", None) is not None:
+                t = t.dt.tz_localize(None)
+            hit = (t >= pd.Timestamp(f["from"])) & (t < pd.Timestamp(f["to"]) + pd.Timedelta(days=1))
         else:
             raise ValueError(f"unknown filter kind {kind!r}")
         keep &= hit & s.notna()
@@ -2827,15 +2833,18 @@ def _chart_key(c: ChartConfig):
 
 
 def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: list[ChartConfig],
-                       kpis: list[KPI], filters: dict, query: str = "",
+                       filters: dict, query: str = "",
                        narrative: DataNarrative | None = None) -> dict:
     """A dashboard under filters, by the functions that built it (one definition: a domain pack's
     tiles and KPI charts need its rules, which only the server has). {charts: {chart id: data}
     for every chart rebuilt from the filtered rows (a chart from the model's findings can't be:
-    it keeps its pill), tiles: {label: value}, rows: n}."""
+    it keeps its pill), tiles: {label: value}, rows: n, suppressed}. On patient data a part of
+    fewer than 11 records reports no number (a small cell, ADR-0008)."""
+    from guardrails import SMALL_CELL
     part = apply_filters(df, filters)
-    if part.empty:
-        return {"charts": {c.id: [] for c in charts}, "tiles": {}, "rows": 0}
+    if part.empty or (contract is not None and contract.phi and len(part) < SMALL_CELL):
+        return {"charts": {}, "tiles": {}, "rows": int(len(part)),
+                "suppressed": bool(len(part)) and bool(contract and contract.phi)}
     ctx = build_context(part, contract=contract, narrative=narrative)
     ctx.full = df
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(
@@ -2844,4 +2853,4 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     out = {c.id: fresh[k] for c in charts if (k := _chart_key(c)) in fresh}
     tiles = {k.label: k.value for k in generate_smart_kpis(part, ctx.roles, query, narrative, contract,
                                                            full=df)}
-    return {"charts": out, "tiles": tiles, "rows": int(len(part))}
+    return {"charts": out, "tiles": tiles, "rows": int(len(part)), "suppressed": False}

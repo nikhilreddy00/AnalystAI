@@ -125,9 +125,31 @@ def test_one_percent_change_rule_in_answers():
     assert hand == [], f"use agents.utils.pct_change: {hand}"
 
 
+_REDUCES = re.compile(r"\.(?:quantile|mean|median|sum|corr|std|nunique)\(|value_counts\(|aggregate\(|np\.histogram\(")
+_ROW_RULES = ("rows_for(", "entity_rows(", "compute_kpi(", "handle_kpi(", "pack_kpis(")
+# Whole-table profile functions: they describe the table's shape (which column is a category,
+# how many rows per value), never a measure's value a tile also states. A new entry needs a
+# reason here; anything that states a measure's number takes rows_for (Domain 3: the outlier
+# histogram summed voided claims because the guard only looked for `aggregate(`).
+PROFILE = {"classify_columns", "_build_color_map", "_pick_primary_metric", "_pick_top_category",
+           "_rank_continuous_by_target_assoc", "_ranked_categoricals_by_target_separation",
+           "_highest_cv_kpi", "_comparison_kpi_chi2", "_best_correlated_pair",
+           "_build_correlation_heatmap", "_build_value_counts", "_build_donut",
+           "_build_horizontal_bar_top_n", "_build_stacked_bar_normalized", "_build_target_rate_by_cat",
+           "_build_continuous_split_by_target", "_build_time_series", "compute_briefing_extras",
+           "generate_dashboard_charts", "build_single_chart", "handle_ab_significance",
+           # OPEN (2026-11-03): the profile histogram of a measure still reads every row; moving
+           # the profile charts onto counted rows changes retail/banking overviews (a paid
+           # re-measure) — planned with Phase 5.8, never extended silently
+           "_build_histogram"}
+
+
 def _forgets_rows_for(name: str, src: str) -> bool:
-    """A function that aggregates the frame without taking its rows from rows_for."""
-    return "aggregate(" in src and "rows_for(" not in src and not src.lstrip().startswith("def aggregate")
+    """A function that reduces the uploaded frame without taking its rows from a row rule."""
+    first = src.lstrip().splitlines()[0] if src.strip() else ""
+    takes_df = re.search(r"def \w+\(\s*df\b", first) is not None
+    return (takes_df and _REDUCES.search(src) is not None and not any(r in src for r in _ROW_RULES)
+            and name not in PROFILE and not first.startswith("def aggregate"))
 
 
 def test_every_number_a_user_reads_takes_its_rows_from_rows_for():
@@ -143,6 +165,7 @@ def test_every_number_a_user_reads_takes_its_rows_from_rows_for():
     assert bad == [], f"take the rows from domain_pack.rows_for: {bad}"
     # the guard itself catches a new site that forgets the rule (a planted violation)
     assert _forgets_rows_for("by_branch", "def by_branch(df, c):\n    return aggregate(df, ['b'], 'x', 'mean', c)\n")
+    assert _forgets_rows_for("fences", "def fences(df, col):\n    return df[col].quantile(0.25)\n")
     assert not _forgets_rows_for("ok", "def ok(df, c):\n    df, _ = rows_for(df, c, 'x')\n    return aggregate(df)\n")
 
 

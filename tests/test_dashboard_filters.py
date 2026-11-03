@@ -28,7 +28,7 @@ def _dashboard(name: str):
 
 def test_a_filter_changes_the_pack_tiles_and_kpi_charts():
     clean, contract, charts, kpis, truth = _dashboard("inpatient")
-    out = filtered_dashboard(clean, contract, charts, kpis, CARDIO)
+    out = filtered_dashboard(clean, contract, charts, CARDIO)
     cardio = clean[clean["Department"] == "Cardiology"]
     inpatient = cardio[cardio["Encounter Type"].eq("Inpatient") & cardio["Discharge Date"].notna()]
     assert out["tiles"]["Discharges"] == f"{inpatient['Encounter ID'].nunique():,}"
@@ -41,7 +41,7 @@ def test_a_filter_changes_the_pack_tiles_and_kpi_charts():
 def test_claims_filters_keep_the_version_rule():
     """A payer filter on claims: paid is still each line's last version (never every row)."""
     clean, contract, charts, kpis, truth = _dashboard("health_claims")
-    out = filtered_dashboard(clean, contract, charts, kpis,
+    out = filtered_dashboard(clean, contract, charts,
                              {"Payer": {"kind": "in", "values": ["Northwind Health"]}})
     assert out["tiles"]["Paid"] == f"${truth['paid_by_payer']['Northwind Health']:,.2f}"
 
@@ -53,7 +53,7 @@ def test_retail_and_banking_dashboards_filter_too():
                           and not pd.api.types.is_datetime64_any_dtype(clean[c])
                           and 2 <= clean[c].nunique() <= 20)
         value = clean[col].dropna().iloc[0]
-        out = filtered_dashboard(clean, contract, charts, kpis, {col: {"kind": "equality", "value": value}})
+        out = filtered_dashboard(clean, contract, charts, {col: {"kind": "equality", "value": value}})
         whole = {k.label: k.value for k in kpis}
         assert any(out["tiles"].get(k) not in (None, v) for k, v in whole.items()), (name, out["tiles"])
 
@@ -121,8 +121,55 @@ def test_a_filtered_group_with_none_of_a_ratios_rows_is_zero_not_unknown():
     whole data has non-performing loans, so mortgages' NPL ratio is 0.0% (as a month with no
     returns has a 0% return rate: compute_kpi's `full`)."""
     clean, contract, charts, kpis, truth = _dashboard("loan_tape")
-    out = filtered_dashboard(clean, contract, charts, kpis,
+    out = filtered_dashboard(clean, contract, charts,
                              {"Product": {"kind": "equality", "value": "Mortgage"}})
     assert out["tiles"]["NPL ratio"] == "0.0%"
     npl = next(c for c in charts if c.title.startswith("NPL ratio by"))
     assert npl.id in out["charts"]
+
+
+def test_filter_requests_are_bounded():
+    """Security review: the filtered endpoint keeps /latest/data's row cap (shared loader) and
+    refuses a filter that lists more than 500 values."""
+    from pydantic import ValidationError
+
+    from api.routes import dashboard
+    from api.routes.dashboard import FilterRequest
+    with pytest.raises(ValidationError):
+        FilterRequest(filters={"k": {"kind": "in", "values": list(range(501))}})
+    import inspect
+    assert "MAX_ROWS" in inspect.getsource(dashboard._latest_frame)
+
+
+def test_a_filter_on_a_version_field_never_brings_old_versions_back():
+    """Final review M1: 'Claim Frequency in [1, 7]' gave paid $263,285.08 > the $257,150.19
+    total: version chains were resolved on the filtered rows only. They resolve on the whole data."""
+    clean, contract, charts, kpis, truth = _dashboard("health_claims")
+    out = filtered_dashboard(clean, contract, charts,
+                             {"Claim Frequency": {"kind": "in", "values": ["1", "7"]}})
+    paid = float(out["tiles"]["Paid"].replace("$", "").replace(",", ""))
+    assert paid <= truth["paid_total_final"] + 0.01
+
+
+def test_patient_data_filtered_to_a_small_cell_is_suppressed():
+    """Final review M3: one stay showed 'readmission 100.0%'; on patient data a filter that
+    leaves fewer than 11 records reports no numbers (CMS 1–10)."""
+    clean, contract, charts, kpis, _ = _dashboard("inpatient")
+    one = str(clean["Encounter ID"].iloc[0])
+    out = filtered_dashboard(clean, contract, charts,
+                             {"Encounter ID": {"kind": "equality", "value": one}})
+    assert out["suppressed"] and out["tiles"] == {} and out["charts"] == {}
+
+
+def test_a_time_zone_aware_date_range_keeps_whole_days():
+    """Final review: an aware column crashed the endpoint; rows later on the last day were cut."""
+    df = pd.DataFrame({"d": pd.to_datetime(["2026-02-28T18:00:00Z", "2026-03-01T01:00:00Z"])})
+    assert len(apply_filters(df, {"d": {"kind": "date_range", "from": "2026-02-01", "to": "2026-02-28"}})) == 1
+
+
+def test_the_endpoint_refilters_only_this_sessions_pins():
+    """Final review M2: pins from another dataset were refiltered with the latest rows."""
+    import inspect
+
+    from api.routes import dashboard
+    assert "session_ids={session.session_id}" in inspect.getsource(dashboard.get_latest_dashboard_filtered)

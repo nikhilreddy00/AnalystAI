@@ -1133,8 +1133,7 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
                for t in raw.get("trends", []) if isinstance(t, dict) and isinstance(t.get("n"), int)}
     for t in f.trends:
         seg = f" ({t.segment})" if t.segment else ""
-        months = (f" ({pd.Period(t.latest, 'M').strftime('%b %Y')} vs "
-                  f"{pd.Period(t.previous, 'M').strftime('%b %Y')})") if t.latest and t.previous else ""
+        months = t.months()
         out.append(item("trend", f"trend:{t.column}{seg}:{t.period}",
                         f"{t.column}{seg} {t.period}{months}: {t.pct_change:+.1f}%", [t.column],
                         t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))

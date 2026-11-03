@@ -506,3 +506,14 @@ def test_a_trend_that_skips_incomplete_months_names_the_months_it_compares():
     # a stays trend over the data's own last two months names nothing (contexts stay pinned)
     res = builtin("inpatient", ["Total Charges"], [], ["trend"])
     assert all("latest" not in t for t in res["trends"])
+
+
+def test_outlier_and_distribution_numbers_read_the_counted_rows():
+    """Recurring class 1 (Domain 3 expert): '325 unusual billed amount values outside -441…'
+    came from voided and replaced claim lines; the counted rows have no negative paid."""
+    from agents.visualization_agent import build_context, fence_histogram
+    _, clean, contract, _ = _built("health_claims")
+    chart = fence_histogram(clean, "Paid Amount", build_context(clean, contract=contract))
+    assert not str(chart.data[0]["bin"]).lstrip().startswith("-"), chart.data[:2]
+    text, _ = answer("health_claims", "distribution", "distribution of paid", metric_column="Paid Amount")
+    assert "-442" not in text and "−442" not in text, text
