@@ -287,3 +287,11 @@ def test_runout_names_the_incomplete_recent_months_when_the_lag_date_is_there():
         "Service months from Aug 2026 on are incomplete."]
     del roles["how_left"]
     assert domain_pack.pack_caveats(pack, audit, roles) == []
+
+
+def test_a_whole_number_read_as_float_compares_as_its_digits():
+    """A code column with a blank reads as float (DRG 313.0): the pattern check and `words()`
+    (THE value comparison) must see '313', never '313.0'."""
+    s = pd.Series([313.0, None, 7.0])
+    assert domain_pack.words(s).tolist()[::2] == ["313", "7"]
+    assert domain_pack.as_text(pd.Series([2.5, 3.0])).tolist() == ["2.5", "3.0"]   # not whole

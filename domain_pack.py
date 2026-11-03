@@ -417,7 +417,7 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
     if vals.empty:
         return False
     if role.pattern:   # a capped sample of short values: a pack regex never runs on a whole upload
-        text = vals.head(1000).astype(str)
+        text = as_text(vals.head(1000))
         if text.str.len().gt(40).any() or text.str.fullmatch(role.pattern).mean() < 0.9:
             return False
     numeric = pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s)
@@ -630,10 +630,18 @@ def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> b
     return bool(len(per)) and int(per.max()) <= 1
 
 
+def as_text(s: pd.Series) -> pd.Series:
+    """Values as written: a whole number read as float (a code column with a blank: DRG 313.0)
+    is its digits, '313'."""
+    if pd.api.types.is_float_dtype(s) and (s.dropna() % 1 == 0).all():
+        return s.astype("Int64").astype(str)
+    return s.astype(str)
+
+
 def words(s: pd.Series) -> pd.Series:
     """'Non Accrual', 'non-accrual', 'NON_ACCRUAL' → 'non accrual': a value as a word list. THE
     comparison of a data value with a pack's words (statuses, conditions, indicators)."""
-    return s.astype(str).str.strip().str.lower().str.replace(r"[\s_\-]+", " ", regex=True)
+    return as_text(s).str.strip().str.lower().str.replace(r"[\s_\-]+", " ", regex=True)
 
 
 def _meets(df: pd.DataFrame, roles: dict[str, str], where: list[list[Cond]]) -> pd.Series:

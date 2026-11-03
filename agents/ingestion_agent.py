@@ -28,7 +28,7 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
-from domain_pack import layout_columns, one_series, pack_for, words
+from domain_pack import as_text, layout_columns, one_series, pack_for, words
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -386,7 +386,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
                 c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a code)"
             if not role or pack.roles[role].kind != "id" or c.is_id:
                 continue
-            s = df[c.name].dropna().astype(str)   # text: a nested value can't break nunique
+            s = as_text(df[c.name].dropna())   # text: a nested value can't break nunique
             shaped = bool(pack.roles[role].pattern) and \
                 s.head(1000).str.fullmatch(pack.roles[role].pattern).mean() >= 0.9
             # many digit-bearing codes (SKU 85123A, customer numbers); "Store 1".."Store 3" are labels
@@ -546,7 +546,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
     pack = pack_for(contract.domain)
     coded = {col for r, col in contract.roles.items() if pack and r in pack.roles
              and pack.roles[r].pattern and col in df.columns
-             and _profiled(df[col]).dropna().astype(str).str.strip()
+             and as_text(_profiled(df[col]).dropna()).str.strip()
              .str.fullmatch(pack.roles[r].pattern).all()}   # procedure codes, DRGs: EVERY value
     # matches (one free-text value in a code column withholds the column)
     patient = next((str(n) for n in df.columns if is_phi_identifier(str(n))), None)
