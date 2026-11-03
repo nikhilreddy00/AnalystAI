@@ -322,6 +322,14 @@ def test_a_model_breakdown_of_a_money_column_is_recomputed_from_its_rows():
     assert repair_breakdowns(f, clean, contract)
     assert close(segment({"segments": [s.model_dump() for s in f.segments]}, by, "Amount", "sum"),
                  rows.groupby(by)["Amount"].sum().round(4).to_dict())
+    # the model's own filter (a quarter, spend only) answers the question: left as it is
+    spend = clean[pd.to_numeric(clean["Amount"]) < 0].groupby(by)["Amount"].sum()
+    g = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[],
+                         forecast_points=[], distributions={}, code_executed="", segments=[SegmentResult(
+                             segment_column=by, metric_column="Amount", aggregation="sum",
+                             results=[{"name": str(k), "value": float(v)} for k, v in spend.items()])])
+    assert repair_breakdowns(g, clean, contract) == []
+    assert g.segments[0].results[0]["value"] == float(spend.iloc[0])
 
 
 # ── R4: machine-independent data ──────────────────────────────────────────────────────────────

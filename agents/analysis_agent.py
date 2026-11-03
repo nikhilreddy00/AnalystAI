@@ -906,10 +906,19 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
         if (hint is None or hint.aggregation not in ("last", "first")) and agg in ("sum", "mean") \
                 and s.metric_column in df.columns and all(c in df.columns for c in cols):
             rows, how = rows_for(df, contract, s.metric_column)
-            if how:   # its tiles leave rows out: the breakdown reads the same rows
-                vals = rows.groupby(cols)[s.metric_column].agg(agg).dropna()
-                s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
-                              "value": round(float(v), 4)} for k, v in vals.items()]
+            # only the bug itself: the model's values ARE the plain total over every row (no
+            # period, no sign or type filter of its own: those stay, they answer the question)
+            naive = df.groupby(cols)[s.metric_column].agg(agg)
+            naive.index = ["|".join(map(str, k)) if isinstance(k, tuple) else str(k) for k in naive.index]
+            got = {str(r.get("name")): r.get("value") for r in s.results if isinstance(r, dict)}
+            plain = bool(got) and all(isinstance(v, (int, float)) and k in naive.index and
+                                      abs(v - naive[k]) <= 0.005 * max(1.0, abs(naive[k]))
+                                      for k, v in got.items())
+            if how and plain:   # its tiles leave rows out: the breakdown reads the same rows
+                vals = rows.groupby(cols)[s.metric_column].agg(agg)
+                vals.index = ["|".join(map(str, k)) if isinstance(k, tuple) else str(k) for k in vals.index]
+                s.results = [{"name": k, "value": round(float(vals[k]), 4)} for k in got   # its groups
+                             if k in vals.index and vals[k] == vals[k]]
                 notes.append(f"{s.metric_column} by {s.segment_column} recomputed: {how}")
             continue
         if (s.aggregation or "").lower() not in ("sum", "total"):
