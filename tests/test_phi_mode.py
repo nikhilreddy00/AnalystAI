@@ -263,7 +263,9 @@ def test_e2b_pseudonymises_pii():
     assert out["customer_name"].isna().tolist() == [False, True, False]
 
 
-def _builtins(df: pd.DataFrame, case: dict) -> dict:
+def _builtins(df: pd.DataFrame, case: dict, real: pd.DataFrame | None = None) -> dict:
+    """The sandbox's guaranteed code on `df` (what E2B gets), then the in-process built-ins on
+    the `real` frame, as production runs them (never on the pseudonymised copy)."""
     from agents.analysis_agent import _build_guaranteed_code, builtin_result
     from orchestrator.state import AnalysisTask
     contract = _contract(df)
@@ -271,7 +273,9 @@ def _builtins(df: pd.DataFrame, case: dict) -> dict:
               "statistical_tests": [], "distributions": {}, "key_findings": []}
     g = {"df": df.copy(), "pd": pd, "np": np, "result": result, "json": json}
     exec(_build_guaranteed_code(contract), g)
-    builtin_result(df, contract, AnalysisTask(raw_query=case["question"], **case["task"]), result)
+    real = df if real is None else real
+    builtin_result(real, _contract(real), AnalysisTask(raw_query=case["question"], **case["task"]),
+                   result)
     return json.loads(json.dumps(result, default=str))
 
 
@@ -290,7 +294,7 @@ def test_old_cases_unaffected_by_pseudonyms():
         df = dataset(case)[0]
         pii = pii_columns(_contract(df))
         masked = pd.read_parquet(io.BytesIO(e2b_frame(_parquet(df), pii)[0]))
-        a, b = _builtins(df, case), _builtins(masked, case)
+        a, b = _builtins(df, case), _builtins(masked, case, real=df)
         for field in ("eda_summary", "correlations", "segments", "trends", "anomalies",
                       "statistical_tests"):
             assert a[field] == b[field], (case["id"], field)
