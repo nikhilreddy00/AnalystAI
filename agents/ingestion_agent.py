@@ -377,6 +377,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     fp = fingerprint(df)
     phi = _patient_signal(cols, lambda n: _profiled(df[n]).dropna().head(_SAMPLE).tolist())
     domain, roles, confidence = detect_domain(df, {c.name for c in cols if c.is_date}, set(pii))
+    phi = phi or bool((p := pack_for(domain)) and p.phi)
     if pack := pack_for(domain):   # the pack knows a store number is a label, not a quantity
         for c in cols:
             role = next((r for r, col in roles.items() if col == c.name), None)

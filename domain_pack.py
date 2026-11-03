@@ -158,6 +158,9 @@ class KPI(_Strict):
 
 class Pack(_Strict):
     domain: str
+    # Patient data: any match of this pack (strong or weak) turns PHI mode on, whatever the
+    # headers say (fail closed: a claims extract has member ids and codes, no MRN or name)
+    phi: bool = False
     # Detection: the data is this domain when, for one alternative, every group has a role in it
     # (independent signals: a product AND a money column, or an orders export's own shape) and
     # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).

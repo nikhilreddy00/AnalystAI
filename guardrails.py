@@ -1143,8 +1143,10 @@ _PHI_ID_RE = re.compile(r"(?:^|_)(?:mrn|medical_?record(?:_?(?:no|nr|num|number|
                         r"health_?record(?:_?(?:no|nr|num|number|id))?|"
                         r"patient_?(?:id|no|nr|num|number))(?:$|_)", re.I)
 # A school's `subject_id`, a `chart_id`, a `pt_no` are patient numbers only next to health data.
+# A health plan's member / subscriber / beneficiary number too (a gym also has members).
 _WEAK_PHI_ID_RE = re.compile(r"(?:^|_)(?:chart_?(?:no|nr|num|number|id)|"
-                             r"(?:pt|subject)_?(?:id|no|nr|num|number))(?:$|_)", re.I)
+                             r"(?:pt|subject|member|subscriber|beneficiary|enrollee)_?"
+                             r"(?:id|no|nr|num|number))(?:$|_)", re.I)
 # Words that only health data uses in a header: with a personal or identifier column next to
 # them they mark patient records even without an MRN (a 'patient' name + a 'diagnosis' text).
 _HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*|dx|"
@@ -1152,7 +1154,8 @@ _HEALTH_RE = re.compile(r"(?:^|_)(?:patients?|diagnos[ie]s|diagnosis_?\w*|icd\w*
                         r"lab_?results?|allerg\w*|vaccin\w*|adverse_?events?|ae_\w+|"
                         r"treatment_?arm|hospitaliz\w*|vitals?|bmi|blood_?pressure|systolic|"
                         r"diastolic|heart_?rate|symptoms?|triage|sbp|dbp|los|drg|hba1c|"
-                        r"ecog|crp|inpatient|outpatient)(?:$|_)", re.I)
+                        r"ecog|crp|inpatient|outpatient|cpt|hcpcs|npi|loinc|ndc|rev_?code|revenue_?code)"
+                        r"(?:$|_)", re.I)
 # Words other domains use too (a SaaS `is_trial`, an A/B `arm`, a port of `discharge`, an
 # election `ward`): health only when two different ones appear together.
 _WEAK_HEALTH = (r"trial", r"arm", r"dos(?:es?|age|ing)", r"discharge\w*", r"ward", r"clinic\w*",
