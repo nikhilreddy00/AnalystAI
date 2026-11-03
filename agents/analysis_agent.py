@@ -811,7 +811,8 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                                               contract, session.task_plan.timeframe
                                               if session.task_plan else None,
                                               set(raw.get("builtin") or [])))):
-                trace_verdict("analysis", PROMPT_VERSION, "level_recomputed")
+                for note in fixed:   # one label per kind of repair (one meaning per counter)
+                    trace_verdict("analysis", PROMPT_VERSION, _repair_label(note))
                 raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
@@ -871,6 +872,12 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
     if reason := check_columns(_finding_columns(f), known):
         return f"findings name {reason}"
     return None
+
+
+def _repair_label(note: str) -> str:
+    """The trace label of one repair_breakdowns note."""
+    return ("model_trend_labelled" if "computed by the model's own code" in note
+            else "breakdown_recomputed" if " recomputed: " in note else "level_recomputed")
 
 
 def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,

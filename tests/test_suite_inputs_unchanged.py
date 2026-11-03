@@ -13,14 +13,7 @@ import json
 from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-CHANGES: dict[str, dict[str, str]] = {"analysis": {
-    "bank-1": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
-    "bank-2": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
-    "bank-4": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
-    "bank-5": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
-    "bank-6": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
-    "bank-7": "plan v2 R4: banking's row kinds reach the model as its own codes (on_book, not sale)",
-}}
+CHANGES: dict[str, dict[str, str]] = {}
 
 
 async def test_every_finished_domain_gets_the_same_inputs_and_outputs():

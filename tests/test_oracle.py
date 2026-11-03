@@ -358,3 +358,11 @@ def test_a_model_trend_the_built_ins_dont_make_says_who_computed_it():
         TrendResult(column="Amount", period="MoM", pct_change=1.0, direction="up")])
     notes = repair_breakdowns(f, clean, contract, builtin={"trend:Amount:MoM"})
     assert len(notes) == 1 and notes[0].startswith("Amount QoQ: computed by the model's own code")
+
+
+def test_each_repair_has_its_own_trace_label():
+    from agents.analysis_agent import _repair_label
+    assert _repair_label("Amount QoQ: computed by the model's own code, not …") == "model_trend_labelled"
+    assert _repair_label("Amount by Merchant Category recomputed: Posted rows …") == "breakdown_recomputed"
+    assert _repair_label("balance by segment recomputed per snapshot") == "level_recomputed"
+    assert _repair_label("balance by segment recomputed as the latest total (…)") == "level_recomputed"

@@ -291,7 +291,7 @@ guard (bug → invariant).
 | R2 | bc18c09 | built-ins in-process (`standard_stats`); `repair_breakdowns` recomputes model breakdowns of money columns; ADR-0004 addendum | differential vs the old sandbox code: 25/38 identical, rest explained; 1 xfail flipped |
 | R3 | 1357877, 3e5a4a8, d51bb73, 1678e9c | pack abbreviations (validator refuses dead abbreviated headers); value roles: `signed_by` (Dr/Cr), `running_balance` + `one_series` (a statement), `paired_fields` (Debit/Credit blanks), `strong_panel` (deposit book); one metric resolver (asks, never `metric_columns[0]`); one word rule (`domain_pack.words`) | **0 live xfails**; header corpus + other domains' negatives |
 | R4 | fa971b1 | pseudo-pack test (found 2 leaks: retail `TEXT_DEFAULTS`, internal kind codes in the brief); `kind_codes`; `display_values` (10 significant digits), `PLATFORM_FLOATS` deleted; datagen float policy | pseudo-pack green; golden: retail unchanged |
-| R6 | — | paid re-check: banking analysis contexts (CHANGES), E2E banking + retail, insight 4 | pending the user's go-ahead (~$1.35) |
+| R6 | 7d83e6a + reports | paid re-check: banking analysis 6 cases k=1 (5/6; bank-6 failed on the first recompute, fixed, 1/1), E2E 13 cases k=1 (banking 10 + retail 3) **13/13, hard 0**, insight 4/4; golden re-pinned (6 banking analysis contexts), CHANGES empty | **$1.12** (one run 260% over its estimate: a retry) |
 
 Deviations: R2's "anything else labelled model-computed": a model trend the built-ins don't
 make (QoQ, WoW) on a column whose figures leave rows out, or on a level, gets an evidence note
@@ -300,3 +300,8 @@ those periods yet). R3's "$0-no-later-rows" was
 already covered by R1's stopped-account cut (the messy tape's sold loans). Bugs found on the way
 and pinned: per-segment MoM compared each segment's own last two months (a stale pair);
 `handle_distribution` ignored the named metric; statuses compared case-only in row kinds.
+
+Found by R6 and closed with a guard, not a patch: the post-sandbox recompute overwrote a model's
+own filtered breakdown (bank-6) → it fires only on the naive bug, and `tests/test_repair_replay.py`
+replays it over every stored passing analysis output at $0 (the first version fails 15). The repair's
+one trace label had three meanings → `_repair_label` (level / breakdown / model trend).
