@@ -152,6 +152,9 @@ class Pack(_Strict):
     strong: list[dict[str, list[str]]] = Field(default_factory=list)   # shapes only this domain has
     exclude_headers: list[list[str]] = Field(default_factory=list)   # words, all in one header
     exclude_pairs: list[list[str]] = Field(default_factory=list)     # words, each in any header
+    # Header tokens as exports shorten them ("Cur Bal" → current_balance), expanded before the
+    # exact match against a role's headers (plan v2 R3: one vocabulary, never per-file patches).
+    abbreviations: dict[str, str] = Field(default_factory=dict)
     week_ends: str = "SUN"          # a calendar week's last day for weekly buckets of daily data
     roles: dict[str, Role]
     status_values: dict[Literal["ok", "return", "cancel"], list[str]] = Field(default_factory=dict)
@@ -219,6 +222,9 @@ class Pack(_Strict):
                 if normalize_header(h) != h:
                     errors.append(f"role {role}: header {h!r} is not normalized "
                                   f"({normalize_header(h)!r})")
+                elif expand_header(h, self) != h:   # never matched: headers are expanded first
+                    errors.append(f"role {role}: header {h!r} is abbreviated "
+                                  f"(write {expand_header(h, self)!r})")
                 # one header may serve two roles only if their value checks tell them apart
                 if (other := seen.get(h)) and self.roles[other].kind == r.kind:
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
@@ -343,6 +349,11 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
     return True   # id
 
 
+def expand_header(norm: str, pack: Pack) -> str:
+    """A normalized header with the pack's abbreviations spelled out: cur_bal → current_balance."""
+    return "_".join(pack.abbreviations.get(t, t) for t in norm.split("_"))
+
+
 def _matches(alts: list[dict[str, list[str]]], roles: dict[str, str]) -> bool:
     return any(all(any(x in roles for x in group) for group in alt.values()) for alt in alts)
 
@@ -363,9 +374,10 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                 any(set(v) <= words for v in pack.exclude_pairs):
             continue
         roles: dict[str, str] = {}
+        expanded = {c: expand_header(n, pack) for c, n in norm.items()}
         for role, r in pack.roles.items():
             for header in r.headers:
-                col = next((c for c, n in norm.items() if n == header and c not in roles.values()
+                col = next((c for c, n in expanded.items() if n == header and c not in roles.values()
                             and not (r.kind == "id" and c in pii_columns)
                             and _fits(df[c], r, pack, c in date_columns)), None)
                 if col is not None:

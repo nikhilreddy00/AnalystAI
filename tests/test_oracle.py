@@ -144,13 +144,11 @@ def test_loan_tape_average_balance_by_branch_on_the_drill_down_chart():
 
 # ── Truth: the loan tape as core systems export it ───────────────────────────────────────────
 
-@pytest.mark.xfail(reason="R3: 'Account', 'As Of', 'Cur Bal', 'Days Late' are not recognized", **LIVE)
 def test_a_messy_loan_tape_is_read_as_banking():
     c = _built("loan_tape_messy")[2]
     assert (c.domain, c.domain_confidence) == ("banking", "strong")
 
 
-@pytest.mark.xfail(reason="R3 (detection) then R1: sold loans and 'Paid in Full'", **LIVE)
 def test_a_messy_loan_tape_tiles_are_the_truth():
     t, truth = tiles("loan_tape_messy"), _built("loan_tape_messy")[3]
     assert close(t["total_balance"], truth["outstanding_last"])

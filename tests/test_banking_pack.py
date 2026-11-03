@@ -581,3 +581,46 @@ def test_a_split_by_currency_keeps_every_currency(tape):
     assert by.to_dict() == {"EUR": 2000.0, "USD": OCT - 2000}
     assert compute_kpi(fx, cf.roles, BANK, "total_balance") == pytest.approx(OCT - 2000)
     assert compute_kpi(fx, cf.roles, BANK, "open_accounts") == 3   # USD, as the balance beside it
+
+
+# ── Plan v2 R3: header variants (one vocabulary, abbreviations in the pack) ──────────────────
+
+@pytest.mark.parametrize("headers, role", [
+    (["Account", "As Of", "Cur Bal", "Days Late"], {"account": "Account", "date": "As Of",
+                                                    "balance": "Cur Bal", "dpd": "Days Late"}),
+    (["Acct No", "As Of Dt", "OS Prin", "DPD"], {"account": "Acct No", "date": "As Of Dt",
+                                                 "balance": "OS Prin"}),
+    (["ACCT_NBR", "SNAPSHOT_DATE", "CURR_BAL", "DAYS_PAST_DUE"], {"account": "ACCT_NBR",
+                                                                 "balance": "CURR_BAL"}),
+    (["Acct ID", "Txn Dt", "Txn Amt", "Txn Type"], {"account": "Acct ID", "amount": "Txn Amt",
+                                                    "txn_type": "Txn Type", "date": "Txn Dt"}),
+])
+def test_abbreviated_headers_read_as_their_roles(headers, role):
+    from domain_pack import detect
+    n = 30
+    cols = {}
+    for h in headers:
+        low = h.lower()
+        cols[h] = (["2026-09-30"] * (n // 2) + ["2026-10-31"] * (n - n // 2) if any(w in low for w in ("as of", "date", "dt"))
+                   else [f"A{i % 15}" for i in range(n)] if "acc" in low
+                   else ["PURCHASE", "FEE", "PAYMENT"] * (n // 3) if "type" in low
+                   else [i % 4 * 30 for i in range(n)] if "day" in low or low == "dpd"
+                   else [100.5 + i for i in range(n)])
+    df = pd.DataFrame(cols)
+    dates = {h for h in headers if any(w in h.lower() for w in ("as of", "date", "dt"))}
+    domain, roles, _ = detect(df, dates)
+    assert domain == "banking"
+    assert {k: roles.get(k) for k in role} == role
+
+
+@pytest.mark.parametrize("headers", [
+    ["Customer", "Invoice Date", "Cur Bal", "Days Late"],          # AR aging: an invoice word
+    ["Employee ID", "Leave Bal", "As Of"],                         # leave balances
+    ["Patient", "Bal", "Visit Date"],                              # a hospital's patient balance
+])
+def test_another_domains_balance_is_not_banking(headers):
+    from domain_pack import detect
+    df = pd.DataFrame({h: (["2026-10-31"] * 10 if "date" in h.lower() or "as of" in h.lower()
+                           else [f"X{i}" for i in range(10)] if h in ("Customer", "Employee ID", "Patient")
+                           else [float(i) for i in range(10)]) for h in headers})
+    assert detect(df, {h for h in headers if "date" in h.lower() or "as of" in h.lower()})[0] != "banking"
