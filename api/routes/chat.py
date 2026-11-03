@@ -104,6 +104,20 @@ async def _source(body: ChatRequest, uid: str, store) -> _Source | None:
     return _Source(config=config, dataset_id=ds.id, name=ds.name)
 
 
+def _reread_source_pii(session: AnalysisSession) -> set[str]:
+    """A live source's raw PII values: seed_phi_guard (its stored query, or its table) into a
+    fresh guard set. Runs in a worker thread (no running loop), so it has a loop of its own."""
+    from agents.ingestion_agent import seed_phi_guard
+    from llm.client import get_client, pii_values
+    found: set[str] = set()
+    token = pii_values.set(found)
+    try:
+        asyncio.run(seed_phi_guard(session, get_client()))
+    finally:
+        pii_values.reset(token)
+    return found
+
+
 def _last_turn_pii(session: AnalysisSession) -> set[str]:
     """The PII values of the session's previous data (its cached cleaned frame), so earlier
     answers quoting that data stay guarded after the user switches datasets."""
@@ -120,9 +134,9 @@ def _last_turn_pii(session: AnalysisSession) -> set[str]:
 
         from connectors.csv_connector import _read_bytes
         path = session.connector_config.file_path if session.connector_config else None
-        if not path:   # ponytail: uploaded files only (a SQL source has none)
-            return set()
         try:   # a purged file is as unreadable as a corrupt one
+            if not path:   # a database or API: read again, as a follow-up's guard does
+                return _reread_source_pii(session)
             raw, _ = _read_bytes(Path(path).read_bytes(), Path(path).suffix.lower())
         except Exception as exc:   # its patient names can't be guarded: don't switch blind
             raise HTTPException(status_code=409, detail="The earlier version of this dataset "

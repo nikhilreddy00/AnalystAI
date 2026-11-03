@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+from sqlalchemy import create_engine
 import yaml
 from scipy.stats import binomtest
 
@@ -207,6 +208,34 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
             **({"builtin_only": builtin_only(case)} if baseline and "domain" in case else {})}
 
 
+def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
+    """Write the case's table as its `source` (csv by default | xlsx | json | parquet | sqlite)
+    and name it as POST /chat would: an upload, or a database with a table. Sync, so cases
+    running together never interleave a write."""
+    source = case.get("source", "csv")
+    UPLOADS.mkdir(parents=True, exist_ok=True)
+    stem = f"{case['dataset']['name']}-{case['dataset']['seed']}"
+    if source == "sqlite":
+        path = UPLOADS / f"{stem}.sqlite"
+        path.unlink(missing_ok=True)
+        df.to_sql("data", create_engine(f"sqlite:///{path}"), index=False)
+        return ConnectorConfig(type=ConnectorType.SQL, connection_string=f"sqlite:///{path}",
+                               table_name="data")
+    path = UPLOADS / f"{stem}.{source}"
+    if source == "csv":
+        if not path.exists() or path.read_text() != csv:
+            path.write_text(csv)
+    elif source == "xlsx":
+        df.to_excel(path, index=False)
+    elif source == "json":
+        df.to_json(path, orient="records", date_format="iso")
+    elif source == "parquet":
+        df.to_parquet(path, index=False)
+    else:
+        raise ValueError(f"unknown source: {source}")
+    return ConnectorConfig(type=ConnectorType.CSV, file_path=str(path))
+
+
 _DEPS = None
 
 
@@ -222,14 +251,9 @@ async def run_e2e_case(case: dict) -> dict:
     deps = replace(_DEPS, run_store=InMemoryRunStore())   # this case's queue: claims stay its own
 
     df, truth, csv = dataset(case)
-    UPLOADS.mkdir(parents=True, exist_ok=True)
-    path = UPLOADS / f"{case['dataset']['name']}-{case['dataset']['seed']}.csv"
-    if not path.exists() or path.read_text() != csv:   # sync, so no interleaving between tasks
-        path.write_text(csv)
-
     session = AnalysisSession(
         session_id=str(uuid.uuid4()),
-        connector_config=ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)),
+        connector_config=source_config(case, df, csv),
         overview_done=case.get("overview_done", False),
     )
     await deps.session_store.create(session)   # as POST /chat does: save() never inserts

@@ -28,6 +28,7 @@ from pydantic import BaseModel
 
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
+from connectors.base import TRUNCATED
 from agents.utils import display_values, pii_columns, strip_markdown_fences, with_display_names
 from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
 from guardrails import (
@@ -515,15 +516,22 @@ def _pct(p: float) -> str:
 
 
 def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
-    """Data-quality alerts from the cleaning audit, severity by the numeric triggers."""
+    """Data-quality alerts from the source's load and the cleaning audit, severity by the
+    numeric triggers."""
     audit, narrative = session.cleaning_audit, session.narrative
-    if audit is None:
-        return [], ""
     out: list[AnomalyAlert] = []
 
     def alert(sev: Severity, col: str, title: str, desc: str, todo: str) -> None:
         out.append(AnomalyAlert(title=title, severity=sev, description=desc, affected_metric=col,
                                 suggested_investigation=todo))
+
+    src = session.data_contract.source_evidence if session.data_contract else None
+    for note in [a for a in (src.assumptions if src else []) if a.startswith(TRUNCATED)]:
+        alert(Severity.HIGH, "", "Only part of the data was loaded", note,
+              "Narrow the source, or connect the database without a table so questions are "
+              "answered in the database.")
+    if audit is None:
+        return _compress_alerts(out)
 
     for d in audit.decisions:
         name = _name(d.column, narrative)

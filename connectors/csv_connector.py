@@ -92,6 +92,8 @@ def _decode(content: bytes) -> tuple[str, str]:
     raise IngestionError("undecodable", _NOT_A_TABLE)
 
 
+XLS_REFUSAL = ("Old .xls workbooks aren't supported. Save the file as .xlsx (Excel → Save As) "
+               "and upload it again.")
 _NOT_A_TABLE = ("This file can't be read as a table. Upload a CSV, TSV, Excel (.xlsx), JSON or "
                 "Parquet file.")
 
@@ -202,8 +204,7 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     IngestionError with a message for the user; nothing loads silently wrong."""
     if suffix in (".xlsx", ".xls"):
         if suffix == ".xls":
-            raise IngestionError("xls needs xlrd", "Old .xls workbooks aren't supported. Save the "
-                                 "file as .xlsx (Excel → Save As) and upload it again.")
+            raise IngestionError("xls needs xlrd", XLS_REFUSAL)
         try:
             sheets = pd.read_excel(io.BytesIO(content), sheet_name=None, engine="openpyxl")
         except Exception as exc:   # zip/openpyxl errors: not a workbook
@@ -223,7 +224,7 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
         except Exception as exc:   # pyarrow raises its own types for a corrupt file
             raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
         info = {"format": "parquet", "notes": []}
-    elif suffix == ".json":
+    elif suffix in (".json", ".jsonl"):
         try:
             # dtype=False: values keep the type they were written with ("02134" stays text).
             df = pd.read_json(io.BytesIO(content), dtype=False)

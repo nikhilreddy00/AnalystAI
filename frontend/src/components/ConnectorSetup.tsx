@@ -25,6 +25,7 @@ interface ConnectorConfig {
   url?: string;
   auth_type?: string;
   auth_value?: string;
+  api_key_header?: string;
   pagination_key?: string;
 }
 
@@ -36,8 +37,8 @@ const SOURCE_TABS: { key: ConnectorType; label: string; Icon: LucideIcon }[] = [
   { key: "api",    label: "REST API",       Icon: Code },
 ];
 
-const ACCEPTED_FORMATS = ".csv,.xlsx,.xls,.tsv,.json,.parquet";
-const ACCEPTED_FORMATS_LABEL = "CSV, XLSX, XLS, TSV, JSON, Parquet — max 50 MB";
+const ACCEPTED_FORMATS = ".csv,.xlsx,.tsv,.json,.jsonl,.parquet";
+const ACCEPTED_FORMATS_LABEL = "CSV, XLSX, TSV, JSON, JSON Lines, Parquet — max 50 MB";
 
 interface FilePreview {
   file: File;
@@ -285,6 +286,9 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
             </div>
             <Field label="Auth value" placeholder="token or user:pass" onChange={(v) => update("auth_value", v)} />
           </div>
+          {config.auth_type === "api_key" && (
+            <Field label="API key header (optional)" placeholder="X-API-Key" onChange={(v) => update("api_key_header", v)} />
+          )}
           <Field label="Pagination key (optional)" placeholder="next_url" onChange={(v) => update("pagination_key", v)} />
         </div>
       )}

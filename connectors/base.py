@@ -72,6 +72,19 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
     return parsed if parsed.notna().sum() >= share * s.notna().sum() else None
 
 
+# A capped load names its cap: the source evidence carries this note and the report's alerts find
+# it by this start (agents/insight_agent._alerts). One wording for every connector.
+TRUNCATED = "Only the first "
+
+
+def truncation_note(kept: int, total: int | None, limit: str) -> str:
+    """'Only the first 50,000 of 61,234 rows were loaded (…)'; `total` None: the source has
+    more, how many is unknown."""
+    of = f" of {total:,}" if total else ""
+    more = "" if total else "; the source has more"
+    return f"{TRUNCATED}{kept:,}{of} rows were loaded ({limit}{more})."
+
+
 class DataConnector(ABC):
     read_info: dict = {}   # how the last load read the source (file connector); see source evidence
 

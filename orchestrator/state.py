@@ -125,6 +125,7 @@ class ConnectorConfig(BaseModel):
     url: str | None = None
     auth_type: str | None = None           # bearer | api_key | basic
     auth_value: str | None = None
+    api_key_header: str | None = None      # api_key: the header it goes in (default X-API-Key)
     pagination_key: str | None = None
 
 

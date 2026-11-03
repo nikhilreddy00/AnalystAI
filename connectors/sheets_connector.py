@@ -6,6 +6,8 @@ The service account JSON is stored as a string in ConnectorConfig (base64 or inl
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 
 import gspread
@@ -13,6 +15,7 @@ import pandas as pd
 from google.oauth2.service_account import Credentials
 
 from connectors.base import DataConnector
+from connectors.csv_connector import _read_bytes
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets.readonly",
@@ -41,14 +44,15 @@ class SheetsConnector(DataConnector):
             gc = self._client()
             spreadsheet = gc.open_by_key(spreadsheet_id)
             worksheet = spreadsheet.worksheet(sheet_name) if sheet_name else spreadsheet.sheet1
-            return worksheet.get_all_records()
+            return worksheet.get_all_values()   # as shown: "02134" keeps its zero
 
-        records = await asyncio.to_thread(_sync_load)
-        if not records:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(records)
-        df = self._coerce_numeric(df)
+        rows = await asyncio.to_thread(_sync_load)
+        # The sheet is read as its CSV export would be: the upload reader decides types (numbers,
+        # leading-zero codes, dates, a total row) and notes how, for the source evidence.
+        buf = io.StringIO()
+        csv.writer(buf).writerows(rows)
+        df, self.read_info = await asyncio.to_thread(_read_bytes, buf.getvalue().encode(), ".csv")
+        self.read_info.pop("format")   # a sheet, not an uploaded file
         return df
 
     async def test_connection(self) -> tuple[bool, str]:
@@ -61,8 +65,3 @@ class SheetsConnector(DataConnector):
             return True, "Spreadsheet accessible"
         except Exception as e:
             return False, str(e)
-
-    def _coerce_numeric(self, df: pd.DataFrame) -> pd.DataFrame:
-        for col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="ignore")
-        return df
