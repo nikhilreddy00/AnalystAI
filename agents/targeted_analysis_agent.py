@@ -55,7 +55,7 @@ from domain_pack import (
     additive,
     entity_rows,
     layout_columns,
-    money_rows,
+    rows_for,
     compute_kpi,
     computable,
     defaults_pack,
@@ -361,7 +361,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     asked = asked if asked in valid_aggs else None
     agg = effective_agg(contract, metric, asked) or "sum"   # a balance is its current total
     asc = (params.order or "desc").lower() == "asc"
-    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
+    df, kept = rows_for(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         grouped = ranked(aggregate(df, [group], metric, agg, contract), ascending=asc).head(n)
@@ -487,7 +487,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
                  if c and c in df.columns and c not in (date, metric)]
         avg_week = ""
-        rows, kept = money_rows(df, contract, metric)   # a domain's money: the rows its chart counts
+        rows, kept = rows_for(df, contract, metric)   # a domain's money: the rows its chart counts
         s = rows[[date, metric, *extra]].copy()
         s[date] = _local(pd.to_datetime(s[date], errors="coerce"))
         s = s.dropna(subset=[date, metric])
@@ -606,7 +606,7 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     asked = (params.aggregation or "").lower() or None
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "mean"
-    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
+    df, kept = rows_for(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         full = aggregate(df, [segment], metric, agg, contract)

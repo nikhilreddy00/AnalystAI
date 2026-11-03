@@ -143,7 +143,7 @@ def test_loan_tape_average_balance_by_branch_on_answers():
     assert close(kpi, truth) and close(col, truth) and close(built, truth)
 
 
-@pytest.mark.xfail(reason="R1: the drill-down chart averages every snapshot, paid-off $0 loans in", **LIVE)
+
 def test_loan_tape_average_balance_by_branch_on_the_drill_down_chart():
     truth = _built("loan_tape")[3]["avg_balance_by_branch"]
     assert close(drill_chart("loan_tape", "Branch", "Outstanding Principal"), truth)
@@ -212,9 +212,11 @@ def test_a_dr_cr_ledger_nets_its_flows():
 
 # ── Truth: a daily deposit book in three currencies ──────────────────────────────────────────
 
-@pytest.mark.xfail(reason="R1: a count of accounts drops other-currency accounts (no amount is added)", **LIVE)
-def test_open_accounts_count_every_currency():
-    assert tiles("deposits_daily")["open_accounts"] == _built("deposits_daily")[3]["open_accounts"]
+def test_a_split_by_currency_is_each_currency():
+    truth = _built("deposits_daily")[3]["total_by_currency_last"]
+    _, pts = answer("deposits_daily", "segment_compare", "Total balance by currency",
+                    kpi="total_balance", segment_column="Currency")
+    assert close(pts, truth)
 
 
 @pytest.mark.xfail(reason="R3: a deposit book is only a weak match (no tiles): a snapshot grain is "
@@ -223,7 +225,6 @@ def test_the_main_currency_balance_is_the_truth():
     assert close(tiles("deposits_daily")["total_balance"], _built("deposits_daily")[3]["total_usd_last"])
 
 
-@pytest.mark.xfail(reason="R1: a month-end point counts accounts closed earlier that month", **LIVE)
 def test_month_end_balances_leave_closed_accounts_out():
     truth = _built("deposits_daily")[3]["month_end_total_usd"]
     _, pts = answer("deposits_daily", "time_series", kpi="total_balance", frequency="M")

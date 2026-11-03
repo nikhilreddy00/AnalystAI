@@ -414,10 +414,10 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
     of each fixture entry, in order. A level (a balance) goes through the one rule
     (utils.aggregate): never summed across dates."""
     from agents.utils import aggregate, effective_agg
-    from domain_pack import money_rows
+    from domain_pack import rows_for
 
     def rows(frame, col):   # a domain's money: the rows its tiles and charts count
-        return money_rows(frame, contract, col)[0] if contract is not None else frame
+        return rows_for(frame, contract, col)[0] if contract is not None else frame
     from scipy import stats
 
     from agents.analysis_agent import build_evidence, segment_id

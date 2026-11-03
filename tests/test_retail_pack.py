@@ -1248,7 +1248,7 @@ def test_the_order_discount_stays_on_its_first_line_so_no_path_counts_it_twice()
     r = _ask(s, "total discount by country", QuestionIntent.SEGMENT_COMPARE,
              metric_column="Discount Amount", segment_column="Shipping Country", aggregation="sum")
     raw = datagen.make("retail_lines", 1)[0].drop_duplicates()
-    # the rows the tiles count (Domain 2: segment answers use the one money filter, money_rows)
+    # the rows the tiles count (Domain 2: segment answers use the one money filter, rows_for)
     c = s.data_contract
     keep = domain_pack.row_kinds(raw, c.roles, RETAIL).isin(["sale", "return"]) & raw["Currency"].eq("USD")
     want = raw[keep].groupby("Shipping Country")["Discount Amount"].sum()
@@ -2046,11 +2046,11 @@ def test_an_order_level_field_is_never_called_missing_in_the_evidence():
 def test_units_trend_counts_the_rows_the_units_tile_counts():
     """Live run (b2b): 'units sold rose 26.6%' came from a Quantity trend with postage lines in
     it, while the Units tile leaves them out: one number per name."""
-    from domain_pack import money_rows, with_row_kind
+    from domain_pack import rows_for, with_row_kind
     df = _gen("b2b_invoices")
     c = _contract(df)
     framed, kind = with_row_kind(df, c)
-    rows, note = money_rows(framed, c, "Quantity")
+    rows, note = rows_for(framed, c, "Quantity")
     assert note and set(rows[kind]) <= {"sale", "return"} and len(rows) < len(df)
 
 

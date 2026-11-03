@@ -213,6 +213,15 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
     if not over_time and hint.aggregation_time not in names:
         return latest_rows(df, column, contract).groupby(keys)[column].sum()
     keys = keys if isinstance(keys, list) else [keys]
+    if agg == "last":   # each entity's month-end in each period, by the one rule (snapshot_rows)
+        _snapshots(df, hint)   # the entity and time columns are there, or LevelUnavailable
+        grp = df.groupby([k.loc[df.index] if isinstance(k, pd.Series) else k for k in keys])
+        labelled = df.assign(_period=grp.ngroup())
+        rows = snapshot_rows(labelled[labelled["_period"] >= 0], hint.aggregation_by,
+                             hint.aggregation_time, per="_period")
+        totals = rows.groupby("_period")[column].sum(min_count=1).dropna()
+        totals.index = grp.size().index[totals.index]
+        return totals
     d = _snapshots(df.dropna(subset=[column]), hint)
     per = d.groupby([*(k.loc[d.index] if isinstance(k, pd.Series) else k for k in keys),
                      *(d[e] for e in hint.aggregation_by)])[column].agg(agg)
@@ -290,13 +299,16 @@ def _in_time_order(d):
     return d.sort_values("_t", kind="stable")
 
 
-def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: bool = True):
+def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: bool = True,
+                  per: str | None = None):
     """Each entity's latest snapshot (or first, for a 'first' window): the one rule for a level's
     current rows (a balance's tile, bars, answers). An entity whose latest snapshot is a full
     usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
     data: not in the newest complete month); staggered snapshots (each account on its own day)
-    all count. Undated rows are out (one can't be the latest). `current=False`: each entity's
-    latest row in each `by` group, no stopped cut (a period's own month-end, not today's)."""
+    all count. Undated rows are out (one can't be the latest). `per` (a period column): each
+    entity's latest row in each period, the stopped cut judged against THAT period's newest date
+    (an account closed on 10 Aug is out of August's month-end). `current=False`: no stopped cut
+    (an entity's last row, wherever it is: a correlation keeps accounts that stopped)."""
     import pandas as pd
     t = pd.to_datetime(df[time], format="mixed", errors="coerce")
     d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
@@ -304,13 +316,19 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: b
     if window == "first":
         return g.head(1).drop(columns="_t")
     gaps = g["_t"].diff().dt.total_seconds().dropna()
-    per = gaps.groupby([d.loc[gaps.index, e] for e in by])
-    cadence = per.median().median() if len(gaps) else 0.0
+    each = gaps.groupby([d.loc[gaps.index, e] for e in by])   # each entity's gaps
+    cadence = each.median().median() if len(gaps) else 0.0
     # snapshots come at a cadence (weekly, each account's statement day); a ledger's running
     # balance does not: a quiet account there is no closed one, so nothing is cut
-    regular = len(gaps) and (per.std().fillna(0) / per.mean()).median() <= REGULAR_CV
+    regular = len(gaps) and (each.std().fillna(0) / each.mean()).median() <= REGULAR_CV
     last = g.tail(1)
     newest = d["_t"].max()
+    if per is not None:   # each period's own month-end
+        last = d.groupby([*by, per], sort=False).tail(1)
+        newest = d.groupby(per)["_t"].transform("max").loc[last.index]
+        if current and cadence and cadence == cadence and regular and cadence < 27 * 86400:
+            last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
+        return last.drop(columns="_t")   # monthly or coarser: the month's own row is its end
     if current and cadence and cadence == cadence and regular:
         if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month,
             # or the one before while the newest is still partial (a 4 Nov export of accounts

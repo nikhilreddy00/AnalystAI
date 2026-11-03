@@ -23,3 +23,15 @@ test("a scatter passes the filtered rows through, whatever its aggregation", () 
   assert.equal(got.mode, "passthrough");
   assert.equal(got.data.length, 3);
 });
+
+test("on snapshot data a count reads one row per account (the backend's __counted flag)", () => {
+  const snapshots = [
+    { product: "Card", __counted: false }, { product: "Card", __counted: false },
+    { product: "Card", __counted: true }, { product: "Auto", __counted: true },
+  ];
+  const got = aggregateForChart(snapshots, { chart_type: "BarChart", x_key: "product", y_keys: ["n"],
+    data: [], rationale: { aggregation: "count" } } as never);
+  assert.deepEqual(got.data, [{ product: "Card", n: 1 }, { product: "Auto", n: 1 }]);
+  const scatter = aggregateForChart(snapshots, chart("ScatterChart", "none"));
+  assert.equal(scatter.data.length, 2);
+});

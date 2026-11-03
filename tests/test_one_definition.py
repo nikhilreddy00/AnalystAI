@@ -122,3 +122,24 @@ def test_one_percent_change_rule_in_answers():
     hand = [ln for ln in src.splitlines()
             if re.search(r"/\s*\w+(\.iloc\[[-\d]+\])?\s*-\s*1\)\s*\*\s*100", ln)]
     assert hand == [], f"use agents.utils.pct_change: {hand}"
+
+
+def _forgets_rows_for(name: str, src: str) -> bool:
+    """A function that aggregates the frame without taking its rows from rows_for."""
+    return "aggregate(" in src and "rows_for(" not in src and not src.lstrip().startswith("def aggregate")
+
+
+def test_every_number_a_user_reads_takes_its_rows_from_rows_for():
+    """Plan v2 R1: 'which rows does this number read' recurred ~22 times in new call sites. A
+    function that aggregates the uploaded frame for an answer, a chart or a drill-down reads its
+    rows through domain_pack.rows_for (kinds, currency, a level's latest row first)."""
+    import inspect
+
+    from agents import drill_down_agent, targeted_analysis_agent, visualization_agent
+    bad = [f"{m.__name__}.{n}" for m in (targeted_analysis_agent, visualization_agent, drill_down_agent)
+           for n, fn in inspect.getmembers(m, inspect.isfunction)
+           if fn.__module__ == m.__name__ and _forgets_rows_for(n, inspect.getsource(fn))]
+    assert bad == [], f"take the rows from domain_pack.rows_for: {bad}"
+    # the guard itself catches a new site that forgets the rule (a planted violation)
+    assert _forgets_rows_for("by_branch", "def by_branch(df, c):\n    return aggregate(df, ['b'], 'x', 'mean', c)\n")
+    assert not _forgets_rows_for("ok", "def ok(df, c):\n    df, _ = rows_for(df, c, 'x')\n    return aggregate(df)\n")

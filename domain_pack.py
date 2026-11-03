@@ -555,7 +555,7 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
         # latest row overall, in the group it is in now
         periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
         if date is not None:   # undated: one row per account already (a one-date extract)
-            df = snapshot_rows(df, [key, by] if periodic else [key], date, current=not periodic)
+            df = snapshot_rows(df, [key], date, per=by if periodic else None)
         kinds = kinds.loc[df.index]
         if present is not None:
             kinds.attrs["present"] = present
@@ -581,8 +581,12 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if kpi is None or df.empty:
         return None
     keep, _, _ = main_currency(df, roles)
-    # another currency is a kind of row no KPI counts: a state's latest row is judged first
-    kinds = row_kinds(df, roles, pack).where(keep, "other_currency")
+    # another currency is a kind of row no KPI counts (tiles side by side read the same rows:
+    # net sales / orders = AOV), unless the question splits BY currency: then each currency is its
+    # own group, never added to another. A state's latest row is judged first either way.
+    kinds = row_kinds(df, roles, pack)
+    if not (by and by == roles.get("currency")):
+        kinds = kinds.where(keep, "other_currency")
     whole = kinds if full is None else row_kinds(full, roles, pack)
     kinds.attrs["present"] = set(whole.unique())
     kinds.attrs["frame"] = df if full is None else full
@@ -896,10 +900,13 @@ def counted(pack: Pack, role: str) -> bool:
     return pack.roles[role].kind in ("money", "count") and pack.roles[role].additive
 
 
-def money_rows(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, str]:
-    """(rows, how) for a strong-matched pack's additive money column: sale and return rows in the
-    main currency, as its tiles count them. The one filter every chart and answer of that column
-    uses (one number per name); anything else: every row, no note."""
+def rows_for(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, str]:
+    """(rows, how): THE rows every answer, chart and drill-down of `column` reads (plan v2 R1:
+    one entry point; tests/test_one_definition.py guards it). On a strong-matched pack's additive
+    money or count column: sale and return rows in the main currency, as its tiles count them;
+    a level (a balance) keeps every row with its value blanked where the row is left out, so
+    `utils.aggregate` / `latest_rows` judge each entity's latest row first. Anything else: every
+    row, no note."""
     pack = defaults_pack(contract)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
     if not (role and counted(pack, role)):
@@ -937,7 +944,7 @@ def entity_rows(df: pd.DataFrame, contract) -> pd.DataFrame:
         return df
     from agents.utils import snapshot_rows
     rows = snapshot_rows(df, ent[0], ent[1], current=False)
-    pack = pack_for(contract.domain)
+    pack = defaults_pack(contract)   # row kinds on a strong match only, as rows_for
     if pack is None:
         return rows
     roles = {r: c for r, c in contract.roles.items() if c in rows.columns}

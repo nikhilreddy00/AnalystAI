@@ -591,3 +591,16 @@ def test_a_percent_change_needs_a_positive_base():
     from agents.utils import pct_change
     assert pct_change(110.0, 100.0) == pytest.approx(10.0)
     assert pct_change(9170.0, -4464.0) is None and pct_change(5.0, 0.0) is None
+
+
+def test_a_split_by_currency_keeps_every_currency(tape):
+    """Final audit M1: 'total balance by currency' returned USD only. Split by currency, each
+    currency is its own group (never added to another); everything else stays main-currency, so
+    tiles side by side read the same rows (balance / accounts = average)."""
+    df, c = tape
+    fx = df.assign(Currency=["USD"] * 10 + ["EUR"])   # L6 (opened in October) in euros
+    cf = _contract(fx)
+    by = compute_kpi(fx, cf.roles, BANK, "total_balance", by="Currency")
+    assert by.to_dict() == {"EUR": 2000.0, "USD": OCT - 2000}
+    assert compute_kpi(fx, cf.roles, BANK, "total_balance") == pytest.approx(OCT - 2000)
+    assert compute_kpi(fx, cf.roles, BANK, "open_accounts") == 3   # USD, as the balance beside it
