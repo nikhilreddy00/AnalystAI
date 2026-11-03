@@ -546,9 +546,10 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
     pack = pack_for(contract.domain)
     coded = {col for r, col in contract.roles.items() if pack and r in pack.roles
              and pack.roles[r].pattern and pack.roles[r].kind != "id" and col in df.columns
-             and as_text(_profiled(df[col]).dropna()).str.strip()
-             .str.fullmatch(pack.roles[r].pattern).all()}   # procedure codes, DRGs: EVERY value
-    # matches (one free-text value in a code column withholds the column)
+             and (v := as_text(_profiled(df[col]).dropna()).str.strip()).str.fullmatch(
+                 pack.roles[r].pattern).all() and v.str.contains(r"\d").all()}
+    # procedure codes, DRGs: EVERY value matches and carries a digit (a phrase or one free-text
+    # value is never a code: the column keeps every withholding rule)
     patient = next((str(n) for n in df.columns if is_phi_identifier(str(n))), None)
     n_patients = df[patient].nunique() if patient else 0
     withheld, ids = [], []

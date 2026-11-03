@@ -26,6 +26,7 @@ roles:
   disposition:  {kind: category, headers: [disposition]}
   procedure:    {kind: category, pattern: '[0-9A-Z]\d{3}[0-9A-Z]', headers: [procedure]}
   unit:         {kind: category, headers: [unit]}
+  outcome:      {kind: category, pattern: '(?i)\d{1,2}|[a-z][a-z /,-]{1,38}', headers: [outcome]}
 kpis:
   - {name: deaths, label: Deaths, num: [[{nunique: enrollee_ref,
                                           where: [[{role: disposition, in: ["20"]}]]}]]}
@@ -324,3 +325,12 @@ def test_pooling_a_code_column_read_as_numbers_keeps_a_storable_frame(toy_clinic
     out, _ = prepare_frame(df, build_contract(df, ConnectorType.CSV), ConnectorType.CSV)
     out.to_parquet(io.BytesIO(), index=False)
     assert set(out["group_code"].dropna()) == {"470", "871", "Other (fewer than 11 each)"}
+
+
+def test_words_that_fit_a_loose_code_pattern_are_not_a_code(toy_clinic):
+    """Security review: a role whose pattern also admits words (a disposition: '07' or
+    'Expired') must not exempt a free-text column 1:1 with patients from withholding."""
+    words = [f"{a}{b}q" for a in "abcdefghijklmnopqrstuvwxyz" for b in "abcdefghijklm"]   # 1:1 tokens
+    df = _stays().assign(enrollee_ref=[f"E{i}" for i in range(300)], outcome=words[:300])
+    out, _ = prepare_frame(df, build_contract(df, ConnectorType.CSV), ConnectorType.CSV)
+    assert "outcome" not in out.columns

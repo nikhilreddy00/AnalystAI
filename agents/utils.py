@@ -190,10 +190,15 @@ def _snapshots(df, hint):
 
 def time_axis(contract, metric: str | None = None, df=None) -> str | None:
     """The date a metric is plotted and trended over: a level's own snapshot time when the layer
-    names one, else the data's first time axis (never a birth date). One rule for charts,
-    answers and the built-in trend."""
+    names one, else the domain pack's time role (a stay's discharge, a claim's service date),
+    else the data's first time axis (never a birth date). One rule for charts, answers and the
+    built-in trend."""
+    from domain_pack import pack_for
     hint = column_hint(contract, metric) if metric else None
     cands = [hint.aggregation_time] if hint and hint.aggregation_time else []
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack and (own := contract.roles.get(pack.date_role)) in contract.date_columns:
+        cands.append(own)
     cands += list(contract.date_columns) if contract is not None else []
     return next((c for c in cands if c and (df is None or c in df.columns)), None)
 

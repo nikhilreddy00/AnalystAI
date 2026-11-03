@@ -447,8 +447,9 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
     from agents.analysis_agent import build_evidence, segment_id
     from orchestrator.state import AnomalyRecord, SegmentResult, StatisticalResult, TrendResult
 
+    from agents.utils import time_axis
     plan = case["plan"]
-    date = _viz_date(df)
+    date = (time_axis(contract, None, df) if contract is not None else None) or _viz_date(df)
     month = any_dates(df[date]).dt.to_period("M") if date else None
     from domain_pack import runout_months   # claims still arriving: as analysis_agent's MoM
     if month is not None and contract is not None and (runout := runout_months(contract)):

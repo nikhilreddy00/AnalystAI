@@ -480,3 +480,13 @@ def test_procedure_codes_survive_cleaning_as_written():
     _, clean, _, _ = _built("health_claims")
     codes = set(clean["CPT/HCPCS"].dropna().astype(str))
     assert "J1100" in codes and "99213" in codes and clean["CPT/HCPCS"].notna().all()
+
+
+def test_stays_trend_over_the_discharge_date_and_claims_over_the_service_date():
+    """Red-team M3: the time axis is the pack's date role (ALOS and readmission are
+    discharge-based; claims are incurred by service date), never the file's first date column
+    (Admit Date) or the first column named '…date' (Paid Date)."""
+    from agents.utils import time_axis
+    for name, want in (("inpatient", "Discharge Date"), ("health_claims", "Service From")):
+        _, clean, contract, _ = _built(name)
+        assert time_axis(contract, None, clean) == want, name

@@ -27,12 +27,17 @@ def _stored_runs():
 def _same(a, b):
     """Equal outputs, a report's own timestamp aside (generated_at is when, not what), floats at
     display precision (utils.display_values: a scipy statistic's last digits differ between the
-    macOS that recorded a run and CI's Linux)."""
+    macOS that recorded a run and CI's Linux), and an agent's prompt version named in the
+    methodology ('analysis v8' → 'v9': which prompt, not what the step computed)."""
+    import re
+
     from agents.utils import display_values
 
     def plain(x):
         if isinstance(x, dict):
             return {k: plain(v) for k, v in x.items() if k != "generated_at"}
+        if isinstance(x, str):
+            x = re.sub(r"\((analysis|intake|insight|quality) v\d+\)", r"(\1 vN)", x)
         return [plain(v) for v in x] if isinstance(x, list) else display_values(x)
     return plain(json.loads(json.dumps(a, default=str))) == plain(json.loads(json.dumps(b, default=str)))
 
@@ -80,6 +85,9 @@ CHANGED = {
     **{("intake-20261103T175225Z.json", c): "Domain 3 intake gate: 'we pay' is the paid KPI's "
                                              "word (the verb was missing from the glossary)"
        for c in ("intake-health-10", "intake-health-12")},
+    **{("insight-20261103T180921Z.json", c): "Domain 3: the time axis is the pack's date role "
+                                            "(discharge, service date), never Admit/Paid Date"
+       for c in ("ins-43-inpatient-overview", "ins-44-claims-overview")},
     ("insight-20261103T180311Z.json", "ins-43-inpatient-overview"):
         "Domain 3 insight gate: the harness builds a patient-data bundle on the PHI-protected copy "
         "(names withheld, a 7-stay department pooled), as production does",
