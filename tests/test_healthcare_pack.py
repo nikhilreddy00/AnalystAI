@@ -420,14 +420,13 @@ def test_readmission_without_a_disposition_column_still_counts_inpatient_stays_o
 
 @pytest.mark.parametrize("seq, freq, kinds", [
     ([None, None, None], ["1", "1", "1"], ["sale", "sale", "sale"]),        # CR2: blank versions
-    ([0, 1, 0], [1.0, 8.0, None], ["non_product", "cancel", "sale"]),      # CR3: 8.0 is a void
+    ([0, 1, 0], [1.0, 8.0, None], ["cancel", "cancel", "sale"]),   # CR3: 8.0 voids the chain
 ])
 def test_version_chains_survive_blanks_and_floats(seq, freq, kinds):
     df = pd.DataFrame({"cid": ["C1", "C1", "C2"], "ln": ["1", "1", "1"], "v": seq, "f": freq,
                        "paid": [10.0, -10.0, 5.0]})
     roles = {"claim_id": "cid", "line": "ln", "version": "v", "frequency": "f", "paid": "paid"}
-    k = domain_pack.row_kinds(df, roles, _hc()).tolist()
-    assert k == kinds or (kinds[1] == "cancel" and k[:2] == ["cancel", "cancel"] and k[2] == "sale")
+    assert domain_pack.row_kinds(df, roles, _hc()).tolist() == kinds
 
 
 def test_a_header_level_claims_extract_chains_on_the_claim_id():
@@ -486,10 +485,31 @@ def test_codes_and_zip3_stay_text_through_cleaning():
                    for d in s.cleaning_audit.decisions)
 
 
-def test_the_pooled_bucket_is_never_a_reported_group():
-    """EX5: a lone 7-stay department pooled as 'Other (fewer than 11 each)' still showed its
-    0.0% rate: the bucket is never a group in a ranked answer."""
+def test_a_derived_column_joins_the_frame_when_the_data_lacks_it():
+    """E2E re-gate (e2e-52): with no LOS column the model invented 'LOS (derived)' and the
+    analysis was rejected twice. The pack derives it once, by the one rule (_column 'days')."""
+    from evals import datagen
+    df, truth = datagen.make("inpatient", 1)
+    c = build_contract(df, ConnectorType.CSV)
+    out, added = domain_pack.with_derived(df, c)
+    assert added == ["length_of_stay"]
+    inpatient = out["Encounter Type"].eq("Inpatient") & out["Discharge Date"].notna()
+    assert out.loc[inpatient, "length_of_stay"].mean() == pytest.approx(truth["alos_inpatient"], abs=1e-6)
+    enc, _ = datagen.make("encounters", 1)   # has its own length_of_stay: nothing derived
+    assert domain_pack.with_derived(enc, build_contract(enc, ConnectorType.CSV))[1] == []
+
+
+@pytest.mark.parametrize("text", ["3 of the patients died.", "Three of these patients died."])
+def test_connector_words_never_hide_a_small_cell(text):
+    """Pass 2: 'of the' between the number and the noun hid real small cells."""
+    from guardrails import claim_small_cell
+    assert claim_small_cell(text, ["patients"])
+
+
+def test_ranked_keeps_every_group():
+    """Pass 2: dropping the pooled bucket in ranked() hid a legitimate 200-row bucket from bar
+    charts and could empty a ranking; the highest/lowest sentences filter with rankable."""
     from agents.utils import ranked
     from guardrails import POOLED_LABEL
-    s = pd.Series([0.14, 0.0, 0.07], index=["Cardiology", POOLED_LABEL, "Neurology"])
-    assert POOLED_LABEL not in ranked(s).index
+    s = pd.Series([200.0, 5.0], index=[POOLED_LABEL, "A"])
+    assert len(ranked(s)) == 2

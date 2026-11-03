@@ -545,9 +545,5 @@ def display_values(obj):
 def ranked(series, ascending: bool = False):
     """A ranking that is the same on every machine: by label first, then a stable sort by
     value, so tied groups keep their name order (numpy's default sort is not stable, and Linux
-    and macOS order ties differently). The pooled small-groups bucket (patient data) is never a
-    group in a ranking: it is a privacy bucket, and a lone small group pooled is still small."""
-    from guardrails import POOLED_LABEL
-    if POOLED_LABEL in series.index:
-        series = series.drop(POOLED_LABEL)
+    and macOS order ties differently)."""
     return series.sort_index(kind="stable").sort_values(ascending=ascending, kind="stable")

@@ -32,6 +32,7 @@ from domain_pack import (
     glossary_hits,
     pack_brief,
     pack_for,
+    with_derived,
     with_row_kind,
 )
 from guardrails import (
@@ -732,12 +733,13 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     if ctx.domain or defaults_pack(contract):   # 5.7: row kinds as a column code filters on
         def framed_bytes() -> tuple[bytes, str | None]:
             framed, col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
+            framed, added = with_derived(framed, contract)
             buf = io.BytesIO()
             framed.to_parquet(buf, index=False)
-            return buf.getvalue(), col
-        new_bytes, kind_col = await asyncio.to_thread(framed_bytes)
-        if kind_col:
-            df_parquet, known = new_bytes, known + [kind_col]
+            return buf.getvalue(), [*([col] if col else []), *added]
+        new_bytes, extra = await asyncio.to_thread(framed_bytes)
+        if extra:
+            df_parquet, known = new_bytes, known + extra
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
     back: dict = {}                  # {pseudonym: value}, never leaves this process
@@ -1205,8 +1207,11 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
                               or ("up" if pct > 0 else "down" if pct < 0 else "flat")),
                 pct_change=pct,
                 segment=None if t.get("segment") is None else str(t["segment"]),
-                latest=str(t["latest"]) if t.get("latest") else None,   # the months compared,
-                previous=str(t["previous"]) if t.get("previous") else None,   # when not the last two
+                # the months compared, when not the last two: 'YYYY-MM' only (a model's free
+                # text would break every place that names them)
+                **({"latest": str(t["latest"]), "previous": str(t["previous"])}
+                   if all(re.fullmatch(r"\d{4}-\d{2}", str(t.get(k) or "")) for k in ("latest", "previous"))
+                   else {}),
             ))
 
     distributions_raw = raw.get("distributions", {})

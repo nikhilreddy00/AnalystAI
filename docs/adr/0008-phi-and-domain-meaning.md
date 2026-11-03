@@ -98,4 +98,9 @@ out wrong.
   "Expired" into "Other" corrupts mortality); instead a reported patient or encounter count of
   1–10 is flagged by the quality check.
 - **Rejected:** year-only dates (breaks every healthcare KPI); pooling KPI filter values (wrong
-  rates, silently).
+  rates, silently); complementary suppression in the working copy (pooling the next-smallest
+  group until the pool holds 11 hid a 490-stay department from the analyst who owns the data).
+- **Known limit:** a single small group pooled alone ("Other (fewer than 11 each)", 7 stays)
+  still shows its own rate in a breakdown. Highest/lowest sentences never rank the pool
+  (`guardrails.rankable`) and a reported count of 1–10 people is flagged; suppress it by hand
+  before sharing a report outside the organisation.

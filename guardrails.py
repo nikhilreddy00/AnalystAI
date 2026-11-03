@@ -842,8 +842,7 @@ _SMALL_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, 
 # Between a small number and a people noun, these say the number counts something else
 _NOT_PEOPLE = {"day", "days", "week", "weeks", "month", "months", "year", "years", "hour", "hours",
                "point", "points", "percent", "pct", "times", "department", "departments", "unit",
-               "units", "group", "groups", "after", "before", "with", "for", "of", "in", "among",
-               "per", "to", "from", "since", "than", "the", "and", "or"}
+               "units", "group", "groups"}
 
 
 def claim_small_cell(text: str, nouns: list[str]) -> str | None:

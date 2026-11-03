@@ -136,6 +136,10 @@ async def test_clarification_answer_is_still_classified(recorded_llm):
     ("What's our total revenue overall?", QuestionIntent.SEGMENT_COMPARE),
     ("What was total revenue each month?", QuestionIntent.TIME_SERIES),
     ("How has total revenue trended?", QuestionIntent.TIME_SERIES),
+    ("Is overall revenue rising?", QuestionIntent.TIME_SERIES),          # pass 2: a change
+    ("How has total revenue changed since January?", QuestionIntent.TIME_SERIES),
+    ("What was total revenue last month?", QuestionIntent.TIME_SERIES),
+    ("Total revenue for 2025?", QuestionIntent.TIME_SERIES),
 ])
 async def test_a_total_question_is_the_overall_value_not_a_trend(recorded_llm, question, want):
     """Domain 3 E2E (e2e-57/60): 'How much did we pay in total?' came back as a time series and

@@ -238,6 +238,10 @@ class Pack(_Strict):
     paired_fields: list[list[str]] = Field(default_factory=list)
     running_balance: RunningBalance | None = None
     runout: Runout | None = None
+    # A role the data may lack but can derive ({los: [date, days, admit_date]}): the analysis
+    # frame gets it as a column named after the role's first header, so the model never invents
+    # one ("LOS (derived)" was rejected as an unknown column)
+    derived: dict[str, list[str]] = Field(default_factory=dict)
     # A version chain (a claim line adjudicated, replaced, voided): the rows sharing these roles'
     # values, ordered by `version_order`; only the last counts, earlier ones are non_product, and
     # a chain whose last row carries a `version_void` value is cancelled (every row)
@@ -330,6 +334,10 @@ class Pack(_Strict):
                 *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g),
                 *self.strong_panel]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
+        for r, expr in self.derived.items():
+            if r not in self.roles or len(expr) != 3 or expr[1] not in ("*", "-", "days") \
+                    or expr[0] not in self.roles or expr[2] not in self.roles:
+                errors.append(f"derived {r}: a role and [role, '*', '-' or 'days', role]")
         if bool(self.version_key) != bool(self.version_order):
             errors.append("version_key and version_order go together")
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
@@ -1053,6 +1061,11 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
 
 
 
+def version_roles(pack: Pack | None) -> set[str]:
+    """The roles of a version chain (a claim's line and adjustment number): labels, never measures."""
+    return {*pack.version_key, *([pack.version_order] if pack.version_order else [])} if pack else set()
+
+
 def runout_months(contract) -> int:
     """Months whose records are still arriving (Pack.runout, when its arrival date is in the
     data): every period answer leaves them out (utils.cut_partial)."""
@@ -1113,6 +1126,24 @@ def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
     pack = pack_for(contract.domain) if contract is not None else None
     return list(layout_columns(df, pack, {r: c for r, c in (contract.roles if pack else {}).items()
                                           if c in df.columns}))
+
+
+def with_derived(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, list[str]]:
+    """The frame with each derivable role the data lacks (Pack.derived) as a column named after
+    the role's first header (length_of_stay = discharge − admit in days), and the names added.
+    Never replaces a column; no pack or nothing to derive: the frame unchanged."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    if pack is None:
+        return df, []
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    added = []
+    for r, expr in pack.derived.items():
+        name = pack.roles[r].headers[0]
+        if r in roles or name in df.columns or expr[0] not in roles or expr[2] not in roles:
+            continue
+        df = df.assign(**{name: _column(df, roles, expr)})
+        added.append(name)
+    return df, added
 
 
 def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]:

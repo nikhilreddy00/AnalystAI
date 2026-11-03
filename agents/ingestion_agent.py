@@ -28,7 +28,7 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
-from domain_pack import as_text, layout_columns, one_series, pack_for, words
+from domain_pack import as_text, layout_columns, one_series, pack_for, version_roles, words
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -384,7 +384,7 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
             if role and pack.roles[role].kind == "category" and c.is_metric:   # a code (DRG 470)
                 c.is_metric = False
                 c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a code)"
-            if role and role in (*pack.version_key, pack.version_order) and c.is_metric:
+            if role and role in version_roles(pack) and c.is_metric:
                 c.is_metric = False   # a claim's line or adjustment number: never a measure
                 c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a version)"
             if not role or pack.roles[role].kind != "id" or c.is_id:

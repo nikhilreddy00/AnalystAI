@@ -448,7 +448,7 @@ def _plain(e: Evidence, findings, narrative: DataNarrative | None) -> str:
         if vals:
             hi = max(vals, key=lambda r: r["value"])
             lo = min(vals, key=lambda r: r["value"])
-            rate = s.aggregation in ("ratio", "pct") and all(0 <= r["value"] <= 1 for r in vals)
+            rate = s.aggregation == "ratio" and all(0 <= r["value"] <= 1 for r in vals)
 
             def show(v: float) -> str:   # a 0-1 ratio reads as a percent
                 return f"{v * 100:.1f}%" if rate else f"{v:,.2f}"
