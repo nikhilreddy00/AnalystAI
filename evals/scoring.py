@@ -76,14 +76,18 @@ def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
     """The rows a group value of `metric` can be computed over. A snapshot column (a
     semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
     entity's current snapshot ("seats per account" — production's latest_rows, which the agent
-    is told about). Any other column: every row (a churn rate over latest rows is another number)."""
+    is told about). A domain pack's counted column also has the rows its tiles count
+    (domain_pack.rows_for: a claim line's last version, never a replaced one; Domain 3 smoke run).
+    Any other column: every row (a churn rate over latest rows is another number)."""
     from agents.ingestion_agent import build_contract
     from agents.utils import column_hint, latest_rows
+    from domain_pack import rows_for
     from orchestrator.state import ConnectorType
     contract = build_contract(df, ConnectorType.CSV, {})
     hint = column_hint(contract, metric)
     if hint is None or hint.aggregation not in ("last", "first"):
-        return [df]
+        counted, how = rows_for(df, contract, metric)
+        return [df, counted] if how else [df]
     return [df, latest_rows(df, metric, contract)]
 
 

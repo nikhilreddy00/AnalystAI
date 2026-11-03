@@ -357,3 +357,24 @@ def test_unseen_e2e_cases_are_priced_by_their_kind(tmp_path):
             shutil.copy(p, tmp_path)
     assert estimate_usd("e2e", len(cases), tmp_path, cases, 1) > 0.8   # 7 overviews + 7 targeted,
     # not 14 × the average
+
+
+def test_a_mean_over_the_rows_a_pack_counts_is_not_a_false_finding():
+    """Domain 3 smoke run: mean paid per payer over each claim line's last version (what the
+    tiles count) was scored false against every row, replaced versions included."""
+    from domain_pack import rows_for
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from agents.ingestion_agent import build_contract
+    from orchestrator.state import ConnectorType
+    df, truth = datagen.make("health_claims", 1)
+    counted, _ = rows_for(df, build_contract(df, ConnectorType.CSV, {}), "Paid Amount")
+    means = counted.groupby("Payer")["Paid Amount"].mean()
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[],
+                         statistical_tests=[], forecast_points=[], distributions={}, code_executed="",
+                         segments=[SegmentResult(segment_column="Payer", metric_column="Paid Amount",
+                                                 aggregation="mean", results=[
+                                                     {"name": k, "value": float(v)} for k, v in means.items()])])
+    r = false_findings(f, df, truth)
+    assert r["verifiable"] == 5 and r["false"] == 0, r
