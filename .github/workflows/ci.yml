@@ -79,7 +79,10 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-      - run: uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures
+      # the generator also rewrites committed recordings (full.sse …): keep those as committed
+      - run: |
+          uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures
+          git checkout -- scripts/ui_check/fixtures
         working-directory: .
       - run: npx playwright test
 
