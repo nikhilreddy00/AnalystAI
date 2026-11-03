@@ -25,11 +25,15 @@ def _stored_runs():
 
 
 def _same(a, b):
-    """Equal outputs, a report's own timestamp aside (generated_at is when, not what)."""
+    """Equal outputs, a report's own timestamp aside (generated_at is when, not what), floats at
+    display precision (utils.display_values: a scipy statistic's last digits differ between the
+    macOS that recorded a run and CI's Linux)."""
+    from agents.utils import display_values
+
     def plain(x):
         if isinstance(x, dict):
             return {k: plain(v) for k, v in x.items() if k != "generated_at"}
-        return [plain(v) for v in x] if isinstance(x, list) else x
+        return [plain(v) for v in x] if isinstance(x, list) else display_values(x)
     return plain(json.loads(json.dumps(a, default=str))) == plain(json.loads(json.dumps(b, default=str)))
 
 
