@@ -230,6 +230,14 @@ class Pack(_Strict):
     def kpi(self, name: str) -> KPI | None:
         return next((k for k in self.kpis if k.name == name), None)
 
+    def value_roles(self) -> set[str]:
+        """Roles whose written values a pack rule reads (a KPI's `where` words, the status,
+        version voids, non-product codes): pooling or rewriting them would change the answers."""
+        conds = {c.role for k in self.kpis for alt in [*k.num, *(k.den or [])] for t in alt
+                 for g in t.where for c in g if c.in_ is not None or c.not_in is not None}
+        status = {r for r, x in self.roles.items() if x.kind == "status"}
+        return conds | status | set(self.version_void) | set(self.non_product)
+
     @property
     def date_role(self) -> str:
         """The domain's time role: the first role of kind date (the validator requires one)."""

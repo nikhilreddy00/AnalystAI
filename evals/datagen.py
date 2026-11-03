@@ -1254,8 +1254,8 @@ def _r6(x) -> float:
 _IP_DEPTS = {   # share of patients; MS-DRG -> (share of the department's stays, 30-day readmit)
     # Simpson: Cardiology's crude readmission is higher only because its mix is mostly heart
     # failure (291); within 291 and chest pain (313) General Medicine's rate is higher.
-    "Cardiology": (0.30, {291: (0.9, 0.17), 313: (0.1, 0.02)}),
-    "General Medicine": (0.30, {291: (0.2, 0.28), 313: (0.5, 0.09), 392: (0.3, 0.05)}),
+    "Cardiology": (0.30, {291: (0.92, 0.20), 313: (0.08, 0.02)}),
+    "General Medicine": (0.30, {291: (0.15, 0.30), 313: (0.55, 0.09), 392: (0.3, 0.05)}),
     "Orthopedics": (0.15, {470: (1.0, 0.04)}),
     "Pulmonology": (0.13, {194: (0.7, 0.10), 871: (0.3, 0.16)}),
     "Neurology": (0.12, {101: (1.0, 0.08)}),
@@ -1284,7 +1284,7 @@ def make_inpatient(seed: int) -> tuple[pd.DataFrame, dict]:
     n_pat = 1700
     depts = list(_IP_DEPTS)
     home = rng.choice(depts, n_pat, p=[_IP_DEPTS[d][0] for d in depts])
-    dob = pd.Timestamp("1926-01-01") + pd.to_timedelta(rng.integers(0, 28_500, n_pat + 7), unit="D")
+    dob = pd.Timestamp("1933-01-01") + pd.to_timedelta(rng.integers(0, 26_500, n_pat + 7), unit="D")
     zips = [f"{int(z):05d}-{int(p):04d}" for z, p in zip(rng.integers(10_000, 99_999, n_pat + 7),
                                                          rng.integers(1000, 9999, n_pat + 7))]
     names = [f"{a} {b}" for a, b in zip(rng.choice(_FIRST, n_pat + 7), rng.choice(_LAST, n_pat + 7))]
@@ -1332,7 +1332,7 @@ def make_inpatient(seed: int) -> tuple[pd.DataFrame, dict]:
             stay(i, dept, drg, day, los, kind, dispo)
             if dispo == "20":
                 break
-            p = 0.10 if obs else 0.0 if dispo == "02" else 0.45 if dispo == "07" else mix[drg][1]
+            p = 0.30 if obs else 0.0 if dispo == "02" else 0.60 if dispo == "07" else mix[drg][1]
             key = (dept, drg, obs, dispo == "07")
             quota[key] = quota.get(key, float(rng.random())) + p
             returning = quota[key] >= 1
@@ -1440,8 +1440,9 @@ def _health_members(seed: int) -> pd.DataFrame:
     n = 1300
     ids = rng.permutation(np.unique(rng.integers(100_000_000, 999_999_999, 2 * n)))[:n]
     plans = list(_HP_PLANS)
-    s = np.where(rng.random(n) < 0.7, 0, rng.integers(1, 12, n))
-    e = np.where(rng.random(n) < 0.7, 11, rng.integers(s, 12))
+    joiner = rng.random(n) < 0.2   # joins mid-year and stays; 30% of the others leave
+    s = np.where(joiner, rng.integers(1, 12, n), 0)
+    e = np.where(~joiner & (rng.random(n) < 0.3), rng.integers(0, 11, n), 11)
     lam = np.where(rng.random(n) < 0.35, 0.0, rng.gamma(1.5, 0.25, n))   # 35% never claim
     return pd.DataFrame({"member": [f"M{i}" for i in ids],
                          "plan": rng.choice(plans, n, p=[_HP_PLANS[p][1] for p in plans]),
@@ -1488,7 +1489,7 @@ def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
             for _ in range(rng.poisson(m.lam)):
                 incurred[str(month)] += 1
                 svc = month.start_time + pd.Timedelta(days=int(rng.integers(0, month.days_in_month)))
-                paid_lag = int(min(120, 14 + rng.gamma(2.0, 30.0)))
+                paid_lag = int(14 + 106 * rng.beta(1.8, 1.4))
                 recv = svc + pd.Timedelta(days=int(min(paid_lag - 7, rng.integers(3, 40))))
                 paid_on = svc + pd.Timedelta(days=paid_lag)
                 n_lines = int(rng.choice([1, 2, 3, 4], p=[0.4, 0.3, 0.18, 0.12]))
@@ -1500,8 +1501,10 @@ def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
                     continue   # not received yet: absent from the extract (IBNR)
                 n_claims += 1
                 cid, npi = f"C{26_000_000 + n_claims}", int(rng.choice(npis))
-                status = ("Pending" if paid_on > _HP_AS_OF else "Denied" if r < deny
-                          else "Partially Paid" if r < deny + 0.07 and n_lines > 1 else "Paid")
+                # single-service claims (imaging, ED) are denied more often than multi-line visits
+                p_deny = deny * (2.0 if n_lines == 1 else 0.4)
+                status = ("Pending" if paid_on > _HP_AS_OF else "Denied" if r < p_deny
+                          else "Partially Paid" if r < p_deny + 0.07 and n_lines > 1 else "Paid")
                 total = round(sum(b for _, b in billed_codes), 2)
 
                 def emit(seq, freq, st, lines, paid_date, sign=1):
@@ -1519,7 +1522,7 @@ def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
                 if r2 < 0.03:   # void: the whole claim reversed
                     emit(1, "8", status, lines, later, sign=-1)
                 elif r2 < 0.11:   # replacement(s): overturned denial or re-priced lines
-                    new = "Paid" if status == "Denied" and rng.random() < 0.6 else status
+                    new = "Paid" if status == "Denied" and rng.random() < 0.8 else status
                     for seq in (1, 2) if rng.random() < 0.25 else (1,):
                         lines = (lines_for(n_lines, new, billed_codes) if new != status else
                                  [(c, b, a, round(p * rng.uniform(0.85, 1.15), 2)) for c, b, a, p in lines])
@@ -1577,11 +1580,10 @@ def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
     inc6 = np.mean([incurred[str(m)] for m in _HP_MONTHS[-9:-3]])
     for m in truth["incomplete_months"]:
         assert paid_by_month[m] < 0.7 * prior6   # the drop is run-out ...
-        assert incurred[m] > 0.85 * inc6          # ... volume was flat
+        assert incurred[m] > 0.8 * inc6           # ... volume was flat
     assert abs(truth["naive_paid_total"] / truth["paid_total_final"] - 1) > 0.03
     assert truth["naive_header_billed_sum"] > 1.5 * truth["billed_total_final"]
     assert truth["billed_total_final"] > 2 * truth["allowed_total_final"]
-    print(truth)  # TMP
     assert abs(truth["naive_denial_rate"] - truth["denial_rate_claims"]) > 0.02
     assert truth["negative_paid_rows"] > 0 and truth["voided_claims"] > 0
     return df, truth

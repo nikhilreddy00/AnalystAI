@@ -543,6 +543,11 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
     Fail closed: kept are only numbers, non-personal dates, ZIPs (generalised), diagnosis codes
     and short categories that neither look like people's names nor follow the patient 1:1."""
     roles = {c.name: c for c in contract.columns}
+    pack = pack_for(contract.domain)
+    coded = {col for r, col in contract.roles.items() if pack and r in pack.roles
+             and pack.roles[r].pattern and col in df.columns
+             and _profiled(df[col]).dropna().astype(str).head(1000)
+             .str.fullmatch(pack.roles[r].pattern).mean() >= 0.9}   # procedure codes, DRGs
     patient = next((str(n) for n in df.columns if is_phi_identifier(str(n))), None)
     n_patients = df[patient].nunique() if patient else 0
     withheld, ids = [], []
@@ -565,7 +570,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
                 ids.append(n)
         elif is_diagnosis_column(n, s.dropna().head(_SAMPLE).tolist()):
             continue   # the clinical content analysed (not an identifier); generalised later
-        elif _is_free_text(s, n) or s.nunique() > 50:
+        elif _is_free_text(s, n) or (s.nunique() > 50 and n not in coded):
             withheld.append(n)   # notes, places: anything too specific to be a category
         elif patient and n_patients >= 2 and s.nunique() >= 0.5 * n_patients \
                 and df.groupby(patient)[n].nunique().max() <= 1:
@@ -633,9 +638,14 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
             decisions.append(_decision(col, "cap", "age_90_plus", f"ages over {AGE_CAP} shown as "
                                        f"{AGE_CAP} (90+)", high, out))
     roles = {c.name: c for c in contract.columns}
+    pack = pack_for(contract.domain)
+    # a KPI's filter values stay as written (pooling 5 'expired' stays erases mortality); small
+    # counts in what is reported are flagged by the quality check instead
+    exact = {contract.roles[r] for r in (pack.value_roles() if pack else ()) if r in contract.roles}
     for col in (str(n) for n in out.columns):
         c = roles.get(col)
-        if c is None or c.is_date or c.is_id or c.is_metric or col in ids or is_zip_column(col):
+        if c is None or c.is_date or c.is_id or c.is_metric or col in ids or is_zip_column(col) \
+                or col in exact:
             continue
         key = out[col].astype(str).str.strip().str.casefold().where(out[col].notna(), "\x00missing")
         counts = key.map(key.value_counts())

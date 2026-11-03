@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 import domain_pack
-from agents.ingestion_agent import build_contract
+from agents.ingestion_agent import build_contract, prepare_frame
 from orchestrator.state import ConnectorType
 
 TOYCLINIC = """
@@ -23,6 +23,12 @@ roles:
   seq:          {kind: count, headers: [seq]}
   freq:         {kind: category, headers: [freq]}
   group_code:   {kind: category, pattern: '\d{3}', headers: [group_code]}
+  disposition:  {kind: category, headers: [disposition]}
+  procedure:    {kind: category, pattern: '[0-9A-Z]\d{3}[0-9A-Z]', headers: [procedure]}
+  unit:         {kind: category, headers: [unit]}
+kpis:
+  - {name: deaths, label: Deaths, num: [[{nunique: enrollee_ref,
+                                          where: [[{role: disposition, in: ["20"]}]]}]]}
 version_key: [claim, line]
 version_order: seq
 version_void: {freq: ["8"]}
@@ -109,3 +115,29 @@ def test_a_code_written_as_a_number_is_a_category_not_a_metric(toy_clinic):
     c = build_contract(df, ConnectorType.CSV)
     col = next(x for x in c.columns if x.name == "group_code")
     assert c.roles.get("group_code") == "group_code" and not col.is_metric and not col.is_id
+
+
+def _stays(n=300) -> pd.DataFrame:
+    return pd.DataFrame({
+        "enrollee_ref": [f"E{i % 120}" for i in range(n)],
+        "settled": [100.0 + i for i in range(n)], "paid_on": ["2026-01-05"] * n,
+        "disposition": ["20" if i < 5 else "01" for i in range(n)],          # 5 deaths
+        "unit": ["ICU" if i < 4 else "Ward A" if i % 2 else "Ward B" for i in range(n)],
+        "procedure": [f"{99000 + i % 80}" for i in range(n)],                # 80 distinct codes
+        "comment": [f"called back re visit {i}" for i in range(n)]})        # free text
+
+
+def test_values_a_kpi_filters_on_are_never_pooled(toy_clinic):
+    """M2/D4: pooling 'expired' (5 rows) into 'Other' would make mortality 0; a KPI's filter
+    values stay as written. Small groups of other columns (a 4-row unit) are still pooled."""
+    assert "disposition" in toy_clinic.value_roles()
+    out, _ = prepare_frame(_stays(), build_contract(_stays(), ConnectorType.CSV), ConnectorType.CSV)
+    assert (out["disposition"] == "20").sum() == 5
+    assert "ICU" not in set(out["unit"])
+
+
+def test_a_pattern_matched_code_column_is_kept_free_text_is_not(toy_clinic):
+    """M5: 80 procedure codes are a category the analysis groups by (kept); a free-text comment
+    with as many values is still withheld."""
+    out, _ = prepare_frame(_stays(), build_contract(_stays(), ConnectorType.CSV), ConnectorType.CSV)
+    assert out["procedure"].nunique() == 80 and "comment" not in out.columns
