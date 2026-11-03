@@ -120,3 +120,29 @@ reviewers per pass on the fix diff only; the $0 replay/rescore settled most paid
   source); Postgres was proven live in the browser check.
 - Truncation is an insight alert, not a pack CONDITION (works for every domain; low value to
   move).
+
+## Post-domain (2026-11-03, user report): dashboard filters, final review, recurring classes
+
+- **Dashboard filters changed nothing (every domain).** Diagnosed with a red repro, then live at
+  1440 px. Root causes: (1) `ChartRenderer` kept `useState(original)`, a copy of its whole chart,
+  so no new data ever reached a chart; (2) only row-count charts and plain tiles were recomputed
+  in the browser, while every sum, KPI chart and domain-pack tile needs rules only the server has.
+  Fix: the renderer keeps only the user's chart-type switch; `POST /dashboard/latest/filtered`
+  rebuilds tiles and deterministic charts on the filtered rows with the functions that built
+  them, judging row kinds on the whole data (a filter never revives a replaced claim version);
+  this session's pins only; patient data filtered below 11 records shows no numbers; the row cap,
+  a 30 s timeout and a 500-value cap. Charts from the model's findings keep an "unfiltered" pill.
+  Live: Product = Mortgage → total balance $40,584,162.85 (truth), 216 accounts, one bar.
+  Guards: a frozen-prop test, an e2e spec at 1440 px, server tests on stays, claims, retail and
+  banking.
+- **Final review (fresh, on all of Domain 3):** 3 majors (version revival under filters, other
+  sessions' pins, small cells in filtered tiles) and 11 minors; all majors and 7 minors fixed.
+- **Recurring classes (plan v2) in Domain 3:** class 1 (which rows) recurred in the summary stats,
+  the outlier histogram and the distribution/outlier answers (voided claims' −$442), class 2 (a
+  second copy of a rule) in the eval harness and the browser's KPI code, class 3 (exact
+  vocabulary) in "we pay", 07 vs 7, 313.0 and `Line No`; class 4 only as traces; class 5 none.
+  The rows_for guard missed class 1 because it only looked for `aggregate(`; it now flags any
+  numeric reduction of the frame without a row rule, with an explicit, reasoned list of
+  whole-table profile functions. **Open:** the dashboard's profile histogram of a measure still
+  reads every row (moving profile charts onto counted rows changes retail/banking overviews, a
+  paid re-measure): planned with Phase 5.8.

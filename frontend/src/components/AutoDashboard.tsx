@@ -50,7 +50,9 @@ function formatFilterChip(f: FilterValue): string {
   }
 }
 import { useDashboardData } from "@/context/DashboardDataContext";
-import { aggregateForChart } from "@/lib/aggregateForChart";
+import { chartView } from "@/lib/filteredView";
+import { useFilteredDashboard } from "@/hooks/useFilteredDashboard";
+import type { FilteredDashboard } from "@/lib/api";
 import { resolveLayout, useDashboardLayout } from "@/hooks/useDashboardLayout";
 import ChartRenderer from "./ChartRenderer";
 import KPISection from "./KPISection";
@@ -82,6 +84,9 @@ function AutoDashboardInner() {
     [rows, filters],
   );
   const hasActiveFilters = Object.keys(filters).length > 0;
+  const { data: latestForKey } = useQuery<LatestAnalysis | null>({
+    queryKey: ["dashboard-latest"], queryFn: getLatestAnalysis, refetchInterval: 30_000 });
+  const { data: server } = useFilteredDashboard(filters, latestForKey?.session_id);
 
   const { layout, moveUp, moveDown, hide, restore, reset } = useDashboardLayout();
 
@@ -306,12 +311,12 @@ function AutoDashboardInner() {
           )}
 
           {/* KPI row */}
-          {hasBriefing && latest?.briefing && <KPISection briefing={latest.briefing} />}
+          {hasBriefing && latest?.briefing && <KPISection briefing={latest.briefing} sessionId={latest.session_id} />}
 
           {/* Records indicator — excluded from PNG */}
           {hasActiveFilters && (
             <div data-html2canvas-ignore className="text-xs text-muted-foreground mb-2 px-6">
-              Showing {filteredRows.length.toLocaleString()} of {rowCount.toLocaleString()} records
+              Showing {(server?.rows ?? filteredRows.length).toLocaleString()} of {rowCount.toLocaleString()} records
             </div>
           )}
 
@@ -321,6 +326,7 @@ function AutoDashboardInner() {
               charts={visible}
               filteredRows={filteredRows}
               hasActiveFilters={hasActiveFilters}
+              server={server}
               onElementClick={setFilter}
               chartRefs={chartRefs}
               busy={busy}
@@ -372,6 +378,7 @@ function ChartGrid({
   charts,
   filteredRows,
   hasActiveFilters,
+  server,
   onElementClick,
   chartRefs,
   busy,
@@ -384,6 +391,7 @@ function ChartGrid({
   charts: ChartConfig[];
   filteredRows: Record<string, unknown>[];
   hasActiveFilters: boolean;
+  server: FilteredDashboard | undefined;
   onElementClick: (key: string, value: FilterValue) => void;
   chartRefs: React.RefObject<Map<string, HTMLDivElement>>;
   busy: string | null;
@@ -396,15 +404,11 @@ function ChartGrid({
   const derivedCharts = useMemo(
     () =>
       charts.map((c) => {
-        const agg = hasActiveFilters
-          ? aggregateForChart(filteredRows, c)
-          : ({ mode: "unfiltered" } as const);
-        const renderedData = agg.mode === "unfiltered" ? c.data : agg.data;
-        const showUnfilteredPill = agg.mode === "unfiltered" && hasActiveFilters;
-        const showCountSublabel = agg.mode === "count" && hasActiveFilters;
-        return { ...c, renderedData, showUnfilteredPill, showCountSublabel };
+        const view = chartView(c, hasActiveFilters, server, filteredRows);
+        return { ...c, renderedData: view.data, showUnfilteredPill: view.unfiltered,
+                 showCountSublabel: view.counted };
       }),
-    [charts, filteredRows, hasActiveFilters],
+    [charts, filteredRows, hasActiveFilters, server],
   );
 
   return (

@@ -793,10 +793,14 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     # another currency is a kind of row no KPI counts (tiles side by side read the same rows:
     # net sales / orders = AOV), unless the question splits BY currency: then each currency is its
     # own group, never added to another. A state's latest row is judged first either way.
-    kinds = row_kinds(df, roles, pack)
+    # a row's kind can depend on rows outside `df` (a claim line replaced or voided later): with
+    # the whole data at hand, kinds are judged on it (a filtered part never revives an old version)
+    whole = None if full is None else row_kinds(full, roles, pack)
+    kinds = whole.reindex(df.index) if whole is not None and df.index.isin(full.index).all() \
+        else row_kinds(df, roles, pack)
     if not (by and by == roles.get("currency")):
         kinds = kinds.where(keep, "other_currency")
-    whole = kinds if full is None else row_kinds(full, roles, pack)
+    whole = kinds if whole is None else whole
     kinds.attrs["present"] = set(whole.unique())
     kinds.attrs["frame"] = df if full is None else full
     value = _kpi_value(df, kinds, roles, pack, kpi, by)
@@ -1174,7 +1178,8 @@ def counted(pack: Pack, role: str) -> bool:
     return pack.roles[role].kind in ("money", "count") and pack.roles[role].additive
 
 
-def rows_for(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, str]:
+def rows_for(df: pd.DataFrame, contract, column: str,
+             full: pd.DataFrame | None = None) -> tuple[pd.DataFrame, str]:
     """(rows, how): THE rows every answer, chart and drill-down of `column` reads (plan v2 R1:
     one entry point; tests/test_one_definition.py guards it). On a strong-matched pack's additive
     money or count column: sale and return rows in the main currency, as its tiles count them;
@@ -1187,7 +1192,11 @@ def rows_for(df: pd.DataFrame, contract, column: str) -> tuple[pd.DataFrame, str
         return df, ""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     keep, currency, _ = main_currency(df, roles)
-    kept = keep & row_kinds(df, roles, pack).isin(["sale", "return"])
+    # `full`: the whole data when `df` is a filtered part of it (a row's kind can depend on rows
+    # outside the part: a claim line replaced later)
+    kinds = row_kinds(full, roles, pack).reindex(df.index) if full is not None \
+        and df.index.isin(full.index).all() else row_kinds(df, roles, pack)
+    kept = keep & kinds.isin(["sale", "return"])
     if kept.all():
         return df, ""
     # a level (a balance) keeps every row, its value blank where the row is left out: each

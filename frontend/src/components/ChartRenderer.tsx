@@ -400,8 +400,11 @@ function HeatmapView({ config }: { config: ChartConfig }) {
 const CONFIDENCE_DOT = { high: "bg-success", medium: "bg-warning", low: "bg-muted-foreground/60" };
 
 export default function ChartRenderer({ config: original, height = 260, action, onElementClick, onEvidence, onDraft, sessionId }: Props) {
-  // The user's on-the-spot switch; the server's copy (with any lint note) replaces it when saved.
-  const [config, setConfig] = useState(original);
+  // Only the user's on-the-spot switch is state (the server's lint note replaces it when saved);
+  // the data always comes from props: a copy of the whole chart in state froze it, so a dashboard
+  // filter's new data never reached the chart (user report, 2026-11-03).
+  const [override, setOverride] = useState<Pick<ChartConfig, "chart_type" | "lint_warnings"> | null>(null);
+  const config: ChartConfig = override ? { ...original, ...override } : original;
   if (!config.data || config.data.length === 0) return null;
 
   const t = T;
@@ -409,10 +412,10 @@ export default function ChartRenderer({ config: original, height = 260, action, 
   const options = swapOptions(original);
 
   async function switchType(type: ChartType) {
-    setConfig({ ...config, chart_type: type, lint_warnings: [] });
+    setOverride({ chart_type: type, lint_warnings: [] });
     if (sessionId) {
       const saved = await sendChartFeedback(sessionId, config.id, type).catch(() => null);
-      if (saved) setConfig(saved);
+      if (saved) setOverride({ chart_type: saved.chart_type, lint_warnings: saved.lint_warnings ?? [] });
     }
   }
 

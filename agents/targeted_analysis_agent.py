@@ -311,7 +311,7 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
             _suggest_metric_questions(contract) or ["Specify a column to plot"],
         )
 
-    series = df[col].dropna()
+    series = rows_for(df, contract, col)[0][col].dropna()   # the rows its tiles count (class 1)
     if series.empty:
         return _unanswerable(
             QuestionIntent.DISTRIBUTION,
@@ -797,7 +797,7 @@ def handle_outlier_scan(df: pd.DataFrame, params: TargetedParams, contract: Data
 
     rows = []
     for c in cols:
-        s = df[c].dropna()
+        s = rows_for(df, contract, c)[0][c].dropna()   # the rows its tiles count (class 1)
         if s.empty:
             continue
         q1, q3 = s.quantile(0.25), s.quantile(0.75)

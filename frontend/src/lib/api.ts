@@ -254,4 +254,24 @@ export async function getLatestDashboardData(): Promise<DashboardDataResult> {
   return { status: "ok", payload: (await res.json()) as DashboardDataPayload };
 }
 
+/** The latest dashboard under filters, recomputed on the server (a domain's tiles and KPI charts
+ * need its rules): new data per chart id it could rebuild, tiles by label, the filtered row count. */
+export interface FilteredDashboard {
+  charts: Record<string, Record<string, unknown>[]>;
+  tiles: Record<string, string>;
+  rows: number;
+  /** Patient data filtered below 11 records: no number is shown (a small cell). */
+  suppressed?: boolean;
+}
+
+export async function getFilteredDashboard(filters: Record<string, unknown>): Promise<FilteredDashboard> {
+  const res = await fetch(`${API_URL}/dashboard/latest/filtered`, {
+    method: "POST",
+    headers: await getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ filters }),
+  });
+  if (!res.ok) throw new Error(`filtered dashboard: ${res.status}`);
+  return (await res.json()) as FilteredDashboard;
+}
+
 export { API_URL };

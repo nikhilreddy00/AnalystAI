@@ -191,6 +191,75 @@ def json_rows(df):
     return df.where(df.notna(), None).to_dict("records")
 
 
+async def _latest_frame(request: Request, user: UserProfile):
+    """(latest completed session, its cleaned frame): the frame every dashboard view reads."""
+    from pathlib import Path
+
+    import pandas as pd
+
+    store = request.app.state.session_store
+    if store is None:
+        raise HTTPException(status_code=503, detail="Session store not available")
+    session = await store.get_latest_analysis(user.uid)
+    if not session:
+        raise HTTPException(status_code=404, detail="No completed analysis yet")
+    if not session.cleaned_data_path or not Path(session.cleaned_data_path).is_file():
+        raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
+    df = pd.read_parquet(session.cleaned_data_path)
+    if len(df) > MAX_ROWS:   # every dashboard view: the rows and their filtered recomputation
+        raise HTTPException(
+            status_code=422,
+            detail=(f"Dataset too large for the interactive dashboard ({len(df):,} rows; limit is "
+                    f"{MAX_ROWS:,}). Run a targeted question via chat instead."))
+    return session, df
+
+
+MAX_ROWS = 25_000
+
+
+class FilterRequest(BaseModel):
+    filters: dict[str, dict] = Field(max_length=20)
+
+    def model_post_init(self, _) -> None:   # a filter's list of values is a UI pick, never a dump
+        if any(len(f.get("values") or []) > 500 for f in self.filters.values()):
+            raise ValueError("a filter lists more than 500 values")
+
+
+@router.post("/latest/filtered")
+@limiter.limit("60/minute")
+async def get_latest_dashboard_filtered(
+    request: Request,
+    body: FilterRequest,
+    current_user: UserProfile = Depends(get_current_user),
+):
+    """The latest dashboard under filters, recomputed on the server by the functions that built
+    it: {charts: {chart id: data}, tiles: {label: value}, rows}. A chart from the model's own
+    findings can't be rebuilt and is not in `charts` (the page marks it unfiltered)."""
+    import asyncio
+
+    from agents.visualization_agent import filtered_dashboard
+    from orchestrator.state import ChartConfig
+
+    session, df = await _latest_frame(request, current_user)
+    charts = list(session.chart_configs)
+    # this session's pins only: another dataset's chart is never refiltered with these rows
+    for c in await request.app.state.session_store.get_dashboard(current_user.uid,
+                                                                 session_ids={session.session_id}):
+        try:
+            charts.append(c if isinstance(c, ChartConfig) else ChartConfig.model_validate(c))
+        except ValueError:   # a pin saved before a schema change: shown as pinned, not refiltered
+            continue
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(
+            filtered_dashboard, df, session.data_contract, charts, body.filters,
+            session.task_plan.raw_query if session.task_plan else "", session.narrative), timeout=30)
+    except (KeyError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid filter: {exc}") from exc
+    except TimeoutError as exc:
+        raise HTTPException(status_code=503, detail="The filtered dashboard took too long; "
+                                                    "narrow the filters or ask in chat.") from exc
+
+
 @router.get("/latest/data")
 @limiter.limit("30/minute")
 async def get_latest_dashboard_data(
@@ -198,33 +267,9 @@ async def get_latest_dashboard_data(
     current_user: UserProfile = Depends(get_current_user),
 ):
     """Return raw cleaned rows + column_roles for the user's latest completed session.
-    Used by the dashboard page for client-side filtering + chart re-aggregation."""
-    from pathlib import Path
-
-    store = request.app.state.session_store
-    if store is None:
-        raise HTTPException(status_code=503, detail="Session store not available")
-
-    session = await store.get_latest_analysis(current_user.uid)
-    if not session:
-        raise HTTPException(status_code=404, detail="No completed analysis yet")
-
-    if not session.cleaned_data_path or not Path(session.cleaned_data_path).is_file():
-        raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
-
-    import pandas as pd
-    df = pd.read_parquet(session.cleaned_data_path)
-
-    MAX_ROWS = 25_000
-    if len(df) > MAX_ROWS:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"Dataset too large for the interactive dashboard "
-                f"({len(df):,} rows; limit is {MAX_ROWS:,}). "
-                f"Run a targeted question via chat instead."
-            ),
-        )
+    Used by the dashboard page for its filter options; the numbers under filters come from
+    POST /latest/filtered (the domain rules live on the server)."""
+    session, df = await _latest_frame(request, current_user)
 
     from agents.visualization_agent import classify_columns
     roles = classify_columns(df)

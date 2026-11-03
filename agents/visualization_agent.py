@@ -1154,7 +1154,8 @@ def _unit_fields(kind: str, unit: str | None) -> dict:
     return {"currency": unit} if kind == "currency" else {"unit": unit}
 
 
-def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
+def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
+              full: pd.DataFrame | None = None) -> list[KPI]:
     """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. A KPI the
     data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
     and the run goes on. Money is in the main currency; other currencies are left out, said in
@@ -1172,7 +1173,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
         if not k.tile:
             continue
         try:
-            v = compute_kpi(df, roles, pack, k.name)
+            v = compute_kpi(df, roles, pack, k.name, full=full)
         except Exception:   # a pack/data mismatch is a missing tile, never a failed run
             logger.warning("KPI %s failed", k.name, exc_info=True)
             trace_verdict("visualization", VIZ_CARD.version, "kpi_failed")
@@ -1196,6 +1197,7 @@ def _spread(df: pd.DataFrame, roles: dict, pack, name: str) -> str:
     data has: a portfolio ratio of 0.5% can hide a product at 10%."""
     group = next((roles[g] for g in pack.overview_groups if g in roles), None)
     by = compute_kpi(df, roles, pack, name, by=group) if group else None
+    by = by[[rankable(k) for k in by.index]] if by is not None else None   # never the pooled bucket
     if by is None or len(by) < 2:
         return ""
     order = ranked(by)
@@ -1209,6 +1211,7 @@ def generate_smart_kpis(
     query: str = "",
     narrative: DataNarrative | None = None,
     contract: DataContract | None = None,
+    full: pd.DataFrame | None = None,
 ) -> list[KPI]:
     """Build up to 5 hero KPIs from a DataFrame and the visualization agent's
     column roles. Works on any dataset: row count + (optional) target rate +
@@ -1235,7 +1238,7 @@ def generate_smart_kpis(
     # Phase 5.7: a domain's own KPIs (net sales, orders, AOV …) replace the generic tiles, which
     # would count order lines as orders, average line amounts and call a share of rows a share
     # of sales.
-    if kpis := pack_kpis(df, contract):
+    if kpis := pack_kpis(df, contract, full):
         return kpis
 
     # KPI 1 — row count, labeled by the detected entity (column count belongs
@@ -2075,6 +2078,9 @@ class VizContext:
     evidence: dict[str, Evidence] = field(default_factory=dict)
     narrative: DataNarrative | None = None
     contract: DataContract | None = None   # semantic-layer hints: how a column aggregates (5.5)
+    # The whole data when `df` is a filtered part of it (a dashboard filter): a ratio with none of
+    # its rows in the part is 0, not unknown (compute_kpi's `full`)
+    full: pd.DataFrame | None = None
 
 
 def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
@@ -2180,7 +2186,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
-    df, _ = rows_for(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
+    df, _ = rows_for(df, ctx.contract, metric, ctx.full)   # a domain's money: the rows its tiles count
     level = None
     if agg not in ("last", "first") and not split:   # a level's mean: the answer's rows (utils)
         try:
@@ -2256,7 +2262,7 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         monthly = True   # staggered snapshots: a day holds only some accounts, a month all
     extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
-    df, kept = rows_for(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
+    df, kept = rows_for(df, ctx.contract, metric, ctx.full)   # a domain's money: the rows its tiles count
     sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
@@ -2333,7 +2339,10 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
 def fence_histogram(df: pd.DataFrame, col: str, ctx: VizContext, k: float = 3.0) -> ChartConfig | None:
     """Full-range histogram (no tail clipping: the tail is the point) with the Tukey fences
     Q1 - k·IQR and Q3 + k·IQR marked, and the count beyond them in the title."""
-    s = pd.to_numeric(df[col], errors="coerce").dropna() if col in df.columns else pd.Series()
+    if col not in df.columns:
+        return None
+    df, _ = rows_for(df, ctx.contract, col, ctx.full)   # the rows its tiles count (a voided claim's -$442 out)
+    s = pd.to_numeric(df[col], errors="coerce").dropna()
     if len(s) < 4:
         return None
     q1, q3 = float(s.quantile(0.25)), float(s.quantile(0.75))
@@ -2680,7 +2689,8 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     out = []
     for intent, params in asks:
         try:
-            out += handle_kpi(df, params, ctx.contract, ctx, intent=intent).chart_configs[:1]
+            out += handle_kpi(df, params, ctx.contract, ctx, full=ctx.full,
+                              intent=intent).chart_configs[:1]
         except Exception:   # a chart the KPI code can't make is left out, never a failed run
             trace_verdict("visualization", "pack", "pack_chart_failed")
     return out
@@ -2785,3 +2795,62 @@ def build_single_chart(
          r.n_rows if r else used[0] if used else len(df),
          code=r.code if r else used[1] if used else "")
     return finalize_charts([chart], ctx, user_chosen=True)[0]
+
+
+# ── Dashboard filters (user report 2026-11-03: filtering changed nothing) ──────────────────────
+
+def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
+    """The rows a dashboard filter keeps: {column: {kind: equality|in|range|date_range, …}},
+    the browser's FilterValue. Values compare as written (domain_pack.as_text: 313.0 is '313');
+    a blank cell or an unknown column matches nothing."""
+    from domain_pack import as_text
+    keep = pd.Series(True, index=df.index)
+    for col, f in (filters or {}).items():
+        if col not in df.columns:
+            return df.iloc[0:0]
+        s, kind = df[col], f.get("kind")
+        if kind == "equality":
+            hit = as_text(s).eq(str(f.get("value")))
+        elif kind == "in":
+            hit = as_text(s).isin([str(v) for v in f.get("values") or []])
+        elif kind == "range":
+            n = pd.to_numeric(s, errors="coerce")
+            hit = n.between(float(f["min"]), float(f["max"]))
+        elif kind == "date_range":   # whole days, wall-clock time (an aware column too)
+            t = pd.to_datetime(s, format="mixed", errors="coerce")
+            if getattr(t.dt, "tz", None) is not None:
+                t = t.dt.tz_localize(None)
+            hit = (t >= pd.Timestamp(f["from"])) & (t < pd.Timestamp(f["to"]) + pd.Timedelta(days=1))
+        else:
+            raise ValueError(f"unknown filter kind {kind!r}")
+        keep &= hit & s.notna()
+    return df[keep]
+
+
+def _chart_key(c: ChartConfig):
+    r = c.rationale
+    return (r.rule, r.x, r.y, r.aggregation, r.split) if r else None
+
+
+def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: list[ChartConfig],
+                       filters: dict, query: str = "",
+                       narrative: DataNarrative | None = None) -> dict:
+    """A dashboard under filters, by the functions that built it (one definition: a domain pack's
+    tiles and KPI charts need its rules, which only the server has). {charts: {chart id: data}
+    for every chart rebuilt from the filtered rows (a chart from the model's findings can't be:
+    it keeps its pill), tiles: {label: value}, rows: n, suppressed}. On patient data a part of
+    fewer than 11 records reports no number (a small cell, ADR-0008)."""
+    from guardrails import SMALL_CELL
+    part = apply_filters(df, filters)
+    if part.empty or (contract is not None and contract.phi and len(part) < SMALL_CELL):
+        return {"charts": {}, "tiles": {}, "rows": int(len(part)),
+                "suppressed": bool(len(part)) and bool(contract and contract.phi)}
+    ctx = build_context(part, contract=contract, narrative=narrative)
+    ctx.full = df
+    rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(
+        part, ctx.roles, query=query, narrative=narrative, ctx=ctx)
+    fresh = {k: c.data for c in rebuilt if (k := _chart_key(c))}
+    out = {c.id: fresh[k] for c in charts if (k := _chart_key(c)) in fresh}
+    tiles = {k.label: k.value for k in generate_smart_kpis(part, ctx.roles, query, narrative, contract,
+                                                           full=df)}
+    return {"charts": out, "tiles": tiles, "rows": int(len(part)), "suppressed": False}

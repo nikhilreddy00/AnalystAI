@@ -334,6 +334,12 @@ class TrendResult(BaseModel):
     latest: str | None = None
     previous: str | None = None
 
+    def months(self) -> str:
+        """' (Jul 2026 vs Jun 2026)' when the months are named, else '': THE way they're written."""
+        import pandas as pd
+        return (f" ({pd.Period(self.latest, 'M').strftime('%b %Y')} vs "
+                f"{pd.Period(self.previous, 'M').strftime('%b %Y')})") if self.latest and self.previous else ""
+
     @model_serializer(mode="wrap")
     def _no_unset_months(self, handler):   # unset: every dump as before the fields existed
         out = handler(self)
