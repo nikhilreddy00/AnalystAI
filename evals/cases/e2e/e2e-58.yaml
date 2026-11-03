@@ -1,0 +1,44 @@
+id: e2e-58
+domain: healthcare
+dataset:
+  name: inpatient
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: must_not_number
+  truth_key: naive_readmit_rate
+  rel_tol: 0.01
+  unit: '%'
+  scope: report
+- kind: must_match
+  pattern: crude|not risk[- ]adjusted
+  scope: report
+turns:
+- question: Which department has the highest readmission rate?
+  checks:
+  - kind: number_in_answer
+    truth_key: readmit_by_dept.Cardiology
+    rel_tol: 0.03
+    unit: '%'
+  - kind: must_not_match
+    pattern: (caus|led to|drove|result of|because of) .{0,40}(department|cardiology|treatment|care)|worse
+      care|poor(er)? care|clinical(ly)? (worse|inferior)
+    scope: report
+- question: And the average length of stay by department?
+  checks:
+  - kind: number_in_answer
+    truth_key: alos_by_dept.Cardiology
+    rel_tol: 0.02
+    unit: days
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Multi-turn: overview, a by-department readmission follow-up, then an elliptical ALOS follow-up
+  (PMPM''s ask is an intake case: E2E auto-answers gates).'

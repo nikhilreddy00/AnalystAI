@@ -1,0 +1,22 @@
+id: e2e-54
+domain: healthcare
+dataset:
+  name: inpatient
+  seed: 1
+question: What is our average length of stay?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: alos_inpatient
+  rel_tol: 0.02
+  unit: days
+- kind: must_not_number
+  truth_key: naive_alos_all_rows
+  rel_tol: 0.005
+  unit: days
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: Inpatient discharges only; observation and still-in-house rows out.

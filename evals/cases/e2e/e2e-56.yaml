@@ -1,0 +1,22 @@
+id: e2e-56
+domain: healthcare
+dataset:
+  name: health_claims
+  seed: 1
+question: What is the denial rate by payer?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: denial_rate_by_payer.Crescent Health
+  rel_tol: 0.03
+  unit: '%'
+- kind: must_not_number
+  truth_key: naive_denial_rate
+  rel_tol: 0.02
+  unit: '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: Claim-level denial rate on last versions, pending claims out of the denominator.

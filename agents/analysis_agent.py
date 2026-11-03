@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
+    runout_months,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -266,6 +267,8 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             m = t.dt.to_period("M")
             if partial_last_month(t):
                 m = m.where(m != m.max())
+            if runout := runout_months(contract):   # claims still arriving: never a trend
+                m = m.where(m < t.dt.to_period("M").max() - runout + 1)
             weeks = t.groupby(m).nunique() if yoy and agg == "sum" and weekly_cadence(t) else None
             return rows.assign(_m=m), agg, weeks
 

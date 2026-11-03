@@ -1376,6 +1376,9 @@ def make_inpatient(seed: int) -> tuple[pd.DataFrame, dict]:
     age = adm.dt.year - dob_.dt.year - ((adm.dt.month * 100 + adm.dt.day)
                                         < (dob_.dt.month * 100 + dob_.dt.day))
     readmit_by_dept = {d: _r6(v) for d, v in ix.groupby("Department")["readmit"].mean().items()}
+    # per-department truths as they may be published: groups under 11 stays are pooled (PHI)
+    shown = {d for d, n in df["Department"].value_counts().items() if n >= 11}
+    readmit_by_dept = {d: v for d, v in readmit_by_dept.items() if d in shown}
     truth = {
         "row_count": len(df),
         "pii_columns": ["Patient Name", "MRN", "DOB", "Patient ZIP"],
@@ -1383,7 +1386,8 @@ def make_inpatient(seed: int) -> tuple[pd.DataFrame, dict]:
         "alos_inpatient": _r6(los[discharged].mean()),
         "median_los_inpatient": _r6(los[discharged].median()),
         "naive_alos_all_rows": _r6(los.mean()),
-        "alos_by_dept": {d: _r6(v) for d, v in los[discharged].groupby(df["Department"]).mean().items()},
+        "alos_by_dept": {d: _r6(v) for d, v in los[discharged].groupby(df["Department"]).mean().items()
+                         if d in shown},
         "same_day_inpatient_stays": int((discharged & los.eq(0)).sum()),
         "index_stays": int(index.sum()),
         "readmit_rate_crude": _r6(ix["readmit"].mean()),
@@ -1568,6 +1572,8 @@ def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
         "denial_rate_by_payer": {p: _r6(v) for p, v in
                                  adjudicated["status"].eq("Denied").groupby(adjudicated["Payer"]).mean().items()},
         "naive_denial_rate": _r6(df["Claim Status"].eq("Denied").mean()),
+        "paid_by_payer": {p: _r6(v) for p, v in live.groupby("Payer")["Paid Amount"].sum().items()},
+        "naive_paid_by_payer": {p: _r6(v) for p, v in df.groupby("Payer")["Paid Amount"].sum().items()},
         "paid_by_service_month": {k: _r6(v) for k, v in paid_by_month.items()},
         "claims_by_service_month": {k: int(v) for k, v in live.groupby(month)["Claim ID"].nunique().items()},
         "claims_incurred_by_service_month": incurred,   # incl. not yet received (not in the frame)

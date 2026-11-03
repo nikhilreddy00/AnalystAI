@@ -1,0 +1,11 @@
+id: intake-health-06
+category: clear
+pipeline: production
+source:
+  dataset: inpatient
+  seed: 1
+overview_done: true
+question: Are we going to get an HRRP penalty this year?
+expect:
+  ask: true
+rationale: 'HRRP needs CMS''s risk-standardized rates: unsupported.'

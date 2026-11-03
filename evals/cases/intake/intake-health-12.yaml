@@ -1,0 +1,19 @@
+id: intake-health-12
+category: clear
+pipeline: production
+source:
+  dataset: health_claims
+  seed: 1
+overview_done: true
+question: Which procedures did we pay the most for?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: paid
+  columns:
+    by: CPT/HCPCS
+rationale: Paid by procedure code.

@@ -52,6 +52,7 @@ from agents.visualization_agent import (
 from scipy import stats
 
 from domain_pack import (
+    runout_months,
     additive,
     entity_rows,
     layout_columns,
@@ -535,7 +536,8 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
 
     partial = ""
     if conventions and freq in ("W", "M", "Q", "Y"):   # a domain's rule: either end, any bucket
-        series, partial = _cut_partial(series, s[date], freq, rule if freq == "W" else None)
+        series, partial = _cut_partial(series, s[date], freq, rule if freq == "W" else None,
+                                       runout_months(contract))
         if series.empty:
             return _unanswerable(QuestionIntent.TIME_SERIES, partial.strip(),
                                  ["Ask for a finer period (week or day)", "Ask for the total"])
@@ -987,7 +989,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     kind = {"money": "currency", "percent": "percent", "count": "count"}.get(kpi.unit, "number")
 
     def fmt(v: float) -> str:
-        return _format_value(v, kind, money if kind == "currency" else None)
+        return kpi.written(_format_value(v, kind, money if kind == "currency" else None))
 
     def change(now: float, then: float) -> str:   # a rate moves in points, an amount in percent
         if kind == "percent":
@@ -1072,7 +1074,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             # each month's average week (a distinct count, orders or customers, is the month's)
             weeks = t.groupby(t.dt.to_period("M")).nunique()
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
-        whole, note = _cut_partial(series, t, freq, rule if freq == "W" else None)
+        whole, note = _cut_partial(series, t, freq, rule if freq == "W" else None,
+                                   runout_months(contract))
         series = whole
         if asked:   # the buckets inside the asked window; comparisons still read `whole`
             lo, hi = period_window(full, date, params.period_start, params.period_end)[:2]

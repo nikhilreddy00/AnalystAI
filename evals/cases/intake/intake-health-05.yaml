@@ -1,0 +1,11 @@
+id: intake-health-05
+category: clear
+pipeline: production
+source:
+  dataset: inpatient
+  seed: 1
+overview_done: true
+question: What's our risk-adjusted readmission rate?
+expect:
+  ask: true
+rationale: 'Risk adjustment needs a risk model: unsupported, ask.'

@@ -1,0 +1,19 @@
+id: intake-health-14
+category: clear
+pipeline: production
+source:
+  dataset: health_claims
+  seed: 1
+overview_done: true
+question: How much was allowed by payer?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: allowed
+  columns:
+    by: Payer
+rationale: Allowed KPI by payer.

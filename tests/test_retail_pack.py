@@ -649,7 +649,9 @@ async def test_sell_through_is_asked_never_computed(recorded_llm):
     "A-2,W2,5,8,2025-01-02,5\n",                                              # stock count
 ])
 def test_other_domains_tables_are_not_retail(csv):
-    assert _contract(_load(csv)).domain is None
+    # a domain with its own pack reads as that domain (Domain 3: the claims table is healthcare)
+    assert _contract(_load(csv)).domain in (None, "healthcare") if "cpt_code" in csv \
+        else _contract(_load(csv)).domain is None
 
 
 def test_superstore_order_ids_are_orders_not_credit_notes():

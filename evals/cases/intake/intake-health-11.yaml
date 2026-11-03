@@ -1,0 +1,11 @@
+id: intake-health-11
+category: clear
+pipeline: production
+source:
+  dataset: health_claims
+  seed: 1
+overview_done: true
+question: What's our PMPM?
+expect:
+  ask: true
+rationale: 'PMPM needs member months from enrollment: unsupported on claims.'

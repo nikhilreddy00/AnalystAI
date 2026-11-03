@@ -1,0 +1,17 @@
+id: intake-health-10
+category: clear
+pipeline: production
+source:
+  dataset: health_claims
+  seed: 1
+overview_done: true
+question: What did we pay each month?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: paid
+rationale: Paid KPI over time.

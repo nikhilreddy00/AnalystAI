@@ -1,0 +1,30 @@
+id: health-4
+domain: healthcare
+category: ratio
+pipeline: production
+dataset:
+  name: inpatient
+  seed: 1
+question: What is the 30-day readmission rate by department?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics: []
+  segments:
+  - Department
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Department
+  truth_key: readmit_by_dept
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Crude CMS-style: index = inpatient discharges not expired (20), AMA (07) or transferred (02);
+  follow-up = inpatient admit of the same patient 1-30 days later; discharges in the last 30 days of the
+  data are censored. The naive all-rows rate is the trap.'

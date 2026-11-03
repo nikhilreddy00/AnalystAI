@@ -166,11 +166,16 @@ class KPI(_Strict):
     den: list[list[Term]] | None = None
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] = ["sale"]
     unit: Literal["money", "percent", "count", "number"] = "number"
+    unit_word: str | None = None  # a number's unit, written after it ("3.72 days")
     tile: bool = False            # one of the domain's KPI tiles (when computable)
     # "latest": a state at a date (outstanding balance, accounts, NPL): each snapshot_key's latest
     # row in the period, of any kind, THEN the kind / currency / where filters (a loan charged off
     # this month is out, never its last month's balance)
     at: Literal["all", "latest"] = "all"
+
+    def written(self, value: str) -> str:
+        """A formatted value with its unit word: THE way a KPI's number is written."""
+        return f"{value} {self.unit_word}" if self.unit_word else value
 
     @property
     def phrase(self) -> str:
@@ -1031,6 +1036,13 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
                                    "currency": audit.main_currency}
     return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
 
+
+
+def runout_months(contract) -> int:
+    """Months whose records are still arriving (Pack.runout, when its arrival date is in the
+    data): every period answer leaves them out (utils.cut_partial)."""
+    pack = defaults_pack(contract)
+    return pack.runout.months if pack and pack.runout and pack.runout.role in contract.roles else 0
 
 
 def first_line_only(df: pd.DataFrame, by: pd.Series, col: str) -> bool:

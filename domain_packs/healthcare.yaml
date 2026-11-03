@@ -133,8 +133,9 @@ kpis:
       - [{nunique: encounter, where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}, {role: date, not_in: []}]]}]
       - [{nunique: encounter, where: [[{role: date, not_in: []}]]}]
   - name: alos
-    label: ALOS (days)
+    label: ALOS
     unit: number
+    unit_word: days
     tile: true
     num:
       - [{sum: los, where: [[{role: encounter_type, in: [inpatient, ip, inpt, i]}]]}]

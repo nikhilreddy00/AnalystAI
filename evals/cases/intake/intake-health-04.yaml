@@ -1,0 +1,19 @@
+id: intake-health-04
+category: clear
+pipeline: production
+source:
+  dataset: inpatient
+  seed: 1
+overview_done: true
+question: What's in-hospital mortality by department?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: mortality_rate
+  columns:
+    by: Department
+rationale: Mortality KPI by department.

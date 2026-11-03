@@ -41,6 +41,7 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    runout_months,
     computable,
     compute_kpi,
     defaults_pack,
@@ -1183,7 +1184,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None) -> list[KPI]:
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
         if k.at == "latest" and kind == "percent":   # a book's ratio hides its mix: say the spread
             context = "; ".join(x for x in (_spread(df, roles, pack, k.name), context) if x)
-        tiles.append(KPI(label=k.label, value=_format_value(v, kind, unit), context=context,
+        tiles.append(KPI(label=k.label, value=k.written(_format_value(v, kind, unit)), context=context,
                          recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
                                           **_unit_fields(kind, unit)),
                          how=describe_kpi(pack, k.name, roles, present)))
@@ -2267,6 +2268,11 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         note = (f"{cut.strftime('%b %Y')} is left out: the data ends "
                 f"{sub[date].max():%d %b %Y}, so that month is incomplete.")
         sub = sub[sub[date].dt.to_period("M") < cut]
+    if monthly and (runout := runout_months(ctx.contract)) and not sub.empty:   # still arriving
+        since = sub[date].dt.to_period("M").max() - runout + 1
+        note += (f" {since.strftime('%b %Y')} on is left out: records for those months are still "
+                 f"arriving (about {runout} months after the period).")
+        sub = sub[sub[date].dt.to_period("M") < since]
     period = sub[date].dt.to_period("M" if monthly else "D").astype(str)
     rate = agg == "mean" and _is_flag(sub[metric])
     scale = 100.0 if rate else 1.0

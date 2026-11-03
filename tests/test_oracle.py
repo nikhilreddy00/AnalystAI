@@ -433,3 +433,38 @@ def test_claims_denial_rate_by_payer_is_the_truth():
     _, rate = answer("health_claims", "top_n", "denial rate by payer", kpi="denial_rate",
                      segment_column="Payer", group_by="Payer")
     assert close(rate, _built("health_claims")[3]["denial_rate_by_payer"], tol=1)
+
+
+def test_claims_paid_by_month_leaves_the_run_out_months_out():
+    """Trap 4 (claims lag): Aug-Oct 2026 service months are still arriving; 'paid by month' must
+    not report their drop as a change. Rehearsal found -64.8% (Sep vs Aug) reported as real."""
+    text, points = answer("health_claims", "time_series", "How much did we pay each month?",
+                          kpi="paid", frequency="M")
+    truth = _built("health_claims")[3]
+    assert not any(k.startswith(m) for k in points for m in truth["incomplete_months"]), points
+    assert "2026-07" in " ".join(points) and "still arriving" in text
+
+
+def test_claims_trend_chart_and_built_in_mom_leave_the_run_out_months_out():
+    """One rule for the run-out on every month comparison: the overview's trend chart and the
+    analysis built-in month over month (the sandbox's numbers), not only the answers."""
+    from agents.visualization_agent import build_context, month_line
+    _, clean, contract, truth = _built("health_claims")
+    date = contract.roles["date"]
+    line = month_line(clean, date, "Paid Amount", build_context(clean, contract=contract), monthly=True)
+    months = [str(r[line.x_key])[:7] for r in line.data]
+    assert months and not set(months) & set(truth["incomplete_months"]), months
+    res = builtin("health_claims", ["Paid Amount"], [], ["trend"])
+    paid = truth["paid_by_service_month"]
+    want = 100 * (paid["2026-07"] / paid["2026-06"] - 1)   # the last month whose claims are in
+    mom = next(t for t in res["trends"] if t["column"] == "Paid Amount" and t["period"] == "MoM")
+    assert abs(mom["pct_change"] - want) < 0.1, (mom, want)
+
+
+def test_alos_is_written_in_days():
+    """'ALOS (days): 3.72' leaves the reader (and a scorer) guessing: the number carries its unit."""
+    text, _ = answer("inpatient", "segment_compare", "What is our average length of stay?", kpi="alos")
+    assert re.search(r"3\.72 days", text), text
+    assert any(k.recipe.kpi == "alos" and k.value.endswith(" days")
+               for k in __import__("agents.visualization_agent", fromlist=["pack_kpis"]).pack_kpis(
+                   *_built("inpatient")[1:3]))
