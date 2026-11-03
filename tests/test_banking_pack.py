@@ -549,7 +549,7 @@ def test_pass_3_stopped_accounts_count_once_and_a_zero_month_is_a_month(tape):
         targeted_params=TargetedParams(kpi="charge_offs", frequency="M")))
     s.__dict__["_df_parquet"] = buf.getvalue()
     r = run_targeted_analysis(s)
-    assert "vs $0.00 the period before (no % change from zero)" in r.answer_text
+    assert "vs $0.00 the period before (no % change from a zero or negative base)" in r.answer_text
     assert "no earlier complete period" not in r.answer_text
 
 
@@ -584,3 +584,10 @@ def test_the_ledger_generator_is_the_same_on_every_machine():
                       ("loan_tape", "Outstanding Principal")):
         s = datagen.make(name, 1)[0][col].dropna()
         assert (s.round(2) == s).all(), (name, col)
+
+
+def test_a_percent_change_needs_a_positive_base():
+    """Final audit: net flow −$4,464 → +$9,170 was called '−305.4%'."""
+    from agents.utils import pct_change
+    assert pct_change(110.0, 100.0) == pytest.approx(10.0)
+    assert pct_change(9170.0, -4464.0) is None and pct_change(5.0, 0.0) is None

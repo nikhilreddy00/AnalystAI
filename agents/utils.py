@@ -248,6 +248,16 @@ def with_display_names(text: str, display: dict[str, str] | None) -> str:
     return re.sub(rf"(?<!\w)(?:{pat})(?!\w)", swap, text, flags=re.IGNORECASE)
 
 
+def pct_change(now, then) -> float | None:
+    """(now / then − 1) × 100, or None when `then` is zero, negative or missing: a percent change
+    off a zero or negative base means nothing (net flow −$4,464 → +$9,170 is not "−305%"). The one
+    rule for every % change an answer states."""
+    import math
+    if then is None or now is None or (isinstance(then, float) and math.isnan(then)) or then <= 0:
+        return None
+    return (now / then - 1) * 100
+
+
 def level_rows(df, column: str, contract):
     """The rows a statistic of `column` by group (mean, median, count …) reads: a level's latest
     snapshot per entity (an average balance by branch, never every week's snapshot of it: an

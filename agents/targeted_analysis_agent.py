@@ -23,6 +23,7 @@ import pandas as pd
 from agents.utils import cut_partial as _cut_partial
 from agents.utils import (
     ranked,
+    pct_change,
     LevelUnavailable,
     aggregate,
     column_hint,
@@ -529,11 +530,12 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         series = series.iloc[:-1]
     chart_data = [{"period": idx.strftime("%Y-%m-%d"), metric: float(v)} for idx, v in series.items()]
     first, last = series.iloc[0], series.iloc[-1]
-    pct = (last - first) / first * 100 if first not in (0, None) else float("nan")
+    pct = pct_change(last, first)
     direction = "up" if last > first else ("down" if last < first else "flat")
     scope = f" for {params.segment_column} {group}" if group is not None else ""
+    size = f" {abs(pct):.1f}%" if pct is not None else f" ({_num(first)} → {_num(last)})"
     answer = (
-        f"{metric}{avg_week}{scope} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to "
+        f"{metric}{avg_week}{scope} trended {direction}{size} from {series.index[0].date()} to "
         f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg, True)})."
     ) if len(series) > 1 else (   # partial ends cut: one complete period is no trend
         f"{metric}{avg_week}{scope} in {_period_name(series.index[-1], freq)} (freq={freq}, agg={_agg_name(agg, True)}): "
@@ -543,9 +545,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     answer += f" {kept}" if kept else ""
     if len(series) >= 2 and series.iloc[-2]:
         # "How did X change last month?" asks about the latest step, not the whole range.
-        step = (series.iloc[-1] / series.iloc[-2] - 1) * 100
+        step = pct_change(series.iloc[-1], series.iloc[-2])
         answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
-                   f"{step:+.1f}% ({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
+                   + (f"{step:+.1f}% " if step is not None else "")
+                   + f"({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
     answer += partial
     chart = _chart(
         ChartType.LINE, f"{_of(agg, metric, True)}{avg_week} over time", chart_data,
@@ -972,7 +975,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         return _format_value(v, kind, money if kind == "currency" else None)
 
     def change(now: float, then: float) -> str:   # a rate moves in points, an amount in percent
-        return (f"{(now - then) * 100:+.1f} pts" if kind == "percent" else f"{(now / then - 1) * 100:+.1f}%")
+        if kind == "percent":
+            return f"{(now - then) * 100:+.1f} pts"
+        pct = pct_change(now, then)
+        return f"{pct:+.1f}%" if pct is not None else "no % change from a zero or negative base"
 
     date = _date_of(contract, params, df)
     weekly = bool(date) and weekly_cadence(full[date])   # YoY: 52 weeks back, same week-endings
@@ -1072,20 +1078,20 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
 
             answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{where}{by_month}: latest " \
                      f"{name(latest)} {fmt(series.iloc[-1])}"
-            def base(v) -> bool:   # a value to compare against (0% is one; $0 has no % change)
-                return v is not None and not pd.isna(v) and (kind == "percent" or v != 0)
+            def base(v) -> bool:   # a value to compare against (0% is one; $0 or less: no % change)
+                return v is not None and not pd.isna(v) and (kind == "percent" or pct_change(1.0, v) is not None)
 
             back = {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq]
             before = whole.get(latest - 1)   # by label: a missing period is no "period before"
             if base(before):
                 answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"
             elif before is not None and not pd.isna(before):   # a $0 month is a month
-                answer += f", vs {fmt(before)} the period before (no % change from zero)"
+                answer += f", vs {fmt(before)} the period before (no % change from a zero or negative base)"
             prior = whole.get(latest - back) if freq != "Y" else None
             if base(prior):   # (by year, "a year earlier" is the period before: said once)
                 answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
             elif prior is not None and not pd.isna(prior):   # a $0 month a year earlier is said
-                answer += f"; a year earlier {fmt(prior)} (no % change from zero)"
+                answer += f"; a year earlier {fmt(prior)} (no % change from a zero or negative base)"
             compared = latest - back if base(prior) else latest - 1 if (
                 before is not None and not pd.isna(before)) else None
             if compared is None:

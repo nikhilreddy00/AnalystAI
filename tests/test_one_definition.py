@@ -112,3 +112,13 @@ def test_a_correlation_on_snapshot_data_counts_each_entity_once():
             src = inspect.getsource(fn)
             assert ".corr(" not in src or "entity_rows" in src, f"{name}: r on domain_pack.entity_rows"
     assert "_cdf" in inspect.getsource(__import__("agents.analysis_agent", fromlist=["x"])._build_standard_code)
+
+
+def test_one_percent_change_rule_in_answers():
+    """Four hand-written % changes in the targeted answers, one of them off a negative base: every
+    stated % change is utils.pct_change (None off a zero or negative base)."""
+    import re
+    src = (ROOT / "agents" / "targeted_analysis_agent.py").read_text()
+    hand = [ln for ln in src.splitlines()
+            if re.search(r"/\s*\w+(\.iloc\[[-\d]+\])?\s*-\s*1\)\s*\*\s*100", ln)]
+    assert hand == [], f"use agents.utils.pct_change: {hand}"
