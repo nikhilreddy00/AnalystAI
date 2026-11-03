@@ -366,3 +366,32 @@ def test_each_repair_has_its_own_trace_label():
     assert _repair_label("Amount by Merchant Category recomputed: Posted rows …") == "breakdown_recomputed"
     assert _repair_label("balance by segment recomputed per snapshot") == "level_recomputed"
     assert _repair_label("balance by segment recomputed as the latest total (…)") == "level_recomputed"
+
+
+# ── Source invariance (Domain 3, user request 2026-11-03): the same table through every
+# connector reads as the same domain, roles and PHI mode, and every computable tile agrees.
+
+@pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines"])
+@pytest.mark.parametrize("source", ["xlsx", "json", "parquet", "sqlite"])
+async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
+    import connectors.csv_connector as csvc
+    import domain_pack
+    from connectors.base import get_connector
+    from evals import run
+    monkeypatch.setattr(run, "UPLOADS", tmp_path)
+    monkeypatch.setattr(csvc, "_UPLOADS_DIR", tmp_path.resolve())
+    case = {"dataset": {"name": name, "seed": 1}}
+    df, _, csv = run.dataset(case)
+
+    async def read(src):
+        conn = get_connector(run.source_config({**case, "source": src}, df, csv))
+        frame = await conn.load()
+        return frame, conn.build_data_contract(frame)
+    (want, wc), (got, gc) = await read("csv"), await read(source)
+    assert (gc.domain, gc.domain_confidence, gc.phi) == (wc.domain, wc.domain_confidence, wc.phi)
+    assert gc.roles == wc.roles and len(got) == len(want)
+    pack = domain_pack.pack_for(wc.domain)
+    for k in (k for k in pack.kpis if domain_pack.computable(pack, k.name, wc.roles)):
+        a = domain_pack.compute_kpi(want, wc.roles, pack, k.name)
+        b = domain_pack.compute_kpi(got, gc.roles, pack, k.name)
+        assert (a is None and b is None) or b == pytest.approx(a, rel=1e-9), (source, k.name, a, b)
