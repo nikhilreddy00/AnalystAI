@@ -84,3 +84,18 @@ out wrong.
   E2B receives pseudonymised customer emails and names, and every scored field is unchanged
   (`test_old_cases_unaffected_by_pseudonyms`).
 - Domain claims (README) are per domain and backed by `by_domain` in the committed reports.
+
+## Amendment 2026-11-03 (Phase 5.7 Domain 3, healthcare): exact dates = a limited data set
+- **Decision:** the PHI-protected working copy keeps exact admission, discharge and service dates
+  (length of stay, 30-day readmission and claims lag cannot be computed without them). Dates of
+  birth stay year-only and ages over 89 stay "90 or above".
+- **So the copy is not de-identified under Safe Harbor** (45 CFR 164.514(b)(2)(i)(C)): at best a
+  limited data set (164.514(e)). Every report on such a file says so; the code and README stop
+  calling it "de-identified". Exact dates reach Anthropic and E2B, so a covered entity needs a BAA
+  with both (and a data use agreement for a limited data set). Cited facts:
+  `docs/research/2026-11-03-healthcare.md` §1.
+- **Small cells move to the output:** a column a pack KPI filters on is never pooled (pooling
+  "Expired" into "Other" corrupts mortality); instead a reported patient or encounter count of
+  1–10 is flagged by the quality check.
+- **Rejected:** year-only dates (breaks every healthcare KPI); pooling KPI filter values (wrong
+  rates, silently).
