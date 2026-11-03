@@ -850,8 +850,16 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
             return pack.kpi(t.kpi).phrase
         if t.nunique:
             return f"distinct {roles[t.nunique]}"
+        if w := t.within:
+            then = f" (the next must have {where(w.follow)})" if w.follow else ""
+            rows = (f"rows whose {roles[w.end]} is at least {w.days} days before the last "
+                    f"{roles[w.start]}")
+            return (rows if w.base else f"{rows} followed by another row of the same "
+                    f"{roles[w.entity]} starting 1–{w.days} days after {roles[w.end]}{then}") + (
+                f" where {where(t.where)}" if t.where else "")
         expr = t.sum if t.sum is not None else t.sum_abs
         cols = roles[expr] if isinstance(expr, str) else (
+            f"days from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] == "days" else
             f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""

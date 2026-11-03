@@ -15,7 +15,12 @@ import pytest
 from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-CHANGES: dict[str, dict[str, str]] = {}
+CHANGES: dict[str, dict[str, str]] = {
+    "deterministic": {f"encounters-{n}": "Domain 3: the healthcare pack strong-matches make_encounters (PHI on, roles, tiles: discharges, ALOS, crude 30-day readmission, patients; LOS averaged, never summed)" for n in (1, 2, 3)},
+    "analysis": {"health-1": "Domain 3: the healthcare pack brief (readmission rule, LOS) joins the context"},
+    "e2e": {"e2e-23": "Domain 3: healthcare pack roles on make_encounters",
+            "e2e-24": "Domain 3: healthcare pack roles on make_encounters"},
+}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())

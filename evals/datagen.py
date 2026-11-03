@@ -1573,7 +1573,7 @@ def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
         "claims_incurred_by_service_month": incurred,   # incl. not yet received (not in the frame)
         "incomplete_months": [str(m) for m in _HP_MONTHS[-3:]],
         "top_cpt_by_paid": {c: _r6(v) for c, v in top_cpt.items()},
-        "members": int(df["Member ID"].nunique()),
+        "members": int(live["Member ID"].nunique()),   # members with a claim that counts
         "negative_paid_rows": int((df["Paid Amount"] < 0).sum()),
     }
     prior6 = paid_by_month[[str(m) for m in _HP_MONTHS[-9:-3]]].mean()

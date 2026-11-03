@@ -22,7 +22,7 @@ roles:
   line:         {kind: category, headers: [line]}
   seq:          {kind: count, headers: [seq]}
   freq:         {kind: category, headers: [freq]}
-  group_code:   {kind: category, pattern: '\d{3}', headers: [group_code]}
+  group_code:   {kind: category, pattern: '\d{3}', headers: [group_code, group_no]}
   disposition:  {kind: category, headers: [disposition]}
   procedure:    {kind: category, pattern: '[0-9A-Z]\d{3}[0-9A-Z]', headers: [procedure]}
   unit:         {kind: category, headers: [unit]}
@@ -295,3 +295,22 @@ def test_a_whole_number_read_as_float_compares_as_its_digits():
     s = pd.Series([313.0, None, 7.0])
     assert domain_pack.words(s).tolist()[::2] == ["313", "7"]
     assert domain_pack.as_text(pd.Series([2.5, 3.0])).tolist() == ["2.5", "3.0"]   # not whole
+
+
+def test_a_code_column_named_like_an_id_is_not_pseudonymised(toy_clinic):
+    """Claims rehearsal: 'Line No' (a pack line role, values 1–4) was pseudonymised by its 'no'
+    suffix, so every claim's lines lost their version chains. A pattern-matched code is a code."""
+    df = _stays().assign(**{"Group No": [470, 291, 871] * 100})
+    out, c = prepare_frame(df, build_contract(df, ConnectorType.CSV), ConnectorType.CSV)
+    assert set(out["Group No"]) == {470, 291, 871}
+
+
+def test_describe_kpi_says_within_and_days_in_words():
+    """The analysis brief and answers describe every KPI: a within term and a days difference
+    crashed describe_kpi (golden run)."""
+    pack = domain_pack.Pack.model_validate(WARD)
+    roles = {r: r for r in pack.roles}
+    back = domain_pack.describe_kpi(pack, "back", roles)
+    assert "followed by another row of the same who starting 1–30 days after day_out" in back
+    assert "kind_of is in" in back and "how_left is not died" in back
+    assert "days from day_in to day_out" in domain_pack.describe_kpi(pack, "avg_stay", roles)

@@ -545,7 +545,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
     roles = {c.name: c for c in contract.columns}
     pack = pack_for(contract.domain)
     coded = {col for r, col in contract.roles.items() if pack and r in pack.roles
-             and pack.roles[r].pattern and col in df.columns
+             and pack.roles[r].pattern and pack.roles[r].kind != "id" and col in df.columns
              and as_text(_profiled(df[col]).dropna()).str.strip()
              .str.fullmatch(pack.roles[r].pattern).all()}   # procedure codes, DRGs: EVERY value
     # matches (one free-text value in a code column withholds the column)
@@ -560,7 +560,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
         elif not c.is_metric and _person_share(s, df[patient] if patient else None) >= 0.5:
             withheld.append(n)   # people's names under any header ("Pt", "Resident"), however few
         elif c.is_id or is_phi_identifier(n) or _ID_HEADER_RE.search(_norm(n)) or (
-                _ID_SUFFIX_RE.search(_norm(n)) and not (
+                n not in coded and _ID_SUFFIX_RE.search(_norm(n)) and not (
                     c.is_metric and pd.to_numeric(s, errors="coerce").abs().max() < 100_000)):
             ids.append(n)
         elif c.is_date or is_zip_column(n):
