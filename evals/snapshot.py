@@ -117,7 +117,11 @@ def _behaviour(df, contract) -> dict:
     task = AnalysisTask(raw_query="Give me an overview of this dataset.",
                         analysis_types=["eda", "trend", "segmentation"],
                         target_metrics=contract.metric_columns[:3], segments=[group] if group else [])
-    out = {"standard_code": _run_standard(_build_standard_code(contract, task), df)}
+    # the frame the sandbox gets in production: with the pack's row-kind column (Domain 2 audit:
+    # without it every row-kind branch of the built-in code was never run by this gate)
+    import domain_pack
+    out = {"standard_code": _run_standard(_build_standard_code(contract, task),
+                                          domain_pack.with_row_kind(df, contract)[0])}
     if metric and date:
         line = month_line(df, date, metric, build_context(df, contract=contract), monthly=True)
         out["chart"] = line.model_dump(mode="json", include={"data", "y_label", "title"}) if line else None
