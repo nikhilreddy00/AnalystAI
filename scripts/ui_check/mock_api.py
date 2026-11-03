@@ -83,6 +83,32 @@ def run_status() -> str:
     return "waiting_approval" if events[-1]["type"] == "approval_required" else "completed"
 
 
+def filtered(filters: dict) -> dict:
+    """The fixture dashboard under equality / in filters: each sum or mean chart regrouped from
+    the fixture rows (the real server rebuilds every chart by the functions that made it)."""
+    rows = json.load(open(D + "/dash_data.json"))["rows"]
+
+    def keep(r):
+        for col, f in filters.items():
+            vals = [f.get("value")] if f.get("kind") == "equality" else f.get("values") or []
+            if str(r.get(col)) not in {str(v) for v in vals}:
+                return False
+        return True
+    part = [r for r in rows if keep(r)]
+    charts = {}
+    for c in json.load(open(D + "/dash_latest.json"))["latest"]["charts"]:
+        why = c.get("rationale") or {}
+        if why.get("aggregation") not in ("sum", "mean") or not part or c["x_key"] not in part[0]:
+            continue
+        groups: dict = {}
+        for r in part:
+            if isinstance(r.get(why["y"]), (int, float)):
+                groups.setdefault(r[c["x_key"]], []).append(r[why["y"]])
+        agg = (lambda v: sum(v)) if why["aggregation"] == "sum" else (lambda v: sum(v) / len(v))
+        charts[c["id"]] = [{c["x_key"]: k, c["y_keys"][0]: round(agg(v), 2)} for k, v in groups.items()]
+    return {"charts": charts, "tiles": {}, "rows": len(part)}
+
+
 class H(BaseHTTPRequestHandler):
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", self.headers.get("Origin") or "*")
@@ -176,8 +202,10 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
-        self.rfile.read(n)
+        raw = self.rfile.read(n)
         p = self.path.split("?")[0]
+        if p == "/dashboard/latest/filtered":   # stands in for the server's recomputation
+            return self._json(filtered(json.loads(raw or b"{}").get("filters") or {}))
         if p == "/connectors/upload":
             return self._json({
                 "status": "new_dataset", "filename": "sales_nov.csv",
