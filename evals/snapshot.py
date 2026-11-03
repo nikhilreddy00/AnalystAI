@@ -28,7 +28,9 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
-async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "e2e", "deterministic")) -> dict:
+async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "e2e", "deterministic"),
+                   datasets: set[tuple[str, int]] | None = None) -> dict:
+    """`datasets`: the deterministic suite for only these (name, seed) (one golden test each)."""
     from agents import analysis_agent, insight_agent, intake_agent
     from api.config import settings
     from connectors.csv_connector import CSVConnector
@@ -36,12 +38,14 @@ async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "
     # PHI pseudonyms follow the key: one key, so pytest, CI and a shell snapshot agree
     key, settings.encryption_key = settings.encryption_key, harness.EVAL_ENCRYPTION_KEY
     try:
-        return await _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConnector)
+        return await _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConnector,
+                               datasets)
     finally:
         settings.encryption_key = key
 
 
-async def _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConnector) -> dict:  # noqa: N803
+async def _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConnector,  # noqa: N803
+                    datasets=None) -> dict:
 
     out: dict[str, dict] = {s: {} for s in suites}
     for case in harness.load_cases("analysis", None) if "analysis" in suites else []:
@@ -68,8 +72,8 @@ async def _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConn
         conn = CSVConnector(ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)))
         out["e2e"][case["id"]] = {"roles": _roles(conn.build_data_contract(await conn.load()))}
     if "deterministic" in suites:   # every analysis + E2E dataset
-        names = {(c["dataset"]["name"], c["dataset"]["seed"])
-                 for s in ("analysis", "e2e") for c in harness.load_cases(s, None)}
+        names = datasets or {(c["dataset"]["name"], c["dataset"]["seed"])
+                             for s in ("analysis", "e2e") for c in harness.load_cases(s, None)}
         out["deterministic"] = await deterministic(names)
     return out
 
