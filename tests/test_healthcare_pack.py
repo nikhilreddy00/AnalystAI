@@ -334,3 +334,22 @@ def test_words_that_fit_a_loose_code_pattern_are_not_a_code(toy_clinic):
     df = _stays().assign(enrollee_ref=[f"E{i}" for i in range(300)], outcome=words[:300])
     out, _ = prepare_frame(df, build_contract(df, ConnectorType.CSV), ConnectorType.CSV)
     assert "outcome" not in out.columns
+
+
+@pytest.mark.parametrize("text", [
+    "Recent service months should be read with caution, as claims continue arriving for roughly "
+    "three months after service, so apparent drops in late months reflect lag rather than a real "
+    "trend.",
+    "The dip in October reflects reporting lag, not a true decline.",
+])
+def test_a_denied_move_is_no_direction(text):
+    """Quality false alarm (q-44): saying a drop is lag, not a real trend, states no direction."""
+    from guardrails import claim_direction_conflict
+    trend = {"id": "trend:Paid:MoM", "direction": "up", "pct": 6.3, "claim": "Paid MoM: +6.3%"}
+    assert claim_direction_conflict(text, [trend]) is None
+
+
+def test_a_real_drop_on_a_rising_trend_is_still_contradicted():
+    from guardrails import claim_direction_conflict
+    trend = {"id": "trend:Paid:MoM", "direction": "up", "pct": 6.3, "claim": "Paid MoM: +6.3%"}
+    assert claim_direction_conflict("Paid amount fell sharply last month.", [trend])

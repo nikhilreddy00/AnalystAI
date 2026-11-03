@@ -550,7 +550,8 @@ _HEDGE_RE = re.compile(r"\b(?:uncertain|may|might|could|not|n't|no|small sample|
                        r"limited|tentative|inconclusive|unclear|caution|preliminary|whether|"
                        r"chance|indicative|borderline|directional|too (?:few|small)|short of|lacks?|cannot|"
                        r"insufficient|weak|before)\b", re.I)
-_NEGATED_RE = re.compile(r"\b(?:no|not|n't|never|nothing|neither|nor)\b", re.I)
+_NEGATED_RE = re.compile(r"\b(?:no|not|n't|never|nothing|neither|nor)\b|"
+                         r"\brather than (?:a |an )?(?:real|true|genuine|actual)\b", re.I)
 _ORDINAL_RE = re.compile(r"\b(?:second|third|fourth|fifth|next)[- ]$", re.I)
 _EARLIER_RE = re.compile(r"\b(?:earlier|previous|prior|past|last) (?:analys[ie]s|reports?|"
                          r"findings?|review)|previously|was reported|had reported\b", re.I)

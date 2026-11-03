@@ -1182,7 +1182,7 @@ def score_insight(case: dict, output: dict | None, error: str | None) -> tuple[l
 # `labels` come from the case (seeded defects, hand labels); the scorer only asks whether a flag
 # landed on each claim, so the agent's own checks can't be mirrored into a pass.
 
-DEFECT_LABELS = ("unsupported", "contradicted", "overstated")
+DEFECT_LABELS = ("unsupported", "contradicted", "overstated", "privacy")   # privacy: a small cell (Domain 3)
 
 
 def review_text(review: dict) -> list[str]:
