@@ -14,6 +14,10 @@ strong:
   - {account: [account], balance: [balance], delinquency: [dpd, delinquency_bucket]}   # loan tape
   - {account: [account], balance: [balance, balance_after], flow: [amount, debit, credit]}
   - {account: [account], flow: [amount, debit, credit], kind: [txn_type], when: [date]}   # ledger
+  # one account's statement: money out, money in and the balance after them, by date
+  - {out: [debit], in: [credit], balance: [balance, balance_after], when: [date]}
+# A book of accounts at each date (one row per account per date, 3+ dates each): a deposit book.
+strong_panel: [account, balance]
 # Weak: read as banking, and every report and KPI answer says so in one line.
 signals:
   - {account: [account], balance: [balance, balance_after]}
@@ -66,6 +70,9 @@ roles:
                                          money_out, paid_out]}
   credit:        {kind: money, headers: [credit, credit_amount, deposit, deposits, money_in,
                                          paid_in]}
+  # Debit / credit indicator beside an unsigned amount ("D" / "C", "DR" / "CR")
+  dr_cr:         {kind: category, headers: [dr_cr, cr_dr, debit_credit, debit_credit_indicator,
+                                            dr_cr_indicator, drcr, dc_indicator]}
   # Banking transaction types: "PURCHASE", "Direct Debit", "ATM Withdrawal", "Fee" …
   txn_type:      {kind: category,
                   pattern: '(?i)[a-z /-]{0,20}(?:purchase|payment|fee|fees|interest|transfer|deposit|withdrawal|reversal|debit|credit|atm|pos|refund|charge|cheque|check|ach|wire|standing order|direct debit|cash)[a-z /-]{0,20}',
@@ -99,11 +106,14 @@ status_values:
            closed]
 non_product: {txn_type: [REVERSAL, REV, REVERSAL CREDIT, REVERSAL DEBIT]}
 sentinels: {dpd: [999, 9999]}
+signed_by: {amount: {indicator: dr_cr, negative: [d, dr, debit, db]}}   # the account holder's view
 ranges: {dpd: {ge: 0}, credit_limit: {ge: 0}, interest_rate: {ge: 0}}
 conditional_fields: {charge_off_date: [charged off, charged_off, charged-off, charge off,
                                        written off, written_off, write off]}
 
 snapshot_key: account
+paired_fields: [[debit, credit]]            # a row fills one: the other's blank is the layout
+running_balance: {levels: [balance, balance_after], plus: [credit, amount], minus: [debit]}
 cost_roles: [interest_expense]              # margin or NIM talk needs funding costs
 overview_groups: [product, segment, branch, merchant_category, txn_type]
 row_labels: {sale: on-book rows, refunded: reversed transactions,

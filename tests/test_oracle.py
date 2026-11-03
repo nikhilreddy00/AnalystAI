@@ -166,25 +166,21 @@ def test_loans_that_stop_reporting_are_out_of_the_built_in_breakdown():
 
 # ── Truth: a bank statement (newest first, Debit / Credit columns) ───────────────────────────
 
-@pytest.mark.xfail(reason="R3: a one-account statement has no account column; detection needs one", **LIVE)
 def test_a_bank_statement_is_read_as_banking():
     c = _built("bank_statement")[2]
     assert c.domain == "banking"
 
 
-@pytest.mark.xfail(reason="R3: Credit is blank on debit rows (a layout), not 'mostly missing'", **LIVE)
 def test_a_bank_statement_raises_no_high_null_gate():
     assert _built("bank_statement")[1] is not None and not _built("bank_statement")[0].cleaning_audit.high_null_columns
 
 
-@pytest.mark.xfail(reason="R1: newest-first same-day rows; the closing balance is the day's last transaction", **LIVE)
 def test_a_bank_statement_closing_balance_is_the_truth():
     truth = _built("bank_statement")[3]
     _, pts = answer("bank_statement", "time_series", metric_column="Balance", frequency="M")
     assert close(pts, {k: v for k, v in _month_keys(truth["month_end_balance"], pts).items()})
 
 
-@pytest.mark.xfail(reason="R3: not detected, so no banking tiles", **LIVE)
 def test_a_bank_statement_flows_are_the_truth():
     t, truth = tiles("bank_statement"), _built("bank_statement")[3]
     assert close(t["inflows"], truth["inflows"]) and close(t["outflows"], truth["outflows"])
@@ -193,9 +189,10 @@ def test_a_bank_statement_flows_are_the_truth():
 
 # ── Truth: a ledger with a Dr/Cr indicator ────────────────────────────────────────────────────
 
-@pytest.mark.xfail(reason="R3: the Dr/Cr indicator is ignored: every amount reads as money in", **LIVE)
-def test_a_dr_cr_ledger_nets_its_flows():
-    t, truth = tiles("ledger_drcr"), _built("ledger_drcr")[3]
+
+@pytest.mark.parametrize("transform", ["", "presigned"])   # signed once, never twice
+def test_a_dr_cr_ledger_nets_its_flows(transform):
+    t, truth = tiles("ledger_drcr", transform=transform), _built("ledger_drcr")[3]
     assert close(t["net_flow"], truth["net_flow"])
     assert close(t["outflows"], truth["outflows"])
 
@@ -209,8 +206,6 @@ def test_a_split_by_currency_is_each_currency():
     assert close(pts, truth)
 
 
-@pytest.mark.xfail(reason="R3: a deposit book is only a weak match (no tiles): a snapshot grain is "
-                          "banking's own shape", **LIVE)
 def test_the_main_currency_balance_is_the_truth():
     assert close(tiles("deposits_daily")["total_balance"], _built("deposits_daily")[3]["total_usd_last"])
 
@@ -280,7 +275,13 @@ def _canonical(df: pd.DataFrame) -> pd.DataFrame:   # the messy tape under the c
         {"Loan Status": {"Paid in Full": "Paid Off", "Charged-off": "Charged Off", "Non Accrual": "Non-Accrual"}})
 
 
-TRANSFORMS = {"shuffle": _shuffle, "overlap": _overlap, "synonyms": _synonyms, "canonical": _canonical}
+def _presigned(raw: pd.DataFrame) -> pd.DataFrame:
+    """A ledger that already signs its amounts and keeps the Dr/Cr column beside them."""
+    return raw.assign(Amount=raw["Amount"].where(raw["Dr/Cr"] != "D", -raw["Amount"]))
+
+
+TRANSFORMS = {"shuffle": _shuffle, "overlap": _overlap, "synonyms": _synonyms, "canonical": _canonical,
+              "presigned": _presigned}
 
 
 def builtin_on(built, targets: list[str], segments: list[str]) -> dict:

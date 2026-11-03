@@ -28,7 +28,7 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
-from domain_pack import layout_columns, pack_for
+from domain_pack import layout_columns, one_series, pack_for
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -398,6 +398,8 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
                 continue
             if pack.roles[role].over_time == "last" and key and date:   # a balance: a level
                 c.aggregation, c.aggregation_by, c.aggregation_time = "last", [key], date
+            elif pack.roles[role].over_time == "last" and date and one_series(df, pack, roles, role):
+                c.aggregation, c.aggregation_by, c.aggregation_time = "last", [], date   # one account
             elif not pack.roles[role].additive:   # a rate, a price, days past due: averaged
                 c.aggregation = "mean"
     for c in cols:   # a level's cadence, whichever source made it one

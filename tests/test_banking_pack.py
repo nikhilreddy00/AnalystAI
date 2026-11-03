@@ -624,3 +624,18 @@ def test_another_domains_balance_is_not_banking(headers):
                            else [f"X{i}" for i in range(10)] if h in ("Customer", "Employee ID", "Patient")
                            else [float(i) for i in range(10)]) for h in headers})
     assert detect(df, {h for h in headers if "date" in h.lower() or "as of" in h.lower()})[0] != "banking"
+
+
+def test_a_balance_is_one_series_only_when_it_chains_with_the_flows():
+    """Plan v2 R3: no account column, and Balance moves by Credit − Debit row to row: one
+    account's statement (its latest row is the balance). Two accounts mixed never chain."""
+    from domain_pack import one_series
+    from evals import datagen
+    one, _ = datagen.make("bank_statement", 1)
+    roles = {"date": "Date", "debit": "Debit", "credit": "Credit", "balance": "Balance"}
+    one = one.assign(Date=pd.to_datetime(one["Date"], format="%d/%m/%Y"))
+    assert one_series(one, BANK, roles, "balance")
+    two, _ = datagen.make("bank_statement", 2)
+    two = two.assign(Date=pd.to_datetime(two["Date"], format="%d/%m/%Y"))
+    assert not one_series(pd.concat([one, two], ignore_index=True), BANK, roles, "balance")
+    assert not one_series(one, BANK, {**roles, "account": "Date"}, "balance")   # accounts: per account

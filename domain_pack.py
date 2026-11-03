@@ -88,6 +88,20 @@ class Cond(_Strict):
         return self
 
 
+class SignRule(_Strict):
+    """An unsigned money role whose direction is another role's value (a Dr/Cr column)."""
+    indicator: str
+    negative: list[str]           # the indicator's values for money out (compared lower-case)
+
+
+class RunningBalance(_Strict):
+    """A level that moves by the flows on its row (a statement's Balance after Debit / Credit):
+    with no snapshot_key column, a level that chains this way is ONE series (one account)."""
+    levels: list[str]
+    plus: list[str] = Field(default_factory=list)
+    minus: list[str] = Field(default_factory=list)
+
+
 class Term(_Strict):
     """One summand: sum / sum_abs of a role or a 2-role product or difference, nunique of a
     role, or another KPI; over the given row kinds (default: the KPI's)."""
@@ -150,6 +164,9 @@ class Pack(_Strict):
     # no header carries a veto token (another domain's word: patient, claim, ticker, vendor …).
     signals: list[dict[str, list[str]]]
     strong: list[dict[str, list[str]]] = Field(default_factory=list)   # shapes only this domain has
+    # With these roles, a panel of snapshots (snapshot_key × date unique, 3+ dates per key) is
+    # strong: a book of accounts at each date (a deposit book's EOD balances)
+    strong_panel: list[str] = Field(default_factory=list)
     exclude_headers: list[list[str]] = Field(default_factory=list)   # words, all in one header
     exclude_pairs: list[list[str]] = Field(default_factory=list)     # words, each in any header
     # Header tokens as exports shorten them ("Cur Bal" → current_balance), expanded before the
@@ -163,6 +180,8 @@ class Pack(_Strict):
     test_marker: str | None = None  # regex on the raw order / customer / email values
     test_roles: list[str] = Field(default_factory=list)
     sentinels: dict[str, list[float]] = Field(default_factory=dict)   # role → codes for "unknown"
+    # role → its sign from an indicator: Cleaning signs the values once (every consumer reads them)
+    signed_by: dict[str, SignRule] = Field(default_factory=dict)
     ranges: dict[str, dict[Literal["gt", "ge", "lt", "le"], float]] = Field(default_factory=dict)
     # Fields an export writes on an order's first line only (Shopify): carried down the order.
     order_fields: list[str] = Field(default_factory=list)
@@ -180,6 +199,9 @@ class Pack(_Strict):
     # A column filled only on rows of these statuses (a charge-off date): its blanks are the
     # layout, not missing values
     conditional_fields: dict[str, list[str]] = Field(default_factory=dict)
+    # Roles a row fills one of (Debit or Credit): the other's blank is the layout, never missing
+    paired_fields: list[list[str]] = Field(default_factory=list)
+    running_balance: RunningBalance | None = None
     # Words: each row kind's name ("refunded orders") and its cleaning flag; `text` for the rest.
     row_labels: dict[RowKind, str] = Field(default_factory=dict)
     row_flags: dict[RowKind, str] = Field(default_factory=dict)
@@ -232,9 +254,13 @@ class Pack(_Strict):
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
                 *(r for r in (self.order_key, self.location_role, self.snapshot_key) if r),
-                *self.conditional_fields,
+                *self.conditional_fields, *(r for g in self.paired_fields for r in g),
+                *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
+                  if self.running_balance else []),
+                *self.signed_by, *(x.indicator for x in self.signed_by.values()),
                 *(self.line_weight[::2] if self.line_weight else []),
-                *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g)]
+                *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g),
+                *self.strong_panel]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
             errors.append(f"line_weight is [role, '*' or '-', role], not {self.line_weight}")
@@ -349,9 +375,37 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
     return True   # id
 
 
+def one_series(df: pd.DataFrame, pack: Pack, roles: dict[str, str], level: str) -> bool:
+    """No snapshot_key column, and `level` moves by its row's flows on 90% of rows in time order
+    (to the cent): the file is one account's series (a bank statement), so its latest row is
+    the balance. A file of many accounts never chains this way."""
+    rb = pack.running_balance
+    date = roles.get(pack.date_role)
+    flows = [r for r in [*rb.plus, *rb.minus] if r in roles] if rb else []
+    if not (rb and level in rb.levels and flows and date) or pack.snapshot_key in roles:
+        return False
+    from agents.utils import _in_time_order
+    t = pd.to_datetime(df[date], format="mixed", errors="coerce")
+    d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
+    num = lambda r: pd.to_numeric(d[roles[r]], errors="coerce").fillna(0)   # noqa: E731
+    move = sum(num(r) for r in rb.plus if r in roles) - sum(num(r).abs() for r in rb.minus if r in roles)
+    bal = pd.to_numeric(d[roles[level]], errors="coerce")
+    steps = (bal.diff() - move).abs().iloc[1:]
+    return len(steps) >= 3 and bool((steps <= 0.01).mean() >= 0.9)
+
+
 def expand_header(norm: str, pack: Pack) -> str:
     """A normalized header with the pack's abbreviations spelled out: cur_bal → current_balance."""
     return "_".join(pack.abbreviations.get(t, t) for t in norm.split("_"))
+
+
+def _panel(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> bool:
+    """The pack's strong_panel roles, and one row per snapshot_key per date on 3+ dates each."""
+    key, date = roles.get(pack.snapshot_key), roles.get(pack.date_role)
+    if not (pack.strong_panel and key and date and all(r in roles for r in pack.strong_panel)):
+        return False
+    pairs = df[[key, date]].dropna()
+    return len(pairs) > 0 and not pairs.duplicated().any() and pairs.groupby(key).size().median() >= 3
 
 
 def _matches(alts: list[dict[str, list[str]]], roles: dict[str, str]) -> bool:
@@ -383,7 +437,7 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                 if col is not None:
                     roles[role] = col
                     break
-        if _matches(pack.strong, roles):
+        if _matches(pack.strong, roles) or _panel(df, pack, roles):
             found.append((pack.domain, roles, "strong"))
         elif _matches(pack.signals, roles):
             found.append((pack.domain, roles, "weak"))
@@ -862,8 +916,9 @@ def filled_statuses(df: pd.DataFrame, pack: Pack, roles: dict[str, str], role: s
 
 
 def layout_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]) -> dict[str, str]:
-    """{column: "order" | "conditional"} for columns whose blanks are the file's layout, not
-    missing values: written on an order's first line only (Shopify's status, total, email), or a
+    """{column: "order" | "paired" | "conditional"} for columns whose blanks are the file's layout,
+    not missing values: written on an order's first line only (Shopify's status, total, email),
+    one of a declared pair each row fills one of (Debit or Credit, on 95% of rows), or a
     declared conditional field filled only for some statuses (a charge-off date on charged-off
     loans, at least 95% of its values there). The one rule every place that reports blanks
     uses (ingestion's summary, cleaning, evidence notes, alerts, suggested questions)."""
@@ -874,6 +929,11 @@ def layout_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]) -
     if key is not None and key in df.columns:
         out |= {c: "order" for c in df.columns if c != key and df[c].isna().any()
                 and first_line_only(df, df[key], c)}
+    for group in pack.paired_fields:   # each row fills one of them (Debit or Credit)
+        cols = [roles[r] for r in group if roles.get(r) in df.columns]
+        if len(cols) >= 2 and df[cols].isna().any().any() \
+                and (df[cols].notna().sum(axis=1) == 1).mean() >= 0.95:
+            out |= {c: "paired" for c in cols if c not in out and df[c].isna().any()}
     for role in pack.conditional_fields:
         col = roles.get(role)
         if col in df.columns and col not in out and df[col].isna().any():

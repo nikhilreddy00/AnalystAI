@@ -180,7 +180,7 @@ def _snapshots(df, hint):
     ordered by time. Missing entity or time column: LevelUnavailable."""
     import pandas as pd
     missing = [c for c in [*hint.aggregation_by, hint.aggregation_time] if not c or c not in df.columns]
-    if not hint.aggregation_by or missing:
+    if missing:   # no entity at all (aggregation_by []): one series, a single account's statement
         raise LevelUnavailable(f"{hint.name} is a level (a balance-like value), and the column "
                                f"{', '.join(missing or ['entity'])} it needs is no longer in the "
                                "data, so it can't be totalled")
@@ -308,13 +308,18 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: b
     all count. Undated rows are out (one can't be the latest). `per` (a period column): each
     entity's latest row in each period, the stopped cut judged against THAT period's newest date
     (an account closed on 10 Aug is out of August's month-end). `current=False`: no stopped cut
-    (an entity's last row, wherever it is: a correlation keeps accounts that stopped)."""
+    (an entity's last row, wherever it is: a correlation keeps accounts that stopped). No `by`:
+    the file is one series (a single account's statement)."""
     import pandas as pd
     t = pd.to_datetime(df[time], format="mixed", errors="coerce")
     d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
+    helpers = ["_t"]
+    if not by:   # one series: a constant key, dropped again below
+        d, by = d.assign(__series=0), ["__series"]
+        helpers.append("__series")
     g = d.groupby(by, sort=False)
     if window == "first":
-        return g.head(1).drop(columns="_t")
+        return g.head(1).drop(columns=helpers)
     gaps = g["_t"].diff().dt.total_seconds().dropna()
     each = gaps.groupby([d.loc[gaps.index, e] for e in by])   # each entity's gaps
     cadence = each.median().median() if len(gaps) else 0.0
@@ -328,7 +333,7 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: b
         newest = d.groupby(per)["_t"].transform("max").loc[last.index]
         if current and cadence and cadence == cadence and regular and cadence < 27 * 86400:
             last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
-        return last.drop(columns="_t")   # monthly or coarser: the month's own row is its end
+        return last.drop(columns=helpers)   # monthly or coarser: the month's own row is its end
     if current and cadence and cadence == cadence and regular:
         if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month,
             # or the one before while the newest is still partial (a 4 Nov export of accounts
@@ -338,7 +343,7 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: b
         else:   # daily / weekly, staggered or not: stopped = missed two usual gaps (a day's
             # refresh lag, or weekday-only rows on a Saturday export, is still current)
             last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
-    return last.drop(columns="_t")
+    return last.drop(columns=helpers)
 
 
 def _local(t):
