@@ -180,3 +180,12 @@ def test_one_version_chain_rule():
     domain_pack._versions (inside row_kinds); every answer, tile and chart reads row kinds."""
     assert _hits(r"version_(?:key|order|void)", {"domain_pack.py"}) == [], \
         "read domain_pack.row_kinds / rows_for; never re-derive version chains"
+
+
+def test_every_highest_lowest_sentence_leaves_the_pooled_group_out():
+    """Domain 3 live run: 'Other (fewer than 11 each) lowest (0.00)'. A pooled privacy bucket is
+    never ranked: each 'highest …' sentence filters through guardrails.rankable."""
+    for p in SHARED:
+        src = p.read_text()
+        if re.search(r"\} highest \(", src):
+            assert "rankable(" in src, f"{p.name}: rank through guardrails.rankable"

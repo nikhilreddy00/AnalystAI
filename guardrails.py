@@ -996,6 +996,12 @@ MASK = "[REDACTED]"
 # (the CMS cell-size rule), so no reported group can single out a few patients.
 SMALL_CELL = 11
 POOLED_LABEL = "Other (fewer than 11 each)"
+
+
+def rankable(name) -> bool:
+    """A group a sentence may call highest or lowest: never the pooled small groups (a privacy
+    bucket of several groups, not a group). THE rule for every 'highest … lowest' sentence."""
+    return str(name) != POOLED_LABEL
 # Never searched for or tokenized as PII values: "May" or "June" in a first-name column would
 # corrupt every date in a prompt.
 CALENDAR_WORDS = {"January", "February", "March", "April", "May", "June", "July", "August",

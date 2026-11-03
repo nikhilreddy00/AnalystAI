@@ -918,7 +918,8 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
         agg = {"total": "sum", "avg": "mean", "average": "mean"}.get((s.aggregation or "").lower(),
                                                                       (s.aggregation or "").lower())
         if (hint is None or hint.aggregation not in ("last", "first")) and agg in ("sum", "mean") \
-                and s.metric_column in df.columns and all(c in df.columns for c in cols):
+                and s.metric_column in df.columns and all(c in df.columns for c in cols) \
+                and pd.api.types.is_numeric_dtype(df[s.metric_column]):   # never a date's "mean"
             rows, how = rows_for(df, contract, s.metric_column)
             # only the bug itself: the model's values ARE the plain total over every row (no
             # period, no sign or type filter of its own: those stay, they answer the question)
@@ -1194,6 +1195,8 @@ def _parse_findings(raw: dict, code_executed: str, figures_base64: list[str]) ->
                               or ("up" if pct > 0 else "down" if pct < 0 else "flat")),
                 pct_change=pct,
                 segment=None if t.get("segment") is None else str(t["segment"]),
+                latest=str(t["latest"]) if t.get("latest") else None,   # the months compared,
+                previous=str(t["previous"]) if t.get("previous") else None,   # when not the last two
             ))
 
     distributions_raw = raw.get("distributions", {})

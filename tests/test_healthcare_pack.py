@@ -353,3 +353,40 @@ def test_a_real_drop_on_a_rising_trend_is_still_contradicted():
     from guardrails import claim_direction_conflict
     trend = {"id": "trend:Paid:MoM", "direction": "up", "pct": 6.3, "claim": "Paid MoM: +6.3%"}
     assert claim_direction_conflict("Paid amount fell sharply last month.", [trend])
+
+
+def test_a_breakdown_of_a_date_column_never_crashes_the_repair():
+    """Live run: the model reported a mean of Discharge Date by department; repair_breakdowns
+    subtracted a Timestamp from a float and failed the whole analysis step."""
+    from agents.analysis_agent import repair_breakdowns
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df = pd.DataFrame({"Department": ["A", "A", "B"],
+                       "Discharge Date": pd.to_datetime(["2026-01-01", "2026-01-03", "2026-02-01"])})
+    seg = SegmentResult(segment_column="Department", metric_column="Discharge Date", aggregation="mean",
+                        results=[{"name": "A", "value": 3.5}, {"name": "B", "value": 2.0}])
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg], anomalies=[],
+                         statistical_tests=[], forecast_points=[], distributions={}, code_executed="")
+    assert repair_breakdowns(f, df, build_contract(df, ConnectorType.CSV)) == []
+    assert f.segments[0].results[0]["value"] == 3.5
+
+
+def test_a_pooled_group_is_never_ranked_and_a_ratio_reads_as_a_percent():
+    """Live run headline: 'Readmission rate by Department: Cardiology highest (0.14), Other
+    (fewer than 11 each) lowest (0.00)'. The pooled privacy group is no group to rank, and a
+    rate reads 14.3%."""
+    from agents.insight_agent import _plain
+    from agents.analysis_agent import segment_id
+    from guardrails import POOLED_LABEL
+    from orchestrator.state import AnalysisFindings, Evidence, SegmentResult
+    seg = SegmentResult(segment_column="Department", metric_column="readmitted", aggregation="ratio",
+                        label="readmission_rate", results=[
+                            {"name": "Cardiology", "value": 0.1425}, {"name": "Neurology", "value": 0.0701},
+                            {"name": POOLED_LABEL, "value": 0.0}])
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg], anomalies=[],
+                         statistical_tests=[], forecast_points=[], distributions={}, code_executed="")
+    e = Evidence(id=segment_id("Department", "readmitted", "ratio", "readmission_rate"),
+                 kind="segment", claim="x", code="", result_excerpt="", row_count=10,
+                 confidence="high", confidence_reason="r")
+    text = _plain(e, f, None)
+    assert "Cardiology highest (14.2%)" in text and "Neurology lowest (7.0%)" in text, text
+    assert "fewer than 11" not in text

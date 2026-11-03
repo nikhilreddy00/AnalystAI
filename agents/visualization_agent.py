@@ -52,7 +52,7 @@ from domain_pack import (
     rows_for,
     row_kinds,
 )
-from guardrails import chart_lint
+from guardrails import chart_lint, rankable
 from llm.client import trace_verdict
 
 from orchestrator.state import (
@@ -2446,8 +2446,8 @@ def _finding_title(kind: str, chart: ChartConfig, ctx: VizContext, args: tuple) 
                 f"vs {_month_name(d[-2]['period'])}")
     if kind in ("segment", "test") and not r.split and len(d) >= 2:
         y = chart.y_keys[0]
-        ranked = sorted((row for row in d if isinstance(row.get(y), (int, float))),
-                        key=lambda row: -row[y])
+        ranked = sorted((row for row in d if isinstance(row.get(y), (int, float))
+                         and rankable(row.get(r.x))), key=lambda row: -row[y])
         if len(ranked) < 2:
             return None
         fmt = (lambda v: f"{v:.1f}%") if chart.value_format == "percent" else (lambda v: f"{v:,.2f}")
