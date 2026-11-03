@@ -808,8 +808,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             levels = any(c.aggregation in ("last", "first") for c in contract.columns)
             if (levels or defaults_pack(contract)) and (fixed := await asyncio.to_thread(
                     lambda: repair_breakdowns(findings, pd.read_parquet(io.BytesIO(df_parquet)),
-                                          contract, session.task_plan.timeframe
-                                          if session.task_plan else None))):
+                                              contract, session.task_plan.timeframe
+                                              if session.task_plan else None,
+                                              set(raw.get("builtin") or [])))):
                 trace_verdict("analysis", PROMPT_VERSION, "level_recomputed")
                 raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
@@ -873,7 +874,7 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
 
 
 def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
-                      timeframe: str | None = None) -> list[str]:
+                      timeframe: str | None = None, builtin: set[str] = frozenset()) -> list[str]:
     """The model's breakdowns, recomputed where its code read the wrong rows (plan v2 B2: the
     sandbox runs model code on every row). A total or mean of a column whose tiles count only
     some rows (domain_pack.rows_for: returns, pending, other currency out) is recomputed from
@@ -883,6 +884,20 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
     from agents.utils import LevelUnavailable, aggregate, column_hint
     from domain_pack import rows_for
     notes = []
+    # a trend the built-ins don't make (a QoQ, a WoW): no shared rule recomputes it yet, so its
+    # evidence says the model's code made it, where that code could disagree with the tiles
+    for t in f.trends:
+        seg = f" ({t.segment})" if t.segment else ""
+        if f"trend:{t.column}{seg}:{t.period}" in builtin or t.column not in df.columns:
+            continue
+        hint = column_hint(contract, t.column)
+        how = "each account's latest value, never a sum" if hint and hint.aggregation in ("last", "first") \
+            else rows_for(df, contract, t.column)[1]
+        if how:
+            note = (f"{t.column} {t.period}: computed by the model's own code, not by the built-in "
+                    f"rule the figures use ({how.rstrip('.')})")
+            if note not in notes:
+                notes.append(note)
     for s in list(f.segments):
         hint = column_hint(contract, s.metric_column)
         cols = [c for c in s.segment_column.split("|") if c]

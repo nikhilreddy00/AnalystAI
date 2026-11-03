@@ -293,8 +293,10 @@ guard (bug → invariant).
 | R4 | fa971b1 | pseudo-pack test (found 2 leaks: retail `TEXT_DEFAULTS`, internal kind codes in the brief); `kind_codes`; `display_values` (10 significant digits), `PLATFORM_FLOATS` deleted; datagen float policy | pseudo-pack green; golden: retail unchanged |
 | R6 | — | paid re-check: banking analysis contexts (CHANGES), E2E banking + retail, insight 4 | pending the user's go-ahead (~$1.35) |
 
-Deviations: R2's "anything else labelled model-computed" (model trends other than MoM/YoY) not
-done: those trends have no shared rule to recompute them yet. R3's "$0-no-later-rows" was
+Deviations: R2's "anything else labelled model-computed": a model trend the built-ins don't
+make (QoQ, WoW) on a column whose figures leave rows out, or on a level, gets an evidence note
+saying the model's code made it (`repair_breakdowns`); it is not recomputed (no shared rule for
+those periods yet). R3's "$0-no-later-rows" was
 already covered by R1's stopped-account cut (the messy tape's sold loans). Bugs found on the way
 and pinned: per-segment MoM compared each segment's own last two months (a stale pair);
 `handle_distribution` ignored the named metric; statuses compared case-only in row kinds.

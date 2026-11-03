@@ -2,6 +2,7 @@
 // name. Against the mock backend (scripts/ui_check; no keys, $0): the `units` run's briefing
 // says revenue is EUR and marketing_spend is °C; a column without a unit keeps the old name rule.
 import { expect, test } from "@playwright/test";
+import { upload } from "./upload";
 import { writeFileSync } from "node:fs";
 
 const SCENARIO = "../scripts/ui_check/fixtures/scenario";
@@ -24,11 +25,7 @@ test.afterEach(() => writeFileSync(SCENARIO, "full\n"));
 
 test("descriptive statistics show each column in its own unit", async ({ page }) => {
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill("Give me an overview of this sales data");
   await input.press("Enter");
   await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });
@@ -45,11 +42,7 @@ test("descriptive statistics show each column in its own unit", async ({ page })
 test("a column without a unit keeps the old name rule", async ({ page }) => {
   writeFileSync(SCENARIO, "full\n");   // the run before Phase 5.5: no column_units at all
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill("Give me an overview of this sales data");
   await input.press("Enter");
   await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });
@@ -61,11 +54,7 @@ test("a column without a unit keeps the old name rule", async ({ page }) => {
 test("a final error offers no retry but a new analysis, live or reopened", async ({ page }) => {
   writeFileSync(SCENARIO, "final\n");
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill("Give me an overview of this sales data");
   await input.press("Enter");
   const alert = page.getByRole("alert").filter({ hasText: "Upload it again" });
@@ -83,11 +72,7 @@ test("a final error offers no retry but a new analysis, live or reopened", async
 test("data that changed offers 'Try again' but not a resume", async ({ page }) => {
   writeFileSync(SCENARIO, "changed\n");
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill("Give me an overview of this sales data");
   await input.press("Enter");
   const alert = page.getByRole("alert").filter({ hasText: "Ask the question again" });
@@ -101,11 +86,7 @@ test("data that changed offers 'Try again' but not a resume", async ({ page }) =
 test("a long KPI value ends in an ellipsis at phone width", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill("Give me an overview of this sales data");
   await input.press("Enter");
   await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });

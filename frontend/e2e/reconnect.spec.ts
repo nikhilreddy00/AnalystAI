@@ -1,6 +1,7 @@
 // Phase 5.6a "Done when": a dropped stream or a closed-and-reopened tab replays every event of a
 // run in order, once. The mock (scripts/ui_check/mock_api.py) logs every seq it sends.
 import { expect, test, type Page } from "@playwright/test";
+import { upload } from "./upload";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const SCENARIO = "../scripts/ui_check/fixtures/scenario";
@@ -27,11 +28,7 @@ async function signIn(page: Page) {
 
 async function startRun(page: Page) {
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill(QUESTION);
   await input.press("Enter");
 }
@@ -78,11 +75,7 @@ test("a double submit posts the question once", async ({ page }) => {
   writeFileSync(SCENARIO, "trickle\n");
   await signIn(page);
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill(QUESTION);
   const before = await (await page.request.get(`${API}/__posts`)).json();
   await page.evaluate(() => {   // two submits in one tick, faster than any re-render

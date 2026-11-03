@@ -3,6 +3,7 @@
 // counted, at phone width and in both themes. Mock backend (scripts/ui_check; no keys, $0): the
 // `retail` run is the real pack output on evals/datagen.py retail_lines.
 import { expect, test } from "@playwright/test";
+import { upload } from "./upload";
 import { writeFileSync } from "node:fs";
 
 const SCENARIO = "../scripts/ui_check/fixtures/scenario";
@@ -29,11 +30,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
     await page.goto("/chat");
-    await page.locator('input[type="file"]').setInputFiles({
-      name: "orders_export.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-    });
-    const input = page.getByLabel("Ask a question about your data");
-    await expect(input).toBeEnabled();
+    const input = await upload(page, "orders_export.csv");
     await input.fill("Give me an overview of this sales data");
     await input.press("Enter");
     await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });

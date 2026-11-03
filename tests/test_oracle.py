@@ -336,3 +336,17 @@ def test_every_generated_float_has_at_most_4_decimals(name):
         v = pd.to_numeric(df[c], errors="coerce") if df[c].dtype == object else df[c]
         if pd.api.types.is_float_dtype(v) and len(x := v.dropna()):
             assert np.allclose(x, x.round(4), rtol=0, atol=1e-9), c
+
+
+def test_a_model_trend_the_built_ins_dont_make_says_who_computed_it():
+    """Plan v2 B2: a QoQ of a money column whose figures leave rows out: no shared rule
+    recomputes it, so its evidence says the model's code made it; a built-in MoM says nothing."""
+    from agents.analysis_agent import repair_breakdowns
+    from orchestrator.state import AnalysisFindings, TrendResult
+    _, clean, contract, _ = _built("card_ledger")
+    f = AnalysisFindings(eda_summary={}, correlations={}, anomalies=[], statistical_tests=[], segments=[],
+                         forecast_points=[], distributions={}, code_executed="", trends=[
+        TrendResult(column="Amount", period="QoQ", pct_change=3.0, direction="up"),
+        TrendResult(column="Amount", period="MoM", pct_change=1.0, direction="up")])
+    notes = repair_breakdowns(f, clean, contract, builtin={"trend:Amount:MoM"})
+    assert len(notes) == 1 and notes[0].startswith("Amount QoQ: computed by the model's own code")
