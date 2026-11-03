@@ -1426,8 +1426,8 @@ _HP_CPT = {   # code -> (billed, allowed share of billed, revenue code, place of
     "99203": (210.0, 0.50, "0510", "11", 0.06), "80053": (62.0, 0.22, "0300", "81", 0.12),
     "85025": (41.0, 0.25, "0300", "81", 0.10), "36415": (22.0, 0.15, "0300", "81", 0.10),
     "71046": (155.0, 0.28, "0320", "22", 0.07), "93000": (92.0, 0.22, "0730", "11", 0.06),
-    "J1100": (26.0, 0.15, "0636", "11", 0.05), "99285": (1250.0, 0.35, "0450", "23", 0.04),
-    "70450": (1480.0, 0.14, "0350", "22", 0.04),
+    "J1100": (26.0, 0.15, "0636", "11", 0.05), "99285": (1250.0, 0.35, "0450", "23", 0.025),
+    "70450": (1480.0, 0.14, "0350", "22", 0.025),
 }
 _HP_MONTHS = pd.period_range("2025-11", "2026-10", freq="M")
 _HP_AS_OF = pd.Timestamp("2026-10-31")
@@ -1437,13 +1437,13 @@ def _health_members(seed: int) -> pd.DataFrame:
     """The enrolled members behind make_health_claims and make_member_months (one seed, one
     population): a plan, an enrollment span (month indexes) and a monthly claim rate."""
     rng = np.random.default_rng([seed, 31])
-    n = 1300
+    n = 700
     ids = rng.permutation(np.unique(rng.integers(100_000_000, 999_999_999, 2 * n)))[:n]
     plans = list(_HP_PLANS)
     joiner = rng.random(n) < 0.2   # joins mid-year and stays; 30% of the others leave
     s = np.where(joiner, rng.integers(1, 12, n), 0)
     e = np.where(~joiner & (rng.random(n) < 0.3), rng.integers(0, 11, n), 11)
-    lam = np.where(rng.random(n) < 0.35, 0.0, rng.gamma(1.5, 0.25, n))   # 35% never claim
+    lam = np.where(rng.random(n) < 0.35, 0.0, rng.gamma(1.5, 0.45, n))   # 35% never claim
     return pd.DataFrame({"member": [f"M{i}" for i in ids],
                          "plan": rng.choice(plans, n, p=[_HP_PLANS[p][1] for p in plans]),
                          "start": s, "end": e, "lam": lam})
@@ -1489,7 +1489,7 @@ def make_health_claims(seed: int) -> tuple[pd.DataFrame, dict]:
             for _ in range(rng.poisson(m.lam)):
                 incurred[str(month)] += 1
                 svc = month.start_time + pd.Timedelta(days=int(rng.integers(0, month.days_in_month)))
-                paid_lag = int(14 + 106 * rng.beta(1.8, 1.4))
+                paid_lag = int(14 + 106 * rng.beta(2.0, 1.3))
                 recv = svc + pd.Timedelta(days=int(min(paid_lag - 7, rng.integers(3, 40))))
                 paid_on = svc + pd.Timedelta(days=paid_lag)
                 n_lines = int(rng.choice([1, 2, 3, 4], p=[0.4, 0.3, 0.18, 0.12]))
