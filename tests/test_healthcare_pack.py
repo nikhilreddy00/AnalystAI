@@ -265,3 +265,25 @@ def test_days_between_two_dates_is_whole_days_and_same_day_is_zero():
     """m3: LOS = discharge − admit in days (HCUP: same day = 0); 5 people, 9 stays."""
     los = [4, 2, 0, 1, 2, 0, 4, 3, 2]
     assert _ward_kpi("avg_stay") == pytest.approx(sum(los) / 5)
+
+
+def _audit(date_col, first, last, months):
+    from orchestrator.state import CleaningAudit
+    return CleaningAudit(decisions=[], rows_before=1, rows_after=1, columns_coerced=[],
+                         duplicates_removed=0, outliers_flagged=[], high_null_columns=[],
+                         summary="", date_ranges={date_col: [first, last, months]})
+
+
+def test_runout_names_the_incomplete_recent_months_when_the_lag_date_is_there():
+    """m2 / trap 4: claims keep arriving for months after service; the last `months` service
+    months are incomplete (a drop there is lag, not a trend). Only on data with the lag date."""
+    pack = domain_pack.Pack.model_validate({
+        **WARD, "domain": "toyclaims", "runout": {"role": "how_left", "months": 3},
+        "caveats": {"read_as_domain_weak": "x",
+                    "recent_incomplete": "Service months from {from_month} on are incomplete."}})
+    roles = {r: r for r in pack.roles}
+    audit = _audit("day_out", "2025-11-01", "2026-10-31", 12)
+    assert domain_pack.pack_caveats(pack, audit, roles) == [
+        "Service months from Aug 2026 on are incomplete."]
+    del roles["how_left"]
+    assert domain_pack.pack_caveats(pack, audit, roles) == []

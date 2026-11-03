@@ -23,7 +23,8 @@ ROW_KIND_COLUMN = "row_kind"
 RESERVED_ROLES = ("status", "currency")   # each row's kind, in the frame analysis code gets
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
 CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
-              "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded", "level_as_of")
+              "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded", "level_as_of",
+              "recent_incomplete")
 
 
 RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
@@ -99,6 +100,13 @@ class RunningBalance(_Strict):
     levels: list[str]
     plus: list[str] = Field(default_factory=list)
     minus: list[str] = Field(default_factory=list)
+
+
+class Runout(_Strict):
+    """Records keep arriving after the period they belong to (claims paid months after service):
+    with `role` (the arrival date) in the data, the last `months` months are incomplete."""
+    role: str
+    months: int = Field(gt=0)
 
 
 class Within(_Strict):
@@ -224,6 +232,7 @@ class Pack(_Strict):
     # Roles a row fills one of (Debit or Credit): the other's blank is the layout, never missing
     paired_fields: list[list[str]] = Field(default_factory=list)
     running_balance: RunningBalance | None = None
+    runout: Runout | None = None
     # A version chain (a claim line adjudicated, replaced, voided): the rows sharing these roles'
     # values, ordered by `version_order`; only the last counts, earlier ones are non_product, and
     # a chain whose last row carries a `version_void` value is cancelled (every row)
@@ -307,7 +316,8 @@ class Pack(_Strict):
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
                 *(r for r in (self.order_key, self.location_role, self.snapshot_key,
                               self.version_order) if r),
-                *self.version_key, *self.version_void, *self.conditional_fields, *(r for g in self.paired_fields for r in g),
+                *self.version_key, *self.version_void, *self.conditional_fields,
+                *([self.runout.role] if self.runout else []), *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
                 *self.signed_by, *(x.indicator for x in self.signed_by.values()),
@@ -996,6 +1006,10 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     states = [k for k in pack.kpis if k.at == "latest" and computable(pack, k.name, roles)]
     if span and states:   # a balance is a state at a date (a ledger's running balance is no KPI)
         facts["level_as_of"] = {"date": pd.Timestamp(span[1]).strftime("%-d %b %Y")}
+    if span and pack.runout and pack.runout.role in roles:   # claims still arriving
+        last = pd.Period(span[1], "M")
+        facts["recent_incomplete"] = {"from_month": (last - pack.runout.months + 1).strftime("%b %Y"),
+                                      "months": pack.runout.months}
     if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}
