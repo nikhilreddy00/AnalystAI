@@ -360,18 +360,19 @@ def test_tiles_say_how_they_were_made_and_recheck_against_the_data():
 
 
 # ── One partial-month rule, in the app and in the analysis sandbox ──────────────────────────
-def _months(dates: pd.Series) -> dict:
-    """The months the analysis sandbox's MoM uses (`_cut`), by running its generated code."""
-    from agents.analysis_agent import _build_standard_code
+def _values(n: int) -> list[float]:   # not consecutive integers (those read as an id)
+    return [float((i * 37) % 101) + 0.5 for i in range(n)]
+
+
+def _mom(dates: pd.Series) -> float:
+    """The built-in MoM (agents.analysis_agent.standard_stats) on a value per date."""
+    from agents.analysis_agent import builtin_result
     from orchestrator.state import AnalysisTask
-    df = pd.DataFrame({"d": dates.dt.strftime("%Y-%m-%d"), "v": range(len(dates))})
-    contract = _contract(_load(df.to_csv(index=False)))
-    code = _build_standard_code(contract, AnalysisTask(raw_query="q", analysis_types=["trend"],
-                                                       target_metrics=["v"]))
-    g = {"df": df, "pd": pd, "result": {"trends": [], "builtin": [], "segments": [],
-                                        "correlations": {}, "assumptions": []}}
-    exec(code, g)
-    return g
+    df = pd.DataFrame({"d": dates.dt.strftime("%Y-%m-%d"), "v": _values(len(dates))})
+    frame = _load(df.to_csv(index=False))
+    got = builtin_result(frame, _contract(frame), AnalysisTask(
+        raw_query="q", analysis_types=["trend"], target_metrics=["v"]))
+    return next(t["pct_change"] for t in got["trends"] if t["period"] == "MoM")
 
 
 @pytest.mark.parametrize("dates, partial", [
@@ -388,13 +389,13 @@ def _months(dates: pd.Series) -> dict:
     (pd.Series(pd.to_datetime([f"2025-{m:02d}-{d}" for m in range(1, 6) for d in ("15", "28")]
                               + ["2025-06-15"])), True),
 ])
-def test_the_partial_month_rule_is_one_rule_in_the_app_and_the_sandbox(dates, partial):
-    from agents.utils import partial_last_month
+def test_the_partial_month_rule_is_one_rule_in_the_app_and_the_built_ins(dates, partial):
+    from agents.utils import partial_last_month, pct_change
     assert partial_last_month(dates) is partial
-    g = _months(dates)
-    last = pd.Period(dates.max(), "M")
-    used = {str(m) for m in g["_month"].dropna().unique()} if "_month" in g else set()
-    assert (str(last) not in used) is partial, used
+    sums = pd.Series(_values(len(dates))).groupby(dates.dt.to_period("M").values).sum()
+    if partial:
+        sums = sums.iloc[:-1]
+    assert _mom(dates) == pytest.approx(round(pct_change(sums.iloc[-1], sums.iloc[-2]), 2))
 
 
 def test_insight_names_the_last_two_full_months_when_the_last_is_partial():
@@ -545,14 +546,13 @@ def test_weekly_flows_compare_average_weeks_in_the_sandbox_and_one_cadence_rule(
 
 
 def _months_for(df: pd.DataFrame, date: str, metric: str) -> dict:
-    from agents.analysis_agent import _build_standard_code
+    from agents.analysis_agent import builtin_result
     from orchestrator.state import AnalysisTask
     contract = _contract(_load(df.to_csv(index=False)))
-    code = _build_standard_code(contract, AnalysisTask(raw_query="q", analysis_types=["trend"],
-                                                       target_metrics=[metric]))
-    g = {"df": _load(df.to_csv(index=False)), "pd": pd,
+    g = {"df": _load(df.to_csv(index=False)),
          "result": {"trends": [], "builtin": [], "segments": [], "correlations": {}, "assumptions": []}}
-    exec(code, g)
+    builtin_result(g["df"], contract, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                                    target_metrics=[metric]), g["result"])
     return g
 
 

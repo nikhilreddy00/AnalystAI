@@ -111,7 +111,8 @@ def test_a_correlation_on_snapshot_data_counts_each_entity_once():
                 continue
             src = inspect.getsource(fn)
             assert ".corr(" not in src or "entity_rows" in src, f"{name}: r on domain_pack.entity_rows"
-    assert "_cdf" in inspect.getsource(__import__("agents.analysis_agent", fromlist=["x"])._build_standard_code)
+    from agents import analysis_agent   # the built-ins compute r in-process, on entity_rows
+    assert "entity_rows(" in inspect.getsource(analysis_agent.standard_stats)
 
 
 def test_one_percent_change_rule_in_answers():

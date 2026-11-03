@@ -253,7 +253,6 @@ def test_a_balance_chart_and_answer_count_the_rows_the_tile_counts(tape):
 def test_the_built_in_trend_of_a_balance_counts_the_tiles_rows(tape):
     """Review: the sandbox's level branch skipped the row kinds, so its MoM counted L3's
     charge-off-month balance that the tile leaves out."""
-    import contextlib
     import io
     import json
 
@@ -261,13 +260,9 @@ def test_the_built_in_trend_of_a_balance_counts_the_tiles_rows(tape):
     from orchestrator.state import AnalysisTask
     df, c = tape
     frame, _ = domain_pack.with_row_kind(df, c)
-    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + analysis_agent._build_standard_code(c, AnalysisTask(
-                raw_query="q", target_metrics=["Outstanding Principal"], analysis_types=["trend"]))
-            + analysis_agent._CODE_FOOTER)
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        exec(code, {"df": frame})
+    out = io.StringIO(json.dumps(analysis_agent.builtin_result(
+       frame, c, AnalysisTask(
+                raw_query="q", target_metrics=["Outstanding Principal"], analysis_types=["trend"])), default=str))
     mom = next(t["pct_change"] for t in json.loads(out.getvalue())["trends"]
                if t["column"] == "Outstanding Principal" and t["period"] == "MoM")
     assert mom == pytest.approx((OCT / 2400 - 1) * 100, abs=0.01)
@@ -312,23 +307,19 @@ def test_the_iban_scan_ignores_non_ascii_lookalikes():
 
 def test_a_correlation_on_snapshot_data_counts_each_account_once(tape):
     """Audit: correlations over all 14 snapshots counted each loan 14 times."""
-    import contextlib
     import io
     import json
 
     from agents import analysis_agent
     from orchestrator.state import AnalysisTask
     df, c = tape
-    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + analysis_agent._build_standard_code(c, AnalysisTask(
+    out = io.StringIO(json.dumps(analysis_agent.builtin_result(
+       df, c, AnalysisTask(
                 raw_query="q", target_metrics=["Outstanding Principal", "Days Past Due"],
-                analysis_types=["correlation"]))
-            + analysis_agent._CODE_FOOTER)
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        exec(code, {"df": df})
+                analysis_types=["correlation"])), default=str))
     got = json.loads(out.getvalue())["correlations"]["Outstanding Principal__Days Past Due"]
-    latest = df[df["As Of Date"] == "2026-10-31"]
+    latest = df[(df["As Of Date"] == "2026-10-31")   # on the books only, as the tiles (entity_rows)
+                & ~df["Loan Status"].isin(["Charged Off", "Paid Off"])]
     assert got == pytest.approx(latest["Outstanding Principal"].corr(latest["Days Past Due"]), abs=1e-4)
     task = AnalysisTask(raw_query="q", target_metrics=["Outstanding Principal"],
                         analysis_types=["correlation"])
@@ -375,7 +366,6 @@ def test_audit_pass_1_kpis_refusals_and_unknowns(tape):
 
 def test_a_balance_by_segment_is_built_in_and_matches_the_tile(tape):
     """Audit M5: the model's own 'last' kept closed loans' rows (Card $859,390 vs $856,530)."""
-    import contextlib
     import io
     import json
 
@@ -383,19 +373,14 @@ def test_a_balance_by_segment_is_built_in_and_matches_the_tile(tape):
     from orchestrator.state import AnalysisTask
     df, c = tape
     frame, _ = domain_pack.with_row_kind(df, c)
-    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + "result['segments'].append({'segment_column': 'Product', 'metric_column': "
-              "'Outstanding Principal', 'aggregation': 'last', 'results': [{'name': 'card', 'value': 780.0}]})\n"
-            # the model's NPL ratio filed under the balance (analysis gate: it was deleted)
-            + "result['segments'].append({'segment_column': 'Product', 'metric_column': "
-              "'Outstanding Principal', 'aggregation': 'ratio', 'results': [{'name': 'card', 'value': 0.5}]})\n"
-            + analysis_agent._build_standard_code(c, AnalysisTask(
-                raw_query="q", target_metrics=["Outstanding Principal"], segments=["Product"],
-                analysis_types=["segmentation"]))
-            + analysis_agent._CODE_FOOTER)
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        exec(code, {"df": frame})
+    model = {"segments": [   # the model's own: a wrong total, and its NPL ratio filed under the balance
+        {"segment_column": "Product", "metric_column": "Outstanding Principal", "aggregation": "last",
+         "results": [{"name": "card", "value": 780.0}]},
+        {"segment_column": "Product", "metric_column": "Outstanding Principal", "aggregation": "ratio",
+         "results": [{"name": "card", "value": 0.5}]}]}
+    out = io.StringIO(json.dumps(analysis_agent.builtin_result(frame, c, AnalysisTask(
+        raw_query="q", target_metrics=["Outstanding Principal"], segments=["Product"],
+        analysis_types=["segmentation"]), model), default=str))
     every = [x for x in json.loads(out.getvalue())["segments"] if x["metric_column"] == "Outstanding Principal"]
     assert [x["aggregation"] for x in every if x["aggregation"] not in ("last", "mean")] == ["ratio"]
     segs = [x for x in every if x["aggregation"] == "last"]
@@ -472,7 +457,6 @@ def test_a_levels_cadence_is_a_clean_one_or_none(days, label):
 
 
 def test_an_undated_row_is_never_an_accounts_latest_snapshot_in_a_correlation(tape):
-    import contextlib
     import io
     import json
 
@@ -482,14 +466,12 @@ def test_an_undated_row_is_never_an_accounts_latest_snapshot_in_a_correlation(ta
     bad = pd.concat([df, pd.DataFrame([{"Loan ID": "L1", "As Of Date": None,
                                         "Outstanding Principal": 1e9, "Days Past Due": 999.0}])],
                     ignore_index=True)
-    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + analysis_agent._build_standard_code(c, AnalysisTask(
+    out = io.StringIO(json.dumps(analysis_agent.builtin_result(
+       bad, c, AnalysisTask(
                 raw_query="q", target_metrics=["Outstanding Principal", "Days Past Due"],
-                analysis_types=["correlation"])) + analysis_agent._CODE_FOOTER)
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        exec(code, {"df": bad})
-    latest = df[df["As Of Date"] == "2026-10-31"]
+                analysis_types=["correlation"])), default=str))
+    latest = df[(df["As Of Date"] == "2026-10-31")   # on the books only (entity_rows)
+                & ~df["Loan Status"].isin(["Charged Off", "Paid Off"])]
     got = json.loads(out.getvalue())["correlations"]["Outstanding Principal__Days Past Due"]
     assert got == pytest.approx(latest["Outstanding Principal"].corr(latest["Days Past Due"]), abs=1e-4)
 
@@ -497,7 +479,6 @@ def test_an_undated_row_is_never_an_accounts_latest_snapshot_in_a_correlation(ta
 def test_audit_pass_2_periods_joint_levels_and_one_correlation(tape):
     """M1 a month with no charge-offs is $0, not skipped; M2 a level by two segments is built
     in from latest rows; M3 one correlation rule (entity_rows) for the built-in and the answer."""
-    import contextlib
     import io
     import json
 
@@ -511,14 +492,10 @@ def test_audit_pass_2_periods_joint_levels_and_one_correlation(tape):
     two = df.assign(Branch=["A", "B"] * 5 + ["A"])
     c2 = _contract(two)
     kinds, _ = domain_pack.with_row_kind(two, c2)
-    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + analysis_agent._build_standard_code(c2, AnalysisTask(
+    out = io.StringIO(json.dumps(analysis_agent.builtin_result(
+       kinds, c2, AnalysisTask(
                 raw_query="q", target_metrics=["Outstanding Principal", "Days Past Due"],
-                segments=["Product", "Branch"], analysis_types=["segmentation", "correlation"]))
-            + analysis_agent._CODE_FOOTER)
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        exec(code, {"df": kinds})
+                segments=["Product", "Branch"], analysis_types=["segmentation", "correlation"])), default=str))
     res = json.loads(out.getvalue())
     joint = [x for x in res["segments"] if x["segment_column"] == "Product|Branch"
              and x["metric_column"] == "Outstanding Principal" and x["aggregation"] == "last"]

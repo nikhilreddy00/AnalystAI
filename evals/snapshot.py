@@ -86,26 +86,13 @@ def _rounded(v):
     return v
 
 
-def _run_standard(code: str, df) -> dict:
-    """The built-in code's output (run here as the sandbox runs it: header, then the code), not
-    its text: an equivalent rewrite that changes nothing for this data keeps the pin."""
-    import tempfile
-
-    from agents.analysis_agent import _CODE_HEADER
-    with tempfile.NamedTemporaryFile(suffix=".csv") as f:
-        df.to_csv(f.name, index=False)
-        scope: dict = {}
-        exec(_CODE_HEADER.replace("/data/df.csv", f.name) + code, scope)   # noqa: S102 (our code)
-    return scope["result"]
-
-
 def _behaviour(df, contract) -> dict:
     """Phase 5.7 (audit pass 1: a domain's conventions changed banking's charts and answers
     unseen): the built-in analysis code, the trend chart and three targeted answers, so a change
     to another domain's charts or answers fails the pin too."""
     import io
 
-    from agents.analysis_agent import _build_standard_code
+    from agents.analysis_agent import builtin_result
     from agents.targeted_analysis_agent import run_targeted_analysis
     from agents.visualization_agent import build_context, month_line
     from orchestrator.state import QuestionIntent, TargetedParams
@@ -117,11 +104,8 @@ def _behaviour(df, contract) -> dict:
     task = AnalysisTask(raw_query="Give me an overview of this dataset.",
                         analysis_types=["eda", "trend", "segmentation"],
                         target_metrics=contract.metric_columns[:3], segments=[group] if group else [])
-    # the frame the sandbox gets in production: with the pack's row-kind column (Domain 2 audit:
-    # without it every row-kind branch of the built-in code was never run by this gate)
-    import domain_pack
-    out = {"standard_code": _run_standard(_build_standard_code(contract, task),
-                                          domain_pack.with_row_kind(df, contract)[0])}
+    # the built-ins as a run computes them (in-process since plan v2 R2)
+    out = {"standard_code": json.loads(json.dumps(builtin_result(df, contract, task), default=str))}
     if metric and date:
         line = month_line(df, date, metric, build_context(df, contract=contract), monthly=True)
         out["chart"] = line.model_dump(mode="json", include={"data", "y_label", "title"}) if line else None

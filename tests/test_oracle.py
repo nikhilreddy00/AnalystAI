@@ -8,7 +8,6 @@ column. A known live bug is a strict xfail naming the plan step that fixes it: C
 the day it is fixed the xfail fails, so the marker must go. An audit finding closes only with a new
 relation here or a guard (bug → invariant)."""
 import asyncio
-import contextlib
 import io
 import json
 import re
@@ -90,14 +89,8 @@ def builtin(name: str, targets: list[str], segments: list[str], types: list[str]
     from orchestrator.state import AnalysisTask
     _, clean, contract, _ = _built(name)
     frame, _ = domain_pack.with_row_kind(clean, contract)
-    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + analysis_agent._build_standard_code(contract, AnalysisTask(
-                raw_query="q", target_metrics=targets, segments=segments, analysis_types=types))
-            + analysis_agent._CODE_FOOTER)
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        exec(code, {"df": frame})
-    return json.loads(out.getvalue())
+    return json.loads(json.dumps(analysis_agent.builtin_result(frame, contract, AnalysisTask(
+        raw_query="q", target_metrics=targets, segments=segments, analysis_types=types)), default=str))
 
 
 def segment(res: dict, by: str, metric: str, agg: str) -> dict[str, float]:
@@ -164,7 +157,6 @@ def test_a_messy_loan_tape_tiles_are_the_truth():
     assert t["open_accounts"] == truth["accounts_last"]
 
 
-@pytest.mark.xfail(reason="R1/R2: the built-in level breakdown keeps loans that stopped reporting", **LIVE)
 def test_loans_that_stop_reporting_are_out_of_the_built_in_breakdown():
     # through the clean tape's headers (detection aside): sold mortgages must not count
     raw, truth = datagen.make("loan_tape_messy", 1)
@@ -298,14 +290,9 @@ def builtin_on(built, targets: list[str], segments: list[str]) -> dict:
     from orchestrator.state import AnalysisTask
     _, clean, contract, _ = built
     frame, _ = domain_pack.with_row_kind(clean, contract)
-    code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + analysis_agent._build_standard_code(contract, AnalysisTask(
-                raw_query="q", target_metrics=targets, segments=segments, analysis_types=["segmentation"]))
-            + analysis_agent._CODE_FOOTER)
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        exec(code, {"df": frame})
-    return json.loads(out.getvalue())
+    return json.loads(json.dumps(analysis_agent.builtin_result(frame, contract, AnalysisTask(
+        raw_query="q", target_metrics=targets, segments=segments, analysis_types=["segmentation"])),
+        default=str))
 
 
 def _month_keys(truth: dict, pts: dict) -> dict:
@@ -315,3 +302,24 @@ def _month_keys(truth: dict, pts: dict) -> dict:
         if label[:7] in truth:
             out[label] = truth[label[:7]]
     return out
+
+
+# ── R2: the model's own breakdowns read the rows the tiles count ─────────────────────────────
+
+def test_a_model_breakdown_of_a_money_column_is_recomputed_from_its_rows():
+    """Plan v2 B2: the sandbox runs the model's code on every row; a breakdown of a column whose
+    tiles count only some rows (pending, reversed, other currency out) is recomputed."""
+    from agents.analysis_agent import repair_breakdowns
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    _, clean, contract, _ = _built("card_ledger")
+    by = contract.roles["merchant_category"]
+    naive = clean.groupby(by)["Amount"].sum()
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[],
+                         forecast_points=[], distributions={}, code_executed="", segments=[SegmentResult(
+        segment_column=by, metric_column="Amount", aggregation="sum",
+        results=[{"name": str(k), "value": float(v)} for k, v in naive.items()])])
+    rows, _ = domain_pack.rows_for(clean, contract, "Amount")
+    assert len(rows) < len(clean)   # the trap is there
+    assert repair_breakdowns(f, clean, contract)
+    assert close(segment({"segments": [s.model_dump() for s in f.segments]}, by, "Amount", "sum"),
+                 rows.groupby(by)["Amount"].sum().round(4).to_dict())

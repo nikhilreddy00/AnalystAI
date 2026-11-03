@@ -166,8 +166,8 @@ def builtin_only(case: dict) -> bool:
     domain claim rests on the others. $0, cached per case."""
     if case["id"] in _BUILTIN:
         return _BUILTIN[case["id"]]
-    from agents.analysis_agent import (_CODE_HEADER, _build_guaranteed_code,
-                                       _build_standard_code, _parse_findings, e2b_frame)
+    from agents.analysis_agent import (_CODE_HEADER, _build_guaranteed_code, _parse_findings,
+                                       builtin_result, e2b_frame)
     from agents.utils import pii_columns
     df, contract = working_frame(case)
     df = cleaned_for_analysis(case, df, contract)[0]
@@ -175,12 +175,12 @@ def builtin_only(case: dict) -> bool:
     df.to_parquet(buf, index=False)
     upload, _ = e2b_frame(buf.getvalue(), pii_columns(contract))
     task = AnalysisTask(raw_query=case["question"], **case["task"])
-    code = (_CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "") +
-            _build_standard_code(contract, task) + _build_guaranteed_code(contract))
+    code = (_CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "") + _build_guaranteed_code(contract))
     g = {"df": pd.read_csv(io.StringIO(pd.read_parquet(io.BytesIO(upload)).to_csv(index=False)))}
     try:
-        exec(code, g)
-        findings = _parse_findings(json.loads(json.dumps(g["result"], default=str)), "", [])
+        exec(code, g)   # the guaranteed sandbox code; then the built-ins as a run computes them
+        raw = builtin_result(df, contract, task, g["result"])
+        findings = _parse_findings(json.loads(json.dumps(raw, default=str)), "", [])
         out = passed(score_analysis(case, findings, None, baseline=False)["checks"])
     except Exception:
         out = False

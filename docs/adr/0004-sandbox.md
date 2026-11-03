@@ -28,5 +28,17 @@
 - The allowlist will reject some valid analyses. Each rejection is logged in the trace, so the list
   grows from evidence, not guesses.
 
+## Addendum (2026-11-02, plan v2 R2): our own statistics run in-process
+The sandbox is for **untrusted, model-written code only**. The built-in statistics (target-pair
+r, MoM/YoY, a level by segment, the joint breakdown) are our own code, so they now run in the API
+process (`agents/analysis_agent.standard_stats`) with the shared functions (`rows_for`,
+`entity_rows`, `aggregate`, `partial_last_month`, `pct_change`, `ranked`). Before, they were a
+second copy of those rules written as code text for the sandbox, and the two copies drifted
+(about 9 bugs across Domains 1–2). Evidence still shows the code that computed a number (now
+that function's source), and the evidence ids are unchanged. PII exposure is the same: the
+sandbox's output was already turned back into real values (`restore_pseudonyms`) before
+findings were built. The model's own breakdowns are recomputed after the sandbox from the rows
+the tiles count (`repair_breakdowns`).
+
 ---
 Source keys ([P1], [S6], …) refer to the Sources list in `docs/research/2026-10-27-data-agents.md`.

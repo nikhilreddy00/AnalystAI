@@ -86,7 +86,7 @@ def partial_last_month(dates) -> bool:
     fewer distinct days than the others (a mid-month export). A month-over-month change must not
     compare such a month with a full one. Monthly grain or sparse data (an 18-row sample: 1–3
     dates a month) is never partial: there are too few dates to tell.
-    Mirrored inside the analysis agent's sandbox code (`_cut` in _build_standard_code)."""
+    The analysis built-ins use it too (analysis_agent.standard_stats)."""
     import pandas as pd
 
     d = pd.to_datetime(dates, format="mixed", errors="coerce").dropna()
@@ -106,7 +106,7 @@ def partial_last_month(dates) -> bool:
 def weekly_cadence(dates) -> bool:
     """One date a week (POS week endings): distinct dates 7 days apart. Weekly flows summed into
     calendar months show a ~25% sawtooth (4 vs 5 week-endings). Mirrored in the analysis
-    sandbox (`_weekly` in _build_standard_code)."""
+    built-ins (analysis_agent.standard_stats)."""
     import pandas as pd
 
     d = pd.to_datetime(dates, errors="coerce").dropna().drop_duplicates().sort_values()
