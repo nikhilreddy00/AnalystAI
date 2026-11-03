@@ -1003,6 +1003,12 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
             lines.append(f"{c}: {pack.definitions[c]}")
         elif c in pack.unsupported:
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
+    for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
+        if r not in roles and expr[0] in roles and expr[2] in roles:
+            how = (f"days from {named[expr[2]]} to {named[expr[0]]} (same day = 0)" if expr[1] == "days"
+                   else f"{named[expr[0]]} {'×' if expr[1] == '*' else '−'} {named[expr[2]]}")
+            lines.append(f"Column {pack.roles[r].headers[0]} is in the data for you: {how}. Use it; "
+                         "never compute your own, and never report a KPI as if it were a column.")
     return lines
 
 

@@ -217,3 +217,15 @@ def test_eda_only_findings_are_not_empty_when_eda_was_asked():
     f = analysis_agent._parse_findings({"eda_summary": {"revenue": {"mean": 1.0}}}, "", [])
     assert analysis_agent.review_findings(f, {}, ["revenue"], {"eda"}) is None
     assert "empty" in analysis_agent.review_findings(f, {}, ["revenue"], {"correlation"})
+
+
+async def test_findings_naming_non_columns_twice_are_dropped_not_the_run(recorded_llm, monkeypatch):
+    """Domain 3 E2E (e2e-52): the model filed KPI values ('ALOS', 'Mortality Rate') under
+    eda_summary on both attempts and the whole overview failed. On the last attempt those
+    entries are left out (with a note); the rest of the analysis stands."""
+    code = "```python\nresult['correlations']['revenue__units'] = 0.5\n```"
+    recorded_llm.responses += [code, code]
+    _fake_sandbox(monkeypatch, {"correlations": {"revenue__units": 0.5},
+                                "eda_summary": {"ALOS": {"mean": 3.7}}})
+    findings = await analysis_agent.run_analysis_agent(_session(), recorded_llm)
+    assert "ALOS" not in findings.eda_summary and findings.correlations == {"revenue__units": 0.5}

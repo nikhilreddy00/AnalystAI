@@ -834,6 +834,15 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                     trace_verdict("analysis", PROMPT_VERSION, _repair_label(note))
                 raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
+            if reason and reason.startswith("findings name") and attempt == 1 \
+                    and (dropped := drop_unknown_findings(findings, known)):
+                # the last attempt: entries naming no column of this data (a KPI filed as a
+                # column) are left out, never the whole analysis; the rest still passes review
+                trace_verdict("analysis", PROMPT_VERSION, "unknown_findings_dropped")
+                raw["assumptions"] = [*(raw.get("assumptions") or []),
+                                      f"Left out findings that name no column of this data: "
+                                      f"{', '.join(dropped[:6])}."]
+                reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
                 if repaired := ground_prose(findings, raw):
                     trace_verdict("analysis", PROMPT_VERSION, "grounding_rewritten")
@@ -877,6 +886,22 @@ def _finding_columns(f: AnalysisFindings) -> set[str]:
         cols.add(s.metric_column)
     cols.update(a.column for a in f.anomalies)
     return cols - {""}
+
+
+def drop_unknown_findings(f: AnalysisFindings, known: list[str]) -> list[str]:
+    """Remove every finding that names a column the data doesn't have; the names removed."""
+    ok, gone = set(known), []
+
+    def bad(cols) -> bool:
+        miss = [c for c in cols if c and c not in ok]
+        gone.extend(m for m in miss if m not in gone)
+        return bool(miss)
+    f.eda_summary = {k: v for k, v in f.eda_summary.items() if not bad([k])}
+    f.correlations = {k: v for k, v in f.correlations.items() if not bad(k.split("__"))}
+    f.trends = [t for t in f.trends if not bad([t.column])]
+    f.segments = [s for s in f.segments if not bad([*s.segment_column.split("|"), s.metric_column])]
+    f.anomalies = [a for a in f.anomalies if not bad([a.column])]
+    return gone
 
 
 def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
