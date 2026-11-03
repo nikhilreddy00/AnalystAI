@@ -18,6 +18,13 @@ roles:
   enrollee_ref: {kind: id, headers: [enrollee_ref]}
   settled:      {kind: money, headers: [settled]}
   paid_on:      {kind: date, headers: [paid_on]}
+  claim:        {kind: id, headers: [claim]}
+  line:         {kind: category, headers: [line]}
+  seq:          {kind: count, headers: [seq]}
+  freq:         {kind: category, headers: [freq]}
+version_key: [claim, line]
+version_order: seq
+version_void: {freq: ["8"]}
 caveats:
   read_as_domain_weak: "Read as clinic data: {roles}."
 """
@@ -67,3 +74,25 @@ def test_a_pack_that_declares_phi_turns_patient_mode_on(toy_clinic):
 ])
 def test_member_ids_alone_are_not_patient_data(cols):
     assert not build_contract(pd.DataFrame(cols), ConnectorType.CSV).phi
+
+
+def test_a_version_chain_counts_only_its_final_row(toy_clinic):
+    """B2: one claim line adjudicated three times (original, replacement) counts once, at its
+    last version; a chain whose last version is a void counts as cancelled; a claim's other line
+    is its own chain. Rows of other chains are untouched."""
+    df = pd.DataFrame({
+        "claim": ["C1", "C1", "C1", "C1", "C2", "C2", "C3"],
+        "line":  ["1", "1", "1", "2", "1", "1", "1"],
+        "seq":   [0, 2, 1, 0, 0, 1, 0],
+        "freq":  ["1", "7", "7", "1", "1", "8", "1"],
+        "settled": [100.0, 90.0, 95.0, 20.0, 50.0, -50.0, 30.0],
+        "enrollee_ref": ["E1"] * 7, "paid_on": ["2026-01-05"] * 7})
+    roles = {r: r for r in ("claim", "line", "seq", "freq", "settled", "enrollee_ref")}
+    kinds = domain_pack.row_kinds(df, roles, toy_clinic).tolist()
+    assert kinds == ["non_product", "sale", "non_product", "sale", "cancel", "cancel", "sale"]
+
+
+def test_no_version_fields_means_no_version_rule(toy_clinic):
+    """A pack without version_key (retail, banking) never drops a repeated key's earlier rows."""
+    retail = domain_pack.pack_for("retail")
+    assert not retail.version_key and not domain_pack.pack_for("banking").version_key

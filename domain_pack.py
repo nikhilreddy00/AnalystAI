@@ -204,6 +204,12 @@ class Pack(_Strict):
     # Roles a row fills one of (Debit or Credit): the other's blank is the layout, never missing
     paired_fields: list[list[str]] = Field(default_factory=list)
     running_balance: RunningBalance | None = None
+    # A version chain (a claim line adjudicated, replaced, voided): the rows sharing these roles'
+    # values, ordered by `version_order`; only the last counts, earlier ones are non_product, and
+    # a chain whose last row carries a `version_void` value is cancelled (every row)
+    version_key: list[str] = Field(default_factory=list)
+    version_order: str | None = None
+    version_void: dict[str, list[str]] = Field(default_factory=dict)
     # Words: each row kind's name ("refunded orders") and its cleaning flag; `text` for the rest.
     row_labels: dict[RowKind, str] = Field(default_factory=dict)
     # The codes the model's frame and brief use for each kind (a banking model filters on
@@ -261,8 +267,9 @@ class Pack(_Strict):
                 seen.setdefault(h, role)
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
-                *(r for r in (self.order_key, self.location_role, self.snapshot_key) if r),
-                *self.conditional_fields, *(r for g in self.paired_fields for r in g),
+                *(r for r in (self.order_key, self.location_role, self.snapshot_key,
+                              self.version_order) if r),
+                *self.version_key, *self.version_void, *self.conditional_fields, *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
                 *self.signed_by, *(x.indicator for x in self.signed_by.values()),
@@ -270,6 +277,8 @@ class Pack(_Strict):
                 *(r for alt in [*self.signals, *self.strong] for g in alt.values() for r in g),
                 *self.strong_panel]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
+        if bool(self.version_key) != bool(self.version_order):
+            errors.append("version_key and version_order go together")
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
             errors.append(f"line_weight is [role, '*' or '-', role], not {self.line_weight}")
         errors += [f"role {r}: a {x.kind} role is named {x.kind!r} (reserved)" for r, x in
@@ -487,6 +496,7 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
             kind[vals.isin([v.upper() for v in values])] = "non_product"
     if "status" in roles:
         kind[status.isin(set(words(pd.Series(pack.status_values.get("cancel", [])))))] = "cancel"
+    kind = _versions(df, roles, pack, kind)
     if pack.test_marker:
         for role in pack.test_roles:
             if role in roles:   # short values only: a pack regex never runs on long text
@@ -495,6 +505,24 @@ def row_kinds(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
                     pack.test_marker, case=False, regex=True, na=False)
                 kind[hit] = "test"
     return kind
+
+
+def _versions(df: pd.DataFrame, roles: dict[str, str], pack: Pack, kind: pd.Series) -> pd.Series:
+    """The version-chain rule (Pack.version_key): earlier versions → non_product; a chain whose
+    last version is a void → cancel. Off unless the pack declares it and the data has the roles."""
+    keys = [roles.get(r) for r in pack.version_key]
+    if not keys or None in keys or pack.version_order not in roles:
+        return kind
+    order = pd.to_numeric(df[roles[pack.version_order]], errors="coerce")
+    chain = df.groupby(keys, dropna=False, sort=False).ngroup()
+    last = order.eq(order.groupby(chain).transform("max"))
+    kind = kind.mask(~last, "non_product")
+    void = pd.Series(False, index=df.index)
+    for role, values in pack.version_void.items():
+        if role in roles:
+            void |= df[roles[role]].astype(str).str.strip().isin([str(v) for v in values])
+    voided = (void & last).groupby(chain).transform("any")
+    return kind.mask(voided, "cancel")
 
 
 def main_currency(df: pd.DataFrame, roles: dict[str, str]) -> tuple[pd.Series, str | None, int]:
