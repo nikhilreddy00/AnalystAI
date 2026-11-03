@@ -12,6 +12,8 @@ checks:
   rel_tol: 0.01
   unit: '%'
   scope: report
+  scales:
+  - 100
 - kind: must_not_number
   truth_key: naive_alos_all_rows
   rel_tol: 0.005

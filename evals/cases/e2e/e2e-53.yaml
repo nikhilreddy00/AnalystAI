@@ -11,6 +11,8 @@ checks:
   truth_key: readmit_by_dept.Cardiology
   rel_tol: 0.03
   unit: '%'
+  scales:
+  - 100
 - kind: must_not_match
   pattern: (caus|led to|drove|result of|because of) .{0,40}(department|cardiology|treatment|care)|worse
     care|poor(er)? care|clinical(ly)? (worse|inferior)

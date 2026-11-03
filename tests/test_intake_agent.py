@@ -129,3 +129,17 @@ async def test_clarification_answer_is_still_classified(recorded_llm):
              "is_approval": True, "approval_context": "clarification"}
     out = (await intake_node(state))["session"]
     assert len(recorded_llm.calls) == 1 and out.task_plan.question_intent == QuestionIntent.TOP_N
+
+
+@pytest.mark.parametrize("question, want", [
+    ("How much did we pay in total?", QuestionIntent.SEGMENT_COMPARE),
+    ("What's our total revenue overall?", QuestionIntent.SEGMENT_COMPARE),
+    ("What was total revenue each month?", QuestionIntent.TIME_SERIES),
+    ("How has total revenue trended?", QuestionIntent.TIME_SERIES),
+])
+async def test_a_total_question_is_the_overall_value_not_a_trend(recorded_llm, question, want):
+    """Domain 3 E2E (e2e-57/60): 'How much did we pay in total?' came back as a time series and
+    the answer gave the latest month's change, never the total."""
+    recorded_llm.responses.append(_plan("time_series", metric_column="revenue"))
+    task = await run_intake_agent(_session(), question, recorded_llm)
+    assert task.question_intent == want

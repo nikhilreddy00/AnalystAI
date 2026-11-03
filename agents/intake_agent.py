@@ -291,6 +291,14 @@ def _targeted_params(raw: dict) -> TargetedParams:
         return TargetedParams(**{k: v for k, v in raw.items() if k not in bad})
 
 
+_TOTAL_RE = re.compile(r"\b(?:in total|totals?|overall|altogether|all time|grand total)\b", re.I)
+# a time grain or trend word: the question wants periods ("total revenue each month")
+_GRAIN_RE = re.compile(r"\b(?:each|every|per|by) (?:day|week|month|quarter|year)\b|\b(?:daily|"
+                       r"weekly|monthly|quarterly|yearly|annual|trend\w*|over time|month over month|"
+                       r"year over year|mom|yoy|in (?:january|february|march|april|may|june|july|"
+                       r"august|september|october|november|december|20\d\d|q[1-4]))\b", re.I)
+
+
 async def run_intake_agent(
     session: AnalysisSession,
     user_message: str,
@@ -373,6 +381,12 @@ async def run_intake_agent(
     if not is_overview_request and data.get("question_intent") == QuestionIntent.OVERVIEW.value \
             and named:   # "What's our NPL ratio?" after the overview: that KPI, latest and change
         data["question_intent"] = QuestionIntent.TIME_SERIES.value
+    tp = data.get("targeted_params") if isinstance(data.get("targeted_params"), dict) else {}
+    if not is_overview_request and data.get("question_intent") == QuestionIntent.TIME_SERIES.value \
+            and _TOTAL_RE.search(user_message) and not _GRAIN_RE.search(user_message) \
+            and not tp.get("frequency") and not tp.get("period_start"):
+        # "How much did we pay in total?": the overall value, never the latest month's change
+        data["question_intent"] = QuestionIntent.SEGMENT_COMPARE.value
     if is_overview_request:   # the first run is always a full overview, never a question
         data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
                     clarification_question=None, resume_from=None)
