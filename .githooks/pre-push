@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# The checks CI runs, before a push (retro 2026-11-03: three CI-only failures in one domain).
+# Turn on once per clone: git config core.hooksPath .githooks   Skip in an emergency: git push --no-verify
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+# a report a test reads must be committed (CI can't see an untracked one)
+missing=$(git ls-files --others --exclude-standard evals/reports | while read -r f; do
+  grep -rqF "$(basename "$f")" tests/ && echo "$f"; done || true)
+if [ -n "$missing" ]; then
+  echo "pre-push: commit the reports a test names:"; echo "$missing"; exit 1
+fi
+
+uv run ruff check .
+uv run pytest -q -n 8 -rf
+(cd frontend && npx tsc --noEmit && npm run lint --silent \
+  && node --experimental-strip-types --test src/lib/*.test.ts > /dev/null)
+echo "pre-push: all checks passed"

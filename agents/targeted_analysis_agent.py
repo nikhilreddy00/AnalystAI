@@ -51,6 +51,7 @@ from agents.visualization_agent import (
 )
 from scipy import stats
 
+from guardrails import rankable
 from domain_pack import (
     runout_months,
     additive,
@@ -587,7 +588,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
 
 
 def _lead_and_last(order: pd.Series) -> str:
-    """The highest and the lowest group of a ranking, saying so when groups tie."""
+    """The highest and the lowest group of a ranking, saying so when groups tie. The pooled
+    small-groups bucket is never named (guardrails.rankable)."""
+    order = order[[rankable(k) for k in order.index]] if any(rankable(k) for k in order.index) else order
+
     def names(at) -> str:
         tied = [f"'{g}'" for g in order.index[order == at]]
         return tied[0] if len(tied) == 1 else (
@@ -1020,9 +1024,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                  ["Ask without the group", "Ask about a longer period"])
         asc = (params.order or "desc").lower() == "asc"
         by = ranked(by, ascending=asc).head(params.n or 20)
-        lead, tail = by.index[0], by.index[-1]
+        named = by[[rankable(k) for k in by.index]]   # the pooled bucket is never a lead or a tail
+        named = named if len(named) else by
+        lead, tail = named.index[0], named.index[-1]
         answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
-                  f"{fmt(by.iloc[0])}" + (f", {tail} at {fmt(by.iloc[-1])}." if len(by) > 1 else "."))
+                  f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
         if params.compare == "yoy" and date:
             prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                        weekly)
