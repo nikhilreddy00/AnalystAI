@@ -36,8 +36,11 @@ export function aggregateForChart(
   rows: Record<string, unknown>[],
   chart: ChartConfig,
 ): AggregationResult {
+  // The backend marks the rows a count reads (`__counted`: one per account on snapshot data, by
+  // its one row rule); rows without the flag all count
+  const countable = rows.filter((row) => row.__counted !== false);
   if (PASSTHROUGH_TYPES.has(chart.chart_type)) {
-    return { mode: "passthrough", data: rows, countKey: chart.y_keys[0] ?? "" };
+    return { mode: "passthrough", data: countable, countKey: chart.y_keys[0] ?? "" };
   }
   // Only a row-count chart can be recounted: a sum or a KPI (an AOV by country, pinned from an
   // answer) would show row counts under its own name (Phase 5.7)
@@ -47,7 +50,7 @@ export function aggregateForChart(
   }
 
   const counts = new Map<unknown, number>();
-  for (const row of rows) {
+  for (const row of countable) {
     const key = row[chart.x_key];
     if (key == null || key === "") continue;
     counts.set(key, (counts.get(key) ?? 0) + 1);

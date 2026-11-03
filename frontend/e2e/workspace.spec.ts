@@ -2,6 +2,7 @@
 // a reopened report renders as the live one did, the sidebar (200 threads, 390 px phone width,
 // search, rename / pin / archive / delete with confirmation), stale reports, the Datasets view.
 import { expect, test, type Page } from "@playwright/test";
+import { upload } from "./upload";
 import { writeFileSync } from "node:fs";
 
 const SCENARIO = "../scripts/ui_check/fixtures/scenario";
@@ -51,11 +52,7 @@ async function noSideScroll(page: Page) {
 
 test("a reopened thread renders the report exactly as it was delivered", async ({ page }) => {
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sales_nov.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n"),
-  });
-  const input = page.getByLabel("Ask a question about your data");
-  await expect(input).toBeEnabled();
+  const input = await upload(page, "sales_nov.csv");
   await input.fill(QUESTION);
   await input.press("Enter");
   await expect(page.getByText(SUMMARY).first()).toBeVisible({ timeout: 30_000 });
@@ -229,8 +226,7 @@ test("B2: a question still being posted doesn't take over the thread opened next
 test("B3: an earlier upload's data never rides along on a reopened thread's follow-up", async ({ page }) => {
   await page.request.post(`${API}/__seed?n=1`);
   await page.goto("/chat");
-  await page.locator('input[type="file"]').setInputFiles({ name: "other.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\n1,2\n") });
-  await expect(page.getByLabel("Ask a question about your data")).toBeEnabled();
+  await upload(page, "other.csv");
   await openRow(page, "question 0");
   await expect(page.getByText(SUMMARY).first()).toBeVisible({ timeout: 30_000 });
   const posted = page.waitForRequest((r) => r.url().endsWith("/chat") && r.method() === "POST");

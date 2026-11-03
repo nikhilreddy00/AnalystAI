@@ -13,8 +13,8 @@ import uuid
 import pandas as pd
 
 from agents.errors import LLMOutputError
-from agents.utils import aggregate, column_hint, ranked, strip_markdown_fences
-from domain_pack import pack_for
+from agents.utils import aggregate, ranked, strip_markdown_fences
+from domain_pack import entity_rows, pack_for, rows_for
 from guardrails import (
     _SENTENCE_RE,
     UNTRUSTED_NOTE,
@@ -249,15 +249,18 @@ def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str,
     (top 20 by value for categorical charts, x-ordered for lines)."""
     if not df_parquet:
         return []
-    hint = column_hint(contract, y)   # a level needs its entity and time columns too
-    need = [x, y, *(([*hint.aggregation_by, hint.aggregation_time]) if hint and
-                    hint.aggregation in ("last", "first") else [])]
-    df = pd.read_parquet(io.BytesIO(df_parquet), columns=list(dict.fromkeys(need))).dropna()
+    # every column: the row rule needs the row kinds' and the level's columns (rows_for)
+    df = pd.read_parquet(io.BytesIO(df_parquet))
+    if x not in df.columns or y not in df.columns:
+        return []
+    df, _ = rows_for(df, contract, y)   # the rows its tiles and answers read
+    if chart_type == ChartType.SCATTER.value:   # snapshot data: one point per account
+        pts = entity_rows(df, contract)[[x, y]].dropna()
+        pts = pts.sample(min(len(pts), 500), random_state=0)
+        return json.loads(pts.to_json(orient="records", date_format="iso"))
+    df = df.dropna(subset=list(dict.fromkeys([x, y])))
     if df.empty:
         return []
-    if chart_type == ChartType.SCATTER.value:
-        pts = df.sample(min(len(df), 500), random_state=0)
-        return json.loads(pts.to_json(orient="records", date_format="iso"))
     if x == y or not pd.api.types.is_numeric_dtype(df[y]):
         grouped = df.groupby(x).size()       # non-numeric y: count rows per x
     else:

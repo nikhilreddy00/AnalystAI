@@ -142,12 +142,12 @@ def _run_builtin(df, task: AnalysisTask) -> dict:
     import contextlib
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
     code = (analysis_agent._CODE_HEADER.replace("df = pd.read_csv('/data/df.csv')", "")
-            + analysis_agent._build_standard_code(contract, task)
             + analysis_agent._build_guaranteed_code(contract) + analysis_agent._CODE_FOOTER)
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
-        exec(code, {"df": df})
-    return json.loads(out.getvalue())
+        exec(code, {"df": df})   # the sandbox's guaranteed code; the built-ins run in-process
+    return json.loads(json.dumps(analysis_agent.builtin_result(df, contract, task, json.loads(out.getvalue())),
+                                 default=str))
 
 
 def test_standard_block_computes_planted_truths():
@@ -180,11 +180,9 @@ def test_standard_block_computes_planted_truths():
 def test_standard_block_never_overrides_the_model():
     df, _ = datagen.make_sales(1)
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
-    code = analysis_agent._build_standard_code(contract, AnalysisTask(
-        raw_query="q", target_metrics=["revenue", "units"], analysis_types=["correlation"]))
-    g = {"df": df, "pd": __import__("pandas"),
-         "result": {"correlations": {"units__revenue": 0.5}, "trends": [], "segments": []}}
-    exec(code, g)
+    task = AnalysisTask(raw_query="q", target_metrics=["revenue", "units"], analysis_types=["correlation"])
+    g = {"result": {"correlations": {"units__revenue": 0.5}, "trends": [], "segments": []}}
+    analysis_agent.builtin_result(df, contract, task, g["result"])
     assert g["result"]["correlations"] == {"units__revenue": 0.5} and not g["result"]["builtin"]
 
 
@@ -207,12 +205,10 @@ async def test_analysis_node_streams_evidence(recorded_llm, monkeypatch, run_env
 def test_builtin_mom_replaces_the_models():
     df, truth = datagen.make_sales(2)
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
-    code = analysis_agent._build_standard_code(contract, AnalysisTask(
-        raw_query="q", target_metrics=["revenue"], analysis_types=["trend"]))
+    task = AnalysisTask(raw_query="q", target_metrics=["revenue"], analysis_types=["trend"])
     wrong = {"column": "revenue", "period": "MoM", "direction": "up", "pct_change": 2.49}
-    g = {"df": df, "pd": __import__("pandas"),
-         "result": {"correlations": {}, "trends": [wrong], "segments": []}}
-    exec(code, g)
+    g = {"result": {"correlations": {}, "trends": [wrong], "segments": []}}
+    analysis_agent.builtin_result(df, contract, task, g["result"])
     (mom,) = [t for t in g["result"]["trends"] if t["segment"] is None]
     assert mom["pct_change"] == pytest.approx(truth["total_mom_pct"], abs=0.01)
 

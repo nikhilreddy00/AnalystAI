@@ -49,7 +49,8 @@ from agents.data_cleaning import (
 from agents.errors import GuardrailViolation
 from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
-from domain_pack import Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds
+from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
+                         words)
 from guardrails import is_pii_column, mask_pii, protected_filled, unlogged_changes, unreconciled_rows
 from llm.client import trace_verdict
 from orchestrator.state import (
@@ -293,6 +294,18 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                 log(col, "sentinel_null", "numeric_sentinel",
                     f"{n} values coded {', '.join(f'{c:g}' for c in found)} (the export's 'unknown', "
                     f"not a real {role.replace('_', ' ')}) read as missing.", n, pct, _null_pct(df[col]))
+        for role, rule in ctx.pack.signed_by.items():   # an unsigned amount and its Dr/Cr
+            col, ind = ctx.roles.get(role), ctx.roles.get(rule.indicator)
+            if col is None or ind is None or not pd.api.types.is_numeric_dtype(df[col]) \
+                    or (df[col] < 0).any():   # already signed: the indicator only repeats it
+                continue
+            out = words(df[ind]).isin(set(words(pd.Series(rule.negative))))
+            if n := int((out & df[col].gt(0)).sum()):
+                pct = _null_pct(df[col])
+                df[col] = df[col].mask(out, -df[col])
+                log(col, "type_coerce", "signed_by_indicator",
+                    f"{n} amounts marked as money out in {ind} read as negative (money in stays "
+                    "positive), so totals net the two.", n, pct, pct)
         for role, col in ctx.roles.items():
             s = df[col]
             if ctx.pack.roles[role].kind == "id" and pd.api.types.is_float_dtype(s) and \
@@ -414,6 +427,11 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log(col, "keep", "order_level", f"Written on each order's first line only, so later "
                 f"lines are blank by the export's layout; {first_pct:g}% of orders have no value. "
                 "An order-level field, kept as it is.", 0, pct, first_pct)
+            continue
+        if layout.get(col) == "paired":   # Debit or Credit: each row fills one of the pair
+            log(col, "keep", "paired", "Each row fills this column or its pair (money out or in), so "
+                f"{missing} blanks are the export's layout, not missing values. Kept as it is.",
+                0, pct, pct)
             continue
         role = next((r for r, c in ctx.roles.items() if c == col), None)
         due = filled_statuses(df, ctx.pack, ctx.roles, role) if layout.get(col) == "conditional" \

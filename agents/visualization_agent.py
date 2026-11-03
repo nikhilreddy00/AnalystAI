@@ -48,7 +48,7 @@ from domain_pack import (
     main_currency,
     money_columns,
     entity_rows,
-    money_rows,
+    rows_for,
     row_kinds,
 )
 from guardrails import chart_lint
@@ -2176,7 +2176,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     for means and rates, n per bar. Sorted by value unless x has a natural order."""
     if agg == "pct":
         agg = "mean"
-    df, _ = money_rows(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
+    df, _ = rows_for(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
     level = None
     if agg not in ("last", "first") and not split:   # a level's mean: the answer's rows (utils)
         try:
@@ -2252,7 +2252,7 @@ def month_line(df: pd.DataFrame, date: str, metric: str, ctx: VizContext,
         monthly = True   # staggered snapshots: a day holds only some accounts, a month all
     extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
              if c and c in df.columns and c not in cols]
-    df, kept = money_rows(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
+    df, kept = rows_for(df, ctx.contract, metric)   # a domain's money: the rows its tiles count
     sub = df[cols + extra].copy()
     sub[date] = pd.to_datetime(sub[date], format="mixed", errors="coerce")
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")

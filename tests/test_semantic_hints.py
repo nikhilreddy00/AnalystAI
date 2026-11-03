@@ -2,7 +2,6 @@
 F4 (layer hints) and F5 (units) cells."""
 from __future__ import annotations
 
-import json
 
 import numpy as np
 import pandas as pd
@@ -101,14 +100,12 @@ def test_analysis_context_explains_levels_only_where_a_layer_matched():
                                             ("sensor_readings", "temperature", "temp_mom_pct"),
                                             ("saas_accounts", "mrr", "mrr_mom_pct")])
 def test_the_built_in_mom_uses_the_layers_aggregation(name, col, key):
-    from agents.analysis_agent import _build_standard_code
+    from agents.analysis_agent import builtin_result
     from orchestrator.state import AnalysisTask
     df, truth = datagen.make(name, 1)
     c = _contract(df)
-    result = {"trends": [], "correlations": {}, "segments": []}
-    exec(_build_standard_code(c, AnalysisTask(raw_query="q", analysis_types=["trend"],
-                                              target_metrics=[col])),
-         {"df": df, "pd": pd, "np": np, "result": result, "json": json})
+    result = builtin_result(df, c, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                                target_metrics=[col]))
     got = [t["pct_change"] for t in result["trends"] if not t.get("segment")]
     assert got and abs(got[0] - truth[key]) < 0.01
 

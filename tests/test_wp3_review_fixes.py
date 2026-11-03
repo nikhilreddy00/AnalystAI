@@ -71,32 +71,26 @@ def test_a_level_whose_account_column_was_dropped_is_never_summed():
 
 
 def test_the_built_in_mom_skips_a_level_without_its_account():
-    import json
 
-    from agents.analysis_agent import _build_standard_code
+    from agents.analysis_agent import builtin_result
     from orchestrator.state import AnalysisTask
     df, _ = datagen.make("bank_balances", 1)
     c = _bank_contract()
-    result = {"trends": [], "correlations": {}, "segments": []}
-    exec(_build_standard_code(c, AnalysisTask(raw_query="q", analysis_types=["trend"],
-                                              target_metrics=["balance"])),
-         {"df": df.drop(columns="account_id"), "pd": pd, "np": np, "result": result, "json": json})
+    result = builtin_result(df.drop(columns="account_id"), c, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                              target_metrics=["balance"]))
     assert result["trends"] == []   # no number beats the summed-snapshots trap
 
 
 def test_the_mom_months_come_from_the_levels_own_time_column():
-    import json
 
-    from agents.analysis_agent import _build_standard_code
+    from agents.analysis_agent import builtin_result
     from orchestrator.state import AnalysisTask
     df, truth = datagen.make("bank_balances", 1)
     df.insert(1, "open_date", "2020-01-01")   # an earlier date column: not the level's
     c = _contract(df)
     assert c.date_columns[0] == "open_date"
-    result = {"trends": [], "correlations": {}, "segments": []}
-    exec(_build_standard_code(c, AnalysisTask(raw_query="q", analysis_types=["trend"],
-                                              target_metrics=["balance"])),
-         {"df": df, "pd": pd, "np": np, "result": result, "json": json})
+    result = builtin_result(df, c, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                              target_metrics=["balance"]))
     got = [t["pct_change"] for t in result["trends"] if not t.get("segment")]
     assert got and abs(got[0] - truth["balance_mom_pct"]) < 0.01   # the level's own months
 
@@ -111,18 +105,18 @@ def test_an_explicit_sum_of_an_averaged_column_is_kept():
 
 def test_a_model_finding_that_sums_a_level_is_recomputed_not_failed():
     """5.5 live run: the banking overview failed when the model summed balances twice."""
-    from agents.analysis_agent import repair_levels
+    from agents.analysis_agent import repair_breakdowns
     from orchestrator.state import SegmentResult
     df, _ = datagen.make("bank_balances", 1)
     seg = SegmentResult(segment_column="segment", metric_column="balance", aggregation="sum",
                         results=[{"name": "business", "value": 1.0}])
     f = _findings(segments=[seg])
-    notes = repair_levels(f, df, _bank_contract())
+    notes = repair_breakdowns(f, df, _bank_contract())
     latest = df[df.snapshot_date == df.snapshot_date.max()].groupby("segment").balance.sum()
     assert notes and {r["name"]: r["value"] for r in f.segments[0].results} == pytest.approx(
         latest.to_dict()) and f.segments[0].aggregation == "last"
     gone = _findings(segments=[seg.model_copy(update={"aggregation": "sum"})])
-    assert repair_levels(gone, df.drop(columns="account_id"), _bank_contract()) and not gone.segments
+    assert repair_breakdowns(gone, df.drop(columns="account_id"), _bank_contract()) and not gone.segments
 
 
 def test_charts_of_a_summed_level_finding_show_the_current_total():
@@ -290,27 +284,24 @@ def test_a_birth_date_never_becomes_the_charts_time_axis():
 
 
 def test_a_breakdown_for_a_stated_period_is_dropped_not_replaced_by_today():
-    from agents.analysis_agent import repair_levels
+    from agents.analysis_agent import repair_breakdowns
     from orchestrator.state import SegmentResult
     df, _ = datagen.make("bank_balances", 1)
     f = _findings(segments=[SegmentResult(segment_column="segment", metric_column="balance",
                                           aggregation="sum", results=[{"name": "b", "value": 1.0}])])
-    notes = repair_levels(f, df, _bank_contract(), timeframe="2026-Q2")
+    notes = repair_breakdowns(f, df, _bank_contract(), timeframe="2026-Q2")
     assert not f.segments and "2026-Q2" in notes[0]
 
 
 def test_the_level_mom_drops_a_partial_last_month_like_its_chart():
-    import json
 
-    from agents.analysis_agent import _build_standard_code
+    from agents.analysis_agent import builtin_result
     from orchestrator.state import AnalysisTask
     df, _ = datagen.make("bank_balances", 1)
     df = df[df.snapshot_date <= "2026-10-09"]   # one Friday of October
     c = _bank_contract()
-    result = {"trends": [], "correlations": {}, "segments": []}
-    exec(_build_standard_code(c, AnalysisTask(raw_query="q", analysis_types=["trend"],
-                                              target_metrics=["balance"])),
-         {"df": df, "pd": pd, "np": np, "result": result, "json": json})
+    result = builtin_result(df, c, AnalysisTask(raw_query="q", analysis_types=["trend"],
+                                              target_metrics=["balance"]))
     from agents.utils import aggregate
     m = pd.to_datetime(df.snapshot_date).dt.to_period("M")
     tot = aggregate(df.assign(_m=m), ["_m"], "balance", "last", c, over_time=True)

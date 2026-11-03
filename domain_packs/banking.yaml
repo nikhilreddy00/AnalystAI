@@ -14,6 +14,10 @@ strong:
   - {account: [account], balance: [balance], delinquency: [dpd, delinquency_bucket]}   # loan tape
   - {account: [account], balance: [balance, balance_after], flow: [amount, debit, credit]}
   - {account: [account], flow: [amount, debit, credit], kind: [txn_type], when: [date]}   # ledger
+  # one account's statement: money out, money in and the balance after them, by date
+  - {out: [debit], in: [credit], balance: [balance, balance_after], when: [date]}
+# A book of accounts at each date (one row per account per date, 3+ dates each): a deposit book.
+strong_panel: [account, balance]
 # Weak: read as banking, and every report and KPI answer says so in one line.
 signals:
   - {account: [account], balance: [balance, balance_after]}
@@ -23,17 +27,21 @@ exclude_headers: [[patient], [mrn], [diagnosis], [sku], [mrr], [arr], [subscript
                   [premium], [policyholder], [claim, id], [claim, amount], [policy, id],
                   [employee, id], [payroll], [invoice], [invoiceno], [vendor], [supplier],
                   [sensor], [meter], [shipment], [order, id], [lineitem], [ticker], [cusip]]
+# How cores and spreadsheets shorten header words (each token, before the role match).
+abbreviations: {bal: balance, cur: current, curr: current, os: outstanding, prin: principal,
+                acct: account, amt: amount, txn: transaction, trans: transaction, tran: transaction,
+                orig: original, int: interest, lim: limit, dt: date, num: number, nbr: number}
 
 roles:
   # The as-of date first: the domain's time role (statement cycles, snapshots, postings).
-  date:          {kind: date, headers: [as_of_date, asof_date, snapshot_date, statement_date,
+  date:          {kind: date, headers: [as_of_date, asof_date, as_of, snapshot_date, statement_date,
                                         reporting_date, report_date, balance_date, month_end,
                                         posting_date, posted_date, post_date, booking_date,
-                                        transaction_date, txn_date, trans_date, value_date, date, month]}
-  account:       {kind: id, headers: [loan_id, loan_number, loan_no, account_id, acct_id,
-                                      account_no, acct_no, account_number, facility_id, card_id,
+                                        transaction_date, value_date, date, month]}
+  account:       {kind: id, headers: [loan_id, loan_number, loan_no, account_id, account,
+                                      account_no, account_number, facility_id, card_id,
                                       card_account_id, contract_id]}
-  txn_id:        {kind: id, headers: [transaction_id, txn_id, trans_id, transaction_ref,
+  txn_id:        {kind: id, headers: [transaction_id, transaction_ref,
                                       reference_number, ref_no, reference]}
   customer_id:   {kind: id, headers: [customer_id, cif, cif_number, client_id, customer_number,
                                       borrower_id]}
@@ -51,22 +59,24 @@ roles:
                               loan_amount, funded_amount, origination_amount]}
   credit_limit:  {kind: money, over_time: last, headers: [credit_limit, limit, credit_line,
                                                           approved_limit]}
-  interest_rate: {kind: number, additive: false, headers: [interest_rate, int_rate, rate, apr,
+  interest_rate: {kind: number, additive: false, headers: [interest_rate, rate, apr,
                                                            coupon, interest_rate_pct]}
-  dpd:           {kind: count, additive: false, headers: [days_past_due, dpd, days_delinquent,
+  dpd:           {kind: count, additive: false, headers: [days_past_due, dpd, days_delinquent, days_late,
                                                           days_overdue, days_in_arrears]}
   delinquency_bucket: {kind: category, headers: [delinquency_bucket, dpd_bucket, aging_bucket,
                                                  delinquency_status, arrears_bucket]}
-  amount:        {kind: money, headers: [amount, transaction_amount, txn_amount, trans_amount,
-                                         amount_usd, amt]}
+  amount:        {kind: money, headers: [amount, transaction_amount, amount_usd]}
   debit:         {kind: money, headers: [debit, debit_amount, withdrawal, withdrawals,
                                          money_out, paid_out]}
   credit:        {kind: money, headers: [credit, credit_amount, deposit, deposits, money_in,
                                          paid_in]}
+  # Debit / credit indicator beside an unsigned amount ("D" / "C", "DR" / "CR")
+  dr_cr:         {kind: category, headers: [dr_cr, cr_dr, debit_credit, debit_credit_indicator,
+                                            dr_cr_indicator, drcr, dc_indicator]}
   # Banking transaction types: "PURCHASE", "Direct Debit", "ATM Withdrawal", "Fee" …
   txn_type:      {kind: category,
                   pattern: '(?i)[a-z /-]{0,20}(?:purchase|payment|fee|fees|interest|transfer|deposit|withdrawal|reversal|debit|credit|atm|pos|refund|charge|cheque|check|ach|wire|standing order|direct debit|cash)[a-z /-]{0,20}',
-                  headers: [transaction_type, txn_type, trans_type, tran_type, type,
+                  headers: [transaction_type, type,
                             transaction_code]}
   merchant_category: {kind: category, headers: [merchant_category, mcc_description,
                                                 spend_category, category]}
@@ -80,7 +90,7 @@ roles:
   interest_expense: {kind: money, headers: [interest_expense, cost_of_funds, interest_paid]}
   charge_off_date: {kind: date, headers: [charge_off_date, chargeoff_date, write_off_date]}
   status:        {kind: status, headers: [loan_status, account_status, status,
-                                          transaction_status, txn_status]}
+                                          transaction_status]}
   currency:      {kind: currency, headers: [currency, currency_code, ccy]}
 
 # Compared lower-case: each written as real tapes and cores do.
@@ -92,16 +102,22 @@ status_values:
   return: [reversed]
   cancel: [pending, declined, failed, rejected, charged off, charged_off, charged-off,
            charge off, written off, written_off, write off, paid off, paid_off, fully paid,
+           paid in full, sold,
            closed]
 non_product: {txn_type: [REVERSAL, REV, REVERSAL CREDIT, REVERSAL DEBIT]}
 sentinels: {dpd: [999, 9999]}
+signed_by: {amount: {indicator: dr_cr, negative: [d, dr, debit, db]}}   # the account holder's view
 ranges: {dpd: {ge: 0}, credit_limit: {ge: 0}, interest_rate: {ge: 0}}
 conditional_fields: {charge_off_date: [charged off, charged_off, charged-off, charge off,
                                        written off, written_off, write off]}
 
 snapshot_key: account
+paired_fields: [[debit, credit]]            # a row fills one: the other's blank is the layout
+running_balance: {levels: [balance, balance_after], plus: [credit, amount], minus: [debit]}
 cost_roles: [interest_expense]              # margin or NIM talk needs funding costs
 overview_groups: [product, segment, branch, merchant_category, txn_type]
+kind_codes: {sale: on_book, return: netted, refunded: reversed, cancel: closed_or_pending,
+             test: test, non_product: reversal_entry}
 row_labels: {sale: on-book rows, refunded: reversed transactions,
              cancel: "pending, declined or closed rows", test: test accounts,
              non_product: reversal entries}
@@ -111,7 +127,7 @@ row_flags:
   non_product: "reversal entries (the reversing side of a reversed transaction): left out of money figures"
   test: "test-account rows: left out"
 text:
-  rows_brief: "Money figures and balances use rows of kind 'sale' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: per period take each account's latest row of ANY kind first (a loan charged off this month is out, never its last month's balance), then keep kind 'sale', and sum across accounts, never across dates. An average per account divides by the accounts left after that step: a paid-off, charged-off or closed account is not in the denominator."
+  rows_brief: "Money figures and balances use rows of kind 'on_book' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: per period take each account's latest row of ANY kind first (a loan charged off this month is out, never its last month's balance), then keep kind 'on_book', and sum across accounts, never across dates. An average per account divides by the accounts left after that step: a paid-off, charged-off or closed account is not in the denominator."
   unsupported_alternatives: "I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?"
   kpis_default: its balance and transaction columns
   causal_removed: "{n} sentence(s) saying a rate change, campaign or offer caused a change were removed: without a control group that can't be shown."

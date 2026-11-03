@@ -1105,13 +1105,155 @@ def make_card_ledger(seed: int) -> tuple[pd.DataFrame, dict]:
     return df, truth
 
 
+# ── Oracle datasets (2026-11-02, plan v2 R0): realistic banking shapes the first datasets missed.
+# Every amount is built from integers (cents), so a generator is identical on every machine, and
+# every truth is a banker's rule computed here with plain pandas, never through the product.
+
+_CLOSED_MESSY = ("Paid in Full", "Charged-off")
+
+
+def _on_book(df: pd.DataFrame, date: str, status: str, at) -> pd.DataFrame:
+    """A tape's rows on the books at `at`: reported that day, not closed."""
+    return df[(df[date] == at) & ~df[status].isin(_CLOSED_MESSY)]
+
+
+def make_loan_tape_messy(seed: int) -> tuple[pd.DataFrame, dict]:
+    """loan_tape as a core banking system exports it: abbreviated headers (Account, As Of, Cur Bal,
+    Days Late), statuses spelled 'Paid in Full' / 'Charged-off' / 'Non Accrual', and 25 current
+    mortgages that stop reporting after July with no closing row (a portfolio sale)."""
+    df, _ = make_loan_tape(seed)
+    df = df.rename(columns={"Loan ID": "Account", "As Of Date": "As Of", "Outstanding Principal": "Cur Bal",
+                            "Days Past Due": "Days Late", "Loan Status": "Status"})
+    df["Status"] = df["Status"].replace({"Paid Off": "Paid in Full", "Charged Off": "Charged-off",
+                                         "Non-Accrual": "Non Accrual"})
+    rng = np.random.default_rng(seed + 100)
+    jul = df[(df["As Of"] == "2026-07-31") & (df["Product"] == "Mortgage") & (df["Status"] == "Current")]
+    sold = set(rng.choice(jul["Account"].unique(), 25, replace=False).tolist())
+    df = df[~(df["Account"].isin(sold) & (df["As Of"] > "2026-07-31"))].reset_index(drop=True)
+
+    last = df["As Of"].max()
+    book = _on_book(df, "As Of", "Status", last)
+    dpd = book["Days Late"].where(book["Days Late"] != 999)
+    npl = (dpd >= 90) | book["Status"].eq("Non Accrual")
+    month_end = {m: float(_on_book(df, "As Of", "Status", m)["Cur Bal"].sum())
+                 for m in sorted(df["As Of"].unique())}
+    truth = {
+        "row_count": len(df), "pii_columns": ["Borrower Name"], "sold_accounts": len(sold),
+        "outstanding_last": float(book["Cur Bal"].sum()), "accounts_last": int(book["Account"].nunique()),
+        "avg_balance_last": float(book["Cur Bal"].mean()),
+        "balance_by_product_last": book.groupby("Product")["Cur Bal"].sum().to_dict(),
+        "avg_balance_by_branch": book.groupby("Branch")["Cur Bal"].mean().to_dict(),
+        "npl_ratio_pct": 100 * float(book.loc[npl, "Cur Bal"].sum() / book["Cur Bal"].sum()),
+        "month_end_total": {str(k)[:7]: v for k, v in month_end.items()},
+        "naive_balance_sum": float(df["Cur Bal"].sum()),
+    }
+    return df, truth
+
+
+def make_bank_statement(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A one-account bank statement as banks export it: Date (dd/mm/yyyy), Description, Debit,
+    Credit, Balance (running), newest first, several transactions on most days. Debit and Credit are
+    each blank on the other's rows (a layout, not missing data)."""
+    rng = np.random.default_rng(seed)
+    kinds = ["POS PURCHASE TESCO", "DIRECT DEBIT EON", "SALARY ACME LTD", "ATM WITHDRAWAL",
+             "MONTHLY FEE", "TRANSFER TO SAVINGS"]
+    cents, rows = 500_000, []
+    for d in pd.date_range("2026-04-01", "2026-09-30", freq="D"):
+        for _ in range(int(rng.integers(0, 4))):
+            k = kinds[int(rng.choice(6, p=[.4, .1, .08, .15, .05, .22]))]
+            dr = 1200 if k == "MONTHLY FEE" else None if k.startswith("SALARY") else int(rng.integers(500, 30_000))
+            cr = 320_000 if k.startswith("SALARY") else None
+            cents += (cr or 0) - (dr or 0)
+            rows.append([d, k, dr, cr, cents])
+    t = pd.DataFrame(rows, columns=["Date", "Description", "Debit", "Credit", "Balance"])
+    for c in ("Debit", "Credit", "Balance"):
+        t[c] = t[c] / 100
+    t["m"] = t["Date"].dt.to_period("M")
+    df = t.iloc[::-1].drop(columns="m").reset_index(drop=True)   # newest first, as exported
+    df["Date"] = df["Date"].dt.strftime("%d/%m/%Y")
+    truth = {
+        "row_count": len(df), "pii_columns": [],
+        "closing_balance": float(t["Balance"].iloc[-1]),
+        # the last transaction of each month, in time order (the export lists it first)
+        "month_end_balance": {str(m): float(g["Balance"].iloc[-1]) for m, g in t.groupby("m")},
+        "inflows": float(t["Credit"].sum()), "outflows": float(t["Debit"].sum()),
+        "net_flow": float(t["Credit"].sum() - t["Debit"].sum()),
+        "outflows_by_month": {str(m): float(v) for m, v in t.groupby("m")["Debit"].sum().items()},
+        "naive_balance_sum": float(t["Balance"].sum()),
+    }
+    return df, truth
+
+
+def make_ledger_drcr(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A ledger whose Amount is always positive and whose direction is a Dr/Cr indicator ('D' money
+    out, 'C' money in): how many core systems export postings."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for a in range(80):
+        acct = f"{4_000_000 + a * 17}"
+        for d in pd.date_range("2026-06-01", "2026-09-30", freq="D"):
+            if rng.random() < 0.25:
+                kind = ["PURCHASE", "SALARY", "FEE", "TRANSFER"][int(rng.choice(4, p=[.6, .1, .1, .2]))]
+                cents = {"SALARY": int(rng.integers(150_000, 400_000)), "FEE": 1500}.get(
+                    kind, int(rng.integers(300, 40_000)))
+                rows.append([acct, d.strftime("%Y-%m-%d"), cents / 100, kind,
+                             "C" if kind == "SALARY" or (kind == "TRANSFER" and rng.random() < .3) else "D"])
+    df = pd.DataFrame(rows, columns=["Acct No", "Posting Date", "Amount", "Txn Type", "Dr/Cr"])
+    signed = df["Amount"].where(df["Dr/Cr"] == "C", -df["Amount"])
+    truth = {
+        "row_count": len(df), "pii_columns": [],
+        "inflows": float(df.loc[df["Dr/Cr"] == "C", "Amount"].sum()),
+        "outflows": float(df.loc[df["Dr/Cr"] == "D", "Amount"].sum()),
+        "net_flow": float(signed.sum()),
+        "fee_income": float(df.loc[df["Txn Type"] == "FEE", "Amount"].sum()),
+        "naive_net_flow": float(df["Amount"].sum()),
+    }
+    return df, truth
+
+
+def make_deposits_daily(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A deposit book: each account's end-of-day balance, every day, 1 Jul – 15 Sep 2026, in USD,
+    EUR or GBP; 6 accounts close on 10 Aug (they simply stop reporting)."""
+    rng = np.random.default_rng(seed)
+    days = pd.date_range("2026-07-01", "2026-09-15", freq="D")
+    rows = []
+    for a in range(60):
+        seg, typ = ["Retail", "SME", "Private"][a % 3], ["Savings", "Current"][a % 2]
+        ccy = ["USD", "USD", "EUR", "GBP", "USD"][a % 5]
+        cents = int(rng.integers(100, 5_000)) * 1000
+        end = pd.Timestamp("2026-08-10") if a < 6 else days[-1]
+        for d in days[days <= end]:
+            cents = max(0, cents + int(rng.integers(-30_000, 30_001)))
+            rows.append([f"DA{a:03d}", d.strftime("%Y-%m-%d"), seg, typ, ccy, cents / 100])
+    df = pd.DataFrame(rows, columns=["Account Number", "Balance Date", "Customer Segment",
+                                     "Account Type", "Currency", "EOD Balance"])
+    last = df[df["Balance Date"] == df["Balance Date"].max()]
+    usd = last[last["Currency"] == "USD"]
+    month_end = {}
+    for m, g in df.groupby(df["Balance Date"].str[:7]):
+        ends = g[g["Balance Date"] == g["Balance Date"].max()]
+        month_end[m] = float(ends.loc[ends["Currency"] == "USD", "EOD Balance"].sum())
+    truth = {
+        "row_count": len(df), "pii_columns": [],
+        "open_accounts": int(last["Account Number"].nunique()),              # every currency
+        "total_usd_last": float(usd["EOD Balance"].sum()),
+        "total_by_currency_last": last.groupby("Currency")["EOD Balance"].sum().to_dict(),
+        "avg_usd_by_segment_last": usd.groupby("Customer Segment")["EOD Balance"].mean().to_dict(),
+        "month_end_total_usd": month_end,
+        "naive_balance_sum": float(df["EOD Balance"].sum()),
+    }
+    return df, truth
+
+
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
             "saas_accounts": make_saas_accounts, "sensor_readings": make_sensor_readings,
             "shipments": make_shipments, "retail_lines": make_retail_lines,
             "store_weeks": make_store_weeks, "b2b_invoices": make_b2b_invoices,
-            "loan_tape": make_loan_tape, "card_ledger": make_card_ledger}
+            "loan_tape": make_loan_tape, "card_ledger": make_card_ledger,
+            "loan_tape_messy": make_loan_tape_messy, "bank_statement": make_bank_statement,
+            "ledger_drcr": make_ledger_drcr, "deposits_daily": make_deposits_daily}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

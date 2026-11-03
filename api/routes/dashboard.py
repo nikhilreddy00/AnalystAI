@@ -229,6 +229,11 @@ async def get_latest_dashboard_data(
     from agents.visualization_agent import classify_columns
     roles = classify_columns(df)
 
+    # The rows a re-count reads (plan v2 R1, the one row rule): on snapshot data each account's
+    # latest row on the books (a loan is one loan, not 14 month-ends); otherwise every row
+    import domain_pack
+    if domain_pack.snapshot_entity(session.data_contract, df.columns):
+        df = df.assign(__counted=df.index.isin(domain_pack.entity_rows(df, session.data_contract).index))
     rows = json_rows(df)
 
     return {

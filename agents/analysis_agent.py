@@ -22,9 +22,8 @@ import pandas as pd
 from pydantic import BaseModel
 
 from agents.errors import GuardrailViolation, SandboxError
-from agents.utils import PARTIAL_MIN_DAYS, REGULAR_CV, pii_columns, safe_column_name, strip_markdown_fences
+from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
-    counted,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -32,7 +31,6 @@ from domain_pack import (
     glossary_hits,
     pack_brief,
     pack_for,
-    snapshot_entity,
     with_row_kind,
 )
 from guardrails import (
@@ -219,178 +217,160 @@ def kind_column(contract: DataContract) -> str:
                 if n not in names)
 
 
-def _money_targets(contract: DataContract, targets: list[str]) -> list[str]:
-    """Targets in a strong-matched pack's additive money or count roles (net of the row rules)."""
-    pack = defaults_pack(contract)
-    if pack is None:
-        return []
-    return [c for r, c in contract.roles.items() if c in targets and counted(pack, r)]
-
-
-def _build_standard_code(contract: DataContract, task: AnalysisTask) -> str:
-    """Statistics with one right answer, for the requested analysis types, computed here rather
-    than by the model (shorter generated code, no arithmetic slips). MoM of a target metric
-    replaces any model entry (one definition: calendar-month totals); target-pair r and the
-    joint breakdown fill gaps only. Ids go to result['builtin'] so evidence shows this code."""
+def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: AnalysisTask) -> None:
+    """Statistics with one right answer, computed in this process with the shared functions (plan
+    v2 R2: they were a second copy of the rules, as code text run in the sandbox, and drifted).
+    Merged into the sandbox's `raw` result as before: a target's MoM (and YoY on a pack's data)
+    replaces the model's; target-pair r and the joint breakdown fill gaps; a level by segment
+    replaces only the model's totals and means of it. Ids go to raw['builtin'] (evidence)."""
+    from agents.utils import (LevelUnavailable, aggregate, effective_agg, latest_rows, partial_last_month,
+                              pct_change, ranked, time_axis, weekly_cadence)
+    from domain_pack import entity_rows, rows_for
     types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
-    names = {c.name for c in contract.columns}
-    targets = [c for c in task.target_metrics if c in contract.metric_columns]
-    segments = [c for c in task.segments if c in names]
-    date = next(iter(contract.date_columns), None)
-    hints = {c.name: [c.aggregation, c.aggregation_by, c.aggregation_time]
-             for c in contract.columns if c.name in targets and c.aggregation}
-    return f"""
-# ─── Standard statistics (deterministic) ───
-result['builtin'] = []
-_targets, _segs, _date, _hints = {targets!r}, {segments!r}, {date!r}, {hints!r}
-# snapshot data: one row per entity for statistics over entities (domain_pack.entity_rows)
-_ent = {snapshot_entity(contract, {c.name for c in contract.columns})!r}
-# a domain's money columns count sale and return rows in the main currency (as its tiles)
-_money, _kind = {_money_targets(contract, targets)!r}, {kind_column(contract)!r}
-try:
-    if {bool(types & {"correlation", "hypothesis"})!r}:
-        # snapshot data (a level): one row per entity, its latest snapshot (never each one again)
-        _cdf = df
-        if _ent and all(_e in df.columns for _e in [*_ent[0], _ent[1]]):
-            _cdf = df.assign(_t=pd.to_datetime(df[_ent[1]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable').groupby(list(_ent[0])).tail(1)
-            if _kind in _cdf.columns:
-                _cdf = _cdf[_cdf[_kind].isin(['sale', 'return'])]
-        for _i, _a in enumerate(_targets):
-            for _b in _targets[_i + 1:]:
-                if f'{{_a}}__{{_b}}' not in result['correlations'] and f'{{_b}}__{{_a}}' not in result['correlations']:
-                    _r = _cdf[_a].corr(_cdf[_b])
-                    if _r == _r:
-                        result['correlations'][f'{{_a}}__{{_b}}'] = round(float(_r), 4)
-                        result['builtin'].append(f'corr:{{_a}}__{{_b}}')
-except Exception:
-    pass
-try:
-    if (_date or _hints) and {bool(types & {"trend", "forecasting"})!r}:
-        # A mid-month export compares the last two complete months (agents.utils.partial_last_month).
-        def _cut(_t):
-            _mm = _t.dt.to_period('M')
-            _d = _t.dropna()
-            if _d.empty:
-                return _mm
-            _days = _d.dt.normalize().groupby(_d.dt.to_period('M')).nunique().sort_index()
-            _g = _d.dt.normalize().drop_duplicates().sort_values().diff().dt.days.dropna()
-            _regular = len(_g) >= 3 and _g.std() <= {REGULAR_CV} * _g.mean()
-            if len(_days) >= 3 and _d.max().normalize() < _d.max().normalize() + pd.offsets.MonthEnd(0) and (_days.iloc[:-1].median() >= {PARTIAL_MIN_DAYS} or _regular) and _days.iloc[-1] < 0.9 * _days.iloc[:-1].median():
-                _mm = _mm.where(_mm != _days.index[-1])
-            return _mm
-        _month = _cut(pd.to_datetime(df[_date], errors='coerce')) if _date else pd.Series(pd.NaT, index=df.index).dt.to_period('M')
-        def _level_months(_tc):
-            return _cut(pd.to_datetime(df[_tc], format='mixed', errors='coerce'))
-        # One definition of MoM (calendar-month totals), so the built-in value replaces the model's.
-        _yoy = {defaults_pack(contract) is not None!r}
-        result['trends'] = [t for t in result['trends'] if not (isinstance(t, dict) and t.get('period') in (('MoM', 'YoY') if _yoy else ('MoM',)) and t.get('column') in _targets)]
-        # ponytail: values all in [0, 1] → a rate or flag, compared by month mean; anything else
-        # by month total. A semantic layer (Phase 4) can declare the aggregation instead.
-        # The semantic layer, when it matched (Phase 5.5): a level (balance, MRR) is each entity's
-        # last value in the month, summed; a reading is a mean.
-        # Weekly flows (POS week endings): each month is its average week, so 4- and 5-week months
-        # compare fairly (agents.utils.weekly_cadence).
-        _dd = pd.to_datetime(df[_date], errors='coerce').dropna().drop_duplicates().sort_values() if _date else pd.Series(dtype='datetime64[ns]')
-        _weekly = _yoy and len(_dd) >= 4 and _dd.diff().dt.days.median() == 7
-        def _mom(_frame, _col):
-            _h = _hints.get(_col)
-            _agg = _h[0] if _h else ('mean' if df[_col].dropna().between(0, 1).all() else 'sum')
-            _mon = _month
-            if _agg in ('last', 'first'):
-                if not _h[1] or not all(_e in df.columns for _e in _h[1]) or _h[2] not in df.columns:
-                    return None, 0   # its account (or time) column is gone: no total, never a sum
-                _mon = _level_months(_h[2])   # the level's own months, partial last month out
-                _f = _frame.assign(_t=pd.to_datetime(_frame[_h[2]], format='mixed', errors='coerce'),
-                                   _m=_mon.loc[_frame.index])
-                if _col in _money and _kind in _f.columns:   # a row left out blanks its value
-                    _f[_col] = _f[_col].where(_f[_kind].isin(['sale', 'return']))
-                # each entity's latest row in the month, of any kind, then its value (as the tiles)
-                _g = _f.dropna(subset=['_m', '_t']).sort_values('_t', kind='stable').groupby(['_m', *_h[1]])
-                _tot = (_g.tail(1) if _agg == 'last' else _g.head(1)).groupby('_m')[_col].sum(min_count=1).dropna().sort_index()
-            else:
-                if _col in _money and _kind in _frame.columns:
-                    _frame = _frame[_frame[_kind].isin(['sale', 'return'])]
-                _tot = _frame.groupby(_month.loc[_frame.index])[_col].agg(_agg).sort_index()
-                if _weekly and _agg == 'sum':
-                    _tot = _tot / _frame.groupby(_month.loc[_frame.index])[_date].nunique().reindex(_tot.index)
-                    if 'weekly' not in ' '.join(result['assumptions']):
-                        result['assumptions'].append('Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).')
-            if len(_tot) < 2 or _tot.iloc[-2] == 0:
-                return None, 0
-            _last2 = _mon.loc[_frame.index].isin(_tot.index[-2:])
-            _n = int(_frame.loc[_last2, _col].notna().sum())
-            # a domain's data compares the last full month with the same month a year earlier
-            _ago = _tot.index[-1] - 12 if _yoy else None
-            if _ago is not None and _ago in _tot.index and _tot[_ago] != 0:
-                _pair = _mon.loc[_frame.index].isin([_tot.index[-1], _ago])
-                _y = round(float((_tot.iloc[-1] / _tot[_ago] - 1) * 100), 2)
-                _yearly.append((_col, _y, int(_frame.loc[_pair, _col].notna().sum())))
-            return round(float((_tot.iloc[-1] / _tot.iloc[-2] - 1) * 100), 2), _n
-        for _c in _targets:
-            _jobs = [(None, df)]
-            if _segs:
-                _top = df[_segs[0]].value_counts().head(10).index
-                _jobs += [(str(_v), df[df[_segs[0]] == _v]) for _v in _top]
-            for _seg, _frame in _jobs:
-                _yearly = []
-                _p, _n = _mom(_frame, _c)
-                if _p is not None:
-                    result['trends'].append({{'column': _c, 'period': 'MoM', 'pct_change': _p, 'segment': _seg, 'n': _n,
-                                             'direction': 'up' if _p > 0 else 'down' if _p < 0 else 'flat'}})
-                    result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':MoM')
-                for _, _y, _yn in _yearly:
-                    result['trends'].append({{'column': _c, 'period': 'YoY', 'pct_change': _y, 'segment': _seg, 'n': _yn,
-                                             'direction': 'up' if _y > 0 else 'down' if _y < 0 else 'flat'}})
-                    result['builtin'].append(f'trend:{{_c}}' + (f' ({{_seg}})' if _seg else '') + ':YoY')
-except Exception:
-    pass
-try:
-    if len(_segs) >= 2 and 'segmentation' in {sorted(types)!r}:
-        _joint = '|'.join(_segs[:2])
-        for _c in _targets:
-            if any(s.get('segment_column') == _joint and s.get('metric_column') == _c for s in result['segments'] if isinstance(s, dict)):
+    names = set(df.columns)
+    targets = [c for c in task.target_metrics if c in contract.metric_columns and c in names]
+    segs = [c for c in task.segments if c in names]
+    for key, empty in (("builtin", []), ("correlations", {}), ("trends", []), ("segments", []),
+                       ("assumptions", [])):
+        raw.setdefault(key, empty)
+    level = {c.name for c in contract.columns if c.aggregation in ("last", "first")}
+
+    if types & {"correlation", "hypothesis"}:   # snapshot data: one row per entity
+        cdf = entity_rows(df, contract)
+        for i, a in enumerate(targets):
+            for b in targets[i + 1:]:
+                if f"{a}__{b}" in raw["correlations"] or f"{b}__{a}" in raw["correlations"]:
+                    continue
+                r = pd.to_numeric(cdf[a], errors="coerce").corr(pd.to_numeric(cdf[b], errors="coerce"))
+                if r == r:
+                    raw["correlations"][f"{a}__{b}"] = round(float(r), 4)
+                    raw["builtin"].append(f"corr:{a}__{b}")
+
+    yoy = defaults_pack(contract) is not None
+    if types & {"trend", "forecasting"} and targets:
+        replaced = ("MoM", "YoY") if yoy else ("MoM",)
+        raw["trends"] = [t for t in raw["trends"] if not (isinstance(t, dict) and t.get("period")
+                         in replaced and t.get("column") in targets)]
+
+        def monthly(col: str):
+            """(rows, their month, how a month is made) for `col`, judged once on the whole file:
+            the rows its tiles count, the main currency and a mid-month export's partial last
+            month (a segment's slice never re-judges them)."""
+            date = time_axis(contract, col, df)
+            agg = effective_agg(contract, col, None) or (
+                "mean" if pd.to_numeric(df[col], errors="coerce").dropna().between(0, 1).all() else "sum")
+            if not date or (agg in ("last", "first") and col not in level):
+                return None
+            rows, _ = rows_for(df, contract, col)
+            t = pd.to_datetime(rows[date], format="mixed", errors="coerce")
+            m = t.dt.to_period("M")
+            if partial_last_month(t):
+                m = m.where(m != m.max())
+            weeks = t.groupby(m).nunique() if yoy and agg == "sum" and weekly_cadence(t) else None
+            return rows.assign(_m=m), agg, weeks
+
+        def series_of(rows: pd.DataFrame, col: str, agg: str, weeks):
+            """Calendar-month values: a level's month-ends, a flow's totals (a rate's means); weekly
+            data: each month is its average week."""
+            try:
+                out = aggregate(rows[rows["_m"].notna()], ["_m"], col, agg, contract,
+                                over_time=True).sort_index()
+            except LevelUnavailable:   # a level without its account column: no built-in trend
+                return None
+            if weeks is not None:
+                out = out / weeks.reindex(out.index)
+                note = "Weekly data: each month is compared as its average week (months have 4 or 5 week-endings)."
+                if note not in raw["assumptions"]:
+                    raw["assumptions"].append(note)
+            return out.dropna()
+
+        for c in targets:
+            made = monthly(c)
+            if made is None:
                 continue
-            if _hints.get(_c) and _hints[_c][0] in ('last', 'first'):
-                continue   # a level: the level block below (latest rows, not every snapshot)
-            _g = df.groupby(_segs[:2])[_c].mean()
-            _n = df.groupby(_segs[:2]).size().sort_index(kind='stable').sort_values(ascending=False, kind='stable').head(20).index
-            result['segments'].append({{'segment_column': _joint, 'metric_column': _c, 'aggregation': 'mean',
-                                       'results': [{{'name': f'{{_a}}|{{_b}}', 'value': round(float(_g[(_a, _b)]), 4)}} for _a, _b in _n]}})
-            result['builtin'].append(f'seg:{{_joint}}/{{_c}}')
-except Exception:
-    pass
-try:
-    # A level by segment (a balance by product): each entity's latest row first, a row left out
-    # blanks its value, then summed (as its tile); replaces the model's own breakdown of it.
-    # ponytail: no stopped-account cut here (utils.snapshot_rows has it); stale accounts count
-    if 'segmentation' in {sorted(types)!r}:
-        for _c in _targets:
-            _h = _hints.get(_c)
-            if not (_h and _h[0] in ('last', 'first') and _h[1] and all(_e in df.columns for _e in [*_h[1], _h[2]])):
+            rows, agg, weeks = made
+            overall = series_of(rows, c, agg, weeks)
+            if overall is None or len(overall) < 2:
                 continue
-            _f = df.assign(_t=pd.to_datetime(df[_h[2]], format='mixed', errors='coerce')).dropna(subset=['_t']).sort_values('_t', kind='stable')
-            if _c in _money and _kind in _f.columns:
-                _f[_c] = _f[_c].where(_f[_kind].isin(['sale', 'return']))
-            _g = _f.groupby(_h[1])
-            _w = _g.tail(1) if _h[0] == 'last' else _g.head(1)
-            _keys = [[_x] for _x in _segs if _x in df.columns]
-            if len(_segs) >= 2 and all(_x in df.columns for _x in _segs[:2]):
-                _keys.append(list(_segs[:2]))
-            for _k in _keys:
-                _s = '|'.join(_k)
-                _tot = _w.groupby(_k)[_c].sum(min_count=1).dropna()
-                _avg = _w.groupby(_k)[_c].mean().dropna()   # per account on the books (blanks out)
-                # only the model's totals of it are replaced: its means and ratios (an average
-                # balance, an NPL ratio filed under the balance) are other findings, kept
-                result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c and str(_x.get('aggregation') or 'sum').lower() in ('sum', 'total', 'last', 'first'))]
-                result['segments'] = [_x for _x in result['segments'] if not (isinstance(_x, dict) and _x.get('segment_column') == _s and _x.get('metric_column') == _c and str(_x.get('aggregation') or '').lower() in ('mean', 'avg', 'average'))]
-                for _agg, _vals in (('last', _tot), ('mean', _avg)):
-                    result['segments'].append({{'segment_column': _s, 'metric_column': _c, 'aggregation': _agg,
-                                               'results': [{{'name': '|'.join(map(str, _n)) if isinstance(_n, tuple) else str(_n), 'value': round(float(_v), 4)}} for _n, _v in _vals.items()]}})
-                result['builtin'].append(f'seg:{{_s}}/{{_c}}')
-except Exception:
-    pass
-"""
+            # every segment compares the same months as the whole file (never its own last two,
+            # which can be a stale pair); a flow's month with no rows is 0
+            last = overall.index[-1]
+            pairs = [("MoM", overall.index[-2]), ("YoY", last - 12 if yoy else None)]
+            jobs = [(None, overall, rows)]
+            if segs:   # the 10 largest groups, ties by name (the same on every machine)
+                for v in ranked(df[segs[0]].value_counts()).head(10).index:
+                    part = rows[rows[segs[0]] == v]
+                    series = series_of(part, c, agg, weeks)
+                    if series is not None and agg == "sum":
+                        series = series.reindex(overall.index, fill_value=0)
+                    jobs.append((str(v), series, part))
+            for seg, series, part in jobs:
+                if series is None:
+                    continue
+                tag = f"trend:{c}" + (f" ({seg})" if seg else "")
+                for period, then in pairs:
+                    if then is None or then not in series.index or last not in series.index:
+                        continue
+                    pct = pct_change(series[last], series[then])
+                    if pct is None:
+                        continue
+                    pct = round(float(pct), 2)   # the direction says the stated figure
+                    n = int(part.loc[part["_m"].isin([last, then]), c].notna().sum())
+                    raw["trends"].append({"column": c, "period": period, "pct_change": pct,
+                                          "segment": seg, "n": n,
+                                          "direction": "up" if pct > 0 else "down" if pct < 0 else "flat"})
+                    raw["builtin"].append(f"{tag}:{period}")
+
+    if "segmentation" in types:
+        keys = [[x] for x in segs] + ([segs[:2]] if len(segs) >= 2 else [])
+        for c in targets:
+            rows, _ = rows_for(df, contract, c)
+            if c in level:   # a level by segment: each entity's latest row (a closed or stopped
+                cur = latest_rows(rows, c, contract)   # account is out), totals and means
+                for k in keys:
+                    s_ = "|".join(k)
+                    raw["segments"] = [x for x in raw["segments"] if not (
+                        isinstance(x, dict) and x.get("segment_column") == s_ and x.get("metric_column") == c
+                        and str(x.get("aggregation") or "sum").lower() in ("sum", "total", "last", "first",
+                                                                             "mean", "avg", "average"))]
+                    for agg, vals in (("last", cur.groupby(k)[c].sum(min_count=1).dropna()),
+                                      ("mean", cur.groupby(k)[c].mean().dropna())):
+                        raw["segments"].append({"segment_column": s_, "metric_column": c, "aggregation": agg,
+                                                "results": [{"name": "|".join(map(str, n)) if isinstance(n, tuple)
+                                                             else str(n), "value": round(float(v), 4)}
+                                                            for n, v in vals.items()]})
+                    raw["builtin"].append(f"seg:{s_}/{c}")
+            elif len(segs) >= 2:   # the joint breakdown fills a gap
+                joint = "|".join(segs[:2])
+                if any(isinstance(x, dict) and x.get("segment_column") == joint and x.get("metric_column") == c
+                       for x in raw["segments"]):
+                    continue
+                means = rows.groupby(segs[:2])[c].mean()
+                top = ranked(rows.groupby(segs[:2]).size()).head(20).index
+                raw["segments"].append({"segment_column": joint, "metric_column": c, "aggregation": "mean",
+                                        "results": [{"name": f"{a}|{b}", "value": round(float(means[(a, b)]), 4)}
+                                                    for a, b in top]})
+                raw["builtin"].append(f"seg:{joint}/{c}")
+
+
+def builtin_result(df: pd.DataFrame, contract: DataContract, task: AnalysisTask,
+                   raw: dict | None = None) -> dict:
+    """The built-ins alone (or merged into a model's `raw` result), as a run computes them: the
+    one way tests, the snapshot and the eval harness call them."""
+    raw = raw if raw is not None else {
+        "eda_summary": {}, "correlations": {}, "trends": [], "segments": [], "anomalies": [],
+        "statistical_tests": [], "forecast_points": [], "distributions": {}, "head_preview": [],
+        "dtypes_summary": {}, "missing_pct": {}, "assumptions": []}
+    standard_stats(raw, df, contract, task)
+    return raw
+
+
+def standard_code_evidence() -> str:
+    """What built-in evidence shows: the code that computed it (ADR-0004: the code is the
+    evidence), now the in-process function itself."""
+    import inspect
+    return "# built-in statistics, computed in-process (agents/analysis_agent.standard_stats)\n" + \
+        inspect.getsource(standard_stats)
 
 
 class AnalysisContext(BaseModel):
@@ -776,8 +756,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
         body = strip_markdown_fences(response.text.strip())
         reason = check_code(body) or check_columns(code_column_refs(body), known)
         if reason is None:
-            standard = _build_standard_code(contract, session.task_plan)
-            full_code = (_CODE_HEADER + "\n" + body + "\n" + standard + "\n"
+            # the sandbox runs the model's code only; trusted built-ins run here (R2, ADR-0004)
+            standard = standard_code_evidence()
+            full_code = (_CODE_HEADER + "\n" + body + "\n"
                          + _build_guaranteed_code(contract) + _CODE_FOOTER)
             if upload is None:   # once per run: the guided retry uploads the same frame
                 # Record numbers by name too, unless PHI mode already pseudonymised them: a thread
@@ -819,13 +800,19 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
                     err.retryable = err.reask = False
                 raise err from None
             raw = restore_pseudonyms(raw, back)   # names back for the owner (the guard re-tokenizes)
+            # the built-ins on the frame as loaded (never after the model's code changed it), by
+            # the shared functions; the LLM client still tokenizes personal values in any prompt
+            frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(df_parquet))
+            await asyncio.to_thread(standard_stats, raw, frame, contract, session.task_plan)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
             levels = any(c.aggregation in ("last", "first") for c in contract.columns)
-            if levels and (fixed := await asyncio.to_thread(
-                    lambda: repair_levels(findings, pd.read_parquet(io.BytesIO(df_parquet)),
-                                          contract, session.task_plan.timeframe
-                                          if session.task_plan else None))):
-                trace_verdict("analysis", PROMPT_VERSION, "level_recomputed")
+            if (levels or defaults_pack(contract)) and (fixed := await asyncio.to_thread(
+                    lambda: repair_breakdowns(findings, pd.read_parquet(io.BytesIO(df_parquet)),
+                                              contract, session.task_plan.timeframe
+                                              if session.task_plan else None,
+                                              set(raw.get("builtin") or [])))):
+                for note in fixed:   # one label per kind of repair (one meaning per counter)
+                    trace_verdict("analysis", PROMPT_VERSION, _repair_label(note))
                 raw["assumptions"] = [*fixed, *(raw.get("assumptions") or [])]   # first: kept
             reason = review_findings(findings, raw, known, set(ctx.analysis_types))
             if reason is None:
@@ -887,19 +874,64 @@ def review_findings(f: AnalysisFindings, raw: dict, known: list[str],
     return None
 
 
-def repair_levels(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
-                  timeframe: str | None = None) -> list[str]:
-    """A breakdown that summed a level (balance, MRR) over every snapshot: recomputed here as its
-    period-end total, the same rule as charts and answers, instead of failing the run (5.5 live
-    run: the model did it twice on the guided retry). Returns notes for the evidence."""
+def _repair_label(note: str) -> str:
+    """The trace label of one repair_breakdowns note."""
+    return ("model_trend_labelled" if "computed by the model's own code" in note
+            else "breakdown_recomputed" if " recomputed: " in note else "level_recomputed")
+
+
+def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
+                      timeframe: str | None = None, builtin: set[str] = frozenset()) -> list[str]:
+    """The model's breakdowns, recomputed where its code read the wrong rows (plan v2 B2: the
+    sandbox runs model code on every row). A total or mean of a column whose tiles count only
+    some rows (domain_pack.rows_for: returns, pending, other currency out) is recomputed from
+    those rows. A breakdown that summed a level (balance, MRR) over every snapshot: recomputed
+    as its period-end total, the same rule as charts and answers, instead of failing the run
+    (5.5 live run: the model did it twice on the guided retry). Returns notes for the evidence."""
     from agents.utils import LevelUnavailable, aggregate, column_hint
+    from domain_pack import rows_for
     notes = []
+    # a trend the built-ins don't make (a QoQ, a WoW): no shared rule recomputes it yet, so its
+    # evidence says the model's code made it, where that code could disagree with the tiles
+    for t in f.trends:
+        seg = f" ({t.segment})" if t.segment else ""
+        if f"trend:{t.column}{seg}:{t.period}" in builtin or t.column not in df.columns:
+            continue
+        hint = column_hint(contract, t.column)
+        how = "each account's latest value, never a sum" if hint and hint.aggregation in ("last", "first") \
+            else rows_for(df, contract, t.column)[1]
+        if how:
+            note = (f"{t.column} {t.period}: computed by the model's own code, not by the built-in "
+                    f"rule the figures use ({how.rstrip('.')})")
+            if note not in notes:
+                notes.append(note)
     for s in list(f.segments):
         hint = column_hint(contract, s.metric_column)
-        if hint is None or hint.aggregation not in ("last", "first") \
-                or (s.aggregation or "").lower() not in ("sum", "total"):
-            continue
         cols = [c for c in s.segment_column.split("|") if c]
+        agg = {"total": "sum", "avg": "mean", "average": "mean"}.get((s.aggregation or "").lower(),
+                                                                      (s.aggregation or "").lower())
+        if (hint is None or hint.aggregation not in ("last", "first")) and agg in ("sum", "mean") \
+                and s.metric_column in df.columns and all(c in df.columns for c in cols):
+            rows, how = rows_for(df, contract, s.metric_column)
+            # only the bug itself: the model's values ARE the plain total over every row (no
+            # period, no sign or type filter of its own: those stay, they answer the question)
+            naive = df.groupby(cols)[s.metric_column].agg(agg)
+            naive.index = ["|".join(map(str, k)) if isinstance(k, tuple) else str(k) for k in naive.index]
+            got = {str(r.get("name")): r.get("value") for r in s.results if isinstance(r, dict)}
+            plain = bool(got) and all(isinstance(v, (int, float)) and k in naive.index and
+                                      abs(v - naive[k]) <= 0.005 * max(1.0, abs(naive[k]))
+                                      for k, v in got.items())
+            if how and plain:   # its tiles leave rows out: the breakdown reads the same rows
+                vals = rows.groupby(cols)[s.metric_column].agg(agg)
+                vals.index = ["|".join(map(str, k)) if isinstance(k, tuple) else str(k) for k in vals.index]
+                s.results = [{"name": k, "value": round(float(vals[k]), 4)} for k in got   # its groups
+                             if k in vals.index and vals[k] == vals[k]]
+                notes.append(f"{s.metric_column} by {s.segment_column} recomputed: {how}")
+            continue
+        if (s.aggregation or "").lower() not in ("sum", "total"):
+            continue
+        if hint is None or hint.aggregation not in ("last", "first"):
+            continue
         if hint.aggregation_time in cols:   # by its own snapshot time: a total per date, right
             try:
                 totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
@@ -1035,7 +1067,7 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         relevant = [m for m in model_notes if not cols or any(c in m for c in cols)]
         return Evidence(id=id_, kind=kind, claim=claim,
                         code=standard if id_ in builtin else body,
-                        result_excerpt=json.dumps(payload, default=str)[:500], row_count=n,
+                        result_excerpt=json.dumps(display_values(payload), default=str)[:500], row_count=n,
                         confidence=level, confidence_reason=why,
                         assumptions=notes + relevant + audit_notes)
 

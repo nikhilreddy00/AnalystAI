@@ -111,4 +111,65 @@ def test_a_correlation_on_snapshot_data_counts_each_entity_once():
                 continue
             src = inspect.getsource(fn)
             assert ".corr(" not in src or "entity_rows" in src, f"{name}: r on domain_pack.entity_rows"
-    assert "_cdf" in inspect.getsource(__import__("agents.analysis_agent", fromlist=["x"])._build_standard_code)
+    from agents import analysis_agent   # the built-ins compute r in-process, on entity_rows
+    assert "entity_rows(" in inspect.getsource(analysis_agent.standard_stats)
+
+
+def test_one_percent_change_rule_in_answers():
+    """Four hand-written % changes in the targeted answers, one of them off a negative base: every
+    stated % change is utils.pct_change (None off a zero or negative base)."""
+    import re
+    src = (ROOT / "agents" / "targeted_analysis_agent.py").read_text()
+    hand = [ln for ln in src.splitlines()
+            if re.search(r"/\s*\w+(\.iloc\[[-\d]+\])?\s*-\s*1\)\s*\*\s*100", ln)]
+    assert hand == [], f"use agents.utils.pct_change: {hand}"
+
+
+def _forgets_rows_for(name: str, src: str) -> bool:
+    """A function that aggregates the frame without taking its rows from rows_for."""
+    return "aggregate(" in src and "rows_for(" not in src and not src.lstrip().startswith("def aggregate")
+
+
+def test_every_number_a_user_reads_takes_its_rows_from_rows_for():
+    """Plan v2 R1: 'which rows does this number read' recurred ~22 times in new call sites. A
+    function that aggregates the uploaded frame for an answer, a chart or a drill-down reads its
+    rows through domain_pack.rows_for (kinds, currency, a level's latest row first)."""
+    import inspect
+
+    from agents import drill_down_agent, targeted_analysis_agent, visualization_agent
+    bad = [f"{m.__name__}.{n}" for m in (targeted_analysis_agent, visualization_agent, drill_down_agent)
+           for n, fn in inspect.getmembers(m, inspect.isfunction)
+           if fn.__module__ == m.__name__ and _forgets_rows_for(n, inspect.getsource(fn))]
+    assert bad == [], f"take the rows from domain_pack.rows_for: {bad}"
+    # the guard itself catches a new site that forgets the rule (a planted violation)
+    assert _forgets_rows_for("by_branch", "def by_branch(df, c):\n    return aggregate(df, ['b'], 'x', 'mean', c)\n")
+    assert not _forgets_rows_for("ok", "def ok(df, c):\n    df, _ = rows_for(df, c, 'x')\n    return aggregate(df)\n")
+
+
+def test_a_question_without_its_number_asks_never_guesses_the_first_column():
+    """Plan v2 R3: 'the balance' on a loan tape read Original Amount (metric_columns[0]). One
+    resolver (targeted_analysis_agent._metric); the guess appears nowhere else."""
+    import inspect
+    import re
+    from pathlib import Path
+
+    import pandas as pd
+
+    from agents import targeted_analysis_agent as t
+    from orchestrator.state import TargetedParams
+    for f in Path("agents").glob("*.py"):
+        src = f.read_text()
+        if f.name == "targeted_analysis_agent.py":
+            src = src.replace(inspect.getsource(t._metric), "")
+        assert not re.search(r"metric_columns\[0\]", src), f.name
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    df = pd.DataFrame({"d": pd.to_datetime(["2026-01-31", "2026-02-28", "2026-03-31"] * 4),
+                       "a": [1.5, 2.25, 3.75, 4.5] * 3, "b": [3.5, 4.25, 5.75, 6.5] * 3})
+    build = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract
+    two = build(df)
+    assert set(two.metric_columns) == {"a", "b"}
+    r = t.handle_time_series(df, TargetedParams(frequency="M"), two)
+    assert r.unanswerable_reason and "a or b" in r.unanswerable_reason
+    one = build(df.drop(columns="b"))
+    assert not t.handle_time_series(df, TargetedParams(frequency="M"), one).unanswerable_reason

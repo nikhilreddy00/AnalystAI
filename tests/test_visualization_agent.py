@@ -328,17 +328,15 @@ def _mid_month_sales():
 def test_analysis_mom_skips_a_partial_last_month():
     """The sandbox's built-in MoM compares the last two complete months (Jun vs May), not a
     19-day July against a full June; on full months nothing changes."""
-    from agents.analysis_agent import _build_standard_code
+    from agents.analysis_agent import builtin_result
     from orchestrator.state import AnalysisTask
 
     df = _mid_month_sales()
     contract = viz_session(_case("viz-v16"), df)[0].data_contract
     task = AnalysisTask(raw_query="q", target_metrics=["revenue"], analysis_types=["trend"])
-    code = _build_standard_code(contract, task)
     for frame, months in [(df, ("2025-06", "2025-05")),
                           (df[df.order_date <= "2025-06-30"], ("2025-06", "2025-05"))]:
-        result = {"trends": [], "correlations": {}, "segments": []}
-        exec(code, {"pd": pd, "np": np, "df": frame.copy(), "result": result})
+        result = builtin_result(frame.copy(), contract, task)
         m = frame.assign(m=pd.to_datetime(frame.order_date).dt.to_period("M").astype(str)) \
             .groupby("m").revenue.sum()
         want = round(float((m[months[0]] / m[months[1]] - 1) * 100), 2)

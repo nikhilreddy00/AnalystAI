@@ -23,6 +23,7 @@ import pandas as pd
 from agents.utils import cut_partial as _cut_partial
 from agents.utils import (
     ranked,
+    pct_change,
     LevelUnavailable,
     aggregate,
     column_hint,
@@ -54,7 +55,7 @@ from domain_pack import (
     additive,
     entity_rows,
     layout_columns,
-    money_rows,
+    rows_for,
     compute_kpi,
     computable,
     defaults_pack,
@@ -221,6 +222,21 @@ def _numeric_cols(df: pd.DataFrame, contract: DataContract) -> list[str]:
     return [c for c in contract.metric_columns if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
 
 
+def _metric(named: str | None, contract: DataContract) -> str | None:
+    """The number a question is about: the one it names, or the only one there is. Several and
+    none named: None, and the answer asks which (plan v2 R3: never the first column's guess,
+    which read a loan's original amount for "the balance")."""
+    return named or (contract.metric_columns[0] if len(contract.metric_columns) == 1 else None)
+
+
+def _no_metric(contract: DataContract) -> str:
+    cols = contract.metric_columns
+    if not cols:
+        return "No numeric column to use."
+    pick = ", ".join(cols[:-1][:4]) + (f" or {cols[-1]}" if len(cols) > 1 else cols[-1])
+    return f"Which number should I use: {pick}?"
+
+
 def _suggest_metric_questions(contract: DataContract) -> list[str]:
     return [f"Show the distribution of {c}" for c in contract.metric_columns[:2]]
 
@@ -285,12 +301,12 @@ def handle_correlation(df: pd.DataFrame, params: TargetedParams, contract: DataC
 
 def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                         ctx: VizContext | None = None) -> TargetedResponse:
-    col = (params.target_columns[0] if params.target_columns else None) \
-        or (contract.metric_columns[0] if contract.metric_columns else None)
+    col = _metric((params.target_columns[0] if params.target_columns else None) or params.metric_column,
+                  contract)
     if not col or col not in df.columns:
         return _unanswerable(
             QuestionIntent.DISTRIBUTION,
-            f"Column '{col}' not found." if col else "No column to plot a distribution of.",
+            f"Column '{col}' not found." if col else _no_metric(contract),
             _suggest_metric_questions(contract) or ["Specify a column to plot"],
         )
 
@@ -338,12 +354,12 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
 
 def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                  ctx: VizContext | None = None) -> TargetedResponse:
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     group = params.group_by
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.TOP_N,
-            f"Metric column '{metric}' not found." if metric else "No metric column specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             [f"Top 10 by {c}" for c in contract.metric_columns[:2]] or ["Specify a numeric column to rank"],
         )
     if not group or group not in df.columns:
@@ -360,7 +376,7 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     asked = asked if asked in valid_aggs else None
     agg = effective_agg(contract, metric, asked) or "sum"   # a balance is its current total
     asc = (params.order or "desc").lower() == "asc"
-    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
+    df, kept = rows_for(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         grouped = ranked(aggregate(df, [group], metric, agg, contract), ascending=asc).head(n)
@@ -453,12 +469,12 @@ def _named_group(df: pd.DataFrame, params: TargetedParams) -> str | None:
 
 def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        ctx: VizContext | None = None) -> TargetedResponse:
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     date = params.date_column or time_axis(contract, metric, df)
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.TIME_SERIES,
-            f"Metric column '{metric}' not found." if metric else "No metric column specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             _suggest_metric_questions(contract),
         )
     if not date or date not in df.columns:
@@ -486,7 +502,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         extra = [c for c in ([*hint.aggregation_by, hint.aggregation_time] if hint else [])
                  if c and c in df.columns and c not in (date, metric)]
         avg_week = ""
-        rows, kept = money_rows(df, contract, metric)   # a domain's money: the rows its chart counts
+        rows, kept = rows_for(df, contract, metric)   # a domain's money: the rows its chart counts
         s = rows[[date, metric, *extra]].copy()
         s[date] = _local(pd.to_datetime(s[date], errors="coerce"))
         s = s.dropna(subset=[date, metric])
@@ -529,11 +545,12 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         series = series.iloc[:-1]
     chart_data = [{"period": idx.strftime("%Y-%m-%d"), metric: float(v)} for idx, v in series.items()]
     first, last = series.iloc[0], series.iloc[-1]
-    pct = (last - first) / first * 100 if first not in (0, None) else float("nan")
+    pct = pct_change(last, first)
     direction = "up" if last > first else ("down" if last < first else "flat")
     scope = f" for {params.segment_column} {group}" if group is not None else ""
+    size = f" {abs(pct):.1f}%" if pct is not None else f" ({_num(first)} → {_num(last)})"
     answer = (
-        f"{metric}{avg_week}{scope} trended {direction} {abs(pct):.1f}% from {series.index[0].date()} to "
+        f"{metric}{avg_week}{scope} trended {direction}{size} from {series.index[0].date()} to "
         f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg, True)})."
     ) if len(series) > 1 else (   # partial ends cut: one complete period is no trend
         f"{metric}{avg_week}{scope} in {_period_name(series.index[-1], freq)} (freq={freq}, agg={_agg_name(agg, True)}): "
@@ -543,9 +560,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     answer += f" {kept}" if kept else ""
     if len(series) >= 2 and series.iloc[-2]:
         # "How did X change last month?" asks about the latest step, not the whole range.
-        step = (series.iloc[-1] / series.iloc[-2] - 1) * 100
+        step = pct_change(series.iloc[-1], series.iloc[-2])
         answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
-                   f"{step:+.1f}% ({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
+                   + (f"{step:+.1f}% " if step is not None else "")
+                   + f"({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
     answer += partial
     chart = _chart(
         ChartType.LINE, f"{_of(agg, metric, True)}{avg_week} over time", chart_data,
@@ -584,12 +602,12 @@ def _lead_and_last(order: pd.Series) -> str:
 
 def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                            ctx: VizContext | None = None) -> TargetedResponse:
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     segment = params.segment_column
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.SEGMENT_COMPARE,
-            f"Metric column '{metric}' not found." if metric else "No metric column specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             _suggest_metric_questions(contract),
         )
     if not segment or segment not in df.columns:
@@ -603,7 +621,7 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     asked = (params.aggregation or "").lower() or None
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "mean"
-    df, kept = money_rows(df, contract, metric)   # a domain's money: the rows its tiles count
+    df, kept = rows_for(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
         full = aggregate(df, [segment], metric, agg, contract)
@@ -696,7 +714,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
                            ctx: VizContext | None = None,
                            strata: list[str] | tuple = ()) -> TargetedResponse:
     variant = params.variant_column
-    metric = params.metric_column or (contract.metric_columns[0] if contract.metric_columns else None)
+    metric = _metric(params.metric_column, contract)
     if not variant or variant not in df.columns:
         return _unanswerable(
             QuestionIntent.AB_SIGNIFICANCE,
@@ -706,7 +724,7 @@ def handle_ab_significance(df: pd.DataFrame, params: TargetedParams, contract: D
     if not metric or metric not in df.columns:
         return _unanswerable(
             QuestionIntent.AB_SIGNIFICANCE,
-            f"Metric column '{metric}' not found." if metric else "No metric specified.",
+            f"Metric column '{metric}' not found." if metric else _no_metric(contract),
             _suggest_metric_questions(contract),
         )
 
@@ -972,7 +990,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         return _format_value(v, kind, money if kind == "currency" else None)
 
     def change(now: float, then: float) -> str:   # a rate moves in points, an amount in percent
-        return (f"{(now - then) * 100:+.1f} pts" if kind == "percent" else f"{(now / then - 1) * 100:+.1f}%")
+        if kind == "percent":
+            return f"{(now - then) * 100:+.1f} pts"
+        pct = pct_change(now, then)
+        return f"{pct:+.1f}%" if pct is not None else "no % change from a zero or negative base"
 
     date = _date_of(contract, params, df)
     weekly = bool(date) and weekly_cadence(full[date])   # YoY: 52 weeks back, same week-endings
@@ -1072,20 +1093,20 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
 
             answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{where}{by_month}: latest " \
                      f"{name(latest)} {fmt(series.iloc[-1])}"
-            def base(v) -> bool:   # a value to compare against (0% is one; $0 has no % change)
-                return v is not None and not pd.isna(v) and (kind == "percent" or v != 0)
+            def base(v) -> bool:   # a value to compare against (0% is one; $0 or less: no % change)
+                return v is not None and not pd.isna(v) and (kind == "percent" or pct_change(1.0, v) is not None)
 
             back = {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq]
             before = whole.get(latest - 1)   # by label: a missing period is no "period before"
             if base(before):
                 answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"
             elif before is not None and not pd.isna(before):   # a $0 month is a month
-                answer += f", vs {fmt(before)} the period before (no % change from zero)"
+                answer += f", vs {fmt(before)} the period before (no % change from a zero or negative base)"
             prior = whole.get(latest - back) if freq != "Y" else None
             if base(prior):   # (by year, "a year earlier" is the period before: said once)
                 answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
             elif prior is not None and not pd.isna(prior):   # a $0 month a year earlier is said
-                answer += f"; a year earlier {fmt(prior)} (no % change from zero)"
+                answer += f"; a year earlier {fmt(prior)} (no % change from a zero or negative base)"
             compared = latest - back if base(prior) else latest - 1 if (
                 before is not None and not pd.isna(before)) else None
             if compared is None:

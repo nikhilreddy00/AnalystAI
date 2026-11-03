@@ -264,14 +264,14 @@ def test_e2b_pseudonymises_pii():
 
 
 def _builtins(df: pd.DataFrame, case: dict) -> dict:
-    from agents.analysis_agent import _build_guaranteed_code, _build_standard_code
+    from agents.analysis_agent import _build_guaranteed_code, builtin_result
     from orchestrator.state import AnalysisTask
     contract = _contract(df)
     result = {"eda_summary": {}, "correlations": {}, "segments": [], "trends": [], "anomalies": [],
               "statistical_tests": [], "distributions": {}, "key_findings": []}
     g = {"df": df.copy(), "pd": pd, "np": np, "result": result, "json": json}
-    exec(_build_guaranteed_code(contract) + _build_standard_code(
-        contract, AnalysisTask(raw_query=case["question"], **case["task"])), g)
+    exec(_build_guaranteed_code(contract), g)
+    builtin_result(df, contract, AnalysisTask(raw_query=case["question"], **case["task"]), result)
     return json.loads(json.dumps(result, default=str))
 
 

@@ -86,7 +86,7 @@ def partial_last_month(dates) -> bool:
     fewer distinct days than the others (a mid-month export). A month-over-month change must not
     compare such a month with a full one. Monthly grain or sparse data (an 18-row sample: 1–3
     dates a month) is never partial: there are too few dates to tell.
-    Mirrored inside the analysis agent's sandbox code (`_cut` in _build_standard_code)."""
+    The analysis built-ins use it too (analysis_agent.standard_stats)."""
     import pandas as pd
 
     d = pd.to_datetime(dates, format="mixed", errors="coerce").dropna()
@@ -106,7 +106,7 @@ def partial_last_month(dates) -> bool:
 def weekly_cadence(dates) -> bool:
     """One date a week (POS week endings): distinct dates 7 days apart. Weekly flows summed into
     calendar months show a ~25% sawtooth (4 vs 5 week-endings). Mirrored in the analysis
-    sandbox (`_weekly` in _build_standard_code)."""
+    built-ins (analysis_agent.standard_stats)."""
     import pandas as pd
 
     d = pd.to_datetime(dates, errors="coerce").dropna().drop_duplicates().sort_values()
@@ -180,7 +180,7 @@ def _snapshots(df, hint):
     ordered by time. Missing entity or time column: LevelUnavailable."""
     import pandas as pd
     missing = [c for c in [*hint.aggregation_by, hint.aggregation_time] if not c or c not in df.columns]
-    if not hint.aggregation_by or missing:
+    if missing:   # no entity at all (aggregation_by []): one series, a single account's statement
         raise LevelUnavailable(f"{hint.name} is a level (a balance-like value), and the column "
                                f"{', '.join(missing or ['entity'])} it needs is no longer in the "
                                "data, so it can't be totalled")
@@ -213,6 +213,15 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
     if not over_time and hint.aggregation_time not in names:
         return latest_rows(df, column, contract).groupby(keys)[column].sum()
     keys = keys if isinstance(keys, list) else [keys]
+    if agg == "last":   # each entity's month-end in each period, by the one rule (snapshot_rows)
+        _snapshots(df, hint)   # the entity and time columns are there, or LevelUnavailable
+        grp = df.groupby([k.loc[df.index] if isinstance(k, pd.Series) else k for k in keys])
+        labelled = df.assign(_period=grp.ngroup())
+        rows = snapshot_rows(labelled[labelled["_period"] >= 0], hint.aggregation_by,
+                             hint.aggregation_time, per="_period")
+        totals = rows.groupby("_period")[column].sum(min_count=1).dropna()
+        totals.index = grp.size().index[totals.index]
+        return totals
     d = _snapshots(df.dropna(subset=[column]), hint)
     per = d.groupby([*(k.loc[d.index] if isinstance(k, pd.Series) else k for k in keys),
                      *(d[e] for e in hint.aggregation_by)])[column].agg(agg)
@@ -248,6 +257,16 @@ def with_display_names(text: str, display: dict[str, str] | None) -> str:
     return re.sub(rf"(?<!\w)(?:{pat})(?!\w)", swap, text, flags=re.IGNORECASE)
 
 
+def pct_change(now, then) -> float | None:
+    """(now / then − 1) × 100, or None when `then` is zero, negative or missing: a percent change
+    off a zero or negative base means nothing (net flow −$4,464 → +$9,170 is not "−305%"). The one
+    rule for every % change an answer states."""
+    import math
+    if then is None or now is None or (isinstance(then, float) and math.isnan(then)) or then <= 0:
+        return None
+    return (now / then - 1) * 100
+
+
 def level_rows(df, column: str, contract):
     """The rows a statistic of `column` by group (mean, median, count …) reads: a level's latest
     snapshot per entity (an average balance by branch, never every week's snapshot of it: an
@@ -280,27 +299,41 @@ def _in_time_order(d):
     return d.sort_values("_t", kind="stable")
 
 
-def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: bool = True):
+def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: bool = True,
+                  per: str | None = None):
     """Each entity's latest snapshot (or first, for a 'first' window): the one rule for a level's
     current rows (a balance's tile, bars, answers). An entity whose latest snapshot is a full
     usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
     data: not in the newest complete month); staggered snapshots (each account on its own day)
-    all count. Undated rows are out (one can't be the latest). `current=False`: each entity's
-    latest row in each `by` group, no stopped cut (a period's own month-end, not today's)."""
+    all count. Undated rows are out (one can't be the latest). `per` (a period column): each
+    entity's latest row in each period, the stopped cut judged against THAT period's newest date
+    (an account closed on 10 Aug is out of August's month-end). `current=False`: no stopped cut
+    (an entity's last row, wherever it is: a correlation keeps accounts that stopped). No `by`:
+    the file is one series (a single account's statement)."""
     import pandas as pd
     t = pd.to_datetime(df[time], format="mixed", errors="coerce")
     d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
+    helpers = ["_t"]
+    if not by:   # one series: a constant key, dropped again below
+        d, by = d.assign(__series=0), ["__series"]
+        helpers.append("__series")
     g = d.groupby(by, sort=False)
     if window == "first":
-        return g.head(1).drop(columns="_t")
+        return g.head(1).drop(columns=helpers)
     gaps = g["_t"].diff().dt.total_seconds().dropna()
-    per = gaps.groupby([d.loc[gaps.index, e] for e in by])
-    cadence = per.median().median() if len(gaps) else 0.0
+    each = gaps.groupby([d.loc[gaps.index, e] for e in by])   # each entity's gaps
+    cadence = each.median().median() if len(gaps) else 0.0
     # snapshots come at a cadence (weekly, each account's statement day); a ledger's running
     # balance does not: a quiet account there is no closed one, so nothing is cut
-    regular = len(gaps) and (per.std().fillna(0) / per.mean()).median() <= REGULAR_CV
+    regular = len(gaps) and (each.std().fillna(0) / each.mean()).median() <= REGULAR_CV
     last = g.tail(1)
     newest = d["_t"].max()
+    if per is not None:   # each period's own month-end
+        last = d.groupby([*by, per], sort=False).tail(1)
+        newest = d.groupby(per)["_t"].transform("max").loc[last.index]
+        if current and cadence and cadence == cadence and regular and cadence < 27 * 86400:
+            last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
+        return last.drop(columns=helpers)   # monthly or coarser: the month's own row is its end
     if current and cadence and cadence == cadence and regular:
         if cadence >= 27 * 86400:   # monthly or coarser: current = a snapshot in the newest month,
             # or the one before while the newest is still partial (a 4 Nov export of accounts
@@ -310,7 +343,7 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: b
         else:   # daily / weekly, staggered or not: stopped = missed two usual gaps (a day's
             # refresh lag, or weekday-only rows on a Saturday export, is still current)
             last = last[last["_t"] > newest - pd.Timedelta(seconds=2 * cadence)]
-    return last.drop(columns="_t")
+    return last.drop(columns=helpers)
 
 
 def _local(t):
@@ -479,6 +512,19 @@ def cut_partial(series, t, freq: str, rule: str | None = None):
 
 
 _UNIT = {"W": "week", "Q": "quarter", "Y": "year"}
+
+
+def display_values(obj):
+    """Floats at 10 significant digits before they are rendered for a model or a person: a
+    statistic's last digits (of 16) differ between machines (exp, log, BLAS) and are noise to
+    any reader (plan v2 R4); money to the cent and 4-decimal results are left as they are."""
+    if isinstance(obj, float):
+        return float(f"{obj:.10g}") if obj == obj else obj
+    if isinstance(obj, dict):
+        return {k: display_values(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [display_values(v) for v in obj]
+    return obj
 
 
 def ranked(series, ascending: bool = False):
