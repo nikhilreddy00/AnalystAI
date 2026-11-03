@@ -381,6 +381,9 @@ def build_contract(df: pd.DataFrame, source_type: ConnectorType, info: dict | No
     if pack := pack_for(domain):   # the pack knows a store number is a label, not a quantity
         for c in cols:
             role = next((r for r, col in roles.items() if col == c.name), None)
+            if role and pack.roles[role].kind == "category" and c.is_metric:   # a code (DRG 470)
+                c.is_metric = False
+                c.role_reason = f"category: the {domain} {role.replace('_', ' ')} (a code)"
             if not role or pack.roles[role].kind != "id" or c.is_id:
                 continue
             s = df[c.name].dropna().astype(str)   # text: a nested value can't break nunique

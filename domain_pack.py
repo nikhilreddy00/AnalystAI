@@ -391,8 +391,8 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
             return words(vals).isin(known).mean() >= 0.5
         case "currency":   # "usd" as well as "USD"
             return vals.astype(str).str.strip().str.upper().str.fullmatch(r"[A-Z]{3}").mean() >= 0.9
-        case "category" | "text":
-            return not numeric
+        case "category" | "text":   # a code written as a number (470) fits when its pattern does
+            return not numeric or bool(role.pattern)
     return True   # id
 
 

@@ -22,6 +22,7 @@ roles:
   line:         {kind: category, headers: [line]}
   seq:          {kind: count, headers: [seq]}
   freq:         {kind: category, headers: [freq]}
+  group_code:   {kind: category, pattern: '\d{3}', headers: [group_code]}
 version_key: [claim, line]
 version_order: seq
 version_void: {freq: ["8"]}
@@ -96,3 +97,15 @@ def test_no_version_fields_means_no_version_rule(toy_clinic):
     """A pack without version_key (retail, banking) never drops a repeated key's earlier rows."""
     retail = domain_pack.pack_for("retail")
     assert not retail.version_key and not domain_pack.pack_for("banking").version_key
+
+
+def test_a_code_written_as_a_number_is_a_category_not_a_metric(toy_clinic):
+    """M4: a pack category role with a pattern (a 3-digit group code: 470, 291) fits a numeric
+    column, and ingestion reads it as a label, never a quantity to sum or average."""
+    df = pd.DataFrame({"enrollee_ref": [f"E{i % 9}" for i in range(30)],
+                       "settled": [10.0 + i for i in range(30)],
+                       "paid_on": ["2026-01-05"] * 30,
+                       "group_code": [470, 291, 871] * 10})
+    c = build_contract(df, ConnectorType.CSV)
+    col = next(x for x in c.columns if x.name == "group_code")
+    assert c.roles.get("group_code") == "group_code" and not col.is_metric and not col.is_id
