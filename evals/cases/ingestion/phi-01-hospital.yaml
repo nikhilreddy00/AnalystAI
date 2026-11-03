@@ -16,4 +16,5 @@ columns:
 - [attending_npi, npi]
 - [visit_id, visit_id]
 label_note: 'Inpatient stays: MRN, name, DOB, ZIP, phone; provider NPI and visit ids are not the patient.'
-expect_domain: null
+expect_domain: healthcare   # since Domain 3: the healthcare pack
+expect_roles: {admit_date: admit_date, patient: mrn, encounter: visit_id, diagnosis: diagnosis_code, provider: attending_npi}

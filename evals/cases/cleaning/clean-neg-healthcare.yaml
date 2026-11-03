@@ -19,5 +19,6 @@ forbid:
   strategy: non_product
 - operation: flag
   strategy: out_of_range
-expect_grain: null
-label_note: 'Another domain (healthcare): no retail rule may fire.'
+expect_grain: aggregate
+label_note: 'Another domain (healthcare): no retail rule may fire. Since Domain 3 the
+  healthcare pack applies: one row per stay, no order id, so the grain is aggregate.'

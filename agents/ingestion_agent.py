@@ -573,7 +573,7 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
             continue   # the clinical content analysed (not an identifier); generalised later
         elif _is_free_text(s, n) or (s.nunique() > 50 and n not in coded):
             withheld.append(n)   # notes, places: anything too specific to be a category
-        elif patient and n_patients >= 2 and s.nunique() >= 0.5 * n_patients \
+        elif patient and n not in coded and n_patients >= 2 and s.nunique() >= 0.5 * n_patients \
                 and df.groupby(patient)[n].nunique().max() <= 1:
             withheld.append(n)   # one value per patient: it identifies them like a name (the
             # fewer the patients, the more so)

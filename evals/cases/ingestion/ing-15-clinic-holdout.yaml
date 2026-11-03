@@ -21,4 +21,5 @@ columns:
 - - street
   - street
 label_note: 'Clinic visits: patient and physician names, date of birth, address.'
-expect_domain: null
+expect_domain: healthcare   # since Domain 3: the healthcare pack
+expect_roles: {admit_date: visit_date, patient: mrn}
