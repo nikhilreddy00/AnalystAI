@@ -224,19 +224,29 @@ class Pack(_Strict):
     unsupported: dict[str, str] = Field(default_factory=dict)      # concept → what it needs
     caveats: dict[str, str] = Field(default_factory=dict)          # condition → text
     causal_triggers: list[str] = Field(default_factory=list)
+    # On patient data: a reported count of 1–10 of these (patients, deaths …) is a small cell
+    small_cell_nouns: list[str] = Field(default_factory=list)
     # Plain text, or {q, needs: [KPI…]}: offered only when the data supports what it needs
     first_questions: list[str | dict[str, str | list[str]]] = Field(default_factory=list)
 
     def kpi(self, name: str) -> KPI | None:
         return next((k for k in self.kpis if k.name == name), None)
 
-    def value_roles(self) -> set[str]:
-        """Roles whose written values a pack rule reads (a KPI's `where` words, the status,
-        version voids, non-product codes): pooling or rewriting them would change the answers."""
-        conds = {c.role for k in self.kpis for alt in [*k.num, *(k.den or [])] for t in alt
-                 for g in t.where for c in g if c.in_ is not None or c.not_in is not None}
-        status = {r for r, x in self.roles.items() if x.kind == "status"}
-        return conds | status | set(self.version_void) | set(self.non_product)
+    def value_words(self) -> dict[str, set[str]]:
+        """role → the written values a pack rule reads (a KPI's `where` words, status words,
+        version voids, non-product codes), as `words()` compares them: pooling these values
+        would change the answers (5 'expired' pooled → mortality 0)."""
+        out: dict[str, set[str]] = {}
+        for k in self.kpis:
+            for t in (t for alt in [*k.num, *(k.den or [])] for t in alt):
+                for c in (c for g in t.where for c in g):
+                    out.setdefault(c.role, set()).update(c.in_ or c.not_in or [])
+        status = [v for vs in self.status_values.values() for v in vs]
+        for r in (r for r, x in self.roles.items() if x.kind == "status"):
+            out.setdefault(r, set()).update(status)
+        for r, vs in [*self.version_void.items(), *self.non_product.items()]:
+            out.setdefault(r, set()).update(vs)
+        return {r: set(words(pd.Series(sorted(vs), dtype=str))) for r, vs in out.items() if vs}
 
     @property
     def date_role(self) -> str:

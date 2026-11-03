@@ -585,8 +585,8 @@ class ReviewFlag(BaseModel):
     index: int
     section: Literal["headline", "paragraph", "finding", "action"]
     claim: str
-    label: Literal["unsupported", "contradicted", "overstated"]
-    kind: str            # number | date | direction | period | group | citation | causal | certainty | critic
+    label: Literal["unsupported", "contradicted", "overstated", "privacy"]
+    kind: str            # number | date | direction | period | group | citation | causal | certainty | small_cell | critic
     reason: str
     evidence_ids: list[str] = Field(default_factory=list)
     source: Literal["check", "critic"]

@@ -119,7 +119,7 @@ export interface ReviewFlag {
   index: number; // position in claim order: headline, summary paragraphs, findings, actions
   section: "headline" | "paragraph" | "finding" | "action";
   claim: string;
-  label: "unsupported" | "contradicted" | "overstated";
+  label: "unsupported" | "contradicted" | "overstated" | "privacy";
   kind: string; // number | date | direction | period | group | rank | citation | causal | certainty | critic
   reason: string;
   evidence_ids: string[];

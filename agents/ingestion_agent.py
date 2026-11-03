@@ -28,7 +28,7 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
-from domain_pack import layout_columns, one_series, pack_for
+from domain_pack import layout_columns, one_series, pack_for, words
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -546,8 +546,9 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
     pack = pack_for(contract.domain)
     coded = {col for r, col in contract.roles.items() if pack and r in pack.roles
              and pack.roles[r].pattern and col in df.columns
-             and _profiled(df[col]).dropna().astype(str).head(1000)
-             .str.fullmatch(pack.roles[r].pattern).mean() >= 0.9}   # procedure codes, DRGs
+             and _profiled(df[col]).dropna().astype(str).str.strip()
+             .str.fullmatch(pack.roles[r].pattern).all()}   # procedure codes, DRGs: EVERY value
+    # matches (one free-text value in a code column withholds the column)
     patient = next((str(n) for n in df.columns if is_phi_identifier(str(n))), None)
     n_patients = df[patient].nunique() if patient else 0
     withheld, ids = [], []
@@ -639,17 +640,23 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
                                        f"{AGE_CAP} (90+)", high, out))
     roles = {c.name: c for c in contract.columns}
     pack = pack_for(contract.domain)
-    # a KPI's filter values stay as written (pooling 5 'expired' stays erases mortality); small
-    # counts in what is reported are flagged by the quality check instead
-    exact = {contract.roles[r] for r in (pack.value_roles() if pack else ()) if r in contract.roles}
+    # the values a pack rule reads stay as written (pooling 5 'expired' erases mortality); every
+    # other rare value is still pooled, and small counts in what is reported are flagged by the
+    # quality check
+    exact = {contract.roles[r]: vs for r, vs in (pack.value_words() if pack else {}).items()
+             if r in contract.roles}
     for col in (str(n) for n in out.columns):
         c = roles.get(col)
-        if c is None or c.is_date or c.is_id or c.is_metric or col in ids or is_zip_column(col) \
-                or col in exact:
+        if c is None or c.is_date or c.is_id or c.is_metric or col in ids or is_zip_column(col):
             continue
         key = out[col].astype(str).str.strip().str.casefold().where(out[col].notna(), "\x00missing")
         counts = key.map(key.value_counts())
         small = (counts < SMALL_CELL) & out[col].notna()   # missing stays missing, never a group
+        if col in exact and (kept := small & words(out[col]).isin(exact[col])).any():
+            small &= ~kept
+            decisions.append(_decision(col, "keep", "rule_values", "values a KPI counts kept as "
+                                       f"written although under {SMALL_CELL} records (small "
+                                       "counts in reports are flagged instead)", int(kept.sum()), out))
         dx = is_diagnosis_column(col, _profiled(out[col]).dropna().head(_SAMPLE).tolist())
         # A yes/no outcome is never pooled: pooling its rare side would erase it (readmitted
         # 9 of 300 → 0%); diagnosis codes are pooled however many categories they have.

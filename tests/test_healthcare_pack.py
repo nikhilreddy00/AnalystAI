@@ -9,7 +9,7 @@ import domain_pack
 from agents.ingestion_agent import build_contract, prepare_frame
 from orchestrator.state import ConnectorType
 
-TOYCLINIC = """
+TOYCLINIC = r"""
 domain: toyclinic
 phi: true
 signals:
@@ -121,7 +121,7 @@ def _stays(n=300) -> pd.DataFrame:
     return pd.DataFrame({
         "enrollee_ref": [f"E{i % 120}" for i in range(n)],
         "settled": [100.0 + i for i in range(n)], "paid_on": ["2026-01-05"] * n,
-        "disposition": ["20" if i < 5 else "01" for i in range(n)],          # 5 deaths
+        "disposition": ["20" if i < 5 else "07" if i < 8 else "01" for i in range(n)],  # 5 deaths
         "unit": ["ICU" if i < 4 else "Ward A" if i % 2 else "Ward B" for i in range(n)],
         "procedure": [f"{99000 + i % 80}" for i in range(n)],                # 80 distinct codes
         "comment": [f"called back re visit {i}" for i in range(n)]})        # free text
@@ -129,11 +129,14 @@ def _stays(n=300) -> pd.DataFrame:
 
 def test_values_a_kpi_filters_on_are_never_pooled(toy_clinic):
     """M2/D4: pooling 'expired' (5 rows) into 'Other' would make mortality 0; a KPI's filter
-    values stay as written. Small groups of other columns (a 4-row unit) are still pooled."""
-    assert "disposition" in toy_clinic.value_roles()
-    out, _ = prepare_frame(_stays(), build_contract(_stays(), ConnectorType.CSV), ConnectorType.CSV)
-    assert (out["disposition"] == "20").sum() == 5
+    values stay as written, and only those: another rare value of the same column (3 '07') and
+    small groups of other columns (a 4-row unit) are still pooled."""
+    assert toy_clinic.value_words()["disposition"] == {"20"}
+    out, c = prepare_frame(_stays(), build_contract(_stays(), ConnectorType.CSV), ConnectorType.CSV)
+    assert (out["disposition"] == "20").sum() == 5 and "07" not in set(out["disposition"])
     assert "ICU" not in set(out["unit"])
+    assert any(d.column == "disposition" and "kept as written" in d.reason
+               for d in c.deidentification)
 
 
 def test_a_pattern_matched_code_column_is_kept_free_text_is_not(toy_clinic):
@@ -141,3 +144,34 @@ def test_a_pattern_matched_code_column_is_kept_free_text_is_not(toy_clinic):
     with as many values is still withheld."""
     out, _ = prepare_frame(_stays(), build_contract(_stays(), ConnectorType.CSV), ConnectorType.CSV)
     assert out["procedure"].nunique() == 80 and "comment" not in out.columns
+
+
+@pytest.mark.parametrize("text, hit", [
+    ("Oncology had 4 deaths in May.", "4 deaths"),
+    ("Only three patients were readmitted from Ward B.", "three patients"),
+    ("7 of 412 encounters were observation stays.", "7 of 412 encounters"),
+    ("Readmissions rose 5% to 214 patients.", None),            # a percentage, a large count
+    ("Cardiology's ALOS was 4.2 days across 9 months.", None),   # days and months aren't people
+    ("10 departments reported.", None),
+])
+def test_a_reported_count_of_1_to_10_people_is_a_small_cell(text, hit):
+    """D4(c): small cells are controlled in what is reported, not by pooling the data: a count
+    of 1–10 of the pack's people nouns on patient data is flagged."""
+    from guardrails import claim_small_cell
+    nouns = ["patients", "encounters", "deaths", "stays", "admissions", "members"]
+    r = claim_small_cell(text, nouns)
+    assert (r is None) if hit is None else (hit in r)
+
+
+def test_no_nouns_no_small_cell_check():
+    from guardrails import claim_small_cell
+    assert claim_small_cell("Oncology had 4 deaths in May.", []) is None
+
+
+def test_one_value_off_the_code_pattern_withholds_the_column(toy_clinic):
+    """Security review: a column vote (90% of 1,000) let free text ride in a code column; every
+    value must match."""
+    df = _stays()
+    df.loc[299, "procedure"] = "pt Jane Roe called"
+    out, _ = prepare_frame(df, build_contract(df, ConnectorType.CSV), ConnectorType.CSV)
+    assert "procedure" not in out.columns
