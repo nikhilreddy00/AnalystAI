@@ -395,3 +395,41 @@ async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, mo
         a = domain_pack.compute_kpi(want, wc.roles, pack, k.name)
         b = domain_pack.compute_kpi(got, gc.roles, pack, k.name)
         assert (a is None and b is None) or b == pytest.approx(a, rel=1e-9), (source, k.name, a, b)
+
+
+# ── Truth: healthcare (Domain 3) ──────────────────────────────────────────────────────────────
+
+def test_inpatient_tiles_are_the_truth():
+    """Discharge-based ALOS (days from admit, same day 0), crude 30-day readmission with the CMS
+    index exclusions and censoring, crude mortality: never the naive all-rows numbers."""
+    t, truth = tiles("inpatient"), _built("inpatient")[3]
+    assert t["discharges"] == truth["inpatient_discharges"]
+    assert close(t["alos"], truth["alos_inpatient"], tol=0.3)            # shown to 2 dp
+    assert close(t["readmission_rate"], 100 * truth["readmit_rate_crude"], tol=1)
+    assert close(t["mortality_rate"], 100 * truth["mortality_rate_crude"], tol=3)
+    assert abs(t["readmission_rate"] - 100 * truth["naive_readmit_rate"]) > 2
+
+
+def test_inpatient_readmission_and_alos_by_department_are_the_truth():
+    _, rate = answer("inpatient", "top_n", "readmission rate by department", kpi="readmission_rate",
+                     segment_column="Department", group_by="Department")
+    assert close(rate, _built("inpatient")[3]["readmit_by_dept"], tol=0.5)
+    _, alos = answer("inpatient", "top_n", "ALOS by department", kpi="alos",
+                     segment_column="Department", group_by="Department")
+    assert close(alos, _built("inpatient")[3]["alos_by_dept"], tol=0.3)
+
+
+def test_claims_tiles_are_the_truth():
+    """Last version of each claim line, voided chains out, paid not billed, the header total
+    never summed, the denial rate on claims (not rows) excluding pending."""
+    t, truth = tiles("health_claims"), _built("health_claims")[3]
+    assert close(t["paid"], truth["paid_total_final"])
+    assert close(t["allowed"], truth["allowed_total_final"])
+    assert t["claims"] == truth["claims_final"] and t["members"] == truth["members"]
+    assert close(t["denial_rate"], 100 * truth["denial_rate_claims"], tol=1)
+
+
+def test_claims_denial_rate_by_payer_is_the_truth():
+    _, rate = answer("health_claims", "top_n", "denial rate by payer", kpi="denial_rate",
+                     segment_column="Payer", group_by="Payer")
+    assert close(rate, _built("health_claims")[3]["denial_rate_by_payer"], tol=1)
