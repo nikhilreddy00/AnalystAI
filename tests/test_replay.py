@@ -80,6 +80,12 @@ CHANGED = {
     **{("intake-20261103T175225Z.json", c): "Domain 3 intake gate: 'we pay' is the paid KPI's "
                                              "word (the verb was missing from the glossary)"
        for c in ("intake-health-10", "intake-health-12")},
+    ("insight-20261103T180311Z.json", "ins-43-inpatient-overview"):
+        "Domain 3 insight gate: the harness builds a patient-data bundle on the PHI-protected copy "
+        "(names withheld, a 7-stay department pooled), as production does",
+    ("insight-20261103T180311Z.json", "ins-44-claims-overview"):
+        "Domain 3 insight gate: the harness's MoM fixture leaves claims' run-out months out "
+        "(as analysis_agent's built-in does): Jul vs Jun, never Sep vs Aug",
     ("insight-20261102T210024Z.json", "ins-41-loan-tape-overview"):
         "Domain 2 browser check: a pack overview adds its first state ratio (NPL) by product",
     ("insight-20261102T210024Z.json", "ins-42-ledger-overview"):

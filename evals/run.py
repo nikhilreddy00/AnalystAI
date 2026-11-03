@@ -450,6 +450,9 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
     plan = case["plan"]
     date = _viz_date(df)
     month = any_dates(df[date]).dt.to_period("M") if date else None
+    from domain_pack import runout_months   # claims still arriving: as analysis_agent's MoM
+    if month is not None and contract is not None and (runout := runout_months(contract)):
+        month = month.where(month < month.max() - runout + 1)
     corr, trends, raw_trends, segs, anoms, tests, ids = {}, [], [], [], [], [], []
     for f in case.get("findings") or []:
         if f["kind"] == "trend":
@@ -603,11 +606,17 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import DataNarrative, QuestionIntent
 
+    from agents.ingestion_agent import prepare_frame
+
     plan = case["plan"]
     df = insight_frame(case)
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    if contract.phi:   # patient data: the insight agent reads the PHI-protected copy, as in production
+        df, contract = prepare_frame(df, contract, ConnectorType.CSV, {},
+                                     AnalysisSession(session_id="x").user_id)
     session = AnalysisSession(
         session_id=str(uuid.uuid4()),
-        data_contract=CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df),
+        data_contract=contract,
         task_plan=AnalysisTask(raw_query=case["question"], target_metrics=plan["target_metrics"],
                                segments=plan.get("segments", []),
                                analysis_types=plan.get("analysis_types") or ["eda"],

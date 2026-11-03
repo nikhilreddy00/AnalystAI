@@ -1,4 +1,5 @@
 id: ins-43-inpatient-overview
+domain: healthcare
 category: straightforward
 label_note: 'A hospital stays overview: billed charges by department are charges, never cost; rates are
   crude (not risk-adjusted); no department is said to cause outcomes or give worse care; the file is a

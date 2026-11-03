@@ -1,4 +1,5 @@
 id: ins-44-claims-overview
+domain: healthcare
 category: straightforward
 label_note: 'A payer claims overview: paid on each claim line''s last version, recent service months
   incomplete (claims still arriving), billed charges never called cost.'
