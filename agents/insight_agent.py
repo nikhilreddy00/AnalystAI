@@ -199,13 +199,15 @@ def _entity_count(session: AnalysisSession) -> str | None:
     rows = audit.rows_after if audit else contract.row_count if contract else 0
     for k in (findings.kpis if findings and pack else []):
         kpi = pack.kpi(k.recipe.kpi) if k.recipe and k.recipe.kind == "pack" else None
-        try:   # the tile's number (a compact '1.2K' says nothing: no claim is better than a wrong one)
-            n = float(k.value.replace(",", ""))
+        try:   # the tile's number (a compact '1.2K' says nothing: no claim is better than a wrong
+            n = float(k.value.split(" ")[0].replace(",", ""))   # one); '885 employees': its number
         except ValueError:
             continue
-        if kpi and kpi.unit == "count" and kpi.phrase.strip().lower() == \
-                narrative.entity_plural.strip().lower() and n != rows:
-            return (f"{k.value} {narrative.entity_plural} in {rows:,} rows: a row is not one "
+        # named like the noun ('Policies'), or counting it ('Headcount': employees)
+        noun = narrative.entity_plural.strip().lower()
+        if kpi and kpi.unit == "count" and noun in (kpi.phrase.strip().lower(),
+                                                    (kpi.unit_word or "").strip().lower()) and n != rows:
+            return (f"{n:,.0f} {narrative.entity_plural} in {rows:,} rows: a row is not one "
                     f"{narrative.entity_singular}; count {narrative.entity_plural} as the "
                     f"{kpi.phrase} figure does, never rows.")
     return None
