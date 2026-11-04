@@ -1,0 +1,29 @@
+id: hr-6
+domain: hr
+category: ratio
+pipeline: production
+dataset:
+  name: hr_roster
+  seed: 1
+question: How many employees did we have at the end of 2025 in each department, excluding contractors?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Employee_ID
+  segments:
+  - Department
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Department
+  truth_key: headcount_by_dept_2025_12_31
+  abs_tol: 0.5
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'People in force on 31 Dec 2025 (hired by then, termination blank or later, status not terminated
+  without a date), distinct ids: a rehire is one person; rows are not people.'

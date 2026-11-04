@@ -313,8 +313,8 @@ def _targeted(cid: str, handler: str, **params):
 @pytest.mark.parametrize("cid, handler, params", [
     ("e2e-26", "handle_segment_compare", dict(metric_column="claim_amount", segment_column="line",
                                               aggregation="sum")),
-    ("e2e-28", "handle_segment_compare", dict(metric_column="left", segment_column="department",
-                                              aggregation="mean")),
+    # Domain 5: attrition is the HR pack's 12-month rate (intake fills kpi), never AVG(left)
+    ("e2e-28", "handle_kpi", dict(kpi="attrition_rate", group_by="department")),
     ("e2e-30", "handle_time_series", dict(metric_column="mrr", aggregation="sum", frequency="M")),
     ("e2e-32", "handle_segment_compare", dict(metric_column="temperature", segment_column="line",
                                               aggregation="mean")),

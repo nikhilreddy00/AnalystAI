@@ -1,0 +1,11 @@
+id: intake-hr-09
+category: clear
+pipeline: production
+source:
+  dataset: hr_roster
+  seed: 1
+overview_done: true
+question: Which employees are most likely to quit next quarter?
+expect:
+  ask: true
+rationale: 'An individual prediction: unsupported. Ask (the insurance unsupported convention).'

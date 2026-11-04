@@ -1,0 +1,21 @@
+id: viz-t11-hr-headcount
+category: targeted
+label_note: 'HR: headcount over time is a stock per month-end: a line, never a sum of rows per month.'
+dataset:
+  name: hr_snapshots
+  seed: 1
+question: How has headcount changed by month?
+plan:
+  intent: time_series
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    kpi: headcount
+    frequency: M
+expect:
+- types:
+  - LineChart
+  x: Snapshot_Date
+  y: Headcount
+  agg: none

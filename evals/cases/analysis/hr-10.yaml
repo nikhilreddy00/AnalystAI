@@ -1,0 +1,33 @@
+id: hr-10
+domain: hr
+category: ratio
+pipeline: production
+dataset:
+  name: hr_roster
+  seed: 1
+question: What is the unadjusted gender pay gap by job level?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Annual_Salary
+  segments:
+  - Job_Level
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment:
+  - Job_Level
+  - Job Level
+  - Level
+  truth_key: pay_gap_mean_fte_by_level
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: (men's mean − women's mean) ÷ men's mean on full-time-equivalent pay (salary ÷ FTE), employees
+  in force now; on annual salary part-timers (mostly women) inflate the gap by 5–13 points.

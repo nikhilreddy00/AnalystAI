@@ -1,0 +1,15 @@
+id: intake-hr-12
+category: clear
+pipeline: production
+source:
+  dataset: hr_snapshots
+  seed: 1
+overview_done: true
+question: How has headcount changed by month?
+expect:
+  ask: false
+  intent_any:
+  - time_series
+  params:
+    kpi: headcount
+rationale: 'Headcount by month on snapshots: a stock per month-end.'

@@ -1114,7 +1114,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        source="kpi")
         _percent_axis(chart, kind, kpi.label)
         _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked. {how}",
-             group, kpi.label, "sum" if kpi.den is None else "none", len(df))
+             group, kpi.label, "sum" if kpi.den is None and not spelled else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                 chart_configs=[chart],   # every group's value, not only the ends
                                 table_data=[{group: str(k), kpi.label: fmt(v)} for k, v in by.items()])
@@ -1216,7 +1216,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                            source="kpi")
             _percent_axis(chart, kind, kpi.label)
             _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date,
-                 kpi.label, "sum" if kpi.den is None else "none", len(df))
+                 kpi.label, "sum" if kpi.den is None and not spelled else "none", len(df))
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
     value = compute_kpi(df, roles, pack, kpi.name, full=all_rows, window=win)

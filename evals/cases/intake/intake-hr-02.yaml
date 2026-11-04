@@ -1,0 +1,17 @@
+id: intake-hr-02
+category: clear
+pipeline: production
+source:
+  dataset: hr_roster
+  seed: 1
+overview_done: true
+question: What is employee turnover over the last year?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: attrition_rate
+rationale: Turnover is attrition here (never retail net sales).

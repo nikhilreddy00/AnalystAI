@@ -1,0 +1,35 @@
+id: hr-5
+domain: hr
+category: ratio
+pipeline: production
+dataset:
+  name: hr_roster
+  seed: 1
+question: Over the last 12 months, what were voluntary, involuntary and retirement attrition rates (employees
+  only)?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Termination_Date
+  segments:
+  - Termination_Category
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment:
+  - Termination_Category
+  - Termination Category
+  - Category
+  - Separation Type
+  truth_key: attrition_12m_by_category
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Each category's separations ÷ the same average headcount; retirement is its own category (not
+  voluntary); contractors out of both counts.

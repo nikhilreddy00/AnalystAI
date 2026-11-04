@@ -1,0 +1,11 @@
+id: intake-hr-11
+category: clear
+pipeline: production
+source:
+  dataset: hr_roster
+  seed: 1
+overview_done: true
+question: What is the adjusted pay gap controlling for level?
+expect:
+  ask: true
+rationale: 'Adjusted pay gap: unsupported. Ask (the insurance unsupported convention).'

@@ -1,0 +1,32 @@
+id: e2e-75
+domain: hr
+source: postgres
+dataset:
+  name: hr_roster
+  seed: 1
+question: What was involuntary attrition over the last 12 months?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: involuntary_attrition_12m
+  rel_tol: 0.01
+  scales:
+  - - 1
+    - null
+  - - 100
+    - '%'
+- kind: must_not_number
+  truth_key: attrition_12m
+  rel_tol: 0.005
+  scales:
+  - - 1
+    - null
+  - - 100
+    - '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'From Postgres: involuntary separations (incl. the June Support layoff) ÷ average headcount
+  = 11.0%. All separations (29.6%) are not the involuntary rate.'

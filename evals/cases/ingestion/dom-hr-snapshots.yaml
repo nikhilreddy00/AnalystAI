@@ -1,0 +1,34 @@
+id: dom-hr-snapshots
+category: domain
+dataset:
+  name: hr_snapshots
+  seed: 1
+roles:
+  Snapshot_Date: date
+  Emp_ID: id
+  Department: category
+  Location: category
+  Worker_Type: category
+  FTE: metric
+  Base_Salary: metric
+  Hire_Date: date
+  Termination_Date: date
+  Status: category
+  Gender: category
+traps:
+- Snapshot_Date
+- Termination_Date
+expect_domain: hr
+expect_roles:
+  snapshot_date: Snapshot_Date
+  hire_date: Hire_Date
+  termination_date: Termination_Date
+  employee: Emp_ID
+  department: Department
+  location: Location
+  worker_type: Worker_Type
+  gender: Gender
+  fte: FTE
+  salary: Base_Salary
+  status: Status
+label_note: 'Monthly snapshots: the snapshot date is the time role, salary and FTE are levels per employee.'

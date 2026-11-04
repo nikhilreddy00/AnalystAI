@@ -2038,6 +2038,13 @@ def _hr_roster_truth(df: pd.DataFrame) -> dict:
         "voluntary_attrition_12m": rate(_HR_VOLUNTARY),
         "involuntary_attrition_12m": rate(_HR_INVOLUNTARY),
         "retirement_rate_12m": rate(["Retirement"]),
+        "attrition_12m_by_category": {"Voluntary": rate(_HR_VOLUNTARY),
+                                      "Involuntary": rate(_HR_INVOLUNTARY),
+                                      "Retirement": rate(["Retirement"])},
+        "headcount_by_dept_2025_12_31": {
+            k: int(v) for k, v in s.loc[emp & _hr_in_force(s, pd.Timestamp("2025-12-31"))]
+            .groupby("dept")["id"].nunique().items()},
+        "attrition_2025_vs_2026": {y: by_year[y] for y in ("2025", "2026")},
         "hires_12m": int((emp & (s["hire"] > start) & (s["hire"] <= as_of)).sum()),
         "headcount_by_dept_asof": {k: int(v) for k, v in
                                    s.loc[now].groupby("dept")["id"].nunique().items()},

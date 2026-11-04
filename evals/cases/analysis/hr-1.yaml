@@ -13,12 +13,17 @@ task:
   segments:
   - department
 checks:
-- kind: segment_value
+- kind: segment_value_truth
   planted: true
   segment: department
-  metric: left
-  aggregation: mean
+  truth_key: attrition_12m_by_dept
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error
 - numbers_grounded
+label_note: 'Domain 5: attrition is the 12-month rate (separations ÷ average month-end headcount); Sales
+  is highest either way. Was AVG(left) per department, a share with no period.'

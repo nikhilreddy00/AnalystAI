@@ -1,0 +1,35 @@
+id: e2e-74
+domain: hr
+source: json
+dataset:
+  name: hr_snapshots
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: headcount_asof
+  rel_tol: 0.001
+- kind: must_not_number
+  truth_key: headcount_summed_rows
+  rel_tol: 0.0
+  scope: report
+- kind: must_not_number
+  truth_key: salary_summed_all_months
+  rel_tol: 0.01
+  scope: report
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate|loss
+    ratio|premium
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'JSON snapshots: 353 people at the latest month-end, never 8,226 rows or salary summed over
+  24 months.'

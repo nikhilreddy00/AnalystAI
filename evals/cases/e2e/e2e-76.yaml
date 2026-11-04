@@ -1,0 +1,24 @@
+id: e2e-76
+domain: hr
+dataset:
+  name: hr_roster
+  seed: 1
+question: How did attrition this year compare with last year?
+overview_done: true
+trap: true
+checks:
+- kind: must_not_number
+  truth_key: attrition_2026_annualised
+  rel_tol: 0.005
+  scales:
+  - - 1
+    - null
+  - - 100
+    - '%'
+- kind: must_match
+  pattern: partial|so far|through (Oct|31 Oct)|10 months|January.{0,12}October|left out
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: '2026 covers 10 months: named partial, never annualised (31.4%) or compared as a full year.'

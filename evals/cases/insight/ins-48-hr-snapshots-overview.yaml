@@ -1,0 +1,32 @@
+id: ins-48-hr-snapshots-overview
+domain: hr
+category: straightforward
+label_note: 'Monthly snapshots: headcount at the latest month-end (never rows or months summed), attrition
+  over 12 months with exits where people left.'
+dataset:
+  name: hr_snapshots
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- employee
+- employees
+plan:
+  target_metrics:
+  - Base_Salary
+  segments:
+  - Department
+  analysis_types:
+  - eda
+  - segmentation
+findings:
+- kind: segment
+  segment_column: Department
+  metric: Base_Salary
+  aggregation: mean
+expect:
+  must_mention:
+  - '353'
+  - attrition
+  must_not_match:
+  - 8,226 (employees|people|staff)
+  - net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate|loss ratio|premium

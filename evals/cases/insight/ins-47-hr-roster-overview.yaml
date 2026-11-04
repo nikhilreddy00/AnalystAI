@@ -1,0 +1,34 @@
+id: ins-47-hr-roster-overview
+domain: hr
+category: straightforward
+label_note: 'An employee roster: headcount as of 31 Oct 2026 in people, attrition over the 12 months to
+  it; pay described per group, never causal; no individual predictions.'
+dataset:
+  name: hr_roster
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- employee
+- employees
+plan:
+  target_metrics:
+  - Annual_Salary
+  segments:
+  - Department
+  analysis_types:
+  - eda
+  - segmentation
+findings:
+- kind: segment
+  segment_column: Department
+  metric: Annual_Salary
+  aggregation: mean
+expect:
+  must_mention:
+  - attrition
+  - 12 months|twelve months
+  must_not_match:
+  - flight[- ]risk|likely to (quit|leave)
+  - (salary|pay|performance) (causes|caused|drives|drove)
+  - net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate|loss ratio|premium
+  - (hire|promote|fire) (fewer|more) (women|men)
