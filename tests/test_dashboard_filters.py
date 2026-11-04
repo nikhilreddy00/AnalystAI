@@ -87,7 +87,10 @@ async def test_the_filtered_endpoint_recomputes_the_latest_dashboard(tmp_path, m
     from memory.session_store import InMemorySessionStore
     from orchestrator.state import AnalysisFindings, AnalysisSession, InsightReport
 
-    clean, contract, charts, kpis, _ = _dashboard("inpatient")
+    import asyncio
+    # _built runs the cleaning agent with asyncio.run: never inside this test's own event loop
+    # (it passed only when another test had filled the cache first)
+    clean, contract, charts, kpis, _ = await asyncio.to_thread(_dashboard, "inpatient")
     path = tmp_path / "clean.parquet"
     clean.to_parquet(path, index=False)
     store = InMemorySessionStore()

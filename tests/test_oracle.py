@@ -662,3 +662,18 @@ def test_a_top_n_naming_a_kpi_without_a_group_answers_the_kpi():
     assert "33,674,954.88" in total and f"{truth['claims']:,}" in claims, (total, claims)
     _, alos = answer("inpatient", "top_n", "ALOS by department", kpi="alos", segment_column="Department")
     assert close(alos, _built("inpatient")[3]["alos_by_dept"], tol=0.3)
+
+
+def test_a_kpi_for_one_named_status_judges_row_kinds_on_the_whole_data():
+    """Pass 4 (major): filtering to 'Open' before row kinds were judged made an earlier Open
+    valuation of a claim closed since count as its latest: $30.5M for $6.19M. A named value
+    selects the rows counted; which version of a chain is the latest is judged on all rows."""
+    _, clean, _, _ = _built("loss_run")
+    lt = clean.sort_values("Valuation Date").groupby(["Claim Number", "Claimant Number"]).tail(1)
+    opened = lt[lt["Claim Status"] == "Open"]
+    text, _ = answer("loss_run", "segment_compare", "incurred for Open claims", kpi="incurred",
+                     segment_column="Claim Status", segment_value="Open")
+    assert f"{opened['Incurred'].sum():,.2f}" in text, text
+    count, _ = answer("loss_run", "segment_compare", "How many claims are open?", kpi="claims",
+                      segment_column="Claim Status", segment_value="Open")
+    assert f"{opened['Claim Number'].nunique():,}" in count, count
