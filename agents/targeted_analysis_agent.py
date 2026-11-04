@@ -1116,11 +1116,13 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
         # the data's edges are the whole file's (a named value's first row is not its start)
         covered = t if all_rows is full else _local(pd.to_datetime(all_rows[date], errors="coerce"))
+        whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
+                                   runout_months(contract))
         if develops:   # every period shown, the young ones named: never a partial cut or a trend
+            if len(whole) < len(series) and series.index[-1] not in whole.index:   # say its coverage
+                develops = (f" The latest period ({series.index[-1]}) is covered only to "
+                            f"{covered.max():%d %b %Y}.") + develops
             whole, note = series, develops
-        else:
-            whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
-                                       runout_months(contract))
         if followed := follow_up_complete(pack, kpi.name, all_rows, roles):   # a 30-day window:
             # a period ending after its last complete follow-up is censored rows, never a rate
             done, days = followed
@@ -1185,7 +1187,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     if value is None:
         return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                              ["Ask about a longer period"])
-    answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, full, date, params)
+    answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)
     # one period asked on strong pack data (a month or longer): against the same period a year
     # earlier when the data has it (seasonal sales: last January, never December); unasked, so
     # silent when it can't, and never a single day (a Monday against a Sunday)

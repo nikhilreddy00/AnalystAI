@@ -31,7 +31,7 @@ export default function KPISection({ briefing, sessionId }: Props) {
 
   if (kpis.length === 0) {
     // Older sessions persisted before PROMPT-2 may not have kpis: a records card, the server's count.
-    const filtered = server?.suppressed ? null : server?.rows.toLocaleString() ?? null;
+    const filtered = server?.suppressed ? null : server?.rows?.toLocaleString() ?? null;
     return (
       <KPIStrip count={1}>
         <KPICard label="Records" value={rowCount.toLocaleString()}

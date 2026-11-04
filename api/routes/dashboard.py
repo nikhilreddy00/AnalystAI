@@ -3,6 +3,8 @@ Dashboard endpoints — pin/unpin charts, load user dashboard.
 Full implementation in Phase 5 (frontend). Stub for Phase 1.
 """
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import Response
 from api.auth import get_current_user, UserProfile
@@ -196,18 +198,30 @@ async def _latest_frame(request: Request, user: UserProfile):
         raise HTTPException(status_code=404, detail="No completed analysis yet")
     if not session.cleaned_data_path or not Path(session.cleaned_data_path).is_file():
         raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
-    df = pd.read_parquet(session.cleaned_data_path)
-    if len(df) > MAX_ROWS:   # the server's compute guard: every row a recomputation reads
+    import pyarrow.parquet as pq
+    n = pq.ParquetFile(session.cleaned_data_path).metadata.num_rows   # before reading it
+    if n > MAX_ROWS:   # the server's compute guard: every row a recomputation reads
         raise HTTPException(
             status_code=422,
-            detail=(f"Dataset too large for the interactive dashboard ({len(df):,} rows; limit is "
+            detail=(f"Dataset too large for the interactive dashboard ({n:,} rows; limit is "
                     f"{MAX_ROWS:,}). Run a targeted question via chat instead."))
-    return session, df
+    return session, await asyncio.to_thread(pd.read_parquet, session.cleaned_data_path)
 
 
 # The rows the server recomputes a dashboard view from (no row ever goes to the browser: it
 # gets filter options and the server's numbers). A 50 MB upload is well under this.
 MAX_ROWS = 1_000_000
+# A timed-out recomputation keeps running in its thread: at most this many run at once (the
+# rate limit bounds each user; this bounds the server), a request waits its 30 s for a slot
+_RECOMPUTE = asyncio.Semaphore(2)
+
+
+async def _bounded(fn, *args):
+    """fn(*args) in a thread, one of at most _RECOMPUTE.N at a time, within 30 s overall."""
+    async def run():
+        async with _RECOMPUTE:
+            return await asyncio.to_thread(fn, *args)
+    return await asyncio.wait_for(run(), timeout=30)
 
 
 class FilterRequest(BaseModel):
@@ -228,7 +242,6 @@ async def get_latest_dashboard_filtered(
     """The latest dashboard under filters, recomputed on the server by the functions that built
     it: {charts: {chart id: data}, tiles: {label: value}, rows}. A chart from the model's own
     findings can't be rebuilt and is not in `charts` (the page marks it unfiltered)."""
-    import asyncio
 
     from agents.visualization_agent import filtered_dashboard
     from orchestrator.state import ChartConfig
@@ -243,9 +256,8 @@ async def get_latest_dashboard_filtered(
         except ValueError:   # a pin saved before a schema change: shown as pinned, not refiltered
             continue
     try:
-        return await asyncio.wait_for(asyncio.to_thread(
-            filtered_dashboard, df, session.data_contract, charts, body.filters,
-            session.task_plan.raw_query if session.task_plan else "", session.narrative), timeout=30)
+        return await _bounded(filtered_dashboard, df, session.data_contract, charts, body.filters,
+                              session.task_plan.raw_query if session.task_plan else "", session.narrative)
     except (KeyError, ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=f"Invalid filter: {exc}") from exc
     except TimeoutError as exc:
@@ -262,10 +274,11 @@ async def get_latest_dashboard_data(
     """The latest dashboard's filters: {session_id, row_count, column_roles, options}. No rows:
     every number under a filter comes from POST /latest/filtered (the domain rules live on the
     server; the browser used to recount rows itself, without them)."""
-    import asyncio
 
     from agents.visualization_agent import filter_options
 
     session, df = await _latest_frame(request, current_user)
-    return {"session_id": session.session_id,
-            **await asyncio.to_thread(filter_options, df, session.data_contract)}
+    try:
+        return {"session_id": session.session_id, **await _bounded(filter_options, df, session.data_contract)}
+    except TimeoutError as exc:
+        raise HTTPException(status_code=503, detail="The dashboard took too long; ask in chat.") from exc

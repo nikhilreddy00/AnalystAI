@@ -164,6 +164,7 @@ def test_patient_data_filtered_to_a_small_cell_is_suppressed():
     out = filtered_dashboard(clean, contract, charts,
                              {"Encounter ID": {"kind": "equality", "value": one}})
     assert out["suppressed"] and out["tiles"] == {} and out["charts"] == {}
+    assert out["rows"] is None   # fix-diff review: 'Showing 7 of …' was the small cell itself
 
 
 def test_a_time_zone_aware_date_range_keeps_whole_days():
@@ -262,6 +263,11 @@ PACK_DATASETS = ["retail_lines", "store_weeks", "b2b_invoices", "loan_tape", "ca
 
 @pytest.mark.parametrize("name", PACK_DATASETS)
 def test_every_filter_partitions_and_matches_the_group_answer(name):
+    """Every category filter the dashboard offers, every value, every tile and chart, on every
+    domain dataset, through filtered_dashboard (the production path). Truth-free relations:
+    counts add up; a filtered tile = the KPI by that column (kinds judged on all rows); an
+    additive tile's values add up to the whole; a chart grouped by the filtered column shows
+    only that value, with its unfiltered number."""
     import domain_pack
     clean, contract, charts, kpis, _ = _dashboard(name)
     pack = domain_pack.pack_for(contract.domain)
@@ -274,7 +280,10 @@ def test_every_filter_partitions_and_matches_the_group_answer(name):
     for col, values in columns:
         outs = {v: filtered_dashboard(clean, contract, charts, {col: {"kind": "equality", "value": v}})
                 for v in values}
-        assert sum(o["rows"] for o in outs.values()) == whole["rows"], (name, col, "rows")
+        for v, o in outs.items():   # a small cell on patient data: no number at all, not even a count
+            assert not o["suppressed"] or (o["rows"] is None and not o["tiles"] and not o["charts"]), v
+        if not any(o["suppressed"] for o in outs.values()):
+            assert sum(o["rows"] for o in outs.values()) == whole["rows"], (name, col, "rows")
         for label, kpi in tiles.items():
             by = domain_pack.compute_kpi(clean, roles, pack, kpi.name, by=col, full=clean)
             got = {v: _number(o["tiles"][label]) for v, o in outs.items() if label in o["tiles"]}
@@ -287,7 +296,76 @@ def test_every_filter_partitions_and_matches_the_group_answer(name):
                 want = float(by[by.index.astype(str) == v].iloc[0]) * scale
                 assert abs(x - want) <= tol * max(1, abs(want)) if kpi.unit == "count" else \
                     abs(x - want) <= tol + 1e-9 * abs(want), (name, col, label, v, x, want)
-            if domain_pack.additive(pack, kpi.name) and label in whole["tiles"] and len(got) == len(values):
+            if domain_pack.additive(pack, kpi.name) and label in whole["tiles"] and len(got) == len(values) \
+                    and not any(o["suppressed"] for o in outs.values()):
                 total = _number(whole["tiles"][label])   # a partition adds up to the whole
                 assert abs(sum(got.values()) - total) <= 0.01 * len(values) + 1e-9 * abs(total), \
                     (name, col, label, sum(got.values()), total)
+        for c in charts:   # a chart grouped by the filtered column
+            if c.x_key != col or c.id not in whole["charts"]:
+                continue
+            ys = [y for y in c.y_keys if not y.endswith(("__n", "__ci"))]
+            before = {str(r[col]): r for r in whole["charts"][c.id]}
+            for v, o in outs.items():
+                for r in o["charts"].get(c.id, []):
+                    assert str(r[col]) == v, (name, col, c.title, v, r)
+                    for y in ys:
+                        if y in r and v in before and y in before[v]:
+                            b = float(before[v][y])
+                            assert abs(float(r[y]) - b) <= 1e-6 * max(1, abs(b)), \
+                                (name, col, c.title, v, y, r[y], b)
+
+async def test_dashboard_recomputations_are_bounded_server_wide(monkeypatch):
+    """Security review: a timed-out recomputation keeps running in its thread; at most
+    _RECOMPUTE of them run at once, and a request that can't get a slot in 30 s times out."""
+    import asyncio
+    import time
+
+    from api.routes import dashboard
+    monkeypatch.setattr(dashboard, "_RECOMPUTE", asyncio.Semaphore(1))
+    running, peak = [0], [0]
+
+    def slow():
+        running[0] += 1
+        peak[0] = max(peak[0], running[0])
+        time.sleep(0.05)
+        running[0] -= 1
+        return "ok"
+    assert await asyncio.gather(*(dashboard._bounded(slow) for _ in range(4))) == ["ok"] * 4
+    assert peak[0] == 1
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+def test_in_range_and_date_filters_agree_with_their_parts(name):
+    """Fix-diff review: the property test used equality only. 'in' of two values = the sum of each
+    value's additive tiles; a range and a date span count exactly the counted rows inside them."""
+    import domain_pack
+    from agents.visualization_agent import filter_options
+    clean, contract, charts, kpis, _ = _dashboard(name)
+    pack = domain_pack.pack_for(contract.domain)
+    shown = clean[~domain_pack.superseded(clean, contract)]
+    adds = {k.label for k in kpis if k.recipe and k.recipe.kind == "pack"
+            and domain_pack.additive(pack, k.recipe.kpi)}
+    for col, values in _filter_columns(clean, contract, k=1):
+        a, b = values[:2]
+        both = filtered_dashboard(clean, contract, charts, {col: {"kind": "in", "values": [a, b]}})
+        one = [filtered_dashboard(clean, contract, charts, {col: {"kind": "equality", "value": v}}) for v in (a, b)]
+        if both["suppressed"] or any(o["suppressed"] for o in one):
+            continue
+        assert both["rows"] == one[0]["rows"] + one[1]["rows"], (name, col)
+        for label in adds & set(both["tiles"]):
+            total = sum(_number(o["tiles"][label]) for o in one)
+            assert abs(_number(both["tiles"][label]) - total) <= 0.02 + 1e-9 * abs(total), (name, label)
+    for o in filter_options(clean, contract)["options"]:
+        if o["control"] == "range":
+            lo, hi = o["min"], (o["min"] + o["max"]) / 2
+            out = filtered_dashboard(clean, contract, charts, {o["column"]: {"kind": "range", "min": lo, "max": hi}})
+            want = int(pd.to_numeric(shown[o["column"]], errors="coerce").between(lo, hi).sum())
+        elif o["control"] == "dates":
+            out = filtered_dashboard(clean, contract, charts, {o["column"]: {"kind": "date_range",
+                                                                               "from": o["from"], "to": o["to"]}})
+            t = pd.to_datetime(shown[o["column"]], format="mixed", errors="coerce")
+            want = int(t.notna().sum())
+        else:
+            continue
+        assert out["suppressed"] or out["rows"] == want, (name, o["column"], out["rows"], want)

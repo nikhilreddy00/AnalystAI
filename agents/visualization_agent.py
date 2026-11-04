@@ -2844,6 +2844,8 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
     from domain_pack import as_text, superseded
     shown = df[~superseded(df, contract)]
     roles = classify_columns(shown)
+    ids = set(contract.id_columns) if contract is not None else set()   # an id is no filter
+    roles = {k: [c for c in v if c not in ids] if isinstance(v, list) else v for k, v in roles.items()}
     options: list[dict] = []
 
     def values(col: str) -> list[str]:
@@ -2884,8 +2886,8 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     # the records shown and counted: a chain's earlier versions are neither (judged on all rows)
     n = int((~superseded(df, contract)).reindex(part.index).sum())
     if part.empty or (contract is not None and contract.phi and n < SMALL_CELL):
-        return {"charts": {}, "tiles": {}, "rows": n,
-                "suppressed": bool(n) and bool(contract and contract.phi)}
+        small = bool(n) and bool(contract and contract.phi)   # a small cell: not even its count
+        return {"charts": {}, "tiles": {}, "rows": None if small else n, "suppressed": small}
     ctx = build_context(part, contract=contract, narrative=narrative)
     ctx.full = df
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(

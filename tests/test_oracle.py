@@ -766,3 +766,10 @@ def test_an_average_on_claim_grain_data_is_per_claim():
     counted = rows_for(clean, _built("retail_lines")[2], "Lineitem price")[0]
     want = counted.groupby("Shipping Country")["Lineitem price"].mean()
     assert all(abs(retail[k] - want[k]) < 0.01 for k in retail), (retail, want.to_dict())
+
+
+def test_a_developing_measures_partial_latest_period_says_how_far_it_is_covered():
+    """Fix-diff review (major): 'latest 2026Q4 $42,269.82' held October only; kept (it is the
+    youngest accident period) but said: covered only to its last date."""
+    text, chart = answer("claims", "time_series", "incurred by quarter", kpi="incurred", frequency="Q")
+    assert "2026Q4" in chart and "2026Q4" in text and "covered only to" in text, text

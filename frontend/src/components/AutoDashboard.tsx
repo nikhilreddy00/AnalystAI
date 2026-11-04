@@ -311,7 +311,8 @@ function AutoDashboardInner() {
           {/* Records indicator — excluded from PNG */}
           {hasActiveFilters && (
             <div data-html2canvas-ignore className="text-xs text-muted-foreground mb-2 px-6">
-              {server ? `Showing ${server.rows.toLocaleString()} of ${rowCount.toLocaleString()} records`
+              {server ? (server.rows === null ? `Showing fewer than 11 of ${rowCount.toLocaleString()} records (privacy)`
+                : `Showing ${server.rows.toLocaleString()} of ${rowCount.toLocaleString()} records`)
                 : failed ? "Couldn't recompute the dashboard for these filters"
                 : <span aria-busy="true">Showing … of {rowCount.toLocaleString()} records</span>}
             </div>

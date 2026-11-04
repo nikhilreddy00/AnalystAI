@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDay, parseDay } from "@/lib/localDate";
 import { useMemo, useState, type ReactNode } from "react";
 import type { FilterOption } from "@/types";
 import { useDashboardData } from "@/context/DashboardDataContext";
@@ -191,16 +192,16 @@ function DateRangeControl({ option, filter, setFilter }: ControlProps) {
   const col = option.column;
   const [open, setOpen] = useState(false);
   if (!option.from || !option.to) return null;
-  const extent = { from: new Date(option.from), to: new Date(option.to) };
+  const extent = { from: parseDay(option.from), to: parseDay(option.to) };
 
   const selected: DateRange | undefined =
     filter?.kind === "date_range"
-      ? { from: new Date(filter.from), to: new Date(filter.to) }
+      ? { from: parseDay(filter.from), to: parseDay(filter.to) }
       : undefined;
 
   const label =
     selected?.from && selected?.to
-      ? `${selected.from.toISOString().slice(0, 10)} → ${selected.to.toISOString().slice(0, 10)}`
+      ? `${formatDay(selected.from)} → ${formatDay(selected.to)}`
       : "Any date";
 
   // @base-ui/react Popover: onOpenChange receives (open, eventDetails)
@@ -225,8 +226,8 @@ function DateRangeControl({ option, filter, setFilter }: ControlProps) {
               if (range?.from && range?.to) {
                 setFilter(col, {
                   kind: "date_range",
-                  from: range.from.toISOString().slice(0, 10),
-                  to: range.to.toISOString().slice(0, 10),
+                  from: formatDay(range.from),
+                  to: formatDay(range.to),
                 });
               }
             }}
