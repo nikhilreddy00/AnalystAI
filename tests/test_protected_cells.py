@@ -92,3 +92,13 @@ def test_a_period_is_never_a_small_group_of_people(pack):
     df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("M")
     series = compute_kpi(df, ROLES, pack, "avg_pay", by="_period")
     assert series is not None and pd.Period("2026-10", "M") in series.index   # pay over time is shown
+
+
+def test_pay_in_a_month_with_fewer_than_11_people_in_force_is_hidden(pack):
+    rows = [(f"E{i}", "2026-01-15" if i < 3 else "2026-06-10", "", "Big", "Female", 100.0)
+            for i in range(20)]   # Jan–May: 3 people in force; from June: 20
+    df = pd.DataFrame(rows, columns=["person_id", "start_date", "end_date", "team", "gender", "pay"])
+    df.loc[len(df)] = ("Z", "2026-10-31", "", "Big", "Male", 1.0)
+    df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("M")
+    series = compute_kpi(df, ROLES, pack, "avg_pay", by="_period")
+    assert pd.Period("2026-03", "M") not in series.index and pd.Period("2026-07", "M") in series.index

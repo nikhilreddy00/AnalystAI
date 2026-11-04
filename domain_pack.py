@@ -1208,7 +1208,8 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if value is None:
         return None
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
-        value = value.drop(small_groups(df, roles, pack, name, by, kinds.attrs["frame"]), errors="ignore")
+        value = value.drop(small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index),
+                           errors="ignore")
         value = value.dropna()
         return value if len(value) else None
     return None if pd.isna(value) else float(value)
@@ -1227,18 +1228,29 @@ def people(df: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool,
 
 
 def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str, by: str,
-                 whole: pd.DataFrame | None = None) -> list:
+                 whole: pd.DataFrame | None = None, groups=None) -> list:
     """The `by` groups a KPI never shows: fewer than SMALL_CELL distinct people, when `by` is a
     protected role or the KPI measures one (pay by team, headcount by gender). THE small-cell
     rule outside patient data (which pools at ingestion: ADR-0008)."""
     from guardrails import SMALL_CELL
     prot = set(pack.protected_roles)
-    if not prot or by not in df.columns or isinstance(df[by].dtype, pd.PeriodDtype):
-        return []   # a month is not a group of people (its rows are the people dated in it)
+    if not prot or by not in df.columns:
+        return []
     if not ({r for r, c in roles.items() if c == by} & prot) and not (
             kpi_roles(pack, name) & prot):
         return []
     state = pack.kpi(name).state
+    if isinstance(df[by].dtype, pd.PeriodDtype):
+        # a period's people are those in force at its end (a spell state), never the rows dated
+        # in it: pay in a month with 3 people in force is 3 people's pay
+        if not (pack.spell and state and roles.get(pack.spell.entity)):
+            return []
+        whole = df if whole is None else whole
+        as_of = spell_as_of(pack, whole, roles)
+        ent = roles[pack.spell.entity]
+        return [p for p in (pd.unique(df[by].dropna()) if groups is None else groups)
+                if as_of is not None and _in_force(
+            whole, roles, pack, min(p.end_time.normalize(), as_of))[ent].nunique() < SMALL_CELL]
     return [g for g, part in df.groupby(by, sort=False)
             if people(part, roles, pack, state, whole) < SMALL_CELL]
 
