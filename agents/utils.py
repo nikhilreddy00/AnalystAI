@@ -210,6 +210,18 @@ def time_axis(contract, metric: str | None = None, df=None) -> str | None:
 
 
 def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = False):
+    """_aggregate, less the groups the protected small-cell rule hides (pay of a 6-person team,
+    a gender cell of 3: domain_pack.protected_groups): every by-group number an answer, chart or
+    built-in shows goes through here."""
+    out = _aggregate(df, keys, column, agg, contract, over_time)
+    if contract is not None and hasattr(out, "drop"):
+        from domain_pack import protected_groups
+        if hide := protected_groups(df, contract, keys, column):
+            out = out.drop(hide, errors="ignore")
+    return out
+
+
+def _aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = False):
     """`df.groupby(keys)[column].agg(agg)`, except a level ('last' / 'first'): over time (a key
     is a period) each entity's window value within each period, summed; across groups (no
     period) the current total, each entity's latest snapshot in the latest period (latest_rows),

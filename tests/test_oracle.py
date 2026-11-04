@@ -897,3 +897,23 @@ def test_hr_a_level_never_counts_an_exit_record_as_a_person():
     res = builtin("hr_snapshots", ["Base_Salary"], ["Department"], ["segmentation"])
     got = segment(res, "Department", "Base_Salary", "mean")
     assert close(got, truth["avg_salary_by_dept_asof"], tol=0.01), got
+
+
+def test_hr_pay_of_a_department_under_11_people_never_leaves_the_builtins():
+    """Domain 5 insight gate: 'average annual salary … $96,450 in Legal' (6 people) came from the
+    built-in 'mean Annual_Salary by Department', a path that never read the protected rule."""
+    from agents.analysis_agent import builtin_result, model_frame
+    from orchestrator.state import AnalysisTask
+    _, clean, contract, truth = _built("hr_roster")
+    frame, _ = model_frame(clean, contract)
+    pay = clean.groupby("Department")["Annual_Salary"].mean()   # what the sandbox's code reports
+    raw = {"eda_summary": {}, "correlations": {}, "trends": [], "anomalies": [], "statistical_tests": [],
+           "forecast_points": [], "distributions": {}, "head_preview": [], "dtypes_summary": {},
+           "missing_pct": {}, "assumptions": [], "segments": [
+               {"segment_column": "Department", "metric_column": "Annual_Salary", "aggregation": "mean",
+                "results": [{"name": k, "value": float(v)} for k, v in pay.items()]}]}
+    out = builtin_result(frame, contract, AnalysisTask(raw_query="q", analysis_types=["eda"],
+                                                       target_metrics=[]), raw)
+    got = segment(out, "Department", "Annual_Salary", "mean")
+    assert "Legal" not in got and "Sales" in got and truth["legal_people_asof"] < 11, got
+    assert any("fewer than 11 people" in a for a in out["assumptions"])

@@ -25,6 +25,7 @@ from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
     SPELL_EVENT_COLUMNS,
+    protected_groups,
     spell_facts,
     runout_months,
     developing_trend,
@@ -377,6 +378,30 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                                         "results": [{"name": f"{a}|{b}", "value": round(float(means[(a, b)]), 4)}
                                                     for a, b in top]})
                 raw["builtin"].append(f"seg:{joint}/{c}")
+    _drop_protected_cells(raw, df, contract)
+
+
+def _drop_protected_cells(raw: dict, df: pd.DataFrame, contract: DataContract) -> None:
+    """The model's and the built-ins' segments, less the groups the protected small-cell rule
+    hides (domain_pack.protected_groups: pay of a 6-person department, a gender cell of 3), said
+    in an assumption: every segment leaves the analysis through here (Domain 5 insight gate:
+    '$96,450 in Legal')."""
+    hidden = 0
+    for seg in raw.get("segments") or []:
+        if not isinstance(seg, dict) or not seg.get("segment_column") or not seg.get("metric_column"):
+            continue
+        keys = [k for k in str(seg["segment_column"]).split("|")]
+        hide = {"|".join(map(str, g)) if isinstance(g, tuple) else str(g)
+                for g in protected_groups(df, contract, keys if len(keys) > 1 else keys[0],
+                                          seg["metric_column"])}
+        if hide:
+            before = len(seg.get("results") or [])
+            seg["results"] = [r for r in seg.get("results") or [] if str(r.get("name")) not in hide]
+            hidden += before - len(seg["results"])
+    if hidden:
+        raw.setdefault("assumptions", []).append(
+            f"{hidden} group figure(s) of fewer than 11 people (pay or a protected attribute) are "
+            "not shown: they could identify people.")
 
 
 def counted_months(df: pd.DataFrame, contract, col: str, date: str):

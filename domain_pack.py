@@ -1238,6 +1238,28 @@ def people(df: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool,
     return df[col].nunique() if col else len(df)
 
 
+def protected_groups(df: pd.DataFrame, contract, keys, column: str) -> list:
+    """The groups of a by-group column statistic the protected rule hides: grouped by a protected
+    role, or of a protected measure (pay), with fewer than SMALL_CELL distinct people (the spell
+    entity or snapshot_key, else rows). small_groups' rule for KPIs, for columns (utils.aggregate
+    and the model's findings read it)."""
+    from guardrails import SMALL_CELL
+    pack = pack_for(contract.domain) if contract is not None else None
+    if not pack or not pack.protected_roles:
+        return []
+    names = [k for k in (keys if isinstance(keys, list) else [keys]) if isinstance(k, str)]
+    if not names or len(names) != len(keys if isinstance(keys, list) else [keys]) \
+            or any(k not in df.columns for k in names):
+        return []
+    prot = {contract.roles.get(r) for r in pack.protected_roles} - {None}
+    if not (set(names) & prot or column in prot):
+        return []
+    ent = contract.roles.get(pack.spell.entity if pack.spell else pack.snapshot_key or "")
+    g = df.groupby(names if len(names) > 1 else names[0])
+    n = g[ent].nunique() if ent in df.columns else g.size()
+    return [k for k, v in n.items() if v < SMALL_CELL]
+
+
 def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str, by: str,
                  whole: pd.DataFrame | None = None, groups=None) -> list:
     """The `by` groups a KPI never shows: fewer than SMALL_CELL distinct people, when `by` is a
