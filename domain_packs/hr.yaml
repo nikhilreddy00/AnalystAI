@@ -212,8 +212,7 @@ kpis:
 
 glossary:
   attrition_rate: [attrition, attrition rate, turnover, turnover rate, employee turnover,
-                   staff turnover, separation rate, terminations rate, churn rate, leaving rate,
-                   how many people left, people leaving]
+                   staff turnover, separation rate, terminations rate, churn rate, leaving rate]
   voluntary_attrition: [voluntary attrition, voluntary turnover, resignations, resignation rate,
                         quit rate, quits, people who quit, people who resigned]
   involuntary_attrition: [involuntary attrition, involuntary turnover, layoffs, dismissals,
@@ -222,7 +221,7 @@ glossary:
   regrettable_attrition: [regrettable attrition, regretted attrition, regrettable turnover,
                           regrettable losses]
   separations: [separations, leavers, exits, terminations, departures, people left,
-                number of leavers]
+                number of leavers, how many people left, people leaving]
   headcount: [headcount, head count, employees, number of employees, staff count, workforce
               size, how many employees, how many people work, how many staff]
   fte: [fte, ftes, full time equivalent, full time equivalents]

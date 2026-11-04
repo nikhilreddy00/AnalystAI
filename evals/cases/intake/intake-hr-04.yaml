@@ -11,6 +11,8 @@ expect:
   intent_any:
   - segment_compare
   - top_n
+  - time_series
   params:
     kpi: headcount
-rationale: Headcount at the as-of.
+rationale: Headcount at the as-of. A state KPI asked plainly may be its latest value and change (time_series),
+  as banking's NPL ratio.
