@@ -1233,8 +1233,8 @@ def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     rule outside patient data (which pools at ingestion: ADR-0008)."""
     from guardrails import SMALL_CELL
     prot = set(pack.protected_roles)
-    if not prot or by not in df.columns:
-        return []
+    if not prot or by not in df.columns or isinstance(df[by].dtype, pd.PeriodDtype):
+        return []   # a month is not a group of people (its rows are the people dated in it)
     if not ({r for r, c in roles.items() if c == by} & prot) and not (
             kpi_roles(pack, name) & prot):
         return []

@@ -85,3 +85,10 @@ def test_a_sentence_naming_a_small_protected_group_is_flagged_and_a_plain_count_
     assert claim_small_cell("Only 2 women in Legal left this year.", nouns)
     assert claim_small_cell("3 senior Asian employees were promoted.", nouns)
     assert claim_small_cell("Finance lost 3 employees in March.", nouns) is None
+
+
+def test_a_period_is_never_a_small_group_of_people(pack):
+    df = _staff()
+    df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("M")
+    series = compute_kpi(df, ROLES, pack, "avg_pay", by="_period")
+    assert series is not None and pd.Period("2026-10", "M") in series.index   # pay over time is shown
