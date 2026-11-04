@@ -1048,8 +1048,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
 
     date = _date_of(contract, params, df)
     weekly = bool(date) and weekly_cadence(full[date])   # YoY: 52 weeks back, same week-endings
-    period = filter_period(full, date, params.period_start, params.period_end,
-                           _span_of(contract, full, date))[1]
+    period = "" if spelled else filter_period(full, date, params.period_start, params.period_end,
+                                              _span_of(contract, full, date))[1]
     state = kpi.state and (date is not None or spelled)   # a balance is as of a date, not over days
     if spelled:   # '12 months to 31 Oct 2026' / 'as of 31 Oct 2026'
         period = window_words(pack, all_rows, roles, kpi.name, win)
@@ -1123,19 +1123,23 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     # a period with yoy, or with no frequency ("how were net sales in Q4 2025?"): its total,
     # against the same period a year earlier, below; a frequency asked: the trend in that window
     one_period = asked and (params.compare == "yoy" or not params.frequency)
-    if intent == QuestionIntent.TIME_SERIES and date and not one_period:
+    if intent == QuestionIntent.TIME_SERIES and (date or spelled) and not one_period:
         # a flow (sales, fees) sums over a period; a state (a balance) is as of its end
         flow = kpi.den is None and kind != "percent" and not kpi.state
-        default = _default_freq(df[date], "sum" if flow else "ratio") if defaults_pack(contract) else "M"
+        default = "M" if not date else _default_freq(df[date], "sum" if flow else "ratio") \
+            if defaults_pack(contract) else "M"
         freq = (params.frequency or default).upper()
         # a KPI is reported by week at the finest (a day's AOV or return rate is noise); a daily
         # ask is shown by month and says so ("net sales in January" asked as days is January)
         by_month = "" if freq in {"W", "M", "Q", "Y"} else " (shown by month)"
         freq = freq if freq in {"W", "M", "Q", "Y"} else "M"
         # the whole data's buckets, so the period before and a year earlier exist for the window
-        t = _local(pd.to_datetime(full[date], errors="coerce"))
+        # a spell series has its own axis (month-ends from its first date): rows are not dated in it
+        t = spell_covered(pack, all_rows, roles) if spelled else \
+            _local(pd.to_datetime(full[date], errors="coerce"))
         rule = _week_anchor(t, contract) if freq == "W" else freq
-        frame = full.assign(_period=t.dt.to_period(rule))
+        frame = full.assign(_period=pd.Series(pd.NaT, index=full.index).astype(f"period[{rule}]")
+                            if spelled else t.dt.to_period(rule))
         series = compute_kpi(frame, roles, pack, kpi.name, by="_period", full=all_rows, window=win)
         if series is None or series.empty:
             return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here",
@@ -1147,10 +1151,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             weeks = t.groupby(t.dt.to_period("M")).nunique()
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
         # the data's edges are the whole file's (a named value's first row is not its start)
-        covered = t if all_rows is full else _local(pd.to_datetime(all_rows[date], errors="coerce"))
-        if spelled:   # a roster's dates are hires and exits: it covers its first exit (or
-            # snapshot) to its as-of, never only the 12-month window
-            covered = spell_covered(pack, all_rows, roles)
+        # the data's edges are the whole file's; a spell's are its month-ends to the as-of
+        covered = t if all_rows is full or spelled else \
+            _local(pd.to_datetime(all_rows[date], errors="coerce"))
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
         if develops:   # every period shown, the young ones named: never a partial cut or a trend
@@ -1215,7 +1218,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                            x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,
                            source="kpi")
             _percent_axis(chart, kind, kpi.label)
-            _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date,
+            _why(chart, ctx, "targeted:kpi→line", f"{kpi.label} per {freq} period. {how}", date or "period",
                  kpi.label, "sum" if kpi.den is None and not spelled else "none", len(df))
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])

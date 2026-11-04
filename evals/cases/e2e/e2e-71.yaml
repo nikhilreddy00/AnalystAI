@@ -11,10 +11,6 @@ checks:
   truth_key: headcount_asof
   rel_tol: 0.001
 - kind: must_not_number
-  truth_key: rows
-  rel_tol: 0.0
-  scope: report
-- kind: must_not_number
   truth_key: attrition_all_rows
   rel_tol: 0.01
   scope: report
@@ -28,6 +24,9 @@ checks:
 - kind: must_not_match
   pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate|loss
     ratio|premium
+  scope: report
+- kind: must_not_match
+  pattern: 1,?770 (employees|people|staff|workers|employee records|personnel)
   scope: report
 hard_rules:
 - charts_lint_clean

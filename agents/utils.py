@@ -200,6 +200,12 @@ def time_axis(contract, metric: str | None = None, df=None) -> str | None:
     if pack and (own := contract.roles.get(pack.date_role)) in contract.date_columns:
         cands.append(own)
     cands += list(contract.date_columns) if contract is not None else []
+    if pack and pack.spell and not (pack.date_role not in (pack.spell.start, pack.spell.end)
+                                    and contract.roles.get(pack.date_role)):
+        # a roster's dates are events (a hire, an exit), never a timeline: a trend "by hire
+        # month" is a cohort, and its latest month can be a future hire (Domain 5 smoke)
+        events = {contract.roles.get(r) for r in pack.roles if pack.roles[r].kind == "date"}
+        cands = [c for c in cands if c not in events]
     return next((c for c in cands if c and (df is None or c in df.columns)), None)
 
 

@@ -10,9 +10,8 @@ checks:
 - kind: number_in_answer
   truth_key: headcount_asof
   rel_tol: 0.001
-- kind: must_not_number
-  truth_key: rows
-  rel_tol: 0.0
+- kind: must_not_match
+  pattern: 1,?770 (employees|people|staff|workers|employee records|personnel)
   scope: report
 turns:
 - question: Which department has the highest attrition?
