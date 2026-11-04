@@ -411,3 +411,19 @@ def test_score_visualization_reads_rationale_and_flags_misses(sales):
     checks, hard = score_visualization(case, {"charts": [flipped], "evidence_ids": ["corr:x"]}, df, None)
     assert not checks[0]["ok"] and checks[1]["ok"]          # wrong chart, still cites the finding
     assert not hard[0]["ok"] and "outcome_on_x" in hard[0]["detail"]
+
+
+def test_a_new_case_is_priced_from_its_own_dataset_never_the_suite_average(tmp_path):
+    """Retro 2026-11-04: Domain 4's first analysis runs cost 4.5x the estimate (a new domain's
+    larger contexts priced at other domains' average). A case never run is priced at its
+    dataset's recent cases, else at the 90th percentile per-case cost, never the mean."""
+    import json
+    (tmp_path / "analysis-20260101T000000Z.json").write_text(json.dumps({
+        "meta": {"only": None}, "summary": {"cost_per_question_usd": 0.02},
+        "runs": {"a": [{"cost_usd": 0.01}], "b": [{"cost_usd": 0.01}], "c": [{"cost_usd": 0.01}],
+                 "big": [{"cost_usd": 0.07}]}}))
+    cases = {"a": {"dataset": {"name": "x"}}, "b": {"dataset": {"name": "x"}},
+             "c": {"dataset": {"name": "x"}}, "big": {"dataset": {"name": "loss"}},
+             "new_loss": {"dataset": {"name": "loss"}}, "new_other": {"dataset": {"name": "z"}}}
+    assert estimate_usd("analysis", 1, tmp_path, ["new_loss"], 1, cases=cases) == 0.07
+    assert estimate_usd("analysis", 1, tmp_path, ["new_other"], 1, cases=cases) >= 0.05   # p90, not 0.02

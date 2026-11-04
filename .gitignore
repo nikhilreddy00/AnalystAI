@@ -34,3 +34,7 @@ traces/
 scripts/ui_check/fixtures/dash_*
 scripts/ui_check/fixtures/scenario
 .playwright-mcp/
+
+# live check kit (scripts/live_check)
+.pgdata/
+.live/
