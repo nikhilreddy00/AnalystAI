@@ -537,6 +537,21 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
     charts, a follow-up's chart, the Dashboard page and the KPI tiles a senior analyst of that
     domain expects, **and apply one dashboard filter: a tile and a chart must change** (a first
     render proves nothing about an interaction; filters were broken for three domains). Fix what it finds before "Domain N done".
+  - **Added 2026-11-04 (user, after Domain 4: the same dashboard bugs in Domains 3 and 4):**
+    - **A repeating bug is fixed at its structural cause**, never per dataset: ask why it
+      survived the last fix (a cap, a fallback, a client-side recount is usually a second copy
+      of a rule) and delete the copy.
+    - **The browser never computes a number**: the dashboard gets filter options and the
+      server's numbers (`filter_options`, `filtered_dashboard`); no client-side recount, ever.
+    - **The new domain's datasets join every cross-domain guard in the pack's own commit**:
+      `PACK_DATASETS` in `tests/test_dashboard_filters.py` (every filter on every domain:
+      partition, filter = by-group, chart value kept, small cell shows nothing) and the oracle's
+      source-invariance and row-order lists.
+    - **Each guard is truth-free where it can be** and proven on a planted violation.
+    - **Before "done", a $0 senior audit probes every answer path over every domain dataset**:
+      tiles, by group, a named value, over time, windows, averages per entity, rankings and counts.
+    - **Say what "permanent" covers**: a fixed bug and its class are blocked by tests; a new kind
+      of bug on a new data shape still needs the audit.
 - **Done when (per domain):** its analysis cases pass at k=3 on every run and its E2E cases at
   k=1 (k=3 on failures), hard rules 100%, each agent's expert-rubric checks pass, the final
   audit pass finds 0 major and ≤ 2 minor, and the README's domain list is regenerated from the
