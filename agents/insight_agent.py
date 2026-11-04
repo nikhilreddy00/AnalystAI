@@ -31,7 +31,7 @@ from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT, LAYOUT_STRATEGIES
 from connectors.base import TRUNCATED
 from agents.utils import display_values, pii_columns, strip_markdown_fences, with_display_names
-from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for, version_grain
+from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for, version_grain, and_list
 from guardrails import (
     rankable,
     _SENTENCE_RE,
@@ -174,16 +174,19 @@ def _values(e: Evidence, by_id: dict) -> str:
 
 def _version_grain(contract, audit) -> str | None:
     """A version chain's grain from the data's own rule (domain_pack.version_grain) and how many
-    rows count, when cleaning flagged earlier versions; else None."""
+    rows count, when cleaning flagged earlier versions; else None. The count is said only when
+    every flagged row is an earlier version (a pack's non_product values share the flag)."""
     grain = version_grain(contract) if contract else None
     flag = next((d for d in (audit.decisions if audit else []) if d.operation == "flag"
                  and d.strategy == "non_product"), None)
     if not grain or not flag:
         return None
     keys, order = grain
-    return (f"One row is one {' and '.join(keys)} at one {order}: only the latest counts "
-            f"({audit.rows_after - flag.rows_affected:,} of {audit.rows_after:,} rows); count "
-            f"{keys[0]} as distinct values, never rows.")
+    pack = defaults_pack(contract)
+    counted = "" if pack and pack.non_product else \
+        f" ({audit.rows_after - flag.rows_affected:,} of {audit.rows_after:,} rows)"
+    return (f"One row is one {and_list(keys)} at one {order}: only the latest counts{counted}; "
+            f"count {keys[0]} as distinct values, never rows.")
 
 
 def _entity_count(session: AnalysisSession) -> str | None:
@@ -196,8 +199,12 @@ def _entity_count(session: AnalysisSession) -> str | None:
     rows = audit.rows_after if audit else contract.row_count if contract else 0
     for k in (findings.kpis if findings and pack else []):
         kpi = pack.kpi(k.recipe.kpi) if k.recipe and k.recipe.kind == "pack" else None
-        if kpi and kpi.unit == "count" and kpi.phrase.lower() == narrative.entity_plural.lower() \
-                and k.value.replace(",", "") != str(rows):
+        try:   # the tile's number (a compact '1.2K' says nothing: no claim is better than a wrong one)
+            n = float(k.value.replace(",", ""))
+        except ValueError:
+            continue
+        if kpi and kpi.unit == "count" and kpi.phrase.strip().lower() == \
+                narrative.entity_plural.strip().lower() and n != rows:
             return (f"{k.value} {narrative.entity_plural} in {rows:,} rows: a row is not one "
                     f"{narrative.entity_singular}; count {narrative.entity_plural} as the "
                     f"{kpi.phrase} figure does, never rows.")

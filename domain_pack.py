@@ -182,6 +182,9 @@ class KPI(_Strict):
     # row in the period, of any kind, THEN the kind / currency / where filters (a loan charged off
     # this month is out, never its last month's balance)
     at: Literal["all", "latest"] = "all"
+    # a role whose values the KPI never adds across (exposure units differ by line): computed
+    # within one value only; asked without a group, answered by this role
+    per: str | None = None
 
     def written(self, value: str) -> str:
         """A formatted value with its unit word: THE way a KPI's number is written."""
@@ -344,7 +347,7 @@ class Pack(_Strict):
                 *self.version_key, *self.version_void, *self.conditional_fields, *self.marker_fields,
                 *([self.runout.role] if self.runout else []),
                 *([self.maturity.role, *self.maturity.measures] if self.maturity else []),
-                *self.role_caveats, *(r for g in self.paired_fields for r in g),
+                *self.role_caveats, *(k.per for k in self.kpis if k.per), *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
                 *self.signed_by, *(x.indicator for x in self.signed_by.values()),
@@ -812,6 +815,8 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     kpi = pack.kpi(name)
     if kpi is None or df.empty:
         return None
+    if mixes(df, roles, kpi, by):   # car-years and house-years never add up
+        return None
     keep, _, _ = main_currency(df, roles)
     # another currency is a kind of row no KPI counts (tiles side by side read the same rows:
     # net sales / orders = AOV), unless the question splits BY currency: then each currency is its
@@ -833,6 +838,12 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         value = value.dropna()
         return value if len(value) else None
     return None if pd.isna(value) else float(value)
+
+
+def mixes(df: pd.DataFrame, roles: dict[str, str], kpi: KPI, by: str | None = None) -> bool:
+    """Would this KPI add across values of its `per` role (one total, or a group that isn't it)?"""
+    col = roles.get(kpi.per) if kpi.per else None
+    return bool(col and col in df.columns and by != col and df[col].nunique() > 1)
 
 
 def money_columns(pack: Pack, roles: dict[str, str]) -> set[str]:
@@ -871,6 +882,11 @@ def additive(pack: Pack, name: str) -> bool:
     kpi = pack.kpi(name)
     return kpi.den is None and all(not t.nunique and (not t.kpi or additive(pack, t.kpi))
                                    for alt in kpi.num for t in alt)
+
+
+def roles_of(contract, column: str) -> set[str]:
+    """The pack roles a data column fills."""
+    return {r for r, c in contract.roles.items() if c == column}
 
 
 def kpi_roles(pack: Pack, name: str) -> set[str]:
@@ -1055,7 +1071,7 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     deciding = [r for alt in [*pack.strong, *pack.signals] for g in alt.values() for r in g]
     ordered = sorted(roles, key=lambda r: deciding.index(r) if r in deciding else len(deciding))
     named = [r.replace("_", " ") for r in ordered[:5]]
-    shown = _and(named)
+    shown = and_list(named)
     # as the tiles show them: a KPI of non-sale rows only (return rate) when the data has some
     kinds = {s for s in flags if s in ROW_KINDS}
     kpis = ", ".join(k.phrase for k in pack.kpis if k.tile and computable(pack, k.name, roles)
@@ -1112,7 +1128,7 @@ def version_grain(contract) -> tuple[list[str], str] | None:
     return (keys, order) if keys and order else None
 
 
-def _and(items: list[str]) -> str:
+def and_list(items: list[str]) -> str:
     """'a, b and c'; '' for none."""
     return ", ".join(items[:-1]) + (" and " if len(items) > 1 else "") + items[-1] if items else ""
 
@@ -1127,7 +1143,7 @@ def _developing(maturity: Maturity, first, last, valued) -> dict:
     if not young:
         return {}
     key = "developing_periods" if valued is not None else "developing_periods_undated"
-    return {key: {"as_of": as_of.strftime("%-d %b %Y"), "periods": _and(young)}}
+    return {key: {"as_of": as_of.strftime("%-d %b %Y"), "periods": and_list(young)}}
 
 
 def developing_note(contract, df: pd.DataFrame, about: set[str]) -> str:

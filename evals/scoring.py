@@ -273,7 +273,7 @@ def _derived_truth(seg, truth: dict) -> bool:
     return False
 
 
-_OVERALL = ("Overall", "Total", "All", "overall", "total", "all")
+_OVERALL = ("overall", "total", "all", "grand total", "all groups")   # compared lower-case
 
 
 def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
@@ -310,7 +310,9 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                           for i in want.index]
             # a total row beside the groups ('Overall'): the whole population's value
             whole = _grouped(rows.assign(_all="Overall"), ["_all"], seg.metric_column, agg)
-            extra = {k: whole.iloc[0] for k in _OVERALL if k not in want.index} if len(whole) else {}
+            names = {str(r.get("name")) for r in seg.results}
+            extra = {k: whole.iloc[0] for k in names if k.strip().lower() in _OVERALL
+                     and k not in want.index} if len(whole) else {}
             want = pd.concat([want, pd.Series(extra, dtype=float)]) if extra else want
             wants.append(want)
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)

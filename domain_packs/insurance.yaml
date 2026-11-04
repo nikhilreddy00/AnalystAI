@@ -10,16 +10,15 @@ domain: insurance
 # date (health payer claims have neither: they are vetoed below by member / CPT / NPI words).
 strong:
   - {policy: [policy], premium: [earned_premium, written_premium]}
-  - {claim: [claim_id], reserve: [reserve]}
-  - {claim: [claim_id], valuation: [valuation_date], money: [incurred, paid]}
+  - {claim: [claim_id], reserve: [reserve], loss: [date]}
+  - {claim: [claim_id], valuation: [valuation_date], money: [incurred, paid], loss: [date]}
 signals:
   - {policy: [policy], exposure: [exposure]}
   - {claim: [claim_id], money: [incurred, reserve]}
 # Another domain's headers (all words in ONE header): healthcare, retail, banking, HR, SaaS, IoT,
-# logistics. Not icd / diagnosis / account: workers' comp and commercial loss runs carry them.
+# logistics. Not icd / diagnosis / account / payroll / employee: workers' comp files carry them.
 exclude_headers: [[member], [cpt], [hcpcs], [npi], [drg], [mrn], [patient], [admit], [discharge],
-                  [service, from], [sku], [order, id], [lineitem], [balance], [loan], [dpd],
-                  [employee, id], [payroll], [mrr], [subscription], [sensor], [shipment]]
+                  [service, from], [sku], [order, id], [lineitem], [balance], [loan], [dpd], [mrr], [subscription], [sensor], [shipment]]
 abbreviations: {pol: policy, clm: claim, wp: written_premium, ep: earned_premium,
                 gwp: written_premium, gep: earned_premium, os: outstanding, res: reserve,
                 inc: incurred, incd: incurred, lob: line_of_business, val: valuation,
@@ -31,7 +30,8 @@ roles:
   # The time role first: the loss (accident) date on a loss run, the policy's effective date on
   # a policy table (a policy-year view), a month on a policy-month file.
   date:           {kind: date, headers: [loss_date, accident_date, date_of_loss,
-                                         occurrence_date, incident_date, effective_date,
+                                         occurrence_date, incident_date, injury_date,
+                                         date_of_injury, effective_date,
                                          policy_effective_date, inception_date, effective,
                                          month, policy_month, period]}
   valuation_date: {kind: date, headers: [valuation_date, evaluation_date, as_of_date, as_of,
@@ -52,12 +52,13 @@ roles:
   coverage:       {kind: category, headers: [coverage, coverage_type, coverage_code, peril,
                                              cause_of_loss, loss_type]}
   state:          {kind: category, headers: [state, risk_state, territory, region]}
-  transaction_type: {kind: category, headers: [transaction_type, transaction, trans_type,
-                                               transaction_code]}
   renewal:        {kind: category, headers: [renewal_status, renewal, renewed, renewal_flag]}
   gender:         {kind: category, headers: [insured_gender, gender, sex, driver_gender,
                                              policyholder_gender]}
   marital_status: {kind: category, headers: [marital_status, insured_marital_status]}
+  race:           {kind: category, headers: [race, ethnicity, race_ethnicity]}
+  religion:       {kind: category, headers: [religion]}
+  national_origin: {kind: category, headers: [national_origin, nationality, country_of_origin]}
   cat_event:      {kind: category, headers: [cat_event, catastrophe, catastrophe_code, cat_code,
                                              cat_id, event_id, cat]}
   written_premium: {kind: money, headers: [written_premium, gross_written_premium,
@@ -78,23 +79,25 @@ roles:
                                           reserve_amount]}
   recoveries:     {kind: money, headers: [salvage_subrogation, recoveries, recovery, salvage,
                                           subrogation, salvage_and_subrogation]}
-  status:         {kind: status, headers: [claim_status, status, policy_status]}
+  status:         {kind: status, headers: [claim_status, status, policy_status, transaction_type,
+                                          transaction, trans_type, transaction_code]}
 
 # Every value counts (compared as words). Cancelled policy rows are negative premium rows that
 # net the term (never "left out"); closed and reopened claims are claims.
 status_values:
   ok: [open, closed, reopened, re-opened, reclosed, re-closed, pending, active, in force,
        inforce, lapsed, cancelled, canceled, expired, new, settled, denied, closed without payment,
-       cwp, cnp, litigated, in suit, subrogation]
+       cwp, cnp, litigated, in suit, subrogation, new business, renewal, cancellation,
+       endorsement, reinstatement, rewrite]
 
 # Loss-run valuations: each claim × claimant at several valuation dates; only the latest counts
 # (earlier valuations are superseded snapshots: summing them multiplies paid and reserves).
 version_key: [claim_id, claimant]
 version_order: valuation_date
 maturity: {role: valuation_date, months: 24,
-           measures: [incurred, paid, reserve, recoveries, claim_count, claim_id, earned_premium,
-                      exposure]}
-conditional_fields: {reserve: [open, reopened, re-opened, pending, litigated, in suit]}
+           measures: [incurred, paid, reserve, recoveries, claim_count, claim_id]}
+conditional_fields: {reserve: [open, reopened, re-opened, pending, litigated, in suit],
+                     renewal: [new business, renewal, new, reinstatement, rewrite]}
 marker_fields: [cat_event]
 
 overview_groups: [line, coverage, state]
@@ -106,7 +109,7 @@ row_flags:
   non_product: "earlier valuations of claims: only each claimant's latest valuation counts"
   test: "test records: left out"
 text:
-  rows_brief: "Figures use rows of kind 'counted'. A loss run lists each claim (and claimant) at every valuation date: only the LATEST valuation counts (kind 'superseded_valuation' = an earlier one, left out); never sum paid, reserves or incurred across valuations. The rows of kind 'counted' ARE each claim and claimant's latest valuation already (the product chose them by valuation date): filter on row_kind == 'counted' and use those rows as they are; never re-derive the latest valuation yourself (a sort plus a groupby-transform comparison fails in the sandbox's pandas and loses the answer). Incurred = paid to date + case reserve (no IBNR, no loss-adjustment expense). A reopened claim is one claim: count claims as distinct claim numbers, never rows; claimants are counted separately. Loss ratio = incurred ÷ EARNED premium (a ratio of sums, never the mean of row ratios; never written premium). Frequency = claims ÷ earned exposure and pure premium = incurred ÷ earned exposure, per line only (car-years and house-years don't add up). Cancellation rows carry negative premium and exposure: they net the term. By year means accident (loss) year unless the user names the valuation or calendar year; a breakdown by accident year is filed under segment_column = the loss date column (a derived 'accident_year' is not a column), its group names the years."
+  rows_brief: "Figures use rows of kind 'counted'. A loss run lists each claim (and claimant) at every valuation date: only the LATEST valuation counts (kind 'superseded_valuation' = an earlier one, left out); never sum paid, reserves or incurred across valuations. The rows of kind 'counted' ARE each claim and claimant's latest valuation already (the product chose them by valuation date): filter on row_kind == 'counted' and use those rows as they are; never re-derive the latest valuation yourself (a sort plus a groupby-transform comparison fails in the sandbox's pandas and loses the answer). Incurred = paid to date + case reserve (no IBNR, no loss-adjustment expense). A reopened claim is one claim: count claims as distinct claim numbers, never rows; claimants are counted separately. Loss ratio = incurred ÷ EARNED premium (a ratio of sums, never the mean of row ratios; never written premium). Frequency = claims ÷ earned exposure and pure premium = incurred ÷ earned exposure, per line only (car-years and house-years don't add up). Cancellation rows carry negative premium and exposure: they net the term. Never report a month-over-month or year-over-year change of losses, reserves or claim counts by accident month: recent accident periods are still developing (their losses rise at later valuations), so the change is development, not a trend; compare accident years and name each young year's age instead. By year means accident (loss) year unless the user names the valuation or calendar year; a breakdown by accident year is filed under segment_column = the loss date column (a derived 'accident_year' is not a column), its group names the years."
   grain_line: "One row is a claim at one valuation (or a policy transaction): count claims as distinct {key}, never rows; an average per claim divides by claims."
   unsupported_alternatives: "I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?"
   kpis_default: its premium and claims columns
@@ -146,7 +149,7 @@ kpis:
     tile: true
     num: [[{nunique: claim_id}], [{sum: claim_count}]]
   - name: severity
-    label: Severity (incurred per claim)
+    label: Severity (incurred per reported claim)
     unit: money
     tile: true
     num: [[{kpi: incurred}]]
@@ -165,6 +168,16 @@ kpis:
                                                           nonrenewed, not renewed, "no", "n",
                                                           "0"]}]]}]]
 
+  # Lapse rate: terms that lapsed or were non-renewed ÷ terms up for renewal (1 − retention).
+  - name: lapse_rate
+    label: Lapse rate
+    unit: percent
+    num: [[{nunique: term, where: [[{role: renewal, in: [lapsed, lapse, non-renewed, nonrenewed,
+                                                          not renewed, "no", "n", "0"]}]]}]]
+    den: [[{nunique: term, where: [[{role: renewal, in: [renewed, renewal, "yes", "y", "1",
+                                                          lapsed, lapse, non-renewed,
+                                                          nonrenewed, not renewed, "no", "n",
+                                                          "0"]}]]}]]
   - name: avg_premium
     label: Average written premium per term
     unit: money
@@ -173,12 +186,14 @@ kpis:
     den: [[{nunique: term}]]
   # Per line only: exposure units differ by line (car-years, house-years) [WM Table 4.1].
   - name: frequency
+    per: line
     label: Claim frequency
     unit: number
     unit_word: claims per exposure unit
     num: [[{kpi: claims}]]
     den: [[{sum: exposure}]]
   - name: pure_premium
+    per: line
     label: Pure premium
     unit: money
     num: [[{kpi: incurred}]]
@@ -207,9 +222,9 @@ glossary:
   paid_net: [net paid, paid net, net of recoveries, net of salvage]
   claims: [claims, claim count, number of claims, claim volume, reported claims]
   avg_premium: [average premium, avg premium, premium per policy, average policy premium]
-  policies: [policies, policy count, number of policies, policies in force]
-  retention: [retention, retention rate, renewal rate, renewals, policy retention, lapse rate,
-              lapses]
+  policies: [policies, policy count, number of policies]
+  retention: [retention, retention rate, renewal rate, renewals, policy retention]
+  lapse_rate: [lapse rate, lapses, lapse, lapsed policies, non-renewal rate, non-renewals]
   accident_year: [accident year, ay, loss year, by year, year of loss]
   developing: [developing, immature, maturity, still open years, development]
   combined_ratio: [combined ratio, cor, combined operating ratio, expense ratio, lae ratio,
@@ -238,7 +253,7 @@ unsupported:
   protected_rating: "nothing that should be used: rating or underwriting on sex, race, religion or national origin is restricted or banned (NAIC Model 880; several states ban gender in rating; Colorado SB21-169). The data can be described by these groups, never turned into a rate recommendation"
 
 caveats:
-  read_as_domain: "Read as P&C insurance data ({kpis}). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them."
+  read_as_domain: "Read as P&C insurance data ({kpis}). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, gross of salvage and subrogation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them."
   read_as_domain_weak: "Read as insurance data because it has {roles} columns; if these are not policies or claims, the insurance figures here don't apply."
   repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
   partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
@@ -248,6 +263,11 @@ caveats:
   developing_periods: "As of the {as_of} valuation, {periods} are still developing: their losses will usually rise as claims are reported and reserves change, so they are not final and not comparable with mature years (liability lines develop beyond 24 months)."
   developing_periods_undated: "The data has no valuation date; measured to its last date ({as_of}), {periods} are still developing: their losses will usually rise, so they are not final and not comparable with mature years."
 role_caveats:
+  earned_premium: "When earned premium is grouped by the policy's effective date (a policy-year view), terms that started recently are not fully earned yet: recent months show less earned premium by construction, not a drop in business."
+  cat_event: "Catastrophe events are marked in the data: one event can dominate a period, line or coverage, so compare results with and without it before reading a trend or a ranking."
+  race: "Race is shown as a description only: rating or underwriting on it is an unfair trade practice (NAIC Model 880), so no rating recommendation is made on it."
+  religion: "Religion is shown as a description only: rating or underwriting on it is an unfair trade practice (NAIC Model 880), so no rating recommendation is made on it."
+  national_origin: "National origin is shown as a description only: rating or underwriting on it is an unfair trade practice (NAIC Model 880), so no rating recommendation is made on it."
   gender: "Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it."
   marital_status: "Marital status is shown as a description only: refusing or limiting coverage on it is an unfair trade practice under NAIC Model 880, so no rating recommendation is made on it."
 

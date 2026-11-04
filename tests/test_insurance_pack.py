@@ -130,6 +130,8 @@ def test_vins_in_a_neutrally_named_column_are_personal_data():
     vins = ["1HGCM82633A004352", "1M8GDM9AXKP042788", "1FTFW1ET9DFC10312"]
     assert pii_kind("Vehicle Ref", vins) is not None
     assert pii_kind("Order Ref", ["A1B2C3D4E5F6G7H8J", "ORD20260301XYZ12", "Z9Y8X7W6V5U4T3S2R"]) is None
+    assert pii_kind("Event Id", ["01ARZ3NDEKTSV4RRFFQ69G5FAV", "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+                                 "01HQ3J8Z6V7Y4N2K9W5T0R1PXM"]) is None   # 26-character ULIDs
     assert mask_pii("vehicle 1HGCM82633A004352 towed") == "vehicle 1HGCM82633A004352 towed"
 
 
@@ -233,19 +235,24 @@ def test_the_insight_harness_summary_stats_equal_the_analysis_built_in():
 
 
 def test_the_insight_harness_month_over_month_equals_the_analysis_built_in():
-    """CODING_STANDARDS: the harness compared a loss run's partial last month (data through 28
-    Sep) with August (-70.4%) where production's built-in leaves it out (+5.8%)."""
+    """CODING_STANDARDS: the harness compared a partial last month with a full one (-70.4%) where
+    production's built-in leaves it out; and it made a MoM of a developing measure that
+    production never makes. Both follow analysis_agent's rules."""
     import sys
     sys.path.insert(0, "tests")
     from test_oracle import _built, builtin
     from evals.run import viz_findings
+    _, clean, contract, _ = _built("policies")
+    case = {"plan": {"target_metrics": ["Written Premium"], "segments": []},
+            "findings": [{"kind": "trend", "column": "Written Premium"}]}
+    harness, _ = viz_findings(case, clean, [], contract)
+    built = [t for t in builtin("policies", ["Written Premium"], [], ["trend"])["trends"]
+             if t["period"] == "MoM" and not t.get("segment")]
+    assert harness.trends[0].pct_change == pytest.approx(built[0]["pct_change"], abs=0.01)
     _, clean, contract, _ = _built("loss_run")
     case = {"plan": {"target_metrics": ["Incurred"], "segments": []},
             "findings": [{"kind": "trend", "column": "Incurred"}]}
-    harness, _ = viz_findings(case, clean, [], contract)
-    built = [t for t in builtin("loss_run", ["Incurred"], [], ["trend"])["trends"]
-             if t["column"] == "Incurred" and t["period"] == "MoM" and not t.get("segment")]
-    assert harness.trends[0].pct_change == pytest.approx(built[0]["pct_change"], abs=0.01)
+    assert viz_findings(case, clean, [], contract)[0].trends == []
 
 
 def test_the_insight_never_says_one_row_per_entity_when_a_count_tile_disagrees():
@@ -282,3 +289,55 @@ def test_a_column_blank_by_the_files_layout_is_never_called_missing_in_evidence(
                       results=[{"name": "Auto", "value": 1.0}]) for c in ("Case Reserve", "Cat Event")])
     notes = " ".join(a for e in build_evidence(f, {}, "", "", s.cleaning_audit) for a in e.assumptions)
     assert "missing" not in notes, notes
+
+
+def test_a_kpi_given_per_a_role_is_never_one_total_across_it():
+    """Audit pass 1 (spec + expert, major): 'What's our claim frequency?' answered 0.11, claims
+    over car-years plus house-years. A KPI with `per: <role>` is computed within one value of
+    that role only: no total across values, no other grouping that mixes them; asked without a
+    group, the answer is given by that role."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built, answer
+    _, clean, contract, truth = _built("policies")
+    pack = domain_pack.pack_for("insurance")
+    for kpi in ("frequency", "pure_premium"):
+        assert domain_pack.compute_kpi(clean, contract.roles, pack, kpi) is None
+        assert domain_pack.compute_kpi(clean, contract.roles, pack, kpi, by="State") is None
+    auto = clean[clean["Line of Business"] == "Auto"]
+    assert domain_pack.compute_kpi(auto, contract.roles, pack, "frequency") == pytest.approx(
+        truth["frequency_by_line"]["Auto"])
+    text, chart = answer("policies", "segment_compare", "What's our claim frequency?", kpi="frequency")
+    assert chart.keys() == {"Auto", "Home"} and "by Line of Business" in text, text
+
+
+
+def test_workers_comp_files_read_as_insurance():
+    """Audit pass 1 (expert): payroll is a workers' comp policy's exposure base and an employee
+    id its claimant; vetoing [payroll] / [employee, id] read both files as no domain."""
+    n = 30
+    policy = _contract(pd.DataFrame({
+        "Policy Number": [f"WC-{i:04d}" for i in range(n)],
+        "Effective Date": pd.date_range("2025-01-01", periods=n, freq="7D").strftime("%Y-%m-%d"),
+        "Payroll": [round(250000.0 + 1000 * i, 2) for i in range(n)],
+        "Written Premium": [round(4000.0 + 37 * i, 2) for i in range(n)],
+        "Earned Premium": [round(3000.0 + 29 * i, 2) for i in range(n)]}))
+    claims = _contract(pd.DataFrame({
+        "Claim Number": [f"WC{1000 + i}" for i in range(n)],
+        "Employee ID": [f"E{i % 9:05d}" for i in range(n)],
+        "Date of Injury": pd.date_range("2025-01-01", periods=n, freq="7D").strftime("%Y-%m-%d"),
+        "Paid to Date": [round(1000.0 + 37 * i, 2) for i in range(n)],
+        "Case Reserve": [round(500.0 + 11 * i, 2) for i in range(n)]}))
+    assert policy.domain == claims.domain == "insurance"
+    assert claims.roles["date"] == "Date of Injury"
+
+
+def test_the_gender_caution_is_said_on_a_policy_table():
+    """Trap 13: described, never a rating recommendation; the caution is in the report."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built
+    s, _, contract, _ = _built("policies")
+    said = domain_pack.pack_caveats(domain_pack.pack_for("insurance"), s.cleaning_audit,
+                                    contract.roles, contract.domain_confidence)
+    assert any(c.startswith("Gender is shown as a description only") for c in said)

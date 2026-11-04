@@ -55,6 +55,8 @@ from guardrails import rankable
 from domain_pack import (
     runout_months,
     developing_note,
+    mixes,
+    roles_of,
     kpi_roles,
     additive,
     entity_rows,
@@ -544,7 +546,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     if conventions and freq in ("W", "M", "Q", "Y"):   # a domain's rule: either end, any bucket
         series, partial = _cut_partial(series, s[date], freq, rule if freq == "W" else None,
                                        runout_months(contract))
-        partial += developing_note(contract, s, {r for r, c in contract.roles.items() if c == metric})
+        partial += developing_note(contract, s, roles_of(contract, metric))
         if series.empty:
             return _unanswerable(QuestionIntent.TIME_SERIES, partial.strip(),
                                  ["Ask for a finer period (week or day)", "Ask for the total"])
@@ -982,8 +984,8 @@ def _date_of(contract: DataContract, params: TargetedParams, df: pd.DataFrame) -
 
 _KPI_INTENTS = {QuestionIntent.TOP_N, QuestionIntent.SEGMENT_COMPARE, QuestionIntent.TIME_SERIES}
 # A question that ranks rows or groups ("top 5 lines", "the largest claims")
-_RANKING_RE = re.compile(r"\b(?:top|bottom|largest|smallest|biggest|highest|lowest|most|least|"
-                         r"best|worst|rank\w*)\b", re.I)
+_RANKING_RE = re.compile(r"\b(?:top|bottom|largest|smallest|biggest|highest|lowest|most(?! recent)|"
+                         r"least|best(?! estimate)|worst|rank\w*)\b", re.I)
 
 
 def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
@@ -1026,6 +1028,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     how = describe_kpi(pack, kpi.name, roles, present) + read + (
         f" {currency} only: {other:,} rows in other currencies left out." if other else "")   # counts too
     group = params.group_by or params.segment_column
+    if mixes(df, roles, kpi, group if group in df.columns else None):   # never one total across lines
+        group, how = roles[kpi.per], how + (f" Given by {roles[kpi.per]} only: one figure "
+                                            f"across them would mix their units.")
     if group and group in df.columns:
         by = compute_kpi(df, roles, pack, kpi.name, by=group, full=full)
         if by is None or by.empty:

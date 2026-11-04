@@ -373,7 +373,7 @@ VIZ = load_cases("visualization", None)
 
 
 def test_viz_case_mix_and_labels():
-    assert len(VIZ) == 28   # 5.7 insurance: +1
+    assert len(VIZ) == 29   # 5.7 insurance: +2
     assert sum(c["id"].endswith("holdout") for c in VIZ) == 5
     assert {c["category"] for c in VIZ} == {"finding", "profile", "targeted"}
     for c in VIZ:

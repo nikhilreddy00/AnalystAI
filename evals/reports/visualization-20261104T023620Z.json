@@ -1,0 +1,542 @@
+{
+ "meta": {
+  "suite": "visualization",
+  "report": "visualization-20261104T023620Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "1ae7ab1",
+  "started_at": "20261104T023620Z",
+  "only": "viz-t09,viz-t10",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 6,
+  "pass_rate": 0.5,
+  "case_majority_pass_rate": 0.5,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 0.79,
+  "latency_p95_s": 0.95,
+  "right_chart": 0.5,
+  "headline_coverage": null,
+  "lint_violations": 0,
+  "charts_without_rationale": 0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "targeted": 0.5
+  }
+ },
+ "runs": {
+  "viz-t09-ins-loss-ratio": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "afec9f14-2bbd-448c-a724-5c6f1c703af3",
+       "chart_type": "HorizontalBarChart",
+       "title": "Loss ratio by Line of Business",
+       "data": [
+        {
+         "Line of Business": "Home",
+         "Loss ratio": 70.0667
+        },
+        {
+         "Line of Business": "Auto",
+         "Loss ratio": 55.3238
+        }
+       ],
+       "x_key": "Line of Business",
+       "y_keys": [
+        "Loss ratio"
+       ],
+       "colors": [],
+       "x_label": "Line of Business",
+       "y_label": "Loss ratio",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Loss ratio per Line of Business, ranked. Incurred losses, divided by sum of Earned Premium.",
+        "x": "Line of Business",
+        "y": "Loss ratio",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2674,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.63,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "79dcfb55-1424-40ab-8378-671a19236b81",
+       "chart_type": "HorizontalBarChart",
+       "title": "Loss ratio by Line of Business",
+       "data": [
+        {
+         "Line of Business": "Home",
+         "Loss ratio": 70.0667
+        },
+        {
+         "Line of Business": "Auto",
+         "Loss ratio": 55.3238
+        }
+       ],
+       "x_key": "Line of Business",
+       "y_keys": [
+        "Loss ratio"
+       ],
+       "colors": [],
+       "x_label": "Line of Business",
+       "y_label": "Loss ratio",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Loss ratio per Line of Business, ranked. Incurred losses, divided by sum of Earned Premium.",
+        "x": "Line of Business",
+        "y": "Loss ratio",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2674,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.21,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "f6e1489c-1c3e-4d59-99ef-8a85202b0ccf",
+       "chart_type": "HorizontalBarChart",
+       "title": "Loss ratio by Line of Business",
+       "data": [
+        {
+         "Line of Business": "Home",
+         "Loss ratio": 70.0667
+        },
+        {
+         "Line of Business": "Auto",
+         "Loss ratio": 55.3238
+        }
+       ],
+       "x_key": "Line of Business",
+       "y_keys": [
+        "Loss ratio"
+       ],
+       "colors": [],
+       "x_label": "Line of Business",
+       "y_label": "Loss ratio",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Loss ratio per Line of Business, ranked. Incurred losses, divided by sum of Earned Premium.",
+        "x": "Line of Business",
+        "y": "Loss ratio",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2674,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.21,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "viz-t10-ins-incurred-by-ay": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": false,
+      "detail": "want LineChart period\u2192Incurred losses (none); got: x Loss Date, agg sum"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "238a6e0a-eda0-4345-98d3-15fff4fdfa9f",
+       "chart_type": "BarChart",
+       "title": "Incurred losses over time",
+       "data": [
+        {
+         "period": "2022",
+         "Incurred losses": 6349106.62
+        },
+        {
+         "period": "2023",
+         "Incurred losses": 7200690.15
+        },
+        {
+         "period": "2024",
+         "Incurred losses": 9451184.01
+        },
+        {
+         "period": "2025",
+         "Incurred losses": 7548707.16
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "Incurred losses"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "Incurred losses",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "Incurred losses per Y period. Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+        "x": "Loss Date",
+        "y": "Incurred losses",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 38255,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.95,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": false,
+      "detail": "want LineChart period\u2192Incurred losses (none); got: x Loss Date, agg sum"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "f42c8fa4-fd95-42f0-a313-25148a315a79",
+       "chart_type": "BarChart",
+       "title": "Incurred losses over time",
+       "data": [
+        {
+         "period": "2022",
+         "Incurred losses": 6349106.62
+        },
+        {
+         "period": "2023",
+         "Incurred losses": 7200690.15
+        },
+        {
+         "period": "2024",
+         "Incurred losses": 9451184.01
+        },
+        {
+         "period": "2025",
+         "Incurred losses": 7548707.16
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "Incurred losses"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "Incurred losses",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "Incurred losses per Y period. Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+        "x": "Loss Date",
+        "y": "Incurred losses",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 38255,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.94,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": false,
+      "detail": "want LineChart period\u2192Incurred losses (none); got: x Loss Date, agg sum"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "4b0f0114-9271-4779-98ac-ac4ce2a03152",
+       "chart_type": "BarChart",
+       "title": "Incurred losses over time",
+       "data": [
+        {
+         "period": "2022",
+         "Incurred losses": 6349106.62
+        },
+        {
+         "period": "2023",
+         "Incurred losses": 7200690.15
+        },
+        {
+         "period": "2024",
+         "Incurred losses": 9451184.01
+        },
+        {
+         "period": "2025",
+         "Incurred losses": 7548707.16
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "Incurred losses"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "Incurred losses",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "Incurred losses per Y period. Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+        "x": "Loss Date",
+        "y": "Incurred losses",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 38255,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.95,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ]
+ }
+}

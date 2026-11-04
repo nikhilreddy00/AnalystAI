@@ -26,6 +26,7 @@ from agents.utils import display_values, pii_columns, safe_column_name, strip_ma
 from domain_pack import (
     runout_months,
     developing_note,
+    roles_of,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -296,10 +297,12 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             overall = series_of(rows, c, agg, weeks)
             if overall is None or len(overall) < 2:
                 continue
-            # a measure that develops (losses at a valuation): its young years are not final
-            if note := developing_note(contract, df, {r for r, x in contract.roles.items() if x == c}):
+            # a measure that develops (losses at a valuation): a change between young accident
+            # months is development, not a trend; no built-in MoM / YoY, the note says why
+            if note := developing_note(contract, df, roles_of(contract, c)):
                 if (note := f"{c}:{note}") not in raw["assumptions"]:
                     raw["assumptions"].append(note)
+                continue
             # the data's own last month (before partial / run-out months were left out)
             data_last = pd.to_datetime(rows[time_axis(contract, c, df)], format="mixed",
                                        errors="coerce").dt.to_period("M").max()

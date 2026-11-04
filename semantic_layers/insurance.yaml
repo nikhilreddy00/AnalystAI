@@ -20,7 +20,7 @@ metrics:
   - name: earned_premium_total
     table: policy_months
     expr: SUM(policy_months.earned_premium)
-  - name: claim_frequency
+  - name: claim_count_total   # a count; frequency is claims ÷ earned exposure (no exposure here)
     table: policy_months
     expr: SUM(policy_months.claim_count)
   - name: loss_ratio

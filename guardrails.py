@@ -1043,14 +1043,19 @@ _VIN_VALUES = dict(zip("ABCDEFGHJKLMNPRSTUVWXYZ", [1, 2, 3, 4, 5, 6, 7, 8, 1, 2,
 _VIN_WEIGHTS = (8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2)
 
 
+def vin_check_digit(vin: str) -> str:
+    """The North American VIN check digit (position 9) for a 17-character VIN."""
+    total = sum((int(c) if c.isdigit() else _VIN_VALUES[c]) * w for c, w in zip(vin, _VIN_WEIGHTS))
+    return "X" if total % 11 == 10 else str(total % 11)
+
+
 def _is_vin(text: str) -> bool:
     """A North American VIN: 17 characters without I, O or Q, letters and digits, and a valid
     check digit (position 9). A random 17-character id passes the check 1 time in 11."""
     v = text.strip().upper()
     if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", v) or v.isdigit() or v.isalpha():
         return False
-    total = sum((int(c) if c.isdigit() else _VIN_VALUES[c]) * w for c, w in zip(v, _VIN_WEIGHTS))
-    return v[8] == ("X" if total % 11 == 10 else str(total % 11))
+    return v[8] == vin_check_digit(v)
 
 
 def is_pii_column(name: str) -> bool:

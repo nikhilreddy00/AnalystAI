@@ -639,8 +639,12 @@ def test_a_built_in_trend_of_a_developing_measure_says_it_is_still_developing():
     """Live loss run: 'incurred fell sharply YoY (Aug 2026 vs Aug 2025)' was reported as a signal
     to investigate; both months are in still-developing accident years. The built-in trend's
     assumptions (they reach its evidence) say so; premium and other domains say nothing."""
-    loss = builtin("loss_run", ["Incurred"], [], ["trend"])["assumptions"]
+    res = builtin("loss_run", ["Incurred"], [], ["trend"])
+    loss = res["assumptions"]
     assert any(a.startswith("Incurred:") and "still developing" in a for a in loss), loss
+    # audit pass 1 (expert): accident-month MoM/YoY of a developing measure is development, not a
+    # trend: the built-in computes none (it reached headlines as 'reserves rose 5.8%')
+    assert not [t for t in res["trends"] if t["column"] == "Incurred"], res["trends"]
     for name, col in (("policies", "Written Premium"), ("retail_lines", "Lineitem price")):
         res = builtin(name, [col], [], ["trend"])
         assert not any("developing" in a for a in res["assumptions"]), (name, res["assumptions"])

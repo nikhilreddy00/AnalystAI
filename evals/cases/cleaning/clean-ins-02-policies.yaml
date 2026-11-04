@@ -5,8 +5,8 @@ dataset:
 category: insurance
 expect_decisions:
 - column: Renewal Status
-  operation: fill_unknown
-  rows: 178
+  strategy: conditional
+  rows: 0
 forbid:
 - operation: drop_rows
 - operation: drop_duplicates
@@ -15,4 +15,4 @@ forbid:
 - operation: flag
   strategy: return
 - strategy: high_null
-label_note: 'A policy table: negative cancellation rows net the term (never flagged as returns or cancelled orders), nothing dropped; the cancellation rows'' blank renewal status is Unknown (out of the retention base).'
+label_note: 'A policy table: negative cancellation rows net the term (never flagged as returns or cancelled orders), nothing dropped; renewal status is blank on cancellation rows by design (a conditional field, never Unknown).'
