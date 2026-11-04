@@ -1492,7 +1492,9 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     names: the caller shows the role → column map inside its untrusted-data block."""
     named = {r: r for r in roles}
     lines = []
-    if present - {"sale"} or concepts:   # rows to leave out, or a KPI to compute
+    # rows to leave out, a KPI to compute, or spell markers in the frame (with_spell_events: a
+    # question naming no KPI, 'average base salary', still reads them; Domain 5 gate: hr-8)
+    if present - {"sale"} or concepts or (pack.spell and pack.spell.entity in roles):
         lines.append(f"`df` has one column more than the schema shows: '{kind_column}', each row's "
                      f"kind ({', '.join(pack.code(k) for k in ROW_KINDS)}, other_currency), "
                      "computed by these rules: filter on "
