@@ -74,3 +74,32 @@ def test_every_kpi_answer_path_agrees_with_the_tile_and_the_groups(name):
             assert last in yearly, (name, kpi_name, last, yearly)
         for t in texts:   # the file's rows are never a count of the things a tile counts
             assert not claim_rows_as_entities(t, rows, counts), (name, kpi_name, t[:200])
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+def test_a_stock_reconciles_with_its_flows_every_month(name):
+    """Opening + starts − ends = closing, month by month (Domain 5 red-team M21): the standard HR
+    data check, truth-free, so a second copy of the in-force rule that drifts from the events
+    (dropouts, rehires, future dates) fails here. The only allowed gap: a spell over at an
+    unknown date (status ended, no end date) starts but is never in force."""
+    import pandas as pd
+    _, clean, contract, _ = _built(name)
+    pack = domain_pack.pack_for(contract.domain)
+    if not pack.spell:
+        return
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    stock = next((k.name for k in pack.kpis if [t.spell for alt in k.num[-1:] for t in alt] == ["active"]
+                  and k.num[-1][0].sum is None), None)
+    flows = [next(k.name for k in pack.kpis if k.num[-1][0].spell == s and not k.num[-1][0].where)
+             for s in ("starts", "ends")]
+    frame = clean.assign(_period=pd.Series(pd.NaT, index=clean.index).astype("period[M]"))
+    act, st, en = (domain_pack.compute_kpi(frame, roles, pack, k, by="_period", full=clean)
+                   for k in (stock, *flows))
+    st, en = st.reindex(act.index, fill_value=0), en.reindex(act.index, fill_value=0)
+    gap = (act - act.shift(1) - st + en).iloc[1:]
+    ended = 0
+    if pack.spell.ended and "status" in roles and pack.spell.end in roles:
+        sts = domain_pack.words(clean[roles["status"]])
+        ended = int((sts.isin(set(domain_pack.words(pd.Series(pack.spell.ended))))
+                     & clean[roles[pack.spell.end]].isna()).sum())
+    assert (gap <= 0).all() and -gap.sum() <= ended, (name, gap[gap != 0].to_dict(), ended)

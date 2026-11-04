@@ -155,7 +155,10 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
                         contract=session.data_contract)
     extra = {"strata": session.task_plan.segments} if intent == QuestionIntent.AB_SIGNIFICANCE else {}
     full, period = df, ""
-    if params and (params.period_start or params.period_end):
+    # people employed in a period are not the rows dated in it: a spell KPI's period is its
+    # window (handle_kpi passes it to compute_kpi), never a row cut
+    spelled = handler is handle_kpi and bool(pack and pack.spell and spell_terms(pack, params.kpi))
+    if params and (params.period_start or params.period_end) and not spelled:
         date = _date_of(contract, params, df)
         df, period, why = filter_period(df, date, params.period_start, params.period_end,
                                         _span_of(contract, df, date))
@@ -1013,14 +1016,14 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         params = params.model_copy(update={"segment_column": None, "segment_value": None,
                                            "group_by": None if params.group_by == params.segment_column
                                            else params.group_by})
-    # people (subscribers) at a date and the exits in a period are not the rows dated in it: a
-    # spell KPI reads every row, and an asked period becomes its window (domain_pack.spell_window)
+    # people (subscribers) at a date and the exits in a period are not the rows dated in it: an
+    # asked period is a spell KPI's window (domain_pack.spell_window); the caller never cut it
     spelled = bool(pack.spell and spell_terms(pack, kpi.name))
     win = None
     if spelled:
         win = (_bound(params.period_start, False) if params.period_start else None,
                _bound(params.period_end, True) if params.period_end else None)
-        win, df = (win if any(w is not None for w in win) else None), full
+        win = win if any(w is not None for w in win) else None
     _, currency, other = main_currency(df, roles)
     money = currency or next((c.unit for c in contract.columns if c.unit and c.name in
                               money_columns(pack, roles)), None)

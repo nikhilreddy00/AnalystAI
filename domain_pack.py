@@ -813,11 +813,13 @@ def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
 
 
 def _month_ends(a: pd.Timestamp, b: pd.Timestamp) -> list[pd.Timestamp]:
-    """The month-ends in (a, b], the last one clipped to b."""
+    """The month-ends of the months after a's up to b's, the last one clipped to b: the 12
+    month-end headcounts of the 12 months to 24 Oct are Nov … Sep and 24 Oct (never also 31 Oct
+    of the year before, a 13th)."""
     if b <= a:
         return []
-    ends = [min(m.end_time.normalize(), b) for m in pd.period_range(a, b, freq="M")]
-    return [e for e in dict.fromkeys(ends) if a < e <= b]
+    months = pd.period_range(a.to_period("M") + 1, b.to_period("M"), freq="M")
+    return list(dict.fromkeys(min(m.end_time.normalize(), b) for m in months))
 
 
 def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,

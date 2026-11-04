@@ -258,7 +258,8 @@ def _filter_columns(clean, contract, k: int = 8) -> list[tuple[str, list[str]]]:
 
 PACK_DATASETS = ["retail_lines", "store_weeks", "b2b_invoices", "loan_tape", "loan_tape_messy",
                  "card_ledger", "bank_balances", "bank_statement", "ledger_drcr", "deposits_daily",
-                 "inpatient", "encounters", "health_claims", "policies", "loss_run", "claims"]
+                 "inpatient", "encounters", "health_claims", "policies", "loss_run", "claims",
+                 "hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"]
 
 
 @pytest.mark.parametrize("name", PACK_DATASETS)
