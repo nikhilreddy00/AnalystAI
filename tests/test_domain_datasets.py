@@ -13,6 +13,7 @@ from evals.run import load_cases, rescore, score_e2e, summarize
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
+    _close,
     _truth_value,
     check_segment_value_truth,
     check_simpson_reversal,
@@ -29,8 +30,9 @@ from orchestrator.state import (
 
 DOMAINS = ("bank_balances", "encounters", "claims", "employees", "saas_accounts",
            "sensor_readings", "shipments", "retail_lines", "store_weeks", "b2b_invoices",
-           "policies", "loss_run")
-MAX_ROWS = {"loss_run": 50_000}   # a loss run lists every claimant at each of 16 valuations
+           "policies", "loss_run", "hr_roster", "hr_roster_onerow", "hr_snapshots")
+MAX_ROWS = {"loss_run": 50_000,   # a loss run lists every claimant at each of 16 valuations
+            "hr_snapshots": 9_000}   # ~350 people at each of 24 month-ends
 
 
 def _findings(**kw) -> AnalysisFindings:
@@ -359,3 +361,93 @@ def test_report_scope_scans_charts_and_evidence():
                                    y_keys=["n"], data=[{"department": "Radiology", "n": 6}])]
     assert check_must_not_match(s, "Radiology")[0]                   # the text alone misses it
     assert not check_must_not_match(s, "Radiology", scope="report")[0]
+
+
+# ── Domain 5 (HR): each planted trap moves the answer past the tolerance the scorer uses ──────
+# Rates (attrition, pay gap): 1 pp absolute, a rate is read to the point. Money and months: 2%
+# relative. Average headcount: 0.5% relative ((start + end) / 2 is ~2% off the 12-point mean and
+# the one-row file's gap ~1%, so 2% would let both pass). A headcount at a date: exact, it counts
+# distinct people.
+RATE, REL, AVG_HC, EXACT = ("abs", 0.01), ("rel", 0.02), ("rel", 0.005), ("abs", 0.5)
+HR_SEGMENT = {"attrition_12m_by_dept": "Department", "pay_gap_mean_fte_by_level": "Job_Level",
+              "attrition_12m_by_dept_at_exit": "Department"}
+
+
+@pytest.mark.parametrize("name, truth_key, naive_key, tol", [
+    ("hr_roster", "attrition_12m", "attrition_12m_end_hc", RATE),                    # 1 layoff
+    ("hr_roster", "attrition_12m_by_dept", "attrition_12m_by_dept_end_hc", RATE),
+    ("hr_roster", "attrition_12m", "attrition_all_rows", RATE),                      # 2 AVG(left)
+    ("hr_roster", "people", "rows", EXACT),                                          # 3 rehires
+    ("hr_roster_onerow", "avg_headcount_12m", "avg_headcount_12m_original_hire", AVG_HC),  # 4
+    ("hr_roster", "attrition_12m", "attrition_12m_with_contingent", RATE),           # 5
+    ("hr_roster", "voluntary_attrition_12m", "voluntary_incl_retirement", RATE),     # 6
+    ("hr_roster", "fte_asof", "headcount_asof", REL),                                # 7
+    ("hr_roster", "avg_headcount_12m", "avg_headcount_start_end", AVG_HC),
+    ("hr_roster", "attrition_2026_partial", "attrition_2026_annualised", RATE),      # 8
+    ("hr_roster", "pay_gap_mean_fte_by_level", "pay_gap_mean_annual_by_level", RATE),  # 15
+    ("hr_roster", "tenure_median_current_months", "tenure_median_at_exit_months", REL),  # 18
+    ("hr_snapshots", "headcount_asof", "headcount_summed_rows", EXACT),              # 9
+    ("hr_snapshots", "total_salary_asof", "salary_summed_all_months", REL),          # 9
+    ("hr_snapshots", "headcount_asof", "headcount_asof_with_terminated_rows", EXACT),  # 10
+    ("hr_snapshots", "attrition_12m_by_dept_at_exit", "attrition_by_dept_current_dept", RATE),
+])
+def test_hr_traps_pass_on_the_right_base_and_fail_on_the_naive_one(name, truth_key, naive_key, tol):
+    _, truth = datagen.make(name, 1)
+    right, naive = truth[truth_key], truth[naive_key]
+    kind, x = tol
+    if isinstance(right, dict):   # a per-group rate: scored as a breakdown, as the scorer does
+        seg = HR_SEGMENT[truth_key]
+        assert check_segment_value_truth(_findings(segments=[_seg(seg, right)]), truth, seg,
+                                         truth_key, abs_tol=x)[0]
+        assert not check_segment_value_truth(_findings(segments=[_seg(seg, naive)]), truth, seg,
+                                             truth_key, abs_tol=x)[0]
+    else:
+        rel, abs_ = (0, x) if kind == "abs" else (x, 0)
+        assert not _close(naive, right, rel, abs_)
+
+
+def test_hr_roster_truth_matches_the_planted_facts():
+    df, t = datagen.make("hr_roster", 1)
+    assert t["as_of"] == "2026-10-31" and t["window_start"] == "2025-10-31"
+    assert len(t["headcount_by_month_end"]) == 12 and t["attrition_by_year_months"]["2026"] == 10
+    assert t["attrition_by_year_months"]["2025"] == 12
+    layoff = df[df["Termination_Date"].eq("2026-06-15")]
+    assert (layoff["Department"].eq("Support")
+            & layoff["Termination_Category"].eq("Involuntary")).sum() >= 60
+    spells = df.groupby("Employee_ID")["Worker_Type"].agg(["size", "nunique"])
+    assert (spells["size"] == 2).sum() == 41 and (spells["nunique"] == 2).sum() == 1
+    assert df["Worker_Type"].eq("Contractor").sum() == 121
+    assert t["future_exits"] == 3 and t["future_hires"] == 2 and t["terminated_without_date"] == 5
+    assert df["Employment_Status"].eq("Leave of Absence").sum() == 10
+    assert (df["Hire_Date"].eq("2026-03-03") & df["Termination_Date"].eq("2026-03-20")).sum() == 1
+    assert t["legal_people_asof"] == 6 and "Legal" in t["avg_salary_by_dept_asof"]
+    assert df["SSN"].str.fullmatch(r"\d{3}-\d{2}-\d{4}").all()
+    assert set(df["Gender"]) == {"Female", "Male", "Non-binary"}
+    assert df.loc[df["Worker_Type"].eq("Part-Time"), "Gender"].eq("Female").mean() > 0.7
+    assert abs(t["corr_salary_left"]) < 0.05 < -t["corr_performance_involuntary"]
+    one, t1 = datagen.make("hr_roster_onerow", 1)
+    assert t1["headcount_asof"] == t["headcount_asof"] and t1["people"] == t["people"] == len(one)
+    assert t["separations_12m"] - t1["separations_12m"] == t1["first_exits_not_in_file"] > 0
+    assert (one["Original_Hire_Date"] <= one["Hire_Date"]).all()
+
+
+def test_employees_period_attrition_keeps_sales_highest():
+    _, t = datagen.make("employees", 1)
+    assert t["as_of"] == "2026-10-24"
+    by = t["attrition_12m_by_dept"]
+    assert max(by, key=by.get) == "Sales"
+    assert all(by[k] < t["attrition_by_dept"][k] for k in by)   # a 12-month rate, not AVG(left)
+
+
+MARKER_FIELDS = {"Termination_Date", "Termination_Category", "Regrettable", "termination_date"}
+
+
+@pytest.mark.parametrize("name", ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"])
+def test_hr_columns_are_mostly_filled_except_the_exit_markers(name):
+    """A column > 40% blank raises the cleaning gate; on an HR file only the exit fields (blank
+    while someone is employed) may be that blank. The message names every column over 40%, so
+    the pack author knows which to list as marker_fields."""
+    df, _ = datagen.make(name, 1)
+    null = df.replace("", None).isna().mean()
+    over = {c: round(float(v), 3) for c, v in null.items() if v > 0.4}
+    assert set(over) <= MARKER_FIELDS, f"{name}: columns over 40% null: {over}"
