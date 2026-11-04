@@ -677,3 +677,12 @@ def test_a_kpi_for_one_named_status_judges_row_kinds_on_the_whole_data():
     count, _ = answer("loss_run", "segment_compare", "How many claims are open?", kpi="claims",
                       segment_column="Claim Status", segment_value="Open")
     assert f"{opened['Claim Number'].nunique():,}" in count, count
+
+
+def test_a_named_values_trend_judges_coverage_on_the_whole_file():
+    """Pass 5 (minor, from the pass-3 filter): Orthopedics' first month was cut as 'covered only
+    from 07 Nov' though the file starts 03 Nov; a value's own first row is not the data's edge."""
+    text, _ = answer("inpatient", "time_series", "discharges by month for Orthopedics",
+                     kpi="discharges", segment_column="Department", segment_value="Orthopedics",
+                     frequency="M")
+    assert "covered only from" not in text, text

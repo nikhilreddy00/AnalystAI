@@ -1105,7 +1105,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             # each month's average week (a distinct count, orders or customers, is the month's)
             weeks = t.groupby(t.dt.to_period("M")).nunique()
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
-        whole, note = _cut_partial(series, t, freq, rule if freq == "W" else None,
+        # the data's edges are the whole file's (a named value's first row is not its start)
+        covered = t if all_rows is full else _local(pd.to_datetime(all_rows[date], errors="coerce"))
+        whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
         note += developing_note(contract, full, kpi_roles(pack, kpi.name))
         series = whole
