@@ -1227,12 +1227,19 @@ def _explicit_error_ok(hard: list[dict], error: str | None) -> list[dict]:
 _budget = {"max": float("inf"), "spent": 0.0}   # --max-usd: real money, so a hard stop
 
 
+def _dataset_of(case: dict) -> str | None:
+    src = case.get("dataset") or case.get("source") or {}
+    return src.get("name") or src.get("dataset") if isinstance(src, dict) else None
+
+
 def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | None = None,
-                 k: int = 1) -> float:
+                 k: int = 1, cases: dict | None = None) -> float:
     """Cost of the planned runs. Each case is priced at its own mean cost in the newest paid
     report that ran it (an overview costs ~2.8x the E2E average, so the suite average under-
-    estimated a 5-overview gate by 132%); cases never run fall back to the newest full report's
-    average. A $0 checks-only run is no cost basis."""
+    estimated a 5-overview gate by 132%). A case never run is priced at the recent cases on its
+    own dataset, else at the 90th-percentile case cost (a new domain's larger contexts ran 4.5x
+    the suite average in Domain 4). A $0 checks-only run is no cost basis. `cases`: {id: case}
+    (default: the suite's committed cases)."""
     paid = []
     for p in sorted(reports.glob(f"{suite}-*.json"), reverse=True):
         rep = json.loads(p.read_text())
@@ -1256,13 +1263,21 @@ def estimate_usd(suite: str, n_runs: int, reports: Path, case_ids: list[str] | N
                     kinds.setdefault(cases[cid].get("overview_done", False), []).extend(
                         x["cost_usd"] for x in rs)
     total = 0.0
-    by_id = {c["id"]: c for c in load_cases(suite, None)} if suite == "e2e" else {}
+    by_id = cases if cases is not None else {c["id"]: c for c in load_cases(suite, None)}
+    per_case = {c: statistics.mean(x["cost_usd"] for x in rs) for r in paid[::-1]
+                for c, rs in (r.get("runs") or {}).items() if rs}   # newest report wins
+    by_set: dict = {}
+    for c, cost in per_case.items():
+        by_set.setdefault(_dataset_of(by_id.get(c, {})), []).append(cost)
+    p90 = statistics.quantiles(per_case.values(), n=10)[-1] if len(per_case) >= 2 else average
     for cid in case_ids:
         costs = next(([x["cost_usd"] for x in r["runs"][cid]] for r in paid if cid in r["runs"]), None)
         case = by_id.get(cid, {})
         if not costs and kinds:
             costs = kinds.get(case.get("overview_done", False))
-        cost = statistics.mean(costs) if costs else average
+        if not costs:   # never run: its dataset's cases, else a high case, never the mean
+            costs = by_set.get(_dataset_of(case)) if _dataset_of(case) else None
+        cost = statistics.mean(costs) if costs else max(p90, average)
         if case.get("turns") and not any(cid in r["runs"] for r in paid):   # each turn is a question
             cost += len(case["turns"]) * statistics.mean(kinds.get(True) or [average])
         total += cost * k
@@ -1873,6 +1888,11 @@ async def main() -> None:
     estimate = 0.0 if args.checks_only else estimate_usd(
         args.suite, len(cases) * args.k, Path(args.out), [c["id"] for c in cases], args.k)
     print(f"estimated cost ≈ ${estimate} (cap ${args.max_usd})", flush=True)
+    if estimate:   # the guesses in the estimate: a case no report has run yet
+        seen = {c for p in Path(args.out).glob(f"{args.suite}-*.json")
+                for c in json.loads(p.read_text()).get("runs") or {}}
+        if new := [c["id"] for c in cases if c["id"] not in seen]:
+            print(f"  never run, priced from their dataset's cases or the p90 case: {', '.join(new)}")
     if estimate > args.max_usd:
         raise SystemExit(f"estimate ${estimate} > --max-usd {args.max_usd}; narrow with --only/--k "
                          "or raise the cap deliberately")
