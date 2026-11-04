@@ -773,3 +773,79 @@ def test_a_developing_measures_partial_latest_period_says_how_far_it_is_covered(
     youngest accident period) but said: covered only to its last date."""
     text, chart = answer("claims", "time_series", "incurred by quarter", kpi="incurred", frequency="Q")
     assert "2026Q4" in chart and "2026Q4" in text and "covered only to" in text, text
+
+
+# ── HR (Domain 5): every answer path = the generator's truth (computed without domain_pack) ──
+
+def test_hr_attrition_by_department_divides_by_the_average_headcount():
+    _, _, _, truth = _built("hr_roster")
+    text, by = answer("hr_roster", "top_n", "attrition by department", kpi="attrition_rate",
+                      group_by="Department")
+    assert close(by, {k: v for k, v in truth["attrition_12m_by_dept"].items()}, tol=0.05), (by, text)
+    assert "12 months to 31 Oct 2026" in text
+    assert not close(by, {"Support": truth["attrition_12m"] * 2}, tol=0.05)   # sanity
+
+
+def test_hr_overall_rates_and_counts():
+    _, _, _, truth = _built("hr_roster")
+    for kpi, key in [("attrition_rate", "attrition_12m"), ("voluntary_attrition", "voluntary_attrition_12m"),
+                     ("involuntary_attrition", "involuntary_attrition_12m"), ("retirement_rate", "retirement_rate_12m")]:
+        text, _ = answer("hr_roster", "segment_compare", f"what is our {kpi}?", kpi=kpi)
+        assert f"{truth[key] * 100:.1f}%" in text, (kpi, text)
+    text, _ = answer("hr_roster", "segment_compare", "how many employees do we have?", kpi="headcount")
+    assert f"{truth['headcount_asof']:,}" in text and "as of 31 Oct 2026" in text, text
+    assert truth["headcount_asof"] != truth["rows"]   # people, never rows
+
+
+def test_hr_headcount_by_department_and_pay_of_a_small_department_is_hidden():
+    _, _, _, truth = _built("hr_roster")
+    _, by = answer("hr_roster", "top_n", "headcount by department", kpi="headcount", group_by="Department")
+    assert by == {k: float(v) for k, v in truth["headcount_by_dept_asof"].items()}   # Legal (6) shown
+    _, pay = answer("hr_roster", "top_n", "average salary by department", kpi="avg_salary",
+                    group_by="Department")
+    assert "Legal" not in pay and truth["legal_people_asof"] < 11   # pay of 6 people: never shown
+    want = {k: v for k, v in truth["avg_salary_by_dept_asof"].items() if k != "Legal"}
+    assert close(pay, want, tol=0.01), pay
+
+
+def test_hr_a_partial_year_is_named_and_never_compared_as_a_year():
+    _, _, _, truth = _built("hr_roster")
+    text, series = answer("hr_roster", "time_series", "attrition by year", kpi="attrition_rate",
+                          frequency="Y")
+    full = {str(y): v for y, v in truth["attrition_by_year"].items() if str(y) != "2026"}
+    assert close(series, full, tol=0.05) and "2026" not in series, (series, text)
+    assert "(2026) is left out" in text and "12 months to" not in text, text
+
+
+def test_hr_an_asked_year_is_its_window_not_the_rows_dated_in_it():
+    _, _, _, truth = _built("hr_roster")
+    text, _ = answer("hr_roster", "segment_compare", "attrition in 2025", kpi="attrition_rate",
+                     period_start="2025-01-01", period_end="2025-12-31")
+    assert f"{truth['attrition_by_year'][2025 if 2025 in truth['attrition_by_year'] else '2025'] * 100:.1f}%" in text, text
+
+
+def test_hr_one_row_rosters_lose_only_the_earlier_exits():
+    _, _, _, truth = _built("hr_roster_onerow")
+    text, _ = answer("hr_roster_onerow", "segment_compare", "headcount", kpi="headcount")
+    assert f"{truth['headcount_asof']:,}" in text, text
+    text, _ = answer("hr_roster_onerow", "segment_compare", "how many people left", kpi="separations")
+    assert f"{truth['separations_12m']:,}" in text, text
+
+
+def test_hr_snapshots_count_exits_where_people_left_and_never_sum_months():
+    _, _, _, truth = _built("hr_snapshots")
+    _, by = answer("hr_snapshots", "top_n", "attrition by department", kpi="attrition_rate",
+                   group_by="Department")
+    assert close(by, truth["attrition_12m_by_dept_at_exit"], tol=0.05), by
+    text, _ = answer("hr_snapshots", "segment_compare", "headcount", kpi="headcount")
+    assert f"{truth['headcount_asof']:,}" in text, text
+    _, pay = answer("hr_snapshots", "top_n", "average salary by department", kpi="avg_salary",
+                    group_by="Department")
+    assert close(pay, {k: v for k, v in truth["avg_salary_by_dept_asof"].items() if k in pay}, tol=0.01)
+
+
+def test_hr_employees_flag_file_keeps_sales_highest_on_the_12_month_rate():
+    _, _, _, truth = _built("employees")
+    _, by = answer("employees", "top_n", "attrition by department", kpi="attrition_rate",
+                   group_by="department")
+    assert close(by, truth["attrition_12m_by_dept"], tol=0.05) and max(by, key=by.get) == "Sales"

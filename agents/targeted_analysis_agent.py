@@ -54,6 +54,7 @@ from scipy import stats
 
 from guardrails import rankable
 from domain_pack import (
+    spell_covered,
     spell_terms,
     spell_window,
     window_words,
@@ -1147,8 +1148,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
         # the data's edges are the whole file's (a named value's first row is not its start)
         covered = t if all_rows is full else _local(pd.to_datetime(all_rows[date], errors="coerce"))
-        if spelled:   # a roster's dates are hires and exits: it covers up to its as-of
-            covered = pd.Series(list(spell_window(pack, all_rows, roles, win)[:2]))
+        if spelled:   # a roster's dates are hires and exits: it covers its first exit (or
+            # snapshot) to its as-of, never only the 12-month window
+            covered = spell_covered(pack, all_rows, roles)
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
         if develops:   # every period shown, the young ones named: never a partial cut or a trend
@@ -1182,7 +1184,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             def name(p) -> str:   # a week is named by its week-ending date
                 return f"week ending {p.end_time:%Y-%m-%d}" if freq == "W" else str(p)
 
-            answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{where}{by_month}: latest " \
+            # a spell series has its own periods: never '(12 months to …)' above a series of years
+            answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{'' if spelled else where}{by_month}: latest " \
                      f"{name(latest)} {fmt(series.iloc[-1])}"
             def base(v) -> bool:   # a value to compare against (0% is one; $0 or less: no % change)
                 return v is not None and not pd.isna(v) and (kind == "percent" or pct_change(1.0, v) is not None)
@@ -1206,7 +1209,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             answer += "." + note + (stores_note(contract, full, date, (
                 frame[frame["_period"] == compared], frame[frame["_period"] == latest]))
                 if compared is not None else "")
-            chart = _chart(ChartType.LINE, f"{kpi.label} over time{'' if state else where}",
+            chart = _chart(ChartType.LINE, f"{kpi.label} over time{'' if state or spelled else where}",
                            [{"period": f"{k.end_time:%Y-%m-%d}" if freq == "W" else str(k),
                              kpi.label: float(v)} for k, v in series.items()],
                            x_key="period", y_keys=[kpi.label], x_label="Period", y_label=kpi.label,

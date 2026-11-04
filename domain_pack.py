@@ -796,10 +796,11 @@ def spell_from(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timest
 
 
 def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
-                 window: tuple | None = None) -> tuple[pd.Timestamp, pd.Timestamp, int] | None:
-    """THE window of a spell KPI asked without a period grouping: (lo, as_of, months), flows
-    counted in (lo, as_of] and the average over its month-ends. The 12 months to the as-of, or
-    the shorter span the data covers; an asked window (lo, hi) clips both ends."""
+                 window: tuple | None = None) -> tuple[pd.Timestamp, pd.Timestamp, list] | None:
+    """THE window of a spell KPI asked without a period grouping: (lo, as_of, month-ends), flows
+    counted in (lo, as_of] and the average over the month-ends. The 12 months to the as-of, or
+    the shorter span the data covers (month-ends on or after its first date: a stock there is
+    complete); an asked window (lo, hi) clips both ends."""
     as_of, first = spell_as_of(pack, df, roles), spell_from(pack, df, roles)
     if as_of is None or first is None:
         return None
@@ -808,8 +809,16 @@ def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
     lo = as_of - pd.DateOffset(months=12)
     if window and window[0] is not None:
         lo = pd.Timestamp(window[0]).normalize() - pd.Timedelta(days=1)
-    lo = max(lo, first - pd.Timedelta(days=1))
-    return lo, as_of, len(_month_ends(lo, as_of))
+    return max(lo, first - pd.Timedelta(days=1)), as_of, [e for e in _month_ends(lo, as_of) if e >= first]
+
+
+def spell_covered(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Series:
+    """The dates a spell series covers, as month-end points from its first date to its as-of
+    (cut_partial reads the spacing: a partial last year or month is cut and named)."""
+    first, as_of = spell_from(pack, df, roles), spell_as_of(pack, df, roles)
+    if first is None or as_of is None:
+        return pd.Series(dtype="datetime64[ns]")
+    return pd.Series([min(m.end_time.normalize(), as_of) for m in pd.period_range(first, as_of, freq="M")])
 
 
 def _month_ends(a: pd.Timestamp, b: pd.Timestamp) -> list[pd.Timestamp]:
@@ -832,7 +841,8 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
     w = spell_window(pack, df, roles, window)
     if w is None:
         return ""
-    lo, as_of, months = w
+    lo, as_of, pts = w
+    months = len(pts)
     if kpi.state:
         return f"as of {as_of:%-d %b %Y}"
     return f"{months} month{'s' * (months != 1)} to {as_of:%-d %b %Y}"
@@ -860,10 +870,10 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     w = spell_window(pack, df, roles)
     if not s or stock is None or w is None:
         return []
-    lo, as_of, months = w
+    lo, as_of, pts = w
+    months = len(pts)
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
     series = compute_kpi(frame, roles, pack, stock.name, by="_period", full=df)
-    pts = _month_ends(lo, as_of)
     shown = ", ".join(f"{t:%b %Y} {series.get(t.to_period('M')):,.0f}" for t in pts
                       if series is not None and pd.notna(series.get(t.to_period("M"))))
     lines = [f"As of {as_of:%-d %b %Y}: the window is the {months} months "
@@ -948,7 +958,7 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     w = spell_window(pack, whole, roles, kinds.attrs.get("window"))
     if w is None:
         return None
-    lo, as_of, _ = w
+    lo, as_of, window_pts = w
     first = spell_from(pack, whole, roles)
     allk = kinds.attrs.get("kinds", kinds)
     ok = set(term.rows or kpi.rows)
@@ -1005,11 +1015,11 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     if periodic:   # ponytail: one in-force pass per month-end, fine below ~50k rows × 120 months
         out = {}
         for p in axis:
-            pts = _month_ends(max(p.start_time, first) - pd.Timedelta(days=1),
-                              min(p.end_time.normalize(), as_of))
+            pts = [e for e in _month_ends(p.start_time - pd.Timedelta(days=1),
+                                          min(p.end_time.normalize(), as_of)) if e >= first]
             out[p] = sum(active_at(t) for t in pts) / len(pts) if pts else float("nan")
         return pd.Series(out, dtype=float).reindex(axis)
-    pts = _month_ends(lo, as_of)
+    pts = window_pts
     if not pts:
         return None
     vals = [active_at(t) for t in pts]
