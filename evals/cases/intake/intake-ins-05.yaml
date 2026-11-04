@@ -1,0 +1,19 @@
+id: intake-ins-05
+category: clear
+pipeline: production
+source:
+  dataset: loss_run
+  seed: 1
+overview_done: true
+question: How much is sitting in open reserves by line?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: open_reserve
+  columns:
+    by: Line of Business
+rationale: Open case reserve KPI by line.

@@ -28,7 +28,9 @@ from orchestrator.state import (
 )
 
 DOMAINS = ("bank_balances", "encounters", "claims", "employees", "saas_accounts",
-           "sensor_readings", "shipments", "retail_lines", "store_weeks", "b2b_invoices")
+           "sensor_readings", "shipments", "retail_lines", "store_weeks", "b2b_invoices",
+           "policies", "loss_run")
+MAX_ROWS = {"loss_run": 50_000}   # a loss run lists every claimant at each of 16 valuations
 
 
 def _findings(**kw) -> AnalysisFindings:
@@ -58,7 +60,7 @@ def test_generators_are_deterministic_and_small(name):
     a, ta = datagen.make(name, 1)
     b, tb = datagen.make(name, 1)
     assert a.equals(b) and json.dumps(ta, default=str) == json.dumps(tb, default=str)
-    assert len(a) <= 7000 and ta["row_count"] == len(a)
+    assert len(a) <= MAX_ROWS.get(name, 7000) and ta["row_count"] == len(a)
     assert set(ta["pii_columns"]) <= set(a.columns)
 
 
@@ -92,6 +94,103 @@ def test_loss_ratio_is_a_ratio_of_sums_not_a_mean_of_ratios():
     assert check_segment_value_truth(ok, truth, "line", "loss_ratio_by_line")[0]
     assert not check_segment_value_truth(naive, truth, "line", "loss_ratio_by_line")[0]
 
+
+
+# ── Domain 4 (insurance): each planted trap moves the answer past the check's tolerance ──────
+
+LOB = "Line of Business"
+
+
+@pytest.mark.parametrize("truth_key, naive_key, tol", [
+    ("loss_ratio_by_line", "loss_ratio_written_by_line", 0.02),   # 1: earned, never written
+    ("retention_by_line", "retention_naive_by_line", 0.02),       # unexpired/cancelled out
+    ("frequency_by_line", None, 0.005),                           # 9: exposure never mixed
+])
+def test_policy_ratios_pass_on_the_right_base_and_fail_on_the_naive_one(truth_key, naive_key, tol):
+    _, truth = datagen.make("policies", 1)
+    if naive_key:
+        naive = truth[naive_key]
+    else:   # every line's claims over the exposure summed across lines (car-years + house-years)
+        mixed = sum(truth["frequency_by_line"][k] * truth["exposure_by_line"][k]
+                    for k in truth["exposure_by_line"]) / truth["total_exposure_mixed"]
+        naive = {k: mixed for k in truth[truth_key]}
+    ok = _findings(segments=[_seg(LOB, truth[truth_key])])
+    bad = _findings(segments=[_seg(LOB, naive)])
+    assert check_segment_value_truth(ok, truth, LOB, truth_key, abs_tol=tol)[0]
+    assert not check_segment_value_truth(bad, truth, LOB, truth_key, abs_tol=tol)[0]
+
+
+def test_policy_truth_matches_an_independent_count():
+    df, truth = datagen.make("policies", 1)
+    assert truth["rows"] == len(df) > truth["terms"] > truth["policies"]           # 11
+    net = df["Written Premium"].sum()
+    gross = df.loc[df["Written Premium"] > 0, "Written Premium"].sum()
+    assert net == pytest.approx(truth["written_premium_total"])
+    assert gross == pytest.approx(truth["written_premium_without_cancellations"])
+    assert gross / net - 1 > 0.01                                                   # 11
+    canc = df[df["Transaction Type"] == "Cancellation"]
+    assert (canc["Written Premium"] < 0).all() and canc["Renewal Status"].isna().all()
+    assert canc["Term"].isin(df.loc[df["Transaction Type"] != "Cancellation", "Term"]).all()
+    for k in truth["avg_premium_per_term_by_line"]:                                 # 12
+        per_term = truth["avg_premium_per_term_by_line"][k]
+        assert truth["avg_premium_per_policy_by_line"][k] > 1.05 * per_term
+    assert set(df["Insured Gender"]) == {"M", "F"} and set(truth["loss_ratio_by_gender"]) == {"M", "F"}
+    assert truth["total_exposure_mixed"] > max(truth["exposure_by_line"].values())  # 9
+    terms = df.groupby("Term")["Renewal Status"].count()
+    assert (terms == 1).all()   # renewal status on the term's main row only
+
+
+def test_loss_run_latest_valuation_truth_holds_on_shuffled_rows():
+    """The latest valuation is by Valuation Date, not file order: the file lists each chain
+    newest-first, and a shuffle must not change the answer."""
+    df, truth = datagen.make("loss_run", 1)
+    key = ["Claim Number", "Claimant Number"]
+    assert not df.groupby(key)["Valuation Date"].apply(lambda s: s.is_monotonic_increasing).all()
+    shuffled = df.sample(frac=1, random_state=0)
+    latest = shuffled.loc[pd.to_datetime(shuffled["Valuation Date"]).groupby(
+        [shuffled[k] for k in key]).idxmax()]
+    file_last = df.groupby(key).tail(1)   # the naive "last row of each chain"
+    assert latest["Incurred"].sum() == pytest.approx(truth["incurred_total"])
+    assert latest["Paid to Date"].sum() == pytest.approx(truth["paid_total"])
+    assert latest["Case Reserve"].sum() == pytest.approx(truth["reserve_open_total"])
+    assert abs(file_last["Incurred"].sum() / truth["incurred_total"] - 1) > 0.05
+    assert latest["Case Reserve"].notna().eq(latest["Claim Status"] != "Closed").all()
+    assert (latest["Incurred"] - latest["Paid to Date"] - latest["Case Reserve"].fillna(0)
+            ).abs().max() < 0.011
+
+
+def test_loss_run_traps_move_each_answer_past_its_tolerance():
+    df, t = datagen.make("loss_run", 1)
+    rel = 0.02
+    assert t["incurred_summed_all_valuations"] > 3 * t["incurred_total"]          # 2
+    assert t["paid_total"] < (1 - rel) * t["incurred_total"]                       # 3
+    iay, age = t["incurred_by_accident_year"], t["ay_age_months"]
+    assert age == {"2022": 57, "2023": 45, "2024": 33, "2025": 21, "2026": 9}      # 4
+    assert t["developing_years"] == ["2025", "2026"] and iay["2026"] < 0.6 * iay["2023"]
+    reopen_rows = df[df["Claim Status"] == "Reopened"]
+    assert len(reopen_rows) > reopen_rows["Claim Number"].nunique() == t["reopened_claims"] > 0  # 5
+    assert t["paid_net_total"] < (1 - rel) * t["paid_total"]                       # 6
+    assert t["claimants"] > (1 + rel) * t["claims"]                                # 7
+    assert all(t["claimants_by_line"][k] > (1 + rel) * v for k, v in t["claims_by_line"].items())
+    cwp = t["cwp_share"] * t["closure_rate"] * t["claims"]                         # 8
+    assert cwp / (t["claims"] - cwp) > rel
+    assert t["cat_share_of_quarter"] > 0.5                                         # 10
+    cat = df[df["Cat Event"].notna()]
+    assert set(cat["Cat Event"]) == {t["cat_event"]} and set(cat[LOB]) == {"Home"}
+    assert df["Cat Event"].isna().mean() > 0.9   # blank for most rows, as real loss runs print
+    per_claimant = _findings(segments=[_seg(LOB, {k: t["severity_by_line"][k] * t["claims_by_line"][k]
+                                                  / t["claimants_by_line"][k] for k in t["claims_by_line"]})])
+    ok = _findings(segments=[_seg(LOB, t["severity_by_line"])])
+    sev_tol = 0.02 * min(t["severity_by_line"].values())
+    assert check_segment_value_truth(ok, t, LOB, "severity_by_line", abs_tol=sev_tol)[0]
+    assert not check_segment_value_truth(per_claimant, t, LOB, "severity_by_line",
+                                         abs_tol=sev_tol)[0]                       # 7
+
+
+def test_claims_lines_are_p_and_c():
+    _, truth = datagen.make("claims", 1)
+    assert set(truth["loss_ratio_by_line"]) == {"auto", "home", "commercial"}
+    assert truth["loss_ratio_by_line"]["commercial"] == pytest.approx(0.55, abs=1e-6)
 
 def test_readmission_truth_matches_an_independent_count_and_the_naive_rate_fails():
     df, truth = datagen.make("encounters", 1)

@@ -1,0 +1,258 @@
+# Insurance, P&C (Phase 5.7, domain 4): policy tables (one row per policy term or transaction:
+# written/earned premium, earned exposure, renewals, often claims and incurred per term) and
+# claims loss runs (one row per claim × claimant per valuation date: paid to date, case reserve,
+# incurred, recoveries). Life insurance is not covered (lapse by duration, mortality: unsupported).
+# Headers are normalized (domain_pack.normalize_header). Cited definitions and traps:
+# docs/research/2026-11-03-insurance.md ([WM] Werner & Modlin, [FR] Friedland, [AAA] Schedule P).
+domain: insurance
+
+# Strong: a policy with earned or written premium; a claim with a case reserve or a valuation
+# date (health payer claims have neither: they are vetoed below by member / CPT / NPI words).
+strong:
+  - {policy: [policy], premium: [earned_premium, written_premium]}
+  - {claim: [claim_id], reserve: [reserve]}
+  - {claim: [claim_id], valuation: [valuation_date], money: [incurred, paid]}
+signals:
+  - {policy: [policy], exposure: [exposure]}
+  - {claim: [claim_id], money: [incurred, reserve]}
+# Another domain's headers (all words in ONE header): healthcare, retail, banking, HR, SaaS, IoT,
+# logistics. Not icd / diagnosis / account: workers' comp and commercial loss runs carry them.
+exclude_headers: [[member], [cpt], [hcpcs], [npi], [drg], [mrn], [patient], [admit], [discharge],
+                  [service, from], [sku], [order, id], [lineitem], [balance], [loan], [dpd],
+                  [employee, id], [payroll], [mrr], [subscription], [sensor], [shipment]]
+abbreviations: {pol: policy, clm: claim, wp: written_premium, ep: earned_premium,
+                gwp: written_premium, gep: earned_premium, os: outstanding, res: reserve,
+                inc: incurred, incd: incurred, lob: line_of_business, val: valuation,
+                eval: evaluation, dol: date_of_loss, "no": number, num: number, nbr: number,
+                amt: amount, pd: paid, dt: date, eff: effective, exp: expiration,
+                expo: exposure, cat: cat, ss: salvage_subrogation, alae: alae}
+
+roles:
+  # The time role first: the loss (accident) date on a loss run, the policy's effective date on
+  # a policy table (a policy-year view), a month on a policy-month file.
+  date:           {kind: date, headers: [loss_date, accident_date, date_of_loss,
+                                         occurrence_date, incident_date, effective_date,
+                                         policy_effective_date, inception_date, effective,
+                                         month, policy_month, period]}
+  valuation_date: {kind: date, headers: [valuation_date, evaluation_date, as_of_date, as_of,
+                                         valuation, evaluation, snapshot_date]}
+  report_date:    {kind: date, headers: [report_date, reported_date, date_reported, notice_date,
+                                         fnol_date, notification_date]}
+  expiration_date: {kind: date, headers: [expiration_date, expiry_date, expiration,
+                                          policy_expiration_date, termination_date]}
+  close_date:     {kind: date, headers: [close_date, closed_date, date_closed]}
+  policy:         {kind: id, headers: [policy_number, policy_id, policy, policy_ref,
+                                       idpol]}
+  term:           {kind: id, headers: [term, policy_term, term_id, policy_term_id]}
+  claim_id:       {kind: id, headers: [claim_number, claim_id, claim, claim_ref]}
+  claimant:       {kind: category, pattern: '\d{1,3}', headers: [claimant_number, claimant, claimant_id,
+                                             feature, feature_number]}
+  line:           {kind: category, headers: [line_of_business, line, business_line,
+                                             product_line, product]}
+  coverage:       {kind: category, headers: [coverage, coverage_type, coverage_code, peril,
+                                             cause_of_loss, loss_type]}
+  state:          {kind: category, headers: [state, risk_state, territory, region]}
+  transaction_type: {kind: category, headers: [transaction_type, transaction, trans_type,
+                                               transaction_code]}
+  renewal:        {kind: category, headers: [renewal_status, renewal, renewed, renewal_flag]}
+  gender:         {kind: category, headers: [insured_gender, gender, sex, driver_gender,
+                                             policyholder_gender]}
+  marital_status: {kind: category, headers: [marital_status, insured_marital_status]}
+  cat_event:      {kind: category, headers: [cat_event, catastrophe, catastrophe_code, cat_code,
+                                             cat_id, event_id, cat]}
+  written_premium: {kind: money, headers: [written_premium, gross_written_premium,
+                                           premium_written, written]}
+  earned_premium: {kind: money, headers: [earned_premium, gross_earned_premium, premium_earned,
+                                          earned]}
+  exposure:       {kind: number, headers: [earned_exposure, exposure, earned_car_years,
+                                           car_years, house_years, exposure_units]}
+  claim_count:    {kind: count, headers: [claim_count, number_of_claims, claim_cnt, claimnb,
+                                          claims_count]}
+  incurred:       {kind: money, headers: [incurred, incurred_losses, incurred_loss,
+                                          total_incurred, incurred_amount, reported_losses,
+                                          case_incurred, claim_amount, loss_amount]}
+  paid:           {kind: money, headers: [paid_to_date, paid, paid_loss, paid_losses, loss_paid,
+                                          paid_amount, total_paid, indemnity_paid, cumulative_paid]}
+  reserve:        {kind: money, headers: [case_reserve, outstanding, outstanding_reserve, reserve,
+                                          case_outstanding, loss_reserve, outstanding_loss,
+                                          reserve_amount]}
+  recoveries:     {kind: money, headers: [salvage_subrogation, recoveries, recovery, salvage,
+                                          subrogation, salvage_and_subrogation]}
+  status:         {kind: status, headers: [claim_status, status, policy_status]}
+
+# Every value counts (compared as words). Cancelled policy rows are negative premium rows that
+# net the term (never "left out"); closed and reopened claims are claims.
+status_values:
+  ok: [open, closed, reopened, re-opened, reclosed, re-closed, pending, active, in force,
+       inforce, lapsed, cancelled, canceled, expired, new, settled, denied, closed without payment,
+       cwp, cnp, litigated, in suit, subrogation]
+
+# Loss-run valuations: each claim × claimant at several valuation dates; only the latest counts
+# (earlier valuations are superseded snapshots: summing them multiplies paid and reserves).
+version_key: [claim_id, claimant]
+version_order: valuation_date
+maturity: {role: valuation_date, months: 24,
+           measures: [incurred, paid, reserve, recoveries, claim_count, claim_id]}
+conditional_fields: {reserve: [open, reopened, re-opened, pending, litigated, in suit]}
+marker_fields: [cat_event]
+
+overview_groups: [line, coverage, state]
+overview_kpis: [incurred, loss_ratio, earned_premium, claims, severity]
+kind_codes: {sale: counted, return: netted, refunded: reversed, cancel: voided, test: test,
+             non_product: superseded_valuation}
+row_labels: {sale: counted rows, non_product: earlier valuations of claims, test: test records}
+row_flags:
+  non_product: "earlier valuations of claims: only each claimant's latest valuation counts"
+  test: "test records: left out"
+text:
+  rows_brief: "Figures use rows of kind 'counted'. A loss run lists each claim (and claimant) at every valuation date: only the LATEST valuation counts (kind 'superseded_valuation' = an earlier one, left out); never sum paid, reserves or incurred across valuations. Incurred = paid to date + case reserve (no IBNR, no loss-adjustment expense). A reopened claim is one claim: count claims as distinct claim numbers, never rows; claimants are counted separately. Loss ratio = incurred ÷ EARNED premium (a ratio of sums, never the mean of row ratios; never written premium). Frequency = claims ÷ earned exposure and pure premium = incurred ÷ earned exposure, per line only (car-years and house-years don't add up). Cancellation rows carry negative premium and exposure: they net the term. By year means accident (loss) year unless the user names the valuation or calendar year."
+  grain_line: "One row is a claim at one valuation (or a policy transaction): count claims as distinct {key}, never rows; an average per claim divides by claims."
+  unsupported_alternatives: "I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?"
+  kpis_default: its premium and claims columns
+  causal_removed: "{n} sentence(s) saying a rating factor, underwriting or pricing change caused a loss result were removed: from observational data without a controlled comparison that can't be shown."
+  non_product_rule: an earlier valuation of a claim (left out)
+  money_rows_note: "Each claim's latest valuation{currency} only: {n} earlier valuation rows left out."
+
+kpis:
+  - {name: earned_premium, label: Earned premium, unit: money, tile: true,
+     num: [[{sum: earned_premium}]]}
+  - {name: written_premium, label: Written premium, unit: money, tile: true,
+     num: [[{sum: written_premium}]]}
+  - name: incurred
+    label: Incurred losses
+    unit: money
+    tile: true
+    num: [[{sum: incurred}], [{sum: paid}, {sum: reserve}]]
+  - {name: paid, label: Paid losses, unit: money, tile: true, num: [[{sum: paid}]]}
+  - {name: open_reserve, label: Open case reserves, unit: money, tile: true,
+     num: [[{sum: reserve}]]}
+  - {name: recoveries, label: Salvage and subrogation, unit: money, num: [[{sum: recoveries}]]}
+  - name: paid_net
+    label: Paid net of recoveries
+    unit: money
+    num: [[{sum: paid}, {sum: recoveries, sign: -1}]]
+  # Loss ratio: reported (case-incurred) losses ÷ earned premium [WM p.8], a ratio of sums.
+  - name: loss_ratio
+    label: Loss ratio
+    unit: percent
+    tile: true
+    num: [[{kpi: incurred}]]
+    den: [[{sum: earned_premium}]]
+  # Reported claims, closed without payment included (Schedule P reported count [AAA §5]).
+  - name: claims
+    label: Claims
+    unit: count
+    tile: true
+    num: [[{nunique: claim_id}], [{sum: claim_count}]]
+  - name: severity
+    label: Severity (incurred per claim)
+    unit: money
+    tile: true
+    num: [[{kpi: incurred}]]
+    den: [[{kpi: claims}]]
+  # Per line only: exposure units differ by line (car-years, house-years) [WM Table 4.1].
+  - name: frequency
+    label: Claim frequency
+    unit: number
+    unit_word: claims per exposure unit
+    num: [[{kpi: claims}]]
+    den: [[{sum: exposure}]]
+  - name: pure_premium
+    label: Pure premium
+    unit: money
+    num: [[{kpi: incurred}]]
+    den: [[{sum: exposure}]]
+  - name: avg_premium
+    label: Average written premium per term
+    unit: money
+    tile: true
+    num: [[{sum: written_premium}]]
+    den: [[{nunique: term}]]
+  - {name: policies, label: Policies, unit: count, tile: true, num: [[{nunique: policy}]]}
+  # Retention: terms renewed ÷ terms up for renewal (renewed, lapsed, non-renewed); terms not yet
+  # due and mid-term cancellations are out of the base [WM p.10].
+  - name: retention
+    label: Retention rate
+    unit: percent
+    tile: true
+    num: [[{nunique: term, where: [[{role: renewal, in: [renewed, renewal, "yes", "y", "1"]}]]}]]
+    den: [[{nunique: term, where: [[{role: renewal, in: [renewed, renewal, "yes", "y", "1",
+                                                          lapsed, lapse, non-renewed,
+                                                          nonrenewed, not renewed, "no", "n",
+                                                          "0"]}]]}]]
+
+glossary:
+  loss_ratio: [loss ratio, loss ratios, lr, claims ratio, incurred loss ratio, loss performance]
+  frequency: [frequency, claim frequency, claims frequency, claims per exposure, claim rate]
+  severity: [severity, claim severity, average claim, average claim cost, avg claim,
+             average claim size, cost per claim]
+  pure_premium: [pure premium, loss cost, burning cost, loss per exposure]
+  earned_premium: [earned premium, earned, ep, premium earned]
+  written_premium: [written premium, gwp, gross written premium, premium written, written]
+  incurred: [incurred, incurred losses, losses, total incurred, reported losses, loss amount,
+             claim costs, claims cost]
+  paid: [paid, paid losses, paid to date, payments, claims paid, loss payments]
+  open_reserve: [reserve, reserves, case reserve, case reserves, outstanding, open reserves,
+                 outstanding reserves]
+  recoveries: [salvage, subrogation, recoveries, salvage and subrogation]
+  paid_net: [net paid, paid net, net of recoveries, net of salvage]
+  claims: [claims, claim count, number of claims, claim volume, reported claims]
+  avg_premium: [average premium, avg premium, premium per policy, average policy premium]
+  policies: [policies, policy count, number of policies, policies in force]
+  retention: [retention, retention rate, renewal rate, renewals, policy retention, lapse rate,
+              lapses]
+  accident_year: [accident year, ay, loss year, by year, year of loss]
+  developing: [developing, immature, maturity, still open years, development]
+  combined_ratio: [combined ratio, cor, combined operating ratio, expense ratio, lae ratio,
+                   loss adjustment expense, operating ratio, underwriting ratio]
+  ibnr: [ibnr, incurred but not reported, ultimate, ultimate losses, ultimate loss ratio,
+         development factor, development factors, ldf, link ratio, chain ladder, triangle,
+         loss triangle, reserve adequacy, reserve deficiency, redundancy]
+  rate_indication: [rate indication, rate need, rate adequacy, should we raise rates,
+                    how much should we charge, price increase needed]
+  life: [life insurance, mortality, death benefit, face amount, cash value, persistency by
+         duration, actual to expected, a/e]
+  protected_rating: [rate by gender, price by gender, charge women, charge men, rate on gender,
+                     underwrite on gender, gender rating, rate by race, rate by religion]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+consumed: [policyholder name, driver license, vin]
+definitions:
+  accident_year: "An accident year groups claims by the year the loss happened (the loss date), whenever they were reported or paid. Its losses keep moving at later valuations until its claims settle."
+  developing: "A year is still developing while its claims are being reported and its reserves revised: its incurred losses usually rise. Years younger than 24 months at the valuation are flagged; liability lines develop for longer. Estimating where they end (IBNR, development factors) needs several valuations in a triangle and is not done here."
+  yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
+unsupported:
+  combined_ratio: "expense data (loss-adjustment expense and underwriting expenses by period); a policy or claims file alone has neither, so no combined or expense ratio is given"
+  ibnr: "a loss development triangle (several valuations of each accident year) and an actuarial method; the losses here are reported (paid + case reserves) as of the latest valuation, with no IBNR, ultimate or reserve-adequacy estimate"
+  rate_indication: "trended, developed ultimate losses, expenses and a target margin (an actuarial rate review); this tool reports the loss experience in the data, not a rate need"
+  life: "life-insurance data (policies exposed to lapse by duration, face amounts, mortality tables); this tool covers property and casualty insurance only"
+  protected_rating: "nothing that should be used: rating or underwriting on sex, race, religion or national origin is restricted or banned (NAIC Model 880; several states ban gender in rating; Colorado SB21-169). The data can be described by these groups, never turned into a rate recommendation"
+
+caveats:
+  read_as_domain: "Read as P&C insurance data ({kpis}). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them."
+  read_as_domain_weak: "Read as insurance data because it has {roles} columns; if these are not policies or claims, the insurance figures here don't apply."
+  repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
+  months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+  non_product_excluded: "{n} earlier valuations of claims are left out: only each claim and claimant's latest valuation counts."
+  test_excluded: "{n} test records are left out."
+  developing_periods: "As of the {as_of} valuation, {periods} are still developing: their losses will usually rise as claims are reported and reserves change, so they are not final and not comparable with mature years (liability lines develop beyond 24 months)."
+  developing_periods_undated: "The data has no valuation date; measured to its last date ({as_of}), {periods} are still developing: their losses will usually rise, so they are not final and not comparable with mature years."
+role_caveats:
+  gender: "Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it."
+  marital_status: "Marital status is shown as a description only: refusing or limiting coverage on it is an unfair trade practice under NAIC Model 880, so no rating recommendation is made on it."
+
+causal_triggers: [rating factor, rating factors, rating variable, underwriting, underwriter,
+                  pricing, price change, rate increase, rate change, rate action, deductible,
+                  deductibles, telematics, credit score, territory, gender, age, discount,
+                  discounts, adjuster, adjusters, claims handling, claims process, fraud unit,
+                  agent, agents, broker, brokers, campaign, program, programs]
+
+first_questions:
+  - {q: "What is the loss ratio by line of business?", needs: [loss_ratio, line]}
+  - {q: "What are claim frequency and severity by line?", needs: [frequency, line]}
+  - {q: "How much premium did we earn by month?", needs: [earned_premium]}
+  - {q: "What is the retention rate by line?", needs: [retention, line]}
+  - {q: "What are incurred losses by accident year (recent years are still developing)?", needs: [incurred, year]}
+  - {q: "Where are the open case reserves, by line and coverage?", needs: [open_reserve, coverage]}
+  - {q: "How many claims are still open, and how much is reserved on them?", needs: [open_reserve, claims]}
+  - {q: "Which claims or catastrophe events drive the incurred losses?", needs: [incurred, cat_event]}

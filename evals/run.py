@@ -18,6 +18,7 @@ import io
 import json
 import math
 import numbers
+import os
 import re
 import statistics
 import subprocess
@@ -209,9 +210,10 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
 
 
 def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
-    """Write the case's table as its `source` (csv by default | xlsx | json | parquet | sqlite)
-    and name it as POST /chat would: an upload, or a database with a table. Sync, so cases
-    running together never interleave a write."""
+    """Write the case's table as its `source` (csv by default | xlsx | json | parquet | sqlite |
+    postgres) and name it as POST /chat would: an upload, or a database with a table. Sync, so
+    cases running together never interleave a write. Postgres: a table in the scratch database
+    TEST_PG_URL names (never a real one: the table is replaced)."""
     source = case.get("source", "csv")
     UPLOADS.mkdir(parents=True, exist_ok=True)
     stem = f"{case['dataset']['name']}-{case['dataset']['seed']}"
@@ -221,6 +223,13 @@ def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
         df.to_sql("data", create_engine(f"sqlite:///{path}"), index=False)
         return ConnectorConfig(type=ConnectorType.SQL, connection_string=f"sqlite:///{path}",
                                table_name="data")
+    if source == "postgres":
+        url, table = os.environ["TEST_PG_URL"], "e2e_" + re.sub(r"\W", "_", stem)
+        engine = create_engine(url)
+        with engine.begin() as conn:
+            df.to_sql(table, conn, index=False, if_exists="replace")
+        engine.dispose()
+        return ConnectorConfig(type=ConnectorType.SQL, connection_string=url, table_name=table)
     path = UPLOADS / f"{stem}.{source}"
     if source == "csv":
         if not path.exists() or path.read_text() != csv:

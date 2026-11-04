@@ -158,15 +158,20 @@ def check_correlation_absent(f: AnalysisFindings, df: pd.DataFrame, a: str, b: s
     return False, f"claimed |r|={got} for null-effect pair {a}~{b}"
 
 
-def check_segment_value_truth(f: AnalysisFindings, truth: dict, segment: str, truth_key: str,
-                              abs_tol: float = 0.02, scales: tuple = (1, 100)) -> tuple[bool, str]:
+def check_segment_value_truth(f: AnalysisFindings, truth: dict, segment: str | list[str],
+                              truth_key: str, abs_tol: float = 0.02,
+                              scales: tuple = (1, 100)) -> tuple[bool, str]:
     """A derived metric per group (loss ratio, 30-day readmission): some breakdown by `segment`
     whose groups match the truth for every truth group. The metric's name is the agent's (it
-    is derived, not a column); the values are what's scored."""
+    is derived, not a column); the values are what's scored. A list of segments: a group the
+    model derives and names itself ("Accident Year", "accident_year"), compared as words."""
+    def key(name: str) -> str:
+        return re.sub(r"[^a-z0-9]", "", str(name).lower())
+    names = {key(s) for s in ([segment] if isinstance(segment, str) else segment)}
     want = _truth_value(truth, truth_key)
     tried = []
     for seg in f.segments:
-        if seg.segment_column != segment:
+        if key(seg.segment_column) not in names:
             continue
         got = {str(r.get("name")): r.get("value") for r in seg.results}
         if any(all(k in got and _close(got[k], v * sc, 0, abs_tol * sc) for k, v in want.items())

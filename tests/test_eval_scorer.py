@@ -405,3 +405,17 @@ def test_a_removal_notice_is_not_the_forbidden_claim():
     assert check_must_not_match(s, "promotion or discount caused")[0]
     s.targeted_response.answer_text = "The promotion or discount caused sales to rise."
     assert not check_must_not_match(s, "promotion or discount caused")[0]
+
+
+def test_a_derived_group_is_matched_by_any_of_its_names_as_words():
+    """Domain 4: incurred by accident year: the model derives the year and names it itself."""
+    from evals.scoring import check_segment_value_truth
+    truth = {"ay": {"2025": 10.0, "2026": 4.0}}
+    seg = SegmentResult(segment_column="accident_year", metric_column="Incurred",
+                        aggregation="sum", results=[{"name": "2025", "value": 10.0},
+                                                    {"name": "2026", "value": 4.0}])
+    f = _findings(segments=[seg])
+    assert check_segment_value_truth(f, truth, ["Accident Year", "AY"], "ay", 0.5, (1,))[0]
+    assert not check_segment_value_truth(f, truth, "Loss Date", "ay", 0.5, (1,))[0]
+    assert check_segment_value_truth(_findings(segments=[seg.model_copy(
+        update={"segment_column": "Accident Year"})]), truth, "accident year", "ay", 0.5, (1,))[0]

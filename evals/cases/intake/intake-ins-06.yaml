@@ -1,0 +1,11 @@
+id: intake-ins-06
+category: clear
+pipeline: production
+source:
+  dataset: loss_run
+  seed: 1
+overview_done: true
+question: What's our combined ratio?
+expect:
+  ask: true
+rationale: 'Combined ratio needs expense data: unsupported, ask.'

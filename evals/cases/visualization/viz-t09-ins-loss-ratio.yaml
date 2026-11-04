@@ -1,0 +1,22 @@
+id: viz-t09-ins-loss-ratio
+category: targeted
+label_note: 'Insurance: the loss ratio by line is a ratio of sums per line (incurred ÷ earned): a bar per line, never a sum of row ratios or a line chart.'
+dataset:
+  name: policies
+  seed: 1
+question: What is the loss ratio by line of business?
+plan:
+  intent: top_n
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    kpi: loss_ratio
+    group_by: Line of Business
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: Line of Business
+  y: Loss ratio
+  agg: none

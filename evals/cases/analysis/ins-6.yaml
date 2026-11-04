@@ -1,0 +1,28 @@
+id: ins-6
+domain: insurance
+category: ratio
+pipeline: production
+dataset:
+  name: loss_run
+  seed: 1
+question: What is the average incurred per claim (severity) by line?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Incurred
+  segments:
+  - Line of Business
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Line of Business
+  truth_key: severity_by_line
+  abs_tol: 25
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Each claimant's latest valuation only, summed per claim, ÷ distinct claims; the mean over claimant rows (6,873 / 10,698) or over every valuation is the trap.

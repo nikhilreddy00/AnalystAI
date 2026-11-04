@@ -890,6 +890,13 @@ _PII_COL_RE = re.compile(
     rf"{_DOB_NAME}|"
     r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
+# A vehicle or driving licence identifier (NAIC Model 668: a driver's licence number identifies a
+# consumer). Anchored at the end: `vin_count`, `plate_count`, `license_count` are measures.
+_VEHICLE_COL_RE = re.compile(
+    r"(?:^|_)(?:vin(?:_?(?:no|number|num))?|vehicle_?identification_?number|"
+    r"drivers?_?licen[cs]e(?:_?(?:no|number|num|id))?|licen[cs]e_?(?:no|number|num)|"
+    r"dl_?(?:no|number|num)|licen[cs]e_?plate(?:_?(?:no|number|num))?|plate_?(?:no|number|num))$",
+    re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
 _THING_NAME_RE = re.compile(
@@ -1031,9 +1038,25 @@ def _norm_name(name: Any) -> str:
     return re.sub(r"[^0-9A-Za-z]+", "_", name).strip("_")
 
 
+_VIN_VALUES = dict(zip("ABCDEFGHJKLMNPRSTUVWXYZ", [1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 7, 9, 2,
+                                                       3, 4, 5, 6, 7, 8, 9]))
+_VIN_WEIGHTS = (8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2)
+
+
+def _is_vin(text: str) -> bool:
+    """A North American VIN: 17 characters without I, O or Q, letters and digits, and a valid
+    check digit (position 9). A random 17-character id passes the check 1 time in 11."""
+    v = text.strip().upper()
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", v) or v.isdigit() or v.isalpha():
+        return False
+    total = sum((int(c) if c.isdigit() else _VIN_VALUES[c]) * w for c, w in zip(v, _VIN_WEIGHTS))
+    return v[8] == ("X" if total % 11 == 10 else str(total % 11))
+
+
 def is_pii_column(name: str) -> bool:
     name = _norm_name(name)
-    return bool(_PII_COL_RE.search(name)) and not _THING_NAME_RE.search(name)
+    return bool(_VEHICLE_COL_RE.search(name)) or (bool(_PII_COL_RE.search(name))
+                                                  and not _THING_NAME_RE.search(name))
 
 
 def _intl_phone(m: re.Match) -> str:
@@ -1128,6 +1151,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
       values read as people's names;
     - values: ≥ 30% of them contain an email, phone, SSN, card, IBAN or IP address."""
     norm = _norm_name(name)
+    if _VEHICLE_COL_RE.search(norm):
+        return "vehicle", f"the column name '{name}' marks a vehicle or licence identifier"
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
@@ -1167,6 +1192,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 hits["card"] = hits.get("card", 0) + 1
             elif _iban_spans(t, whole_token=True):
                 hits["iban"] = hits.get("iban", 0) + 1
+    if sum(_is_vin(str(v)) for v in vals) >= 0.3 * len(vals):   # column level only: never in
+        return "vehicle", f"'{name}' holds vehicle identification numbers"   # free text (M6)
     if sum(hits.values()) >= 0.3 * len(vals):
         kind = max(hits, key=hits.get)
         return kind, f"{sum(hits.values())} of {len(vals)} sampled values contain personal data"

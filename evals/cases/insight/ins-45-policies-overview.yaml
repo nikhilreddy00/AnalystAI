@@ -1,0 +1,42 @@
+id: ins-45-policies-overview
+domain: insurance
+category: straightforward
+label_note: 'A P&C policy table: the loss ratio on earned premium (never written), per line; years still
+  developing; gender described, never a rating recommendation.'
+dataset:
+  name: policies
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- policy
+- policies
+plan:
+  target_metrics:
+  - Incurred Losses
+  - Earned Premium
+  segments:
+  - Line of Business
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: Earned Premium
+- kind: segment
+  segment_column: Line of Business
+  metric: Incurred Losses
+  aggregation: sum
+- kind: segment
+  segment_column: Line of Business
+  metric: Earned Premium
+  aggregation: sum
+expect:
+  must_mention:
+  - earned premium
+  - home
+  must_not_match:
+  - ultimate loss ratio (is|of|was)|IBNR (is|of|was|estimate)|combined ratio|final loss ratio|loss ratio
+    .{0,20}(is|was) final
+  - net sales|order value|basket|outstanding balance|\bNPL\b|readmission|denial
+  - (charge|price|rate) (women|men|female|male)s? (more|less|higher|lower)

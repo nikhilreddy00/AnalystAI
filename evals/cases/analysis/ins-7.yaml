@@ -1,0 +1,29 @@
+id: ins-7
+domain: insurance
+category: ratio
+pipeline: production
+dataset:
+  name: loss_run
+  seed: 1
+question: What have we paid net of salvage and subrogation, by line?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Paid to Date
+  - Salvage Subrogation
+  segments:
+  - Line of Business
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Line of Business
+  truth_key: paid_net_by_line
+  abs_tol: 500
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Paid to date minus recoveries at each claimant's latest valuation; gross paid (or any valuation summed) is the trap.

@@ -54,6 +54,8 @@ from scipy import stats
 from guardrails import rankable
 from domain_pack import (
     runout_months,
+    developing_note,
+    kpi_roles,
     additive,
     entity_rows,
     layout_columns,
@@ -539,6 +541,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     if conventions and freq in ("W", "M", "Q", "Y"):   # a domain's rule: either end, any bucket
         series, partial = _cut_partial(series, s[date], freq, rule if freq == "W" else None,
                                        runout_months(contract))
+        partial += developing_note(contract, s, {r for r, c in contract.roles.items() if c == metric})
         if series.empty:
             return _unanswerable(QuestionIntent.TIME_SERIES, partial.strip(),
                                  ["Ask for a finer period (week or day)", "Ask for the total"])
@@ -1082,6 +1085,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
         whole, note = _cut_partial(series, t, freq, rule if freq == "W" else None,
                                    runout_months(contract))
+        note += developing_note(contract, full, kpi_roles(pack, kpi.name))
         series = whole
         if asked:   # the buckets inside the asked window; comparisons still read `whole`
             lo, hi = period_window(full, date, params.period_start, params.period_end)[:2]

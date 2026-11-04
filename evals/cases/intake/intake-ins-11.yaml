@@ -1,0 +1,11 @@
+id: intake-ins-11
+category: clear
+pipeline: production
+source:
+  dataset: policies
+  seed: 1
+overview_done: true
+question: What's the lapse rate on our whole life policies by duration?
+expect:
+  ask: true
+rationale: 'Life insurance lapse by duration: unsupported (P&C only).'

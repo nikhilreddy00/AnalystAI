@@ -1,0 +1,30 @@
+id: ins-5
+domain: insurance
+category: ratio
+pipeline: production
+dataset:
+  name: policies
+  seed: 1
+question: What is claim frequency by line?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Claim Count
+  - Earned Exposure
+  segments:
+  - Line of Business
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Line of Business
+  truth_key: frequency_by_line
+  abs_tol: 0.004
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Claims ÷ earned exposure per line (car-years vs house-years never pooled); claims per policy or per row is the trap.

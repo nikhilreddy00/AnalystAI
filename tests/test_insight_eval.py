@@ -33,7 +33,7 @@ def _score(report, case=CASE):
 
 
 def test_suite_shape():
-    assert len(CASES) == 44 and len({c["id"] for c in CASES}) == 44   # 5.7 banking: +2, healthcare: +2
+    assert len(CASES) == 46 and len({c["id"] for c in CASES}) == 46   # 5.7 banking: +2, healthcare: +2, insurance: +2
     assert sum(c["id"].endswith("holdout") for c in CASES) == 8
     cats = {c["category"] for c in CASES}
     assert cats == {"straightforward", "contradictory", "data_quality", "date_scope",

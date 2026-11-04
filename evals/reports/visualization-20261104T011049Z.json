@@ -1,0 +1,279 @@
+{
+ "meta": {
+  "suite": "visualization",
+  "report": "visualization-20261104T011049Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5de279a",
+  "started_at": "20261104T011049Z",
+  "only": "viz-t09",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 0.21,
+  "latency_p95_s": 0.48,
+  "right_chart": 1.0,
+  "headline_coverage": null,
+  "lint_violations": 0,
+  "charts_without_rationale": 0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "targeted": 1.0
+  }
+ },
+ "runs": {
+  "viz-t09-ins-loss-ratio": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "f22342cb-e040-4fc0-973c-ca8c6f63ddfc",
+       "chart_type": "HorizontalBarChart",
+       "title": "Loss ratio by Line of Business",
+       "data": [
+        {
+         "Line of Business": "Home",
+         "Loss ratio": 70.0667
+        },
+        {
+         "Line of Business": "Auto",
+         "Loss ratio": 55.3238
+        }
+       ],
+       "x_key": "Line of Business",
+       "y_keys": [
+        "Loss ratio"
+       ],
+       "colors": [],
+       "x_label": "Line of Business",
+       "y_label": "Loss ratio",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Loss ratio per Line of Business, ranked. Incurred losses, divided by sum of Earned Premium.",
+        "x": "Line of Business",
+        "y": "Loss ratio",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2674,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.51,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "792eb99b-12f7-4346-80de-9b8f41380dd8",
+       "chart_type": "HorizontalBarChart",
+       "title": "Loss ratio by Line of Business",
+       "data": [
+        {
+         "Line of Business": "Home",
+         "Loss ratio": 70.0667
+        },
+        {
+         "Line of Business": "Auto",
+         "Loss ratio": 55.3238
+        }
+       ],
+       "x_key": "Line of Business",
+       "y_keys": [
+        "Loss ratio"
+       ],
+       "colors": [],
+       "x_label": "Line of Business",
+       "y_label": "Loss ratio",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Loss ratio per Line of Business, ranked. Incurred losses, divided by sum of Earned Premium.",
+        "x": "Line of Business",
+        "y": "Loss ratio",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2674,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.21,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "ccfd2408-0498-4334-a3e2-c36c51a6d61f",
+       "chart_type": "HorizontalBarChart",
+       "title": "Loss ratio by Line of Business",
+       "data": [
+        {
+         "Line of Business": "Home",
+         "Loss ratio": 70.0667
+        },
+        {
+         "Line of Business": "Auto",
+         "Loss ratio": 55.3238
+        }
+       ],
+       "x_key": "Line of Business",
+       "y_keys": [
+        "Loss ratio"
+       ],
+       "colors": [],
+       "x_label": "Line of Business",
+       "y_label": "Loss ratio",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Loss ratio per Line of Business, ranked. Incurred losses, divided by sum of Earned Premium.",
+        "x": "Line of Business",
+        "y": "Loss ratio",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2674,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.21,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

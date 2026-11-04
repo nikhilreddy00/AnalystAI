@@ -10,6 +10,7 @@ relation here or a guard (bug → invariant)."""
 import asyncio
 import io
 import json
+import os
 import re
 from functools import cache
 
@@ -239,7 +240,8 @@ def test_bank_balances_month_end_and_segment_averages_are_the_truth():
 
 # ── Invariances ───────────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("name", ["loan_tape", "card_ledger", "bank_balances", "retail_lines"])
+@pytest.mark.parametrize("name", ["loan_tape", "card_ledger", "bank_balances", "retail_lines",
+                                  "loss_run", "policies"])
 def test_row_order_changes_no_number(name):
     assert tiles(name) == tiles(name, transform="shuffle")
 
@@ -375,20 +377,57 @@ def test_each_repair_has_its_own_trace_label():
 # ── Source invariance (Domain 3, user request 2026-11-03): the same table through every
 # connector reads as the same domain, roles and PHI mode, and every computable tile agrees.
 
-@pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines"])
-@pytest.mark.parametrize("source", ["xlsx", "json", "parquet", "sqlite"])
+def _mocked_source(source: str, df: pd.DataFrame, csv: str, monkeypatch):
+    """A connector for the REST API or Google Sheets that serves `df` as those services do (JSON
+    records; every cell a formatted string), through the production connector's load()."""
+    import csv as csvmod
+    import io
+    import socket
+
+    import httpx
+
+    import connectors.api_connector as ac
+    from connectors.base import get_connector
+    from connectors.sheets_connector import SheetsConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    if source == "api":
+        body = json.loads(df.to_json(orient="records", date_format="iso"))
+        monkeypatch.setattr(socket, "getaddrinfo",
+                            lambda host, *a, **k: [(0, 0, 0, "", ("93.184.216.34", 0))])
+        real = httpx.AsyncClient
+        monkeypatch.setattr(ac.httpx, "AsyncClient", lambda **kw: real(
+            transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body)), **kw))
+        return get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example.com/x"))
+    cells = list(csvmod.reader(io.StringIO(csv)))
+
+    class Sheet:
+        sheet1 = property(lambda self: self)
+
+        def get_all_values(self):
+            return cells
+    conn = SheetsConnector(ConnectorConfig(type=ConnectorType.SHEETS, spreadsheet_id="x"))
+    monkeypatch.setattr(conn, "_client", lambda: type("C", (), {"open_by_key": lambda s, k: Sheet()})())
+    return conn
+
+
+@pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines",
+                                  "policies", "loss_run"])
+@pytest.mark.parametrize("source", ["xlsx", "json", "parquet", "sqlite", "postgres", "api", "sheets"])
 async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
     import connectors.csv_connector as csvc
     import domain_pack
     from connectors.base import get_connector
     from evals import run
+    if source == "postgres" and not os.environ.get("TEST_PG_URL"):
+        pytest.skip("TEST_PG_URL not set")
     monkeypatch.setattr(run, "UPLOADS", tmp_path)
     monkeypatch.setattr(csvc, "_UPLOADS_DIR", tmp_path.resolve())
     case = {"dataset": {"name": name, "seed": 1}}
     df, _, csv = run.dataset(case)
 
     async def read(src):
-        conn = get_connector(run.source_config({**case, "source": src}, df, csv))
+        conn = (_mocked_source(src, df, csv, monkeypatch) if src in ("api", "sheets") else
+                get_connector(run.source_config({**case, "source": src}, df, csv)))
         frame = await conn.load()
         return frame, conn.build_data_contract(frame)
     (want, wc), (got, gc) = await read("csv"), await read(source)
@@ -517,3 +556,77 @@ def test_outlier_and_distribution_numbers_read_the_counted_rows():
     assert not str(chart.data[0]["bin"]).lstrip().startswith("-"), chart.data[:2]
     text, _ = answer("health_claims", "distribution", "distribution of paid", metric_column="Paid Amount")
     assert "-442" not in text and "−442" not in text, text
+
+
+# ── Truth: insurance (Domain 4) ───────────────────────────────────────────────────────────────
+
+def test_policy_table_tiles_are_the_truth():
+    """Earned (not written) premium under the loss ratio; written net of cancellation rows."""
+    t, truth = tiles("policies"), _built("policies")[3]
+    assert close(t["earned_premium"], truth["earned_premium_total"])
+    assert close(t["written_premium"], truth["written_premium_total"])
+    assert abs(t["written_premium"] - truth["written_premium_without_cancellations"]) > 1000
+
+
+@pytest.mark.parametrize("kpi,key", [("loss_ratio", "loss_ratio_by_line"),
+                                     ("frequency", "frequency_by_line"),
+                                     ("severity", "severity_by_line"),
+                                     ("pure_premium", "pure_premium_by_line"),
+                                     ("avg_premium", "avg_premium_per_term_by_line"),
+                                     ("retention", "retention_by_line")])
+def test_policy_ratios_by_line_are_the_truth(kpi, key):
+    """Per line (exposure units never add across lines), per term (not per policy), retention
+    over the terms up for renewal: the traps' naive numbers differ (tests/test_domain_datasets)."""
+    _, got = answer("policies", "top_n", f"{kpi} by line", kpi=kpi,
+                    segment_column="Line of Business", group_by="Line of Business")
+    assert close(got, _built("policies")[3][key], tol=0.5)
+
+
+def test_loss_run_tiles_count_each_claimants_latest_valuation():
+    """16 valuations of each claim: paid, reserves and incurred at the latest one only (summing
+    valuations is ~9×); a reopened claim and a two-claimant claim each count once."""
+    t, truth = tiles("loss_run"), _built("loss_run")[3]
+    assert close(t["incurred"], truth["incurred_total"])
+    assert close(t["paid"], truth["paid_total"])
+    assert close(t["open_reserve"], truth["reserve_open_total"])
+    assert t["claims"] == truth["claims"]
+    assert close(t["severity"], truth["incurred_total"] / truth["claims"], tol=0.1)
+
+
+def test_loss_run_by_line_is_the_truth():
+    truth = _built("loss_run")[3]
+    _, reserve = answer("loss_run", "top_n", "open reserves by line", kpi="open_reserve",
+                        segment_column="Line of Business", group_by="Line of Business")
+    _, sev = answer("loss_run", "top_n", "severity by line", kpi="severity",
+                    segment_column="Line of Business", group_by="Line of Business")
+    assert close(reserve, truth["open_reserve_by_line"]) and close(sev, truth["severity_by_line"], tol=0.1)
+
+
+def test_loss_run_net_paid_takes_the_recoveries_off():
+    import domain_pack as dp
+    _, clean, contract, truth = _built("loss_run")
+    pack = dp.pack_for("insurance")
+    assert close(dp.compute_kpi(clean, contract.roles, pack, "paid_net"), truth["paid_net_total"])
+
+
+def test_loss_run_names_its_developing_accident_years_and_raises_no_gate():
+    import domain_pack as dp
+    s, _, contract, _ = _built("loss_run")
+    said = " ".join(dp.pack_caveats(dp.pack_for("insurance"), s.cleaning_audit, contract.roles,
+                                    confidence="strong"))
+    assert "30 Sep 2026 valuation, 2026 (9 months) and 2025 (21 months) are still developing" in said
+    assert s.cleaning_audit.high_null_columns == []
+
+
+def test_a_trend_over_developing_years_says_they_are_still_developing():
+    """$0 rehearsal: 'losses by accident year' compared 2025 with 2024 (-20%) with no word that
+    2025 is still developing; a drop there is development, not a trend. Both trend answers (a
+    KPI and a column) say it; a pack without a maturity rule says nothing."""
+    by_kpi, _ = answer("loss_run", "time_series", "losses by accident year", kpi="incurred", frequency="Y")
+    by_col, _ = answer("loss_run", "time_series", "incurred by year", metric_column="Incurred",
+                       frequency="Y", aggregation="sum")
+    for text in (by_kpi, by_col):
+        assert "2025 (21 months) are still developing" in text, text
+    retail, _ = answer("retail_lines", "time_series", "sales by month", kpi="net_sales", frequency="M")
+    premium, _ = answer("policies", "time_series", "written premium by month", kpi="written_premium")
+    assert "developing" not in retail and "developing" not in premium   # premium doesn't develop

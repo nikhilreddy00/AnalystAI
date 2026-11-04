@@ -1,0 +1,3186 @@
+{
+ "meta": {
+  "suite": "ingestion",
+  "report": "ingestion-20261104T010732Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5de279a",
+  "started_at": "20261104T010732Z",
+  "only": "ins-,phi-08,phi-07",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 4,
+  "runs": 12,
+  "pass_rate": 0.5,
+  "case_majority_pass_rate": 0.5,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 6,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 0.59,
+  "latency_p95_s": 0.94,
+  "type_inference": 1.0,
+  "pii_recall": 1.0,
+  "over_masking": null,
+  "load_fidelity": 1.0,
+  "typed_errors": null,
+  "hard_pii_canary": 0,
+  "hard_silent_misload": 0,
+  "hard_summary_grounded": 0,
+  "hard_source_evidence": 0,
+  "nondeterministic_cases": 0,
+  "holdout_pass_rate": null,
+  "pii_recall_by_kind": {
+   "name": 1.0,
+   "vehicle": 1.0
+  },
+  "phi_recall": null,
+  "phi_planted_columns": 0,
+  "phi_over_masking": 0.0,
+  "phi_flag_accuracy": 1.0,
+  "domain_accuracy": 1.0
+ },
+ "runs": {
+  "dom-ins-loss-run": [
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "KeyError: 'roles'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: KeyError: 'roles'",
+    "output": null,
+    "category": "domain",
+    "case": "dom-ins-loss-run",
+    "holdout": false,
+    "latency_s": 0.37,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "KeyError: 'roles'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: KeyError: 'roles'",
+    "output": null,
+    "category": "domain",
+    "case": "dom-ins-loss-run",
+    "holdout": false,
+    "latency_s": 0.33,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "KeyError: 'roles'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: KeyError: 'roles'",
+    "output": null,
+    "category": "domain",
+    "case": "dom-ins-loss-run",
+    "holdout": false,
+    "latency_s": 0.34,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "dom-ins-policies": [
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "KeyError: 'roles'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: KeyError: 'roles'",
+    "output": null,
+    "category": "domain",
+    "case": "dom-ins-policies",
+    "holdout": false,
+    "latency_s": 0.08,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "KeyError: 'roles'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: KeyError: 'roles'",
+    "output": null,
+    "category": "domain",
+    "case": "dom-ins-policies",
+    "holdout": false,
+    "latency_s": 0.08,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "KeyError: 'roles'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: KeyError: 'roles'",
+    "output": null,
+    "category": "domain",
+    "case": "dom-ins-policies",
+    "holdout": false,
+    "latency_s": 0.08,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "phi-07-insurance-members": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "member_id",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "region",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "start_date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "pii",
+      "column": "policyholder",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "member_id",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "region",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "start_date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-07-insurance-members",
+    "holdout": false,
+    "contract_sha": "6aaf35a854441bab",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "member_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M0586727",
+         "M6157500",
+         "M7378632",
+         "M4214808",
+         "M7905437"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('member_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "policyholder",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         35.67,
+         28.46,
+         43.0,
+         24.08,
+         28.08
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "region",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "East",
+         "East",
+         "West",
+         "South",
+         "East"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "start_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-04-02T00:00:00",
+         "2024-09-18T00:00:00",
+         "2024-08-17T00:00:00",
+         "2025-12-14T00:00:00",
+         "2025-03-07T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "member_id": "M0586727",
+        "policyholder": "[REDACTED]",
+        "premium": 35.67,
+        "region": "East",
+        "start_date": "2025-04-02T00:00:00"
+       },
+       {
+        "member_id": "M6157500",
+        "policyholder": "[REDACTED]",
+        "premium": 28.46,
+        "region": "East",
+        "start_date": "2024-09-18T00:00:00"
+       },
+       {
+        "member_id": "M7378632",
+        "policyholder": "[REDACTED]",
+        "premium": 43.0,
+        "region": "West",
+        "start_date": "2024-08-17T00:00:00"
+       },
+       {
+        "member_id": "M4214808",
+        "policyholder": "[REDACTED]",
+        "premium": 24.08,
+        "region": "South",
+        "start_date": "2025-12-14T00:00:00"
+       },
+       {
+        "member_id": "M7905437",
+        "policyholder": "[REDACTED]",
+        "premium": 28.08,
+        "region": "East",
+        "start_date": "2025-03-07T00:00:00"
+       }
+      ],
+      "date_columns": [
+       "start_date"
+      ],
+      "id_columns": [
+       "member_id"
+      ],
+      "metric_columns": [
+       "premium"
+      ],
+      "schema_summary": "300 rows \u00d7 5 columns. Dates: start_date from 2024-01-02 to 2025-12-23 (weekly). Metrics: premium. Identifiers: member_id. Categories: region. Personal data, masked before any model sees it: policyholder (name).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"member_id\"], \"category\": [\"policyholder\", \"region\"], \"metric\": [\"premium\"], \"date\": [\"start_date\"]}, \"personal_data\": {\"policyholder\": \"name\"}, \"fingerprint\": \"872a463cb0354c22\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "872a463cb0354c229072881b4c4c976afddfd03d9f4e91b3fd79a1b5a227d3f3",
+      "pii_columns": [
+       "policyholder"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "member_id",
+       "policyholder",
+       "premium",
+       "region",
+       "start_date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        19,
+        "member_id",
+        "M3033698"
+       ],
+       [
+        205,
+        "policyholder",
+        "Olivia Fischer"
+       ],
+       [
+        245,
+        "premium",
+        65.58
+       ],
+       [
+        140,
+        "region",
+        "South"
+       ],
+       [
+        263,
+        "start_date",
+        {
+         "ts": "2025-01-30T00:00:00"
+        }
+       ],
+       [
+        252,
+        "member_id",
+        "M5671233"
+       ],
+       [
+        280,
+        "policyholder",
+        "Tom\u00e1s Haddad"
+       ],
+       [
+        102,
+        "premium",
+        26.94
+       ],
+       [
+        79,
+        "region",
+        "East"
+       ],
+       [
+        118,
+        "start_date",
+        {
+         "ts": "2025-04-04T00:00:00"
+        }
+       ],
+       [
+        187,
+        "member_id",
+        "M7801843"
+       ],
+       [
+        46,
+        "policyholder",
+        "Liam Fischer"
+       ],
+       [
+        144,
+        "premium",
+        72.44
+       ],
+       [
+        128,
+        "region",
+        "East"
+       ],
+       [
+        102,
+        "start_date",
+        {
+         "ts": "2024-03-06T00:00:00"
+        }
+       ],
+       [
+        217,
+        "member_id",
+        "M6408850"
+       ],
+       [
+        240,
+        "policyholder",
+        "Chen Fischer"
+       ],
+       [
+        87,
+        "premium",
+        15.61
+       ],
+       [
+        37,
+        "region",
+        "North"
+       ],
+       [
+        101,
+        "start_date",
+        {
+         "ts": "2025-09-13T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "6aaf35a854441bab",
+     "phi": {
+      "flag": false,
+      "status": {
+       "member_id": "kept",
+       "policyholder": "kept",
+       "premium": "kept",
+       "region": "kept",
+       "start_date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.98,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "member_id",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "region",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "start_date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "pii",
+      "column": "policyholder",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "member_id",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "region",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "start_date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-07-insurance-members",
+    "holdout": false,
+    "contract_sha": "6aaf35a854441bab",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "member_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M0586727",
+         "M6157500",
+         "M7378632",
+         "M4214808",
+         "M7905437"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('member_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "policyholder",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         35.67,
+         28.46,
+         43.0,
+         24.08,
+         28.08
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "region",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "East",
+         "East",
+         "West",
+         "South",
+         "East"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "start_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-04-02T00:00:00",
+         "2024-09-18T00:00:00",
+         "2024-08-17T00:00:00",
+         "2025-12-14T00:00:00",
+         "2025-03-07T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "member_id": "M0586727",
+        "policyholder": "[REDACTED]",
+        "premium": 35.67,
+        "region": "East",
+        "start_date": "2025-04-02T00:00:00"
+       },
+       {
+        "member_id": "M6157500",
+        "policyholder": "[REDACTED]",
+        "premium": 28.46,
+        "region": "East",
+        "start_date": "2024-09-18T00:00:00"
+       },
+       {
+        "member_id": "M7378632",
+        "policyholder": "[REDACTED]",
+        "premium": 43.0,
+        "region": "West",
+        "start_date": "2024-08-17T00:00:00"
+       },
+       {
+        "member_id": "M4214808",
+        "policyholder": "[REDACTED]",
+        "premium": 24.08,
+        "region": "South",
+        "start_date": "2025-12-14T00:00:00"
+       },
+       {
+        "member_id": "M7905437",
+        "policyholder": "[REDACTED]",
+        "premium": 28.08,
+        "region": "East",
+        "start_date": "2025-03-07T00:00:00"
+       }
+      ],
+      "date_columns": [
+       "start_date"
+      ],
+      "id_columns": [
+       "member_id"
+      ],
+      "metric_columns": [
+       "premium"
+      ],
+      "schema_summary": "300 rows \u00d7 5 columns. Dates: start_date from 2024-01-02 to 2025-12-23 (weekly). Metrics: premium. Identifiers: member_id. Categories: region. Personal data, masked before any model sees it: policyholder (name).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"member_id\"], \"category\": [\"policyholder\", \"region\"], \"metric\": [\"premium\"], \"date\": [\"start_date\"]}, \"personal_data\": {\"policyholder\": \"name\"}, \"fingerprint\": \"872a463cb0354c22\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "872a463cb0354c229072881b4c4c976afddfd03d9f4e91b3fd79a1b5a227d3f3",
+      "pii_columns": [
+       "policyholder"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "member_id",
+       "policyholder",
+       "premium",
+       "region",
+       "start_date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        19,
+        "member_id",
+        "M3033698"
+       ],
+       [
+        205,
+        "policyholder",
+        "Olivia Fischer"
+       ],
+       [
+        245,
+        "premium",
+        65.58
+       ],
+       [
+        140,
+        "region",
+        "South"
+       ],
+       [
+        263,
+        "start_date",
+        {
+         "ts": "2025-01-30T00:00:00"
+        }
+       ],
+       [
+        252,
+        "member_id",
+        "M5671233"
+       ],
+       [
+        280,
+        "policyholder",
+        "Tom\u00e1s Haddad"
+       ],
+       [
+        102,
+        "premium",
+        26.94
+       ],
+       [
+        79,
+        "region",
+        "East"
+       ],
+       [
+        118,
+        "start_date",
+        {
+         "ts": "2025-04-04T00:00:00"
+        }
+       ],
+       [
+        187,
+        "member_id",
+        "M7801843"
+       ],
+       [
+        46,
+        "policyholder",
+        "Liam Fischer"
+       ],
+       [
+        144,
+        "premium",
+        72.44
+       ],
+       [
+        128,
+        "region",
+        "East"
+       ],
+       [
+        102,
+        "start_date",
+        {
+         "ts": "2024-03-06T00:00:00"
+        }
+       ],
+       [
+        217,
+        "member_id",
+        "M6408850"
+       ],
+       [
+        240,
+        "policyholder",
+        "Chen Fischer"
+       ],
+       [
+        87,
+        "premium",
+        15.61
+       ],
+       [
+        37,
+        "region",
+        "North"
+       ],
+       [
+        101,
+        "start_date",
+        {
+         "ts": "2025-09-13T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "6aaf35a854441bab",
+     "phi": {
+      "flag": false,
+      "status": {
+       "member_id": "kept",
+       "policyholder": "kept",
+       "premium": "kept",
+       "region": "kept",
+       "start_date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.84,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "member_id",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "region",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "start_date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "pii",
+      "column": "policyholder",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "member_id",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "region",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "start_date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-07-insurance-members",
+    "holdout": false,
+    "contract_sha": "6aaf35a854441bab",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "member_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M0586727",
+         "M6157500",
+         "M7378632",
+         "M4214808",
+         "M7905437"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('member_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "policyholder",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         35.67,
+         28.46,
+         43.0,
+         24.08,
+         28.08
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "region",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "East",
+         "East",
+         "West",
+         "South",
+         "East"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "start_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-04-02T00:00:00",
+         "2024-09-18T00:00:00",
+         "2024-08-17T00:00:00",
+         "2025-12-14T00:00:00",
+         "2025-03-07T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "member_id": "M0586727",
+        "policyholder": "[REDACTED]",
+        "premium": 35.67,
+        "region": "East",
+        "start_date": "2025-04-02T00:00:00"
+       },
+       {
+        "member_id": "M6157500",
+        "policyholder": "[REDACTED]",
+        "premium": 28.46,
+        "region": "East",
+        "start_date": "2024-09-18T00:00:00"
+       },
+       {
+        "member_id": "M7378632",
+        "policyholder": "[REDACTED]",
+        "premium": 43.0,
+        "region": "West",
+        "start_date": "2024-08-17T00:00:00"
+       },
+       {
+        "member_id": "M4214808",
+        "policyholder": "[REDACTED]",
+        "premium": 24.08,
+        "region": "South",
+        "start_date": "2025-12-14T00:00:00"
+       },
+       {
+        "member_id": "M7905437",
+        "policyholder": "[REDACTED]",
+        "premium": 28.08,
+        "region": "East",
+        "start_date": "2025-03-07T00:00:00"
+       }
+      ],
+      "date_columns": [
+       "start_date"
+      ],
+      "id_columns": [
+       "member_id"
+      ],
+      "metric_columns": [
+       "premium"
+      ],
+      "schema_summary": "300 rows \u00d7 5 columns. Dates: start_date from 2024-01-02 to 2025-12-23 (weekly). Metrics: premium. Identifiers: member_id. Categories: region. Personal data, masked before any model sees it: policyholder (name).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"member_id\"], \"category\": [\"policyholder\", \"region\"], \"metric\": [\"premium\"], \"date\": [\"start_date\"]}, \"personal_data\": {\"policyholder\": \"name\"}, \"fingerprint\": \"872a463cb0354c22\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "872a463cb0354c229072881b4c4c976afddfd03d9f4e91b3fd79a1b5a227d3f3",
+      "pii_columns": [
+       "policyholder"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "member_id",
+       "policyholder",
+       "premium",
+       "region",
+       "start_date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        19,
+        "member_id",
+        "M3033698"
+       ],
+       [
+        205,
+        "policyholder",
+        "Olivia Fischer"
+       ],
+       [
+        245,
+        "premium",
+        65.58
+       ],
+       [
+        140,
+        "region",
+        "South"
+       ],
+       [
+        263,
+        "start_date",
+        {
+         "ts": "2025-01-30T00:00:00"
+        }
+       ],
+       [
+        252,
+        "member_id",
+        "M5671233"
+       ],
+       [
+        280,
+        "policyholder",
+        "Tom\u00e1s Haddad"
+       ],
+       [
+        102,
+        "premium",
+        26.94
+       ],
+       [
+        79,
+        "region",
+        "East"
+       ],
+       [
+        118,
+        "start_date",
+        {
+         "ts": "2025-04-04T00:00:00"
+        }
+       ],
+       [
+        187,
+        "member_id",
+        "M7801843"
+       ],
+       [
+        46,
+        "policyholder",
+        "Liam Fischer"
+       ],
+       [
+        144,
+        "premium",
+        72.44
+       ],
+       [
+        128,
+        "region",
+        "East"
+       ],
+       [
+        102,
+        "start_date",
+        {
+         "ts": "2024-03-06T00:00:00"
+        }
+       ],
+       [
+        217,
+        "member_id",
+        "M6408850"
+       ],
+       [
+        240,
+        "policyholder",
+        "Chen Fischer"
+       ],
+       [
+        87,
+        "premium",
+        15.61
+       ],
+       [
+        37,
+        "region",
+        "North"
+       ],
+       [
+        101,
+        "start_date",
+        {
+         "ts": "2025-09-13T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "6aaf35a854441bab",
+     "phi": {
+      "flag": false,
+      "status": {
+       "member_id": "kept",
+       "policyholder": "kept",
+       "premium": "kept",
+       "region": "kept",
+       "start_date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.81,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "phi-08-auto-claims-vehicle": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "pii",
+      "column": "Claimant Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Vehicle Ref",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Driver License No",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-08-auto-claims-vehicle",
+    "holdout": false,
+    "contract_sha": "1a30d30d2e2b5b92",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 7,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "V0000017",
+         "V0000029",
+         "V0000123",
+         "V0000214",
+         "V0000176"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Claim Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vehicle Ref",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Vehicle Ref')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Driver License No",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Driver License No')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-02-16T00:00:00",
+         "2025-03-24T00:00:00",
+         "2024-09-20T00:00:00",
+         "2025-05-25T00:00:00",
+         "2025-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         215.34,
+         22.7,
+         81.55,
+         95.96,
+         83.81
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         91.09,
+         63.34,
+         82.24,
+         31.14,
+         79.5
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "V0000017",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-02-16T00:00:00",
+        "Case Reserve": 215.34,
+        "Paid to Date": 91.09
+       },
+       {
+        "Claim Number": "V0000029",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-03-24T00:00:00",
+        "Case Reserve": 22.7,
+        "Paid to Date": 63.34
+       },
+       {
+        "Claim Number": "V0000123",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-09-20T00:00:00",
+        "Case Reserve": 81.55,
+        "Paid to Date": 82.24
+       },
+       {
+        "Claim Number": "V0000214",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-05-25T00:00:00",
+        "Case Reserve": 95.96,
+        "Paid to Date": 31.14
+       },
+       {
+        "Claim Number": "V0000176",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-06-12T00:00:00",
+        "Case Reserve": 83.81,
+        "Paid to Date": 79.5
+       }
+      ],
+      "date_columns": [
+       "Loss Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "metric_columns": [
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "schema_summary": "300 rows \u00d7 7 columns. Dates: Loss Date from 2024-01-03 to 2025-12-28 (weekly). Metrics: Case Reserve, Paid to Date. Identifiers: Claim Number. Personal data, masked before any model sees it: Claimant Name (name), Vehicle Ref (vehicle), Driver License No (vehicle).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 7 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Vehicle Ref\", \"Driver License No\"], \"category\": [\"Claimant Name\"], \"date\": [\"Loss Date\"], \"metric\": [\"Case Reserve\", \"Paid to Date\"]}, \"personal_data\": {\"Claimant Name\": \"name\", \"Vehicle Ref\": \"vehicle\", \"Driver License No\": \"vehicle\"}, \"fingerprint\": \"7881270fba34bb8b\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "3 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "7881270fba34bb8bfedf3d6169e6bb055c3f53691fd565d1cc02c10f0f905619",
+      "pii_columns": [
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "claim_id": "Claim Number",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No",
+       "Loss Date",
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        153,
+        "Claim Number",
+        "V0000135"
+       ],
+       [
+        92,
+        "Claimant Name",
+        "Mark Patel"
+       ],
+       [
+        170,
+        "Vehicle Ref",
+        "ZSLY1Z385P7JC7U1D"
+       ],
+       [
+        263,
+        "Driver License No",
+        "D09500791"
+       ],
+       [
+        285,
+        "Loss Date",
+        {
+         "ts": "2025-07-08T00:00:00"
+        }
+       ],
+       [
+        72,
+        "Case Reserve",
+        36.88
+       ],
+       [
+        190,
+        "Paid to Date",
+        57.01
+       ],
+       [
+        62,
+        "Claim Number",
+        "V0000019"
+       ],
+       [
+        184,
+        "Claimant Name",
+        "Mark Wei"
+       ],
+       [
+        253,
+        "Vehicle Ref",
+        "TAR4UHHZ1END3KT47"
+       ],
+       [
+        294,
+        "Driver License No",
+        "D68256477"
+       ],
+       [
+        42,
+        "Loss Date",
+        {
+         "ts": "2024-05-20T00:00:00"
+        }
+       ],
+       [
+        86,
+        "Case Reserve",
+        61.98
+       ],
+       [
+        91,
+        "Paid to Date",
+        15.38
+       ],
+       [
+        113,
+        "Claim Number",
+        "V0000200"
+       ],
+       [
+        41,
+        "Claimant Name",
+        "June Mensah"
+       ],
+       [
+        232,
+        "Vehicle Ref",
+        "ZSGD5Z7T08U5F41U6"
+       ],
+       [
+        157,
+        "Driver License No",
+        "D87876897"
+       ],
+       [
+        291,
+        "Loss Date",
+        {
+         "ts": "2024-06-14T00:00:00"
+        }
+       ],
+       [
+        277,
+        "Case Reserve",
+        50.61
+       ]
+      ]
+     },
+     "contract_sha": "1a30d30d2e2b5b92",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Name": "kept",
+       "Vehicle Ref": "kept",
+       "Driver License No": "kept",
+       "Loss Date": "kept",
+       "Case Reserve": "kept",
+       "Paid to Date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.9,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "pii",
+      "column": "Claimant Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Vehicle Ref",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Driver License No",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-08-auto-claims-vehicle",
+    "holdout": false,
+    "contract_sha": "1a30d30d2e2b5b92",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 7,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "V0000017",
+         "V0000029",
+         "V0000123",
+         "V0000214",
+         "V0000176"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Claim Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vehicle Ref",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Vehicle Ref')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Driver License No",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Driver License No')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-02-16T00:00:00",
+         "2025-03-24T00:00:00",
+         "2024-09-20T00:00:00",
+         "2025-05-25T00:00:00",
+         "2025-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         215.34,
+         22.7,
+         81.55,
+         95.96,
+         83.81
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         91.09,
+         63.34,
+         82.24,
+         31.14,
+         79.5
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "V0000017",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-02-16T00:00:00",
+        "Case Reserve": 215.34,
+        "Paid to Date": 91.09
+       },
+       {
+        "Claim Number": "V0000029",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-03-24T00:00:00",
+        "Case Reserve": 22.7,
+        "Paid to Date": 63.34
+       },
+       {
+        "Claim Number": "V0000123",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-09-20T00:00:00",
+        "Case Reserve": 81.55,
+        "Paid to Date": 82.24
+       },
+       {
+        "Claim Number": "V0000214",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-05-25T00:00:00",
+        "Case Reserve": 95.96,
+        "Paid to Date": 31.14
+       },
+       {
+        "Claim Number": "V0000176",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-06-12T00:00:00",
+        "Case Reserve": 83.81,
+        "Paid to Date": 79.5
+       }
+      ],
+      "date_columns": [
+       "Loss Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "metric_columns": [
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "schema_summary": "300 rows \u00d7 7 columns. Dates: Loss Date from 2024-01-03 to 2025-12-28 (weekly). Metrics: Case Reserve, Paid to Date. Identifiers: Claim Number. Personal data, masked before any model sees it: Claimant Name (name), Vehicle Ref (vehicle), Driver License No (vehicle).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 7 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Vehicle Ref\", \"Driver License No\"], \"category\": [\"Claimant Name\"], \"date\": [\"Loss Date\"], \"metric\": [\"Case Reserve\", \"Paid to Date\"]}, \"personal_data\": {\"Claimant Name\": \"name\", \"Vehicle Ref\": \"vehicle\", \"Driver License No\": \"vehicle\"}, \"fingerprint\": \"7881270fba34bb8b\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "3 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "7881270fba34bb8bfedf3d6169e6bb055c3f53691fd565d1cc02c10f0f905619",
+      "pii_columns": [
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "claim_id": "Claim Number",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No",
+       "Loss Date",
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        153,
+        "Claim Number",
+        "V0000135"
+       ],
+       [
+        92,
+        "Claimant Name",
+        "Mark Patel"
+       ],
+       [
+        170,
+        "Vehicle Ref",
+        "ZSLY1Z385P7JC7U1D"
+       ],
+       [
+        263,
+        "Driver License No",
+        "D09500791"
+       ],
+       [
+        285,
+        "Loss Date",
+        {
+         "ts": "2025-07-08T00:00:00"
+        }
+       ],
+       [
+        72,
+        "Case Reserve",
+        36.88
+       ],
+       [
+        190,
+        "Paid to Date",
+        57.01
+       ],
+       [
+        62,
+        "Claim Number",
+        "V0000019"
+       ],
+       [
+        184,
+        "Claimant Name",
+        "Mark Wei"
+       ],
+       [
+        253,
+        "Vehicle Ref",
+        "TAR4UHHZ1END3KT47"
+       ],
+       [
+        294,
+        "Driver License No",
+        "D68256477"
+       ],
+       [
+        42,
+        "Loss Date",
+        {
+         "ts": "2024-05-20T00:00:00"
+        }
+       ],
+       [
+        86,
+        "Case Reserve",
+        61.98
+       ],
+       [
+        91,
+        "Paid to Date",
+        15.38
+       ],
+       [
+        113,
+        "Claim Number",
+        "V0000200"
+       ],
+       [
+        41,
+        "Claimant Name",
+        "June Mensah"
+       ],
+       [
+        232,
+        "Vehicle Ref",
+        "ZSGD5Z7T08U5F41U6"
+       ],
+       [
+        157,
+        "Driver License No",
+        "D87876897"
+       ],
+       [
+        291,
+        "Loss Date",
+        {
+         "ts": "2024-06-14T00:00:00"
+        }
+       ],
+       [
+        277,
+        "Case Reserve",
+        50.61
+       ]
+      ]
+     },
+     "contract_sha": "1a30d30d2e2b5b92",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Name": "kept",
+       "Vehicle Ref": "kept",
+       "Driver License No": "kept",
+       "Loss Date": "kept",
+       "Case Reserve": "kept",
+       "Paid to Date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.84,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "pii",
+      "column": "Claimant Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Vehicle Ref",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Driver License No",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-08-auto-claims-vehicle",
+    "holdout": false,
+    "contract_sha": "1a30d30d2e2b5b92",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 7,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "V0000017",
+         "V0000029",
+         "V0000123",
+         "V0000214",
+         "V0000176"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Claim Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vehicle Ref",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Vehicle Ref')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Driver License No",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Driver License No')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-02-16T00:00:00",
+         "2025-03-24T00:00:00",
+         "2024-09-20T00:00:00",
+         "2025-05-25T00:00:00",
+         "2025-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         215.34,
+         22.7,
+         81.55,
+         95.96,
+         83.81
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         91.09,
+         63.34,
+         82.24,
+         31.14,
+         79.5
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "V0000017",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-02-16T00:00:00",
+        "Case Reserve": 215.34,
+        "Paid to Date": 91.09
+       },
+       {
+        "Claim Number": "V0000029",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-03-24T00:00:00",
+        "Case Reserve": 22.7,
+        "Paid to Date": 63.34
+       },
+       {
+        "Claim Number": "V0000123",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-09-20T00:00:00",
+        "Case Reserve": 81.55,
+        "Paid to Date": 82.24
+       },
+       {
+        "Claim Number": "V0000214",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-05-25T00:00:00",
+        "Case Reserve": 95.96,
+        "Paid to Date": 31.14
+       },
+       {
+        "Claim Number": "V0000176",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-06-12T00:00:00",
+        "Case Reserve": 83.81,
+        "Paid to Date": 79.5
+       }
+      ],
+      "date_columns": [
+       "Loss Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "metric_columns": [
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "schema_summary": "300 rows \u00d7 7 columns. Dates: Loss Date from 2024-01-03 to 2025-12-28 (weekly). Metrics: Case Reserve, Paid to Date. Identifiers: Claim Number. Personal data, masked before any model sees it: Claimant Name (name), Vehicle Ref (vehicle), Driver License No (vehicle).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 7 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Vehicle Ref\", \"Driver License No\"], \"category\": [\"Claimant Name\"], \"date\": [\"Loss Date\"], \"metric\": [\"Case Reserve\", \"Paid to Date\"]}, \"personal_data\": {\"Claimant Name\": \"name\", \"Vehicle Ref\": \"vehicle\", \"Driver License No\": \"vehicle\"}, \"fingerprint\": \"7881270fba34bb8b\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "3 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "7881270fba34bb8bfedf3d6169e6bb055c3f53691fd565d1cc02c10f0f905619",
+      "pii_columns": [
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "claim_id": "Claim Number",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No",
+       "Loss Date",
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        153,
+        "Claim Number",
+        "V0000135"
+       ],
+       [
+        92,
+        "Claimant Name",
+        "Mark Patel"
+       ],
+       [
+        170,
+        "Vehicle Ref",
+        "ZSLY1Z385P7JC7U1D"
+       ],
+       [
+        263,
+        "Driver License No",
+        "D09500791"
+       ],
+       [
+        285,
+        "Loss Date",
+        {
+         "ts": "2025-07-08T00:00:00"
+        }
+       ],
+       [
+        72,
+        "Case Reserve",
+        36.88
+       ],
+       [
+        190,
+        "Paid to Date",
+        57.01
+       ],
+       [
+        62,
+        "Claim Number",
+        "V0000019"
+       ],
+       [
+        184,
+        "Claimant Name",
+        "Mark Wei"
+       ],
+       [
+        253,
+        "Vehicle Ref",
+        "TAR4UHHZ1END3KT47"
+       ],
+       [
+        294,
+        "Driver License No",
+        "D68256477"
+       ],
+       [
+        42,
+        "Loss Date",
+        {
+         "ts": "2024-05-20T00:00:00"
+        }
+       ],
+       [
+        86,
+        "Case Reserve",
+        61.98
+       ],
+       [
+        91,
+        "Paid to Date",
+        15.38
+       ],
+       [
+        113,
+        "Claim Number",
+        "V0000200"
+       ],
+       [
+        41,
+        "Claimant Name",
+        "June Mensah"
+       ],
+       [
+        232,
+        "Vehicle Ref",
+        "ZSGD5Z7T08U5F41U6"
+       ],
+       [
+        157,
+        "Driver License No",
+        "D87876897"
+       ],
+       [
+        291,
+        "Loss Date",
+        {
+         "ts": "2024-06-14T00:00:00"
+        }
+       ],
+       [
+        277,
+        "Case Reserve",
+        50.61
+       ]
+      ]
+     },
+     "contract_sha": "1a30d30d2e2b5b92",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Name": "kept",
+       "Vehicle Ref": "kept",
+       "Driver License No": "kept",
+       "Loss Date": "kept",
+       "Case Reserve": "kept",
+       "Paid to Date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.85,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

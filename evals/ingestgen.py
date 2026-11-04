@@ -173,6 +173,21 @@ def make_column(name: str, kind: str, rng: np.random.Generator, n: int) -> Colum
     if kind == "ip":
         v = [f"203.0.{rng.integers(0, 255)}.{rng.integers(1, 254)}" for _ in range(n)]
         return Column(name, v, ("category", "id"), "ip", sorted(set(v)))
+    if kind == "vin":   # a vehicle id with a valid check digit (Domain 4)
+        from guardrails import _VIN_VALUES, _VIN_WEIGHTS
+        chars = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789"
+        v = []
+        while len(v) < n:
+            body = "".join(rng.choice(list(chars), 17))
+            total = sum((int(c) if c.isdigit() else _VIN_VALUES[c]) * w
+                        for c, w in zip(body, _VIN_WEIGHTS))
+            vin = body[:8] + ("X" if total % 11 == 10 else str(total % 11)) + body[9:]
+            if not vin.isdigit() and not vin.isalpha():
+                v.append(vin)
+        return Column(name, v, ("id", "category"), "vehicle", sorted(set(v)))
+    if kind == "driver_licence":
+        v = [f"D{int(i):08d}" for i in rng.integers(1, 99_999_999, n)]
+        return Column(name, v, ("id", "category"), "vehicle", sorted(set(v)))
     # ── PHI (Phase 5.5) ──
     if kind == "mrn":
         v = [f"MRN-{int(i):06d}" for i in rng.integers(1, 400_000, n)]

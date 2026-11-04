@@ -24,7 +24,7 @@ RESERVED_ROLES = ("status", "currency")   # each row's kind, in the frame analys
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
 CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded", "level_as_of",
-              "recent_incomplete")
+              "recent_incomplete", "developing_periods", "developing_periods_undated")
 
 
 RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
@@ -107,6 +107,16 @@ class Runout(_Strict):
     with `role` (the arrival date) in the data, the last `months` months are incomplete."""
     role: str
     months: int = Field(gt=0)
+
+
+class Maturity(_Strict):
+    """Periods keep developing after they end (a year's figures still move at later valuations):
+    each period year younger than `months` at the latest `role` date is named with its age.
+    Nothing is cut: every period is shown, the young ones flagged. `measures`: the roles that
+    develop (losses, claim counts); a period answer about anything else says nothing."""
+    role: str
+    months: int = Field(gt=0)
+    measures: list[str] = Field(default_factory=list)
 
 
 class Within(_Strict):
@@ -236,8 +246,14 @@ class Pack(_Strict):
     conditional_fields: dict[str, list[str]] = Field(default_factory=dict)
     # Roles a row fills one of (Debit or Credit): the other's blank is the layout, never missing
     paired_fields: list[list[str]] = Field(default_factory=list)
+    # A marker filled only on the rows it applies to (a catastrophe event code): blank = none
+    marker_fields: list[str] = Field(default_factory=list)
     running_balance: RunningBalance | None = None
     runout: Runout | None = None
+    maturity: Maturity | None = None
+    # A caution said whenever the data has the role (a protected attribute: described, never a
+    # rating recommendation), strong or weak match
+    role_caveats: dict[str, str] = Field(default_factory=dict)
     # A role the data may lack but can derive ({los: [date, days, admit_date]}): the analysis
     # frame gets it as a column named after the role's first header, so the model never invents
     # one ("LOS (derived)" was rejected as an unknown column)
@@ -325,8 +341,10 @@ class Pack(_Strict):
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
                 *(r for r in (self.order_key, self.location_role, self.snapshot_key,
                               self.version_order) if r),
-                *self.version_key, *self.version_void, *self.conditional_fields,
-                *([self.runout.role] if self.runout else []), *(r for g in self.paired_fields for r in g),
+                *self.version_key, *self.version_void, *self.conditional_fields, *self.marker_fields,
+                *([self.runout.role] if self.runout else []),
+                *([self.maturity.role, *self.maturity.measures] if self.maturity else []),
+                *self.role_caveats, *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
                 *self.signed_by, *(x.indicator for x in self.signed_by.values()),
@@ -578,8 +596,13 @@ def _versions(df: pd.DataFrame, roles: dict[str, str], pack: Pack, kind: pd.Seri
     if not pack.version_key or pack.version_key[0] not in roles or pack.version_order not in roles:
         return kind
     # a blank or non-numeric version (an original claim's empty adjustment number) is the
-    # earliest: a chain without any version keeps all its rows
-    order = pd.to_numeric(df[roles[pack.version_order]], errors="coerce").fillna(-1)
+    # earliest: a chain without any version keeps all its rows. A date orders by time (a
+    # snapshot's valuation date), never by its digits.
+    col = df[roles[pack.version_order]]
+    if pack.roles[pack.version_order].kind == "date":
+        order = _day(col).rank(method="dense").fillna(-1)
+    else:
+        order = pd.to_numeric(col, errors="coerce").fillna(-1)
     chain = df.groupby(keys, dropna=False, sort=False).ngroup()
     last = order.eq(order.groupby(chain).transform("max"))
     kind = kind.mask(~last, "non_product")
@@ -1032,7 +1055,7 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     deciding = [r for alt in [*pack.strong, *pack.signals] for g in alt.values() for r in g]
     ordered = sorted(roles, key=lambda r: deciding.index(r) if r in deciding else len(deciding))
     named = [r.replace("_", " ") for r in ordered[:5]]
-    shown = ", ".join(named[:-1]) + (" and " if len(named) > 1 else "") + named[-1] if named else ""
+    shown = _and(named)
     # as the tiles show them: a KPI of non-sale rows only (return rate) when the data has some
     kinds = {s for s in flags if s in ROW_KINDS}
     kpis = ", ".join(k.phrase for k in pack.kpis if k.tile and computable(pack, k.name, roles)
@@ -1064,16 +1087,53 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
         last = pd.Period(span[1], "M")
         facts["recent_incomplete"] = {"from_month": (last - pack.runout.months + 1).strftime("%b %Y"),
                                       "months": pack.runout.months}
+    if span and pack.maturity:
+        valued = audit.date_ranges.get(roles.get(pack.maturity.role, ""))
+        facts.update(_developing(pack.maturity, span[0], span[1], valued[1] if valued else None))
     if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}
-    return [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
+    said = [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
+    return said + [text for role, text in pack.role_caveats.items() if role in roles]
 
 
 
 def version_roles(pack: Pack | None) -> set[str]:
     """The roles of a version chain (a claim's line and adjustment number): labels, never measures."""
     return {*pack.version_key, *([pack.version_order] if pack.version_order else [])} if pack else set()
+
+
+def _and(items: list[str]) -> str:
+    """'a, b and c'; '' for none."""
+    return ", ".join(items[:-1]) + (" and " if len(items) > 1 else "") + items[-1] if items else ""
+
+
+def _developing(maturity: Maturity, first, last, valued) -> dict:
+    """The period years (first..last) younger than maturity.months at `valued`, the latest
+    valuation date (None: at the last period date): {condition: {as_of, periods}}; none → {}."""
+    as_of = pd.Timestamp(valued if valued is not None else last)
+    ages = [(y, (as_of.year - y) * 12 + as_of.month)
+            for y in range(as_of.year, pd.Timestamp(first).year - 1, -1)]
+    young = [f"{y} ({a} month{'s' if a != 1 else ''})" for y, a in ages if a < maturity.months]
+    if not young:
+        return {}
+    key = "developing_periods" if valued is not None else "developing_periods_undated"
+    return {key: {"as_of": as_of.strftime("%-d %b %Y"), "periods": _and(young)}}
+
+
+def developing_note(contract, df: pd.DataFrame, about: set[str]) -> str:
+    """' <the pack's developing-periods caveat>' for a period answer over this frame about these
+    roles (strong match, Pack.maturity, a measure that develops), else '': a drop in a young
+    year is development, not a trend; written premium doesn't develop."""
+    pack = defaults_pack(contract)
+    if not pack or not pack.maturity or not about & set(pack.maturity.measures) \
+            or (col := contract.roles.get(pack.date_role)) not in df.columns:
+        return ""
+    t = _day(df[col]).dropna()
+    valued = contract.roles.get(pack.maturity.role)
+    v = _day(df[valued]).max() if valued in df.columns else None
+    facts = _developing(pack.maturity, t.min(), t.max(), v) if not t.empty else {}
+    return "".join(f" {pack.caveats[k].format(**f)}" for k, f in facts.items() if k in pack.caveats)
 
 
 def runout_months(contract) -> int:
@@ -1104,7 +1164,7 @@ def filled_statuses(df: pd.DataFrame, pack: Pack, roles: dict[str, str], role: s
 
 
 def layout_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]) -> dict[str, str]:
-    """{column: "order" | "paired" | "conditional"} for columns whose blanks are the file's layout,
+    """{column: "order" | "paired" | "conditional" | "marker"} for columns whose blanks are the file's layout,
     not missing values: written on an order's first line only (Shopify's status, total, email),
     one of a declared pair each row fills one of (Debit or Credit, on 95% of rows), or a
     declared conditional field filled only for some statuses (a charge-off date on charged-off
@@ -1128,6 +1188,10 @@ def layout_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]) -
             filled = df[col].notna()
             if filled.any() and (filled & filled_statuses(df, pack, roles, role)).sum() >= 0.95 * filled.sum():
                 out[col] = "conditional"
+    for role in pack.marker_fields:   # blank = none (no event): the layout, never missing
+        col = roles.get(role)
+        if col in df.columns and col not in out and df[col].isna().any():
+            out[col] = "marker"
     return out
 
 

@@ -543,7 +543,11 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   reports (`tests/test_readme_domains.py`).
 
 - **Status (2026-11-03):** 1 retail, 2 banking, 3 healthcare done (`docs/baselines/phase5_7_*.md`);
-  next 4 insurance.
+  4 insurance in progress.
+- **Follow-up PR (found in Domain 4's plan red-team, 2026-11-03):** the built-in summary stats of
+  a level column (a balance) read every snapshot (`agents/analysis_agent.py` eda path: a level's
+  blanked rows keep `len(rows) == len(df)`), a recurring-class-1 bug in banking. Its own PR with a
+  banking analysis re-measure (insurance doesn't need it: loss runs use the version chain).
 
 ### Phase 5.8: Data sources (added 2026-11-03 at the user's request)
 - **Why:** every domain was proven on CSV uploads only, while small companies keep data in

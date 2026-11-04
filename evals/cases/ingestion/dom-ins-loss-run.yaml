@@ -1,0 +1,41 @@
+id: dom-ins-loss-run
+category: domain
+dataset:
+  name: loss_run
+  seed: 1
+roles:
+  Claim Number: id
+  Claimant Number: category
+  Policy Number: id
+  Line of Business: category
+  Coverage: category
+  Loss Date: date
+  Report Date: date
+  Valuation Date: date
+  Claim Status: category
+  Paid to Date: metric
+  Case Reserve: metric
+  Incurred: metric
+  Salvage Subrogation: metric
+  Cat Event: category
+traps:
+- Claimant Number
+- Valuation Date
+expect_domain: insurance
+expect_roles:
+  date: Loss Date
+  valuation_date: Valuation Date
+  report_date: Report Date
+  claim_id: Claim Number
+  claimant: Claimant Number
+  policy: Policy Number
+  line: Line of Business
+  coverage: Coverage
+  incurred: Incurred
+  paid: Paid to Date
+  reserve: Case Reserve
+  recoveries: Salvage Subrogation
+  status: Claim Status
+  cat_event: Cat Event
+label_note: 'A loss run: one row per claim × claimant per valuation; the loss date is the time axis (accident
+  year), the valuation date orders the snapshots.'

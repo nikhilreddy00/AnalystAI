@@ -1,0 +1,11 @@
+id: intake-ins-07
+category: clear
+pipeline: production
+source:
+  dataset: loss_run
+  seed: 1
+overview_done: true
+question: Estimate IBNR and the ultimate loss ratio for 2026
+expect:
+  ask: true
+rationale: 'IBNR / ultimate need a development triangle: unsupported, ask.'

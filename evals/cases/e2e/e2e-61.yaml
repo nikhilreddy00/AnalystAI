@@ -1,0 +1,33 @@
+id: e2e-61
+domain: insurance
+dataset:
+  name: loss_run
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: must_not_number
+  truth_key: incurred_summed_all_valuations
+  rel_tol: 0.01
+  scope: report
+- kind: must_match
+  pattern: develop|immature|not (yet )?final|will (likely |usually )?rise
+  scope: report
+- kind: must_not_match
+  pattern: ultimate loss ratio (is|of|was)|IBNR (is|of|was|estimate)|combined ratio (is|of|was)|final
+    loss ratio|loss ratio .{0,20}(is|was) final
+  scope: report
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Loss run overview: each claimant''s latest valuation only (summing 16 valuations is 9×);
+  2025-2026 named as developing; no IBNR/ultimate/combined ratio.'

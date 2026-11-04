@@ -1,0 +1,21 @@
+id: e2e-65
+domain: insurance
+source: json
+dataset:
+  name: loss_run
+  seed: 1
+question: How many claims do we have?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: claims
+  rel_tol: 0.001
+- kind: must_not_number
+  truth_key: claimants
+  rel_tol: 0.001
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'From a JSON upload: distinct claims (3,450), never claimants (3,975) or rows.'

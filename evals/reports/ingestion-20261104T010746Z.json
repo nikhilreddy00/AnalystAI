@@ -1,0 +1,8142 @@
+{
+ "meta": {
+  "suite": "ingestion",
+  "report": "ingestion-20261104T010746Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5de279a",
+  "started_at": "20261104T010746Z",
+  "only": "ins-,phi-08,phi-07",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 4,
+  "runs": 12,
+  "pass_rate": 0.75,
+  "case_majority_pass_rate": 0.75,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 3.0,
+  "latency_p95_s": 7.23,
+  "type_inference": 1.0,
+  "pii_recall": 1.0,
+  "over_masking": 0.0,
+  "load_fidelity": 1.0,
+  "typed_errors": null,
+  "hard_pii_canary": 0,
+  "hard_silent_misload": 0,
+  "hard_summary_grounded": 0,
+  "hard_source_evidence": 0,
+  "nondeterministic_cases": 0,
+  "holdout_pass_rate": null,
+  "pii_recall_by_kind": {
+   "name": 1.0,
+   "vehicle": 1.0
+  },
+  "phi_recall": null,
+  "phi_planted_columns": 0,
+  "phi_over_masking": 0.0,
+  "phi_flag_accuracy": 1.0,
+  "domain_accuracy": 0.75
+ },
+ "runs": {
+  "dom-ins-loss-run": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Coverage",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Report Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Incurred",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Salvage Subrogation",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Cat Event",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "overmask",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Coverage",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Report Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Incurred",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Salvage Subrogation",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Cat Event",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-ins-loss-run",
+    "holdout": false,
+    "contract_sha": "549adcfb86417aed",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Home",
+         "Home",
+         "Home",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-30T00:00:00",
+         "2026-06-30T00:00:00",
+         "2026-03-31T00:00:00",
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         6280.2,
+         6288.38,
+         3058.44,
+         4106.84,
+         4782.12
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"d3bc6ed189643287\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "d3bc6ed189643287b7c001fbc5d189797271004c875f263acdc6960bea183467",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Number",
+       "Policy Number",
+       "Line of Business",
+       "Coverage",
+       "Loss Date",
+       "Report Date",
+       "Valuation Date",
+       "Claim Status",
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation",
+       "Cat Event"
+      ],
+      "rows": 38255,
+      "cells": [
+       [
+        32540,
+        "Claim Number",
+        "CLM-002938"
+       ],
+       [
+        24366,
+        "Claimant Number",
+        1.0
+       ],
+       [
+        19553,
+        "Policy Number",
+        "POL-02075"
+       ],
+       [
+        10320,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        11776,
+        "Coverage",
+        "Personal Property"
+       ],
+       [
+        1567,
+        "Loss Date",
+        {
+         "ts": "2022-09-16T00:00:00"
+        }
+       ],
+       [
+        2878,
+        "Report Date",
+        {
+         "ts": "2023-12-19T00:00:00"
+        }
+       ],
+       [
+        632,
+        "Valuation Date",
+        {
+         "ts": "2023-09-30T00:00:00"
+        }
+       ],
+       [
+        6704,
+        "Claim Status",
+        "Closed"
+       ],
+       [
+        31111,
+        "Paid to Date",
+        1956.82
+       ],
+       [
+        24843,
+        "Case Reserve",
+        null
+       ],
+       [
+        34917,
+        "Incurred",
+        140647.7
+       ],
+       [
+        19266,
+        "Salvage Subrogation",
+        0.0
+       ],
+       [
+        23206,
+        "Cat Event",
+        null
+       ],
+       [
+        37135,
+        "Claim Number",
+        "CLM-003339"
+       ],
+       [
+        27906,
+        "Claimant Number",
+        2.0
+       ],
+       [
+        24187,
+        "Policy Number",
+        "POL-02435"
+       ],
+       [
+        20796,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        21419,
+        "Coverage",
+        "Collision"
+       ],
+       [
+        35771,
+        "Loss Date",
+        {
+         "ts": "2022-09-10T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "549adcfb86417aed",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Number": "kept",
+       "Policy Number": "kept",
+       "Line of Business": "kept",
+       "Coverage": "kept",
+       "Loss Date": "kept",
+       "Report Date": "kept",
+       "Valuation Date": "kept",
+       "Claim Status": "kept",
+       "Paid to Date": "kept",
+       "Case Reserve": "kept",
+       "Incurred": "kept",
+       "Salvage Subrogation": "kept",
+       "Cat Event": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 6.53,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Coverage",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Report Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Incurred",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Salvage Subrogation",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Cat Event",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "overmask",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Coverage",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Report Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Incurred",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Salvage Subrogation",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Cat Event",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-ins-loss-run",
+    "holdout": false,
+    "contract_sha": "549adcfb86417aed",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Home",
+         "Home",
+         "Home",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-30T00:00:00",
+         "2026-06-30T00:00:00",
+         "2026-03-31T00:00:00",
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         6280.2,
+         6288.38,
+         3058.44,
+         4106.84,
+         4782.12
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"d3bc6ed189643287\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "d3bc6ed189643287b7c001fbc5d189797271004c875f263acdc6960bea183467",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Number",
+       "Policy Number",
+       "Line of Business",
+       "Coverage",
+       "Loss Date",
+       "Report Date",
+       "Valuation Date",
+       "Claim Status",
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation",
+       "Cat Event"
+      ],
+      "rows": 38255,
+      "cells": [
+       [
+        32540,
+        "Claim Number",
+        "CLM-002938"
+       ],
+       [
+        24366,
+        "Claimant Number",
+        1.0
+       ],
+       [
+        19553,
+        "Policy Number",
+        "POL-02075"
+       ],
+       [
+        10320,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        11776,
+        "Coverage",
+        "Personal Property"
+       ],
+       [
+        1567,
+        "Loss Date",
+        {
+         "ts": "2022-09-16T00:00:00"
+        }
+       ],
+       [
+        2878,
+        "Report Date",
+        {
+         "ts": "2023-12-19T00:00:00"
+        }
+       ],
+       [
+        632,
+        "Valuation Date",
+        {
+         "ts": "2023-09-30T00:00:00"
+        }
+       ],
+       [
+        6704,
+        "Claim Status",
+        "Closed"
+       ],
+       [
+        31111,
+        "Paid to Date",
+        1956.82
+       ],
+       [
+        24843,
+        "Case Reserve",
+        null
+       ],
+       [
+        34917,
+        "Incurred",
+        140647.7
+       ],
+       [
+        19266,
+        "Salvage Subrogation",
+        0.0
+       ],
+       [
+        23206,
+        "Cat Event",
+        null
+       ],
+       [
+        37135,
+        "Claim Number",
+        "CLM-003339"
+       ],
+       [
+        27906,
+        "Claimant Number",
+        2.0
+       ],
+       [
+        24187,
+        "Policy Number",
+        "POL-02435"
+       ],
+       [
+        20796,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        21419,
+        "Coverage",
+        "Collision"
+       ],
+       [
+        35771,
+        "Loss Date",
+        {
+         "ts": "2022-09-10T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "549adcfb86417aed",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Number": "kept",
+       "Policy Number": "kept",
+       "Line of Business": "kept",
+       "Coverage": "kept",
+       "Loss Date": "kept",
+       "Report Date": "kept",
+       "Valuation Date": "kept",
+       "Claim Status": "kept",
+       "Paid to Date": "kept",
+       "Case Reserve": "kept",
+       "Incurred": "kept",
+       "Salvage Subrogation": "kept",
+       "Cat Event": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 6.96,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Coverage",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Report Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Incurred",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Salvage Subrogation",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Cat Event",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "overmask",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Coverage",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Report Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Valuation Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Incurred",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Salvage Subrogation",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Cat Event",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-ins-loss-run",
+    "holdout": false,
+    "contract_sha": "549adcfb86417aed",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Home",
+         "Home",
+         "Home",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-30T00:00:00",
+         "2026-06-30T00:00:00",
+         "2026-03-31T00:00:00",
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         6280.2,
+         6288.38,
+         3058.44,
+         4106.84,
+         4782.12
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"d3bc6ed189643287\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "d3bc6ed189643287b7c001fbc5d189797271004c875f263acdc6960bea183467",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Number",
+       "Policy Number",
+       "Line of Business",
+       "Coverage",
+       "Loss Date",
+       "Report Date",
+       "Valuation Date",
+       "Claim Status",
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation",
+       "Cat Event"
+      ],
+      "rows": 38255,
+      "cells": [
+       [
+        32540,
+        "Claim Number",
+        "CLM-002938"
+       ],
+       [
+        24366,
+        "Claimant Number",
+        1.0
+       ],
+       [
+        19553,
+        "Policy Number",
+        "POL-02075"
+       ],
+       [
+        10320,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        11776,
+        "Coverage",
+        "Personal Property"
+       ],
+       [
+        1567,
+        "Loss Date",
+        {
+         "ts": "2022-09-16T00:00:00"
+        }
+       ],
+       [
+        2878,
+        "Report Date",
+        {
+         "ts": "2023-12-19T00:00:00"
+        }
+       ],
+       [
+        632,
+        "Valuation Date",
+        {
+         "ts": "2023-09-30T00:00:00"
+        }
+       ],
+       [
+        6704,
+        "Claim Status",
+        "Closed"
+       ],
+       [
+        31111,
+        "Paid to Date",
+        1956.82
+       ],
+       [
+        24843,
+        "Case Reserve",
+        null
+       ],
+       [
+        34917,
+        "Incurred",
+        140647.7
+       ],
+       [
+        19266,
+        "Salvage Subrogation",
+        0.0
+       ],
+       [
+        23206,
+        "Cat Event",
+        null
+       ],
+       [
+        37135,
+        "Claim Number",
+        "CLM-003339"
+       ],
+       [
+        27906,
+        "Claimant Number",
+        2.0
+       ],
+       [
+        24187,
+        "Policy Number",
+        "POL-02435"
+       ],
+       [
+        20796,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        21419,
+        "Coverage",
+        "Collision"
+       ],
+       [
+        35771,
+        "Loss Date",
+        {
+         "ts": "2022-09-10T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "549adcfb86417aed",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Number": "kept",
+       "Policy Number": "kept",
+       "Line of Business": "kept",
+       "Coverage": "kept",
+       "Loss Date": "kept",
+       "Report Date": "kept",
+       "Valuation Date": "kept",
+       "Claim Status": "kept",
+       "Paid to Date": "kept",
+       "Case Reserve": "kept",
+       "Incurred": "kept",
+       "Salvage Subrogation": "kept",
+       "Cat Event": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 7.57,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "dom-ins-policies": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Term",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "State",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Effective Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Expiration Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Transaction Type",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Written Premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Earned Premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Earned Exposure",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Renewal Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Insured Gender",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Incurred Losses",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "overmask",
+      "column": "Term",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Term",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "State",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Effective Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Expiration Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Transaction Type",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Written Premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Earned Premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Earned Exposure",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Renewal Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Insured Gender",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Incurred Losses",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": false,
+      "detail": "{'domain': 'insurance', 'roles': {'date': 'Effective Date', 'expiration_date': 'Expiration Date', 'policy': 'Policy Number', 'term': 'Term', 'line': 'Line of Business', 'state': 'State', 'transaction_type': 'Transaction Type', 'renewal': 'Renewal Status', 'gender': 'Insured Gender', 'written_premium': 'Written Premium', 'earned_premium': 'Earned Premium', 'exposure': 'Earned Exposure', 'claim_count': 'Claim Count', 'incurred': 'Incurred Losses'}} (want {'domain': 'insurance', 'roles': {'date': 'Effective Date', 'expiration_date': 'Expiration Date', 'policy': 'Policy Number', 'term': 'Term', 'line': 'Line of Business', 'state': 'State', 'written_premium': 'Written Premium', 'earned_premium': 'Earned Premium', 'exposure': 'Earned Exposure', 'renewal': 'Renewal Status', 'gender': 'Insured Gender', 'claim_count': 'Claim Count', 'incurred': 'Incurred Losses'}})"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-ins-policies",
+    "holdout": false,
+    "contract_sha": "a795f3c0959678b4",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 2674,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-00001",
+         "POL-00001",
+         "POL-00001",
+         "POL-00002",
+         "POL-00002"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Term",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-00001-1",
+         "POL-00001-2",
+         "POL-00001-3",
+         "POL-00002-1",
+         "POL-00002-2"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance term",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Auto",
+         "Auto",
+         "Auto",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "State",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "OH",
+         "OH",
+         "OH",
+         "TX",
+         "TX"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Effective Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2023-12-08T00:00:00",
+         "2024-12-08T00:00:00",
+         "2025-12-08T00:00:00",
+         "2024-02-20T00:00:00",
+         "2025-02-20T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Expiration Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-12-08T00:00:00",
+         "2025-12-08T00:00:00",
+         "2026-12-08T00:00:00",
+         "2025-02-20T00:00:00",
+         "2026-02-20T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Transaction Type",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "New Business",
+         "Renewal",
+         "Renewal",
+         "New Business",
+         "Renewal"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Written Premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         938.54,
+         976.09,
+         1015.13,
+         1916.47,
+         1993.13
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Earned Premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         938.54,
+         976.09,
+         909.45,
+         1916.47,
+         1993.13
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Earned Exposure",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         1.0,
+         1.0,
+         0.9,
+         1.0,
+         1.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Renewal Status",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "Renewed",
+         "Renewed",
+         "Not Yet Due",
+         "Renewed",
+         "Renewed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 6.66,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Insured Gender",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "F",
+         "F",
+         "F",
+         "M",
+         "M"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Count",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         0,
+         0,
+         0,
+         0,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred Losses",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-1",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2023-12-08T00:00:00",
+        "Expiration Date": "2024-12-08T00:00:00",
+        "Transaction Type": "New Business",
+        "Written Premium": 938.54,
+        "Earned Premium": 938.54,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-2",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2024-12-08T00:00:00",
+        "Expiration Date": "2025-12-08T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 976.09,
+        "Earned Premium": 976.09,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-3",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2025-12-08T00:00:00",
+        "Expiration Date": "2026-12-08T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 1015.13,
+        "Earned Premium": 909.45,
+        "Earned Exposure": 0.9,
+        "Renewal Status": "Not Yet Due",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00002",
+        "Term": "POL-00002-1",
+        "Line of Business": "Home",
+        "State": "TX",
+        "Effective Date": "2024-02-20T00:00:00",
+        "Expiration Date": "2025-02-20T00:00:00",
+        "Transaction Type": "New Business",
+        "Written Premium": 1916.47,
+        "Earned Premium": 1916.47,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "M",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00002",
+        "Term": "POL-00002-2",
+        "Line of Business": "Home",
+        "State": "TX",
+        "Effective Date": "2025-02-20T00:00:00",
+        "Expiration Date": "2026-02-20T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 1993.13,
+        "Earned Premium": 1993.13,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "M",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       }
+      ],
+      "date_columns": [
+       "Effective Date",
+       "Expiration Date"
+      ],
+      "id_columns": [
+       "Policy Number",
+       "Term"
+      ],
+      "metric_columns": [
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "schema_summary": "2,674 rows \u00d7 14 columns. Dates: Effective Date from 2023-01-02 to 2026-10-26 (daily). Metrics: Written Premium, Earned Premium, Earned Exposure, Claim Count, Incurred Losses. Identifiers: Policy Number, Term. Categories: Line of Business, State, Transaction Type, Renewal Status, Insured Gender. Missing values: Renewal Status 6.66%.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2,674 rows \u00d7 14 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Policy Number\", \"Term\"], \"category\": [\"Line of Business\", \"State\", \"Transaction Type\", \"Renewal Status\", \"Insured Gender\"], \"date\": [\"Effective Date\", \"Expiration Date\"], \"metric\": [\"Written Premium\", \"Earned Premium\", \"Earned Exposure\", \"Claim Count\", \"Incurred Losses\"]}, \"personal_data\": {}, \"fingerprint\": \"0c2c7695559c4cc5\"}",
+       "row_count": 2674,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "0c2c7695559c4cc55a22bd880ed3b1e9df821425891b9fc24c40443563b9e6ed",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Effective Date",
+       "expiration_date": "Expiration Date",
+       "policy": "Policy Number",
+       "term": "Term",
+       "line": "Line of Business",
+       "state": "State",
+       "transaction_type": "Transaction Type",
+       "renewal": "Renewal Status",
+       "gender": "Insured Gender",
+       "written_premium": "Written Premium",
+       "earned_premium": "Earned Premium",
+       "exposure": "Earned Exposure",
+       "claim_count": "Claim Count",
+       "incurred": "Incurred Losses"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Policy Number",
+       "Term",
+       "Line of Business",
+       "State",
+       "Effective Date",
+       "Expiration Date",
+       "Transaction Type",
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Renewal Status",
+       "Insured Gender",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "rows": 2674,
+      "cells": [
+       [
+        2274,
+        "Policy Number",
+        "POL-01104"
+       ],
+       [
+        1703,
+        "Term",
+        "POL-00832-2"
+       ],
+       [
+        1366,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        721,
+        "State",
+        "FL"
+       ],
+       [
+        823,
+        "Effective Date",
+        {
+         "ts": "2026-03-03T00:00:00"
+        }
+       ],
+       [
+        109,
+        "Expiration Date",
+        {
+         "ts": "2024-06-11T00:00:00"
+        }
+       ],
+       [
+        201,
+        "Transaction Type",
+        "Renewal"
+       ],
+       [
+        44,
+        "Written Premium",
+        1811.18
+       ],
+       [
+        468,
+        "Earned Premium",
+        982.06
+       ],
+       [
+        2174,
+        "Earned Exposure",
+        1.0
+       ],
+       [
+        1736,
+        "Renewal Status",
+        "Lapsed"
+       ],
+       [
+        2440,
+        "Insured Gender",
+        "F"
+       ],
+       [
+        1346,
+        "Claim Count",
+        0.0
+       ],
+       [
+        1622,
+        "Incurred Losses",
+        0.0
+       ],
+       [
+        2595,
+        "Policy Number",
+        "POL-01262"
+       ],
+       [
+        1950,
+        "Term",
+        "POL-00945-3"
+       ],
+       [
+        1690,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        1453,
+        "State",
+        "CA"
+       ],
+       [
+        1497,
+        "Effective Date",
+        {
+         "ts": "2025-07-30T00:00:00"
+        }
+       ],
+       [
+        2500,
+        "Expiration Date",
+        {
+         "ts": "2026-01-21T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "a795f3c0959678b4",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Policy Number": "kept",
+       "Term": "kept",
+       "Line of Business": "kept",
+       "State": "kept",
+       "Effective Date": "kept",
+       "Expiration Date": "kept",
+       "Transaction Type": "kept",
+       "Written Premium": "kept",
+       "Earned Premium": "kept",
+       "Earned Exposure": "kept",
+       "Renewal Status": "kept",
+       "Insured Gender": "kept",
+       "Claim Count": "kept",
+       "Incurred Losses": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 2.24,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Term",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "State",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Effective Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Expiration Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Transaction Type",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Written Premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Earned Premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Earned Exposure",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Renewal Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Insured Gender",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Incurred Losses",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "overmask",
+      "column": "Term",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Term",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "State",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Effective Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Expiration Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Transaction Type",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Written Premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Earned Premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Earned Exposure",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Renewal Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Insured Gender",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Incurred Losses",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": false,
+      "detail": "{'domain': 'insurance', 'roles': {'date': 'Effective Date', 'expiration_date': 'Expiration Date', 'policy': 'Policy Number', 'term': 'Term', 'line': 'Line of Business', 'state': 'State', 'transaction_type': 'Transaction Type', 'renewal': 'Renewal Status', 'gender': 'Insured Gender', 'written_premium': 'Written Premium', 'earned_premium': 'Earned Premium', 'exposure': 'Earned Exposure', 'claim_count': 'Claim Count', 'incurred': 'Incurred Losses'}} (want {'domain': 'insurance', 'roles': {'date': 'Effective Date', 'expiration_date': 'Expiration Date', 'policy': 'Policy Number', 'term': 'Term', 'line': 'Line of Business', 'state': 'State', 'written_premium': 'Written Premium', 'earned_premium': 'Earned Premium', 'exposure': 'Earned Exposure', 'renewal': 'Renewal Status', 'gender': 'Insured Gender', 'claim_count': 'Claim Count', 'incurred': 'Incurred Losses'}})"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-ins-policies",
+    "holdout": false,
+    "contract_sha": "a795f3c0959678b4",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 2674,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-00001",
+         "POL-00001",
+         "POL-00001",
+         "POL-00002",
+         "POL-00002"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Term",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-00001-1",
+         "POL-00001-2",
+         "POL-00001-3",
+         "POL-00002-1",
+         "POL-00002-2"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance term",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Auto",
+         "Auto",
+         "Auto",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "State",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "OH",
+         "OH",
+         "OH",
+         "TX",
+         "TX"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Effective Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2023-12-08T00:00:00",
+         "2024-12-08T00:00:00",
+         "2025-12-08T00:00:00",
+         "2024-02-20T00:00:00",
+         "2025-02-20T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Expiration Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-12-08T00:00:00",
+         "2025-12-08T00:00:00",
+         "2026-12-08T00:00:00",
+         "2025-02-20T00:00:00",
+         "2026-02-20T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Transaction Type",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "New Business",
+         "Renewal",
+         "Renewal",
+         "New Business",
+         "Renewal"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Written Premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         938.54,
+         976.09,
+         1015.13,
+         1916.47,
+         1993.13
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Earned Premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         938.54,
+         976.09,
+         909.45,
+         1916.47,
+         1993.13
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Earned Exposure",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         1.0,
+         1.0,
+         0.9,
+         1.0,
+         1.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Renewal Status",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "Renewed",
+         "Renewed",
+         "Not Yet Due",
+         "Renewed",
+         "Renewed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 6.66,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Insured Gender",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "F",
+         "F",
+         "F",
+         "M",
+         "M"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Count",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         0,
+         0,
+         0,
+         0,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred Losses",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-1",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2023-12-08T00:00:00",
+        "Expiration Date": "2024-12-08T00:00:00",
+        "Transaction Type": "New Business",
+        "Written Premium": 938.54,
+        "Earned Premium": 938.54,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-2",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2024-12-08T00:00:00",
+        "Expiration Date": "2025-12-08T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 976.09,
+        "Earned Premium": 976.09,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-3",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2025-12-08T00:00:00",
+        "Expiration Date": "2026-12-08T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 1015.13,
+        "Earned Premium": 909.45,
+        "Earned Exposure": 0.9,
+        "Renewal Status": "Not Yet Due",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00002",
+        "Term": "POL-00002-1",
+        "Line of Business": "Home",
+        "State": "TX",
+        "Effective Date": "2024-02-20T00:00:00",
+        "Expiration Date": "2025-02-20T00:00:00",
+        "Transaction Type": "New Business",
+        "Written Premium": 1916.47,
+        "Earned Premium": 1916.47,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "M",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00002",
+        "Term": "POL-00002-2",
+        "Line of Business": "Home",
+        "State": "TX",
+        "Effective Date": "2025-02-20T00:00:00",
+        "Expiration Date": "2026-02-20T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 1993.13,
+        "Earned Premium": 1993.13,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "M",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       }
+      ],
+      "date_columns": [
+       "Effective Date",
+       "Expiration Date"
+      ],
+      "id_columns": [
+       "Policy Number",
+       "Term"
+      ],
+      "metric_columns": [
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "schema_summary": "2,674 rows \u00d7 14 columns. Dates: Effective Date from 2023-01-02 to 2026-10-26 (daily). Metrics: Written Premium, Earned Premium, Earned Exposure, Claim Count, Incurred Losses. Identifiers: Policy Number, Term. Categories: Line of Business, State, Transaction Type, Renewal Status, Insured Gender. Missing values: Renewal Status 6.66%.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2,674 rows \u00d7 14 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Policy Number\", \"Term\"], \"category\": [\"Line of Business\", \"State\", \"Transaction Type\", \"Renewal Status\", \"Insured Gender\"], \"date\": [\"Effective Date\", \"Expiration Date\"], \"metric\": [\"Written Premium\", \"Earned Premium\", \"Earned Exposure\", \"Claim Count\", \"Incurred Losses\"]}, \"personal_data\": {}, \"fingerprint\": \"0c2c7695559c4cc5\"}",
+       "row_count": 2674,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "0c2c7695559c4cc55a22bd880ed3b1e9df821425891b9fc24c40443563b9e6ed",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Effective Date",
+       "expiration_date": "Expiration Date",
+       "policy": "Policy Number",
+       "term": "Term",
+       "line": "Line of Business",
+       "state": "State",
+       "transaction_type": "Transaction Type",
+       "renewal": "Renewal Status",
+       "gender": "Insured Gender",
+       "written_premium": "Written Premium",
+       "earned_premium": "Earned Premium",
+       "exposure": "Earned Exposure",
+       "claim_count": "Claim Count",
+       "incurred": "Incurred Losses"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Policy Number",
+       "Term",
+       "Line of Business",
+       "State",
+       "Effective Date",
+       "Expiration Date",
+       "Transaction Type",
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Renewal Status",
+       "Insured Gender",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "rows": 2674,
+      "cells": [
+       [
+        2274,
+        "Policy Number",
+        "POL-01104"
+       ],
+       [
+        1703,
+        "Term",
+        "POL-00832-2"
+       ],
+       [
+        1366,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        721,
+        "State",
+        "FL"
+       ],
+       [
+        823,
+        "Effective Date",
+        {
+         "ts": "2026-03-03T00:00:00"
+        }
+       ],
+       [
+        109,
+        "Expiration Date",
+        {
+         "ts": "2024-06-11T00:00:00"
+        }
+       ],
+       [
+        201,
+        "Transaction Type",
+        "Renewal"
+       ],
+       [
+        44,
+        "Written Premium",
+        1811.18
+       ],
+       [
+        468,
+        "Earned Premium",
+        982.06
+       ],
+       [
+        2174,
+        "Earned Exposure",
+        1.0
+       ],
+       [
+        1736,
+        "Renewal Status",
+        "Lapsed"
+       ],
+       [
+        2440,
+        "Insured Gender",
+        "F"
+       ],
+       [
+        1346,
+        "Claim Count",
+        0.0
+       ],
+       [
+        1622,
+        "Incurred Losses",
+        0.0
+       ],
+       [
+        2595,
+        "Policy Number",
+        "POL-01262"
+       ],
+       [
+        1950,
+        "Term",
+        "POL-00945-3"
+       ],
+       [
+        1690,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        1453,
+        "State",
+        "CA"
+       ],
+       [
+        1497,
+        "Effective Date",
+        {
+         "ts": "2025-07-30T00:00:00"
+        }
+       ],
+       [
+        2500,
+        "Expiration Date",
+        {
+         "ts": "2026-01-21T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "a795f3c0959678b4",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Policy Number": "kept",
+       "Term": "kept",
+       "Line of Business": "kept",
+       "State": "kept",
+       "Effective Date": "kept",
+       "Expiration Date": "kept",
+       "Transaction Type": "kept",
+       "Written Premium": "kept",
+       "Earned Premium": "kept",
+       "Earned Exposure": "kept",
+       "Renewal Status": "kept",
+       "Insured Gender": "kept",
+       "Claim Count": "kept",
+       "Incurred Losses": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 2.31,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Term",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "State",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Effective Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Expiration Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Transaction Type",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Written Premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Earned Premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Earned Exposure",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Renewal Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Insured Gender",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Incurred Losses",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "overmask",
+      "column": "Term",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Policy Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Term",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line of Business",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "State",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Effective Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Expiration Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Transaction Type",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Written Premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Earned Premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Earned Exposure",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Renewal Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Insured Gender",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Incurred Losses",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": false,
+      "detail": "{'domain': 'insurance', 'roles': {'date': 'Effective Date', 'expiration_date': 'Expiration Date', 'policy': 'Policy Number', 'term': 'Term', 'line': 'Line of Business', 'state': 'State', 'transaction_type': 'Transaction Type', 'renewal': 'Renewal Status', 'gender': 'Insured Gender', 'written_premium': 'Written Premium', 'earned_premium': 'Earned Premium', 'exposure': 'Earned Exposure', 'claim_count': 'Claim Count', 'incurred': 'Incurred Losses'}} (want {'domain': 'insurance', 'roles': {'date': 'Effective Date', 'expiration_date': 'Expiration Date', 'policy': 'Policy Number', 'term': 'Term', 'line': 'Line of Business', 'state': 'State', 'written_premium': 'Written Premium', 'earned_premium': 'Earned Premium', 'exposure': 'Earned Exposure', 'renewal': 'Renewal Status', 'gender': 'Insured Gender', 'claim_count': 'Claim Count', 'incurred': 'Incurred Losses'}})"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-ins-policies",
+    "holdout": false,
+    "contract_sha": "a795f3c0959678b4",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 2674,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-00001",
+         "POL-00001",
+         "POL-00001",
+         "POL-00002",
+         "POL-00002"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Term",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-00001-1",
+         "POL-00001-2",
+         "POL-00001-3",
+         "POL-00002-1",
+         "POL-00002-2"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance term",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Auto",
+         "Auto",
+         "Auto",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "State",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "OH",
+         "OH",
+         "OH",
+         "TX",
+         "TX"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Effective Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2023-12-08T00:00:00",
+         "2024-12-08T00:00:00",
+         "2025-12-08T00:00:00",
+         "2024-02-20T00:00:00",
+         "2025-02-20T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Expiration Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-12-08T00:00:00",
+         "2025-12-08T00:00:00",
+         "2026-12-08T00:00:00",
+         "2025-02-20T00:00:00",
+         "2026-02-20T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Transaction Type",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "New Business",
+         "Renewal",
+         "Renewal",
+         "New Business",
+         "Renewal"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Written Premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         938.54,
+         976.09,
+         1015.13,
+         1916.47,
+         1993.13
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Earned Premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         938.54,
+         976.09,
+         909.45,
+         1916.47,
+         1993.13
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Earned Exposure",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         1.0,
+         1.0,
+         0.9,
+         1.0,
+         1.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Renewal Status",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "Renewed",
+         "Renewed",
+         "Not Yet Due",
+         "Renewed",
+         "Renewed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 6.66,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Insured Gender",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "F",
+         "F",
+         "F",
+         "M",
+         "M"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Count",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         0,
+         0,
+         0,
+         0,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred Losses",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-1",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2023-12-08T00:00:00",
+        "Expiration Date": "2024-12-08T00:00:00",
+        "Transaction Type": "New Business",
+        "Written Premium": 938.54,
+        "Earned Premium": 938.54,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-2",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2024-12-08T00:00:00",
+        "Expiration Date": "2025-12-08T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 976.09,
+        "Earned Premium": 976.09,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00001",
+        "Term": "POL-00001-3",
+        "Line of Business": "Auto",
+        "State": "OH",
+        "Effective Date": "2025-12-08T00:00:00",
+        "Expiration Date": "2026-12-08T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 1015.13,
+        "Earned Premium": 909.45,
+        "Earned Exposure": 0.9,
+        "Renewal Status": "Not Yet Due",
+        "Insured Gender": "F",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00002",
+        "Term": "POL-00002-1",
+        "Line of Business": "Home",
+        "State": "TX",
+        "Effective Date": "2024-02-20T00:00:00",
+        "Expiration Date": "2025-02-20T00:00:00",
+        "Transaction Type": "New Business",
+        "Written Premium": 1916.47,
+        "Earned Premium": 1916.47,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "M",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       },
+       {
+        "Policy Number": "POL-00002",
+        "Term": "POL-00002-2",
+        "Line of Business": "Home",
+        "State": "TX",
+        "Effective Date": "2025-02-20T00:00:00",
+        "Expiration Date": "2026-02-20T00:00:00",
+        "Transaction Type": "Renewal",
+        "Written Premium": 1993.13,
+        "Earned Premium": 1993.13,
+        "Earned Exposure": 1.0,
+        "Renewal Status": "Renewed",
+        "Insured Gender": "M",
+        "Claim Count": 0,
+        "Incurred Losses": 0.0
+       }
+      ],
+      "date_columns": [
+       "Effective Date",
+       "Expiration Date"
+      ],
+      "id_columns": [
+       "Policy Number",
+       "Term"
+      ],
+      "metric_columns": [
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "schema_summary": "2,674 rows \u00d7 14 columns. Dates: Effective Date from 2023-01-02 to 2026-10-26 (daily). Metrics: Written Premium, Earned Premium, Earned Exposure, Claim Count, Incurred Losses. Identifiers: Policy Number, Term. Categories: Line of Business, State, Transaction Type, Renewal Status, Insured Gender. Missing values: Renewal Status 6.66%.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2,674 rows \u00d7 14 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Policy Number\", \"Term\"], \"category\": [\"Line of Business\", \"State\", \"Transaction Type\", \"Renewal Status\", \"Insured Gender\"], \"date\": [\"Effective Date\", \"Expiration Date\"], \"metric\": [\"Written Premium\", \"Earned Premium\", \"Earned Exposure\", \"Claim Count\", \"Incurred Losses\"]}, \"personal_data\": {}, \"fingerprint\": \"0c2c7695559c4cc5\"}",
+       "row_count": 2674,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "0c2c7695559c4cc55a22bd880ed3b1e9df821425891b9fc24c40443563b9e6ed",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Effective Date",
+       "expiration_date": "Expiration Date",
+       "policy": "Policy Number",
+       "term": "Term",
+       "line": "Line of Business",
+       "state": "State",
+       "transaction_type": "Transaction Type",
+       "renewal": "Renewal Status",
+       "gender": "Insured Gender",
+       "written_premium": "Written Premium",
+       "earned_premium": "Earned Premium",
+       "exposure": "Earned Exposure",
+       "claim_count": "Claim Count",
+       "incurred": "Incurred Losses"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Policy Number",
+       "Term",
+       "Line of Business",
+       "State",
+       "Effective Date",
+       "Expiration Date",
+       "Transaction Type",
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Renewal Status",
+       "Insured Gender",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "rows": 2674,
+      "cells": [
+       [
+        2274,
+        "Policy Number",
+        "POL-01104"
+       ],
+       [
+        1703,
+        "Term",
+        "POL-00832-2"
+       ],
+       [
+        1366,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        721,
+        "State",
+        "FL"
+       ],
+       [
+        823,
+        "Effective Date",
+        {
+         "ts": "2026-03-03T00:00:00"
+        }
+       ],
+       [
+        109,
+        "Expiration Date",
+        {
+         "ts": "2024-06-11T00:00:00"
+        }
+       ],
+       [
+        201,
+        "Transaction Type",
+        "Renewal"
+       ],
+       [
+        44,
+        "Written Premium",
+        1811.18
+       ],
+       [
+        468,
+        "Earned Premium",
+        982.06
+       ],
+       [
+        2174,
+        "Earned Exposure",
+        1.0
+       ],
+       [
+        1736,
+        "Renewal Status",
+        "Lapsed"
+       ],
+       [
+        2440,
+        "Insured Gender",
+        "F"
+       ],
+       [
+        1346,
+        "Claim Count",
+        0.0
+       ],
+       [
+        1622,
+        "Incurred Losses",
+        0.0
+       ],
+       [
+        2595,
+        "Policy Number",
+        "POL-01262"
+       ],
+       [
+        1950,
+        "Term",
+        "POL-00945-3"
+       ],
+       [
+        1690,
+        "Line of Business",
+        "Auto"
+       ],
+       [
+        1453,
+        "State",
+        "CA"
+       ],
+       [
+        1497,
+        "Effective Date",
+        {
+         "ts": "2025-07-30T00:00:00"
+        }
+       ],
+       [
+        2500,
+        "Expiration Date",
+        {
+         "ts": "2026-01-21T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "a795f3c0959678b4",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Policy Number": "kept",
+       "Term": "kept",
+       "Line of Business": "kept",
+       "State": "kept",
+       "Effective Date": "kept",
+       "Expiration Date": "kept",
+       "Transaction Type": "kept",
+       "Written Premium": "kept",
+       "Earned Premium": "kept",
+       "Earned Exposure": "kept",
+       "Renewal Status": "kept",
+       "Insured Gender": "kept",
+       "Claim Count": "kept",
+       "Incurred Losses": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 1.88,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": false
+   }
+  ],
+  "phi-07-insurance-members": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "member_id",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "region",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "start_date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "pii",
+      "column": "policyholder",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "member_id",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "region",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "start_date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-07-insurance-members",
+    "holdout": false,
+    "contract_sha": "6aaf35a854441bab",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "member_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M0586727",
+         "M6157500",
+         "M7378632",
+         "M4214808",
+         "M7905437"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('member_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "policyholder",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         35.67,
+         28.46,
+         43.0,
+         24.08,
+         28.08
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "region",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "East",
+         "East",
+         "West",
+         "South",
+         "East"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "start_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-04-02T00:00:00",
+         "2024-09-18T00:00:00",
+         "2024-08-17T00:00:00",
+         "2025-12-14T00:00:00",
+         "2025-03-07T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "member_id": "M0586727",
+        "policyholder": "[REDACTED]",
+        "premium": 35.67,
+        "region": "East",
+        "start_date": "2025-04-02T00:00:00"
+       },
+       {
+        "member_id": "M6157500",
+        "policyholder": "[REDACTED]",
+        "premium": 28.46,
+        "region": "East",
+        "start_date": "2024-09-18T00:00:00"
+       },
+       {
+        "member_id": "M7378632",
+        "policyholder": "[REDACTED]",
+        "premium": 43.0,
+        "region": "West",
+        "start_date": "2024-08-17T00:00:00"
+       },
+       {
+        "member_id": "M4214808",
+        "policyholder": "[REDACTED]",
+        "premium": 24.08,
+        "region": "South",
+        "start_date": "2025-12-14T00:00:00"
+       },
+       {
+        "member_id": "M7905437",
+        "policyholder": "[REDACTED]",
+        "premium": 28.08,
+        "region": "East",
+        "start_date": "2025-03-07T00:00:00"
+       }
+      ],
+      "date_columns": [
+       "start_date"
+      ],
+      "id_columns": [
+       "member_id"
+      ],
+      "metric_columns": [
+       "premium"
+      ],
+      "schema_summary": "300 rows \u00d7 5 columns. Dates: start_date from 2024-01-02 to 2025-12-23 (weekly). Metrics: premium. Identifiers: member_id. Categories: region. Personal data, masked before any model sees it: policyholder (name).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"member_id\"], \"category\": [\"policyholder\", \"region\"], \"metric\": [\"premium\"], \"date\": [\"start_date\"]}, \"personal_data\": {\"policyholder\": \"name\"}, \"fingerprint\": \"872a463cb0354c22\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "872a463cb0354c229072881b4c4c976afddfd03d9f4e91b3fd79a1b5a227d3f3",
+      "pii_columns": [
+       "policyholder"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "member_id",
+       "policyholder",
+       "premium",
+       "region",
+       "start_date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        19,
+        "member_id",
+        "M3033698"
+       ],
+       [
+        205,
+        "policyholder",
+        "Olivia Fischer"
+       ],
+       [
+        245,
+        "premium",
+        65.58
+       ],
+       [
+        140,
+        "region",
+        "South"
+       ],
+       [
+        263,
+        "start_date",
+        {
+         "ts": "2025-01-30T00:00:00"
+        }
+       ],
+       [
+        252,
+        "member_id",
+        "M5671233"
+       ],
+       [
+        280,
+        "policyholder",
+        "Tom\u00e1s Haddad"
+       ],
+       [
+        102,
+        "premium",
+        26.94
+       ],
+       [
+        79,
+        "region",
+        "East"
+       ],
+       [
+        118,
+        "start_date",
+        {
+         "ts": "2025-04-04T00:00:00"
+        }
+       ],
+       [
+        187,
+        "member_id",
+        "M7801843"
+       ],
+       [
+        46,
+        "policyholder",
+        "Liam Fischer"
+       ],
+       [
+        144,
+        "premium",
+        72.44
+       ],
+       [
+        128,
+        "region",
+        "East"
+       ],
+       [
+        102,
+        "start_date",
+        {
+         "ts": "2024-03-06T00:00:00"
+        }
+       ],
+       [
+        217,
+        "member_id",
+        "M6408850"
+       ],
+       [
+        240,
+        "policyholder",
+        "Chen Fischer"
+       ],
+       [
+        87,
+        "premium",
+        15.61
+       ],
+       [
+        37,
+        "region",
+        "North"
+       ],
+       [
+        101,
+        "start_date",
+        {
+         "ts": "2025-09-13T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "6aaf35a854441bab",
+     "phi": {
+      "flag": false,
+      "status": {
+       "member_id": "kept",
+       "policyholder": "kept",
+       "premium": "kept",
+       "region": "kept",
+       "start_date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 5.09,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "member_id",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "region",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "start_date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "pii",
+      "column": "policyholder",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "member_id",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "region",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "start_date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-07-insurance-members",
+    "holdout": false,
+    "contract_sha": "6aaf35a854441bab",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "member_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M0586727",
+         "M6157500",
+         "M7378632",
+         "M4214808",
+         "M7905437"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('member_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "policyholder",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         35.67,
+         28.46,
+         43.0,
+         24.08,
+         28.08
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "region",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "East",
+         "East",
+         "West",
+         "South",
+         "East"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "start_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-04-02T00:00:00",
+         "2024-09-18T00:00:00",
+         "2024-08-17T00:00:00",
+         "2025-12-14T00:00:00",
+         "2025-03-07T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "member_id": "M0586727",
+        "policyholder": "[REDACTED]",
+        "premium": 35.67,
+        "region": "East",
+        "start_date": "2025-04-02T00:00:00"
+       },
+       {
+        "member_id": "M6157500",
+        "policyholder": "[REDACTED]",
+        "premium": 28.46,
+        "region": "East",
+        "start_date": "2024-09-18T00:00:00"
+       },
+       {
+        "member_id": "M7378632",
+        "policyholder": "[REDACTED]",
+        "premium": 43.0,
+        "region": "West",
+        "start_date": "2024-08-17T00:00:00"
+       },
+       {
+        "member_id": "M4214808",
+        "policyholder": "[REDACTED]",
+        "premium": 24.08,
+        "region": "South",
+        "start_date": "2025-12-14T00:00:00"
+       },
+       {
+        "member_id": "M7905437",
+        "policyholder": "[REDACTED]",
+        "premium": 28.08,
+        "region": "East",
+        "start_date": "2025-03-07T00:00:00"
+       }
+      ],
+      "date_columns": [
+       "start_date"
+      ],
+      "id_columns": [
+       "member_id"
+      ],
+      "metric_columns": [
+       "premium"
+      ],
+      "schema_summary": "300 rows \u00d7 5 columns. Dates: start_date from 2024-01-02 to 2025-12-23 (weekly). Metrics: premium. Identifiers: member_id. Categories: region. Personal data, masked before any model sees it: policyholder (name).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"member_id\"], \"category\": [\"policyholder\", \"region\"], \"metric\": [\"premium\"], \"date\": [\"start_date\"]}, \"personal_data\": {\"policyholder\": \"name\"}, \"fingerprint\": \"872a463cb0354c22\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "872a463cb0354c229072881b4c4c976afddfd03d9f4e91b3fd79a1b5a227d3f3",
+      "pii_columns": [
+       "policyholder"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "member_id",
+       "policyholder",
+       "premium",
+       "region",
+       "start_date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        19,
+        "member_id",
+        "M3033698"
+       ],
+       [
+        205,
+        "policyholder",
+        "Olivia Fischer"
+       ],
+       [
+        245,
+        "premium",
+        65.58
+       ],
+       [
+        140,
+        "region",
+        "South"
+       ],
+       [
+        263,
+        "start_date",
+        {
+         "ts": "2025-01-30T00:00:00"
+        }
+       ],
+       [
+        252,
+        "member_id",
+        "M5671233"
+       ],
+       [
+        280,
+        "policyholder",
+        "Tom\u00e1s Haddad"
+       ],
+       [
+        102,
+        "premium",
+        26.94
+       ],
+       [
+        79,
+        "region",
+        "East"
+       ],
+       [
+        118,
+        "start_date",
+        {
+         "ts": "2025-04-04T00:00:00"
+        }
+       ],
+       [
+        187,
+        "member_id",
+        "M7801843"
+       ],
+       [
+        46,
+        "policyholder",
+        "Liam Fischer"
+       ],
+       [
+        144,
+        "premium",
+        72.44
+       ],
+       [
+        128,
+        "region",
+        "East"
+       ],
+       [
+        102,
+        "start_date",
+        {
+         "ts": "2024-03-06T00:00:00"
+        }
+       ],
+       [
+        217,
+        "member_id",
+        "M6408850"
+       ],
+       [
+        240,
+        "policyholder",
+        "Chen Fischer"
+       ],
+       [
+        87,
+        "premium",
+        15.61
+       ],
+       [
+        37,
+        "region",
+        "North"
+       ],
+       [
+        101,
+        "start_date",
+        {
+         "ts": "2025-09-13T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "6aaf35a854441bab",
+     "phi": {
+      "flag": false,
+      "status": {
+       "member_id": "kept",
+       "policyholder": "kept",
+       "premium": "kept",
+       "region": "kept",
+       "start_date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 4.74,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "member_id",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "premium",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "region",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "start_date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "pii",
+      "column": "policyholder",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "member_id",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "policyholder",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "premium",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "region",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "start_date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-07-insurance-members",
+    "holdout": false,
+    "contract_sha": "6aaf35a854441bab",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "member_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M0586727",
+         "M6157500",
+         "M7378632",
+         "M4214808",
+         "M7905437"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('member_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "policyholder",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "premium",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         35.67,
+         28.46,
+         43.0,
+         24.08,
+         28.08
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "region",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "East",
+         "East",
+         "West",
+         "South",
+         "East"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "start_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-04-02T00:00:00",
+         "2024-09-18T00:00:00",
+         "2024-08-17T00:00:00",
+         "2025-12-14T00:00:00",
+         "2025-03-07T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "member_id": "M0586727",
+        "policyholder": "[REDACTED]",
+        "premium": 35.67,
+        "region": "East",
+        "start_date": "2025-04-02T00:00:00"
+       },
+       {
+        "member_id": "M6157500",
+        "policyholder": "[REDACTED]",
+        "premium": 28.46,
+        "region": "East",
+        "start_date": "2024-09-18T00:00:00"
+       },
+       {
+        "member_id": "M7378632",
+        "policyholder": "[REDACTED]",
+        "premium": 43.0,
+        "region": "West",
+        "start_date": "2024-08-17T00:00:00"
+       },
+       {
+        "member_id": "M4214808",
+        "policyholder": "[REDACTED]",
+        "premium": 24.08,
+        "region": "South",
+        "start_date": "2025-12-14T00:00:00"
+       },
+       {
+        "member_id": "M7905437",
+        "policyholder": "[REDACTED]",
+        "premium": 28.08,
+        "region": "East",
+        "start_date": "2025-03-07T00:00:00"
+       }
+      ],
+      "date_columns": [
+       "start_date"
+      ],
+      "id_columns": [
+       "member_id"
+      ],
+      "metric_columns": [
+       "premium"
+      ],
+      "schema_summary": "300 rows \u00d7 5 columns. Dates: start_date from 2024-01-02 to 2025-12-23 (weekly). Metrics: premium. Identifiers: member_id. Categories: region. Personal data, masked before any model sees it: policyholder (name).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"member_id\"], \"category\": [\"policyholder\", \"region\"], \"metric\": [\"premium\"], \"date\": [\"start_date\"]}, \"personal_data\": {\"policyholder\": \"name\"}, \"fingerprint\": \"872a463cb0354c22\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "872a463cb0354c229072881b4c4c976afddfd03d9f4e91b3fd79a1b5a227d3f3",
+      "pii_columns": [
+       "policyholder"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "member_id",
+       "policyholder",
+       "premium",
+       "region",
+       "start_date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        19,
+        "member_id",
+        "M3033698"
+       ],
+       [
+        205,
+        "policyholder",
+        "Olivia Fischer"
+       ],
+       [
+        245,
+        "premium",
+        65.58
+       ],
+       [
+        140,
+        "region",
+        "South"
+       ],
+       [
+        263,
+        "start_date",
+        {
+         "ts": "2025-01-30T00:00:00"
+        }
+       ],
+       [
+        252,
+        "member_id",
+        "M5671233"
+       ],
+       [
+        280,
+        "policyholder",
+        "Tom\u00e1s Haddad"
+       ],
+       [
+        102,
+        "premium",
+        26.94
+       ],
+       [
+        79,
+        "region",
+        "East"
+       ],
+       [
+        118,
+        "start_date",
+        {
+         "ts": "2025-04-04T00:00:00"
+        }
+       ],
+       [
+        187,
+        "member_id",
+        "M7801843"
+       ],
+       [
+        46,
+        "policyholder",
+        "Liam Fischer"
+       ],
+       [
+        144,
+        "premium",
+        72.44
+       ],
+       [
+        128,
+        "region",
+        "East"
+       ],
+       [
+        102,
+        "start_date",
+        {
+         "ts": "2024-03-06T00:00:00"
+        }
+       ],
+       [
+        217,
+        "member_id",
+        "M6408850"
+       ],
+       [
+        240,
+        "policyholder",
+        "Chen Fischer"
+       ],
+       [
+        87,
+        "premium",
+        15.61
+       ],
+       [
+        37,
+        "region",
+        "North"
+       ],
+       [
+        101,
+        "start_date",
+        {
+         "ts": "2025-09-13T00:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "6aaf35a854441bab",
+     "phi": {
+      "flag": false,
+      "status": {
+       "member_id": "kept",
+       "policyholder": "kept",
+       "premium": "kept",
+       "region": "kept",
+       "start_date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 3.69,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "phi-08-auto-claims-vehicle": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "pii",
+      "column": "Claimant Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Vehicle Ref",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Driver License No",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-08-auto-claims-vehicle",
+    "holdout": false,
+    "contract_sha": "1a30d30d2e2b5b92",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 7,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "V0000017",
+         "V0000029",
+         "V0000123",
+         "V0000214",
+         "V0000176"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Claim Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vehicle Ref",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Vehicle Ref')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Driver License No",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Driver License No')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-02-16T00:00:00",
+         "2025-03-24T00:00:00",
+         "2024-09-20T00:00:00",
+         "2025-05-25T00:00:00",
+         "2025-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         215.34,
+         22.7,
+         81.55,
+         95.96,
+         83.81
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         91.09,
+         63.34,
+         82.24,
+         31.14,
+         79.5
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "V0000017",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-02-16T00:00:00",
+        "Case Reserve": 215.34,
+        "Paid to Date": 91.09
+       },
+       {
+        "Claim Number": "V0000029",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-03-24T00:00:00",
+        "Case Reserve": 22.7,
+        "Paid to Date": 63.34
+       },
+       {
+        "Claim Number": "V0000123",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-09-20T00:00:00",
+        "Case Reserve": 81.55,
+        "Paid to Date": 82.24
+       },
+       {
+        "Claim Number": "V0000214",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-05-25T00:00:00",
+        "Case Reserve": 95.96,
+        "Paid to Date": 31.14
+       },
+       {
+        "Claim Number": "V0000176",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-06-12T00:00:00",
+        "Case Reserve": 83.81,
+        "Paid to Date": 79.5
+       }
+      ],
+      "date_columns": [
+       "Loss Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "metric_columns": [
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "schema_summary": "300 rows \u00d7 7 columns. Dates: Loss Date from 2024-01-03 to 2025-12-28 (weekly). Metrics: Case Reserve, Paid to Date. Identifiers: Claim Number. Personal data, masked before any model sees it: Claimant Name (name), Vehicle Ref (vehicle), Driver License No (vehicle).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 7 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Vehicle Ref\", \"Driver License No\"], \"category\": [\"Claimant Name\"], \"date\": [\"Loss Date\"], \"metric\": [\"Case Reserve\", \"Paid to Date\"]}, \"personal_data\": {\"Claimant Name\": \"name\", \"Vehicle Ref\": \"vehicle\", \"Driver License No\": \"vehicle\"}, \"fingerprint\": \"7881270fba34bb8b\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "3 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "7881270fba34bb8bfedf3d6169e6bb055c3f53691fd565d1cc02c10f0f905619",
+      "pii_columns": [
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "claim_id": "Claim Number",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No",
+       "Loss Date",
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        153,
+        "Claim Number",
+        "V0000135"
+       ],
+       [
+        92,
+        "Claimant Name",
+        "Mark Patel"
+       ],
+       [
+        170,
+        "Vehicle Ref",
+        "ZSLY1Z385P7JC7U1D"
+       ],
+       [
+        263,
+        "Driver License No",
+        "D09500791"
+       ],
+       [
+        285,
+        "Loss Date",
+        {
+         "ts": "2025-07-08T00:00:00"
+        }
+       ],
+       [
+        72,
+        "Case Reserve",
+        36.88
+       ],
+       [
+        190,
+        "Paid to Date",
+        57.01
+       ],
+       [
+        62,
+        "Claim Number",
+        "V0000019"
+       ],
+       [
+        184,
+        "Claimant Name",
+        "Mark Wei"
+       ],
+       [
+        253,
+        "Vehicle Ref",
+        "TAR4UHHZ1END3KT47"
+       ],
+       [
+        294,
+        "Driver License No",
+        "D68256477"
+       ],
+       [
+        42,
+        "Loss Date",
+        {
+         "ts": "2024-05-20T00:00:00"
+        }
+       ],
+       [
+        86,
+        "Case Reserve",
+        61.98
+       ],
+       [
+        91,
+        "Paid to Date",
+        15.38
+       ],
+       [
+        113,
+        "Claim Number",
+        "V0000200"
+       ],
+       [
+        41,
+        "Claimant Name",
+        "June Mensah"
+       ],
+       [
+        232,
+        "Vehicle Ref",
+        "ZSGD5Z7T08U5F41U6"
+       ],
+       [
+        157,
+        "Driver License No",
+        "D87876897"
+       ],
+       [
+        291,
+        "Loss Date",
+        {
+         "ts": "2024-06-14T00:00:00"
+        }
+       ],
+       [
+        277,
+        "Case Reserve",
+        50.61
+       ]
+      ]
+     },
+     "contract_sha": "1a30d30d2e2b5b92",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Name": "kept",
+       "Vehicle Ref": "kept",
+       "Driver License No": "kept",
+       "Loss Date": "kept",
+       "Case Reserve": "kept",
+       "Paid to Date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 2.31,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "pii",
+      "column": "Claimant Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Vehicle Ref",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Driver License No",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-08-auto-claims-vehicle",
+    "holdout": false,
+    "contract_sha": "1a30d30d2e2b5b92",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 7,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "V0000017",
+         "V0000029",
+         "V0000123",
+         "V0000214",
+         "V0000176"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Claim Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vehicle Ref",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Vehicle Ref')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Driver License No",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Driver License No')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-02-16T00:00:00",
+         "2025-03-24T00:00:00",
+         "2024-09-20T00:00:00",
+         "2025-05-25T00:00:00",
+         "2025-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         215.34,
+         22.7,
+         81.55,
+         95.96,
+         83.81
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         91.09,
+         63.34,
+         82.24,
+         31.14,
+         79.5
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "V0000017",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-02-16T00:00:00",
+        "Case Reserve": 215.34,
+        "Paid to Date": 91.09
+       },
+       {
+        "Claim Number": "V0000029",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-03-24T00:00:00",
+        "Case Reserve": 22.7,
+        "Paid to Date": 63.34
+       },
+       {
+        "Claim Number": "V0000123",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-09-20T00:00:00",
+        "Case Reserve": 81.55,
+        "Paid to Date": 82.24
+       },
+       {
+        "Claim Number": "V0000214",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-05-25T00:00:00",
+        "Case Reserve": 95.96,
+        "Paid to Date": 31.14
+       },
+       {
+        "Claim Number": "V0000176",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-06-12T00:00:00",
+        "Case Reserve": 83.81,
+        "Paid to Date": 79.5
+       }
+      ],
+      "date_columns": [
+       "Loss Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "metric_columns": [
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "schema_summary": "300 rows \u00d7 7 columns. Dates: Loss Date from 2024-01-03 to 2025-12-28 (weekly). Metrics: Case Reserve, Paid to Date. Identifiers: Claim Number. Personal data, masked before any model sees it: Claimant Name (name), Vehicle Ref (vehicle), Driver License No (vehicle).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 7 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Vehicle Ref\", \"Driver License No\"], \"category\": [\"Claimant Name\"], \"date\": [\"Loss Date\"], \"metric\": [\"Case Reserve\", \"Paid to Date\"]}, \"personal_data\": {\"Claimant Name\": \"name\", \"Vehicle Ref\": \"vehicle\", \"Driver License No\": \"vehicle\"}, \"fingerprint\": \"7881270fba34bb8b\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "3 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "7881270fba34bb8bfedf3d6169e6bb055c3f53691fd565d1cc02c10f0f905619",
+      "pii_columns": [
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "claim_id": "Claim Number",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No",
+       "Loss Date",
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        153,
+        "Claim Number",
+        "V0000135"
+       ],
+       [
+        92,
+        "Claimant Name",
+        "Mark Patel"
+       ],
+       [
+        170,
+        "Vehicle Ref",
+        "ZSLY1Z385P7JC7U1D"
+       ],
+       [
+        263,
+        "Driver License No",
+        "D09500791"
+       ],
+       [
+        285,
+        "Loss Date",
+        {
+         "ts": "2025-07-08T00:00:00"
+        }
+       ],
+       [
+        72,
+        "Case Reserve",
+        36.88
+       ],
+       [
+        190,
+        "Paid to Date",
+        57.01
+       ],
+       [
+        62,
+        "Claim Number",
+        "V0000019"
+       ],
+       [
+        184,
+        "Claimant Name",
+        "Mark Wei"
+       ],
+       [
+        253,
+        "Vehicle Ref",
+        "TAR4UHHZ1END3KT47"
+       ],
+       [
+        294,
+        "Driver License No",
+        "D68256477"
+       ],
+       [
+        42,
+        "Loss Date",
+        {
+         "ts": "2024-05-20T00:00:00"
+        }
+       ],
+       [
+        86,
+        "Case Reserve",
+        61.98
+       ],
+       [
+        91,
+        "Paid to Date",
+        15.38
+       ],
+       [
+        113,
+        "Claim Number",
+        "V0000200"
+       ],
+       [
+        41,
+        "Claimant Name",
+        "June Mensah"
+       ],
+       [
+        232,
+        "Vehicle Ref",
+        "ZSGD5Z7T08U5F41U6"
+       ],
+       [
+        157,
+        "Driver License No",
+        "D87876897"
+       ],
+       [
+        291,
+        "Loss Date",
+        {
+         "ts": "2024-06-14T00:00:00"
+        }
+       ],
+       [
+        277,
+        "Case Reserve",
+        50.61
+       ]
+      ]
+     },
+     "contract_sha": "1a30d30d2e2b5b92",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Name": "kept",
+       "Vehicle Ref": "kept",
+       "Driver License No": "kept",
+       "Loss Date": "kept",
+       "Case Reserve": "kept",
+       "Paid to Date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.17,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "pii",
+      "column": "Claimant Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Vehicle Ref",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Driver License No",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claim Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Claimant Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Vehicle Ref",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Driver License No",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Loss Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Case Reserve",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Paid to Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "phi",
+    "case": "phi-08-auto-claims-vehicle",
+    "holdout": false,
+    "contract_sha": "1a30d30d2e2b5b92",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 300,
+      "column_count": 7,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "V0000017",
+         "V0000029",
+         "V0000123",
+         "V0000214",
+         "V0000176"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Claim Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vehicle Ref",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Vehicle Ref')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Driver License No",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Driver License No')",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-02-16T00:00:00",
+         "2025-03-24T00:00:00",
+         "2024-09-20T00:00:00",
+         "2025-05-25T00:00:00",
+         "2025-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         215.34,
+         22.7,
+         81.55,
+         95.96,
+         83.81
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         91.09,
+         63.34,
+         82.24,
+         31.14,
+         79.5
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "V0000017",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-02-16T00:00:00",
+        "Case Reserve": 215.34,
+        "Paid to Date": 91.09
+       },
+       {
+        "Claim Number": "V0000029",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-03-24T00:00:00",
+        "Case Reserve": 22.7,
+        "Paid to Date": 63.34
+       },
+       {
+        "Claim Number": "V0000123",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2024-09-20T00:00:00",
+        "Case Reserve": 81.55,
+        "Paid to Date": 82.24
+       },
+       {
+        "Claim Number": "V0000214",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-05-25T00:00:00",
+        "Case Reserve": 95.96,
+        "Paid to Date": 31.14
+       },
+       {
+        "Claim Number": "V0000176",
+        "Claimant Name": "[REDACTED]",
+        "Vehicle Ref": "[REDACTED]",
+        "Driver License No": "[REDACTED]",
+        "Loss Date": "2025-06-12T00:00:00",
+        "Case Reserve": 83.81,
+        "Paid to Date": 79.5
+       }
+      ],
+      "date_columns": [
+       "Loss Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "metric_columns": [
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "schema_summary": "300 rows \u00d7 7 columns. Dates: Loss Date from 2024-01-03 to 2025-12-28 (weekly). Metrics: Case Reserve, Paid to Date. Identifiers: Claim Number. Personal data, masked before any model sees it: Claimant Name (name), Vehicle Ref (vehicle), Driver License No (vehicle).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 300 rows \u00d7 7 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Vehicle Ref\", \"Driver License No\"], \"category\": [\"Claimant Name\"], \"date\": [\"Loss Date\"], \"metric\": [\"Case Reserve\", \"Paid to Date\"]}, \"personal_data\": {\"Claimant Name\": \"name\", \"Vehicle Ref\": \"vehicle\", \"Driver License No\": \"vehicle\"}, \"fingerprint\": \"7881270fba34bb8b\"}",
+       "row_count": 300,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "3 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "7881270fba34bb8bfedf3d6169e6bb055c3f53691fd565d1cc02c10f0f905619",
+      "pii_columns": [
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "claim_id": "Claim Number",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Claim Number",
+       "Claimant Name",
+       "Vehicle Ref",
+       "Driver License No",
+       "Loss Date",
+       "Case Reserve",
+       "Paid to Date"
+      ],
+      "rows": 300,
+      "cells": [
+       [
+        153,
+        "Claim Number",
+        "V0000135"
+       ],
+       [
+        92,
+        "Claimant Name",
+        "Mark Patel"
+       ],
+       [
+        170,
+        "Vehicle Ref",
+        "ZSLY1Z385P7JC7U1D"
+       ],
+       [
+        263,
+        "Driver License No",
+        "D09500791"
+       ],
+       [
+        285,
+        "Loss Date",
+        {
+         "ts": "2025-07-08T00:00:00"
+        }
+       ],
+       [
+        72,
+        "Case Reserve",
+        36.88
+       ],
+       [
+        190,
+        "Paid to Date",
+        57.01
+       ],
+       [
+        62,
+        "Claim Number",
+        "V0000019"
+       ],
+       [
+        184,
+        "Claimant Name",
+        "Mark Wei"
+       ],
+       [
+        253,
+        "Vehicle Ref",
+        "TAR4UHHZ1END3KT47"
+       ],
+       [
+        294,
+        "Driver License No",
+        "D68256477"
+       ],
+       [
+        42,
+        "Loss Date",
+        {
+         "ts": "2024-05-20T00:00:00"
+        }
+       ],
+       [
+        86,
+        "Case Reserve",
+        61.98
+       ],
+       [
+        91,
+        "Paid to Date",
+        15.38
+       ],
+       [
+        113,
+        "Claim Number",
+        "V0000200"
+       ],
+       [
+        41,
+        "Claimant Name",
+        "June Mensah"
+       ],
+       [
+        232,
+        "Vehicle Ref",
+        "ZSGD5Z7T08U5F41U6"
+       ],
+       [
+        157,
+        "Driver License No",
+        "D87876897"
+       ],
+       [
+        291,
+        "Loss Date",
+        {
+         "ts": "2024-06-14T00:00:00"
+        }
+       ],
+       [
+        277,
+        "Case Reserve",
+        50.61
+       ]
+      ]
+     },
+     "contract_sha": "1a30d30d2e2b5b92",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Claim Number": "kept",
+       "Claimant Name": "kept",
+       "Vehicle Ref": "kept",
+       "Driver License No": "kept",
+       "Loss Date": "kept",
+       "Case Reserve": "kept",
+       "Paid to Date": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.13,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

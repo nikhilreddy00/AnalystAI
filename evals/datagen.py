@@ -346,9 +346,9 @@ def make_claims(seed: int) -> tuple[pd.DataFrame, dict]:
 
     Trap: the loss ratio is total claims ÷ total earned premium (a ratio of sums), not the mean
     of each row's ratio (most rows have no claim; a few small premiums with a claim dominate).
-    Planted: home 0.95, auto 0.62, life 0.55, exactly."""
+    Planted: home 0.95, auto 0.62, commercial 0.55, exactly."""
     rng = np.random.default_rng(seed)
-    line = rng.choice(["auto", "home", "life"], size=500, p=[0.5, 0.3, 0.2])
+    line = rng.choice(["auto", "home", "commercial"], size=500, p=[0.5, 0.3, 0.2])
     region = rng.choice(["Northeast", "South", "Midwest", "West"], size=500)
     premium = rng.lognormal(4.5, 0.8, 500)
     months = pd.period_range("2025-11", "2026-10", freq="M")
@@ -361,7 +361,7 @@ def make_claims(seed: int) -> tuple[pd.DataFrame, dict]:
             "claim_count": count, "claim_amount": count * rng.lognormal(5.5, 0.9, 500),
         }))
     df = pd.concat(rows, ignore_index=True)
-    target = {"home": 0.95, "auto": 0.62, "life": 0.55}
+    target = {"home": 0.95, "auto": 0.62, "commercial": 0.55}
     for ln, lr in target.items():
         sel = df["line"] == ln
         df.loc[sel, "claim_amount"] *= lr * df.loc[sel, "earned_premium"].sum() / df.loc[sel, "claim_amount"].sum()
@@ -1622,6 +1622,298 @@ def make_member_months(seed: int) -> tuple[pd.DataFrame, dict]:
     return df, truth
 
 
+# ── Domain 4: insurance (P&C) ─────────────────────────────────────────────────────────────────
+
+_POL_AS_OF = pd.Timestamp("2026-10-31")
+_POL_LAST_EFF = pd.Timestamp("2026-09-30")
+# line -> (share of policies, annual premium per exposure unit, claims per unit-year, mean severity,
+#          renewal decision probabilities Renewed / Lapsed / Non-Renewed)
+_POL_LINES = {"Auto": (0.6, 1_300.0, 0.15, 6_000.0, (0.80, 0.14, 0.06)),
+              "Home": (0.4, 1_650.0, 0.06, 18_000.0, (0.86, 0.10, 0.04))}
+
+
+def make_policies(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A P&C policy-experience extract: one row per policy term (New Business / Renewal) plus a
+    Cancellation row (negative written, earned and exposure, same Policy Number and Term) for a
+    mid-term cancellation. Effective dates 2023-01-01 .. 2026-09-30, data as of 2026-10-31;
+    annual terms; earned = written pro rata daily through the as-of date. Exposure units differ by
+    line (Auto: car-years, a policy insures 1-3 cars; Home: house-years). Renewal Status is on the
+    term's main row only (Renewed / Lapsed / Non-Renewed; Not Yet Due when the term expires after
+    2026-09-30; Cancelled for a cancelled term). Claim Count and Incurred Losses are per term.
+
+    Traps (each asserted to move the answer): loss ratio on written, not earned (1); exposure
+    summed across lines (9); cancellation rows counted as policies or dropped from written (11);
+    average premium per policy instead of per term (12); retention over every term (unexpired and
+    cancelled in the base); a loss ratio by gender exists and must never become rating advice (13)."""
+    rng = np.random.default_rng(seed)
+    lines = list(_POL_LINES)
+    states = ["CA", "TX", "FL", "NY", "OH", "GA"]
+    span = (_POL_LAST_EFF - pd.Timestamp("2023-01-01")).days
+    rows = []
+    for i in range(1, 1301):
+        line = str(rng.choice(lines, p=[_POL_LINES[ln][0] for ln in lines]))
+        _, rate, freq, sev, decide = _POL_LINES[line]
+        state, gender = str(rng.choice(states)), str(rng.choice(["M", "F"]))
+        units = int(rng.choice([1, 2, 3], p=[0.55, 0.35, 0.10])) if line == "Auto" else 1
+        annual = rate * units * rng.lognormal(0, 0.25)
+        eff, k = pd.Timestamp("2023-01-01") + pd.Timedelta(days=int(rng.integers(0, span + 1))), 1
+        while True:
+            exp = eff + pd.DateOffset(years=1)
+            days, end = (exp - eff).days, min(exp, _POL_AS_OF)
+            wp = round(annual * 1.04 ** (k - 1), 2)
+            earned_days = (end - eff).days
+            cancel = None
+            if earned_days > 45 and rng.random() < 0.07:
+                cancel = eff + pd.Timedelta(days=int(rng.integers(30, earned_days)))
+            net_days = (cancel - eff).days if cancel is not None else earned_days
+            n = int(rng.poisson(freq * units * net_days / days))
+            loss = round(float(rng.lognormal(np.log(sev) - 0.5, 1.0, n).sum()), 2)
+            if cancel is not None:
+                status = "Cancelled"
+            elif exp > _POL_LAST_EFF:
+                status = "Not Yet Due"
+            else:
+                status = str(rng.choice(["Renewed", "Lapsed", "Non-Renewed"], p=decide))
+            pol, term = f"POL-{i:05d}", f"POL-{i:05d}-{k}"
+            rows.append((pol, term, line, state, eff, exp, "New Business" if k == 1 else "Renewal",
+                         wp, round(wp * earned_days / days, 2), round(units * earned_days / days, 2),
+                         status, gender, n, loss))
+            if cancel is not None:
+                rows.append((pol, term, line, state, cancel, exp, "Cancellation",
+                             round(-wp * (exp - cancel).days / days, 2),
+                             round(-wp * (end - cancel).days / days, 2),
+                             round(-units * (end - cancel).days / days, 2), None, gender, 0, 0.0))
+            if status != "Renewed":
+                break
+            eff, k = exp, k + 1
+    df = pd.DataFrame(rows, columns=["Policy Number", "Term", "Line of Business", "State",
+                                     "Effective Date", "Expiration Date", "Transaction Type",
+                                     "Written Premium", "Earned Premium", "Earned Exposure",
+                                     "Renewal Status", "Insured Gender", "Claim Count",
+                                     "Incurred Losses"])
+    for c in ("Effective Date", "Expiration Date"):
+        df[c] = df[c].dt.strftime("%Y-%m-%d")
+
+    # Truth, from the frame alone.
+    by = df.groupby("Line of Business")
+    s = by[["Written Premium", "Earned Premium", "Earned Exposure", "Claim Count",
+            "Incurred Losses"]].sum()
+    terms, pols = by["Term"].nunique(), by["Policy Number"].nunique()
+    main = df[df["Renewal Status"].notna()]
+    decided = main[main["Renewal Status"].isin(["Renewed", "Lapsed", "Non-Renewed"])]
+    renewed = decided["Renewal Status"].eq("Renewed")
+    g = df.groupby("Insured Gender")[["Incurred Losses", "Earned Premium"]].sum()
+    fl = {k: float(v) for k, v in (s["Incurred Losses"] / s["Earned Premium"]).items()}
+    truth = {
+        "row_count": len(df), "rows": len(df), "pii_columns": [],
+        "as_of": "2026-10-31",
+        "loss_ratio_by_line": fl,
+        "loss_ratio_total": float(s["Incurred Losses"].sum() / s["Earned Premium"].sum()),
+        "loss_ratio_written_total": float(s["Incurred Losses"].sum() / s["Written Premium"].sum()),
+        "loss_ratio_written_by_line": {k: float(v) for k, v in
+                                       (s["Incurred Losses"] / s["Written Premium"]).items()},
+        "frequency_by_line": {k: float(v) for k, v in
+                              (s["Claim Count"] / s["Earned Exposure"]).items()},
+        "severity_by_line": {k: float(v) for k, v in
+                             (s["Incurred Losses"] / s["Claim Count"]).items()},
+        "pure_premium_by_line": {k: float(v) for k, v in
+                                 (s["Incurred Losses"] / s["Earned Exposure"]).items()},
+        "earned_premium_total": float(df["Earned Premium"].sum()),
+        "written_premium_total": float(df["Written Premium"].sum()),
+        "written_premium_without_cancellations": float(
+            df.loc[df["Transaction Type"] != "Cancellation", "Written Premium"].sum()),
+        "policies": int(df["Policy Number"].nunique()), "terms": int(df["Term"].nunique()),
+        "cancellation_rows": int(df["Transaction Type"].eq("Cancellation").sum()),
+        "avg_premium_per_term_by_line": {k: float(v) for k, v in
+                                         (s["Written Premium"] / terms).items()},
+        "avg_premium_per_policy_by_line": {k: float(v) for k, v in
+                                           (s["Written Premium"] / pols).items()},
+        "retention_by_line": {k: float(v) for k, v in renewed.groupby(
+            decided["Line of Business"]).mean().items()},
+        "retention_naive_by_line": {k: float(v) for k, v in (
+            main["Renewal Status"].eq("Renewed").groupby(main["Line of Business"]).sum()
+            / terms).items()},
+        "exposure_by_line": {k: float(v) for k, v in s["Earned Exposure"].items()},
+        "total_exposure_mixed": float(df["Earned Exposure"].sum()),   # never an answer (trap 9)
+        "loss_ratio_by_gender": {k: float(v) for k, v in
+                                 (g["Incurred Losses"] / g["Earned Premium"]).items()},
+    }
+    t = truth
+    assert set(fl) == {"Auto", "Home"} and all(0.3 < v < 1.0 for v in fl.values())
+    assert all(abs(t["loss_ratio_written_by_line"][k] - fl[k]) > 0.03 for k in fl)        # 1
+    mixed_freq = df["Claim Count"].sum() / t["total_exposure_mixed"]
+    assert all(abs(mixed_freq / f - 1) > 0.1 for f in t["frequency_by_line"].values())     # 9
+    assert abs(t["written_premium_without_cancellations"] / t["written_premium_total"] - 1) > 0.01
+    assert t["rows"] > t["terms"] > t["policies"]                                          # 11
+    assert all(t["avg_premium_per_policy_by_line"][k] > 1.05 * t["avg_premium_per_term_by_line"][k]
+               for k in fl)                                                                # 12
+    assert all(abs(t["retention_naive_by_line"][k] - t["retention_by_line"][k]) > 0.05 for k in fl)
+    return df, truth
+
+
+_LR_VALUATIONS = pd.date_range("2022-12-31", "2026-09-30", freq="QE")   # 16 quarter-ends
+# line -> coverage -> (share in line, median ultimate, sigma, quarters to close [lo, hi),
+#                      closed-without-payment probability, salvage/subrogation probability)
+_LR_COVERAGES = {
+    "Auto": {"Collision": (0.45, 4_500, 0.6, (1, 4), 0.15, 0.30),
+             "Property Damage": (0.25, 3_800, 0.6, (1, 5), 0.20, 0.15),
+             "Bodily Injury": (0.20, 18_000, 1.0, (3, 11), 0.25, 0.0),
+             "Comprehensive": (0.10, 2_500, 0.6, (1, 3), 0.20, 0.05)},
+    "Home": {"Dwelling": (0.55, 11_000, 0.8, (1, 6), 0.20, 0.05),
+             "Personal Property": (0.30, 5_000, 0.7, (1, 4), 0.25, 0.0),
+             "Liability": (0.15, 22_000, 1.0, (3, 11), 0.30, 0.0)},
+}
+_LR_CAT = "CAT-2024-HAIL"
+
+
+def make_loss_run(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A P&C claims loss run: one row per claim × claimant per quarterly valuation date (16
+    quarter-ends 2022-12-31 .. 2026-09-30), loss dates 2022-01-01 .. 2026-09-30. A claimant is
+    listed from the first valuation on or after the report date on every later valuation (closed
+    claims are re-listed). Paid to Date, Salvage Subrogation and Incurred are cumulative; Case
+    Reserve is blank once closed; Incurred = Paid to Date + Case Reserve. Rows are written by Claim
+    Number, then Valuation Date descending (file order is not time order).
+
+    Truth is at each chain's (Claim Number + Claimant Number) latest valuation, found by sorting
+    on Valuation Date. Accident year (AY) = loss-date year; an AY's age = months from the AY's
+    start (Jan 1) to the latest valuation date 2026-09-30 (2026 → 9, 2025 → 21, 2024 → 33);
+    developing years are those under 24 months. A claim is closed when every claimant's latest
+    status is Closed; closed without payment = a closed claim with paid 0. The cat event's share
+    is of Home incurred with a loss date in the same calendar quarter (2024 Q2).
+
+    Traps: valuations summed (2); paid taken for incurred (3); the latest AY is immature (4); a
+    reopened claim counted twice (5); gross vs net of recoveries (6); claimant rows counted as
+    claims (7); closed-without-payment claims dropped (8); a cat event dominates its quarter (10)."""
+    rng = np.random.default_rng(seed)
+    last, vals = len(_LR_VALUATIONS) - 1, _LR_VALUATIONS
+    first_loss, end = pd.Timestamp("2022-01-01"), _LR_VALUATIONS[-1]
+    rows = []
+
+    def chain(claim, cl, pol, line, cov, loss, rep, cat, reopen=False):
+        _, med, sigma, (lo, hi), p_cwp, p_rec = _LR_COVERAGES[line][cov]
+        q0 = int(np.searchsorted(vals, rep))   # first valuation on or after the report date
+        ult = float(med * rng.lognormal(0, sigma))
+        close = int(rng.integers(lo, hi))
+        cwp = (not reopen) and rng.random() < p_cwp
+        rec = 0.0 if cwp or rng.random() >= p_rec else ult * rng.uniform(0.2, 0.5)
+        extra = ult * rng.uniform(0.2, 0.6) if reopen else 0.0
+        for j in range(last - q0 + 1):
+            if j < close:
+                status, paid = "Open", 0.0 if cwp else ult * 0.85 * (j / close) ** 1.5
+                reserve = ult * 0.4 - paid if cwp else ult * (0.4 + 0.6 * j / close) - paid
+            elif reopen and close + 2 <= j < close + 4:
+                status, paid = "Reopened", ult + extra * (j - close - 1) / 3
+                reserve = ult + extra - paid
+            else:
+                status, reserve = "Closed", None
+                paid = 0.0 if cwp else ult + (extra if reopen and j >= close + 4 else 0.0)
+            paid = round(paid, 2)
+            reserve = None if reserve is None else round(max(reserve, 0.0), 2)
+            rows.append((claim, cl, pol, line, cov, loss, rep, vals[q0 + j], status, paid, reserve,
+                         round(paid + (reserve or 0.0), 2),
+                         round(rec, 2) if j > close else 0.0, cat))   # recovered after close
+
+    lines = list(_LR_COVERAGES)
+    n, reopened = 0, 0
+    while n < 3300:
+        loss = first_loss + pd.Timedelta(days=int(rng.integers(0, (end - first_loss).days + 1)))
+        rep = loss + pd.Timedelta(days=min(int(rng.exponential(15)), 90))
+        line = str(rng.choice(lines, p=[0.6, 0.4]))
+        covs = list(_LR_COVERAGES[line])
+        cov = str(rng.choice(covs, p=[_LR_COVERAGES[line][c][0] for c in covs]))
+        if rep > end:
+            continue   # reported after the last valuation: not in the file (IBNR)
+        n += 1
+        claim, pol = f"CLM-{n:06d}", f"POL-{int(rng.integers(1, 3000)):05d}"
+        # a few early, short-tail claims reopen (closed → Reopened twice → closed again)
+        reopen = reopened < 4 and loss < pd.Timestamp("2023-06-01") and cov == "Collision"
+        reopened += reopen
+        chain(claim, 1, pol, line, cov, loss, rep, None, reopen)
+        if rng.random() < 0.15:
+            chain(claim, 2, pol, line, cov, loss, rep, None)
+    for _ in range(150):   # the hail storm: Home Dwelling claims, 14-16 May 2024
+        n += 1
+        loss = pd.Timestamp("2024-05-14") + pd.Timedelta(days=int(rng.integers(0, 3)))
+        chain(f"CLM-{n:06d}", 1, f"POL-{int(rng.integers(1, 3000)):05d}", "Home", "Dwelling", loss,
+              loss + pd.Timedelta(days=int(rng.integers(0, 31))), _LR_CAT)
+    df = pd.DataFrame(rows, columns=["Claim Number", "Claimant Number", "Policy Number",
+                                     "Line of Business", "Coverage", "Loss Date", "Report Date",
+                                     "Valuation Date", "Claim Status", "Paid to Date",
+                                     "Case Reserve", "Incurred", "Salvage Subrogation", "Cat Event"])
+    df = df.sort_values(["Claim Number", "Claimant Number", "Valuation Date"],
+                        ascending=[True, True, False], kind="stable").reset_index(drop=True)
+
+    # Truth, from the frame alone: each chain's latest valuation, by Valuation Date.
+    key = ["Claim Number", "Claimant Number"]
+    lt = df.sort_values("Valuation Date", kind="stable").groupby(key).tail(1)
+    ay = lt["Loss Date"].dt.year.astype(str)
+    claim_closed = lt["Claim Status"].eq("Closed").groupby(lt["Claim Number"]).all()
+    claim_paid = lt.groupby("Claim Number")["Paid to Date"].sum()
+    claim_line = lt.groupby("Claim Number")["Line of Business"].first()
+    val = vals[-1]
+    ages = {y: (val.year - int(y)) * 12 + val.month for y in sorted(ay.unique())}
+    home = lt[lt["Line of Business"].eq("Home")]
+    q = home["Loss Date"].dt.to_period("Q")
+    cat = lt["Cat Event"].eq(_LR_CAT)
+    cat_q = lt.loc[cat, "Loss Date"].dt.to_period("Q").iloc[0]
+    by_ay = lt.groupby(ay)
+    truth = {
+        "row_count": len(df), "pii_columns": [],
+        "valuation_date": val.strftime("%Y-%m-%d"),
+        "claims": int(df["Claim Number"].nunique()),
+        "claimants": int(df.groupby(key).ngroups),
+        "claim_rows_latest": len(lt),
+        "incurred_total": float(lt["Incurred"].sum()),
+        "paid_total": float(lt["Paid to Date"].sum()),
+        "reserve_open_total": float(lt["Case Reserve"].sum()),
+        "recoveries_total": float(lt["Salvage Subrogation"].sum()),
+        "paid_net_total": float(lt["Paid to Date"].sum() - lt["Salvage Subrogation"].sum()),
+        "incurred_summed_all_valuations": float(df["Incurred"].sum()),
+        "incurred_by_accident_year": {k: float(v) for k, v in by_ay["Incurred"].sum().items()},
+        "paid_by_accident_year": {k: float(v) for k, v in by_ay["Paid to Date"].sum().items()},
+        "ay_age_months": ages,
+        "developing_years": [y for y, a in ages.items() if a < 24],
+        "severity_by_line": {k: float(v) for k, v in (lt.groupby("Line of Business")["Incurred"].sum()
+                                                      / claim_line.value_counts()).items()},
+        # trap 7: incurred per claimant row (a claim with two claimants counted twice)
+        "severity_per_claimant_by_line": {k: float(v) for k, v in
+                                          lt.groupby("Line of Business")["Incurred"].mean().items()},
+        "paid_net_by_line": {k: float(v) for k, v in
+                             (lt.groupby("Line of Business")["Paid to Date"].sum()
+                              - lt.groupby("Line of Business")["Salvage Subrogation"].sum()).items()},
+        "paid_by_line": {k: float(v) for k, v in
+                         lt.groupby("Line of Business")["Paid to Date"].sum().items()},
+        "closure_rate": float(claim_closed.mean()),
+        "cwp_share": float((claim_paid[claim_closed] == 0).mean()),
+        "open_reserve_by_line": {k: float(v) for k, v in
+                                 lt.groupby("Line of Business")["Case Reserve"].sum().items()},
+        "claims_by_line": {k: int(v) for k, v in claim_line.value_counts().items()},
+        "claimants_by_line": {k: int(v) for k, v in lt["Line of Business"].value_counts().items()},
+        "reopened_claims": int(df.loc[df["Claim Status"].eq("Reopened"), "Claim Number"].nunique()),
+        "reopened_status_rows": int(df["Claim Status"].eq("Reopened").sum()),
+        "cat_event": _LR_CAT, "cat_quarter": str(cat_q),
+        "cat_event_incurred": float(lt.loc[cat, "Incurred"].sum()),
+        "cat_share_of_quarter": float(lt.loc[cat, "Incurred"].sum()
+                                      / home.loc[q == cat_q, "Incurred"].sum()),
+    }
+    for c in ("Loss Date", "Report Date", "Valuation Date"):
+        df[c] = df[c].dt.strftime("%Y-%m-%d")
+    t, iay = truth, truth["incurred_by_accident_year"]
+    assert len(df) < 50_000 and df["Valuation Date"].nunique() == 16
+    assert t["incurred_summed_all_valuations"] > 3 * t["incurred_total"]                  # 2
+    assert t["reserve_open_total"] > 0.05 * t["incurred_total"]                           # 3
+    assert t["developing_years"] == ["2025", "2026"] and iay["2026"] < 0.6 * iay["2023"]  # 4
+    assert t["reopened_status_rows"] > t["reopened_claims"] > 0                           # 5
+    assert t["recoveries_total"] > 0.02 * t["paid_total"]                                 # 6
+    assert t["claimants"] > 1.05 * t["claims"]                                            # 7
+    assert all(t["severity_by_line"][k] - t["severity_per_claimant_by_line"][k] > 50
+               for k in t["severity_by_line"])
+    assert all(t["paid_by_line"][k] - t["paid_net_by_line"][k] > 1000 for k in t["paid_by_line"])
+    assert 0.1 < t["cwp_share"] < 0.35                                                    # 8
+    assert t["cat_share_of_quarter"] > 0.5                                                # 10
+    return df, truth
+
+
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
@@ -1632,7 +1924,8 @@ DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mi
             "loan_tape_messy": make_loan_tape_messy, "bank_statement": make_bank_statement,
             "ledger_drcr": make_ledger_drcr, "deposits_daily": make_deposits_daily,
             "inpatient": make_inpatient, "health_claims": make_health_claims,
-            "member_months": make_member_months}
+            "member_months": make_member_months,
+            "policies": make_policies, "loss_run": make_loss_run}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

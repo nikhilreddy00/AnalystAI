@@ -1,0 +1,26 @@
+id: e2e-63
+domain: insurance
+dataset:
+  name: policies
+  seed: 1
+question: What is the loss ratio for each line?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: loss_ratio_by_line.Home
+  rel_tol: 0.02
+  unit: '%'
+  scales:
+  - 100
+- kind: must_not_number
+  truth_key: loss_ratio_written_by_line.Home
+  rel_tol: 0.01
+  unit: '%'
+  scales:
+  - 100
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: Loss ratio by line on earned premium; the written-premium ratio is the trap.
