@@ -1165,7 +1165,8 @@ def developing_note(contract, df: pd.DataFrame, about: set[str]) -> str:
     if not pack or not pack.maturity or col not in df.columns:
         return ""
     m = pack.maturity
-    developing = {*m.measures, *(r for r, heads in m.dated.items() if normalize_header(col) in heads)}
+    header = expand_header(normalize_header(col), pack)   # as detection reads it ('Eff Date')
+    developing = {*m.measures, *(r for r, heads in m.dated.items() if header in heads)}
     if not about & developing:
         return ""
     t = _day(df[col]).dropna()

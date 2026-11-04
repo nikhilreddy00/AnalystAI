@@ -328,7 +328,13 @@ def test_workers_comp_files_read_as_insurance():
         "Date of Injury": pd.date_range("2025-01-01", periods=n, freq="7D").strftime("%Y-%m-%d"),
         "Paid to Date": [round(1000.0 + 37 * i, 2) for i in range(n)],
         "Case Reserve": [round(500.0 + 11 * i, 2) for i in range(n)]}))
-    assert policy.domain == claims.domain == "insurance"
+    exposure = _contract(pd.DataFrame({   # pass 3: a WC exposure file has payroll and headcount
+        "Policy Number": [f"WC-{i:04d}" for i in range(n)],
+        "Effective Date": pd.date_range("2025-01-01", periods=n, freq="7D").strftime("%Y-%m-%d"),
+        "Payroll": [round(250000.0 + 1000 * i, 2) for i in range(n)],
+        "Employee Count": [10 + i for i in range(n)],
+        "Earned Premium": [round(3000.0 + 29 * i, 2) for i in range(n)]}))
+    assert policy.domain == claims.domain == exposure.domain == "insurance"
     assert claims.roles["date"] == "Date of Injury"
 
 
@@ -363,9 +369,6 @@ def test_a_per_role_kpi_never_replaces_the_group_or_the_trend_the_user_asked_for
      "Plan": ["PPO", "HMO"] * 15},                                    # a self-funded health plan
     {"Claim ID": [f"X{i}" for i in range(30)], "Employee ID": [f"E{i}" for i in range(30)],
      "Reserve": [float(i) for i in range(30)]},                       # expense claims
-    {"Employee ID": [f"E{i}" for i in range(30)], "Policy Number": [f"P{i}" for i in range(30)],
-     "Written Premium": [float(10 + i) for i in range(30)],
-     "Payroll": [float(1000 + i) for i in range(30)]},                # benefits enrollment
 ])
 def test_employer_benefit_and_expense_files_are_not_insurance(cols):
     """Pass 2 (major): with the payroll / employee vetoes gone, these read as insurance."""
@@ -384,3 +387,32 @@ def test_earned_premium_on_a_policy_year_view_gets_no_built_in_trend():
     assert any(a.startswith("Earned Premium:") and "developing" in a for a in pol["assumptions"])
     pm = builtin("claims", ["earned_premium"], [], ["trend"])
     assert "earned_premium" in {t["column"] for t in pm["trends"]}
+
+
+
+def test_a_kpi_for_one_named_value_is_that_values_figure_and_trend():
+    """Pass 3 (major): 'frequency for Auto' answered Auto and Home; 'frequency by month for
+    Auto' lost its trend. A named segment value filters the rows first (any pack's KPI)."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built, answer
+    truth = _built("policies")[3]
+    one, _ = answer("policies", "segment_compare", "frequency for Auto", kpi="frequency",
+                    segment_column="Line of Business", segment_value="Auto")
+    assert f"{truth['frequency_by_line']['Auto']:.2f}" in one and "Home" not in one, one
+    trend, chart = answer("policies", "time_series", "frequency by month for Auto", kpi="frequency",
+                          segment_column="Line of Business", segment_value="Auto", frequency="M")
+    assert "by period" in trend and len(chart) > 12, trend
+
+
+def test_maturity_dated_headers_match_as_detection_does():
+    """Pass 3 (major): 'Eff Date' is read as the effective date (abbreviations) but the dated
+    rule compared the raw header: earned premium's -89% YoY came back."""
+    from domain_pack import developing_note
+    df = pd.DataFrame({"Policy Number": [f"P{i % 40}" for i in range(400)],
+                       "Eff Date": pd.date_range("2024-01-01", periods=400, freq="2D").strftime("%Y-%m-%d"),
+                       "Written Premium": [100.0 + i for i in range(400)],
+                       "Earned Premium": [90.0 + i for i in range(400)]})
+    c = _contract(df)
+    assert (c.domain, c.roles["date"]) == ("insurance", "Eff Date")
+    assert developing_note(c, df, {"earned_premium"}) and not developing_note(c, df, {"written_premium"})

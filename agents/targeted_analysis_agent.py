@@ -998,6 +998,13 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     kpi = pack.kpi(params.kpi)
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     full = df if full is None else full
+    if named := _named_group(df, params):   # "frequency for Auto": that value's rows only; the
+        # whole data too (a period comparison reads it), a version chain stays within its value
+        df = df[df[params.segment_column].astype(str) == named]
+        full = full[full[params.segment_column].astype(str) == named]
+        params = params.model_copy(update={"segment_column": None, "segment_value": None,
+                                           "group_by": None if params.group_by == params.segment_column
+                                           else params.group_by})
     _, currency, other = main_currency(df, roles)
     money = currency or next((c.unit for c in contract.columns if c.unit and c.name in
                               money_columns(pack, roles)), None)
@@ -1033,7 +1040,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         if group or intent == QuestionIntent.TIME_SERIES or params.frequency:   # asked otherwise
             return _unanswerable(intent, f"{kpi.phrase} is given by {per} only: one figure across "
                                  f"them would mix their units", [f"{kpi.label} by {per}",
-                                                                f"{kpi.label} for one {per}"])
+                                                                f"{kpi.label} for {df[per].dropna().iloc[0]}"])
         group, how = per, how + f" Given by {per} only: one figure across them would mix their units."
     if group and group in df.columns:
         by = compute_kpi(df, roles, pack, kpi.name, by=group, full=full)

@@ -19,12 +19,10 @@ signals:
 # logistics. Not icd / diagnosis / account / payroll / employee: workers' comp files carry them.
 exclude_headers: [[member], [cpt], [hcpcs], [npi], [drg], [mrn], [patient], [admit], [discharge],
                   [service, from], [sku], [order, id], [lineitem], [balance], [loan], [dpd], [mrr], [subscription], [sensor], [shipment]]
-# An employer's benefits file (employee ids beside payroll): not a policy or a loss run
-exclude_pairs: [[employee, payroll]]
 abbreviations: {pol: policy, clm: claim, wp: written_premium, ep: earned_premium,
                 gwp: written_premium, gep: earned_premium, os: outstanding, res: reserve,
                 inc: incurred, incd: incurred, lob: line_of_business, val: valuation,
-                eval: evaluation, dol: date_of_loss, "no": number, num: number, nbr: number,
+                eval: evaluation, dol: date_of_loss, doi: date_of_injury, "no": number, num: number, nbr: number,
                 amt: amount, pd: paid, dt: date, eff: effective, exp: expiration,
                 expo: exposure, cat: cat, ss: salvage_subrogation, alae: alae}
 
@@ -32,7 +30,8 @@ roles:
   # The time role first: the loss (accident) date on a loss run, the policy's effective date on
   # a policy table (a policy-year view), a month on a policy-month file.
   date:           {kind: date, headers: [loss_date, accident_date, date_of_loss,
-                                         occurrence_date, incident_date, injury_date,
+                                         occurrence_date, incident_date, injury_date, date_of_accident,
+                                         loss_occurred_date,
                                          date_of_injury, effective_date,
                                          policy_effective_date, inception_date, effective,
                                          month, policy_month, period]}
