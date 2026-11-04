@@ -2386,7 +2386,7 @@
    }
   },
   "ins-1": {
-   "context": "b2d80548d76c10fc",
+   "context": "bb830abdfe903d56",
    "roles": {
     "claim_amount": {
      "date": false,
@@ -2433,7 +2433,7 @@
    }
   },
   "ins-2": {
-   "context": "f2aef1d7864bc7e6",
+   "context": "9644797250208e87",
    "roles": {
     "claim_amount": {
      "date": false,
@@ -2480,7 +2480,7 @@
    }
   },
   "ins-3": {
-   "context": "c14960d9e53be3a5",
+   "context": "540f97372e20a0fb",
    "roles": {
     "claim_amount": {
      "date": false,
@@ -2521,6 +2521,540 @@
     "region": {
      "date": false,
      "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-4": {
+   "context": "35ba7fa3faf2b924",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "ins-5": {
+   "context": "63949b09fc946fc8",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "ins-6": {
+   "context": "1c7fa8c0060cd7ed",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-7": {
+   "context": "ffec033e690d0b83",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-8": {
+   "context": "b864698636a74759",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-9": {
+   "context": "c071f6e195dfbe1e",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
      "id": false,
      "metric": false
     }
@@ -5404,37 +5938,37 @@
    "standard_code": "d1ed489eb498be01"
   },
   "claims-1": {
-   "answers": "f4ca7a447f608991",
-   "answers_by_group": "191dab0ec1db8c19",
-   "audit": "9b36154b6082a2a1",
+   "answers": "812311259cbd63c6",
+   "answers_by_group": "3cd853f791319823",
+   "audit": "97b038a26679e754",
    "chart": "58a60fe3f95043a5",
-   "contract": "3f324c9f15abc596",
-   "extras": "df972ffb26e44720",
-   "frame": "64eb332135697796",
-   "kpis": "4cf0a5be088fa643",
-   "standard_code": "4cc5a1476c9d5b20"
+   "contract": "83e71124fa47b400",
+   "extras": "0e2c75240fabcfad",
+   "frame": "af05cdad2ea9f331",
+   "kpis": "192b5b548a4faa80",
+   "standard_code": "a269a35749c7ee4c"
   },
   "claims-2": {
-   "answers": "7cc44d9d908e9ff0",
-   "answers_by_group": "a94b26eee6f88660",
-   "audit": "24ac2dcbfce130ab",
+   "answers": "dc3071f166e327c3",
+   "answers_by_group": "be8917c90d985652",
+   "audit": "4042c82194682bba",
    "chart": "f0257268e6bd5ef2",
-   "contract": "3c1dbaad6415f963",
-   "extras": "83d591d1144a07de",
-   "frame": "6551e9fdbb840685",
-   "kpis": "60294fc6e481d8f0",
-   "standard_code": "7b28e1d7b3c1c8b6"
+   "contract": "aab0a1671a27a8e4",
+   "extras": "9848bde8f63604fe",
+   "frame": "82e4a618a5669c6e",
+   "kpis": "b2159a49d539699f",
+   "standard_code": "491be602575b3901"
   },
   "claims-3": {
-   "answers": "c83c616bbe0665a8",
-   "answers_by_group": "2c7457f2df98f765",
-   "audit": "3648958bbf9e843e",
+   "answers": "b14bd4f26cea5f5f",
+   "answers_by_group": "bc51eda0752fd662",
+   "audit": "55e177075427cd0a",
    "chart": "9e6f2836e7818ea4",
-   "contract": "05b67a65dca65a7e",
-   "extras": "73f7b5b364029d39",
-   "frame": "962f1776ff9968f1",
-   "kpis": "7324b48fe9b62d85",
-   "standard_code": "3e6d6995ee80a9d5"
+   "contract": "2a73298043953aaf",
+   "extras": "c3831486d5bc8a75",
+   "frame": "ffa1ad0705d97f53",
+   "kpis": "7b7c98310535aa2d",
+   "standard_code": "42dafc04eca73055"
   },
   "employees-1": {
    "answers": "20a769e8b434de76",
@@ -5535,6 +6069,17 @@
    "kpis": "af0f4bbd8a9cef13",
    "standard_code": "6d0b6eb8316adbe4"
   },
+  "loss_run-1": {
+   "answers": "237bba9b86970ec7",
+   "answers_by_group": "1381e5cda8f50b16",
+   "audit": "5ca9ccc960c0ffe8",
+   "chart": "752e259811d51120",
+   "contract": "b72622046025b838",
+   "extras": "544fed168462c966",
+   "frame": "54f46f007fef0e6f",
+   "kpis": "71813cd26804cae1",
+   "standard_code": "c1dbe582cc1a123c"
+  },
   "mixed_dates-1": {
    "answers": "061185aea05e8e7d",
    "answers_by_group": "98a17fa8f3587de7",
@@ -5556,6 +6101,17 @@
    "frame": "1331f46826e17c59",
    "kpis": "66f4a03cc07ea780",
    "standard_code": "6ce9f72734b2b330"
+  },
+  "policies-1": {
+   "answers": "69998c4127913360",
+   "answers_by_group": "b0b115660bfd6abf",
+   "audit": "46ef6450dd95e4b8",
+   "chart": "3f945ca49cc582fa",
+   "contract": "3edab6adf3ea2a16",
+   "extras": "51a2cff3535a21f0",
+   "frame": "3f7b0cb74f6530fe",
+   "kpis": "4528711ef9ba191f",
+   "standard_code": "fbbd38f179f70ce7"
   },
   "retail_lines-1": {
    "answers": "6d55c91ef76c0fb9",
@@ -9842,6 +10398,622 @@
      "metric": false
     }
    }
+  },
+  "e2e-61": {
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-62": {
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-63": {
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-64": {
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-65": {
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-66": {
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-67": {
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
   }
  },
  "insight": {
@@ -12421,7 +13593,7 @@
    }
   },
   "ins-42-ledger-overview": {
-   "context": "9ca446f1caf2b27a",
+   "context": "b5bcc256654c446e",
    "roles": {
     "Account ID": {
      "date": false,
@@ -12581,7 +13753,7 @@
    }
   },
   "ins-44-claims-overview": {
-   "context": "0db99811229626a3",
+   "context": "603ce972cab4e1ea",
    "roles": {
     "Adjustment Seq": {
      "date": false,
@@ -12680,6 +13852,184 @@
      "metric": false
     },
     "Service From": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-45-policies-overview": {
+   "context": "83a51532a69b2964",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "ins-46-loss-run-overview": {
+   "context": "f8a0cda47bca5a12",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
      "date": true,
      "dtype": "str",
      "id": false,
@@ -17594,6 +18944,1074 @@
      "dtype": "float64",
      "id": false,
      "metric": true
+    }
+   }
+  },
+  "intake-ins-01": {
+   "context": "c0f1eede0459e475",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-ins-02": {
+   "context": "72a045fe3f16e781",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-ins-03": {
+   "context": "954cb665d44d7d40",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-ins-04": {
+   "context": "7a551eafb09dd637",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-ins-05": {
+   "context": "cfe65daf067c3269",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-ins-06": {
+   "context": "855d5b7b15bc6425",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-ins-07": {
+   "context": "8f4a75227ca9c2e9",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-ins-08": {
+   "context": "04b8bf9bf73a9462",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-ins-09": {
+   "context": "ed7edbbe3f40cc58",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-ins-10": {
+   "context": "e5999015cc338e3c",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-ins-11": {
+   "context": "6ad3a6b43e9bcbd0",
+   "roles": {
+    "Claim Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Exposure": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Earned Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Effective Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Expiration Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Incurred Losses": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Insured Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Renewal Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "State": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Term": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Transaction Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Written Premium": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-ins-12": {
+   "context": "b8ddd7b6b7851941",
+   "roles": {
+    "Case Reserve": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Cat Event": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claim Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Claim Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Claimant Number": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": false
+    },
+    "Coverage": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Incurred": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line of Business": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Loss Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Paid to Date": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Policy Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Report Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Salvage Subrogation": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Valuation Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
     }
    }
   },

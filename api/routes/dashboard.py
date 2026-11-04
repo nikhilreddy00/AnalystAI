@@ -207,7 +207,9 @@ async def _latest_frame(request: Request, user: UserProfile):
         raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
     df = pd.read_parquet(session.cleaned_data_path)
     import domain_pack   # a chain's earlier versions are never counted or shown: not in the cap
-    shown = int((~domain_pack.superseded(df, session.data_contract)).sum())
+    # the server still reads every row (kinds are judged on all): a hard cap on the whole frame
+    shown = len(df) if len(df) > MAX_RAW_ROWS else \
+        int((~domain_pack.superseded(df, session.data_contract)).sum())
     if shown > MAX_ROWS:   # every dashboard view: the rows and their filtered recomputation
         raise HTTPException(
             status_code=422,
@@ -217,6 +219,7 @@ async def _latest_frame(request: Request, user: UserProfile):
 
 
 MAX_ROWS = 25_000
+MAX_RAW_ROWS = 4 * MAX_ROWS   # every row the server reads (earlier versions included)
 
 
 class FilterRequest(BaseModel):

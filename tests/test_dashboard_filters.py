@@ -218,3 +218,9 @@ async def test_a_loss_runs_earlier_valuations_count_against_no_dashboard_cap(tmp
     assert home["tiles"]["Open case reserves"] == f"${truth['open_reserve_by_line']['Home']:,.2f}"
     # 'Showing N of M records': the filtered N counts the same rows as M (browser check: 15,780 of 3,975)
     assert home["rows"] == truth["claimants_by_line"]["Home"]
+    # security review: the server still reads every row, so the whole frame has a hard cap too
+    from fastapi import HTTPException
+    monkeypatch.setattr(dashboard, "MAX_RAW_ROWS", 30_000)
+    with pytest.raises(HTTPException) as e:
+        await get_latest_dashboard_data(req, UserProfile("owner"))
+    assert e.value.status_code == 422
