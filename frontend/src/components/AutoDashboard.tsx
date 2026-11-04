@@ -29,7 +29,6 @@ import {
 import { downloadElementAsPng } from "@/lib/downloadAsPng";
 import {
   DashboardFilterProvider,
-  applyFilters,
   useDashboardFilter,
   type FilterValue,
 } from "@/context/DashboardFilterContext";
@@ -75,18 +74,14 @@ function AutoDashboardInner() {
   const [showFilters, setShowFilters] = useState(false); // phones only; always shown from lg
 
   const { filters, setFilter, clearFilters } = useDashboardFilter();
-  const { status, rows, rowCount, detail } = useDashboardData();
+  const { status, rowCount, detail } = useDashboardData();
 
   // All hooks must be called unconditionally on every render (Rules of Hooks).
   // Early returns for status/loading gates live BELOW this hook block.
-  const filteredRows = useMemo(
-    () => applyFilters(rows, filters),
-    [rows, filters],
-  );
   const hasActiveFilters = Object.keys(filters).length > 0;
   const { data: latestForKey } = useQuery<LatestAnalysis | null>({
     queryKey: ["dashboard-latest"], queryFn: getLatestAnalysis, refetchInterval: 30_000 });
-  const { data: server } = useFilteredDashboard(filters, latestForKey?.session_id);
+  const { data: server, failed } = useFilteredDashboard(filters, latestForKey?.session_id);
 
   const { layout, moveUp, moveDown, hide, restore, reset } = useDashboardLayout();
 
@@ -316,7 +311,9 @@ function AutoDashboardInner() {
           {/* Records indicator — excluded from PNG */}
           {hasActiveFilters && (
             <div data-html2canvas-ignore className="text-xs text-muted-foreground mb-2 px-6">
-              Showing {(server?.rows ?? filteredRows.length).toLocaleString()} of {rowCount.toLocaleString()} records
+              {server ? `Showing ${server.rows.toLocaleString()} of ${rowCount.toLocaleString()} records`
+                : failed ? "Couldn't recompute the dashboard for these filters"
+                : <span aria-busy="true">Showing … of {rowCount.toLocaleString()} records</span>}
             </div>
           )}
 
@@ -324,9 +321,9 @@ function AutoDashboardInner() {
           {visible.length > 0 ? (
             <ChartGrid
               charts={visible}
-              filteredRows={filteredRows}
               hasActiveFilters={hasActiveFilters}
               server={server}
+              failed={failed}
               onElementClick={setFilter}
               chartRefs={chartRefs}
               busy={busy}
@@ -376,9 +373,9 @@ function AutoDashboardInner() {
 
 function ChartGrid({
   charts,
-  filteredRows,
   hasActiveFilters,
   server,
+  failed,
   onElementClick,
   chartRefs,
   busy,
@@ -389,9 +386,9 @@ function ChartGrid({
   onHide,
 }: {
   charts: ChartConfig[];
-  filteredRows: Record<string, unknown>[];
   hasActiveFilters: boolean;
   server: FilteredDashboard | undefined;
+  failed: boolean;
   onElementClick: (key: string, value: FilterValue) => void;
   chartRefs: React.RefObject<Map<string, HTMLDivElement>>;
   busy: string | null;
@@ -404,11 +401,11 @@ function ChartGrid({
   const derivedCharts = useMemo(
     () =>
       charts.map((c) => {
-        const view = chartView(c, hasActiveFilters, server, filteredRows);
+        const view = chartView(c, hasActiveFilters, server, failed);
         return { ...c, renderedData: view.data, showUnfilteredPill: view.unfiltered,
-                 showCountSublabel: view.counted };
+                 updating: view.updating };
       }),
-    [charts, filteredRows, hasActiveFilters, server],
+    [charts, hasActiveFilters, server, failed],
   );
 
   return (
@@ -429,16 +426,16 @@ function ChartGrid({
               chart.layout_hint === "full_width" ? "lg:col-span-2" : ""
             } ${editMode ? "ring-2 ring-primary/40 rounded-lg" : ""}`}
           >
-            {/* Chart adornments: unfiltered pill + count sublabel */}
+            {/* Chart adornments: unfiltered pill, or "updating" while the server recomputes */}
             {chart.showUnfilteredPill && (
               <span className="inline-block text-[10px] uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full mb-1 ml-1">
                 shows unfiltered data
               </span>
             )}
-            {chart.showCountSublabel && (
-              <p className="text-[11px] text-muted-foreground mb-1 ml-1">
-                Filtered: row count
-              </p>
+            {chart.updating && (
+              <span aria-busy="true" className="inline-block text-[10px] uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full mb-1 ml-1">
+                Updating for the filters…
+              </span>
             )}
 
             <ChartRenderer

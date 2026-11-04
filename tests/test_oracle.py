@@ -686,3 +686,83 @@ def test_a_named_values_trend_judges_coverage_on_the_whole_file():
                      kpi="discharges", segment_column="Department", segment_value="Orthopedics",
                      frequency="M")
     assert "covered only from" not in text, text
+
+
+# ── Post-Domain-4 audit (2026-11-04): what a period answer compares ──────────────────────────
+
+def test_a_developing_measure_is_never_compared_across_periods_and_keeps_its_youngest_year():
+    """Audit major 1+2: 'latest 2026-08 … (-57.3% year over year)', '2025 vs 2024 (-20.1%)' and
+    'Jun–Aug 2026: -47.9% year over year' compared still-developing periods, and the by-year
+    chart dropped 2026 (53% of the open reserves). One rule on every KPI path."""
+    truth = _built("loss_run")[3]
+    text, chart = answer("loss_run", "time_series", "incurred by accident year", kpi="incurred", frequency="Y")
+    assert "2026" in chart and abs(chart["2026"] - truth["incurred_by_accident_year"]["2026"]) < 1
+    assert "year over year" not in text and "the period before (" not in text, text
+    assert "still developing" in text
+    window, _ = answer("loss_run", "time_series", "incurred June to August 2026", kpi="incurred",
+                       period_start="2026-06-01", period_end="2026-08-31", compare="yoy")
+    assert "year over year" not in window and "still developing" in window, window
+    by_line, _ = answer("policies", "top_n", "loss ratio by line 2025 vs 2024", kpi="loss_ratio",
+                        group_by="Line of Business", period_start="2025-01-01",
+                        period_end="2025-12-31", compare="yoy")
+    assert " pts" not in by_line and "still developing" in by_line, by_line
+
+
+def test_a_window_reaching_into_months_still_arriving_says_so():
+    """Audit major 1: 'Paid Jul–Sep 2026: $38,896.51' included Aug–Sep, still arriving."""
+    text, _ = answer("health_claims", "segment_compare", "paid July to September 2026", kpi="paid",
+                     period_start="2026-07-01", period_end="2026-09-30")
+    assert "still arriving" in text, text
+
+
+def test_a_count_whose_filter_names_a_developing_role_is_not_developing():
+    """Audit minor: 'Policies by month' got the losses-will-rise caveat (the Policies KPI filters
+    on earned premium; it doesn't measure it)."""
+    text, _ = answer("policies", "time_series", "policies by month", kpi="policies", frequency="M")
+    assert "developing" not in text, text
+
+
+def test_a_follow_up_rate_leaves_out_months_whose_window_runs_past_the_data():
+    """Audit major 3: 'readmission latest 2026-10 0.0%, vs 10.1% (-10.1 pts)' on 8 index stays: a
+    30-day follow-up after October's discharges runs past the data. Those months are left out of
+    period answers, and the answer says so (domain_pack: the within term's window)."""
+    text, chart = answer("inpatient", "time_series", "readmission rate by month", kpi="readmission_rate",
+                         frequency="M")
+    assert "2026-10" not in chart and "follow-up" in text, (text, list(chart)[-3:])
+
+
+def test_an_id_column_is_never_a_measure_in_charts():
+    """Audit major 4: 'top customers by revenue' drew a histogram of CustomerID values: the chart
+    context read an integer id as a measure, a second copy of ingestion's id decision."""
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from agents.visualization_agent import build_context
+    from orchestrator.state import AnalysisTask, ChartType, QuestionIntent, TargetedParams
+    s, clean, contract, _ = _built("b2b_invoices")
+    assert "CustomerID" in contract.id_columns
+    assert "CustomerID" not in build_context(clean, contract=contract).measures
+    s.task_plan = AnalysisTask(raw_query="top customers by revenue", analysis_types=["eda"], target_metrics=[],
+                               question_intent=QuestionIntent.TOP_N,
+                               targeted_params=TargetedParams(group_by="CustomerID", kpi="net_sales", n=10))
+    chart = run_targeted_analysis(s).chart_configs[0]
+    assert chart.chart_type in (ChartType.BAR, ChartType.HORIZONTAL_BAR), chart.chart_type
+
+
+def test_an_average_on_claim_grain_data_is_per_claim():
+    """Audit major 5: 'average incurred by coverage' gave Liability 19,102.77 per claimant row (per
+    claim: 21,870.00); 'average paid by payer' gave Summit Mutual 60.83 per line ($101.71 per
+    claim). A pack's average_per (YAML) makes an average of its money the total per distinct
+    claim, in every answer and chart (agents.utils.aggregate); retail is unchanged."""
+    _, by_cov = answer("loss_run", "segment_compare", "average incurred by coverage",
+                       metric_column="Incurred", segment_column="Coverage", aggregation="mean")
+    assert abs(by_cov["Liability"] - 21870.00) < 0.01, by_cov
+    _, by_payer = answer("health_claims", "segment_compare", "average paid by payer",
+                         metric_column="Paid Amount", segment_column="Payer", aggregation="mean")
+    # over the claims with a paid amount: 412 of Summit's 482 (70 pending have none yet)
+    assert abs(by_payer["Summit Mutual"] - 49026.14 / 412) < 0.01, by_payer
+    _, retail = answer("retail_lines", "segment_compare", "average price by country",
+                       metric_column="Lineitem price", segment_column="Shipping Country", aggregation="mean")
+    clean = _built("retail_lines")[1]
+    from domain_pack import rows_for
+    counted = rows_for(clean, _built("retail_lines")[2], "Lineitem price")[0]
+    want = counted.groupby("Shipping Country")["Lineitem price"].mean()
+    assert all(abs(retail[k] - want[k]) < 0.01 for k in retail), (retail, want.to_dict())

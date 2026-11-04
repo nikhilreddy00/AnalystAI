@@ -8,14 +8,15 @@ import {
   type ReactNode,
 } from "react";
 import { getLatestDashboardData } from "@/lib/api";
-import type { ColumnRoles } from "@/types";
+import type { ColumnRoles, FilterOption } from "@/types";
 
 type Status = "loading" | "ok" | "empty" | "too_large" | "error";
 
 interface DashboardDataValue {
   status: Status;
   detail: string | null;
-  rows: Record<string, unknown>[];
+  /** The sidebar controls; no row ever reaches the browser. */
+  options: FilterOption[];
   columnRoles: ColumnRoles | null;
   sessionId: string | null;
   rowCount: number;
@@ -26,7 +27,7 @@ const Ctx = createContext<DashboardDataValue | null>(null);
 const INITIAL: DashboardDataValue = {
   status: "loading",
   detail: null,
-  rows: [],
+  options: [],
   columnRoles: null,
   sessionId: null,
   rowCount: 0,
@@ -43,7 +44,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
         setState({
           status: "ok",
           detail: null,
-          rows: result.payload.rows,
+          options: result.payload.options,
           columnRoles: result.payload.column_roles,
           sessionId: result.payload.session_id,
           rowCount: result.payload.row_count,

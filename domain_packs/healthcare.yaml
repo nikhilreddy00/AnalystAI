@@ -105,6 +105,8 @@ ranges: {los: {ge: 0}}
 runout: {role: paid_date, months: 3}   # claims keep arriving for ~3 months after service (CMS)
 derived: {los: [date, days, admit_date]}   # no LOS column: length_of_stay = discharge − admit
 
+# an average of money is per claim (claimant or claim-line rows): 'average paid by payer'
+average_per: claim_id
 overview_groups: [department, payer, drg, facility, procedure]
 overview_kpis: [discharges, paid, readmission_rate, alos, denial_rate]
 kind_codes: {sale: counted, return: netted, refunded: reversed, cancel: voided,

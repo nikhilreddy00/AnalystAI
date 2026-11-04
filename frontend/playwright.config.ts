@@ -10,7 +10,8 @@ export default defineConfig({
   workers: 1, // the mock serves one run at a time
   use: { baseURL: "http://127.0.0.1:3100", browserName: "chromium" },
   webServer: [
-    { command: `python3 ../scripts/ui_check/mock_api.py ${fixtures} 8100`, url: "http://127.0.0.1:8100/health" },
+    // the API mock runs the real filtered_dashboard: the repo environment
+    { command: `uv run python ../scripts/ui_check/mock_api.py ${fixtures} 8100`, url: "http://127.0.0.1:8100/health" },
     { command: `python3 ../scripts/ui_check/mock_api.py ${fixtures} 54321`, url: "http://127.0.0.1:54321/health" },
     {
       command: "./node_modules/.bin/next dev -p 3100 -H 127.0.0.1",

@@ -209,6 +209,16 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
     period) the current total, each entity's latest snapshot in the latest period (latest_rows),
     so the answer and its chart agree. Missing values are never carried forward."""
     import pandas as pd
+    from domain_pack import average_entity
+    if agg == "mean" and (per := average_entity(contract, column)) and per in df.columns:
+        # an average per claim (Pack.average_per), never per line, over the claims that have a
+        # value (a pending claim's paid is not yet $0); visualization.group_bars: the same value
+        d = df.assign(**{column: pd.to_numeric(df[column], errors="coerce")})
+        d = d[d[column].notna()]
+        keyed = [k.loc[d.index] if isinstance(k, pd.Series) else k for k in
+                 (keys if isinstance(keys, list) else [keys])]
+        g = d.groupby(keyed)
+        return g[column].sum() / g[per].nunique()
     hint = column_hint(contract, column)
     names = [k for k in (keys if isinstance(keys, list) else [keys]) if isinstance(k, str)]
     if agg not in _LEVEL and not over_time and (hint is None or hint.aggregation_time not in names):

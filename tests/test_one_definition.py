@@ -264,3 +264,13 @@ def test_a_layout_blank_is_never_reported_missing(strategy):
     notes = " ".join(a for e in build_evidence(f, {}, "", "", audit) for a in e.assumptions)
     alerts, _ = _alerts(AnalysisSession(session_id="t", cleaning_audit=audit, analysis_findings=f))
     assert "missing" not in notes and not [a for a in alerts if "missing" in a.title.lower()]
+
+
+def test_missing_labels_are_never_ranked_highest_or_lowest():
+    """Post-Domain-4 audit: 'Unknown' (cleaning's label for blanks) was named the lowest DRG by
+    billed charges. Like the pooled small groups, it is no group a ranking sentence names: one
+    label, guardrails.UNKNOWN_LABEL, read by cleaning and by rankable."""
+    from agents import cleaning_agent
+    from guardrails import POOLED_LABEL, UNKNOWN_LABEL, rankable
+    assert cleaning_agent.UNKNOWN is UNKNOWN_LABEL
+    assert not rankable(UNKNOWN_LABEL) and not rankable(POOLED_LABEL) and rankable("Cardiology")

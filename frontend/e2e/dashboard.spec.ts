@@ -1,6 +1,7 @@
 // Dashboard filters (user report, 2026-11-03): filtering changed nothing on the charts. The page
-// now shows the server's recomputation for the filters (mock: scripts/ui_check/mock_api.py
-// `filtered`), and a chart redraws with its new data (ChartRenderer no longer freezes its props).
+// draws the server's filter options and shows only the server's numbers for the filters (mock:
+// scripts/ui_check/mock_api.py `filtered` runs the real filtered_dashboard on the fixture frame);
+// the browser never downloads a row or computes a number.
 import { expect, test } from "@playwright/test";
 
 const API = "http://127.0.0.1:8100";
@@ -17,16 +18,33 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("a filter redraws a mean chart with the filtered data (1440 px)", async ({ page }) => {
+test("a filter changes a tile and redraws a chart with the server's numbers (1440 px)", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  const rowsFetched: unknown[] = [];
+  page.on("response", async (r) => {
+    if (r.url().endsWith("/dashboard/latest/data")) rowsFetched.push((await r.json()).rows);
+  });
   await page.goto("/dashboard");
-  const chart = page.locator("figure").filter({ hasText: "Average Revenue by Segment" }).first();
-  await expect(chart).toBeVisible({ timeout: 30_000 });
-  const ticks = chart.locator(".recharts-cartesian-axis-tick-value");
-  await expect(ticks.filter({ hasText: /^A$/ })).toHaveCount(1);
+  const hist = page.locator("figure").filter({ hasText: "Revenue distribution" }).first();
+  await expect(hist).toBeVisible({ timeout: 30_000 });
+  const ticks = hist.locator(".recharts-cartesian-axis-tick-value");
+  await expect(ticks.first()).toBeVisible();
+  const before = await ticks.allTextContents();
+  const tile = page.getByText("Total Orders", { exact: true }).locator("xpath=..");
+  await expect(tile.getByText(/overall$/)).toHaveCount(0);
+
   await page.locator("#dashboard-filters").getByText("B", { exact: true }).first().click();
-  await expect(ticks.filter({ hasText: /^A$/ })).toHaveCount(0, { timeout: 10_000 });
-  await expect(ticks.filter({ hasText: /^B$/ })).toHaveCount(1);
-  const card = chart.locator("xpath=..");
-  await expect(card.getByText("shows unfiltered data")).toHaveCount(0);
+
+  // the tile: the server's count, against the overall one
+  await expect(tile.getByText(/^vs .+ overall$/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/^Showing [\d,]+ of [\d,]+ records$/)).toBeVisible();
+  // the histogram: rebuilt by the server for segment B (fewer rows per bin)
+  await expect.poll(() => ticks.allTextContents(), { timeout: 10_000 }).not.toEqual(before);
+  const histCard = hist.locator("xpath=..");
+  await expect(histCard.getByText("shows unfiltered data")).toHaveCount(0);
+  await expect(histCard.getByText("Updating for the filters…")).toHaveCount(0);
+  // a chart from the model's findings can't be rebuilt: it says so instead of pretending
+  const mean = page.locator("figure").filter({ hasText: "Average Revenue by Segment" }).first();
+  await expect(mean.locator("xpath=..").getByText("shows unfiltered data")).toBeVisible();
+  expect(rowsFetched).toEqual([undefined]);   // no row ever reached the browser
 });

@@ -267,6 +267,9 @@ class Pack(_Strict):
     # A caution said whenever the data has the role (a protected attribute: described, never a
     # rating recommendation), strong or weak match
     role_caveats: dict[str, str] = Field(default_factory=dict)
+    # The entity an average of the pack's money divides by (a claim on claim-line or claimant
+    # rows): 'average paid by payer' is per claim, never per line
+    average_per: str | None = None
     # A role the data may lack but can derive ({los: [date, days, admit_date]}): the analysis
     # frame gets it as a column named after the role's first header, so the model never invents
     # one ("LOS (derived)" was rejected as an unknown column)
@@ -359,7 +362,8 @@ class Pack(_Strict):
                 *([self.runout.role] if self.runout else []),
                 *([self.maturity.role, *self.maturity.measures, *self.maturity.dated]
                   if self.maturity else []),
-                *self.role_caveats, *(k.per for k in self.kpis if k.per), *(r for g in self.paired_fields for r in g),
+                *self.role_caveats, *(k.per for k in self.kpis if k.per),
+                *([self.average_per] if self.average_per else []), *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
                 *self.signed_by, *(x.indicator for x in self.signed_by.values()),
@@ -668,11 +672,25 @@ def _day(s: pd.Series) -> pd.Series:
     return pd.to_datetime(s, format="mixed", errors="coerce").dt.normalize()
 
 
+def follow_up_complete(pack: Pack, name: str, df: pd.DataFrame, roles: dict[str, str]):
+    """(the last date whose follow-up window is complete, the window in days) for a KPI with a
+    `within` term (a 30-day readmission: the data's last start − 30 days), else None. A period
+    ending after it is mostly censored rows: never a rate to show or compare (THE rule _within
+    censors by)."""
+    kpi = pack.kpi(name)
+    terms = [t for alt in [*kpi.num, *(kpi.den or [])] for t in alt]
+    windows = [t.within for t in terms if t.within and t.within.start in roles]
+    windows += [w for t in terms if t.kpi for w in [follow_up_complete(pack, t.kpi, df, roles)] if w]
+    cut = [(_day(df[roles[w.start]]).max() - pd.Timedelta(days=w.days), w.days)
+           for w in windows if isinstance(w, Within)] + [w for w in windows if isinstance(w, tuple)]
+    return min(cut) if cut else None
+
+
 def _within(df: pd.DataFrame, whole: pd.DataFrame, roles: dict[str, str], w: Within) -> pd.Series:
     """1.0 per `df` row counted by `w` (a hit, or with `base` an uncensored row), else 0.0."""
     end = _day(df[roles[w.end]])
     starts = _day(whole[roles[w.start]])
-    keep = (end <= starts.max() - pd.Timedelta(days=w.days)) & end.notna()
+    keep = (end <= starts.max() - pd.Timedelta(days=w.days)) & end.notna()   # follow_up_complete
     if w.base:
         return keep.astype(float)
     follow = _meets(whole, roles, w.follow) if w.follow else pd.Series(True, index=whole.index)
@@ -904,6 +922,31 @@ def additive(pack: Pack, name: str) -> bool:
     kpi = pack.kpi(name)
     return kpi.den is None and all(not t.nunique and (not t.kpi or additive(pack, t.kpi))
                                    for alt in kpi.num for t in alt)
+
+
+def kpi_measures(pack: Pack, name: str) -> set[str]:
+    """The roles a KPI measures (summed, counted, followed up), through the KPIs it refers to;
+    never the roles its filters only name (Policies counts policies where a premium exists: it
+    doesn't measure premium)."""
+    kpi = pack.kpi(name)
+    out: set[str] = set()
+    for t in (t for alt in [*kpi.num, *(kpi.den or [])] for t in alt):
+        expr = t.sum if t.sum is not None else t.sum_abs
+        out |= {t.nunique} if t.nunique else set(expr if isinstance(expr, list) else [expr]) - {
+            None, "*", "-", "days"} if expr is not None else set()
+        out |= {t.within.entity} if t.within else set()
+        out |= kpi_measures(pack, t.kpi) if t.kpi else set()
+    return out
+
+
+def average_entity(contract, column: str) -> str | None:
+    """The column an average of `column` divides by (Pack.average_per, a strong match, `column`
+    one of the pack's money roles), else None: a plain mean over rows."""
+    pack = defaults_pack(contract)
+    if not pack or not pack.average_per or pack.average_per not in contract.roles:
+        return None
+    money = {r for r, x in pack.roles.items() if x.kind == "money"}
+    return contract.roles[pack.average_per] if roles_of(contract, column) & money else None
 
 
 def roles_of(contract, column: str) -> set[str]:
@@ -1342,11 +1385,12 @@ def entity_rows(df: pd.DataFrame, contract) -> pd.DataFrame:
     """Rows for a statistic over entities (a correlation) on snapshot data: each entity's latest
     snapshot (any kind first), then only rows the tiles count (on the books, main currency);
     every snapshot would count an account 14 times. An account that stopped reporting keeps its
-    last row (dropping it would bias toward survivors). Not snapshot data: the frame as it is.
+    last row (dropping it would bias toward survivors). Not snapshot data: the frame without a
+    version chain's earlier versions (a claim's earlier valuations; none without a chain).
     Mirrored in the analysis sandbox's built-in correlation."""
     ent = snapshot_entity(contract, df.columns)
     if ent is None:
-        return df
+        return df[~superseded(df, contract)] if contract is not None else df
     from agents.utils import snapshot_rows
     rows = snapshot_rows(df, ent[0], ent[1], current=False)
     pack = defaults_pack(contract)   # row kinds on a strong match only, as rows_for

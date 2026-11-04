@@ -182,15 +182,6 @@ async def download_latest_report(
     )
 
 
-def json_rows(df):
-    """Rows as JSON-safe records: NaN, ±inf and NaT become None (a float column keeps NaN
-    under a plain `where(notna, None)`, and JSONResponse refuses it)."""
-    import numpy as np
-
-    df = df.replace([np.inf, -np.inf], np.nan).astype(object)
-    return df.where(df.notna(), None).to_dict("records")
-
-
 async def _latest_frame(request: Request, user: UserProfile):
     """(latest completed session, its cleaned frame): the frame every dashboard view reads."""
     from pathlib import Path
@@ -206,20 +197,17 @@ async def _latest_frame(request: Request, user: UserProfile):
     if not session.cleaned_data_path or not Path(session.cleaned_data_path).is_file():
         raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
     df = pd.read_parquet(session.cleaned_data_path)
-    import domain_pack   # a chain's earlier versions are never counted or shown: not in the cap
-    # the server still reads every row (kinds are judged on all): a hard cap on the whole frame
-    shown = len(df) if len(df) > MAX_RAW_ROWS else \
-        int((~domain_pack.superseded(df, session.data_contract)).sum())
-    if shown > MAX_ROWS:   # every dashboard view: the rows and their filtered recomputation
+    if len(df) > MAX_ROWS:   # the server's compute guard: every row a recomputation reads
         raise HTTPException(
             status_code=422,
-            detail=(f"Dataset too large for the interactive dashboard ({shown:,} rows; limit is "
+            detail=(f"Dataset too large for the interactive dashboard ({len(df):,} rows; limit is "
                     f"{MAX_ROWS:,}). Run a targeted question via chat instead."))
     return session, df
 
 
-MAX_ROWS = 25_000
-MAX_RAW_ROWS = 4 * MAX_ROWS   # every row the server reads (earlier versions included)
+# The rows the server recomputes a dashboard view from (no row ever goes to the browser: it
+# gets filter options and the server's numbers). A 50 MB upload is well under this.
+MAX_ROWS = 1_000_000
 
 
 class FilterRequest(BaseModel):
@@ -271,25 +259,13 @@ async def get_latest_dashboard_data(
     request: Request,
     current_user: UserProfile = Depends(get_current_user),
 ):
-    """Return raw cleaned rows + column_roles for the user's latest completed session.
-    Used by the dashboard page for its filter options; the numbers under filters come from
-    POST /latest/filtered (the domain rules live on the server)."""
+    """The latest dashboard's filters: {session_id, row_count, column_roles, options}. No rows:
+    every number under a filter comes from POST /latest/filtered (the domain rules live on the
+    server; the browser used to recount rows itself, without them)."""
+    import asyncio
+
+    from agents.visualization_agent import filter_options
+
     session, df = await _latest_frame(request, current_user)
-
-    from agents.visualization_agent import classify_columns
-    roles = classify_columns(df)
-
-    # The rows a re-count reads (plan v2 R1, the one row rule): on snapshot data each account's
-    # latest row on the books (a loan is one loan, not 14 month-ends); otherwise every row
-    import domain_pack
-    df = df[~domain_pack.superseded(df, session.data_contract)]   # filter options: counted rows only
-    if domain_pack.snapshot_entity(session.data_contract, df.columns):
-        df = df.assign(__counted=df.index.isin(domain_pack.entity_rows(df, session.data_contract).index))
-    rows = json_rows(df)
-
-    return {
-        "session_id": session.session_id,
-        "row_count": len(rows),
-        "column_roles": roles,
-        "rows": rows,
-    }
+    return {"session_id": session.session_id,
+            **await asyncio.to_thread(filter_options, df, session.data_contract)}

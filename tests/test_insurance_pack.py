@@ -453,3 +453,16 @@ def test_the_row_count_called_a_count_of_entities_is_flagged(text, flagged):
     from guardrails import claim_rows_as_entities
     counts = {"Policies": "1,300", "Claims": "304"}
     assert bool(claim_rows_as_entities(text, 2674, counts)) == flagged
+
+
+def test_a_statistic_over_entities_reads_each_chains_latest_version():
+    """Browser check: 'Incurred vs Paid to Date (r = 0.89), 38,255 rows': the scatter and its r read
+    all 16 valuations. One row per entity (domain_pack.entity_rows, every scatter and correlation)
+    is a version chain's latest row too, as it is an account's latest snapshot."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built
+    _, clean, contract, truth = _built("loss_run")
+    assert len(domain_pack.entity_rows(clean, contract)) == truth["claim_rows_latest"]
+    retail = _built("retail_lines")
+    assert len(domain_pack.entity_rows(retail[1], retail[2])) == len(retail[1])   # no chain: as is

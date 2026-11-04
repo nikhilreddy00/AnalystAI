@@ -1,5 +1,5 @@
 // Phase 5.5: a number in its unit, written exactly as the backend writes it
-// (agents/visualization_agent.py _format_value), so a tile and its filtered recompute agree.
+// (agents/visualization_agent.py _format_value), so the Data tab and a tile agree.
 // Money: the same currency list as the backend, Intl en-US decimals (JPY none). Any other unit
 // (°C, days, RPM) follows the number after a no-break space. Never throws.
 const ISO_CURRENCIES = new Set("USD EUR GBP JPY INR CNY CAD AUD CHF BRL MXN SEK NOK DKK PLN CZK HUF ZAR NZD SGD HKD KRW TRY ILS AED SAR THB MYR IDR PHP VND RUB EGP NGN KES COP CLP PEN ARS TWD".split(" "));
