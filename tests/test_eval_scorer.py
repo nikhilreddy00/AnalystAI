@@ -466,3 +466,19 @@ def test_an_overall_row_beside_the_groups_is_the_whole_populations_value():
                              aggregation="sum", results=[{"name": "Overall", "value": total}])
     assert false_findings(_findings(segments=[seg(truth["incurred_total"])]), df, truth)["false"] == 0
     assert false_findings(_findings(segments=[seg(1.0)]), df, truth)["false"] == 1
+
+
+def test_an_eda_stat_over_the_counted_rows_passes_the_check():
+    """Domain 4 E2E re-measure (banking e2e-46): the median over the counted rows (reversals and
+    other currencies out, as every tile) failed eda_stat, which read every row; a wrong number
+    still fails. One population rule with false_findings."""
+    from domain_pack import rows_for
+    from agents.ingestion_agent import build_contract
+    from evals.scoring import check_eda_stat
+    from orchestrator.state import ConnectorType
+    df, _ = datagen.make("loss_run", 1)
+    s = rows_for(df, build_contract(df, ConnectorType.CSV, {}), "Paid to Date")[0]["Paid to Date"]
+    assert check_eda_stat(_findings(eda_summary={"Paid to Date": {"median": float(s.median())}}),
+                          df, "Paid to Date", ["median"])[0]
+    assert not check_eda_stat(_findings(eda_summary={"Paid to Date": {"median": 1.0}}),
+                              df, "Paid to Date", ["median"])[0]

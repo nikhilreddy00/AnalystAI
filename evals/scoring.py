@@ -44,12 +44,18 @@ def check_eda_stat(f: AnalysisFindings, df: pd.DataFrame, column: str, stats: li
     got = f.eda_summary.get(column)
     if not isinstance(got, dict):
         return False, f"no eda_summary for '{column}'"
-    s = df[column].dropna()
     for stat in stats:
-        want = float(s.count() if stat == "count" else getattr(s, stat)())
-        if not _close(got.get(stat), want, rel_tol):
-            return False, f"{column}.{stat}: got {got.get(stat)}, want {want:.4f}"
+        wants = _summary_values(df, column, stat)
+        if not any(_close(got.get(stat), w, rel_tol) for w in wants):
+            return False, f"{column}.{stat}: got {got.get(stat)}, want {wants[0]:.4f}"
     return True, "ok"
+
+
+def _summary_values(df: pd.DataFrame, column: str, stat: str) -> list[float]:
+    """`stat` of `column` over each population production summarises (every row, or the rows
+    its tiles count: domain_pack.rows_for). THE rule of eda_stat and false_findings."""
+    return [float(s.count() if stat == "count" else getattr(s, stat)())
+            for s in (rows[column].dropna() for rows in _populations(df, column))]
 
 
 def _is_rate(s: pd.Series) -> bool:
@@ -288,10 +294,9 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
     for col, stats in f.eda_summary.items():
         if col in numeric and isinstance(stats, dict):
             # the rows production can summarise (every row, or the rows its tiles count)
-            pops = [rows[col].dropna() for rows in _populations(df, col)]
             for stat in sorted(_AGGS - {"sum"} | {"std"}):
                 if stat in stats:
-                    wants = [float(s.count() if stat == "count" else getattr(s, stat)()) for s in pops]
+                    wants = _summary_values(df, col, stat)
                     claims.append((f"{col}.{stat}", not any(_close(stats[stat], w, 0.01) for w in wants)))
     for seg in f.segments:
         cols = _strata(seg.segment_column, df.columns)
