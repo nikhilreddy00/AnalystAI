@@ -102,3 +102,11 @@ def test_pay_in_a_month_with_fewer_than_11_people_in_force_is_hidden(pack):
     df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("M")
     series = compute_kpi(df, ROLES, pack, "avg_pay", by="_period")
     assert pd.Period("2026-03", "M") not in series.index and pd.Period("2026-07", "M") in series.index
+
+
+def test_a_filtered_pay_series_counts_only_the_filtered_people(pack):
+    df = _staff()
+    df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("M")
+    tiny = df[df["team"] == "Tiny"]   # 4 in force, while the company has 35
+    series = compute_kpi(tiny, ROLES, pack, "avg_pay", by="_period", full=df)
+    assert series is None or pd.Period("2026-10", "M") not in series.index

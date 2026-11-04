@@ -1248,9 +1248,11 @@ def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         whole = df if whole is None else whole
         as_of = spell_as_of(pack, whole, roles)
         ent = roles[pack.spell.entity]
+        def present(p) -> int:   # the people this value counts: in force then AND in `df` (a filter)
+            now = _in_force(whole, roles, pack, min(p.end_time.normalize(), as_of))
+            return now.loc[now.index.intersection(df.index), ent].nunique()
         return [p for p in (pd.unique(df[by].dropna()) if groups is None else groups)
-                if as_of is not None and _in_force(
-            whole, roles, pack, min(p.end_time.normalize(), as_of))[ent].nunique() < SMALL_CELL]
+                if as_of is not None and present(p) < SMALL_CELL]
     return [g for g, part in df.groupby(by, sort=False)
             if people(part, roles, pack, state, whole) < SMALL_CELL]
 
@@ -1728,7 +1730,32 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     kinds = row_kinds(df, roles, pack)
     keep, _, _ = main_currency(df, roles)
-    return df.assign(**{name: kinds.map(pack.code).where(keep, "other_currency")}), name
+    out = df.assign(**{name: kinds.map(pack.code).where(keep, "other_currency")})
+    return with_spell_events(out, pack, roles), name
+
+
+SPELL_EVENT_COLUMNS = ("hire_event_date", "exit_event_date")
+
+
+def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd.DataFrame:
+    """On spell data, the product's own events as columns for code the model writes: each
+    spell's first row carries its hire (start) date, its last row its exit date (the end date,
+    or on snapshots the first snapshot the person is missing from), up to the as-of; blank on
+    every other row. Counting a window's exits is then counting rows with an exit_event_date in
+    it, by the row's own department (where the person left from): the model never re-derives a
+    vanished leaver (Domain 5 smoke: it counted only dated exits, 20 of 49)."""
+    if not pack.spell or pack.spell.entity not in roles or any(c in df.columns for c in SPELL_EVENT_COLUMNS):
+        return df
+    as_of = spell_as_of(pack, df, roles)
+    if as_of is None:
+        return df
+    out = df.copy()
+    for col, which in zip(SPELL_EVENT_COLUMNS, ("starts", "ends")):
+        rows, when = _spell_events(df, roles, pack, which, as_of)
+        out[col] = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+        out.loc[rows.index, col] = when.astype("datetime64[ns]")
+        out[col] = out[col].dt.strftime("%Y-%m-%d")
+    return out
 
 
 def counted(pack: Pack, role: str) -> bool:

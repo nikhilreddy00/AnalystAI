@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
+    SPELL_EVENT_COLUMNS,
     spell_facts,
     runout_months,
     developing_trend,
@@ -766,7 +767,8 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             framed, added = with_derived(framed, contract)
             buf = io.BytesIO()
             framed.to_parquet(buf, index=False)
-            return buf.getvalue(), [*([col] if col else []), *added]
+            events = [c for c in SPELL_EVENT_COLUMNS if c in framed.columns]   # with_row_kind's
+            return buf.getvalue(), [*([col] if col else []), *added, *events]
         new_bytes, extra = await asyncio.to_thread(framed_bytes)
         if extra:
             df_parquet, known = new_bytes, known + extra
