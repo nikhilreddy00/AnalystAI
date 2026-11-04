@@ -115,9 +115,10 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if conventions and named:   # a sales report names no consumers ("top 10 customers by email")
         return _unanswerable(intent, f"{sorted(named)[0]} identifies people, so answers aren't "
                              "grouped by it", ["Ask by customer id, country or product instead"])
-    # "top 5 lines": rows; a top_n naming a KPI with no group asks for the KPI (overall, or by its
-    # segment column): the row handler can't rank without a group
-    grouped = intent != QuestionIntent.TOP_N or bool(params and (params.group_by or params.kpi))
+    # "top 5 lines": rows; a top_n naming a KPI with no group and no ranking word ("How much
+    # have we incurred in total?") asks for the KPI (overall, or by its segment column)
+    grouped = intent != QuestionIntent.TOP_N or bool(params and (params.group_by or (
+        params.kpi and not _RANKING_RE.search(session.task_plan.raw_query or ""))))
     if params and conventions and intent in _KPI_INTENTS and not params.kpi and grouped and \
             (params.aggregation or "sum").lower() == "sum" and (kpi := _summed_kpi(pack, contract, params, df)):
         params = params.model_copy(update={"kpi": kpi})   # "sales by country": the pack's net sales
@@ -980,6 +981,9 @@ def _date_of(contract: DataContract, params: TargetedParams, df: pd.DataFrame) -
 
 
 _KPI_INTENTS = {QuestionIntent.TOP_N, QuestionIntent.SEGMENT_COMPARE, QuestionIntent.TIME_SERIES}
+# A question that ranks rows or groups ("top 5 lines", "the largest claims")
+_RANKING_RE = re.compile(r"\b(?:top|bottom|largest|smallest|biggest|highest|lowest|most|least|"
+                         r"best|worst|rank\w*)\b", re.I)
 
 
 def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
