@@ -931,6 +931,17 @@ _VEHICLE_COL_RE = re.compile(
     r"drivers?_?licen[cs]e(?:_?(?:no|number|num|id))?|licen[cs]e_?(?:no|number|num)|"
     r"dl_?(?:no|number|num)|licen[cs]e_?plate(?:_?(?:no|number|num))?|plate_?(?:no|number|num))$",
     re.I)
+# A national id, NI / social-insurance number or a person's bank details (Domain 5: payroll and
+# HR files). Anchored at the end: `account_number` (a bank's own accounts), `tax_id` (a
+# company's), `sin_count` are not.
+_NATIONAL_ID_COL_RE = re.compile(
+    r"(?:^|_)(?:national_?(?:id|insurance)(?:_?(?:no|number|num))?|ni_?(?:no|number|num)|nino|"
+    r"sin_?(?:no|number|num)|social_?insurance_?(?:no|number|num)|tax_?file_?(?:no|number|num)|"
+    r"bank_?account(?:_?(?:no|number|num))?|routing_?(?:no|number|num)|sort_?code)$", re.I)
+# A UK National Insurance number (HMRC NIM39110: no D F I Q U V first, no D F I O Q U V second;
+# BG GB NK KN NT TN ZZ never issued), spaced or not: column level only, like a VIN
+_NINO_RE = re.compile(r"^(?!BG|GB|NK|KN|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]"
+                      r"\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]$", re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
 _THING_NAME_RE = re.compile(
@@ -1099,8 +1110,8 @@ def _is_vin(text: str) -> bool:
 
 def is_pii_column(name: str) -> bool:
     name = _norm_name(name)
-    return bool(_VEHICLE_COL_RE.search(name)) or (bool(_PII_COL_RE.search(name))
-                                                  and not _THING_NAME_RE.search(name))
+    return bool(_VEHICLE_COL_RE.search(name)) or bool(_NATIONAL_ID_COL_RE.search(name)) or (
+        bool(_PII_COL_RE.search(name)) and not _THING_NAME_RE.search(name))
 
 
 def _intl_phone(m: re.Match) -> str:
@@ -1197,6 +1208,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     norm = _norm_name(name)
     if _VEHICLE_COL_RE.search(norm):
         return "vehicle", f"the column name '{name}' marks a vehicle or licence identifier"
+    if _NATIONAL_ID_COL_RE.search(norm):
+        return "national_id", f"the column name '{name}' marks a national id or bank details"
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
@@ -1236,6 +1249,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 hits["card"] = hits.get("card", 0) + 1
             elif _iban_spans(t, whole_token=True):
                 hits["iban"] = hits.get("iban", 0) + 1
+    if sum(bool(_NINO_RE.match(str(v).strip())) for v in vals) >= 0.3 * len(vals):
+        return "national_id", f"'{name}' holds National Insurance numbers"
     if sum(_is_vin(str(v)) for v in vals) >= 0.3 * len(vals):   # column level only: never in
         return "vehicle", f"'{name}' holds vehicle identification numbers"   # free text (M6)
     if sum(hits.values()) >= 0.3 * len(vals):
