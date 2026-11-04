@@ -438,3 +438,18 @@ def test_by_a_wide_margin_is_not_a_profit_margin():
     from guardrails import claim_profit_without_cost
     assert claim_profit_without_cost("Income leads by a wide margin.", False) is None
     assert claim_profit_without_cost("The margin on Income is 12%.", False)
+
+
+@pytest.mark.parametrize("text, flagged", [
+    ("A 2,674-policy P&C book carries a 60.5% loss ratio.", True),
+    ("This portfolio of 2,674 policies spans Auto and Home.", True),
+    ("The book covers 1,300 policies and 2,674 rows.", False),
+    ("NY leads with 60 claims.", False),
+    ("Claims total 304 across 1,300 policies.", False),
+])
+def test_the_row_count_called_a_count_of_entities_is_flagged(text, flagged):
+    """Browser check (lesson 17, third time this domain): 'A 2,674-policy book' beside a Policies
+    tile of 1,300. Generic: the row count written as a count tile's noun, when the tile differs."""
+    from guardrails import claim_rows_as_entities
+    counts = {"Policies": "1,300", "Claims": "304"}
+    assert bool(claim_rows_as_entities(text, 2674, counts)) == flagged

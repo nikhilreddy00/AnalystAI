@@ -36,6 +36,7 @@ from guardrails import (
     claim_direction_conflict,
     claim_group_conflict,
     claim_never_said,
+    claim_rows_as_entities,
     claim_overstated_certainty,
     claim_period_conflict,
     claim_rank_conflict,
@@ -173,6 +174,12 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     # small cells are a patient-data rule: any phi pack's nouns, strong or weak match
     phi_pack = pack_for(contract.domain) if contract and contract.phi else None
     nouns = phi_pack.small_cell_nouns if phi_pack else []
+    # count tiles (Policies: 1,300) and the file's rows: rows are never called policies
+    audit = session.cleaning_audit
+    rows = audit.rows_after if audit else (contract.row_count if contract else 0)
+    counts = {k.label: k.value for k in (session.analysis_findings.kpis if session.analysis_findings
+                                         else []) if pack and k.recipe and k.recipe.kind == "pack"
+              and (kpi := pack.kpi(k.recipe.kpi)) and kpi.unit == "count"}
     flags: list[ReviewFlag] = []
     for i, c in enumerate(report_claims(report)):
         text, ids = c["text"], [x for x in c["ids"] if x in evidence]
@@ -195,6 +202,8 @@ def check_claims(session: AnalysisSession, report: InsightReport,
             found = ("group", "contradicted", r)
         elif r := claim_rank_conflict(text, groups):
             found = ("rank", "contradicted", r)
+        elif r := claim_rows_as_entities(text, rows, counts):
+            found = ("number", "contradicted", r)
         elif anywhere:
             found = ("number", "unsupported", f"states {anywhere[0]}, which no evidence holds")
         elif nums:

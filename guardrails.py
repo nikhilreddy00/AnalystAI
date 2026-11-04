@@ -825,6 +825,28 @@ def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
     return None
 
 
+def _noun_forms(label: str) -> set[str]:
+    """'Policies' → {policies, policy}; 'Claims' → {claims, claim}."""
+    w = label.strip().lower()
+    return {w, w[:-3] + "y" if w.endswith("ies") else w[:-1] if w.endswith("s") else w}
+
+
+def claim_rows_as_entities(text: str, rows: int, counts: dict[str, str]) -> str | None:
+    """The file's row count written as a count of a counted thing ('2,674 policies', '2,674-policy
+    book') whose figure says otherwise (Policies: 1,300): rows are not policies. `counts`: count
+    tiles {label: displayed value}. A group's own count ('60 claims in NY') is not the row count."""
+    if not rows:
+        return None
+    for label, value in counts.items():
+        if value.replace(",", "") == str(rows):
+            continue
+        nouns = "|".join(sorted(map(re.escape, _noun_forms(label)), key=len, reverse=True))
+        if re.search(rf"(?<![\d,.]){rows:,}(?![\d,.]\d)[\s-]+(?:[A-Za-z&]+[\s-]+)?(?:{nouns})\b",
+                     text, re.I):
+            return f"calls the file's {rows:,} rows {label.lower()}: the data has {value} {label.lower()}"
+    return None
+
+
 def claim_never_said(text: str, rules) -> str | None:
     """A domain pack's never-say claim (Pack.never_say: a pattern and its reason, 'losses for a
     still-developing year are final'), asserted: a sentence that hedges ('not yet final') is no

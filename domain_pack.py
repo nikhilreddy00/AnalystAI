@@ -630,6 +630,15 @@ def _versions(df: pd.DataFrame, roles: dict[str, str], pack: Pack, kind: pd.Seri
     return kind.mask(voided, "cancel")
 
 
+def superseded(df: pd.DataFrame, contract) -> pd.Series:
+    """Rows an earlier version of a version chain (a claim's earlier valuation, a replaced claim
+    line): never counted or shown. All False without a chain."""
+    pack = pack_for(contract.domain) if contract and contract.domain else None
+    roles = {r: c for r, c in (contract.roles if contract else {}).items() if c in df.columns}
+    base = pd.Series("sale", index=df.index, dtype=object)
+    return (_versions(df, roles, pack, base) == "non_product") if pack else base.ne("sale")
+
+
 def main_currency(df: pd.DataFrame, roles: dict[str, str]) -> tuple[pd.Series, str | None, int]:
     """(rows in the main currency, that currency, rows left out). One currency: every row."""
     if "currency" not in roles:

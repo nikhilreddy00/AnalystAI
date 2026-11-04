@@ -127,7 +127,8 @@ def test_one_percent_change_rule_in_answers():
 
 
 _REDUCES = re.compile(r"\.(?:quantile|mean|median|sum|corr|std|nunique)\(|value_counts\(|aggregate\(|np\.histogram\(")
-_ROW_RULES = ("rows_for(", "entity_rows(", "compute_kpi(", "handle_kpi(", "pack_kpis(")
+_ROW_RULES = ("rows_for(", "entity_rows(", "compute_kpi(", "handle_kpi(", "pack_kpis(",
+              "superseded(")   # a version chain's earlier rows (domain_pack): counted rows only
 # Whole-table profile functions: they describe the table's shape (which column is a category,
 # how many rows per value), never a measure's value a tile also states. A new entry needs a
 # reason here; anything that states a measure's number takes rows_for (Domain 3: the outlier

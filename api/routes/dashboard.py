@@ -206,10 +206,12 @@ async def _latest_frame(request: Request, user: UserProfile):
     if not session.cleaned_data_path or not Path(session.cleaned_data_path).is_file():
         raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
     df = pd.read_parquet(session.cleaned_data_path)
-    if len(df) > MAX_ROWS:   # every dashboard view: the rows and their filtered recomputation
+    import domain_pack   # a chain's earlier versions are never counted or shown: not in the cap
+    shown = int((~domain_pack.superseded(df, session.data_contract)).sum())
+    if shown > MAX_ROWS:   # every dashboard view: the rows and their filtered recomputation
         raise HTTPException(
             status_code=422,
-            detail=(f"Dataset too large for the interactive dashboard ({len(df):,} rows; limit is "
+            detail=(f"Dataset too large for the interactive dashboard ({shown:,} rows; limit is "
                     f"{MAX_ROWS:,}). Run a targeted question via chat instead."))
     return session, df
 
@@ -277,6 +279,7 @@ async def get_latest_dashboard_data(
     # The rows a re-count reads (plan v2 R1, the one row rule): on snapshot data each account's
     # latest row on the books (a loan is one loan, not 14 month-ends); otherwise every row
     import domain_pack
+    df = df[~domain_pack.superseded(df, session.data_contract)]   # filter options: counted rows only
     if domain_pack.snapshot_entity(session.data_contract, df.columns):
         df = df.assign(__counted=df.index.isin(domain_pack.entity_rows(df, session.data_contract).index))
     rows = json_rows(df)
