@@ -316,13 +316,14 @@ def test_every_filter_partitions_and_matches_the_group_answer(name):
                                 (name, col, c.title, v, y, r[y], b)
 
 async def test_dashboard_recomputations_are_bounded_server_wide(monkeypatch):
-    """Security review: a timed-out recomputation keeps running in its thread; at most
-    _RECOMPUTE of them run at once, and a request that can't get a slot in 30 s times out."""
+    """Security review: a timed-out recomputation keeps running in its thread; the dashboard pool's
+    workers bound what runs at once (a semaphore released on cancel did not)."""
     import asyncio
     import time
+    from concurrent.futures import ThreadPoolExecutor
 
     from api.routes import dashboard
-    monkeypatch.setattr(dashboard, "_RECOMPUTE", asyncio.Semaphore(1))
+    monkeypatch.setattr(dashboard, "_POOL", ThreadPoolExecutor(max_workers=1))
     running, peak = [0], [0]
 
     def slow():

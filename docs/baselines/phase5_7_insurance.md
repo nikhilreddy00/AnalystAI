@@ -172,3 +172,53 @@ Changed: `claims-1/2/3` and `ins-1..3` (make_claims reads as insurance; life →
   data.
 - CI's zero-suites job went red on two commits: the pre-push hook didn't run it; it does now.
 - The grill was self-answered (delegated by the user), recorded in the plan's C0.
+
+## Post-domain follow-up (2026-11-04, user request): dashboard filters and the row cap, permanently
+
+**Why it kept coming back.**
+- The 25,000-row "too large" 422 (Domains 3 and 4) existed only because `/dashboard/latest/data`
+  shipped every row to the browser.
+- The browser also recounted with its own copies of the filter and counting rules
+  (`applyFilters`, `aggregateForChart`, `evaluateKPI`), which knew none of a domain's rules (row
+  kinds, a claim's latest version, snapshots, currency). Filtered numbers were right when the
+  server answered and wrong while it loaded, or for charts only the browser recounted. The CI
+  mock had a third copy.
+
+**Fix (one definition).**
+- The browser never computes a number and never receives a row: it gets filter options from the
+  counted rows (`visualization_agent.filter_options`) and the server's numbers
+  (`filtered_dashboard`).
+- The recount code is deleted, and the mock calls the real functions.
+- The server guard is 1,000,000 rows, checked from parquet metadata; recomputations run on a
+  2-worker pool.
+
+**Permanent check.** `tests/test_dashboard_filters.py` runs every category filter and value, plus
+`in`, `range` and `date_range` filters, on all 12 domain datasets, through the production path. Its
+relations need no truth table, so new domains are covered automatically:
+- counts add up across a column's values;
+- a filtered tile = the KPI by that column (kinds judged on all rows);
+- additive tiles partition the whole;
+- a chart by the filtered column keeps that value's unfiltered number;
+- a small cell shows no number, not even its count.
+
+It was proven failing on the old rule (row kinds judged on the filtered rows).
+
+**Live (1440 px, live API + worker):** loss run, Claim Status = Open → incurred $6,185,025.45,
+566 claims (truth); + Home → open reserves $1,910,942.75 (truth); `/latest/data` carries no rows.
+
+**Senior audit (13 datasets, ~900 answers; every tile and KPI value = independent truth), fixed at
+the root:**
+- developing measures are never compared across periods and keep their youngest period (with its
+  coverage);
+- windows that reach arriving months say so;
+- follow-up rates leave out censored periods;
+- ids are no chart measures or filters;
+- `Pack.average_per`: an average of a claim pack's money is per claim (`utils.aggregate` =
+  `group_bars`);
+- `entity_rows` drops a chain's earlier versions;
+- "Unknown" is never ranked.
+
+**Fix-diff review:** 2 majors (a partial quarter headlined; a small cell's count shown), fixed.
+
+**Open (cosmetic):** chart pills say the rows read (38,255) on chained data, not the 3,975
+counted.

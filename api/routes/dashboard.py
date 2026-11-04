@@ -4,6 +4,7 @@ Full implementation in Phase 5 (frontend). Stub for Phase 1.
 """
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import Response
@@ -211,17 +212,16 @@ async def _latest_frame(request: Request, user: UserProfile):
 # The rows the server recomputes a dashboard view from (no row ever goes to the browser: it
 # gets filter options and the server's numbers). A 50 MB upload is well under this.
 MAX_ROWS = 1_000_000
-# A timed-out recomputation keeps running in its thread: at most this many run at once (the
-# rate limit bounds each user; this bounds the server), a request waits its 30 s for a slot
-_RECOMPUTE = asyncio.Semaphore(2)
+# Recomputations run on this pool only: its workers bound the work actually running, even when
+# a request times out and its thread keeps going (the rate limit bounds each user; this, the
+# server). A queued job whose request timed out is cancelled before it starts.
+_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="dashboard")
 
 
 async def _bounded(fn, *args):
-    """fn(*args) in a thread, one of at most _RECOMPUTE.N at a time, within 30 s overall."""
-    async def run():
-        async with _RECOMPUTE:
-            return await asyncio.to_thread(fn, *args)
-    return await asyncio.wait_for(run(), timeout=30)
+    """fn(*args) on the dashboard pool, within 30 s of the request."""
+    return await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(_POOL, fn, *args),
+                                  timeout=30)
 
 
 class FilterRequest(BaseModel):
