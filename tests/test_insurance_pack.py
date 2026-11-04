@@ -264,3 +264,21 @@ def test_the_insight_never_says_one_row_per_entity_when_a_count_tile_disagrees()
     facts = build_context(session).facts
     assert "One row is one policy." not in facts
     assert "1,300 policies in 2,674 rows: a row is not one policy" in facts, facts
+
+
+def test_a_column_blank_by_the_files_layout_is_never_called_missing_in_evidence():
+    """Live loss run: 'Case Reserve: 71% missing, left out of this result' (closed claims carry no
+    reserve, by design) beside cleaning's own 'blank by design'. analysis_agent kept its own copy
+    of the layout rule (order-level only); every layout kind is the file's layout."""
+    import sys
+    sys.path.insert(0, "tests")
+    from agents.analysis_agent import build_evidence
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from test_oracle import _built
+    s, _, _, _ = _built("loss_run")
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[],
+                         forecast_points=[], distributions={}, code_executed="", segments=[
+        SegmentResult(segment_column="Line of Business", metric_column=c, aggregation="sum",
+                      results=[{"name": "Auto", "value": 1.0}]) for c in ("Case Reserve", "Cat Event")])
+    notes = " ".join(a for e in build_evidence(f, {}, "", "", s.cleaning_audit) for a in e.assumptions)
+    assert "missing" not in notes, notes

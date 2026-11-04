@@ -28,7 +28,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
-from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
+from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT, LAYOUT_STRATEGIES
 from connectors.base import TRUNCATED
 from agents.utils import display_values, pii_columns, strip_markdown_fences, with_display_names
 from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for, version_grain
@@ -196,11 +196,11 @@ def _entity_count(session: AnalysisSession) -> str | None:
     rows = audit.rows_after if audit else contract.row_count if contract else 0
     for k in (findings.kpis if findings and pack else []):
         kpi = pack.kpi(k.recipe.kpi) if k.recipe and k.recipe.kind == "pack" else None
-        if kpi and kpi.unit == "count" and k.label.lower() == narrative.entity_plural.lower() \
+        if kpi and kpi.unit == "count" and kpi.phrase.lower() == narrative.entity_plural.lower() \
                 and k.value.replace(",", "") != str(rows):
             return (f"{k.value} {narrative.entity_plural} in {rows:,} rows: a row is not one "
                     f"{narrative.entity_singular}; count {narrative.entity_plural} as the "
-                    f"{k.label} figure does, never rows.")
+                    f"{kpi.phrase} figure does, never rows.")
     return None
 
 
@@ -579,7 +579,8 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
 
     for d in audit.decisions:
         name = _name(d.column, narrative)
-        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT and d.strategy != "order_level":
+        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT \
+                and d.strategy not in LAYOUT_STRATEGIES:
             alert(Severity.CRITICAL if d.after_null_pct > 50 else Severity.HIGH, d.column,
                   f"{name.capitalize()}: {_pct(d.after_null_pct)} missing",
                   f"{_pct(d.after_null_pct)} of {name} values are missing. They are left out of "

@@ -25,6 +25,7 @@ from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
     runout_months,
+    developing_note,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -295,6 +296,10 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             overall = series_of(rows, c, agg, weeks)
             if overall is None or len(overall) < 2:
                 continue
+            # a measure that develops (losses at a valuation): its young years are not final
+            if note := developing_note(contract, df, {r for r, x in contract.roles.items() if x == c}):
+                if (note := f"{c}:{note}") not in raw["assumptions"]:
+                    raw["assumptions"].append(note)
             # the data's own last month (before partial / run-out months were left out)
             data_last = pd.to_datetime(rows[time_axis(contract, c, df)], format="mixed",
                                        errors="coerce").dt.to_period("M").max()
@@ -1113,8 +1118,9 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     # Labels grouped as "Unknown" are filled values: they lower confidence like imputation did.
     imputed = {d.column: d.before_null_pct for d in decisions
                if d.operation in ("impute", "fill_unknown")}
+    from agents.cleaning_agent import LAYOUT_STRATEGIES   # blanks that are the file's layout
     missing = {d.column: d.before_null_pct for d in decisions
-               if d.operation == "keep" and d.before_null_pct > 0 and d.strategy != "order_level"}
+               if d.operation == "keep" and d.before_null_pct > 0 and d.strategy not in LAYOUT_STRATEGIES}
     # an order-level field (Shopify's total): later lines are blank by the export's layout
     per_order = {d.column: d.after_null_pct for d in decisions if d.strategy == "order_level"}
     model_notes = [str(a) for a in raw.get("assumptions", []) if isinstance(a, str)][:5] \

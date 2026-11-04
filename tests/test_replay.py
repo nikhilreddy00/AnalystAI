@@ -69,6 +69,9 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
 # A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
 # to its stored output (that is the $0 regression check over every old case).
 CHANGED = {
+    ("insight-20261104T015458Z.json", "ins-46-loss-run-overview"):
+        "Domain 4 live run: a column blank by the file's layout (Case Reserve on closed claims) is "
+        "no longer a 'missing' evidence note or CRITICAL alert (one LAYOUT_STRATEGIES rule)",
     **{("insight-20261104T014955Z.json", c): "Domain 4: the insurance pack's KPI order (tiles: "
        "policies on premium tables, severity on loss runs) reorders the stated caveat's KPI list"
        for c in ("ins-45-policies-overview", "ins-46-loss-run-overview")},

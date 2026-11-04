@@ -633,3 +633,14 @@ def test_a_trend_over_developing_years_says_they_are_still_developing():
     retail, _ = answer("retail_lines", "time_series", "sales by month", kpi="net_sales", frequency="M")
     premium, _ = answer("policies", "time_series", "written premium by month", kpi="written_premium")
     assert "developing" not in retail and "developing" not in premium   # premium doesn't develop
+
+
+def test_a_built_in_trend_of_a_developing_measure_says_it_is_still_developing():
+    """Live loss run: 'incurred fell sharply YoY (Aug 2026 vs Aug 2025)' was reported as a signal
+    to investigate; both months are in still-developing accident years. The built-in trend's
+    assumptions (they reach its evidence) say so; premium and other domains say nothing."""
+    loss = builtin("loss_run", ["Incurred"], [], ["trend"])["assumptions"]
+    assert any(a.startswith("Incurred:") and "still developing" in a for a in loss), loss
+    for name, col in (("policies", "Written Premium"), ("retail_lines", "Lineitem price")):
+        res = builtin(name, [col], [], ["trend"])
+        assert not any("developing" in a for a in res["assumptions"]), (name, res["assumptions"])
