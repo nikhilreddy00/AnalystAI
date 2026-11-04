@@ -31,7 +31,7 @@ RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
 # A pack's own sentences; each has a domain-neutral default (TEXT_DEFAULTS).
 TextKey = Literal["rows_brief", "grain_line", "unsupported_alternatives", "kpis_default",
                   "causal_removed", "return_rule", "refunded_rule", "cancel_rule",
-                  "non_product_rule", "money_rows_note"]
+                  "non_product_rule", "money_rows_note", "people_nouns"]
 TEXT_DEFAULTS = {   # fit every domain: a pack says its own words (tests/test_pseudo_pack.py)
     "rows_brief": "Figures use the rows these rules keep; net figures also the netted rows.",
     "grain_line": "One row is a line of a larger record: count records as distinct {key}, never "
@@ -45,6 +45,8 @@ TEXT_DEFAULTS = {   # fit every domain: a pack says its own words (tests/test_ps
     "cancel_rule": "excluded (left out)",
     "non_product_rule": "not an item (left out)",
     "money_rows_note": "Only the rows the figures count{currency}: {n} other rows left out.",
+    # the words for people a protected value qualifies ("3 Asian employees"): small cells
+    "people_nouns": "people",
 }
 
 
@@ -303,6 +305,10 @@ class Pack(_Strict):
     # A caution said whenever the data has the role (a protected attribute: described, never a
     # rating recommendation), strong or weak match
     role_caveats: dict[str, str] = Field(default_factory=dict)
+    # Special-category attributes and pay (gender, ethnicity, salary): a group by one of these,
+    # or one of these measured by any group, of fewer than SMALL_CELL distinct people is never
+    # shown (any match, not only patient data; counted in people: the spell entity or snapshot_key)
+    protected_roles: list[str] = Field(default_factory=list)
     # The entity an average of the pack's money divides by (a claim on claim-line or claimant
     # rows): 'average paid by payer' is per claim, never per line
     average_per: str | None = None
@@ -398,7 +404,7 @@ class Pack(_Strict):
                 *([self.runout.role] if self.runout else []),
                 *([self.maturity.role, *self.maturity.measures, *self.maturity.dated]
                   if self.maturity else []),
-                *self.role_caveats, *(k.per for k in self.kpis if k.per),
+                *self.role_caveats, *self.protected_roles, *(k.per for k in self.kpis if k.per),
                 *([self.spell.entity, self.spell.start, self.spell.end,
                    *([self.spell.as_of] if self.spell.as_of else [])] if self.spell else []),
                 *([self.average_per] if self.average_per else []), *(r for g in self.paired_fields for r in g),
@@ -1158,9 +1164,39 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if value is None:
         return None
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
+        value = value.drop(small_groups(df, roles, pack, name, by, kinds.attrs["frame"]), errors="ignore")
         value = value.dropna()
         return value if len(value) else None
     return None if pd.isna(value) else float(value)
+
+
+def people(df: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool,
+           whole: pd.DataFrame | None = None) -> pd.Series | int:
+    """The distinct people (the spell entity, else snapshot_key; else rows) in `df`: for a state,
+    those in force at the as-of (a team of 16 rows with 4 people now is 4)."""
+    key = pack.spell.entity if pack.spell else pack.snapshot_key
+    col = roles.get(key) if key else None
+    if state and pack.spell and col and (w := spell_window(pack, df if whole is None else whole, roles)):
+        now = _in_force(df if whole is None else whole, roles, pack, w[1])
+        df = df.loc[df.index.intersection(now.index)]
+    return df[col].nunique() if col else len(df)
+
+
+def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str, by: str,
+                 whole: pd.DataFrame | None = None) -> list:
+    """The `by` groups a KPI never shows: fewer than SMALL_CELL distinct people, when `by` is a
+    protected role or the KPI measures one (pay by team, headcount by gender). THE small-cell
+    rule outside patient data (which pools at ingestion: ADR-0008)."""
+    from guardrails import SMALL_CELL
+    prot = set(pack.protected_roles)
+    if not prot or by not in df.columns:
+        return []
+    if not ({r for r, c in roles.items() if c == by} & prot) and not (
+            kpi_roles(pack, name) & prot):
+        return []
+    state = pack.kpi(name).state
+    return [g for g, part in df.groupby(by, sort=False)
+            if people(part, roles, pack, state, whole) < SMALL_CELL]
 
 
 def mixes(df: pd.DataFrame, roles: dict[str, str], kpi: KPI, by: str | None = None) -> bool:

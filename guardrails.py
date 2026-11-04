@@ -893,8 +893,8 @@ def claim_small_cell(text: str, nouns: list[str]) -> str | None:
             continue
         word = m.group(1).lower()
         if 1 <= (_SMALL_WORDS.get(word) or int(word if word.isdigit() else 0)) <= 10:
-            return (f"reports '{m.group(0)}', a group of fewer than 11: small groups of patients "
-                    "are not reported (they can identify people)")
+            return (f"reports '{m.group(0)}', a group of fewer than 11: small groups of people "
+                    "are not reported (they can identify them)")
     return None
 
 

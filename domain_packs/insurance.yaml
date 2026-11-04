@@ -268,6 +268,9 @@ caveats:
   test_excluded: "{n} test records are left out."
   developing_periods: "As of the {as_of} valuation, {periods} are still developing: their losses will usually rise as claims are reported and reserves change (and, by policy effective date, their earned premium as terms keep earning), so they are not final and not comparable with mature years (liability lines develop beyond 24 months)."
   developing_periods_undated: "The data has no valuation date; measured to its last date ({as_of}), {periods} are still developing: their losses (and, by policy effective date, their earned premium) will usually rise, so they are not final and not comparable with mature years."
+# Described only, and never shown for a group of fewer than 11 people (a gender × line cell of 3
+# policyholders identifies them)
+protected_roles: [gender, marital_status, race, religion, national_origin]
 role_caveats:
   cat_event: "Catastrophe events are marked in the data: one event can dominate a period, line or coverage, so compare results with and without it before reading a trend or a ranking."
   race: "Race is shown as a description only: rating or underwriting on it is an unfair trade practice (NAIC Model 880), so no rating recommendation is made on it."

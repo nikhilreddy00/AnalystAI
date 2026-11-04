@@ -41,6 +41,7 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    pack_for,
     window_words,
     runout_months,
     computable,
@@ -2876,6 +2877,23 @@ def _chart_key(c: ChartConfig):
     return (r.rule, r.x, r.y, r.aggregation, r.split) if r else None
 
 
+def _protected_part(df: pd.DataFrame, part: pd.DataFrame, contract: DataContract | None,
+                    filters: dict) -> bool:
+    """A filtered part of fewer than 11 people, cut by a protected role (women in Legal) or with
+    a protected measure among its tiles (pay): a small cell, shown as nothing (domain_pack
+    small_groups is the same rule for groups)."""
+    from domain_pack import kpi_roles, people
+    from guardrails import SMALL_CELL
+    pack = pack_for(contract.domain) if contract else None
+    if not pack or not pack.protected_roles or part.empty:
+        return False
+    prot = set(pack.protected_roles)
+    cut = {r for r, c in (contract.roles or {}).items() if c in (filters or {})} & prot
+    paid = any(k.tile and kpi_roles(pack, k.name) & prot for k in pack.kpis)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    return bool(cut or paid) and people(part, roles, pack, True, df) < SMALL_CELL
+
+
 def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: list[ChartConfig],
                        filters: dict, query: str = "",
                        narrative: DataNarrative | None = None) -> dict:
@@ -2889,8 +2907,10 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     part = apply_filters(df, filters)
     # the records shown and counted: a chain's earlier versions are neither (judged on all rows)
     n = int((~superseded(df, contract)).reindex(part.index).sum())
-    if part.empty or (contract is not None and contract.phi and n < SMALL_CELL):
-        small = bool(n) and bool(contract and contract.phi)   # a small cell: not even its count
+    if part.empty or (contract is not None and contract.phi and n < SMALL_CELL) or \
+            _protected_part(df, part, contract, filters):
+        small = bool(n) and bool(contract and (contract.phi or _protected_part(df, part, contract,
+                                                                           filters)))
         return {"charts": {}, "tiles": {}, "rows": None if small else n, "suppressed": small}
     ctx = build_context(part, contract=contract, narrative=narrative)
     ctx.full = df
