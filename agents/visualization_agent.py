@@ -41,6 +41,7 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    window_words,
     runout_months,
     computable,
     compute_kpi,
@@ -1183,7 +1184,10 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
-        if k.at == "latest" and kind == "percent":   # a book's ratio hides its mix: say the spread
+        # a headcount is as of a date, an attrition rate over 12 months to it: the tile says which
+        context = "; ".join(x for x in (window_words(pack, df if full is None else full, roles, k.name),
+                                        context) if x)
+        if k.state and kind == "percent":   # a book's ratio hides its mix: say the spread
             context = "; ".join(x for x in (_spread(df, roles, pack, k.name), context) if x)
         tiles.append(KPI(label=k.label, value=k.written(_format_value(v, kind, unit)), context=context,
                          recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
@@ -2672,7 +2676,7 @@ def _overview_asks(pack, roles: dict[str, str], columns) -> list[tuple[QuestionI
         money = next((k for k in pack.kpis if k.tile and k.unit == "money"
                       and computable(pack, k.name, roles)), None)
         # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
-        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
+        ratio = next((k for k in pack.kpis if k.tile and k.state and k.unit == "percent"
                       and computable(pack, k.name, roles)), None)
         can = [money, ratio] if money and ratio else [money] if money else []
     if not can:

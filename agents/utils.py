@@ -306,6 +306,15 @@ def latest_rows(df, column: str, contract):
     return rows.dropna(subset=[column])
 
 
+def today():
+    """Today, midnight: the latest date a file's own dates may count up to (a future-dated exit is
+    not yet one). ANALYSTAI_TODAY pins it (tests and evals: the generators' extract date)."""
+    import os
+
+    import pandas as pd
+    return pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today()).normalize()
+
+
 def _in_time_order(d):
     """Rows by `_t`, ties in file order; a newest-first export (a bank statement) is reversed
     first, so a day's last row is its last transaction."""

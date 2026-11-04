@@ -1,0 +1,186 @@
+"""Spells (Domain 5, S1): a stock at a date and the flows in and out of it, from start and end
+dates (a roster) or from snapshots. The toy pack is a subscription book (Domain 6's shape): the
+second reader of `spell`, so nothing here is HR-only."""
+import pandas as pd
+import pytest
+import yaml
+
+from domain_pack import Pack, compute_kpi, spell_as_of
+
+SUBS = """
+domain: toysubs
+strong:
+  - {sub: [subscriber_id], start: [start_date], end: [cancel_date]}
+signals:
+  - {sub: [subscriber_id], start: [start_date]}
+roles:
+  snapshot_date: {kind: date, headers: [snapshot_date]}
+  start_date:    {kind: date, headers: [start_date]}
+  cancel_date:   {kind: date, headers: [cancel_date]}
+  subscriber_id: {kind: id, headers: [subscriber_id]}
+  plan:          {kind: category, headers: [plan]}
+  kind:          {kind: category, headers: [kind]}
+  seats:         {kind: number, headers: [seats]}
+  status:        {kind: status, headers: [status]}
+spell: {entity: subscriber_id, start: start_date, end: cancel_date, ended: [cancelled]}
+kpis:
+  - {name: active, label: Active subscribers, unit: count, tile: true,
+     num: [[{spell: active, where: [[{role: kind, not_in: [trial]}]]}], [{spell: active}]]}
+  - {name: seats, label: Seats, num: [[{spell: active, sum: seats}]]}
+  - {name: avg_active, label: Average active subscribers,
+     num: [[{spell: average, where: [[{role: kind, not_in: [trial]}]]}], [{spell: average}]]}
+  - {name: cancels, label: Cancellations, unit: count,
+     num: [[{spell: ends, where: [[{role: kind, not_in: [trial]}]]}], [{spell: ends}]]}
+  - {name: starts, label: New subscribers, unit: count,
+     num: [[{spell: starts, where: [[{role: kind, not_in: [trial]}]]}], [{spell: starts}]]}
+  - {name: churn, label: Churn rate, unit: percent, num: [[{kpi: cancels}]], den: [[{kpi: avg_active}]]}
+caveats:
+  read_as_domain_weak: "Read as subscription data: {roles}."
+"""
+
+
+@pytest.fixture
+def pack(monkeypatch):
+    monkeypatch.setenv("ANALYSTAI_TODAY", "2026-11-01")
+    return Pack.model_validate(yaml.safe_load(SUBS))
+
+
+ROLES = {"subscriber_id": "subscriber_id", "start_date": "start_date", "cancel_date": "cancel_date",
+         "plan": "plan", "kind": "kind", "seats": "seats", "status": "status"}
+
+
+def _roster():
+    """One row per subscription spell. S1 left and came back (two spells); S7 is a trial."""
+    rows = [  # id, start, cancel, plan, kind, seats, status
+        ("S1", "2024-01-10", "2025-12-15", "pro", "paid", 5, "cancelled"),
+        ("S1", "2026-03-01", "", "pro", "paid", 6, "active"),
+        ("S2", "2023-05-01", "", "basic", "paid", 1, "active"),
+        ("S3", "2023-05-01", "2026-06-30", "basic", "paid", 2, "cancelled"),
+        ("S4", "2025-12-20", "2026-11-20", "pro", "paid", 3, "active"),   # cancels after today
+        ("S5", "2026-02-01", "", "pro", "paid", 4, "cancelled"),          # cancelled, date unknown
+        ("S6", "2026-11-10", "", "pro", "paid", 9, "active"),             # starts after today
+        ("S7", "2026-01-05", "2026-02-05", "pro", "trial", 1, "cancelled"),
+        ("S8", "2022-01-01", "2026-10-31", "basic", "paid", 1, "cancelled"),
+        ("S9", "2021-01-01", "2023-03-01", "basic", "paid", 1, "cancelled"),   # the earliest exit
+    ]
+    return pd.DataFrame(rows, columns=["subscriber_id", "start_date", "cancel_date", "plan",
+                                       "kind", "seats", "status"])
+
+
+def _month_ends(as_of):
+    return [(as_of.to_period("M") - k).end_time.normalize() for k in range(11, -1, -1)]
+
+
+def _active_at(df, t):
+    s, e = pd.to_datetime(df["start_date"]), pd.to_datetime(df["cancel_date"], errors="coerce")
+    ok = (s <= t) & (e.isna() | (e > t)) & ~((df["status"] == "cancelled") & e.isna())
+    return df.loc[ok & (df["kind"] != "trial"), "subscriber_id"].nunique()
+
+
+def test_as_of_is_the_latest_date_not_after_today(pack):
+    assert spell_as_of(pack, _roster(), ROLES) == pd.Timestamp("2026-10-31")
+
+
+def test_active_counts_people_in_force_at_the_as_of(pack):
+    df = _roster()
+    # S1 (2nd spell), S2, S4 (cancels after today), not S3/S5/S6/S7/S8 → 3
+    assert compute_kpi(df, ROLES, pack, "active") == 3 == _active_at(df, pd.Timestamp("2026-10-31"))
+    assert compute_kpi(df, ROLES, pack, "seats") == 6 + 1 + 3
+
+
+def test_flows_are_events_in_the_12_months_and_the_rate_divides_by_the_month_end_mean(pack):
+    df = _roster()
+    # cancels in (2025-10-31, 2026-10-31], trials out: S1 (15 Dec), S3, S8; S4 is after today
+    assert compute_kpi(df, ROLES, pack, "cancels") == 3
+    # starts: S1's 2nd spell, S4, S5 (its cancellation date is unknown: a start all the same)
+    assert compute_kpi(df, ROLES, pack, "starts") == 3
+    ends = _month_ends(pd.Timestamp("2026-10-31"))
+    avg = sum(_active_at(df, t) for t in ends) / 12
+    assert avg == pytest.approx(50 / 12)
+    assert compute_kpi(df, ROLES, pack, "avg_active") == pytest.approx(avg)
+    assert compute_kpi(df, ROLES, pack, "churn") == pytest.approx(3 / avg)
+
+
+def test_a_rehire_is_one_person_and_two_events(pack):
+    df = pd.concat([_roster(), pd.DataFrame([("S1", "2026-03-01", "2026-09-30", "pro", "paid", 1,
+                                              "cancelled")], columns=_roster().columns)],
+                   ignore_index=True)
+    df = df[~((df["subscriber_id"] == "S1") & (df["cancel_date"] == ""))]
+    assert compute_kpi(df, ROLES, pack, "cancels") == 4   # S1 left twice in the window
+
+
+def test_by_group_uses_the_spells_own_row(pack):
+    by = compute_kpi(_roster(), ROLES, pack, "cancels", by="plan")
+    assert by.to_dict() == {"pro": 1, "basic": 2}
+
+
+def test_by_period_has_every_month_and_reconciles(pack):
+    df = _roster()
+    df = df[df["subscriber_id"] != "S5"]   # cancelled, date unknown: a start that never joins
+    df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("M")
+    act = compute_kpi(df, ROLES, pack, "active", by="_period")
+    # gap-free from the earliest exit (2023-03) to the as-of, incl. months no row is dated in
+    assert act.index[0] == pd.Period("2023-03", "M") and act.index[-1] == pd.Period("2026-10", "M")
+    assert len(act) == len(pd.period_range("2023-03", "2026-10", freq="M"))
+    starts = compute_kpi(df, ROLES, pack, "starts", by="_period").reindex(act.index, fill_value=0)
+    ends = compute_kpi(df, ROLES, pack, "cancels", by="_period").reindex(act.index, fill_value=0)
+    for p in act.index[1:]:   # opening + in − out = closing, every month
+        assert act[p] == act[p - 1] + starts[p] - ends[p], p
+
+
+def test_a_filter_keeps_the_as_of_and_judges_the_state_on_all_rows(pack):
+    df = _roster()
+    pro = df[df["plan"] == "pro"]
+    assert compute_kpi(pro, ROLES, pack, "active", full=df) == 2   # S1, S4
+    # the window stays the data's: a filter to basic (latest basic date 2026-10-31 too) and to a
+    # group whose last date is earlier both read the 12 months to 31 Oct 2026
+    s3 = df[df["subscriber_id"] == "S3"]
+    assert compute_kpi(s3, ROLES, pack, "active", full=df) is None or \
+        compute_kpi(s3, ROLES, pack, "active", full=df) == 0
+
+
+SNAP_ROLES = {**ROLES, "snapshot_date": "snapshot_date"}
+
+
+def _snapshots():
+    """Month-end snapshots listing active subscribers. A vanishes after March (no date); B moves
+    from basic to pro in April and cancels in July (a final row with the date); C stays; D's
+    cancel date is after today."""
+    rows = []
+    for m in pd.period_range("2026-01", "2026-10", freq="M"):
+        t = m.end_time.normalize().strftime("%Y-%m-%d")
+        if m <= pd.Period("2026-03", "M"):
+            rows.append((t, "A", "2025-06-01", "", "basic", "paid", 1, "active"))
+        if m <= pd.Period("2026-07", "M"):
+            final = m == pd.Period("2026-07", "M")
+            rows.append((t, "B", "2025-01-01", "2026-07-12" if final else "",
+                         "basic" if m < pd.Period("2026-04", "M") else "pro", "paid", 2,
+                         "cancelled" if final else "active"))
+        rows.append((t, "C", "2024-01-01", "", "pro", "paid", 3, "active"))
+        rows.append((t, "D", "2024-01-01", "2026-11-20" if m == pd.Period("2026-10", "M") else "",
+                     "basic", "paid", 4, "active"))
+    return pd.DataFrame(rows, columns=["snapshot_date", "subscriber_id", "start_date",
+                                       "cancel_date", "plan", "kind", "seats", "status"])
+
+
+def test_snapshots_a_level_is_never_summed_and_leavers_without_a_date_are_out(pack):
+    df = _snapshots()
+    assert spell_as_of(pack, df, SNAP_ROLES) == pd.Timestamp("2026-10-31")
+    assert compute_kpi(df, SNAP_ROLES, pack, "active") == 2          # C, D
+    assert compute_kpi(df, SNAP_ROLES, pack, "seats") == 3 + 4       # never × 10 months
+    # A vanished after March: out from April; B cancelled 12 Jul
+    assert compute_kpi(df, SNAP_ROLES, pack, "cancels") == 2
+
+
+def test_snapshots_an_exit_is_counted_where_it_left(pack):
+    by = compute_kpi(_snapshots(), SNAP_ROLES, pack, "cancels", by="plan")
+    assert by.to_dict() == {"basic": 1, "pro": 1}   # B left from pro (moved in April), A from basic
+
+
+def test_snapshots_a_filter_counts_who_is_in_the_group_at_the_date(pack):
+    df = _snapshots()
+    df["_period"] = pd.to_datetime(df["snapshot_date"]).dt.to_period("M")
+    basic = df[df["plan"] == "basic"]
+    act = compute_kpi(basic, SNAP_ROLES, pack, "active", by="_period", full=df)
+    assert act[pd.Period("2026-03", "M")] == 3   # A, B, D
+    assert act[pd.Period("2026-05", "M")] == 1   # B moved to pro: only D
