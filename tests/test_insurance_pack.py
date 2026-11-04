@@ -416,3 +416,25 @@ def test_maturity_dated_headers_match_as_detection_does():
     c = _contract(df)
     assert (c.domain, c.roles["date"]) == ("insurance", "Eff Date")
     assert developing_note(c, df, {"earned_premium"}) and not developing_note(c, df, {"written_premium"})
+
+
+@pytest.mark.parametrize("text, said", [
+    ("Losses for 2025 and 2026 are final, so the loss ratio can be compared with earlier years.", True),
+    ("2025 and 2026 losses are final and fully comparable with earlier years.", True),
+    ("The final loss ratio for 2026 is 55%.", True),
+    ("2025 and 2026 results are still developing and are not yet final.", False),
+    ("Defer final loss-ratio conclusions for 2025 and 2026 until those years develop.", False),
+    ("Earned premium for 2024 is fully earned.", False),
+])
+def test_a_never_say_pattern_flags_only_the_asserted_claim(text, said):
+    """Pass 5 quality gate: 'losses are final' on still-developing years (a must-never-say) went
+    uncaught without the critic. A pack's never_say pattern, unless the sentence hedges."""
+    from guardrails import claim_never_said
+    rules = domain_pack.pack_for("insurance").never_say
+    assert bool(claim_never_said(text, rules)) == said
+
+
+def test_by_a_wide_margin_is_not_a_profit_margin():
+    from guardrails import claim_profit_without_cost
+    assert claim_profit_without_cost("Income leads by a wide margin.", False) is None
+    assert claim_profit_without_cost("The margin on Income is 12%.", False)

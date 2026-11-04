@@ -35,6 +35,7 @@ from guardrails import (
     claim_profit_without_cost,
     claim_direction_conflict,
     claim_group_conflict,
+    claim_never_said,
     claim_overstated_certainty,
     claim_period_conflict,
     claim_rank_conflict,
@@ -205,6 +206,8 @@ def check_claims(session: AnalysisSession, report: InsightReport,
             found = ("causal", "overstated", r)
         elif r := claim_overstated_certainty(text, [e.confidence_reason for e in cited
                                                     if e.confidence == "low"]):
+            found = ("certainty", "overstated", r)
+        elif r := claim_never_said(text, pack.never_say if pack else []):
             found = ("certainty", "overstated", r)
         elif r := claim_profit_without_cost(text, has_cost):
             found = ("basis", "unsupported", r)

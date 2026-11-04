@@ -804,7 +804,8 @@ _COST_ASK_RE = re.compile(r"\b(?:add|adding|upload|provide|include|collect|track
                           r"without|missing|requires?|no)\b[^.]*\b(?:costs?|cogs)\b|"
                           r"\b(?:margin|profit|markup)s?\b[^.;]{0,30}\b(?:unknown|unavailable|not "
                           r"available|not known)\b", re.I)
-_PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
+_PROFIT_RE = re.compile(r"\b(?:profit\w*|(?<!wide )(?<!narrow )(?<!large )(?<!small )(?<!slim )"
+                        r"(?<!big )margins?|markups?)\b", re.I)   # 'by a wide margin' is no profit
 
 
 def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
@@ -821,6 +822,17 @@ def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
                       if not m.group(0)[0].isupper()
                       or (m.start() == 0 and not re.match(r"\s+[A-Z]", sentence[m.end():]))), None):
             return f"speaks of {m.group(0)} but the data has no cost or profit column"
+    return None
+
+
+def claim_never_said(text: str, rules) -> str | None:
+    """A domain pack's never-say claim (Pack.never_say: a pattern and its reason, 'losses for a
+    still-developing year are final'), asserted: a sentence that hedges ('not yet final') is no
+    claim."""
+    for sentence in _SENTENCE_RE.split(text):
+        for rule in rules:
+            if re.search(rule.pattern, sentence, re.I) and not _HEDGE_RE.search(sentence):
+                return rule.reason
     return None
 
 

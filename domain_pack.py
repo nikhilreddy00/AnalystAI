@@ -122,6 +122,13 @@ class Maturity(_Strict):
     dated: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class NeverSay(_Strict):
+    """A claim the domain's analyst never makes (a still-developing year's losses called final):
+    the quality check flags a sentence matching `pattern` that doesn't hedge."""
+    pattern: str
+    reason: str
+
+
 class Within(_Strict):
     """Rows followed by another row of the same entity starting (0, days] after this row's end
     (a 30-day readmission). Follow-ups are found anywhere in the data and must meet `follow`;
@@ -284,6 +291,7 @@ class Pack(_Strict):
     unsupported: dict[str, str] = Field(default_factory=dict)      # concept → what it needs
     caveats: dict[str, str] = Field(default_factory=dict)          # condition → text
     causal_triggers: list[str] = Field(default_factory=list)
+    never_say: list[NeverSay] = Field(default_factory=list)
     # On patient data: a reported count of 1–10 of these (patients, deaths …) is a small cell
     small_cell_nouns: list[str] = Field(default_factory=list)
     # Plain text, or {q, needs: [KPI…]}: offered only when the data supports what it needs
@@ -384,7 +392,8 @@ class Pack(_Strict):
         if not self.signals or any(len(alt) < 2 for alt in [*self.signals, *self.strong]):
             errors.append("each signals alternative needs two groups (two independent signals)")
         for where, rx in [*((f"role {r}", x.pattern) for r, x in self.roles.items()),
-                          ("test_marker", self.test_marker)]:
+                          ("test_marker", self.test_marker),
+                          *(("never_say", n.pattern) for n in self.never_say)]:
             try:
                 re.compile(rx or "")
             except re.error as exc:

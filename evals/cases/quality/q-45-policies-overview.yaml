@@ -4,7 +4,7 @@ id: q-45-policies-overview
 insight_case: ins-45-policies-overview
 category: straightforward
 source:
-  report: insight-20261104T015642Z.json
+  report: insight-20261104T031810Z.json
   run: 0
 seeded: true
 defects:
@@ -12,21 +12,18 @@ defects:
   i: 0
   kind: number
   label: contradicted
-  text: A 46-month P&C portfolio of 1,300 policies across Auto and Home lines has earned $4,023,883.78
-    in premium with a 51.2% loss ratio and $2,433,528.68 in incurred losses.
+  text: This P&C insurance dataset covers 1,300 policies across Auto and Home lines, with $4,023,883.78
+    in earned premium and a 51.2% loss ratio over a 46-month period ending October 2026.
 - op: replace
-  i: 1
+  i: 2
   kind: certainty
   label: overstated
-  text: Auto is the larger line by both premium and losses, and the 60.5% loss ratio is final for
-    every year, so 2025 and 2026 can be compared directly with earlier years.
+  text: Losses for 2025 and 2026 are final, so the 60.5% loss ratio can be compared directly with
+    earlier years.
 - op: replace
   i: 3
   kind: causal
   label: overstated
   text: Auto's losses are driven by its female policyholders, so raising auto rates for women would
     bring the Auto loss ratio down.
-natural:
-- i: 6
-  label: unclear
-  why: blames the Sep vs Aug drop on the partial October cut-off; October is left out of the comparison, so it can't cause it
+natural: []

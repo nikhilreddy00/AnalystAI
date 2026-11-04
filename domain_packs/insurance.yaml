@@ -274,11 +274,19 @@ role_caveats:
   gender: "Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it."
   marital_status: "Marital status is shown as a description only: refusing or limiting coverage on it is an unfair trade practice under NAIC Model 880, so no rating recommendation is made on it."
 
-causal_triggers: [rating factor, rating factors, rating variable, underwriting, underwriter,
+causal_triggers: [rating factor, female, male, women, men, policyholders, drivers, rating factors, rating variable, underwriting, underwriter,
                   pricing, price change, rate increase, rate change, rate action, deductible,
                   deductibles, telematics, credit score, territory, gender, age, discount,
                   discounts, adjuster, adjusters, claims handling, claims process, fraud unit,
                   agent, agents, broker, brokers, campaign, program, programs]
+
+# Never said (the quality check flags it unless the sentence hedges): losses of a still-developing
+# year called final [WM p.43]
+never_say:
+  - {pattern: '\b(?:loss(?:es)?|loss ratios?|results?|figures?|years?|20\d\d)\b[^.]{0,40}\b(?:are|is|were|was|now)\s+(?:final|fully (?:developed|comparable)|settled|complete)\b',
+     reason: "calls a still-developing year's losses final or comparable: they will usually rise at later valuations"}
+  - {pattern: '\b(?:the|our|its)\s+(?:final|ultimate)\s+loss ratio\b',
+     reason: "states a final or ultimate loss ratio: losses here are reported, without IBNR or development"}
 
 first_questions:
   - {q: "What is the loss ratio by line of business?", needs: [loss_ratio, line]}
