@@ -69,6 +69,10 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
 # A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
 # to its stored output (that is the $0 regression check over every old case).
 CHANGED = {
+    ("intake-20261104T012924Z.json", "intake-ins-09"):
+        "Domain 4 intake gate: 'premium did we write' is the written_premium KPI's word",
+    ("intake-20261104T012924Z.json", "intake-ins-11"):
+        "Domain 4 intake gate: 'whole life policies' is life insurance: unsupported, asked",
     ("intake-20261102T204144Z.json", "intake-bank-01"):
         "Domain 2 intake gate: an overview intent naming a KPI after the overview is its time series",
     ("intake-20261102T204144Z.json", "intake-bank-09"):

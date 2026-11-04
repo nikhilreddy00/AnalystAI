@@ -1,0 +1,3389 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261104T013543Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "ed5697e",
+  "started_at": "20261104T013543Z",
+  "only": "ins-6,ins-9",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 6,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 12,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0111,
+  "latency_p50_s": 29.3,
+  "latency_p95_s": 38.55,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 144,
+  "by_domain": {
+   "insurance": {
+    "cases": 2,
+    "k_min": 3,
+    "k_max": 3,
+    "cases_passed_all_runs": 2,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 12,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 2,
+    "model_dependent_cases": 2,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 144,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 144
+    }
+   }
+  }
+ },
+ "runs": {
+  "ins-6": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Incurred)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Paid to Date": {
+       "mean": 7455.2996,
+       "std": 14270.3659,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 3568.19,
+       "count": 3975
+      },
+      "Case Reserve": {
+       "mean": 6372.4589,
+       "std": 9065.309,
+       "min": 257.32,
+       "max": 102209.73,
+       "median": 3176.58,
+       "count": 634
+      },
+      "Incurred": {
+       "mean": 8471.6868,
+       "std": 15081.7225,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 4311.14,
+       "count": 3975
+      },
+      "Salvage Subrogation": {
+       "mean": 168.1567,
+       "std": 783.8626,
+       "min": 0.0,
+       "max": 16916.7,
+       "median": 0.0,
+       "count": 3975
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Line of Business",
+       "metric_column": "Incurred",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Home",
+         "value": 12212.92
+        },
+        {
+         "name": "Auto",
+         "value": 7972.5094
+        }
+       ],
+       "label": "severity"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Paid to Date": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36728
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1137
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 232
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 78
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 63
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 8
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 2
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 3
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Case Reserve": [
+       {
+        "label": "(62.996, 14247.866]",
+        "count": 9993
+       },
+       {
+        "label": "(14247.866, 28292.292]",
+        "count": 764
+       },
+       {
+        "label": "(28292.292, 42336.718]",
+        "count": 195
+       },
+       {
+        "label": "(42336.718, 56381.144]",
+        "count": 79
+       },
+       {
+        "label": "(56381.144, 70425.57]",
+        "count": 46
+       },
+       {
+        "label": "(70425.57, 84469.996]",
+        "count": 16
+       },
+       {
+        "label": "(84469.996, 98514.422]",
+        "count": 6
+       },
+       {
+        "label": "(98514.422, 112558.848]",
+        "count": 17
+       },
+       {
+        "label": "(112558.848, 126603.274]",
+        "count": 2
+       },
+       {
+        "label": "(126603.274, 140647.7]",
+        "count": 4
+       }
+      ],
+      "Incurred": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36189
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1500
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 336
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 113
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 84
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 19
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 4
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 5
+       },
+       {
+        "label": "(224677.36, 252762.03]",
+        "count": 1
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Salvage Subrogation": [
+       {
+        "label": "(-16.917, 1691.67]",
+        "count": 37228
+       },
+       {
+        "label": "(1691.67, 3383.34]",
+        "count": 687
+       },
+       {
+        "label": "(3383.34, 5075.01]",
+        "count": 211
+       },
+       {
+        "label": "(5075.01, 6766.68]",
+        "count": 50
+       },
+       {
+        "label": "(6766.68, 8458.35]",
+        "count": 37
+       },
+       {
+        "label": "(8458.35, 10150.02]",
+        "count": 17
+       },
+       {
+        "label": "(10150.02, 11841.69]",
+        "count": 9
+       },
+       {
+        "label": "(11841.69, 13533.36]",
+        "count": 9
+       },
+       {
+        "label": "(15225.03, 16916.7]",
+        "count": 7
+       }
+      ],
+      "Claimant Number": [
+       {
+        "label": "1",
+        "count": 33172
+       },
+       {
+        "label": "2",
+        "count": 5083
+       }
+      ],
+      "Line of Business": [
+       {
+        "label": "Auto",
+        "count": 22475
+       },
+       {
+        "label": "Home",
+        "count": 15780
+       }
+      ],
+      "Coverage": [
+       {
+        "label": "Collision",
+        "count": 10847
+       },
+       {
+        "label": "Dwelling",
+        "count": 9091
+       },
+       {
+        "label": "Property Damage",
+        "count": 5146
+       },
+       {
+        "label": "Bodily Injury",
+        "count": 4293
+       },
+       {
+        "label": "Personal Property",
+        "count": 4231
+       },
+       {
+        "label": "Liability",
+        "count": 2458
+       },
+       {
+        "label": "Comprehensive",
+        "count": 2189
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Closed",
+        "count": 27133
+       },
+       {
+        "label": "Open",
+        "count": 11114
+       },
+       {
+        "label": "Reopened",
+        "count": 8
+       }
+      ],
+      "Cat Event": [
+       {
+        "label": "CAT-2024-HAIL",
+        "count": 1500
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _s = df['Paid to Date'].dropna()\n        if len(_s) > 0 and 'Paid to Date' not in result['eda_summary']:\n            result['eda_summary']['Paid to Date'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _s = df['Case Reserve'].dropna()\n        if len(_s) > 0 and 'Case Reserve' not in result['eda_summary']:\n            result['eda_summary']['Case Reserve'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _s = df['Incurred'].dropna()\n        if len(_s) > 0 and 'Incurred' not in result['eda_summary']:\n            result['eda_summary']['Incurred'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _s = df['Salvage Subrogation'].dropna()\n        if len(_s) > 0 and 'Salvage Subrogation' not in result['eda_summary']:\n            result['eda_summary']['Salvage Subrogation'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _col_data = df['Paid to Date'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid to Date'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _col_data = df['Case Reserve'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Case Reserve'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _col_data = df['Incurred'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Incurred'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _col_data = df['Salvage Subrogation'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Salvage Subrogation'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claimant Number' in df.columns:\n        _vc = df['Claimant Number'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claimant Number'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line of Business' in df.columns:\n        _vc = df['Line of Business'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line of Business'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Coverage' in df.columns:\n        _vc = df['Coverage'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Coverage'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Cat Event' in df.columns:\n        _vc = df['Cat Event'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Cat Event'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "counted"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-06-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-03-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-12-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim Number": "object",
+      "Claimant Number": "int64",
+      "Policy Number": "object",
+      "Line of Business": "object",
+      "Coverage": "object",
+      "Loss Date": "object",
+      "Report Date": "object",
+      "Valuation Date": "object",
+      "Claim Status": "object",
+      "Paid to Date": "float64",
+      "Case Reserve": "float64",
+      "Incurred": "float64",
+      "Salvage Subrogation": "float64",
+      "Cat Event": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim Number": 0.0,
+      "Claimant Number": 0.0,
+      "Policy Number": 0.0,
+      "Line of Business": 0.0,
+      "Coverage": 0.0,
+      "Loss Date": 0.0,
+      "Report Date": 0.0,
+      "Valuation Date": 0.0,
+      "Claim Status": 0.0,
+      "Paid to Date": 0.0,
+      "Case Reserve": 70.93,
+      "Incurred": 0.0,
+      "Salvage Subrogation": 0.0,
+      "Cat Event": 96.08,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Line of Business/Incurred:ratio:severity",
+       "kind": "segment",
+       "claim": "severity (from Incurred) by Line of Business (2 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Home\", \"value\": 12212.92}, {\"name\": \"Auto\", \"value\": 7972.5094}], \"label\": \"severity\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "38255 rows",
+       "assumptions": [
+        "Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only."
+       ]
+      },
+      {
+       "id": "eda:Paid to Date",
+       "kind": "eda",
+       "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Case Reserve",
+       "kind": "eda",
+       "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+       "row_count": 634,
+       "confidence": "high",
+       "confidence_reason": "634 rows",
+       "assumptions": [
+        "Case Reserve: 71% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Incurred",
+       "kind": "eda",
+       "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": [
+        "Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only."
+       ]
+      },
+      {
+       "id": "eda:Salvage Subrogation",
+       "kind": "eda",
+       "claim": "Salvage Subrogation: median 0, mean 168.16, range 0 to 16,916.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 168.1567, \"std\": 783.8626, \"min\": 0.0, \"max\": 16916.7, \"median\": 0.0, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 39.83,
+    "cost_usd": 0.01141,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Incurred)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Paid to Date": {
+       "mean": 7455.2996,
+       "std": 14270.3659,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 3568.19,
+       "count": 3975
+      },
+      "Case Reserve": {
+       "mean": 6372.4589,
+       "std": 9065.309,
+       "min": 257.32,
+       "max": 102209.73,
+       "median": 3176.58,
+       "count": 634
+      },
+      "Incurred": {
+       "mean": 8471.6868,
+       "std": 15081.7225,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 4311.14,
+       "count": 3975
+      },
+      "Salvage Subrogation": {
+       "mean": 168.1567,
+       "std": 783.8626,
+       "min": 0.0,
+       "max": 16916.7,
+       "median": 0.0,
+       "count": 3975
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Line of Business",
+       "metric_column": "Incurred",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Home",
+         "value": 12212.919972508591
+        },
+        {
+         "name": "Auto",
+         "value": 7972.50943358396
+        }
+       ],
+       "label": "severity"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Paid to Date": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36728
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1137
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 232
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 78
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 63
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 8
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 2
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 3
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Case Reserve": [
+       {
+        "label": "(62.996, 14247.866]",
+        "count": 9993
+       },
+       {
+        "label": "(14247.866, 28292.292]",
+        "count": 764
+       },
+       {
+        "label": "(28292.292, 42336.718]",
+        "count": 195
+       },
+       {
+        "label": "(42336.718, 56381.144]",
+        "count": 79
+       },
+       {
+        "label": "(56381.144, 70425.57]",
+        "count": 46
+       },
+       {
+        "label": "(70425.57, 84469.996]",
+        "count": 16
+       },
+       {
+        "label": "(84469.996, 98514.422]",
+        "count": 6
+       },
+       {
+        "label": "(98514.422, 112558.848]",
+        "count": 17
+       },
+       {
+        "label": "(112558.848, 126603.274]",
+        "count": 2
+       },
+       {
+        "label": "(126603.274, 140647.7]",
+        "count": 4
+       }
+      ],
+      "Incurred": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36189
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1500
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 336
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 113
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 84
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 19
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 4
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 5
+       },
+       {
+        "label": "(224677.36, 252762.03]",
+        "count": 1
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Salvage Subrogation": [
+       {
+        "label": "(-16.917, 1691.67]",
+        "count": 37228
+       },
+       {
+        "label": "(1691.67, 3383.34]",
+        "count": 687
+       },
+       {
+        "label": "(3383.34, 5075.01]",
+        "count": 211
+       },
+       {
+        "label": "(5075.01, 6766.68]",
+        "count": 50
+       },
+       {
+        "label": "(6766.68, 8458.35]",
+        "count": 37
+       },
+       {
+        "label": "(8458.35, 10150.02]",
+        "count": 17
+       },
+       {
+        "label": "(10150.02, 11841.69]",
+        "count": 9
+       },
+       {
+        "label": "(11841.69, 13533.36]",
+        "count": 9
+       },
+       {
+        "label": "(15225.03, 16916.7]",
+        "count": 7
+       }
+      ],
+      "Claimant Number": [
+       {
+        "label": "1",
+        "count": 33172
+       },
+       {
+        "label": "2",
+        "count": 5083
+       }
+      ],
+      "Line of Business": [
+       {
+        "label": "Auto",
+        "count": 22475
+       },
+       {
+        "label": "Home",
+        "count": 15780
+       }
+      ],
+      "Coverage": [
+       {
+        "label": "Collision",
+        "count": 10847
+       },
+       {
+        "label": "Dwelling",
+        "count": 9091
+       },
+       {
+        "label": "Property Damage",
+        "count": 5146
+       },
+       {
+        "label": "Bodily Injury",
+        "count": 4293
+       },
+       {
+        "label": "Personal Property",
+        "count": 4231
+       },
+       {
+        "label": "Liability",
+        "count": 2458
+       },
+       {
+        "label": "Comprehensive",
+        "count": 2189
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Closed",
+        "count": 27133
+       },
+       {
+        "label": "Open",
+        "count": 11114
+       },
+       {
+        "label": "Reopened",
+        "count": 8
+       }
+      ],
+      "Cat Event": [
+       {
+        "label": "CAT-2024-HAIL",
+        "count": 1500
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": float(severity)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind=='counted' per domain rules).\"\n    )\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _s = df['Paid to Date'].dropna()\n        if len(_s) > 0 and 'Paid to Date' not in result['eda_summary']:\n            result['eda_summary']['Paid to Date'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _s = df['Case Reserve'].dropna()\n        if len(_s) > 0 and 'Case Reserve' not in result['eda_summary']:\n            result['eda_summary']['Case Reserve'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _s = df['Incurred'].dropna()\n        if len(_s) > 0 and 'Incurred' not in result['eda_summary']:\n            result['eda_summary']['Incurred'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _s = df['Salvage Subrogation'].dropna()\n        if len(_s) > 0 and 'Salvage Subrogation' not in result['eda_summary']:\n            result['eda_summary']['Salvage Subrogation'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _col_data = df['Paid to Date'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid to Date'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _col_data = df['Case Reserve'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Case Reserve'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _col_data = df['Incurred'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Incurred'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _col_data = df['Salvage Subrogation'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Salvage Subrogation'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claimant Number' in df.columns:\n        _vc = df['Claimant Number'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claimant Number'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line of Business' in df.columns:\n        _vc = df['Line of Business'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line of Business'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Coverage' in df.columns:\n        _vc = df['Coverage'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Coverage'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Cat Event' in df.columns:\n        _vc = df['Cat Event'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Cat Event'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "counted"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-06-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-03-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-12-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim Number": "object",
+      "Claimant Number": "int64",
+      "Policy Number": "object",
+      "Line of Business": "object",
+      "Coverage": "object",
+      "Loss Date": "object",
+      "Report Date": "object",
+      "Valuation Date": "object",
+      "Claim Status": "object",
+      "Paid to Date": "float64",
+      "Case Reserve": "float64",
+      "Incurred": "float64",
+      "Salvage Subrogation": "float64",
+      "Cat Event": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim Number": 0.0,
+      "Claimant Number": 0.0,
+      "Policy Number": 0.0,
+      "Line of Business": 0.0,
+      "Coverage": 0.0,
+      "Loss Date": 0.0,
+      "Report Date": 0.0,
+      "Valuation Date": 0.0,
+      "Claim Status": 0.0,
+      "Paid to Date": 0.0,
+      "Case Reserve": 70.93,
+      "Incurred": 0.0,
+      "Salvage Subrogation": 0.0,
+      "Cat Event": 96.08,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Line of Business/Incurred:ratio:severity",
+       "kind": "segment",
+       "claim": "severity (from Incurred) by Line of Business (2 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": float(severity)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind=='counted' per domain rules).\"\n    )\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Home\", \"value\": 12212.91997}, {\"name\": \"Auto\", \"value\": 7972.509434}], \"label\": \"severity\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "38255 rows",
+       "assumptions": [
+        "Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only."
+       ]
+      },
+      {
+       "id": "eda:Paid to Date",
+       "kind": "eda",
+       "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": float(severity)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind=='counted' per domain rules).\"\n    )\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Case Reserve",
+       "kind": "eda",
+       "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": float(severity)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind=='counted' per domain rules).\"\n    )\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+       "row_count": 634,
+       "confidence": "high",
+       "confidence_reason": "634 rows",
+       "assumptions": [
+        "Case Reserve: 71% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Incurred",
+       "kind": "eda",
+       "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": float(severity)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind=='counted' per domain rules).\"\n    )\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": [
+        "Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only."
+       ]
+      },
+      {
+       "id": "eda:Salvage Subrogation",
+       "kind": "eda",
+       "claim": "Salvage Subrogation: median 0, mean 168.16, range 0 to 16,916.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": float(severity)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind=='counted' per domain rules).\"\n    )\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 168.1567, \"std\": 783.8626, \"min\": 0.0, \"max\": 16916.7, \"median\": 0.0, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 34.09,
+    "cost_usd": 0.01135,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": float(severity)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, on row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind=='counted' per domain rules).\"\n    )\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Incurred)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Paid to Date": {
+       "mean": 7455.2996,
+       "std": 14270.3659,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 3568.19,
+       "count": 3975
+      },
+      "Case Reserve": {
+       "mean": 6372.4589,
+       "std": 9065.309,
+       "min": 257.32,
+       "max": 102209.73,
+       "median": 3176.58,
+       "count": 634
+      },
+      "Incurred": {
+       "mean": 8471.6868,
+       "std": 15081.7225,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 4311.14,
+       "count": 3975
+      },
+      "Salvage Subrogation": {
+       "mean": 168.1567,
+       "std": 783.8626,
+       "min": 0.0,
+       "max": 16916.7,
+       "median": 0.0,
+       "count": 3975
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Line of Business",
+       "metric_column": "Incurred",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Home",
+         "value": 12212.92
+        },
+        {
+         "name": "Auto",
+         "value": 7972.5094
+        }
+       ],
+       "label": "severity"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Paid to Date": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36728
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1137
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 232
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 78
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 63
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 8
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 2
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 3
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Case Reserve": [
+       {
+        "label": "(62.996, 14247.866]",
+        "count": 9993
+       },
+       {
+        "label": "(14247.866, 28292.292]",
+        "count": 764
+       },
+       {
+        "label": "(28292.292, 42336.718]",
+        "count": 195
+       },
+       {
+        "label": "(42336.718, 56381.144]",
+        "count": 79
+       },
+       {
+        "label": "(56381.144, 70425.57]",
+        "count": 46
+       },
+       {
+        "label": "(70425.57, 84469.996]",
+        "count": 16
+       },
+       {
+        "label": "(84469.996, 98514.422]",
+        "count": 6
+       },
+       {
+        "label": "(98514.422, 112558.848]",
+        "count": 17
+       },
+       {
+        "label": "(112558.848, 126603.274]",
+        "count": 2
+       },
+       {
+        "label": "(126603.274, 140647.7]",
+        "count": 4
+       }
+      ],
+      "Incurred": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36189
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1500
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 336
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 113
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 84
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 19
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 4
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 5
+       },
+       {
+        "label": "(224677.36, 252762.03]",
+        "count": 1
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Salvage Subrogation": [
+       {
+        "label": "(-16.917, 1691.67]",
+        "count": 37228
+       },
+       {
+        "label": "(1691.67, 3383.34]",
+        "count": 687
+       },
+       {
+        "label": "(3383.34, 5075.01]",
+        "count": 211
+       },
+       {
+        "label": "(5075.01, 6766.68]",
+        "count": 50
+       },
+       {
+        "label": "(6766.68, 8458.35]",
+        "count": 37
+       },
+       {
+        "label": "(8458.35, 10150.02]",
+        "count": 17
+       },
+       {
+        "label": "(10150.02, 11841.69]",
+        "count": 9
+       },
+       {
+        "label": "(11841.69, 13533.36]",
+        "count": 9
+       },
+       {
+        "label": "(15225.03, 16916.7]",
+        "count": 7
+       }
+      ],
+      "Claimant Number": [
+       {
+        "label": "1",
+        "count": 33172
+       },
+       {
+        "label": "2",
+        "count": 5083
+       }
+      ],
+      "Line of Business": [
+       {
+        "label": "Auto",
+        "count": 22475
+       },
+       {
+        "label": "Home",
+        "count": 15780
+       }
+      ],
+      "Coverage": [
+       {
+        "label": "Collision",
+        "count": 10847
+       },
+       {
+        "label": "Dwelling",
+        "count": 9091
+       },
+       {
+        "label": "Property Damage",
+        "count": 5146
+       },
+       {
+        "label": "Bodily Injury",
+        "count": 4293
+       },
+       {
+        "label": "Personal Property",
+        "count": 4231
+       },
+       {
+        "label": "Liability",
+        "count": 2458
+       },
+       {
+        "label": "Comprehensive",
+        "count": 2189
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Closed",
+        "count": 27133
+       },
+       {
+        "label": "Open",
+        "count": 11114
+       },
+       {
+        "label": "Reopened",
+        "count": 8
+       }
+      ],
+      "Cat Event": [
+       {
+        "label": "CAT-2024-HAIL",
+        "count": 1500
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied; superseded valuations excluded).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _s = df['Paid to Date'].dropna()\n        if len(_s) > 0 and 'Paid to Date' not in result['eda_summary']:\n            result['eda_summary']['Paid to Date'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _s = df['Case Reserve'].dropna()\n        if len(_s) > 0 and 'Case Reserve' not in result['eda_summary']:\n            result['eda_summary']['Case Reserve'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _s = df['Incurred'].dropna()\n        if len(_s) > 0 and 'Incurred' not in result['eda_summary']:\n            result['eda_summary']['Incurred'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _s = df['Salvage Subrogation'].dropna()\n        if len(_s) > 0 and 'Salvage Subrogation' not in result['eda_summary']:\n            result['eda_summary']['Salvage Subrogation'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _col_data = df['Paid to Date'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid to Date'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _col_data = df['Case Reserve'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Case Reserve'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _col_data = df['Incurred'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Incurred'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _col_data = df['Salvage Subrogation'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Salvage Subrogation'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claimant Number' in df.columns:\n        _vc = df['Claimant Number'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claimant Number'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line of Business' in df.columns:\n        _vc = df['Line of Business'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line of Business'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Coverage' in df.columns:\n        _vc = df['Coverage'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Coverage'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Cat Event' in df.columns:\n        _vc = df['Cat Event'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Cat Event'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "counted"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-06-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-03-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-12-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim Number": "object",
+      "Claimant Number": "int64",
+      "Policy Number": "object",
+      "Line of Business": "object",
+      "Coverage": "object",
+      "Loss Date": "object",
+      "Report Date": "object",
+      "Valuation Date": "object",
+      "Claim Status": "object",
+      "Paid to Date": "float64",
+      "Case Reserve": "float64",
+      "Incurred": "float64",
+      "Salvage Subrogation": "float64",
+      "Cat Event": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim Number": 0.0,
+      "Claimant Number": 0.0,
+      "Policy Number": 0.0,
+      "Line of Business": 0.0,
+      "Coverage": 0.0,
+      "Loss Date": 0.0,
+      "Report Date": 0.0,
+      "Valuation Date": 0.0,
+      "Claim Status": 0.0,
+      "Paid to Date": 0.0,
+      "Case Reserve": 70.93,
+      "Incurred": 0.0,
+      "Salvage Subrogation": 0.0,
+      "Cat Event": 96.08,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Line of Business/Incurred:ratio:severity",
+       "kind": "segment",
+       "claim": "severity (from Incurred) by Line of Business (2 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied; superseded valuations excluded).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Home\", \"value\": 12212.92}, {\"name\": \"Auto\", \"value\": 7972.5094}], \"label\": \"severity\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "38255 rows",
+       "assumptions": [
+        "Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only."
+       ]
+      },
+      {
+       "id": "eda:Paid to Date",
+       "kind": "eda",
+       "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied; superseded valuations excluded).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Case Reserve",
+       "kind": "eda",
+       "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied; superseded valuations excluded).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+       "row_count": 634,
+       "confidence": "high",
+       "confidence_reason": "634 rows",
+       "assumptions": [
+        "Case Reserve: 71% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Incurred",
+       "kind": "eda",
+       "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied; superseded valuations excluded).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": [
+        "Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only."
+       ]
+      },
+      {
+       "id": "eda:Salvage Subrogation",
+       "kind": "eda",
+       "claim": "Salvage Subrogation: median 0, mean 168.16, range 0 to 16,916.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied; superseded valuations excluded).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 168.1567, \"std\": 783.8626, \"min\": 0.0, \"max\": 16916.7, \"median\": 0.0, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 34.71,
+    "cost_usd": 0.0115,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n\n    lob_groups = counted.groupby('Line of Business')\n\n    severity_results = []\n    for name, grp in lob_groups:\n        total_incurred = grp['Incurred'].sum()\n        n_claims = grp['Claim Number'].nunique()\n        severity = total_incurred / n_claims if n_claims > 0 else 0.0\n        severity_results.append({\"name\": str(name), \"value\": round(float(severity), 4)})\n\n    severity_results_sorted = sorted(severity_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": severity_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"Severity = sum(Incurred) / count(distinct Claim Number) per Line of Business, using row_kind=='counted' rows only.\"\n    )\n    result['assumptions'].append(\n        \"Each claim counted once at its latest valuation (row_kind='counted' filter applied; superseded valuations excluded).\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Incurred\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"severity\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-9": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Claim Number)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Paid to Date": {
+       "mean": 7455.2996,
+       "std": 14270.3659,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 3568.19,
+       "count": 3975
+      },
+      "Case Reserve": {
+       "mean": 6372.4589,
+       "std": 9065.309,
+       "min": 257.32,
+       "max": 102209.73,
+       "median": 3176.58,
+       "count": 634
+      },
+      "Incurred": {
+       "mean": 8471.6868,
+       "std": 15081.7225,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 4311.14,
+       "count": 3975
+      },
+      "Salvage Subrogation": {
+       "mean": 168.1567,
+       "std": 783.8626,
+       "min": 0.0,
+       "max": 16916.7,
+       "median": 0.0,
+       "count": 3975
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Line of Business",
+       "metric_column": "Claim Number",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Auto",
+         "value": 1995.0
+        },
+        {
+         "name": "Home",
+         "value": 1455.0
+        }
+       ],
+       "label": "distinct_claims"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Paid to Date": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36728
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1137
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 232
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 78
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 63
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 8
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 2
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 3
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Case Reserve": [
+       {
+        "label": "(62.996, 14247.866]",
+        "count": 9993
+       },
+       {
+        "label": "(14247.866, 28292.292]",
+        "count": 764
+       },
+       {
+        "label": "(28292.292, 42336.718]",
+        "count": 195
+       },
+       {
+        "label": "(42336.718, 56381.144]",
+        "count": 79
+       },
+       {
+        "label": "(56381.144, 70425.57]",
+        "count": 46
+       },
+       {
+        "label": "(70425.57, 84469.996]",
+        "count": 16
+       },
+       {
+        "label": "(84469.996, 98514.422]",
+        "count": 6
+       },
+       {
+        "label": "(98514.422, 112558.848]",
+        "count": 17
+       },
+       {
+        "label": "(112558.848, 126603.274]",
+        "count": 2
+       },
+       {
+        "label": "(126603.274, 140647.7]",
+        "count": 4
+       }
+      ],
+      "Incurred": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36189
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1500
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 336
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 113
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 84
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 19
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 4
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 5
+       },
+       {
+        "label": "(224677.36, 252762.03]",
+        "count": 1
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Salvage Subrogation": [
+       {
+        "label": "(-16.917, 1691.67]",
+        "count": 37228
+       },
+       {
+        "label": "(1691.67, 3383.34]",
+        "count": 687
+       },
+       {
+        "label": "(3383.34, 5075.01]",
+        "count": 211
+       },
+       {
+        "label": "(5075.01, 6766.68]",
+        "count": 50
+       },
+       {
+        "label": "(6766.68, 8458.35]",
+        "count": 37
+       },
+       {
+        "label": "(8458.35, 10150.02]",
+        "count": 17
+       },
+       {
+        "label": "(10150.02, 11841.69]",
+        "count": 9
+       },
+       {
+        "label": "(11841.69, 13533.36]",
+        "count": 9
+       },
+       {
+        "label": "(15225.03, 16916.7]",
+        "count": 7
+       }
+      ],
+      "Claimant Number": [
+       {
+        "label": "1",
+        "count": 33172
+       },
+       {
+        "label": "2",
+        "count": 5083
+       }
+      ],
+      "Line of Business": [
+       {
+        "label": "Auto",
+        "count": 22475
+       },
+       {
+        "label": "Home",
+        "count": 15780
+       }
+      ],
+      "Coverage": [
+       {
+        "label": "Collision",
+        "count": 10847
+       },
+       {
+        "label": "Dwelling",
+        "count": 9091
+       },
+       {
+        "label": "Property Damage",
+        "count": 5146
+       },
+       {
+        "label": "Bodily Injury",
+        "count": 4293
+       },
+       {
+        "label": "Personal Property",
+        "count": 4231
+       },
+       {
+        "label": "Liability",
+        "count": 2458
+       },
+       {
+        "label": "Comprehensive",
+        "count": 2189
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Closed",
+        "count": 27133
+       },
+       {
+        "label": "Open",
+        "count": 11114
+       },
+       {
+        "label": "Reopened",
+        "count": 8
+       }
+      ],
+      "Cat Event": [
+       {
+        "label": "CAT-2024-HAIL",
+        "count": 1500
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    lob_claims = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    lob_claims.columns = [seg_col, 'claim_count']\n    lob_claims = lob_claims.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'] = [\n        {\n            \"segment_column\": seg_col,\n            \"metric_column\": metric_col,\n            \"aggregation\": \"count\",\n            \"label\": \"distinct_claims\",\n            \"results\": [\n                {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n                for _, row in lob_claims.iterrows()\n            ]\n        }\n    ]\n    \n    result['assumptions'] = [\n        \"Only rows with row_kind == 'counted' are used (latest valuation per claim).\",\n        \"Claims counted as distinct Claim Number values per Line of Business.\",\n        \"No premium or exposure data available; loss ratio and frequency not computed.\",\n        \"Segmentation covers full dataset timeframe.\",\n        \"Top 10 lines by distinct claim count shown.\"\n    ]\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"label\": \"error\", \"results\": [{\"name\": str(e), \"value\": 0.0}]}]\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _s = df['Paid to Date'].dropna()\n        if len(_s) > 0 and 'Paid to Date' not in result['eda_summary']:\n            result['eda_summary']['Paid to Date'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _s = df['Case Reserve'].dropna()\n        if len(_s) > 0 and 'Case Reserve' not in result['eda_summary']:\n            result['eda_summary']['Case Reserve'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _s = df['Incurred'].dropna()\n        if len(_s) > 0 and 'Incurred' not in result['eda_summary']:\n            result['eda_summary']['Incurred'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _s = df['Salvage Subrogation'].dropna()\n        if len(_s) > 0 and 'Salvage Subrogation' not in result['eda_summary']:\n            result['eda_summary']['Salvage Subrogation'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _col_data = df['Paid to Date'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid to Date'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _col_data = df['Case Reserve'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Case Reserve'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _col_data = df['Incurred'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Incurred'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _col_data = df['Salvage Subrogation'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Salvage Subrogation'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claimant Number' in df.columns:\n        _vc = df['Claimant Number'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claimant Number'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line of Business' in df.columns:\n        _vc = df['Line of Business'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line of Business'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Coverage' in df.columns:\n        _vc = df['Coverage'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Coverage'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Cat Event' in df.columns:\n        _vc = df['Cat Event'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Cat Event'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "counted"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-06-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-03-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-12-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim Number": "object",
+      "Claimant Number": "int64",
+      "Policy Number": "object",
+      "Line of Business": "object",
+      "Coverage": "object",
+      "Loss Date": "object",
+      "Report Date": "object",
+      "Valuation Date": "object",
+      "Claim Status": "object",
+      "Paid to Date": "float64",
+      "Case Reserve": "float64",
+      "Incurred": "float64",
+      "Salvage Subrogation": "float64",
+      "Cat Event": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim Number": 0.0,
+      "Claimant Number": 0.0,
+      "Policy Number": 0.0,
+      "Line of Business": 0.0,
+      "Coverage": 0.0,
+      "Loss Date": 0.0,
+      "Report Date": 0.0,
+      "Valuation Date": 0.0,
+      "Claim Status": 0.0,
+      "Paid to Date": 0.0,
+      "Case Reserve": 70.93,
+      "Incurred": 0.0,
+      "Salvage Subrogation": 0.0,
+      "Cat Event": 96.08,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Line of Business/Claim Number:count",
+       "kind": "segment",
+       "claim": "count Claim Number by Line of Business (2 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    lob_claims = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    lob_claims.columns = [seg_col, 'claim_count']\n    lob_claims = lob_claims.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'] = [\n        {\n            \"segment_column\": seg_col,\n            \"metric_column\": metric_col,\n            \"aggregation\": \"count\",\n            \"label\": \"distinct_claims\",\n            \"results\": [\n                {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n                for _, row in lob_claims.iterrows()\n            ]\n        }\n    ]\n    \n    result['assumptions'] = [\n        \"Only rows with row_kind == 'counted' are used (latest valuation per claim).\",\n        \"Claims counted as distinct Claim Number values per Line of Business.\",\n        \"No premium or exposure data available; loss ratio and frequency not computed.\",\n        \"Segmentation covers full dataset timeframe.\",\n        \"Top 10 lines by distinct claim count shown.\"\n    ]\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"label\": \"error\", \"results\": [{\"name\": str(e), \"value\": 0.0}]}]",
+       "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Auto\", \"value\": 1995.0}, {\"name\": \"Home\", \"value\": 1455.0}], \"label\": \"distinct_claims\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "38255 rows",
+       "assumptions": [
+        "Claims counted as distinct Claim Number values per Line of Business."
+       ]
+      },
+      {
+       "id": "eda:Paid to Date",
+       "kind": "eda",
+       "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    lob_claims = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    lob_claims.columns = [seg_col, 'claim_count']\n    lob_claims = lob_claims.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'] = [\n        {\n            \"segment_column\": seg_col,\n            \"metric_column\": metric_col,\n            \"aggregation\": \"count\",\n            \"label\": \"distinct_claims\",\n            \"results\": [\n                {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n                for _, row in lob_claims.iterrows()\n            ]\n        }\n    ]\n    \n    result['assumptions'] = [\n        \"Only rows with row_kind == 'counted' are used (latest valuation per claim).\",\n        \"Claims counted as distinct Claim Number values per Line of Business.\",\n        \"No premium or exposure data available; loss ratio and frequency not computed.\",\n        \"Segmentation covers full dataset timeframe.\",\n        \"Top 10 lines by distinct claim count shown.\"\n    ]\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"label\": \"error\", \"results\": [{\"name\": str(e), \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Case Reserve",
+       "kind": "eda",
+       "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    lob_claims = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    lob_claims.columns = [seg_col, 'claim_count']\n    lob_claims = lob_claims.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'] = [\n        {\n            \"segment_column\": seg_col,\n            \"metric_column\": metric_col,\n            \"aggregation\": \"count\",\n            \"label\": \"distinct_claims\",\n            \"results\": [\n                {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n                for _, row in lob_claims.iterrows()\n            ]\n        }\n    ]\n    \n    result['assumptions'] = [\n        \"Only rows with row_kind == 'counted' are used (latest valuation per claim).\",\n        \"Claims counted as distinct Claim Number values per Line of Business.\",\n        \"No premium or exposure data available; loss ratio and frequency not computed.\",\n        \"Segmentation covers full dataset timeframe.\",\n        \"Top 10 lines by distinct claim count shown.\"\n    ]\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"label\": \"error\", \"results\": [{\"name\": str(e), \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+       "row_count": 634,
+       "confidence": "high",
+       "confidence_reason": "634 rows",
+       "assumptions": [
+        "Case Reserve: 71% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Incurred",
+       "kind": "eda",
+       "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    lob_claims = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    lob_claims.columns = [seg_col, 'claim_count']\n    lob_claims = lob_claims.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'] = [\n        {\n            \"segment_column\": seg_col,\n            \"metric_column\": metric_col,\n            \"aggregation\": \"count\",\n            \"label\": \"distinct_claims\",\n            \"results\": [\n                {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n                for _, row in lob_claims.iterrows()\n            ]\n        }\n    ]\n    \n    result['assumptions'] = [\n        \"Only rows with row_kind == 'counted' are used (latest valuation per claim).\",\n        \"Claims counted as distinct Claim Number values per Line of Business.\",\n        \"No premium or exposure data available; loss ratio and frequency not computed.\",\n        \"Segmentation covers full dataset timeframe.\",\n        \"Top 10 lines by distinct claim count shown.\"\n    ]\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"label\": \"error\", \"results\": [{\"name\": str(e), \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Salvage Subrogation",
+       "kind": "eda",
+       "claim": "Salvage Subrogation: median 0, mean 168.16, range 0 to 16,916.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    lob_claims = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    lob_claims.columns = [seg_col, 'claim_count']\n    lob_claims = lob_claims.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'] = [\n        {\n            \"segment_column\": seg_col,\n            \"metric_column\": metric_col,\n            \"aggregation\": \"count\",\n            \"label\": \"distinct_claims\",\n            \"results\": [\n                {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n                for _, row in lob_claims.iterrows()\n            ]\n        }\n    ]\n    \n    result['assumptions'] = [\n        \"Only rows with row_kind == 'counted' are used (latest valuation per claim).\",\n        \"Claims counted as distinct Claim Number values per Line of Business.\",\n        \"No premium or exposure data available; loss ratio and frequency not computed.\",\n        \"Segmentation covers full dataset timeframe.\",\n        \"Top 10 lines by distinct claim count shown.\"\n    ]\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"label\": \"error\", \"results\": [{\"name\": str(e), \"value\": 0.0}]}]",
+       "result_excerpt": "{\"mean\": 168.1567, \"std\": 783.8626, \"min\": 0.0, \"max\": 16916.7, \"median\": 0.0, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 23.87,
+    "cost_usd": 0.01119,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    lob_claims = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    lob_claims.columns = [seg_col, 'claim_count']\n    lob_claims = lob_claims.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'] = [\n        {\n            \"segment_column\": seg_col,\n            \"metric_column\": metric_col,\n            \"aggregation\": \"count\",\n            \"label\": \"distinct_claims\",\n            \"results\": [\n                {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n                for _, row in lob_claims.iterrows()\n            ]\n        }\n    ]\n    \n    result['assumptions'] = [\n        \"Only rows with row_kind == 'counted' are used (latest valuation per claim).\",\n        \"Claims counted as distinct Claim Number values per Line of Business.\",\n        \"No premium or exposure data available; loss ratio and frequency not computed.\",\n        \"Segmentation covers full dataset timeframe.\",\n        \"Top 10 lines by distinct claim count shown.\"\n    ]\nexcept Exception as e:\n    result['segments'] = [{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"label\": \"error\", \"results\": [{\"name\": str(e), \"value\": 0.0}]}]\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Claim Number)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Paid to Date": {
+       "mean": 7455.2996,
+       "std": 14270.3659,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 3568.19,
+       "count": 3975
+      },
+      "Case Reserve": {
+       "mean": 6372.4589,
+       "std": 9065.309,
+       "min": 257.32,
+       "max": 102209.73,
+       "median": 3176.58,
+       "count": 634
+      },
+      "Incurred": {
+       "mean": 8471.6868,
+       "std": 15081.7225,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 4311.14,
+       "count": 3975
+      },
+      "Salvage Subrogation": {
+       "mean": 168.1567,
+       "std": 783.8626,
+       "min": 0.0,
+       "max": 16916.7,
+       "median": 0.0,
+       "count": 3975
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Line of Business",
+       "metric_column": "Claim Number",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Auto",
+         "value": 1995.0
+        },
+        {
+         "name": "Home",
+         "value": 1455.0
+        }
+       ],
+       "label": "distinct_claims"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Paid to Date": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36728
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1137
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 232
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 78
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 63
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 8
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 2
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 3
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Case Reserve": [
+       {
+        "label": "(62.996, 14247.866]",
+        "count": 9993
+       },
+       {
+        "label": "(14247.866, 28292.292]",
+        "count": 764
+       },
+       {
+        "label": "(28292.292, 42336.718]",
+        "count": 195
+       },
+       {
+        "label": "(42336.718, 56381.144]",
+        "count": 79
+       },
+       {
+        "label": "(56381.144, 70425.57]",
+        "count": 46
+       },
+       {
+        "label": "(70425.57, 84469.996]",
+        "count": 16
+       },
+       {
+        "label": "(84469.996, 98514.422]",
+        "count": 6
+       },
+       {
+        "label": "(98514.422, 112558.848]",
+        "count": 17
+       },
+       {
+        "label": "(112558.848, 126603.274]",
+        "count": 2
+       },
+       {
+        "label": "(126603.274, 140647.7]",
+        "count": 4
+       }
+      ],
+      "Incurred": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36189
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1500
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 336
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 113
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 84
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 19
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 4
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 5
+       },
+       {
+        "label": "(224677.36, 252762.03]",
+        "count": 1
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Salvage Subrogation": [
+       {
+        "label": "(-16.917, 1691.67]",
+        "count": 37228
+       },
+       {
+        "label": "(1691.67, 3383.34]",
+        "count": 687
+       },
+       {
+        "label": "(3383.34, 5075.01]",
+        "count": 211
+       },
+       {
+        "label": "(5075.01, 6766.68]",
+        "count": 50
+       },
+       {
+        "label": "(6766.68, 8458.35]",
+        "count": 37
+       },
+       {
+        "label": "(8458.35, 10150.02]",
+        "count": 17
+       },
+       {
+        "label": "(10150.02, 11841.69]",
+        "count": 9
+       },
+       {
+        "label": "(11841.69, 13533.36]",
+        "count": 9
+       },
+       {
+        "label": "(15225.03, 16916.7]",
+        "count": 7
+       }
+      ],
+      "Claimant Number": [
+       {
+        "label": "1",
+        "count": 33172
+       },
+       {
+        "label": "2",
+        "count": 5083
+       }
+      ],
+      "Line of Business": [
+       {
+        "label": "Auto",
+        "count": 22475
+       },
+       {
+        "label": "Home",
+        "count": 15780
+       }
+      ],
+      "Coverage": [
+       {
+        "label": "Collision",
+        "count": 10847
+       },
+       {
+        "label": "Dwelling",
+        "count": 9091
+       },
+       {
+        "label": "Property Damage",
+        "count": 5146
+       },
+       {
+        "label": "Bodily Injury",
+        "count": 4293
+       },
+       {
+        "label": "Personal Property",
+        "count": 4231
+       },
+       {
+        "label": "Liability",
+        "count": 2458
+       },
+       {
+        "label": "Comprehensive",
+        "count": 2189
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Closed",
+        "count": 27133
+       },
+       {
+        "label": "Open",
+        "count": 11114
+       },
+       {
+        "label": "Reopened",
+        "count": 8
+       }
+      ],
+      "Cat Event": [
+       {
+        "label": "CAT-2024-HAIL",
+        "count": 1500
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    claim_counts.columns = [seg_col, 'claim_count']\n    claim_counts = claim_counts.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [\n            {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n            for _, row in claim_counts.iterrows()\n        ]\n    })\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Distinct claim counts use row_kind=='counted' rows only (latest valuation per claim).\")\nresult['assumptions'].append(\"Claims counted as distinct Claim Number values per Line of Business.\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _s = df['Paid to Date'].dropna()\n        if len(_s) > 0 and 'Paid to Date' not in result['eda_summary']:\n            result['eda_summary']['Paid to Date'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _s = df['Case Reserve'].dropna()\n        if len(_s) > 0 and 'Case Reserve' not in result['eda_summary']:\n            result['eda_summary']['Case Reserve'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _s = df['Incurred'].dropna()\n        if len(_s) > 0 and 'Incurred' not in result['eda_summary']:\n            result['eda_summary']['Incurred'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _s = df['Salvage Subrogation'].dropna()\n        if len(_s) > 0 and 'Salvage Subrogation' not in result['eda_summary']:\n            result['eda_summary']['Salvage Subrogation'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _col_data = df['Paid to Date'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid to Date'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _col_data = df['Case Reserve'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Case Reserve'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _col_data = df['Incurred'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Incurred'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _col_data = df['Salvage Subrogation'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Salvage Subrogation'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claimant Number' in df.columns:\n        _vc = df['Claimant Number'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claimant Number'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line of Business' in df.columns:\n        _vc = df['Line of Business'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line of Business'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Coverage' in df.columns:\n        _vc = df['Coverage'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Coverage'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Cat Event' in df.columns:\n        _vc = df['Cat Event'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Cat Event'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "counted"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-06-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-03-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-12-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim Number": "object",
+      "Claimant Number": "int64",
+      "Policy Number": "object",
+      "Line of Business": "object",
+      "Coverage": "object",
+      "Loss Date": "object",
+      "Report Date": "object",
+      "Valuation Date": "object",
+      "Claim Status": "object",
+      "Paid to Date": "float64",
+      "Case Reserve": "float64",
+      "Incurred": "float64",
+      "Salvage Subrogation": "float64",
+      "Cat Event": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim Number": 0.0,
+      "Claimant Number": 0.0,
+      "Policy Number": 0.0,
+      "Line of Business": 0.0,
+      "Coverage": 0.0,
+      "Loss Date": 0.0,
+      "Report Date": 0.0,
+      "Valuation Date": 0.0,
+      "Claim Status": 0.0,
+      "Paid to Date": 0.0,
+      "Case Reserve": 70.93,
+      "Incurred": 0.0,
+      "Salvage Subrogation": 0.0,
+      "Cat Event": 96.08,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Line of Business/Claim Number:count",
+       "kind": "segment",
+       "claim": "count Claim Number by Line of Business (2 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    claim_counts.columns = [seg_col, 'claim_count']\n    claim_counts = claim_counts.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [\n            {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n            for _, row in claim_counts.iterrows()\n        ]\n    })\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Distinct claim counts use row_kind=='counted' rows only (latest valuation per claim).\")\nresult['assumptions'].append(\"Claims counted as distinct Claim Number values per Line of Business.\")",
+       "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Auto\", \"value\": 1995.0}, {\"name\": \"Home\", \"value\": 1455.0}], \"label\": \"distinct_claims\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "38255 rows",
+       "assumptions": [
+        "Claims counted as distinct Claim Number values per Line of Business."
+       ]
+      },
+      {
+       "id": "eda:Paid to Date",
+       "kind": "eda",
+       "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    claim_counts.columns = [seg_col, 'claim_count']\n    claim_counts = claim_counts.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [\n            {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n            for _, row in claim_counts.iterrows()\n        ]\n    })\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Distinct claim counts use row_kind=='counted' rows only (latest valuation per claim).\")\nresult['assumptions'].append(\"Claims counted as distinct Claim Number values per Line of Business.\")",
+       "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Case Reserve",
+       "kind": "eda",
+       "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    claim_counts.columns = [seg_col, 'claim_count']\n    claim_counts = claim_counts.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [\n            {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n            for _, row in claim_counts.iterrows()\n        ]\n    })\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Distinct claim counts use row_kind=='counted' rows only (latest valuation per claim).\")\nresult['assumptions'].append(\"Claims counted as distinct Claim Number values per Line of Business.\")",
+       "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+       "row_count": 634,
+       "confidence": "high",
+       "confidence_reason": "634 rows",
+       "assumptions": [
+        "Case Reserve: 71% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Incurred",
+       "kind": "eda",
+       "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    claim_counts.columns = [seg_col, 'claim_count']\n    claim_counts = claim_counts.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [\n            {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n            for _, row in claim_counts.iterrows()\n        ]\n    })\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Distinct claim counts use row_kind=='counted' rows only (latest valuation per claim).\")\nresult['assumptions'].append(\"Claims counted as distinct Claim Number values per Line of Business.\")",
+       "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Salvage Subrogation",
+       "kind": "eda",
+       "claim": "Salvage Subrogation: median 0, mean 168.16, range 0 to 16,916.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    claim_counts.columns = [seg_col, 'claim_count']\n    claim_counts = claim_counts.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [\n            {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n            for _, row in claim_counts.iterrows()\n        ]\n    })\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Distinct claim counts use row_kind=='counted' rows only (latest valuation per claim).\")\nresult['assumptions'].append(\"Claims counted as distinct Claim Number values per Line of Business.\")",
+       "result_excerpt": "{\"mean\": 168.1567, \"std\": 783.8626, \"min\": 0.0, \"max\": 16916.7, \"median\": 0.0, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 24.5,
+    "cost_usd": 0.0105,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = counted.groupby(seg_col)[metric_col].nunique().reset_index()\n    claim_counts.columns = [seg_col, 'claim_count']\n    claim_counts = claim_counts.sort_values('claim_count', ascending=False).head(10)\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [\n            {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n            for _, row in claim_counts.iterrows()\n        ]\n    })\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Distinct claim counts use row_kind=='counted' rows only (latest valuation per claim).\")\nresult['assumptions'].append(\"Claims counted as distinct Claim Number values per Line of Business.\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Claim Number)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 24,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Paid to Date": {
+       "mean": 7455.2996,
+       "std": 14270.3659,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 3568.19,
+       "count": 3975
+      },
+      "Case Reserve": {
+       "mean": 6372.4589,
+       "std": 9065.309,
+       "min": 257.32,
+       "max": 102209.73,
+       "median": 3176.58,
+       "count": 634
+      },
+      "Incurred": {
+       "mean": 8471.6868,
+       "std": 15081.7225,
+       "min": 0.0,
+       "max": 280846.7,
+       "median": 4311.14,
+       "count": 3975
+      },
+      "Salvage Subrogation": {
+       "mean": 168.1567,
+       "std": 783.8626,
+       "min": 0.0,
+       "max": 16916.7,
+       "median": 0.0,
+       "count": 3975
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Line of Business",
+       "metric_column": "Claim Number",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Auto",
+         "value": 1995.0
+        },
+        {
+         "name": "Home",
+         "value": 1455.0
+        }
+       ],
+       "label": "distinct_claims"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Paid to Date": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36728
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1137
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 232
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 78
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 63
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 8
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 2
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 3
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Case Reserve": [
+       {
+        "label": "(62.996, 14247.866]",
+        "count": 9993
+       },
+       {
+        "label": "(14247.866, 28292.292]",
+        "count": 764
+       },
+       {
+        "label": "(28292.292, 42336.718]",
+        "count": 195
+       },
+       {
+        "label": "(42336.718, 56381.144]",
+        "count": 79
+       },
+       {
+        "label": "(56381.144, 70425.57]",
+        "count": 46
+       },
+       {
+        "label": "(70425.57, 84469.996]",
+        "count": 16
+       },
+       {
+        "label": "(84469.996, 98514.422]",
+        "count": 6
+       },
+       {
+        "label": "(98514.422, 112558.848]",
+        "count": 17
+       },
+       {
+        "label": "(112558.848, 126603.274]",
+        "count": 2
+       },
+       {
+        "label": "(126603.274, 140647.7]",
+        "count": 4
+       }
+      ],
+      "Incurred": [
+       {
+        "label": "(-280.847, 28084.67]",
+        "count": 36189
+       },
+       {
+        "label": "(28084.67, 56169.34]",
+        "count": 1500
+       },
+       {
+        "label": "(56169.34, 84254.01]",
+        "count": 336
+       },
+       {
+        "label": "(84254.01, 112338.68]",
+        "count": 113
+       },
+       {
+        "label": "(112338.68, 140423.35]",
+        "count": 84
+       },
+       {
+        "label": "(140423.35, 168508.02]",
+        "count": 19
+       },
+       {
+        "label": "(168508.02, 196592.69]",
+        "count": 4
+       },
+       {
+        "label": "(196592.69, 224677.36]",
+        "count": 5
+       },
+       {
+        "label": "(224677.36, 252762.03]",
+        "count": 1
+       },
+       {
+        "label": "(252762.03, 280846.7]",
+        "count": 4
+       }
+      ],
+      "Salvage Subrogation": [
+       {
+        "label": "(-16.917, 1691.67]",
+        "count": 37228
+       },
+       {
+        "label": "(1691.67, 3383.34]",
+        "count": 687
+       },
+       {
+        "label": "(3383.34, 5075.01]",
+        "count": 211
+       },
+       {
+        "label": "(5075.01, 6766.68]",
+        "count": 50
+       },
+       {
+        "label": "(6766.68, 8458.35]",
+        "count": 37
+       },
+       {
+        "label": "(8458.35, 10150.02]",
+        "count": 17
+       },
+       {
+        "label": "(10150.02, 11841.69]",
+        "count": 9
+       },
+       {
+        "label": "(11841.69, 13533.36]",
+        "count": 9
+       },
+       {
+        "label": "(15225.03, 16916.7]",
+        "count": 7
+       }
+      ],
+      "Claimant Number": [
+       {
+        "label": "1",
+        "count": 33172
+       },
+       {
+        "label": "2",
+        "count": 5083
+       }
+      ],
+      "Line of Business": [
+       {
+        "label": "Auto",
+        "count": 22475
+       },
+       {
+        "label": "Home",
+        "count": 15780
+       }
+      ],
+      "Coverage": [
+       {
+        "label": "Collision",
+        "count": 10847
+       },
+       {
+        "label": "Dwelling",
+        "count": 9091
+       },
+       {
+        "label": "Property Damage",
+        "count": 5146
+       },
+       {
+        "label": "Bodily Injury",
+        "count": 4293
+       },
+       {
+        "label": "Personal Property",
+        "count": 4231
+       },
+       {
+        "label": "Liability",
+        "count": 2458
+       },
+       {
+        "label": "Comprehensive",
+        "count": 2189
+       }
+      ],
+      "Claim Status": [
+       {
+        "label": "Closed",
+        "count": 27133
+       },
+       {
+        "label": "Open",
+        "count": 11114
+       },
+       {
+        "label": "Reopened",
+        "count": 8
+       }
+      ],
+      "Cat Event": [
+       {
+        "label": "CAT-2024-HAIL",
+        "count": 1500
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = (\n        counted.groupby(seg_col)[metric_col]\n        .nunique()\n        .reset_index()\n        .rename(columns={metric_col: 'claim_count'})\n        .sort_values('claim_count', ascending=False)\n    )\n    \n    seg_results = [\n        {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n        for _, row in claim_counts.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": seg_results\n    })\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.\")\nresult['assumptions'].append(\"Claim count = distinct Claim Number values within each Line of Business segment.\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _s = df['Paid to Date'].dropna()\n        if len(_s) > 0 and 'Paid to Date' not in result['eda_summary']:\n            result['eda_summary']['Paid to Date'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _s = df['Case Reserve'].dropna()\n        if len(_s) > 0 and 'Case Reserve' not in result['eda_summary']:\n            result['eda_summary']['Case Reserve'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _s = df['Incurred'].dropna()\n        if len(_s) > 0 and 'Incurred' not in result['eda_summary']:\n            result['eda_summary']['Incurred'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _s = df['Salvage Subrogation'].dropna()\n        if len(_s) > 0 and 'Salvage Subrogation' not in result['eda_summary']:\n            result['eda_summary']['Salvage Subrogation'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Paid to Date' in df.columns and pd.api.types.is_numeric_dtype(df['Paid to Date']):\n        _col_data = df['Paid to Date'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Paid to Date'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Case Reserve' in df.columns and pd.api.types.is_numeric_dtype(df['Case Reserve']):\n        _col_data = df['Case Reserve'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Case Reserve'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Incurred' in df.columns and pd.api.types.is_numeric_dtype(df['Incurred']):\n        _col_data = df['Incurred'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Incurred'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Salvage Subrogation' in df.columns and pd.api.types.is_numeric_dtype(df['Salvage Subrogation']):\n        _col_data = df['Salvage Subrogation'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Salvage Subrogation'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claimant Number' in df.columns:\n        _vc = df['Claimant Number'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claimant Number'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line of Business' in df.columns:\n        _vc = df['Line of Business'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line of Business'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Coverage' in df.columns:\n        _vc = df['Coverage'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Coverage'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Claim Status' in df.columns:\n        _vc = df['Claim Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Claim Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Cat Event' in df.columns:\n        _vc = df['Cat Event'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Cat Event'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "counted"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-06-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2026-03-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-12-31",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      },
+      {
+       "Claim Number": "CLM-000001",
+       "Claimant Number": 1,
+       "Policy Number": "POL-01535",
+       "Line of Business": "Home",
+       "Coverage": "Dwelling",
+       "Loss Date": "2024-03-31",
+       "Report Date": "2024-04-04",
+       "Valuation Date": "2025-09-30",
+       "Claim Status": "Closed",
+       "Paid to Date": 15720.96,
+       "Case Reserve": null,
+       "Incurred": 15720.96,
+       "Salvage Subrogation": 0.0,
+       "Cat Event": null,
+       "row_kind": "superseded_valuation"
+      }
+     ],
+     "dtypes_summary": {
+      "Claim Number": "object",
+      "Claimant Number": "int64",
+      "Policy Number": "object",
+      "Line of Business": "object",
+      "Coverage": "object",
+      "Loss Date": "object",
+      "Report Date": "object",
+      "Valuation Date": "object",
+      "Claim Status": "object",
+      "Paid to Date": "float64",
+      "Case Reserve": "float64",
+      "Incurred": "float64",
+      "Salvage Subrogation": "float64",
+      "Cat Event": "object",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Claim Number": 0.0,
+      "Claimant Number": 0.0,
+      "Policy Number": 0.0,
+      "Line of Business": 0.0,
+      "Coverage": 0.0,
+      "Loss Date": 0.0,
+      "Report Date": 0.0,
+      "Valuation Date": 0.0,
+      "Claim Status": 0.0,
+      "Paid to Date": 0.0,
+      "Case Reserve": 70.93,
+      "Incurred": 0.0,
+      "Salvage Subrogation": 0.0,
+      "Cat Event": 96.08,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Line of Business/Claim Number:count",
+       "kind": "segment",
+       "claim": "count Claim Number by Line of Business (2 groups)",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = (\n        counted.groupby(seg_col)[metric_col]\n        .nunique()\n        .reset_index()\n        .rename(columns={metric_col: 'claim_count'})\n        .sort_values('claim_count', ascending=False)\n    )\n    \n    seg_results = [\n        {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n        for _, row in claim_counts.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": seg_results\n    })\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.\")\nresult['assumptions'].append(\"Claim count = distinct Claim Number values within each Line of Business segment.\")",
+       "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Claim Number\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Auto\", \"value\": 1995.0}, {\"name\": \"Home\", \"value\": 1455.0}], \"label\": \"distinct_claims\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "38255 rows",
+       "assumptions": [
+        "Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.",
+        "Claim count = distinct Claim Number values within each Line of Business segment."
+       ]
+      },
+      {
+       "id": "eda:Paid to Date",
+       "kind": "eda",
+       "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = (\n        counted.groupby(seg_col)[metric_col]\n        .nunique()\n        .reset_index()\n        .rename(columns={metric_col: 'claim_count'})\n        .sort_values('claim_count', ascending=False)\n    )\n    \n    seg_results = [\n        {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n        for _, row in claim_counts.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": seg_results\n    })\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.\")\nresult['assumptions'].append(\"Claim count = distinct Claim Number values within each Line of Business segment.\")",
+       "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Case Reserve",
+       "kind": "eda",
+       "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = (\n        counted.groupby(seg_col)[metric_col]\n        .nunique()\n        .reset_index()\n        .rename(columns={metric_col: 'claim_count'})\n        .sort_values('claim_count', ascending=False)\n    )\n    \n    seg_results = [\n        {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n        for _, row in claim_counts.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": seg_results\n    })\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.\")\nresult['assumptions'].append(\"Claim count = distinct Claim Number values within each Line of Business segment.\")",
+       "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+       "row_count": 634,
+       "confidence": "high",
+       "confidence_reason": "634 rows",
+       "assumptions": [
+        "Case Reserve: 71% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Incurred",
+       "kind": "eda",
+       "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = (\n        counted.groupby(seg_col)[metric_col]\n        .nunique()\n        .reset_index()\n        .rename(columns={metric_col: 'claim_count'})\n        .sort_values('claim_count', ascending=False)\n    )\n    \n    seg_results = [\n        {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n        for _, row in claim_counts.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": seg_results\n    })\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.\")\nresult['assumptions'].append(\"Claim count = distinct Claim Number values within each Line of Business segment.\")",
+       "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Salvage Subrogation",
+       "kind": "eda",
+       "claim": "Salvage Subrogation: median 0, mean 168.16, range 0 to 16,916.70",
+       "code": "try:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = (\n        counted.groupby(seg_col)[metric_col]\n        .nunique()\n        .reset_index()\n        .rename(columns={metric_col: 'claim_count'})\n        .sort_values('claim_count', ascending=False)\n    )\n    \n    seg_results = [\n        {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n        for _, row in claim_counts.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": seg_results\n    })\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.\")\nresult['assumptions'].append(\"Claim count = distinct Claim Number values within each Line of Business segment.\")",
+       "result_excerpt": "{\"mean\": 168.1567, \"std\": 783.8626, \"min\": 0.0, \"max\": 16916.7, \"median\": 0.0, \"count\": 3975}",
+       "row_count": 3975,
+       "confidence": "high",
+       "confidence_reason": "3975 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 18.46,
+    "cost_usd": 0.01081,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    counted = df[df['row_kind'] == 'counted'].copy()\n    \n    seg_col = 'Line of Business'\n    metric_col = 'Claim Number'\n    \n    claim_counts = (\n        counted.groupby(seg_col)[metric_col]\n        .nunique()\n        .reset_index()\n        .rename(columns={metric_col: 'claim_count'})\n        .sort_values('claim_count', ascending=False)\n    )\n    \n    seg_results = [\n        {\"name\": str(row[seg_col]), \"value\": float(row['claim_count'])}\n        for _, row in claim_counts.iterrows()\n    ]\n    \n    result['segments'].append({\n        \"segment_column\": seg_col,\n        \"metric_column\": metric_col,\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": seg_results\n    })\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line of Business\",\n        \"metric_column\": \"Claim Number\",\n        \"aggregation\": \"count\",\n        \"label\": \"distinct_claims\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n\nresult['assumptions'].append(\"Only rows with row_kind == 'counted' are used; each claim counted once as distinct Claim Number per Line of Business.\")\nresult['assumptions'].append(\"Claim count = distinct Claim Number values within each Line of Business segment.\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

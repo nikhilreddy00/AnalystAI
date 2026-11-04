@@ -105,7 +105,7 @@ row_flags:
   non_product: "earlier valuations of claims: only each claimant's latest valuation counts"
   test: "test records: left out"
 text:
-  rows_brief: "Figures use rows of kind 'counted'. A loss run lists each claim (and claimant) at every valuation date: only the LATEST valuation counts (kind 'superseded_valuation' = an earlier one, left out); never sum paid, reserves or incurred across valuations. Incurred = paid to date + case reserve (no IBNR, no loss-adjustment expense). A reopened claim is one claim: count claims as distinct claim numbers, never rows; claimants are counted separately. Loss ratio = incurred ÷ EARNED premium (a ratio of sums, never the mean of row ratios; never written premium). Frequency = claims ÷ earned exposure and pure premium = incurred ÷ earned exposure, per line only (car-years and house-years don't add up). Cancellation rows carry negative premium and exposure: they net the term. By year means accident (loss) year unless the user names the valuation or calendar year; a breakdown by accident year is filed under segment_column = the loss date column (a derived 'accident_year' is not a column), its group names the years."
+  rows_brief: "Figures use rows of kind 'counted'. A loss run lists each claim (and claimant) at every valuation date: only the LATEST valuation counts (kind 'superseded_valuation' = an earlier one, left out); never sum paid, reserves or incurred across valuations. The rows of kind 'counted' ARE each claim and claimant's latest valuation already (the product chose them by valuation date): filter on row_kind == 'counted' and use those rows as they are; never re-derive the latest valuation yourself (a sort plus a groupby-transform comparison fails in the sandbox's pandas and loses the answer). Incurred = paid to date + case reserve (no IBNR, no loss-adjustment expense). A reopened claim is one claim: count claims as distinct claim numbers, never rows; claimants are counted separately. Loss ratio = incurred ÷ EARNED premium (a ratio of sums, never the mean of row ratios; never written premium). Frequency = claims ÷ earned exposure and pure premium = incurred ÷ earned exposure, per line only (car-years and house-years don't add up). Cancellation rows carry negative premium and exposure: they net the term. By year means accident (loss) year unless the user names the valuation or calendar year; a breakdown by accident year is filed under segment_column = the loss date column (a derived 'accident_year' is not a column), its group names the years."
   grain_line: "One row is a claim at one valuation (or a policy transaction): count claims as distinct {key}, never rows; an average per claim divides by claims."
   unsupported_alternatives: "I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?"
   kpis_default: its premium and claims columns
@@ -188,7 +188,9 @@ glossary:
              average claim size, cost per claim]
   pure_premium: [pure premium, loss cost, burning cost, loss per exposure]
   earned_premium: [earned premium, earned, ep, premium earned]
-  written_premium: [written premium, gwp, gross written premium, premium written, written]
+  written_premium: [written premium, gwp, gross written premium, premium written, written,
+                    premium did we write, premium we wrote, premium we write, did we write,
+                    we wrote, new business premium]
   incurred: [incurred, incurred losses, losses, total incurred, reported losses, loss amount,
              claim costs, claims cost]
   paid: [paid, paid losses, paid to date, payments, claims paid, loss payments]
@@ -210,8 +212,9 @@ glossary:
          loss triangle, reserve adequacy, reserve deficiency, redundancy]
   rate_indication: [rate indication, rate need, rate adequacy, should we raise rates,
                     how much should we charge, price increase needed]
-  life: [life insurance, mortality, death benefit, face amount, cash value, persistency by
-         duration, actual to expected, a/e]
+  life: [life insurance, whole life, term life, universal life, life policies, life policy,
+         annuity, annuities, mortality, death benefit, face amount, cash value,
+         persistency by duration, lapse by duration, by policy duration, actual to expected, a/e]
   protected_rating: [rate by gender, price by gender, charge women, charge men, rate on gender,
                      underwrite on gender, gender rating, rate by race, rate by religion]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]

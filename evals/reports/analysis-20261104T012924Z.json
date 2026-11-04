@@ -1,0 +1,1427 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261104T012924Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "ed5697e",
+  "started_at": "20261104T012924Z",
+  "only": "ins-1,ins-2,ins-3",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 3,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 6,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0219,
+  "latency_p50_s": 17.25,
+  "latency_p95_s": 18.45,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 70,
+  "by_domain": {
+   "insurance": {
+    "cases": 3,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 3,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 6,
+    "builtin_only_cases": [
+     "ins-3"
+    ],
+    "model_dependent_passed": 2,
+    "model_dependent_cases": 2,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 70,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 51
+    }
+   }
+  }
+ },
+ "runs": {
+  "ins-1": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (claim_amount)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 21,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "earned_premium": {
+       "mean": 121.4243,
+       "std": 128.3762,
+       "min": 8.29,
+       "max": 1908.44,
+       "median": 86.065,
+       "count": 6000
+      },
+      "claim_count": {
+       "mean": 0.1182,
+       "std": 0.3496,
+       "min": 0.0,
+       "max": 3.0,
+       "median": 0.0,
+       "count": 6000
+      },
+      "claim_amount": {
+       "mean": 85.747,
+       "std": 407.5412,
+       "min": 0.0,
+       "max": 14370.92,
+       "median": 0.0,
+       "count": 6000
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "line",
+       "metric_column": "claim_amount",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "auto",
+         "value": 0.62
+        },
+        {
+         "name": "commercial",
+         "value": 0.55
+        },
+        {
+         "name": "home",
+         "value": 0.95
+        }
+       ],
+       "label": "loss_ratio"
+      },
+      {
+       "segment_column": "line",
+       "metric_column": "claim_amount",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "auto",
+         "value": 235370.65
+        },
+        {
+         "name": "home",
+         "value": 207118.5
+        },
+        {
+         "name": "commercial",
+         "value": 71992.85
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "line",
+       "metric_column": "earned_premium",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "auto",
+         "value": 379630.18
+        },
+        {
+         "name": "home",
+         "value": 218019.56
+        },
+        {
+         "name": "commercial",
+         "value": 130896.08
+        }
+       ],
+       "label": null
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "earned_premium": [
+       {
+        "label": "(6.39, 198.305]",
+        "count": 5186
+       },
+       {
+        "label": "(198.305, 388.32]",
+        "count": 618
+       },
+       {
+        "label": "(388.32, 578.335]",
+        "count": 148
+       },
+       {
+        "label": "(578.335, 768.35]",
+        "count": 36
+       },
+       {
+        "label": "(1718.425, 1908.44]",
+        "count": 12
+       }
+      ],
+      "claim_count": [
+       {
+        "label": "(-0.003, 0.75]",
+        "count": 5341
+       },
+       {
+        "label": "(0.75, 1.5]",
+        "count": 613
+       },
+       {
+        "label": "(1.5, 2.25]",
+        "count": 42
+       },
+       {
+        "label": "(2.25, 3.0]",
+        "count": 4
+       }
+      ],
+      "claim_amount": [
+       {
+        "label": "(-14.371, 1437.092]",
+        "count": 5907
+       },
+       {
+        "label": "(1437.092, 2874.184]",
+        "count": 70
+       },
+       {
+        "label": "(2874.184, 4311.276]",
+        "count": 15
+       },
+       {
+        "label": "(4311.276, 5748.368]",
+        "count": 6
+       },
+       {
+        "label": "(5748.368, 7185.46]",
+        "count": 1
+       },
+       {
+        "label": "(12933.828, 14370.92]",
+        "count": 1
+       }
+      ],
+      "line": [
+       {
+        "label": "auto",
+        "count": 3108
+       },
+       {
+        "label": "home",
+        "count": 1716
+       },
+       {
+        "label": "commercial",
+        "count": 1176
+       }
+      ],
+      "region": [
+       {
+        "label": "West",
+        "count": 1680
+       },
+       {
+        "label": "Midwest",
+        "count": 1452
+       },
+       {
+        "label": "Northeast",
+        "count": 1440
+       },
+       {
+        "label": "South",
+        "count": 1428
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'earned_premium' in df.columns and pd.api.types.is_numeric_dtype(df['earned_premium']):\n        _s = df['earned_premium'].dropna()\n        if len(_s) > 0 and 'earned_premium' not in result['eda_summary']:\n            result['eda_summary']['earned_premium'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_count' in df.columns and pd.api.types.is_numeric_dtype(df['claim_count']):\n        _s = df['claim_count'].dropna()\n        if len(_s) > 0 and 'claim_count' not in result['eda_summary']:\n            result['eda_summary']['claim_count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_amount' in df.columns and pd.api.types.is_numeric_dtype(df['claim_amount']):\n        _s = df['claim_amount'].dropna()\n        if len(_s) > 0 and 'claim_amount' not in result['eda_summary']:\n            result['eda_summary']['claim_amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'earned_premium' in df.columns and pd.api.types.is_numeric_dtype(df['earned_premium']):\n        _col_data = df['earned_premium'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['earned_premium'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_count' in df.columns and pd.api.types.is_numeric_dtype(df['claim_count']):\n        _col_data = df['claim_count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['claim_count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_amount' in df.columns and pd.api.types.is_numeric_dtype(df['claim_amount']):\n        _col_data = df['claim_amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['claim_amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'line' in df.columns:\n        _vc = df['line'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['line'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'region' in df.columns:\n        _vc = df['region'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['region'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "policy_id": "POL-00001",
+       "month": "2025-11-01",
+       "line": "home",
+       "region": "West",
+       "earned_premium": 140.06,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00002",
+       "month": "2025-11-01",
+       "line": "commercial",
+       "region": "South",
+       "earned_premium": 23.16,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00003",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "West",
+       "earned_premium": 84.06,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00004",
+       "month": "2025-11-01",
+       "line": "commercial",
+       "region": "Northeast",
+       "earned_premium": 54.33,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00005",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "Northeast",
+       "earned_premium": 61.45,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      }
+     ],
+     "dtypes_summary": {
+      "policy_id": "object",
+      "month": "object",
+      "line": "object",
+      "region": "object",
+      "earned_premium": "float64",
+      "claim_count": "int64",
+      "claim_amount": "float64",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "policy_id": 0.0,
+      "month": 0.0,
+      "line": 0.0,
+      "region": 0.0,
+      "earned_premium": 0.0,
+      "claim_count": 0.0,
+      "claim_amount": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:line/claim_amount:ratio:loss_ratio",
+       "kind": "segment",
+       "claim": "loss_ratio (from claim_amount) by line (3 groups)",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")",
+       "result_excerpt": "{\"segment_column\": \"line\", \"metric_column\": \"claim_amount\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"auto\", \"value\": 0.62}, {\"name\": \"commercial\", \"value\": 0.55}, {\"name\": \"home\", \"value\": 0.95}], \"label\": \"loss_ratio\"}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only."
+       ]
+      },
+      {
+       "id": "seg:line/claim_amount:sum",
+       "kind": "segment",
+       "claim": "sum claim_amount by line (3 groups)",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")",
+       "result_excerpt": "{\"segment_column\": \"line\", \"metric_column\": \"claim_amount\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"auto\", \"value\": 235370.65}, {\"name\": \"home\", \"value\": 207118.5}, {\"name\": \"commercial\", \"value\": 71992.85}]}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only."
+       ]
+      },
+      {
+       "id": "seg:line/earned_premium:sum",
+       "kind": "segment",
+       "claim": "sum earned_premium by line (3 groups)",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")",
+       "result_excerpt": "{\"segment_column\": \"line\", \"metric_column\": \"earned_premium\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"auto\", \"value\": 379630.18}, {\"name\": \"home\", \"value\": 218019.56}, {\"name\": \"commercial\", \"value\": 130896.08}]}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only."
+       ]
+      },
+      {
+       "id": "eda:earned_premium",
+       "kind": "eda",
+       "claim": "earned_premium: median 86.06, mean 121.42, range 8.29 to 1,908.44",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")",
+       "result_excerpt": "{\"mean\": 121.4243, \"std\": 128.3762, \"min\": 8.29, \"max\": 1908.44, \"median\": 86.065, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only."
+       ]
+      },
+      {
+       "id": "eda:claim_count",
+       "kind": "eda",
+       "claim": "claim_count: median 0, mean 0.1182, range 0 to 3.00",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")",
+       "result_excerpt": "{\"mean\": 0.1182, \"std\": 0.3496, \"min\": 0.0, \"max\": 3.0, \"median\": 0.0, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:claim_amount",
+       "kind": "eda",
+       "claim": "claim_amount: median 0, mean 85.75, range 0 to 14,370.92",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")",
+       "result_excerpt": "{\"mean\": 85.747, \"std\": 407.5412, \"min\": 0.0, \"max\": 14370.92, \"median\": 0.0, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only."
+       ]
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 14.11,
+    "cost_usd": 0.02007,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n\n    loss_ratio_by_line = (\n        df_counted.groupby('line')\n        .agg(total_incurred=('claim_amount', 'sum'), total_premium=('earned_premium', 'sum'))\n        .reset_index()\n    )\n    loss_ratio_by_line['loss_ratio'] = loss_ratio_by_line['total_incurred'] / loss_ratio_by_line['total_premium']\n\n    lr_results = [\n        {\"name\": str(row['line']), \"value\": round(float(row['loss_ratio']), 6)}\n        for _, row in loss_ratio_by_line.iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": lr_results\n    })\n\n    claim_by_line = (\n        df_counted.groupby('line')['claim_amount'].sum().reset_index()\n    )\n    claim_by_line = claim_by_line.nlargest(10, 'claim_amount')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['claim_amount'])} for _, r in claim_by_line.iterrows()]\n    })\n\n    prem_by_line = (\n        df_counted.groupby('line')['earned_premium'].sum().reset_index()\n    )\n    prem_by_line = prem_by_line.nlargest(10, 'earned_premium')\n    result['segments'].append({\n        \"segment_column\": \"line\",\n        \"metric_column\": \"earned_premium\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['line']), \"value\": float(r['earned_premium'])} for _, r in prem_by_line.iterrows()]\n    })\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\nresult['assumptions'].append(\"Loss ratio = sum(claim_amount) / sum(earned_premium) per line, counted rows only.\")\nresult['assumptions'].append(\"Rows filtered to row_kind == 'counted' before all aggregations.\")\nresult['assumptions'].append(\"Loss ratio values are fractions (e.g. 0.62 = 62%).\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-2": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value",
+      "ok": true,
+      "detail": "ok",
+      "planted": false
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "earned_premium": {
+       "mean": 119.6545,
+       "std": 116.0466,
+       "min": 8.02,
+       "max": 1126.92,
+       "median": 89.37,
+       "count": 6000
+      },
+      "claim_count": {
+       "mean": 0.126,
+       "std": 0.357,
+       "min": 0.0,
+       "max": 3.0,
+       "median": 0.0,
+       "count": 6000
+      },
+      "claim_amount": {
+       "mean": 83.631,
+       "std": 343.6878,
+       "min": 0.0,
+       "max": 5874.43,
+       "median": 0.0,
+       "count": 6000
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "region",
+       "metric_column": "claim_amount",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Midwest",
+         "value": 139675.87
+        },
+        {
+         "name": "West",
+         "value": 135206.19
+        },
+        {
+         "name": "Northeast",
+         "value": 120771.87
+        },
+        {
+         "name": "South",
+         "value": 106131.9
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "region",
+       "metric_column": "claim_amount",
+       "aggregation": "mean",
+       "results": [
+        {
+         "name": "Midwest",
+         "value": 89.5358141025641
+        },
+        {
+         "name": "West",
+         "value": 88.02486328125
+        },
+        {
+         "name": "South",
+         "value": 81.89189814814814
+        },
+        {
+         "name": "Northeast",
+         "value": 75.1068843283582
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "region",
+       "metric_column": "claim_amount",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "South",
+         "value": 0.7300087086354433
+        },
+        {
+         "name": "Midwest",
+         "value": 0.7240236148155121
+        },
+        {
+         "name": "West",
+         "value": 0.6995074337628605
+        },
+        {
+         "name": "Northeast",
+         "value": 0.648131807908234
+        }
+       ],
+       "label": "loss_ratio"
+      },
+      {
+       "segment_column": "region",
+       "metric_column": "claim_amount",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Northeast",
+         "value": 1608.0
+        },
+        {
+         "name": "Midwest",
+         "value": 1560.0
+        },
+        {
+         "name": "West",
+         "value": 1536.0
+        },
+        {
+         "name": "South",
+         "value": 1296.0
+        }
+       ],
+       "label": null
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [
+      {
+       "test_name": "One-way ANOVA: claim_amount by region",
+       "statistic": 0.5778267699965656,
+       "p_value": 0.6295395929636043,
+       "interpretation": "F=0.578, p=0.63; no significant difference in claim amounts across regions."
+      }
+     ],
+     "forecast_points": [],
+     "distributions": {
+      "earned_premium": [
+       {
+        "label": "(6.901, 119.91]",
+        "count": 3976
+       },
+       {
+        "label": "(119.91, 231.8]",
+        "count": 1389
+       },
+       {
+        "label": "(231.8, 343.69]",
+        "count": 424
+       },
+       {
+        "label": "(343.69, 455.58]",
+        "count": 75
+       },
+       {
+        "label": "(455.58, 567.47]",
+        "count": 58
+       },
+       {
+        "label": "(567.47, 679.36]",
+        "count": 37
+       },
+       {
+        "label": "(679.36, 791.25]",
+        "count": 15
+       },
+       {
+        "label": "(791.25, 903.14]",
+        "count": 2
+       },
+       {
+        "label": "(903.14, 1015.03]",
+        "count": 8
+       },
+       {
+        "label": "(1015.03, 1126.92]",
+        "count": 16
+       }
+      ],
+      "claim_count": [
+       {
+        "label": "(-0.003, 0.75]",
+        "count": 5292
+       },
+       {
+        "label": "(0.75, 1.5]",
+        "count": 664
+       },
+       {
+        "label": "(1.5, 2.25]",
+        "count": 40
+       },
+       {
+        "label": "(2.25, 3.0]",
+        "count": 4
+       }
+      ],
+      "claim_amount": [
+       {
+        "label": "(-5.874, 587.443]",
+        "count": 5724
+       },
+       {
+        "label": "(587.443, 1174.886]",
+        "count": 156
+       },
+       {
+        "label": "(1174.886, 1762.329]",
+        "count": 57
+       },
+       {
+        "label": "(1762.329, 2349.772]",
+        "count": 32
+       },
+       {
+        "label": "(2349.772, 2937.215]",
+        "count": 14
+       },
+       {
+        "label": "(2937.215, 3524.658]",
+        "count": 9
+       },
+       {
+        "label": "(3524.658, 4112.101]",
+        "count": 3
+       },
+       {
+        "label": "(4112.101, 4699.544]",
+        "count": 3
+       },
+       {
+        "label": "(4699.544, 5286.987]",
+        "count": 1
+       },
+       {
+        "label": "(5286.987, 5874.43]",
+        "count": 1
+       }
+      ],
+      "line": [
+       {
+        "label": "auto",
+        "count": 3060
+       },
+       {
+        "label": "home",
+        "count": 1740
+       },
+       {
+        "label": "commercial",
+        "count": 1200
+       }
+      ],
+      "region": [
+       {
+        "label": "Northeast",
+        "count": 1608
+       },
+       {
+        "label": "Midwest",
+        "count": 1560
+       },
+       {
+        "label": "West",
+        "count": 1536
+       },
+       {
+        "label": "South",
+        "count": 1296
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'earned_premium' in df.columns and pd.api.types.is_numeric_dtype(df['earned_premium']):\n        _s = df['earned_premium'].dropna()\n        if len(_s) > 0 and 'earned_premium' not in result['eda_summary']:\n            result['eda_summary']['earned_premium'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_count' in df.columns and pd.api.types.is_numeric_dtype(df['claim_count']):\n        _s = df['claim_count'].dropna()\n        if len(_s) > 0 and 'claim_count' not in result['eda_summary']:\n            result['eda_summary']['claim_count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_amount' in df.columns and pd.api.types.is_numeric_dtype(df['claim_amount']):\n        _s = df['claim_amount'].dropna()\n        if len(_s) > 0 and 'claim_amount' not in result['eda_summary']:\n            result['eda_summary']['claim_amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'earned_premium' in df.columns and pd.api.types.is_numeric_dtype(df['earned_premium']):\n        _col_data = df['earned_premium'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['earned_premium'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_count' in df.columns and pd.api.types.is_numeric_dtype(df['claim_count']):\n        _col_data = df['claim_count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['claim_count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_amount' in df.columns and pd.api.types.is_numeric_dtype(df['claim_amount']):\n        _col_data = df['claim_amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['claim_amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'line' in df.columns:\n        _vc = df['line'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['line'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'region' in df.columns:\n        _vc = df['region'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['region'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "policy_id": "POL-00001",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "South",
+       "earned_premium": 109.94,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00002",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "Midwest",
+       "earned_premium": 53.4,
+       "claim_count": 1,
+       "claim_amount": 2065.47,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00003",
+       "month": "2025-11-01",
+       "line": "commercial",
+       "region": "Northeast",
+       "earned_premium": 16.15,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00004",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "West",
+       "earned_premium": 185.05,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00005",
+       "month": "2025-11-01",
+       "line": "home",
+       "region": "West",
+       "earned_premium": 23.28,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      }
+     ],
+     "dtypes_summary": {
+      "policy_id": "object",
+      "month": "object",
+      "line": "object",
+      "region": "object",
+      "earned_premium": "float64",
+      "claim_count": "int64",
+      "claim_amount": "float64",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "policy_id": 0.0,
+      "month": 0.0,
+      "line": 0.0,
+      "region": 0.0,
+      "earned_premium": 0.0,
+      "claim_count": 0.0,
+      "claim_amount": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:region/claim_amount:sum",
+       "kind": "segment",
+       "claim": "sum claim_amount by region (4 groups)",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"claim_amount\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Midwest\", \"value\": 139675.87}, {\"name\": \"West\", \"value\": 135206.19}, {\"name\": \"Northeast\", \"value\": 120771.87}, {\"name\": \"South\", \"value\": 106131.9}]}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.",
+        "claim_amount includes zero-claim rows, which skews means downward."
+       ]
+      },
+      {
+       "id": "seg:region/claim_amount",
+       "kind": "segment",
+       "claim": "mean claim_amount by region (4 groups)",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"claim_amount\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Midwest\", \"value\": 89.5358141}, {\"name\": \"West\", \"value\": 88.02486328}, {\"name\": \"South\", \"value\": 81.89189815}, {\"name\": \"Northeast\", \"value\": 75.10688433}]}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.",
+        "claim_amount includes zero-claim rows, which skews means downward."
+       ]
+      },
+      {
+       "id": "seg:region/claim_amount:ratio:loss_ratio",
+       "kind": "segment",
+       "claim": "loss_ratio (from claim_amount) by region (4 groups)",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"claim_amount\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"South\", \"value\": 0.7300087086}, {\"name\": \"Midwest\", \"value\": 0.7240236148}, {\"name\": \"West\", \"value\": 0.6995074338}, {\"name\": \"Northeast\", \"value\": 0.6481318079}], \"label\": \"loss_ratio\"}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.",
+        "claim_amount includes zero-claim rows, which skews means downward."
+       ]
+      },
+      {
+       "id": "seg:region/claim_amount:count",
+       "kind": "segment",
+       "claim": "count claim_amount by region (4 groups)",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"claim_amount\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Northeast\", \"value\": 1608.0}, {\"name\": \"Midwest\", \"value\": 1560.0}, {\"name\": \"West\", \"value\": 1536.0}, {\"name\": \"South\", \"value\": 1296.0}]}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.",
+        "claim_amount includes zero-claim rows, which skews means downward."
+       ]
+      },
+      {
+       "id": "test:0",
+       "kind": "test",
+       "claim": "One-way ANOVA: claim_amount by region: F=0.578, p=0.63; no significant difference in claim amounts across regions.",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"test_name\": \"One-way ANOVA: claim_amount by region\", \"statistic\": 0.57782677, \"p_value\": 0.629539593, \"interpretation\": \"F=0.578, p=0.63; no significant difference in claim amounts across regions.\"}",
+       "row_count": 6000,
+       "confidence": "low",
+       "confidence_reason": "not significant (p = 0.63)",
+       "assumptions": [
+        "Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.",
+        "ANOVA assumes independence; rows are policy-months, not independent policies.",
+        "claim_amount includes zero-claim rows, which skews means downward."
+       ]
+      },
+      {
+       "id": "eda:earned_premium",
+       "kind": "eda",
+       "claim": "earned_premium: median 89.37, mean 119.65, range 8.02 to 1,126.92",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"mean\": 119.6545, \"std\": 116.0466, \"min\": 8.02, \"max\": 1126.92, \"median\": 89.37, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset."
+       ]
+      },
+      {
+       "id": "eda:claim_count",
+       "kind": "eda",
+       "claim": "claim_count: median 0, mean 0.126, range 0 to 3.00",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"mean\": 0.126, \"std\": 0.357, \"min\": 0.0, \"max\": 3.0, \"median\": 0.0, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:claim_amount",
+       "kind": "eda",
+       "claim": "claim_amount: median 0, mean 83.63, range 0 to 5,874.43",
+       "code": "try:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"mean\": 83.631, \"std\": 343.6878, \"min\": 0.0, \"max\": 5874.43, \"median\": 0.0, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.",
+        "claim_amount includes zero-claim rows, which skews means downward."
+       ]
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 18.58,
+    "cost_usd": 0.0234,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    region_claim = df.groupby('region')['claim_amount'].sum().reset_index()\n    region_claim = region_claim.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_claim.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_mean = df.groupby('region')['claim_amount'].mean().reset_index()\n    region_mean = region_mean.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"mean\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_mean.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    total_claims = df['claim_amount'].sum()\n    total_premium = df['earned_premium'].sum()\n    overall_lr = total_claims / total_premium if total_premium > 0 else float('nan')\n    region_lr = df.groupby('region').apply(\n        lambda g: g['claim_amount'].sum() / g['earned_premium'].sum() if g['earned_premium'].sum() > 0 else float('nan')\n    ).reset_index()\n    region_lr.columns = ['region', 'loss_ratio']\n    region_lr = region_lr.sort_values('loss_ratio', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"loss_ratio\",\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['loss_ratio'])} for _, row in region_lr.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    region_count = df.groupby('region')['claim_amount'].count().reset_index()\n    region_count = region_count.sort_values('claim_amount', ascending=False)\n    result['segments'].append({\n        \"segment_column\": \"region\",\n        \"metric_column\": \"claim_amount\",\n        \"aggregation\": \"count\",\n        \"label\": None,\n        \"results\": [{\"name\": str(row['region']), \"value\": float(row['claim_amount'])} for _, row in region_count.iterrows()]\n    })\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats as _stats\n    groups = [grp['claim_amount'].values for _, grp in df.groupby('region')]\n    if len(groups) >= 2:\n        f_stat, p_val = _stats.f_oneway(*groups)\n        result['statistical_tests'].append({\n            \"test_name\": \"One-way ANOVA: claim_amount by region\",\n            \"statistic\": float(f_stat),\n            \"p_value\": float(p_val),\n            \"interpretation\": f\"F={f_stat:.3f}, p={p_val:.3g}; \" + (\n                \"claim amounts differ significantly across regions.\" if p_val < 0.05\n                else \"no significant difference in claim amounts across regions.\"\n            )\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Loss ratio computed as sum(claim_amount)/sum(earned_premium) per region over full dataset.\")\n    result['assumptions'].append(\"ANOVA assumes independence; rows are policy-months, not independent policies.\")\n    result['assumptions'].append(\"claim_amount includes zero-claim rows, which skews means downward.\")\nexcept Exception:\n    pass\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-3": [
+   {
+    "checks": [
+     {
+      "kind": "correlation",
+      "ok": true,
+      "detail": "r: got 0.619473, want 0.619",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 19,
+     "details": []
+    },
+    "builtin_only": true,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "earned_premium": {
+       "mean": 121.5295,
+       "std": 104.9066,
+       "min": 7.63,
+       "max": 1169.21,
+       "median": 95.28,
+       "count": 6000
+      },
+      "claim_count": {
+       "mean": 0.1202,
+       "std": 0.346,
+       "min": 0.0,
+       "max": 4.0,
+       "median": 0.0,
+       "count": 6000
+      },
+      "claim_amount": {
+       "mean": 87.9142,
+       "std": 393.5071,
+       "min": 0.0,
+       "max": 12456.04,
+       "median": 0.0,
+       "count": 6000
+      }
+     },
+     "correlations": {
+      "claim_count__claim_amount": 0.619473
+     },
+     "trends": [],
+     "segments": [],
+     "anomalies": [],
+     "statistical_tests": [
+      {
+       "test_name": "Pearson correlation: claim_count vs claim_amount (claim rows only)",
+       "statistic": 0.079771,
+       "p_value": 0.037136,
+       "interpretation": "Among rows with at least one claim, Pearson r=0.080, p=0.0371; significant positive linear association between claim_count and claim_amount."
+      },
+      {
+       "test_name": "Pearson correlation: claim_count vs claim_amount (all counted rows)",
+       "statistic": 0.619473,
+       "p_value": 0.0,
+       "interpretation": "Across all counted rows (including zero-claim), Pearson r=0.619, p=0; significant positive linear association between claim_count and claim_amount."
+      }
+     ],
+     "forecast_points": [],
+     "distributions": {
+      "earned_premium": [
+       {
+        "label": "(6.468, 123.788]",
+        "count": 3818
+       },
+       {
+        "label": "(123.788, 239.946]",
+        "count": 1520
+       },
+       {
+        "label": "(239.946, 356.104]",
+        "count": 480
+       },
+       {
+        "label": "(356.104, 472.262]",
+        "count": 123
+       },
+       {
+        "label": "(472.262, 588.42]",
+        "count": 35
+       },
+       {
+        "label": "(704.578, 820.736]",
+        "count": 12
+       },
+       {
+        "label": "(1053.052, 1169.21]",
+        "count": 12
+       }
+      ],
+      "claim_count": [
+       {
+        "label": "(-0.004, 0.8]",
+        "count": 5317
+       },
+       {
+        "label": "(0.8, 1.6]",
+        "count": 648
+       },
+       {
+        "label": "(1.6, 2.4]",
+        "count": 33
+       },
+       {
+        "label": "(2.4, 3.2]",
+        "count": 1
+       },
+       {
+        "label": "(3.2, 4.0]",
+        "count": 1
+       }
+      ],
+      "claim_amount": [
+       {
+        "label": "(-12.456, 1245.604]",
+        "count": 5895
+       },
+       {
+        "label": "(1245.604, 2491.208]",
+        "count": 79
+       },
+       {
+        "label": "(2491.208, 3736.812]",
+        "count": 14
+       },
+       {
+        "label": "(3736.812, 4982.416]",
+        "count": 8
+       },
+       {
+        "label": "(4982.416, 6228.02]",
+        "count": 3
+       },
+       {
+        "label": "(11210.436, 12456.04]",
+        "count": 1
+       }
+      ],
+      "line": [
+       {
+        "label": "auto",
+        "count": 2952
+       },
+       {
+        "label": "home",
+        "count": 1992
+       },
+       {
+        "label": "commercial",
+        "count": 1056
+       }
+      ],
+      "region": [
+       {
+        "label": "Northeast",
+        "count": 1680
+       },
+       {
+        "label": "Midwest",
+        "count": 1560
+       },
+       {
+        "label": "South",
+        "count": 1548
+       },
+       {
+        "label": "West",
+        "count": 1212
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'earned_premium' in df.columns and pd.api.types.is_numeric_dtype(df['earned_premium']):\n        _s = df['earned_premium'].dropna()\n        if len(_s) > 0 and 'earned_premium' not in result['eda_summary']:\n            result['eda_summary']['earned_premium'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_count' in df.columns and pd.api.types.is_numeric_dtype(df['claim_count']):\n        _s = df['claim_count'].dropna()\n        if len(_s) > 0 and 'claim_count' not in result['eda_summary']:\n            result['eda_summary']['claim_count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_amount' in df.columns and pd.api.types.is_numeric_dtype(df['claim_amount']):\n        _s = df['claim_amount'].dropna()\n        if len(_s) > 0 and 'claim_amount' not in result['eda_summary']:\n            result['eda_summary']['claim_amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'earned_premium' in df.columns and pd.api.types.is_numeric_dtype(df['earned_premium']):\n        _col_data = df['earned_premium'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['earned_premium'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_count' in df.columns and pd.api.types.is_numeric_dtype(df['claim_count']):\n        _col_data = df['claim_count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['claim_count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'claim_amount' in df.columns and pd.api.types.is_numeric_dtype(df['claim_amount']):\n        _col_data = df['claim_amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['claim_amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'line' in df.columns:\n        _vc = df['line'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['line'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'region' in df.columns:\n        _vc = df['region'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['region'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "policy_id": "POL-00001",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "Northeast",
+       "earned_premium": 52.11,
+       "claim_count": 1,
+       "claim_amount": 903.76,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00002",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "West",
+       "earned_premium": 90.15,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00003",
+       "month": "2025-11-01",
+       "line": "commercial",
+       "region": "Northeast",
+       "earned_premium": 64.89,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00004",
+       "month": "2025-11-01",
+       "line": "home",
+       "region": "South",
+       "earned_premium": 124.5,
+       "claim_count": 0,
+       "claim_amount": 0.0,
+       "row_kind": "counted"
+      },
+      {
+       "policy_id": "POL-00005",
+       "month": "2025-11-01",
+       "line": "auto",
+       "region": "South",
+       "earned_premium": 186.56,
+       "claim_count": 1,
+       "claim_amount": 307.91,
+       "row_kind": "counted"
+      }
+     ],
+     "dtypes_summary": {
+      "policy_id": "object",
+      "month": "object",
+      "line": "object",
+      "region": "object",
+      "earned_premium": "float64",
+      "claim_count": "int64",
+      "claim_amount": "float64",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "policy_id": 0.0,
+      "month": 0.0,
+      "line": 0.0,
+      "region": 0.0,
+      "earned_premium": 0.0,
+      "claim_count": 0.0,
+      "claim_amount": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "corr:claim_count__claim_amount",
+       "kind": "correlation",
+       "claim": "claim_count and claim_amount: r = 0.619",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"claim_count__claim_amount\": 0.619473}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.",
+        "A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation."
+       ]
+      },
+      {
+       "id": "test:0",
+       "kind": "test",
+       "claim": "Pearson correlation: claim_count vs claim_amount (claim rows only): Among rows with at least one claim, Pearson r=0.080, p=0.0371; significant positive linear association between claim_count and claim",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\", \"statistic\": 0.079771, \"p_value\": 0.037136, \"interpretation\": \"Among rows with at least one claim, Pearson r=0.080, p=0.0371; significant positive linear association between claim_count and claim_amount.\"}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows, p = 0.0371",
+       "assumptions": [
+        "Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.",
+        "Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.",
+        "A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation."
+       ]
+      },
+      {
+       "id": "test:1",
+       "kind": "test",
+       "claim": "Pearson correlation: claim_count vs claim_amount (all counted rows): Across all counted rows (including zero-claim), Pearson r=0.619, p=0; significant positive linear association between claim_count a",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\", \"statistic\": 0.619473, \"p_value\": 0.0, \"interpretation\": \"Across all counted rows (including zero-claim), Pearson r=0.619, p=0; significant positive linear association between claim_count and claim_amount.\"}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows, p = 0",
+       "assumptions": [
+        "Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.",
+        "Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.",
+        "A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation."
+       ]
+      },
+      {
+       "id": "eda:earned_premium",
+       "kind": "eda",
+       "claim": "earned_premium: median 95.28, mean 121.53, range 7.63 to 1,169.21",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"mean\": 121.5295, \"std\": 104.9066, \"min\": 7.63, \"max\": 1169.21, \"median\": 95.28, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:claim_count",
+       "kind": "eda",
+       "claim": "claim_count: median 0, mean 0.1202, range 0 to 4.00",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"mean\": 0.1202, \"std\": 0.346, \"min\": 0.0, \"max\": 4.0, \"median\": 0.0, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.",
+        "A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation."
+       ]
+      },
+      {
+       "id": "eda:claim_amount",
+       "kind": "eda",
+       "claim": "claim_amount: median 0, mean 87.91, range 0 to 12,456.04",
+       "code": "try:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass",
+       "result_excerpt": "{\"mean\": 87.9142, \"std\": 393.5071, \"min\": 0.0, \"max\": 12456.04, \"median\": 0.0, \"count\": 6000}",
+       "row_count": 6000,
+       "confidence": "high",
+       "confidence_reason": "6000 rows",
+       "assumptions": [
+        "Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count."
+       ]
+      }
+     ]
+    },
+    "domain": "insurance",
+    "latency_s": 17.25,
+    "cost_usd": 0.0222,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    numeric_cols = ['earned_premium', 'claim_count', 'claim_amount']\n    corr_pairs = {}\n    for i, c1 in enumerate(numeric_cols):\n        for c2 in numeric_cols[i+1:]:\n            valid = df_counted[[c1, c2]].dropna()\n            if len(valid) >= 30:\n                r = valid[c1].corr(valid[c2])\n                if abs(r) >= 0.2:\n                    corr_pairs[f\"{c1}__{c2}\"] = round(float(r), 6)\n    result['correlations'] = corr_pairs\nexcept Exception:\n    pass\n\ntry:\n    from scipy import stats\n    df_counted = df[df['row_kind'] == 'counted'].copy()\n    valid = df_counted[['claim_count', 'claim_amount']].dropna()\n    valid = valid[valid['claim_count'] > 0]\n    if len(valid) >= 30:\n        r, p = stats.pearsonr(valid['claim_count'], valid['claim_amount'])\n        r = float(r)\n        p = float(p)\n        interp = f\"Among rows with at least one claim, Pearson r={r:.3f}, p={p:.3g}; {'significant positive linear association' if p < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (claim rows only)\",\n            \"statistic\": round(r, 6),\n            \"p_value\": round(p, 6),\n            \"interpretation\": interp\n        })\n    valid_all = df_counted[['claim_count', 'claim_amount']].dropna()\n    if len(valid_all) >= 30:\n        r2, p2 = stats.pearsonr(valid_all['claim_count'], valid_all['claim_amount'])\n        r2 = float(r2)\n        p2 = float(p2)\n        interp2 = f\"Across all counted rows (including zero-claim), Pearson r={r2:.3f}, p={p2:.3g}; {'significant positive linear association' if p2 < 0.05 else 'no significant relationship'} between claim_count and claim_amount.\"\n        result['statistical_tests'].append({\n            \"test_name\": \"Pearson correlation: claim_count vs claim_amount (all counted rows)\",\n            \"statistic\": round(r2, 6),\n            \"p_value\": round(p2, 6),\n            \"interpretation\": interp2\n        })\nexcept Exception:\n    pass\n\ntry:\n    result['assumptions'].append(\"Correlations computed on 'counted' rows only; zero-claim rows included in the all-rows test.\")\n    result['assumptions'].append(\"Pearson r measures linear association only; claim_amount may be non-linearly related to claim_count.\")\n    result['assumptions'].append(\"A second test restricts to rows with claim_count > 0 to avoid zero-inflation distorting the correlation.\")\nexcept Exception:\n    pass\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}
