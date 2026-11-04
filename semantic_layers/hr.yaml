@@ -1,5 +1,7 @@
-# Employees as of a snapshot date. Attrition is the share who left; tenure of current staff is
-# censored (they haven't left yet), so their tenure is a lower bound.
+# Employees as of a snapshot date, current and former. The share of the table who left has no
+# period: it is not an attrition rate (separations in a window ÷ average headcount, the HR
+# pack's attrition_rate: domain_packs/hr.yaml). Tenure of current staff is censored (they
+# haven't left yet), so their tenure is a lower bound.
 tables:
   - name: employees
     source: file.employees
@@ -14,13 +16,15 @@ tables:
       - {name: salary, type: fact, unit: USD}
       - {name: performance_score, type: dimension}
 metrics:
-  - name: attrition_rate
+  - name: leaver_share
     table: employees
     expr: AVG(employees.left)
-    synonyms: [turnover]
+    description: share of the employees in the table (current and former) who left, over no period
   - name: average_salary
     table: employees
     expr: AVG(employees.salary)
+    description: all employees in the table, current and former
   - name: average_tenure
     table: employees
     expr: AVG(employees.tenure_months)
+    description: all employees in the table, current and former (current staff's tenure is a lower bound)
