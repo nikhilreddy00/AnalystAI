@@ -185,9 +185,14 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     # count tiles (Policies: 1,300) and the file's rows: rows are never called policies
     audit = session.cleaning_audit
     rows = audit.rows_after if audit else (contract.row_count if contract else 0)
-    counts = {k.label: k.value for k in (session.analysis_findings.kpis if session.analysis_findings
-                                         else []) if pack and k.recipe and k.recipe.kind == "pack"
-              and (kpi := pack.kpi(k.recipe.kpi)) and kpi.unit == "count"}
+    counts = {}
+    for k in (session.analysis_findings.kpis if session.analysis_findings else []):
+        if pack and k.recipe and k.recipe.kind == "pack" and (kpi := pack.kpi(k.recipe.kpi)) \
+                and kpi.unit == "count":
+            n = k.value.split(" ")[0]   # '353 employees': its number, by its name and its noun
+            counts[k.label] = n
+            if kpi.unit_word:   # 'Headcount' counts employees (Domain 5: '8,226 employees')
+                counts[kpi.unit_word] = n
     flags: list[ReviewFlag] = []
     for i, c in enumerate(report_claims(report)):
         text, ids = c["text"], [x for x in c["ids"] if x in evidence]

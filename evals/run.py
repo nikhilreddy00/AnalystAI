@@ -722,8 +722,11 @@ def quality_report(case: dict) -> tuple[dict, list[dict]]:
         if sec == "headline":
             ev["headline"] = d["text"]
             ev["headline_evidence_ids"] = d.get("ids", ev.get("headline_evidence_ids", []))
-        else:
-            ev[sec][j] = {"text": d["text"], "evidence_ids": d.get("ids", ev[sec][j]["evidence_ids"])}
+        else:   # an action item's words are its 'action' (its other fields kept)
+            item = dict(ev[sec][j])
+            item["action" if sec == "action_items" else "text"] = d["text"]
+            item["evidence_ids"] = d.get("ids", ev[sec][j]["evidence_ids"])
+            ev[sec][j] = item
     report["executive_summary"] = _flatten_executive_to_text(ExecutiveSummary.model_validate(ev))
     by_text = {d["text"]: {"label": d["label"], "origin": "seeded", "kind": d["kind"]}
                for d in case.get("defects", [])}

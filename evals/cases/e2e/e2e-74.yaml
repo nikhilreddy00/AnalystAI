@@ -31,5 +31,5 @@ hard_rules:
 - insight_dates_in_range
 - executive_no_jargon
 - claims_cite_evidence
-label_note: 'JSON snapshots: 353 people at the latest month-end, never 8,226 rows or salary summed over
+label_note: 'JSON snapshots: 353 people at the latest month-end, never 8,220 rows or salary summed over
   24 months.'

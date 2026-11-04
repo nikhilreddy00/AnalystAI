@@ -28,5 +28,5 @@ expect:
   - '353'
   - attrition
   must_not_match:
-  - 8,226 (employees|people|staff)
+  - 8,220 (employees|people|staff)
   - net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate|loss ratio|premium
