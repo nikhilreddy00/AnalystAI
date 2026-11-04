@@ -22,6 +22,11 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
   `tests/test_replay.py`, every finished domain's $0 suites, **CI green (`gh run list`) before
   any merge**, and a desktop (1440 px) Playwright check with live uploads of this domain AND
   one dataset per finished domain before "Domain N done".
+- **Repeating bugs (user, 2026-11-04):** fix the structural cause (delete the second copy of a
+  rule), never per dataset. The browser never computes a number. Add the new domain's datasets to
+  every cross-domain guard (`PACK_DATASETS` in `tests/test_dashboard_filters.py`, the oracle lists)
+  in the pack's commit. Run a $0 senior audit over every domain's answer paths before "done"
+  (ROADMAP 5.7 contract).
 - **One phase per session.** Finish the phase, verify its "Done when" criteria, post a short review
   note (built / metrics / deviations), update the status table below, then tell the user
   "Phase N done" — they `/clear` and start the next phase in a fresh session.

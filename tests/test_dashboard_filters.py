@@ -256,9 +256,9 @@ def _filter_columns(clean, contract, k: int = 8) -> list[tuple[str, list[str]]]:
     return [(c, v) for c, v in out if as_text(shown[c]).isin(v).all()][:k]
 
 
-PACK_DATASETS = ["retail_lines", "store_weeks", "b2b_invoices", "loan_tape", "card_ledger",
-                 "bank_balances", "deposits_daily", "inpatient", "health_claims", "policies",
-                 "loss_run", "claims"]
+PACK_DATASETS = ["retail_lines", "store_weeks", "b2b_invoices", "loan_tape", "loan_tape_messy",
+                 "card_ledger", "bank_balances", "bank_statement", "ledger_drcr", "deposits_daily",
+                 "inpatient", "encounters", "health_claims", "policies", "loss_run", "claims"]
 
 
 @pytest.mark.parametrize("name", PACK_DATASETS)
@@ -370,3 +370,13 @@ def test_in_range_and_date_filters_agree_with_their_parts(name):
         else:
             continue
         assert out["suppressed"] or out["rows"] == want, (name, o["column"], out["rows"], want)
+
+
+def test_every_domain_dataset_is_in_the_every_filter_check():
+    """User, 2026-11-04: a new domain must never skip the every-filter check. Any eval dataset that
+    reads as a domain (a strong pack match) is in PACK_DATASETS: enforced here, not remembered."""
+    from evals import datagen
+    from tests.test_oracle import _built
+    domains = [n for n in datagen.DATASETS if _built(n)[2].domain_confidence == "strong"]
+    missing = sorted(set(domains) - set(PACK_DATASETS))
+    assert not missing, f"add to PACK_DATASETS (every filter on every domain): {missing}"
