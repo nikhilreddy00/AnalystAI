@@ -25,8 +25,7 @@ from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
     runout_months,
-    developing_note,
-    roles_of,
+    developing_trend,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -299,7 +298,7 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                 continue
             # a measure that develops (losses at a valuation): a change between young accident
             # months is development, not a trend; no built-in MoM / YoY, the note says why
-            if note := developing_note(contract, df, roles_of(contract, c)):
+            if note := developing_trend(contract, df, c):
                 if (note := f"{c}:{note}") not in raw["assumptions"]:
                     raw["assumptions"].append(note)
                 continue

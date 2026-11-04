@@ -174,8 +174,8 @@ def _values(e: Evidence, by_id: dict) -> str:
 
 def _version_grain(contract, audit) -> str | None:
     """A version chain's grain from the data's own rule (domain_pack.version_grain) and how many
-    rows count, when cleaning flagged earlier versions; else None. The count is said only when
-    every flagged row is an earlier version (a pack's non_product values share the flag)."""
+    rows count, when cleaning flagged earlier versions; else None. The count is left out when the
+    pack also declares non_product values: they share the flag, so it would not be versions only."""
     grain = version_grain(contract) if contract else None
     flag = next((d for d in (audit.decisions if audit else []) if d.operation == "flag"
                  and d.strategy == "non_product"), None)

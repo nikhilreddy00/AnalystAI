@@ -1029,8 +1029,12 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         f" {currency} only: {other:,} rows in other currencies left out." if other else "")   # counts too
     group = params.group_by or params.segment_column
     if mixes(df, roles, kpi, group if group in df.columns else None):   # never one total across lines
-        group, how = roles[kpi.per], how + (f" Given by {roles[kpi.per]} only: one figure "
-                                            f"across them would mix their units.")
+        per = roles[kpi.per]
+        if group or intent == QuestionIntent.TIME_SERIES or params.frequency:   # asked otherwise
+            return _unanswerable(intent, f"{kpi.phrase} is given by {per} only: one figure across "
+                                 f"them would mix their units", [f"{kpi.label} by {per}",
+                                                                f"{kpi.label} for one {per}"])
+        group, how = per, how + f" Given by {per} only: one figure across them would mix their units."
     if group and group in df.columns:
         by = compute_kpi(df, roles, pack, kpi.name, by=group, full=full)
         if by is None or by.empty:

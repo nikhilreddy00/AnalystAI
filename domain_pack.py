@@ -117,6 +117,9 @@ class Maturity(_Strict):
     role: str
     months: int = Field(gt=0)
     measures: list[str] = Field(default_factory=list)
+    # measures that develop only on these date headers (earned premium by policy effective date:
+    # a policy-year view still earning; by a calendar month it is final)
+    dated: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class Within(_Strict):
@@ -346,7 +349,8 @@ class Pack(_Strict):
                               self.version_order) if r),
                 *self.version_key, *self.version_void, *self.conditional_fields, *self.marker_fields,
                 *([self.runout.role] if self.runout else []),
-                *([self.maturity.role, *self.maturity.measures] if self.maturity else []),
+                *([self.maturity.role, *self.maturity.measures, *self.maturity.dated]
+                  if self.maturity else []),
                 *self.role_caveats, *(k.per for k in self.kpis if k.per), *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
@@ -1146,13 +1150,23 @@ def _developing(maturity: Maturity, first, last, valued) -> dict:
     return {key: {"as_of": as_of.strftime("%-d %b %Y"), "periods": and_list(young)}}
 
 
+def developing_trend(contract, df: pd.DataFrame, col: str) -> str:
+    """The developing-periods note for a period comparison of `col` ('' when it doesn't develop):
+    THE rule that skips a built-in MoM / YoY (analysis_agent and the eval harness)."""
+    return developing_note(contract, df, roles_of(contract, col))
+
+
 def developing_note(contract, df: pd.DataFrame, about: set[str]) -> str:
     """' <the pack's developing-periods caveat>' for a period answer over this frame about these
     roles (strong match, Pack.maturity, a measure that develops), else '': a drop in a young
     year is development, not a trend; written premium doesn't develop."""
     pack = defaults_pack(contract)
-    if not pack or not pack.maturity or not about & set(pack.maturity.measures) \
-            or (col := contract.roles.get(pack.date_role)) not in df.columns:
+    col = contract.roles.get(pack.date_role) if pack else None
+    if not pack or not pack.maturity or col not in df.columns:
+        return ""
+    m = pack.maturity
+    developing = {*m.measures, *(r for r, heads in m.dated.items() if normalize_header(col) in heads)}
+    if not about & developing:
         return ""
     t = _day(df[col]).dropna()
     valued = contract.roles.get(pack.maturity.role)

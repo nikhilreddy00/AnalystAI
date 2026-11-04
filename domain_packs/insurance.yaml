@@ -14,11 +14,13 @@ strong:
   - {claim: [claim_id], valuation: [valuation_date], money: [incurred, paid], loss: [date]}
 signals:
   - {policy: [policy], exposure: [exposure]}
-  - {claim: [claim_id], money: [incurred, reserve]}
+  - {claim: [claim_id], money: [incurred, reserve], loss: [date]}
 # Another domain's headers (all words in ONE header): healthcare, retail, banking, HR, SaaS, IoT,
 # logistics. Not icd / diagnosis / account / payroll / employee: workers' comp files carry them.
 exclude_headers: [[member], [cpt], [hcpcs], [npi], [drg], [mrn], [patient], [admit], [discharge],
                   [service, from], [sku], [order, id], [lineitem], [balance], [loan], [dpd], [mrr], [subscription], [sensor], [shipment]]
+# An employer's benefits file (employee ids beside payroll): not a policy or a loss run
+exclude_pairs: [[employee, payroll]]
 abbreviations: {pol: policy, clm: claim, wp: written_premium, ep: earned_premium,
                 gwp: written_premium, gep: earned_premium, os: outstanding, res: reserve,
                 inc: incurred, incd: incurred, lob: line_of_business, val: valuation,
@@ -95,7 +97,10 @@ status_values:
 version_key: [claim_id, claimant]
 version_order: valuation_date
 maturity: {role: valuation_date, months: 24,
-           measures: [incurred, paid, reserve, recoveries, claim_count, claim_id]}
+           measures: [incurred, paid, reserve, recoveries, claim_count, claim_id],
+           dated: {earned_premium: [effective_date, policy_effective_date, inception_date,
+                                    effective], exposure: [effective_date, policy_effective_date,
+                                                           inception_date, effective]}}
 conditional_fields: {reserve: [open, reopened, re-opened, pending, litigated, in suit],
                      renewal: [new business, renewal, new, reinstatement, rewrite]}
 marker_fields: [cat_event]
@@ -260,10 +265,9 @@ caveats:
   months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
   non_product_excluded: "{n} earlier valuations of claims are left out: only each claim and claimant's latest valuation counts."
   test_excluded: "{n} test records are left out."
-  developing_periods: "As of the {as_of} valuation, {periods} are still developing: their losses will usually rise as claims are reported and reserves change, so they are not final and not comparable with mature years (liability lines develop beyond 24 months)."
-  developing_periods_undated: "The data has no valuation date; measured to its last date ({as_of}), {periods} are still developing: their losses will usually rise, so they are not final and not comparable with mature years."
+  developing_periods: "As of the {as_of} valuation, {periods} are still developing: their losses will usually rise as claims are reported and reserves change (and, by policy effective date, their earned premium as terms keep earning), so they are not final and not comparable with mature years (liability lines develop beyond 24 months)."
+  developing_periods_undated: "The data has no valuation date; measured to its last date ({as_of}), {periods} are still developing: their losses (and, by policy effective date, their earned premium) will usually rise, so they are not final and not comparable with mature years."
 role_caveats:
-  earned_premium: "When earned premium is grouped by the policy's effective date (a policy-year view), terms that started recently are not fully earned yet: recent months show less earned premium by construction, not a drop in business."
   cat_event: "Catastrophe events are marked in the data: one event can dominate a period, line or coverage, so compare results with and without it before reading a trend or a ranking."
   race: "Race is shown as a description only: rating or underwriting on it is an unfair trade practice (NAIC Model 880), so no rating recommendation is made on it."
   religion: "Religion is shown as a description only: rating or underwriting on it is an unfair trade practice (NAIC Model 880), so no rating recommendation is made on it."

@@ -341,3 +341,46 @@ def test_the_gender_caution_is_said_on_a_policy_table():
     said = domain_pack.pack_caveats(domain_pack.pack_for("insurance"), s.cleaning_audit,
                                     contract.roles, contract.domain_confidence)
     assert any(c.startswith("Gender is shown as a description only") for c in said)
+
+
+def test_a_per_role_kpi_never_replaces_the_group_or_the_trend_the_user_asked_for():
+    """Pass 2 (major): 'frequency by state' was answered by line, 'frequency by month' lost its
+    trend. Asked by another group or over time across lines: declined with the reason; only a
+    bare question falls back to the per role."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import answer
+    by_state, chart = answer("policies", "top_n", "frequency by state", kpi="frequency", group_by="State")
+    by_month, _ = answer("policies", "time_series", "frequency by month", kpi="frequency", frequency="M")
+    for text in (by_state, by_month):
+        assert text.startswith("I couldn't answer this") and "Line of Business" in text, text
+
+
+@pytest.mark.parametrize("cols", [
+    {"Claim ID": ["C1", "C2"] * 15, "Employee ID": [f"E{i}" for i in range(30)],
+     "Incurred Date": ["2025-01-0%d" % (1 + i % 9) for i in range(30)],
+     "Incurred Amount": [float(i) for i in range(30)], "Paid Amount": [float(i) for i in range(30)],
+     "Plan": ["PPO", "HMO"] * 15},                                    # a self-funded health plan
+    {"Claim ID": [f"X{i}" for i in range(30)], "Employee ID": [f"E{i}" for i in range(30)],
+     "Reserve": [float(i) for i in range(30)]},                       # expense claims
+    {"Employee ID": [f"E{i}" for i in range(30)], "Policy Number": [f"P{i}" for i in range(30)],
+     "Written Premium": [float(10 + i) for i in range(30)],
+     "Payroll": [float(1000 + i) for i in range(30)]},                # benefits enrollment
+])
+def test_employer_benefit_and_expense_files_are_not_insurance(cols):
+    """Pass 2 (major): with the payroll / employee vetoes gone, these read as insurance."""
+    assert _contract(pd.DataFrame(cols)).domain != "insurance"
+
+
+def test_earned_premium_on_a_policy_year_view_gets_no_built_in_trend():
+    """Pass 2 (major): 'Earned Premium -89.3% YoY' by effective month is earning, not business;
+    on a policy-month file (a calendar month) earned premium trends as before."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import builtin
+    pol = builtin("policies", ["Earned Premium", "Written Premium"], [], ["trend"])
+    cols = {t["column"] for t in pol["trends"]}
+    assert "Earned Premium" not in cols and "Written Premium" in cols, cols
+    assert any(a.startswith("Earned Premium:") and "developing" in a for a in pol["assumptions"])
+    pm = builtin("claims", ["earned_premium"], [], ["trend"])
+    assert "earned_premium" in {t["column"] for t in pm["trends"]}

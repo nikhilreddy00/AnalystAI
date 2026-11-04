@@ -468,8 +468,8 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
     for f in case.get("findings") or []:
         if f["kind"] == "trend":
             col, seg = f["column"], f.get("segment")
-            from domain_pack import developing_note, roles_of
-            if contract is not None and developing_note(contract, df, roles_of(contract, col)):
+            from domain_pack import developing_trend
+            if contract is not None and developing_trend(contract, df, col):
                 continue   # as the built-in: no MoM / YoY of a measure that still develops
             frame = df[df[plan["segments"][0]].astype(str) == seg] if seg else df
             agg = "mean" if df[col].dropna().between(0, 1).all() else "sum"   # analysis MoM rule
