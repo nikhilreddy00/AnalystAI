@@ -291,7 +291,8 @@ def _targeted_params(raw: dict) -> TargetedParams:
         return TargetedParams(**{k: v for k, v in raw.items() if k not in bad})
 
 
-_TOTAL_RE = re.compile(r"\b(?:in total|totals?|overall|altogether|all time|grand total)\b", re.I)
+_TOTAL_RE = re.compile(r"\b(?:in total|totals?|overall|altogether|all time|grand total|how many|"
+                       r"how much)\b", re.I)   # a count or amount with no period: the total
 # a time grain or trend word: the question wants periods ("total revenue each month")
 _GRAIN_RE = re.compile(r"\b(?:each|every|per|by) (?:day|week|month|quarter|year)\b|\b(?:daily|"
                        r"weekly|monthly|quarterly|yearly|annual|trend\w*|over time|month over month|"

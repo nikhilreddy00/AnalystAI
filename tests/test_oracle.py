@@ -644,3 +644,17 @@ def test_a_built_in_trend_of_a_developing_measure_says_it_is_still_developing():
     for name, col in (("policies", "Written Premium"), ("retail_lines", "Lineitem price")):
         res = builtin(name, [col], [], ["trend"])
         assert not any("developing" in a for a in res["assumptions"]), (name, res["assumptions"])
+
+
+def test_a_top_n_naming_a_kpi_without_a_group_answers_the_kpi():
+    """Domain 4 E2E (e2e-64/65): 'How much have we incurred in total?' / 'How many claims do we
+    have?' came from intake as top_n + kpi with no group_by; the row handler said 'No grouping
+    column specified'. A named KPI is answered by the KPI: overall, or by its segment column
+    (the $0 rehearsal's 'ALOS by department' with segment_column only, healthcare)."""
+    truth = _built("loss_run")[3]
+    total, _ = answer("loss_run", "top_n", "How much have we incurred in total?", kpi="incurred",
+                      metric_column="Incurred", aggregation="sum", order="desc")
+    claims, _ = answer("loss_run", "top_n", "How many claims do we have?", kpi="claims")
+    assert "33,674,954.88" in total and f"{truth['claims']:,}" in claims, (total, claims)
+    _, alos = answer("inpatient", "top_n", "ALOS by department", kpi="alos", segment_column="Department")
+    assert close(alos, _built("inpatient")[3]["alos_by_dept"], tol=0.3)

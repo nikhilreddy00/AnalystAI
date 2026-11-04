@@ -9,7 +9,7 @@ trap: true
 checks:
 - kind: must_not_number
   truth_key: loss_ratio_written_total
-  rel_tol: 0.01
+  rel_tol: 0.001
   unit: '%'
   scales:
   - 100
