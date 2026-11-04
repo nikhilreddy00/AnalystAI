@@ -419,3 +419,50 @@ def test_a_derived_group_is_matched_by_any_of_its_names_as_words():
     assert not check_segment_value_truth(f, truth, "Loss Date", "ay", 0.5, (1,))[0]
     assert check_segment_value_truth(_findings(segments=[seg.model_copy(
         update={"segment_column": "Accident Year"})]), truth, "accident year", "ay", 0.5, (1,))[0]
+
+
+def test_summary_stats_over_the_counted_rows_are_not_false():
+    """Domain 4 smoke run: a loss run's built-in summary of Paid to Date reads each claimant's
+    latest valuation (as every tile does); the scorer judged it against all 16 valuations and
+    called 17 of 27 stats false. A summary over a population production counts is right; a
+    wrong number is still false."""
+    from domain_pack import rows_for
+    from agents.ingestion_agent import build_contract
+    from evals.scoring import false_findings
+    from orchestrator.state import ConnectorType
+    df, truth = datagen.make("loss_run", 1)
+    counted = rows_for(df, build_contract(df, ConnectorType.CSV, {}), "Paid to Date")[0]
+    s = counted["Paid to Date"]
+    good = {"mean": float(s.mean()), "median": float(s.median()), "count": int(s.count())}
+    r = false_findings(_findings(eda_summary={"Paid to Date": good}), df, truth)
+    assert r["false"] == 0 and r["verifiable"] == 3, r
+    r = false_findings(_findings(eda_summary={"Paid to Date": {**good, "mean": 1.0}}), df, truth)
+    assert r["false"] == 1, r
+
+
+def test_numbers_the_domain_pack_states_with_the_report_are_grounded():
+    """Domain 4 smoke (e2e-61): every report carries the pack's caveats verbatim ('2025 (21
+    months) are still developing … beyond 24 months'); the scorer's pool lacked them and failed
+    the product's own deterministic text."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built
+    from evals.scoring import bundle_facts, ungrounded_numbers
+    s, clean, _, _ = _built("loss_run")
+    pool = bundle_facts(s, clean)["values"]
+    text = "2026 (9 months) and 2025 (21 months) are still developing (beyond 24 months)."
+    assert ungrounded_numbers(text, [pool]) == []
+    assert ungrounded_numbers("2025 (37 months) are developing", [pool]) == ["37"]
+
+
+def test_an_overall_row_beside_the_groups_is_the_whole_populations_value():
+    """Domain 4 smoke (ins-6): 'Overall 33,674,954.88' after Auto and Home is the counted total,
+    not a false group; a wrong overall is still false."""
+    from evals.scoring import false_findings
+    df, truth = datagen.make("loss_run", 1)
+
+    def seg(total):
+        return SegmentResult(segment_column="Line of Business", metric_column="Incurred",
+                             aggregation="sum", results=[{"name": "Overall", "value": total}])
+    assert false_findings(_findings(segments=[seg(truth["incurred_total"])]), df, truth)["false"] == 0
+    assert false_findings(_findings(segments=[seg(1.0)]), df, truth)["false"] == 1

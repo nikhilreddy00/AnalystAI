@@ -273,6 +273,9 @@ def _derived_truth(seg, truth: dict) -> bool:
     return False
 
 
+_OVERALL = ("Overall", "Total", "All", "overall", "total", "all")
+
+
 def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
     """Recompute every claim that can be checked against the data. A claim is false when the
     number is wrong, or when a test calls a planted null pair significant."""
@@ -284,11 +287,12 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
             claims.append((f"r {key}", not _close(r, df[a].corr(df[b]), 0, 0.02)))
     for col, stats in f.eda_summary.items():
         if col in numeric and isinstance(stats, dict):
-            s = df[col].dropna()
+            # the rows production can summarise (every row, or the rows its tiles count)
+            pops = [rows[col].dropna() for rows in _populations(df, col)]
             for stat in sorted(_AGGS - {"sum"} | {"std"}):
                 if stat in stats:
-                    want = float(s.count() if stat == "count" else getattr(s, stat)())
-                    claims.append((f"{col}.{stat}", not _close(stats[stat], want, 0.01)))
+                    wants = [float(s.count() if stat == "count" else getattr(s, stat)()) for s in pops]
+                    claims.append((f"{col}.{stat}", not any(_close(stats[stat], w, 0.01) for w in wants)))
     for seg in f.segments:
         cols = _strata(seg.segment_column, df.columns)
         if not set(cols) <= set(df.columns) or seg.metric_column not in numeric:
@@ -304,6 +308,10 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
             want = _grouped(rows, cols, seg.metric_column, agg)
             want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
                           for i in want.index]
+            # a total row beside the groups ('Overall'): the whole population's value
+            whole = _grouped(rows.assign(_all="Overall"), ["_all"], seg.metric_column, agg)
+            extra = {k: whole.iloc[0] for k in _OVERALL if k not in want.index} if len(whole) else {}
+            want = pd.concat([want, pd.Series(extra, dtype=float)]) if extra else want
             wants.append(want)
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
         distinct = df.groupby(cols)[seg.metric_column].nunique() if agg == "count" else pd.Series()
@@ -1076,8 +1084,19 @@ def bundle_facts(session: AnalysisSession, df: pd.DataFrame, past: list[str] = (
                     for e in evidence],
                    audit.model_dump(mode="json") if audit else {}, titles,
                    [contract.row_count, contract.column_count, n_months] if contract else [n_months],
-                   list(range(first[0], last[0] + 1)) if first else []],   # years in the range
+                   list(range(first[0], last[0] + 1)) if first else [],   # years in the range
+                   _stated(session)],   # the domain pack's caveats, said with every report
     }
+
+
+def _stated(session: AnalysisSession) -> list[str]:
+    """The domain pack's caveats for this data (domain_pack.pack_caveats, as the report shows
+    them): their numbers (an accident year's age in months) are the report's own rules."""
+    from domain_pack import pack_caveats, pack_for
+    contract = session.data_contract
+    pack = pack_for(contract.domain) if contract and contract.domain else None
+    return pack_caveats(pack, session.cleaning_audit, contract.roles,
+                        contract.domain_confidence) if pack else []
 
 
 def insight_claims(report: dict) -> list[dict]:
