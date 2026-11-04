@@ -552,6 +552,24 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
       tiles, by group, a named value, over time, windows, averages per entity, rankings and counts.
     - **Say what "permanent" covers**: a fixed bug and its class are blocked by tests; a new kind
       of bug on a new data shape still needs the audit.
+  - **Added 2026-11-04 (user, before Domain 5): two design skills in plan mode.** Most of Domain
+    4's late majors were a word with two meanings (rows vs claims, an average per row vs per
+    claim, a partial quarter as a quarter) or a shared rule widened for one domain:
+    - **`mattpocock-skills:domain-modeling` on the brief, before the red-team:** a term ledger
+      with one row per KPI and per ambiguous word, giving its counting unit (row, entity, version,
+      period), numerator, denominator, period basis and exclusions. Each row is checked against
+      `GLOSSARY.md` and every finished pack's YAML for clashes (a word that means something else
+      in another domain), stress-tested with invented edge-case scenarios (each scenario becomes
+      a planted trap with a truth), and cross-checked against what `domain_pack.py` actually
+      computes. Domain words go to the pack YAML, new builder terms to `GLOSSARY.md`, and an ADR
+      only when it passes the skill's three tests.
+    - **`mattpocock-skills:codebase-design` on the shared-fix table, before the plan is
+      approved:** every new pack field or shared function passes the deletion test and "one
+      adapter = hypothetical seam". A field only the new domain would set is first tried as an
+      existing field's value, so new fields need a second reader (another domain, or the toy pack
+      in `tests/test_second_pack.py`). The interface (the YAML a pack author writes) stays small.
+      `DESIGN-IT-TWICE` parallel designs are used only for a new shared mechanism (like the version
+      chain or maturity), never for a field.
 - **Done when (per domain):** its analysis cases pass at k=3 on every run and its E2E cases at
   k=1 (k=3 on failures), hard rules 100%, each agent's expert-rubric checks pass, the final
   audit pass finds 0 major and ≤ 2 minor, and the README's domain list is regenerated from the
