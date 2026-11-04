@@ -869,3 +869,22 @@ def test_hr_a_model_following_the_brief_gets_the_truth(name, key):
     avg = dict(re.findall(r"(\w+) ([\d,]+\.\d)", line.split("):", 1)[1]))
     got = {k: exits.get(k, 0) / float(v.replace(",", "")) for k, v in avg.items()}
     assert close(got, truth[key], tol=0.5), (got, truth[key])
+
+
+def test_hr_the_frame_marks_who_is_in_force_and_which_exits_fall_in_the_window():
+    """Domain 5 gate: models dropped the window (every exit ever) and kept people terminated
+    without a date: the frame's own markers give the truth with a filter, nothing re-derived."""
+    from agents.analysis_agent import model_frame
+    for name in ("hr_roster", "hr_snapshots", "employees"):
+        _, clean, contract, truth = _built(name)
+        f, _ = model_frame(clean, contract)
+        ent = contract.roles["employee"]
+        if "headcount_asof" in truth:
+            assert f.loc[f["in_force_now"] == "yes", ent].nunique() == truth["headcount_asof"]
+        if "separations_12m" in truth:
+            assert int((f["exit_in_window"] == "yes").sum()) == truth["separations_12m"]
+    _, clean, contract, truth = _built("hr_roster")
+    f, _ = model_frame(clean, contract)
+    now = f[(f["in_force_now"] == "yes") & f["Gender"].isin(["Male", "Female"]) & f["Annual_Salary"].notna()]
+    g = now.assign(p=now["Annual_Salary"] / now["FTE"]).groupby(["Job_Level", "Gender"])["p"].mean().unstack()
+    assert close(((g["Male"] - g["Female"]) / g["Male"]).to_dict(), truth["pay_gap_mean_fte_by_level"], tol=0.01)

@@ -16,10 +16,11 @@ checks:
 - kind: segment_value_truth
   planted: true
   segment:
+  - exit_event_date
   - Year
   - year
+  - Termination_Date
   - Termination Year
-  - Termination_Year
   - Period
   truth_key: attrition_2025_vs_2026
   abs_tol: 0.01

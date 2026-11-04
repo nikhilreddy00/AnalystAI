@@ -883,6 +883,12 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     if mean and (v := compute_kpi(df, roles, pack, mean.name)) is not None:
         lines.append(f"{mean.label} = {v:,.1f} (their mean): divide the window's counts by it "
                      "for a rate; never recount it from rows.")
+        frame_y = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[Y]"))
+        years = compute_kpi(frame_y, roles, pack, mean.name, by="_period", full=df)
+        if years is not None and len(years):   # a year's rate divides by that year's own base
+            lines.append(f"{mean.label} by year (each year's month-ends; the last year to "
+                         f"{as_of:%-d %b %Y} only): " + ", ".join(
+                             f"{p} {x:,.1f}" for p, x in years.items() if pd.notna(x)) + ".")
         for g in [g for g in pack.overview_groups if g in roles][:2]:   # a group's own base
             by = compute_kpi(df, roles, pack, mean.name, by=roles[g])
             if by is not None and len(by) <= 15:
@@ -1739,7 +1745,7 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     return with_spell_events(out, pack, roles), name
 
 
-SPELL_EVENT_COLUMNS = ("hire_event_date", "exit_event_date")
+SPELL_EVENT_COLUMNS = ("hire_event_date", "exit_event_date", "exit_in_window", "in_force_now")
 
 
 def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd.DataFrame:
@@ -1761,12 +1767,19 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
     where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), []) if stock else []
     counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
     out = df.copy()
-    for col, which in zip(SPELL_EVENT_COLUMNS, ("starts", "ends")):
+    lo = spell_window(pack, df, roles)[0]
+    for col, which in zip(SPELL_EVENT_COLUMNS[:2], ("starts", "ends")):
         rows, when = _spell_events(df, roles, pack, which, as_of)
         rows, when = rows[counted.loc[rows.index]], when[counted.loc[rows.index]]
         out[col] = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
         out.loc[rows.index, col] = when.astype("datetime64[ns]")
+        if which == "ends":   # the window the facts name (12 months to the as-of): marked, so a
+            # model never forgets to filter it (Domain 5 gate: hr-1 counted every exit ever)
+            out["exit_in_window"] = (out[col] > lo).map({True: "yes", False: ""})
         out[col] = out[col].dt.strftime("%Y-%m-%d")
+    now = _in_force(df, roles, pack, as_of)
+    out["in_force_now"] = ""
+    out.loc[now.index[counted.loc[now.index].to_numpy()], "in_force_now"] = "yes"
     return out
 
 
