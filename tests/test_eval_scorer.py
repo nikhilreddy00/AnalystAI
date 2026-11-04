@@ -482,3 +482,16 @@ def test_an_eda_stat_over_the_counted_rows_passes_the_check():
                           df, "Paid to Date", ["median"])[0]
     assert not check_eda_stat(_findings(eda_summary={"Paid to Date": {"median": 1.0}}),
                               df, "Paid to Date", ["median"])[0]
+
+
+def test_a_breakdown_may_leave_out_a_group_with_no_events_but_not_a_real_one():
+    from evals.scoring import check_segment_value_truth
+    from orchestrator.state import AnalysisFindings
+    def f(rows):
+        return AnalysisFindings.model_validate({"eda_summary": {}, "correlations": {}, "trends": [],
+            "anomalies": [], "statistical_tests": [], "code_executed": "", "segments": [
+                {"segment_column": "Department", "metric_column": "x", "aggregation": "ratio",
+                 "results": [{"name": k, "value": v} for k, v in rows.items()]}]})
+    truth = {"r": {"Sales": 0.3, "Legal": 0.0}}
+    assert check_segment_value_truth(f({"Sales": 0.3}), truth, "Department", "r")[0]
+    assert not check_segment_value_truth(f({"Legal": 0.0}), truth, "Department", "r")[0]
