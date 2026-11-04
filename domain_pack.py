@@ -847,6 +847,38 @@ def spell_terms(pack: Pack, name: str) -> list[Term]:
     return out
 
 
+def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str]:
+    """The product's own spell numbers for a model to divide by, never rebuild (Domain 5
+    red-team B6: the model re-deriving a row rule was the one root cause of Domain 4's analysis
+    failures): the as-of, the window, the month-end counts, their mean, and what is dated after
+    the as-of."""
+    s = pack.spell
+    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
+                  and computable(pack, k.name, roles)), None)
+    mean = next((k for k in pack.kpis if any(t.spell == "average" for alt in k.num for t in alt)
+                 and computable(pack, k.name, roles)), None)
+    w = spell_window(pack, df, roles)
+    if not s or stock is None or w is None:
+        return []
+    lo, as_of, months = w
+    frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+    series = compute_kpi(frame, roles, pack, stock.name, by="_period", full=df)
+    pts = _month_ends(lo, as_of)
+    shown = ", ".join(f"{t:%b %Y} {series.get(t.to_period('M')):,.0f}" for t in pts
+                      if series is not None and pd.notna(series.get(t.to_period("M"))))
+    lines = [f"As of {as_of:%-d %b %Y}: the window is the {months} months "
+             f"{(lo + pd.Timedelta(days=1)):%-d %b %Y} – {as_of:%-d %b %Y}."]
+    if shown:
+        lines.append(f"{stock.label} at its month-ends: {shown}.")
+    if mean and (v := compute_kpi(df, roles, pack, mean.name)) is not None:
+        lines.append(f"{mean.label} = {v:,.1f} (their mean): divide the window's counts by it "
+                     "for a rate; never recount it from rows.")
+    later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
+    if later:
+        lines.append(f"{later} hire or exit dates fall after {as_of:%-d %b %Y}: not counted yet.")
+    return lines
+
+
 def _in_force(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t: pd.Timestamp) -> pd.DataFrame:
     """THE state rule: each entity's row at `t` if it is in force then. Snapshots: its latest
     snapshot on or before t (agents.utils.snapshot_rows: absent from the newest snapshot = gone);

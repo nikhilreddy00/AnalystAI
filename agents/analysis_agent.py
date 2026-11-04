@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
+    spell_facts,
     runout_months,
     developing_trend,
     ROW_KIND_COLUMN,
@@ -513,7 +514,7 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
                           {t.value if hasattr(t, "value") else t for t in task.analysis_types}
                           & {"correlation", "hypothesis"})) for c in contract.columns if c.aggregation],
         question=(task.raw_query or "")[:2000],
-        **_domain(contract, task, audit),
+        **_domain(contract, task, audit, session.__dict__.get("_df_parquet")),
     )
 
 
@@ -524,7 +525,7 @@ _OVERVIEW_WORDS = re.compile(r"\b(?:overview|summary|tour|walk me through|what(?
                              r"spreadsheet|export)\b", re.I)
 
 
-def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
+def _domain(contract: DataContract, task: AnalysisTask, audit, parquet: bytes | None = None) -> dict:
     """The pack's rules, relevant ones only, so a question they don't touch reads as before:
     the row kinds Cleaning found in this data (returns, refunds, test orders …), a line grain,
     the KPIs or concepts the question names (every tile KPI the data supports when it asks for
@@ -544,6 +545,9 @@ def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
     grain = audit.grain if audit else None
     brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None,
                        kind_column(contract))
+    if brief and pack.spell and parquet and defaults_pack(contract):   # the product's numbers
+        frame = pd.read_parquet(io.BytesIO(parquet))
+        brief += spell_facts(pack, frame, {r: c for r, c in roles.items() if c in frame.columns})
     if not brief:
         return {}
     return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
