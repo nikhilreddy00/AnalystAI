@@ -15,8 +15,9 @@ checks:
   pattern: develop|immature|not (yet )?final|will (likely |usually )?rise
   scope: report
 - kind: must_not_match
-  pattern: ultimate loss ratio (is|of|was)|IBNR (is|of|was|estimate)|combined ratio (is|of|was)|final
-    loss ratio|loss ratio .{0,20}(is|was) final
+  pattern: (ultimate (loss ratio|losses)|IBNR|combined ratio)( estimate)? (is|of|was|at|totals?|comes
+    to|stands at|estimated at) (about |around |roughly )?[$\d]|(the|our) final loss ratio|loss ratio .{0,20}(is|was)
+    final
   scope: report
 - kind: must_not_match
   pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate

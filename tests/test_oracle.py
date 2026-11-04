@@ -562,10 +562,13 @@ def test_outlier_and_distribution_numbers_read_the_counted_rows():
 
 def test_policy_table_tiles_are_the_truth():
     """Earned (not written) premium under the loss ratio; written net of cancellation rows."""
-    t, truth = tiles("policies"), _built("policies")[3]
+    import domain_pack as dp
+    t, (_, clean, contract, truth) = tiles("policies"), _built("policies")
+    written = dp.compute_kpi(clean, contract.roles, dp.pack_for("insurance"), "written_premium")
     assert close(t["earned_premium"], truth["earned_premium_total"])
-    assert close(t["written_premium"], truth["written_premium_total"])
-    assert abs(t["written_premium"] - truth["written_premium_without_cancellations"]) > 1000
+    assert t["policies"] == truth["policies"]   # distinct policies, never rows or terms
+    assert close(written, truth["written_premium_total"])
+    assert abs(written - truth["written_premium_without_cancellations"]) > 1000
 
 
 @pytest.mark.parametrize("kpi,key", [("loss_ratio", "loss_ratio_by_line"),

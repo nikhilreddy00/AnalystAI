@@ -197,3 +197,70 @@ def test_a_workers_comp_loss_run_is_insurance_with_patient_data_protected():
         "Paid to Date": [round(1000.0 + 37 * i, 2) for i in range(n)],
         "Case Reserve": [round(500.0 + 11 * i, 2) for i in range(n)]}))
     assert (c.domain, c.phi) == ("insurance", True)
+
+
+def test_the_insight_states_a_version_chains_grain_and_its_counted_rows():
+    """Domain 4 insight read (lesson 17): 'covers 38,255 claims' was the row count; the facts
+    said 'One row is one claim'. A chained file's grain is its key at one version, and only
+    the counted rows count (generic: the pack's version roles, no domain word)."""
+    import asyncio
+    from agents.insight_agent import build_context
+    from evals import run
+    case = {"id": "x", "dataset": {"name": "loss_run", "seed": 1}, "question": "Give me an overview.",
+            "plan": {"target_metrics": ["Incurred"], "segments": ["Line of Business"],
+                     "analysis_types": ["eda"]},
+            "findings": [], "entity": ["claim", "claims"]}
+    session, _, _ = asyncio.run(run.insight_bundle(case))
+    facts = build_context(session).facts
+    assert "One row is one claim." not in facts
+    assert ("One row is one Claim Number and Claimant Number at one Valuation Date: only the "
+            "latest counts (3,975 of 38,255 rows)") in facts, facts
+
+
+def test_the_insight_harness_summary_stats_equal_the_analysis_built_in():
+    """CODING_STANDARDS (adapters take the production path): the insight harness summarised a
+    loss run over all 16 valuations (mean $7,974) where the analysis built-in reads each
+    claimant's latest ($8,471.69); the model then wrote the harness's number."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built, builtin
+    from evals.run import viz_findings
+    _, clean, contract, _ = _built("loss_run")
+    case = {"plan": {"target_metrics": ["Incurred"], "segments": ["Line of Business"]}, "findings": []}
+    harness, _ = viz_findings(case, clean, ["Incurred"], contract)
+    want = builtin("loss_run", ["Incurred"], [], ["eda"])["eda_summary"]["Incurred"]
+    assert harness.eda_summary["Incurred"] == pytest.approx(want), (harness.eda_summary, want)
+
+
+def test_the_insight_harness_month_over_month_equals_the_analysis_built_in():
+    """CODING_STANDARDS: the harness compared a loss run's partial last month (data through 28
+    Sep) with August (-70.4%) where production's built-in leaves it out (+5.8%)."""
+    import sys
+    sys.path.insert(0, "tests")
+    from test_oracle import _built, builtin
+    from evals.run import viz_findings
+    _, clean, contract, _ = _built("loss_run")
+    case = {"plan": {"target_metrics": ["Incurred"], "segments": []},
+            "findings": [{"kind": "trend", "column": "Incurred"}]}
+    harness, _ = viz_findings(case, clean, [], contract)
+    built = [t for t in builtin("loss_run", ["Incurred"], [], ["trend"])["trends"]
+             if t["column"] == "Incurred" and t["period"] == "MoM" and not t.get("segment")]
+    assert harness.trends[0].pct_change == pytest.approx(built[0]["pct_change"], abs=0.01)
+
+
+def test_the_insight_never_says_one_row_per_entity_when_a_count_tile_disagrees():
+    """Domain 4 insight read: 'This portfolio of 2,674 policies' (rows: terms and cancellation
+    transactions) beside a Policies tile of 1,300. Generic: a count tile named like the
+    narrative's noun, with another value than the rows, sets the grain sentence."""
+    import asyncio
+    from agents.insight_agent import build_context
+    from evals import run
+    case = {"id": "x", "dataset": {"name": "policies", "seed": 1},
+            "question": "Give me an overview of this dataset.",
+            "plan": {"target_metrics": ["Earned Premium"], "segments": ["Line of Business"],
+                     "analysis_types": ["eda"]},
+            "findings": [], "entity": ["policy", "policies"]}
+    session, _, _ = asyncio.run(run.insight_bundle(case))
+    facts = build_context(session).facts
+    assert "One row is one policy." not in facts
+    assert "1,300 policies in 2,674 rows: a row is not one policy" in facts, facts

@@ -92,7 +92,8 @@ status_values:
 version_key: [claim_id, claimant]
 version_order: valuation_date
 maturity: {role: valuation_date, months: 24,
-           measures: [incurred, paid, reserve, recoveries, claim_count, claim_id]}
+           measures: [incurred, paid, reserve, recoveries, claim_count, claim_id, earned_premium,
+                      exposure]}
 conditional_fields: {reserve: [open, reopened, re-opened, pending, litigated, in suit]}
 marker_fields: [cat_event]
 
@@ -116,8 +117,13 @@ text:
 kpis:
   - {name: earned_premium, label: Earned premium, unit: money, tile: true,
      num: [[{sum: earned_premium}]]}
-  - {name: written_premium, label: Written premium, unit: money, tile: true,
-     num: [[{sum: written_premium}]]}
+  # Loss ratio: reported (case-incurred) losses ÷ earned premium [WM p.8], a ratio of sums.
+  - name: loss_ratio
+    label: Loss ratio
+    unit: percent
+    tile: true
+    num: [[{kpi: incurred}]]
+    den: [[{sum: earned_premium}]]
   - name: incurred
     label: Incurred losses
     unit: money
@@ -126,18 +132,13 @@ kpis:
   - {name: paid, label: Paid losses, unit: money, tile: true, num: [[{sum: paid}]]}
   - {name: open_reserve, label: Open case reserves, unit: money, tile: true,
      num: [[{sum: reserve}]]}
-  - {name: recoveries, label: Salvage and subrogation, unit: money, num: [[{sum: recoveries}]]}
-  - name: paid_net
-    label: Paid net of recoveries
-    unit: money
-    num: [[{sum: paid}, {sum: recoveries, sign: -1}]]
-  # Loss ratio: reported (case-incurred) losses ÷ earned premium [WM p.8], a ratio of sums.
-  - name: loss_ratio
-    label: Loss ratio
-    unit: percent
+  # Policies on a premium table only (a loss run's policy ids are policies with claims)
+  - name: policies
+    label: Policies
+    unit: count
     tile: true
-    num: [[{kpi: incurred}]]
-    den: [[{sum: earned_premium}]]
+    num: [[{nunique: policy, where: [[{role: earned_premium, not_in: []}]]}],
+          [{nunique: policy, where: [[{role: written_premium, not_in: []}]]}]]
   # Reported claims, closed without payment included (Schedule P reported count [AAA §5]).
   - name: claims
     label: Claims
@@ -150,25 +151,8 @@ kpis:
     tile: true
     num: [[{kpi: incurred}]]
     den: [[{kpi: claims}]]
-  # Per line only: exposure units differ by line (car-years, house-years) [WM Table 4.1].
-  - name: frequency
-    label: Claim frequency
-    unit: number
-    unit_word: claims per exposure unit
-    num: [[{kpi: claims}]]
-    den: [[{sum: exposure}]]
-  - name: pure_premium
-    label: Pure premium
-    unit: money
-    num: [[{kpi: incurred}]]
-    den: [[{sum: exposure}]]
-  - name: avg_premium
-    label: Average written premium per term
-    unit: money
-    tile: true
-    num: [[{sum: written_premium}]]
-    den: [[{nunique: term}]]
-  - {name: policies, label: Policies, unit: count, tile: true, num: [[{nunique: policy}]]}
+  - {name: written_premium, label: Written premium, unit: money, tile: true,
+     num: [[{sum: written_premium}]]}
   # Retention: terms renewed ÷ terms up for renewal (renewed, lapsed, non-renewed); terms not yet
   # due and mid-term cancellations are out of the base [WM p.10].
   - name: retention
@@ -181,6 +165,29 @@ kpis:
                                                           nonrenewed, not renewed, "no", "n",
                                                           "0"]}]]}]]
 
+  - name: avg_premium
+    label: Average written premium per term
+    unit: money
+    tile: true
+    num: [[{sum: written_premium}]]
+    den: [[{nunique: term}]]
+  # Per line only: exposure units differ by line (car-years, house-years) [WM Table 4.1].
+  - name: frequency
+    label: Claim frequency
+    unit: number
+    unit_word: claims per exposure unit
+    num: [[{kpi: claims}]]
+    den: [[{sum: exposure}]]
+  - name: pure_premium
+    label: Pure premium
+    unit: money
+    num: [[{kpi: incurred}]]
+    den: [[{sum: exposure}]]
+  - {name: recoveries, label: Salvage and subrogation, unit: money, num: [[{sum: recoveries}]]}
+  - name: paid_net
+    label: Paid net of recoveries
+    unit: money
+    num: [[{sum: paid}, {sum: recoveries, sign: -1}]]
 glossary:
   loss_ratio: [loss ratio, loss ratios, lr, claims ratio, incurred loss ratio, loss performance]
   frequency: [frequency, claim frequency, claims frequency, claims per exposure, claim rate]

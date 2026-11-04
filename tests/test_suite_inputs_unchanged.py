@@ -20,6 +20,11 @@ _INS = ("Domain 4: make_claims reads as insurance (the pack), its life line is c
 CHANGES: dict[str, dict[str, str]] = {
     "deterministic": {"claims-1": _INS, "claims-2": _INS, "claims-3": _INS},
     "analysis": {"ins-1": _INS, "ins-2": _INS, "ins-3": _INS},
+    "insight": {"ins-44-claims-overview": "Domain 4: a version chain's grain ('one Claim ID and "
+                "Line No at one adjustment', N of M rows count), never 'one claim'; re-measured",
+                "ins-42-ledger-overview": "Domain 4: the insight harness summarises a column over "
+                "the rows production's built-in counts (analysis_agent.counted_summary, one "
+                "definition), not every row; re-measured"},
 }
 
 

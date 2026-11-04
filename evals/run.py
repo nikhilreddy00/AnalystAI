@@ -472,7 +472,11 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
             agg = "mean" if df[col].dropna().between(0, 1).all() else "sum"   # analysis MoM rule
             agg = effective_agg(contract, col, agg) or agg
             frame = rows(frame, col)
-            tot = aggregate(frame, [month.loc[frame.index]], col, agg, contract,
+            m = month
+            if contract is not None and date:   # the built-in's month rule (partial month, run-out)
+                from agents.analysis_agent import counted_months
+                m = counted_months(df, contract, col, date)[1].reindex(df.index)
+            tot = aggregate(frame, [m.loc[frame.index]], col, agg, contract,
                             over_time=True).sort_index()
             # MoM: last month vs the one before. YoY: vs the same month a year earlier.
             # YoY_calendar: calendar-year totals, the partial-year shape the analysis model wrote.
@@ -519,11 +523,13 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
                                            p_value=float(p), interpretation=f"{metric} by {group}"))
             ids.append(f"test:{len(tests) - 1}")
     eda = {}
-    for col in eda_columns:   # the analysis agent's built-in describe block
+    from agents.analysis_agent import counted_summary
+    for col in eda_columns:   # the sandbox's describe block, then the built-in's counted rows
         s = pd.to_numeric(df[col], errors="coerce").dropna()
-        eda[col] = {k: round(float(v), 4) for k, v in {
-            "mean": s.mean(), "std": s.std(), "min": s.min(), "max": s.max(),
-            "median": s.median(), "count": len(s)}.items()}
+        eda[col] = (counted_summary(df, contract, col) if contract is not None else None) or {
+            k: round(float(v), 4) for k, v in {"mean": s.mean(), "std": s.std(), "min": s.min(),
+                                               "max": s.max(), "median": s.median(),
+                                               "count": len(s)}.items()}
     findings = AnalysisFindings(eda_summary=eda, correlations=corr, trends=trends, segments=segs,
                                 anomalies=anoms, statistical_tests=tests, code_executed="")
     raw = {"n_rows": len(df), "non_null": {str(c): int(n) for c, n in df.notna().sum().items()},

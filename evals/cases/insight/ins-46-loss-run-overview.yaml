@@ -37,6 +37,7 @@ expect:
   - develop|immature|not (yet )?final|will (likely |usually )?rise
   - home
   must_not_match:
-  - ultimate loss ratio (is|of|was)|IBNR (is|of|was|estimate)|combined ratio|final loss ratio|loss ratio
-    .{0,20}(is|was) final
+  - (ultimate (loss ratio|losses)|IBNR|combined ratio)( estimate)? (is|of|was|at|totals?|comes to|stands
+    at|estimated at) (about |around |roughly )?[$\d]|(the|our) final loss ratio|loss ratio .{0,20}(is|was)
+    final
   - net sales|order value|basket|outstanding balance|\bNPL\b|readmission|denial

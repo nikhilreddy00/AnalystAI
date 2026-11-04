@@ -1103,6 +1103,15 @@ def version_roles(pack: Pack | None) -> set[str]:
     return {*pack.version_key, *([pack.version_order] if pack.version_order else [])} if pack else set()
 
 
+def version_grain(contract) -> tuple[list[str], str] | None:
+    """(the version chain's key columns, its order column) in this data (a strong match), or None:
+    one row is one key at one order value (a claim and claimant at one valuation)."""
+    pack = defaults_pack(contract)
+    keys = [contract.roles[r] for r in (pack.version_key if pack else []) if r in contract.roles]
+    order = contract.roles.get(pack.version_order) if pack and pack.version_order else None
+    return (keys, order) if keys and order else None
+
+
 def _and(items: list[str]) -> str:
     """'a, b and c'; '' for none."""
     return ", ".join(items[:-1]) + (" and " if len(items) > 1 else "") + items[-1] if items else ""

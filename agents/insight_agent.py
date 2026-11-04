@@ -31,7 +31,7 @@ from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id
 from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
 from connectors.base import TRUNCATED
 from agents.utils import display_values, pii_columns, strip_markdown_fences, with_display_names
-from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
+from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for, version_grain
 from guardrails import (
     rankable,
     _SENTENCE_RE,
@@ -172,6 +172,38 @@ def _values(e: Evidence, by_id: dict) -> str:
         f" (+{more} more groups not shown)" if more > 0 else "")
 
 
+def _version_grain(contract, audit) -> str | None:
+    """A version chain's grain from the data's own rule (domain_pack.version_grain) and how many
+    rows count, when cleaning flagged earlier versions; else None."""
+    grain = version_grain(contract) if contract else None
+    flag = next((d for d in (audit.decisions if audit else []) if d.operation == "flag"
+                 and d.strategy == "non_product"), None)
+    if not grain or not flag:
+        return None
+    keys, order = grain
+    return (f"One row is one {' and '.join(keys)} at one {order}: only the latest counts "
+            f"({audit.rows_after - flag.rows_affected:,} of {audit.rows_after:,} rows); count "
+            f"{keys[0]} as distinct values, never rows.")
+
+
+def _entity_count(session: AnalysisSession) -> str | None:
+    """A count tile named like the narrative's noun ('Policies' for policies) whose value is not
+    the row count (policy terms and cancellation rows): the grain sentence, never 'one row is one
+    policy'; else None."""
+    findings, audit, contract, narrative = (session.analysis_findings, session.cleaning_audit,
+                                            session.data_contract, session.narrative)
+    pack = defaults_pack(contract) if contract else None
+    rows = audit.rows_after if audit else contract.row_count if contract else 0
+    for k in (findings.kpis if findings and pack else []):
+        kpi = pack.kpi(k.recipe.kpi) if k.recipe and k.recipe.kind == "pack" else None
+        if kpi and kpi.unit == "count" and k.label.lower() == narrative.entity_plural.lower() \
+                and k.value.replace(",", "") != str(rows):
+            return (f"{k.value} {narrative.entity_plural} in {rows:,} rows: a row is not one "
+                    f"{narrative.entity_singular}; count {narrative.entity_plural} as the "
+                    f"{k.label} figure does, never rows.")
+    return None
+
+
 def _prev(ym: tuple[int, int]) -> tuple[int, int]:
     return (ym[0], ym[1] - 1) if ym[1] > 1 else (ym[0] - 1, 12)
 
@@ -197,6 +229,10 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         facts.append(f"One row is one {', '.join(levels[0].aggregation_by)} at one "
                      f"{levels[0].aggregation_time} (a snapshot); levels (never added across dates): "
                      f"{names}.")
+    elif chain := _version_grain(contract, audit):   # a claim at one valuation, never "one claim"
+        facts.append(chain)
+    elif narrative and (counted := _entity_count(session)):
+        facts.append(counted)
     elif narrative:
         facts.append(f"One row is one {narrative.entity_singular}.")
     first = last = None
