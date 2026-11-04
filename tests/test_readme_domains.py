@@ -78,7 +78,24 @@ DEPTH = {"retail": ["analysis-20261102T002211Z.json",           # 7 retail cases
                         "quality-20261103T182408Z.json",             # 2 seeded healthcare reports
                         "e2e-20261103T184600Z-rescored.json",        # 9 healthcare E2E cases, k=1
                         "e2e-20261103T191033Z.json",                 # 4 re-gated after the audit
-                        "e2e-20261103T192807Z.json"]}                # e2e-52 after its fix
+                        "e2e-20261103T192807Z.json"],                # e2e-52 after its fix
+         "insurance": ["analysis-20261104T011708Z-rescored.json",    # smoke: ins-6/8 k=1
+                       "analysis-20261104T012924Z.json",             # ins-1..3 re-measured k=1
+                       "analysis-20261104T012925Z.json",             # ins-4..9 k=3
+                       "analysis-20261104T013543Z.json",             # ins-6/9 k=3 after the brief fix
+                       "analysis-20261104T013802Z.json",             # ins-4/5/7/8 k=3 on that brief
+                       "analysis-20261104T031811Z.json",             # ins-1..9 k=1 after the audits
+                       "intake-20261104T012924Z.json",               # 12 insurance intake cases
+                       "intake-20261104T013542Z.json",               # ins-09/11 k=3 after the glossary fix
+                       "insight-20261104T014955Z.json",              # ins-42/44 re-measured + 45/46
+                       "insight-20261104T015458Z.json",              # 45/46 on the final harness
+                       "insight-20261104T015642Z.json",              # 45 after the entity grain
+                       "insight-20261104T031810Z.json",              # 45/46 after the audits
+                       "quality-20261104T015827Z.json",              # 2 seeded insurance reports
+                       "e2e-20261104T021044Z-rescored.json",         # 9 insurance E2E cases, k=1
+                       "e2e-20261104T021614Z.json",                  # e2e-64/65 k=3 after their fixes
+                       "e2e-20261104T021756Z.json",                  # e2e-65 k=3 after the totals rule
+                       "e2e-20261104T033752Z-rescored.json"]}        # 9 + 3 cross-domain after the audits
 
 
 def _listed(text: str) -> set[str]:

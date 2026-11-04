@@ -1,0 +1,31 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-46-loss-run-overview
+insight_case: ins-46-loss-run-overview
+category: straightforward
+source:
+  report: insight-20261104T031810Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 0
+  kind: number
+  label: contradicted
+  text: Across 3,450 claims and 57 months of loss experience, the portfolio carries $305,050,909.40
+    in incurred losses, split nearly evenly between Home and Auto lines.
+- op: replace
+  i: 2
+  kind: certainty
+  label: overstated
+  text: 2025 and 2026 losses are final and fully comparable with earlier years.
+- op: replace
+  i: 1
+  kind: semantic
+  label: unsupported
+  text: With IBNR estimated at $2.4M on top of the case reserves, the portfolio runs a combined
+    ratio of 98%.
+natural:
+- i: 5
+  label: unclear
+  why: the per-claim figures are over 3,975 claimant rows (a claim with two claimants counts twice), not the 3,450 claims

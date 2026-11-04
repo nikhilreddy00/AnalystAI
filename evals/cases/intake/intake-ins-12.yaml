@@ -1,0 +1,19 @@
+id: intake-ins-12
+category: clear
+pipeline: production
+source:
+  dataset: loss_run
+  seed: 1
+overview_done: true
+question: What did we pay net of salvage and subrogation by line?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: paid_net
+  columns:
+    by: Line of Business
+rationale: Net paid KPI by line.

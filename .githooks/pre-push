@@ -13,6 +13,11 @@ fi
 
 uv run ruff check .
 uv run pytest -q -n 8 -rf
+# CI's zero-suites job ($0, deterministic): Domain 4 went red twice on it unseen
+for suite in visualization cleaning ingestion; do
+  uv run python -m evals.run "$suite" --k 1 --max-usd 0.01 --fail-under 1.0 > /dev/null
+done
+uv run python -m evals.run quality --checks-only --k 1 --max-usd 0.01 --fail-under 0.85 > /dev/null
 (cd frontend && npx tsc --noEmit && npm run lint --silent \
   && node --experimental-strip-types --test src/lib/*.test.ts > /dev/null)
 echo "pre-push: all checks passed"

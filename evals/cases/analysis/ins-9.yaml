@@ -1,0 +1,28 @@
+id: ins-9
+domain: insurance
+category: counting
+pipeline: production
+dataset:
+  name: loss_run
+  seed: 1
+question: How many claims do we have by line of business?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Claim Number
+  segments:
+  - Line of Business
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Line of Business
+  truth_key: claims_by_line
+  abs_tol: 0.5
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Distinct claim numbers (a reopened claim and a two-claimant claim count once); claimant rows (2,314 / 1,661) or valuation rows are the trap.

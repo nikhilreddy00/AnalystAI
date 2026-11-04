@@ -1,0 +1,19 @@
+id: intake-ins-03
+category: clear
+pipeline: production
+source:
+  dataset: loss_run
+  seed: 1
+overview_done: true
+question: What's our average claim severity by coverage?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: severity
+  columns:
+    by: Coverage
+rationale: Severity KPI by coverage.

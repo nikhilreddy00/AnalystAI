@@ -87,7 +87,10 @@ async def test_the_filtered_endpoint_recomputes_the_latest_dashboard(tmp_path, m
     from memory.session_store import InMemorySessionStore
     from orchestrator.state import AnalysisFindings, AnalysisSession, InsightReport
 
-    clean, contract, charts, kpis, _ = _dashboard("inpatient")
+    import asyncio
+    # _built runs the cleaning agent with asyncio.run: never inside this test's own event loop
+    # (it passed only when another test had filled the cache first)
+    clean, contract, charts, kpis, _ = await asyncio.to_thread(_dashboard, "inpatient")
     path = tmp_path / "clean.parquet"
     clean.to_parquet(path, index=False)
     store = InMemorySessionStore()
@@ -173,3 +176,51 @@ def test_the_endpoint_refilters_only_this_sessions_pins():
 
     from api.routes import dashboard
     assert "session_ids={session.session_id}" in inspect.getsource(dashboard.get_latest_dashboard_filtered)
+
+
+async def test_a_loss_runs_earlier_valuations_count_against_no_dashboard_cap(tmp_path, monkeypatch):
+    """Domain 4 browser check: a 38,255-row loss run (3,975 claimant rows at their latest valuation)
+    got 422 'too large' from /latest/data. Superseded versions are never counted or shown: the
+    cap reads the rows that count, the browser gets those, and the server's filtered numbers
+    still judge kinds on every row."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from starlette.requests import Request
+
+    from api.auth import UserProfile
+    from api.rate_limit import limiter
+    from api.routes import dashboard
+    from api.routes.dashboard import FilterRequest, get_latest_dashboard_data, get_latest_dashboard_filtered
+    from memory.session_store import InMemorySessionStore
+    from orchestrator.state import AnalysisFindings, AnalysisSession, InsightReport
+
+    clean, contract, charts, kpis, truth = await asyncio.to_thread(_dashboard, "loss_run")
+    path = tmp_path / "clean.parquet"
+    clean.to_parquet(path, index=False)
+    store = InMemorySessionStore()
+    await store.create(AnalysisSession(
+        session_id="s1", user_id="owner", data_contract=contract, chart_configs=charts,
+        cleaned_data_path=str(path), analysis_findings=AnalysisFindings(
+            eda_summary={}, correlations={}, trends=[], segments=[], anomalies=[], statistical_tests=[],
+            forecast_points=[], distributions={}, code_executed="", kpis=kpis),
+        insight_report=InsightReport(executive_summary="x", technical_findings=[], recommended_actions=[],
+                                     anomaly_alerts=[], proactive_questions=[], methodology_notes="")))
+    monkeypatch.setattr(limiter, "enabled", False)
+    monkeypatch.setattr(dashboard, "MAX_ROWS", 10_000)   # below the file, above its counted rows
+    app = SimpleNamespace(state=SimpleNamespace(session_store=store, limiter=limiter))
+    req = Request({"type": "http", "method": "GET", "path": "/", "headers": [], "app": app,
+                   "client": ("127.0.0.1", 1)})
+    data = await get_latest_dashboard_data(req, UserProfile("owner"))
+    assert data["row_count"] == truth["claim_rows_latest"]
+    home = await get_latest_dashboard_filtered(req, FilterRequest(
+        filters={"Line of Business": {"kind": "equality", "value": "Home"}}), UserProfile("owner"))
+    assert home["tiles"]["Open case reserves"] == f"${truth['open_reserve_by_line']['Home']:,.2f}"
+    # 'Showing N of M records': the filtered N counts the same rows as M (browser check: 15,780 of 3,975)
+    assert home["rows"] == truth["claimants_by_line"]["Home"]
+    # security review: the server still reads every row, so the whole frame has a hard cap too
+    from fastapi import HTTPException
+    monkeypatch.setattr(dashboard, "MAX_RAW_ROWS", 30_000)
+    with pytest.raises(HTTPException) as e:
+        await get_latest_dashboard_data(req, UserProfile("owner"))
+    assert e.value.status_code == 422

@@ -438,6 +438,10 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                 f"lines are blank by the export's layout; {first_pct:g}% of orders have no value. "
                 "An order-level field, kept as it is.", 0, pct, first_pct)
             continue
+        if layout.get(col) == "marker":   # an event code on the rows it hit: blank = none
+            log(col, "keep", "marker", f"Filled only on the rows it applies to, so {missing} "
+                "blanks mean none, not missing values. Kept as it is.", 0, pct, pct)
+            continue
         if layout.get(col) == "paired":   # Debit or Credit: each row fills one of the pair
             log(col, "keep", "paired", "Each row fills this column or its pair (money out or in), so "
                 f"{missing} blanks are the export's layout, not missing values. Kept as it is.",
@@ -594,11 +598,16 @@ def _build_summary(decisions: list[CleaningDecision], outliers: list[str], high_
     return " ".join(parts)
 
 
+# The decisions that keep a column's blanks as the file's layout (never "missing"): one list for
+# every reader of the audit
+LAYOUT_STRATEGIES = ("order_level", "paired", "conditional", "marker")
+
+
 def build_evidence(audit: CleaningAudit) -> Evidence:
     """One Evidence item for what cleaning changed, from the audit only: counts and the
     decisions' reasons, no cell values beyond masked labels."""
     # Medium only when it matters: a mostly-empty column, or > 5% of a column unreadable.
-    layout = {d.column for d in audit.decisions if d.strategy in ("order_level", "conditional")}
+    layout = {d.column for d in audit.decisions if d.strategy in LAYOUT_STRATEGIES}
     risky = [d.column for d in audit.decisions if d.column not in layout and (
              d.after_null_pct > HIGH_NULL_PCT
              or (d.operation == "type_coerce" and d.after_null_pct - d.before_null_pct > 5))]

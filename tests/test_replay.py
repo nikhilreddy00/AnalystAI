@@ -69,6 +69,20 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
 # A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
 # to its stored output (that is the $0 regression check over every old case).
 CHANGED = {
+    **{(r, "ins-45-policies-overview"): "Domain 4 audit pass 1: a policy table's transaction type "
+       "is its status (renewal status blank by design on cancellation rows), earned-premium and "
+       "protected-attribute cautions, lapse rate"
+       for r in ("insight-20261104T015642Z.json", "insight-20261104T015458Z.json")},
+    ("insight-20261104T015458Z.json", "ins-46-loss-run-overview"):
+        "Domain 4 live run: a column blank by the file's layout (Case Reserve on closed claims) is "
+        "no longer a 'missing' evidence note or CRITICAL alert (one LAYOUT_STRATEGIES rule)",
+    **{("insight-20261104T014955Z.json", c): "Domain 4: the insurance pack's KPI order (tiles: "
+       "policies on premium tables, severity on loss runs) reorders the stated caveat's KPI list"
+       for c in ("ins-45-policies-overview", "ins-46-loss-run-overview")},
+    ("intake-20261104T012924Z.json", "intake-ins-09"):
+        "Domain 4 intake gate: 'premium did we write' is the written_premium KPI's word",
+    ("intake-20261104T012924Z.json", "intake-ins-11"):
+        "Domain 4 intake gate: 'whole life policies' is life insurance: unsupported, asked",
     ("intake-20261102T204144Z.json", "intake-bank-01"):
         "Domain 2 intake gate: an overview intent naming a KPI after the overview is its time series",
     ("intake-20261102T204144Z.json", "intake-bank-09"):

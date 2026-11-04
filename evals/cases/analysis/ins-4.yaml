@@ -1,0 +1,30 @@
+id: ins-4
+domain: insurance
+category: ratio
+pipeline: production
+dataset:
+  name: policies
+  seed: 1
+question: What is the loss ratio by line of business?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Incurred Losses
+  - Earned Premium
+  segments:
+  - Line of Business
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Line of Business
+  truth_key: loss_ratio_by_line
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Incurred ÷ EARNED premium, a ratio of sums per line; the written-premium ratio (0.47 / 0.58) is the trap.

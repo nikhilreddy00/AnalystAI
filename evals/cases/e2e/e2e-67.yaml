@@ -1,0 +1,40 @@
+id: e2e-67
+domain: insurance
+dataset:
+  name: loss_run
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: must_not_number
+  truth_key: incurred_summed_all_valuations
+  rel_tol: 0.01
+  scope: report
+- kind: must_match
+  pattern: develop|immature|not (yet )?final|will (likely |usually )?rise
+  scope: report
+turns:
+- question: Which line has the highest severity?
+  checks:
+  - kind: number_in_answer
+    truth_key: severity_by_line.Home
+    rel_tol: 0.02
+  - kind: must_not_number
+    truth_key: severity_per_claimant_by_line.Home
+    rel_tol: 0.01
+- question: And the open reserves by line?
+  checks:
+  - kind: number_in_answer
+    truth_key: open_reserve_by_line.Auto
+    rel_tol: 0.01
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Multi-turn: loss run overview, a severity follow-up (per claim, not per claimant), then an
+  elliptical reserves follow-up.'

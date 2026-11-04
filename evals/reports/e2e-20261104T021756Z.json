@@ -1,0 +1,2328 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261104T021756Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "de073a1",
+  "started_at": "20261104T021756Z",
+  "only": "e2e-65",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 6,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0176,
+  "latency_p50_s": 18.31,
+  "latency_p95_s": 18.53,
+  "by_domain": {
+   "insurance": {
+    "cases": 1,
+    "k_min": 3,
+    "k_max": 3,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 6,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-65": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22483450 [(1.0, None)] in answer; saw [3450.0]"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "817e2fd3-3f89-4d17-afca-91218713897b",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "How many claims do we have?",
+       "timestamp": "2026-11-04T02:18:12.905285Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+       "timestamp": "2026-11-04T02:18:13.373516Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/loss_run-1.json",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "How many claims do we have?",
+      "target_metrics": [
+       "Claim Number"
+      ],
+      "timeframe": null,
+      "segments": [],
+      "analysis_types": [
+       "eda"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "top_n",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "claims",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Home",
+         "Home",
+         "Home",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-30T00:00:00",
+         "2026-06-30T00:00:00",
+         "2026-03-31T00:00:00",
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         6280.2,
+         6288.38,
+         3058.44,
+         4106.84,
+         4782.12
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from a JSON file.",
+       "code": "pd.read_json(<uploaded file>)",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"d3bc6ed189643287\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "d3bc6ed189643287b7c001fbc5d189797271004c875f263acdc6960bea183467",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Case Reserve",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 70.9,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Cat Event",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 96.1,
+        "after_null_pct": 96.1,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "non_product",
+        "reason": "34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data.",
+        "rows_affected": 34280,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 38255,
+      "rows_after": 38255,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: Incurred. Final dataset: 38255 rows (started with 38255).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Incurred",
+         "extreme_count": 0,
+         "mild_count": 0,
+         "extreme_pct": 14.419030192131748,
+         "lower_bound": 17.56784811062191,
+         "upper_bound": 832803.7189879522,
+         "mild_lower_bound": 183.31976933569996,
+         "mild_upper_bound": 83893.3732647737,
+         "used_log_transform": true,
+         "heavy_tailed": true,
+         "message": "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Paid to Date",
+        "Incurred",
+        "Salvage Subrogation"
+       ],
+       "skipped_columns": {
+        "Claim Number": "constant or unsupported",
+        "Policy Number": "constant or unsupported",
+        "Line of Business": "binary column (only 2 values)",
+        "Coverage": "non-numeric",
+        "Loss Date": "datetime column",
+        "Report Date": "datetime column",
+        "Valuation Date": "datetime column",
+        "Claim Status": "non-numeric",
+        "Case Reserve": "70.9% missing",
+        "Cat Event": "constant or unsupported"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Loss Date": [
+        "2022-01-01",
+        "2026-09-28",
+        57
+       ],
+       "Report Date": [
+        "2022-01-03",
+        "2026-09-30",
+        57
+       ],
+       "Valuation Date": [
+        "2022-12-31",
+        "2026-09-30",
+        46
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Loss Date": [
+        "2026-09",
+        28
+       ]
+      },
+      "main_currency": null
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "top_n",
+      "answer_text": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-04T02:18:13.373464Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Claim Number": "Claim Number",
+       "Claimant Number": "Claimant Number",
+       "Policy Number": "Policy Number",
+       "Line of Business": "Line of Business",
+       "Coverage": "Coverage",
+       "Loss Date": "Loss Date",
+       "Report Date": "Report Date",
+       "Valuation Date": "Valuation Date",
+       "Claim Status": "Claim Status",
+       "Paid to Date": "Paid to Date",
+       "Case Reserve": "Case Reserve",
+       "Incurred": "Incurred Amount",
+       "Salvage Subrogation": "Salvage & Subrogation",
+       "Cat Event": "Catastrophe Event"
+      },
+      "entity_singular": "claim valuation",
+      "entity_plural": "claim valuations"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/817e2fd3-3f89-4d17-afca-91218713897b/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-04T02:17:57.117780Z",
+     "updated_at": "2026-11-04T02:18:13.373517Z"
+    },
+    "domain": "insurance",
+    "latency_s": 17.7,
+    "cost_usd": 0.01735,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"How do total Incurred losses break down by Line of Business and Coverage, and which combinations account for the largest share of overall exposure?\",\n  \"What is the accident-year development pattern for Incurred losses \u2014 specifically, how do cumulative Paid to Date and Case Reserve balances compare across Loss Date years, keeping in mind that 2024\u20132026 years are still maturing?\",\n  \"How many claims currently have an Open Claim Status, what is the total Case Reserve held against them, and how does that open reserve concentration vary by Line of Business and Coverage?\",\n  \"Which Cat Events are driving the highest Incurred losses and largest open Case Reserves, and are there specific Loss Date periods where catastrophe-related claims are clustering?\",\n  \"Are there claims where Salvage Subrogation recoveries are unusually high relative to Paid to Date, and do those anomalies concentrate in particular Lines of Business, Coverage types, or Claim Status categories?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Claim Number\": \"Claim Number\",\n    \"Claimant Number\": \"Claimant Number\",\n    \"Policy Number\": \"Policy Number\",\n    \"Line of Business\": \"Line of Business\",\n    \"Coverage\": \"Coverage\",\n    \"Loss Date\": \"Loss Date\",\n    \"Report Date\": \"Report Date\",\n    \"Valuation Date\": \"Valuation Date\",\n    \"Claim Status\": \"Claim Status\",\n    \"Paid to Date\": \"Paid to Date\",\n    \"Case Reserve\": \"Case Reserve\",\n    \"Incurred\": \"Incurred Amount\",\n    \"Salvage Subrogation\": \"Salvage & Subrogation\",\n    \"Cat Event\": \"Catastrophe Event\"\n  },\n  \"entity_singular\": \"claim valuation\",\n  \"entity_plural\": \"claim valuations\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many claims do we have?\",\n  \"target_metrics\": [\"Claim Number\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"claims\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22483450 [(1.0, None)] in answer; saw [3450.0]"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "ca67eba0-2a77-4497-bdf9-0a519cc6dfcc",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "How many claims do we have?",
+       "timestamp": "2026-11-04T02:18:13.963712Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+       "timestamp": "2026-11-04T02:18:14.784581Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/loss_run-1.json",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "How many claims do we have?",
+      "target_metrics": [
+       "Claim Number"
+      ],
+      "timeframe": null,
+      "segments": [],
+      "analysis_types": [
+       "eda"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "top_n",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "claims",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Home",
+         "Home",
+         "Home",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-30T00:00:00",
+         "2026-06-30T00:00:00",
+         "2026-03-31T00:00:00",
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         6280.2,
+         6288.38,
+         3058.44,
+         4106.84,
+         4782.12
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from a JSON file.",
+       "code": "pd.read_json(<uploaded file>)",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"d3bc6ed189643287\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "d3bc6ed189643287b7c001fbc5d189797271004c875f263acdc6960bea183467",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Case Reserve",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 70.9,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Cat Event",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 96.1,
+        "after_null_pct": 96.1,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "non_product",
+        "reason": "34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data.",
+        "rows_affected": 34280,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 38255,
+      "rows_after": 38255,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: Incurred. Final dataset: 38255 rows (started with 38255).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Incurred",
+         "extreme_count": 0,
+         "mild_count": 0,
+         "extreme_pct": 14.419030192131748,
+         "lower_bound": 17.56784811062191,
+         "upper_bound": 832803.7189879522,
+         "mild_lower_bound": 183.31976933569996,
+         "mild_upper_bound": 83893.3732647737,
+         "used_log_transform": true,
+         "heavy_tailed": true,
+         "message": "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Paid to Date",
+        "Incurred",
+        "Salvage Subrogation"
+       ],
+       "skipped_columns": {
+        "Claim Number": "constant or unsupported",
+        "Policy Number": "constant or unsupported",
+        "Line of Business": "binary column (only 2 values)",
+        "Coverage": "non-numeric",
+        "Loss Date": "datetime column",
+        "Report Date": "datetime column",
+        "Valuation Date": "datetime column",
+        "Claim Status": "non-numeric",
+        "Case Reserve": "70.9% missing",
+        "Cat Event": "constant or unsupported"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Loss Date": [
+        "2022-01-01",
+        "2026-09-28",
+        57
+       ],
+       "Report Date": [
+        "2022-01-03",
+        "2026-09-30",
+        57
+       ],
+       "Valuation Date": [
+        "2022-12-31",
+        "2026-09-30",
+        46
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Loss Date": [
+        "2026-09",
+        28
+       ]
+      },
+      "main_currency": null
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "top_n",
+      "answer_text": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-04T02:18:14.784542Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Claim Number": "Claim Number",
+       "Claimant Number": "Claimant Number",
+       "Policy Number": "Policy Number",
+       "Line of Business": "Line of Business",
+       "Coverage": "Coverage",
+       "Loss Date": "Loss Date",
+       "Report Date": "Report Date",
+       "Valuation Date": "Valuation Date",
+       "Claim Status": "Claim Status",
+       "Paid to Date": "Paid to Date",
+       "Case Reserve": "Case Reserve",
+       "Incurred": "Incurred Amount",
+       "Salvage Subrogation": "Salvage & Subrogation",
+       "Cat Event": "Catastrophe Event"
+      },
+      "entity_singular": "claim valuation",
+      "entity_plural": "claim valuations"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/ca67eba0-2a77-4497-bdf9-0a519cc6dfcc/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-04T02:17:57.521411Z",
+     "updated_at": "2026-11-04T02:18:14.784582Z"
+    },
+    "domain": "insurance",
+    "latency_s": 18.31,
+    "cost_usd": 0.01773,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"How do total Incurred losses break down by Loss Date accident year and Line of Business, and which years appear to still be materially developing based on open Case Reserves relative to Paid to Date?\",\n  \"Across all open claims by Claim Status, what is the total Case Reserve by Line of Business and Coverage, and which combinations carry the highest concentration of reserve exposure?\",\n  \"Which Cat Events account for the largest share of Incurred losses and open Case Reserves, and how does the average Incurred per claim for catastrophe-flagged claims compare to non-catastrophe claims?\",\n  \"What is the distribution of reporting lag \u2014 days between Loss Date and Report Date \u2014 by Line of Business and Coverage, and are there clusters of claims with unusually long lags that might signal late-reported or complex losses?\",\n  \"For claims where Salvage Subrogation has been recorded, how does the net Incurred (Incurred minus Salvage Subrogation) compare to gross Incurred across Line of Business and Coverage, and which segments show the greatest recovery offset?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Claim Number\": \"Claim Number\",\n    \"Claimant Number\": \"Claimant Number\",\n    \"Policy Number\": \"Policy Number\",\n    \"Line of Business\": \"Line of Business\",\n    \"Coverage\": \"Coverage\",\n    \"Loss Date\": \"Loss Date\",\n    \"Report Date\": \"Report Date\",\n    \"Valuation Date\": \"Valuation Date\",\n    \"Claim Status\": \"Claim Status\",\n    \"Paid to Date\": \"Paid to Date\",\n    \"Case Reserve\": \"Case Reserve\",\n    \"Incurred\": \"Incurred Amount\",\n    \"Salvage Subrogation\": \"Salvage & Subrogation\",\n    \"Cat Event\": \"Catastrophe Event\"\n  },\n  \"entity_singular\": \"claim valuation\",\n  \"entity_plural\": \"claim valuations\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many claims do we have?\",\n  \"target_metrics\": [\"Claim Number\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"claims\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22483450 [(1.0, None)] in answer; saw [3450.0]"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "8f17e4fa-b4c9-478c-a6ec-5c1a83710728",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "How many claims do we have?",
+       "timestamp": "2026-11-04T02:18:13.969927Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+       "timestamp": "2026-11-04T02:18:14.868972Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/loss_run-1.json",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "How many claims do we have?",
+      "target_metrics": [
+       "Claim Number"
+      ],
+      "timeframe": null,
+      "segments": [],
+      "analysis_types": [
+       "eda"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "claims",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Home",
+         "Home",
+         "Home",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-30T00:00:00",
+         "2026-06-30T00:00:00",
+         "2026-03-31T00:00:00",
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         6280.2,
+         6288.38,
+         3058.44,
+         4106.84,
+         4782.12
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from a JSON file.",
+       "code": "pd.read_json(<uploaded file>)",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"d3bc6ed189643287\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "d3bc6ed189643287b7c001fbc5d189797271004c875f263acdc6960bea183467",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Case Reserve",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 70.9,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Cat Event",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 96.1,
+        "after_null_pct": 96.1,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "non_product",
+        "reason": "34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data.",
+        "rows_affected": 34280,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 38255,
+      "rows_after": 38255,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: Incurred. Final dataset: 38255 rows (started with 38255).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Incurred",
+         "extreme_count": 0,
+         "mild_count": 0,
+         "extreme_pct": 14.419030192131748,
+         "lower_bound": 17.56784811062191,
+         "upper_bound": 832803.7189879522,
+         "mild_lower_bound": 183.31976933569996,
+         "mild_upper_bound": 83893.3732647737,
+         "used_log_transform": true,
+         "heavy_tailed": true,
+         "message": "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Paid to Date",
+        "Incurred",
+        "Salvage Subrogation"
+       ],
+       "skipped_columns": {
+        "Claim Number": "constant or unsupported",
+        "Policy Number": "constant or unsupported",
+        "Line of Business": "binary column (only 2 values)",
+        "Coverage": "non-numeric",
+        "Loss Date": "datetime column",
+        "Report Date": "datetime column",
+        "Valuation Date": "datetime column",
+        "Claim Status": "non-numeric",
+        "Case Reserve": "70.9% missing",
+        "Cat Event": "constant or unsupported"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Loss Date": [
+        "2022-01-01",
+        "2026-09-28",
+        57
+       ],
+       "Report Date": [
+        "2022-01-03",
+        "2026-09-30",
+        57
+       ],
+       "Valuation Date": [
+        "2022-12-31",
+        "2026-09-30",
+        46
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Loss Date": [
+        "2026-09",
+        28
+       ]
+      },
+      "main_currency": null
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "Claims: 3,450. How: Distinct Claim Number; over counted rows (earlier valuations of claims left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-04T02:18:14.868931Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Claim Number": "Claim Number",
+       "Claimant Number": "Claimant Number",
+       "Policy Number": "Policy Number",
+       "Line of Business": "Line of Business",
+       "Coverage": "Coverage",
+       "Loss Date": "Loss Date",
+       "Report Date": "Report Date",
+       "Valuation Date": "Valuation Date",
+       "Claim Status": "Claim Status",
+       "Paid to Date": "Paid to Date",
+       "Case Reserve": "Case Reserve",
+       "Incurred": "Incurred Amount",
+       "Salvage Subrogation": "Salvage & Subrogation",
+       "Cat Event": "Catastrophe Event"
+      },
+      "entity_singular": "claim valuation",
+      "entity_plural": "claim valuations"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/8f17e4fa-b4c9-478c-a6ec-5c1a83710728/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-04T02:17:57.913642Z",
+     "updated_at": "2026-11-04T02:18:14.868973Z"
+    },
+    "domain": "insurance",
+    "latency_s": 18.55,
+    "cost_usd": 0.01767,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"How do total Incurred losses break down by Loss Date accident year and Line of Business, and which years appear to still be materially developing based on open Case Reserves relative to Paid to Date?\",\n  \"Across all open claims by Claim Status, what is the total Case Reserve by Line of Business and Coverage, and which combinations carry the highest concentration of reserve exposure?\",\n  \"Which Cat Event codes account for the largest share of Incurred losses and open Case Reserves, and how do catastrophe-flagged claims compare to non-catastrophe claims in average Incurred amount and closure rates?\",\n  \"What is the average and total lag in days between Loss Date and Report Date by Line of Business and Coverage, and are there clusters of late-reported claims that could signal reserve adequacy concerns?\",\n  \"For claims where Salvage Subrogation has a non-zero value, how does net Incurred (Incurred minus Salvage Subrogation) compare to gross Incurred across Line of Business and Coverage, and which segments show the greatest recovery offset?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Claim Number\": \"Claim Number\",\n    \"Claimant Number\": \"Claimant Number\",\n    \"Policy Number\": \"Policy Number\",\n    \"Line of Business\": \"Line of Business\",\n    \"Coverage\": \"Coverage\",\n    \"Loss Date\": \"Loss Date\",\n    \"Report Date\": \"Report Date\",\n    \"Valuation Date\": \"Valuation Date\",\n    \"Claim Status\": \"Claim Status\",\n    \"Paid to Date\": \"Paid to Date\",\n    \"Case Reserve\": \"Case Reserve\",\n    \"Incurred\": \"Incurred Amount\",\n    \"Salvage Subrogation\": \"Salvage & Subrogation\",\n    \"Cat Event\": \"Catastrophe Event\"\n  },\n  \"entity_singular\": \"claim valuation\",\n  \"entity_plural\": \"claim valuations\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many claims do we have?\",\n  \"target_metrics\": [\"Claim Number\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"claims\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

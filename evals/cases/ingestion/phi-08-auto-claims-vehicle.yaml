@@ -1,0 +1,20 @@
+id: phi-08-auto-claims-vehicle
+category: phi
+seed: 58
+rows: 300
+format: {type: csv}
+columns:
+- [Claim Number, visit_id]
+- [Claimant Name, full_name]
+- [Vehicle Ref, vin]
+- [Driver License No, driver_licence]
+- [Loss Date, date_iso]
+- [Case Reserve, money]
+- [Paid to Date, money]
+label_note: 'Auto claims: a VIN (by its check digit, under a neutral header) and a driver licence number identify the insured (NAIC Model 668): personal data, masked; not patient data.'
+expect_domain: insurance
+expect_roles:
+  date: Loss Date
+  claim_id: Claim Number
+  paid: Paid to Date
+  reserve: Case Reserve

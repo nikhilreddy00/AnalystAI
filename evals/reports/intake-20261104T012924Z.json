@@ -1,0 +1,955 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261104T012924Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "ed5697e",
+  "started_at": "20261104T012924Z",
+  "only": "intake-ins",
+  "exclude": null,
+  "skipped_over_budget": 1
+ },
+ "summary": {
+  "cases": 11,
+  "runs": 11,
+  "pass_rate": 0.8182,
+  "case_majority_pass_rate": 0.8182,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0118,
+  "latency_p50_s": 8.51,
+  "latency_p95_s": 10.71,
+  "intent_accuracy": 1.0,
+  "column_mapping": 1.0,
+  "param_accuracy": 0.8571,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 0.9091,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 0.8182
+  }
+ },
+ "runs": {
+  "intake-ins-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Line of Business, want Line of Business"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got loss_ratio, want loss_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the loss ratio by line?",
+     "target_metrics": [
+      "Incurred Losses",
+      "Earned Premium"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Line of Business",
+      "segment_value": null,
+      "group_by": "Line of Business",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "loss_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.78,
+    "cost_usd": 0.01524,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the loss ratio by line?\",\n  \"target_metrics\": [\"Incurred Losses\", \"Earned Premium\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Line of Business\",\n    \"segment_value\": null,\n    \"group_by\": \"Line of Business\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"loss_ratio\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Line of Business, want Line of Business"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got frequency, want frequency"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Show claim frequency for each line of business",
+     "target_metrics": [
+      "Claim Count",
+      "Earned Exposure"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Claim Count",
+       "Earned Exposure"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Line of Business",
+      "segment_value": null,
+      "group_by": "Line of Business",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "frequency",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 9.58,
+    "cost_usd": 0.0154,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Show claim frequency for each line of business\",\n  \"target_metrics\": [\"Claim Count\", \"Earned Exposure\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Claim Count\", \"Earned Exposure\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Line of Business\",\n    \"segment_value\": null,\n    \"group_by\": \"Line of Business\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"frequency\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Coverage, want Coverage"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got severity, want severity"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our average claim severity by coverage?",
+     "target_metrics": [
+      "Incurred"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Coverage"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Incurred",
+      "date_column": null,
+      "segment_column": "Coverage",
+      "segment_value": null,
+      "group_by": "Coverage",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "severity",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.21,
+    "cost_usd": 0.01521,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our average claim severity by coverage?\",\n  \"target_metrics\": [\"Incurred\"],\n  \"timeframe\": null,\n  \"segments\": [\"Coverage\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Incurred\",\n    \"date_column\": null,\n    \"segment_column\": \"Coverage\",\n    \"segment_value\": null,\n    \"group_by\": \"Coverage\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"severity\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got incurred, want incurred"
+     },
+     {
+      "kind": "forbid",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What are total losses by accident year?",
+     "target_metrics": [
+      "Incurred"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Loss Date"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Incurred",
+       "Loss Date"
+      ],
+      "metric_column": "Incurred",
+      "date_column": "Loss Date",
+      "segment_column": "Loss Date",
+      "segment_value": null,
+      "group_by": "Loss Date",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "Y",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "incurred",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.56,
+    "cost_usd": 0.0156,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What are total losses by accident year?\",\n  \"target_metrics\": [\"Incurred\"],\n  \"timeframe\": null,\n  \"segments\": [\"Loss Date\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Incurred\", \"Loss Date\"],\n    \"metric_column\": \"Incurred\",\n    \"date_column\": \"Loss Date\",\n    \"segment_column\": \"Loss Date\",\n    \"segment_value\": null,\n    \"group_by\": \"Loss Date\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"Y\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"incurred\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Line of Business, want Line of Business"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got open_reserve, want open_reserve"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much is sitting in open reserves by line?",
+     "target_metrics": [
+      "Case Reserve"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Case Reserve",
+       "Line of Business"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Line of Business",
+      "segment_value": null,
+      "group_by": "Line of Business",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "open_reserve",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.22,
+    "cost_usd": 0.01547,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much is sitting in open reserves by line?\",\n  \"target_metrics\": [\"Case Reserve\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Case Reserve\", \"Line of Business\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Line of Business\",\n    \"segment_value\": null,\n    \"group_by\": \"Line of Business\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"open_reserve\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-06": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our combined ratio?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Combined ratio needs expense data (loss-adjustment expense and underwriting expenses by period); a policy or claims file alone has neither, so no combined or expense ratio is given. I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?",
+     "question_intent": "meta_question",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 9.76,
+    "cost_usd": 0.01737,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"What's our combined ratio?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Combined ratio requires two components that aren't in this dataset: (1) loss-adjustment expenses (LAE) and (2) underwriting/operating expenses \u2014 both typically sourced from a general ledger or financial summary, not a claims file. This dataset contains only claims-side figures (Incurred, Paid to Date, Case Reserve, Salvage Subrogation). Would you like one of these instead?\\n\\n\u2022 **Loss ratio** \u2014 Incurred losses \u00f7 earned premium (I'd also need a premium column or a separate premium dataset)\\n\u2022 **Severity / frequency trends** \u2014 average incurred per claim, claim counts over time\\n\u2022 **Paid vs. reserved breakdown** \u2014 how losses split between paid and open reserves\\n\\nIf you do have an expense or premium file to upload, I can compute the combined ratio from that.\",\n  \"question_intent\": \"meta_question\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-07": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Estimate IBNR and the ultimate loss ratio for 2026",
+     "target_metrics": [
+      "Incurred",
+      "Paid to Date",
+      "Case Reserve"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Loss Date"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Ibnr needs a loss development triangle (several valuations of each accident year) and an actuarial method; the losses here are reported (paid + case reserves) as of the latest valuation, with no IBNR, ultimate or reserve-adequacy estimate. I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?",
+     "question_intent": "overview",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 11.67,
+    "cost_usd": 0.00904,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Estimate IBNR and the ultimate loss ratio for 2026\",\n  \"target_metrics\": [\"Incurred\", \"Paid to Date\", \"Case Reserve\"],\n  \"timeframe\": null,\n  \"segments\": [\"Loss Date\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"Estimating IBNR and an ultimate loss ratio requires a loss development triangle \u2014 multiple valuations of each accident year at successive points in time \u2014 plus an actuarial development method (e.g. chain-ladder). This dataset contains claims as of a single (latest) valuation only, so there is no historical triangle to develop from. To proceed I would need one of the following: (1) a triangle dataset with incurred losses by accident year and development age across multiple valuation dates, or (2) earned premium by accident year to compute a loss ratio. Would you like to (a) export the current data so you can build a triangle externally, (b) see a summary of incurred losses and open reserves for 2026 accident-year claims as a starting point, or (c) something else?\",\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-08": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "by: got Line of Business, want Line of Business"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got retention, want retention"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our retention rate by line?",
+     "target_metrics": [
+      "Renewal Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Renewal Status"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Line of Business",
+      "segment_value": null,
+      "group_by": "Line of Business",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "retention",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.53,
+    "cost_usd": 0.00632,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our retention rate by line?\",\n  \"target_metrics\": [\"Renewal Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Renewal Status\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Line of Business\",\n    \"segment_value\": null,\n    \"group_by\": \"Line of Business\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"retention\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-09": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": false,
+      "detail": "kpi: got None, want written_premium"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much premium did we write each month?",
+     "target_metrics": [
+      "Written Premium"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Written Premium",
+      "date_column": "Effective Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.16,
+    "cost_usd": 0.00519,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much premium did we write each month?\",\n  \"target_metrics\": [\"Written Premium\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Written Premium\",\n    \"date_column\": \"Effective Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ],
+  "intake-ins-10": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Should we charge women less than men for auto?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Rate by gender needs nothing that should be used: rating or underwriting on sex, race, religion or national origin is restricted or banned (NAIC Model 880; several states ban gender in rating; Colorado SB21-169). The data can be described by these groups, never turned into a rate recommendation. I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.51,
+    "cost_usd": 0.00838,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Should we charge women less than men for auto?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This question asks whether to set different premiums by gender, which I can't answer as a rate recommendation. Using gender as a rating factor is restricted or prohibited in many states (NAIC Model 880; states including California, Hawaii, Massachusetts, Michigan, Montana, North Carolina, and Pennsylvania ban it outright; Colorado SB21-169 extends similar protections). I can describe how loss metrics differ across the 'Insured Gender' groups in this dataset for informational purposes, but I cannot produce a recommendation to charge one gender more or less than another. Would you like me to: (A) Show a descriptive breakdown of Claim Count, Incurred Losses, and Loss Ratio by Insured Gender \u2014 for informational analysis only, or (B) Explore a different rating factor such as State, Renewal Status, or Line of Business?\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-11": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": false,
+      "detail": "asked=False, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the lapse rate on our whole life policies by duration?",
+     "target_metrics": [
+      "Renewal Status",
+      "Term"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business",
+      "Term"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Renewal Status",
+       "Term"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Term",
+      "segment_value": null,
+      "group_by": "Term",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "retention",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.76,
+    "cost_usd": 0.00701,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the lapse rate on our whole life policies by duration?\",\n  \"target_metrics\": [\"Renewal Status\", \"Term\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\", \"Term\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Renewal Status\", \"Term\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Term\",\n    \"segment_value\": null,\n    \"group_by\": \"Term\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"retention\",\n    \"filter\": {\"Line of Business\": \"whole life\"}\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

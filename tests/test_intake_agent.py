@@ -140,6 +140,17 @@ async def test_clarification_answer_is_still_classified(recorded_llm):
     ("How has total revenue changed since January?", QuestionIntent.TIME_SERIES),
     ("What was total revenue last month?", QuestionIntent.TIME_SERIES),
     ("Total revenue for 2025?", QuestionIntent.TIME_SERIES),
+    # Domain 4 E2E (e2e-65): a count or amount asked with no period is the total
+    ("How many orders do we have?", QuestionIntent.SEGMENT_COMPARE),
+    ("How much revenue have we made?", QuestionIntent.SEGMENT_COMPARE),
+    ("How many orders did we get each month?", QuestionIntent.TIME_SERIES),
+    ("How many orders came in last month?", QuestionIntent.TIME_SERIES),
+    ("How much revenue did we make in 2025?", QuestionIntent.TIME_SERIES),
+    ("How much has revenue grown?", QuestionIntent.TIME_SERIES),
+    # negatives from banking and healthcare phrasing (a widened rule ships with them)
+    ("How many accounts were opened each quarter?", QuestionIntent.TIME_SERIES),
+    ("How much did we pay per month since January?", QuestionIntent.TIME_SERIES),
+    ("How many discharges did we have in March?", QuestionIntent.TIME_SERIES),
 ])
 async def test_a_total_question_is_the_overall_value_not_a_trend(recorded_llm, question, want):
     """Domain 3 E2E (e2e-57/60): 'How much did we pay in total?' came back as a time series and

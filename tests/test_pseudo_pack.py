@@ -15,14 +15,24 @@ WORDS = {"retail": r"sales?|orders?|returns?|refund(?:ed|s)?|cancell?ed|products
                    r"shoppers?|non-product",
          "banking": r"loans?|deposits?|npl|delinquen\w*|overdrafts?|on-book|charge-?offs?",
          "healthcare": r"patients?|readmi\w*|discharges?|claims?|payers?|denial\w*|alos|"
-                       r"encounters?|members?"}
+                       r"encounters?|members?",
+         "insurance": r"premiums?|polic(?:y|ies)|reserves?|incurred|claims?|claimants?|"
+                      r"valuations?|underwrit\w*|exposures?|loss ratio|accident years?"}
 LEXICON = re.compile(rf"\b({WORDS['retail']})\b", re.I)   # TEXT_DEFAULTS: fit every domain
 
 
 def _lexicon(domain: str) -> re.Pattern:
-    return re.compile(rf"\b({'|'.join(w for d, w in WORDS.items() if d != domain)})\b", re.I)
+    """The other domains' words, less the ones this domain shares (both say 'claims')."""
+    def alts(ws: str) -> list[str]:   # top-level alternatives: refund(?:ed|s)? stays whole
+        return re.split(r"\|(?![^(]*\))", ws)
+    own = set(alts(WORDS.get(domain, "")))
+    words = [w for d, ws in WORDS.items() if d != domain for w in alts(ws) if w not in own]
+    return re.compile(rf"\b({'|'.join(words)})\b", re.I)
+
+
 DATASETS = [("banking", n) for n in ("loan_tape", "card_ledger", "bank_statement", "ledger_drcr")] + [
-    ("healthcare", n) for n in ("inpatient", "health_claims")]
+    ("healthcare", n) for n in ("inpatient", "health_claims")] + [
+    ("insurance", n) for n in ("policies", "loss_run", "claims")]
 
 
 def _pseudo(domain: str = "banking"):
@@ -36,6 +46,7 @@ def _pseudo(domain: str = "banking"):
                  for k in real.kpis],
         "definitions": {k: f"⟦def_{k}⟧" for k in real.definitions},
         "unsupported": {k: f"⟦needs_{k}⟧" for k in real.unsupported},
+        "role_caveats": {k: f"⟦role_{k}⟧" for k in real.role_caveats},
     })
 
 

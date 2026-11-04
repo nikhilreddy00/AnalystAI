@@ -54,6 +54,10 @@ from scipy import stats
 from guardrails import rankable
 from domain_pack import (
     runout_months,
+    developing_note,
+    mixes,
+    roles_of,
+    kpi_roles,
     additive,
     entity_rows,
     layout_columns,
@@ -113,7 +117,10 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if conventions and named:   # a sales report names no consumers ("top 10 customers by email")
         return _unanswerable(intent, f"{sorted(named)[0]} identifies people, so answers aren't "
                              "grouped by it", ["Ask by customer id, country or product instead"])
-    grouped = intent != QuestionIntent.TOP_N or bool(params and params.group_by)   # "top 5 lines": rows
+    # "top 5 lines": rows; a top_n naming a KPI with no group and no ranking word ("How much
+    # have we incurred in total?") asks for the KPI (overall, or by its segment column)
+    grouped = intent != QuestionIntent.TOP_N or bool(params and (params.group_by or (
+        params.kpi and not _RANKING_RE.search(session.task_plan.raw_query or ""))))
     if params and conventions and intent in _KPI_INTENTS and not params.kpi and grouped and \
             (params.aggregation or "sum").lower() == "sum" and (kpi := _summed_kpi(pack, contract, params, df)):
         params = params.model_copy(update={"kpi": kpi})   # "sales by country": the pack's net sales
@@ -539,6 +546,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     if conventions and freq in ("W", "M", "Q", "Y"):   # a domain's rule: either end, any bucket
         series, partial = _cut_partial(series, s[date], freq, rule if freq == "W" else None,
                                        runout_months(contract))
+        partial += developing_note(contract, s, roles_of(contract, metric))
         if series.empty:
             return _unanswerable(QuestionIntent.TIME_SERIES, partial.strip(),
                                  ["Ask for a finer period (week or day)", "Ask for the total"])
@@ -975,6 +983,9 @@ def _date_of(contract: DataContract, params: TargetedParams, df: pd.DataFrame) -
 
 
 _KPI_INTENTS = {QuestionIntent.TOP_N, QuestionIntent.SEGMENT_COMPARE, QuestionIntent.TIME_SERIES}
+# A question that ranks rows or groups ("top 5 lines", "the largest claims")
+_RANKING_RE = re.compile(r"\b(?:top|bottom|largest|smallest|biggest|highest|lowest|most(?! recent)|"
+                         r"least|best(?! estimate)|worst|rank\w*)\b", re.I)
 
 
 def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
@@ -987,6 +998,13 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     kpi = pack.kpi(params.kpi)
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     full = df if full is None else full
+    all_rows = full   # row kinds are judged on all of it (a claim's latest valuation, whatever its status)
+    if named := _named_group(df, params):   # "frequency for Auto": that value's rows are counted
+        df = df[df[params.segment_column].astype(str) == named]
+        full = full[full[params.segment_column].astype(str) == named]   # periods read these rows
+        params = params.model_copy(update={"segment_column": None, "segment_value": None,
+                                           "group_by": None if params.group_by == params.segment_column
+                                           else params.group_by})
     _, currency, other = main_currency(df, roles)
     money = currency or next((c.unit for c in contract.columns if c.unit and c.name in
                               money_columns(pack, roles)), None)
@@ -1017,8 +1035,15 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     how = describe_kpi(pack, kpi.name, roles, present) + read + (
         f" {currency} only: {other:,} rows in other currencies left out." if other else "")   # counts too
     group = params.group_by or params.segment_column
+    if mixes(df, roles, kpi, group if group in df.columns else None):   # never one total across lines
+        per = roles[kpi.per]
+        if group or intent == QuestionIntent.TIME_SERIES or params.frequency:   # asked otherwise
+            return _unanswerable(intent, f"{kpi.phrase} is given by {per} only: one figure across "
+                                 f"them would mix their units", [f"{kpi.label} by {per}",
+                                                                f"{kpi.label} for {df[per].dropna().iloc[0]}"])
+        group, how = per, how + f" Given by {per} only: one figure across them would mix their units."
     if group and group in df.columns:
-        by = compute_kpi(df, roles, pack, kpi.name, by=group, full=full)
+        by = compute_kpi(df, roles, pack, kpi.name, by=group, full=all_rows)
         if by is None or by.empty:
             return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                                  ["Ask without the group", "Ask about a longer period"])
@@ -1032,9 +1057,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         if params.compare == "yoy" and date:
             prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                        weekly)
-            prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, by=group, full=full)
+            prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, by=group, full=all_rows)
             rows, days, cut = current_window(full, date, params.period_start, params.period_end, weekly)
-            now = compute_kpi(rows, roles, pack, kpi.name, by=group, full=full)
+            now = compute_kpi(rows, roles, pack, kpi.name, by=group, full=all_rows)
             if prior is None or now is None:
                 answer += f" No year-earlier comparison: {why or 'nothing to compare'}."
             elif lead in prior.index and lead in now.index and (kind == "percent" or prior[lead]):
@@ -1070,7 +1095,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         t = _local(pd.to_datetime(full[date], errors="coerce"))
         rule = _week_anchor(t, contract) if freq == "W" else freq
         frame = full.assign(_period=t.dt.to_period(rule))
-        series = compute_kpi(frame, roles, pack, kpi.name, by="_period", full=full)
+        series = compute_kpi(frame, roles, pack, kpi.name, by="_period", full=all_rows)
         if series is None or series.empty:
             return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here",
                                  [f"{kpi.label} overall"])
@@ -1080,8 +1105,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             # each month's average week (a distinct count, orders or customers, is the month's)
             weeks = t.groupby(t.dt.to_period("M")).nunique()
             series, unit = series / weeks.reindex(series.index).to_numpy(), " (average week)"
-        whole, note = _cut_partial(series, t, freq, rule if freq == "W" else None,
+        # the data's edges are the whole file's (a named value's first row is not its start)
+        covered = t if all_rows is full else _local(pd.to_datetime(all_rows[date], errors="coerce"))
+        whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
+        note += developing_note(contract, full, kpi_roles(pack, kpi.name))
         series = whole
         if asked:   # the buckets inside the asked window; comparisons still read `whole`
             lo, hi = period_window(full, date, params.period_start, params.period_end)[:2]
@@ -1133,7 +1161,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                  kpi.label, "sum" if kpi.den is None else "none", len(df))
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
-    value = compute_kpi(df, roles, pack, kpi.name, full=full)
+    value = compute_kpi(df, roles, pack, kpi.name, full=all_rows)
     if value is None:
         return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                              ["Ask about a longer period"])
@@ -1147,9 +1175,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     if (params.compare == "yoy" or auto) and date:
         prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                    weekly)
-        prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, full=full)
+        prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, full=all_rows)
         rows, days, cut = current_window(full, date, params.period_start, params.period_end, weekly)
-        now = compute_kpi(rows, roles, pack, kpi.name, full=full)   # the same days as the year-earlier window
+        now = compute_kpi(rows, roles, pack, kpi.name, full=all_rows)   # the same days as the year-earlier window
         both = prior is not None and now is not None and (kind == "percent" or prior != 0)
         if state:   # two dates, not two windows of days
             prior_period, days, cut = _as_of(prior_df, date), _as_of(rows, date), False

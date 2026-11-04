@@ -1,0 +1,43 @@
+id: ins-46-loss-run-overview
+domain: insurance
+category: straightforward
+label_note: 'A P&C loss run: each claimant''s latest valuation only, accident years 2025-2026 still developing,
+  losses reported (no IBNR); never an ultimate or combined ratio.'
+dataset:
+  name: loss_run
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- claim
+- claims
+plan:
+  target_metrics:
+  - Incurred
+  - Paid to Date
+  - Case Reserve
+  segments:
+  - Line of Business
+  analysis_types:
+  - eda
+  - trend
+  - segmentation
+findings:
+- kind: trend
+  column: Incurred
+- kind: segment
+  segment_column: Line of Business
+  metric: Incurred
+  aggregation: sum
+- kind: segment
+  segment_column: Line of Business
+  metric: Case Reserve
+  aggregation: sum
+expect:
+  must_mention:
+  - develop|immature|not (yet )?final|will (likely |usually )?rise
+  - home
+  must_not_match:
+  - (ultimate (loss ratio|losses)|IBNR|combined ratio)( estimate)? (is|of|was|at|totals?|comes to|stands
+    at|estimated at) (about |around |roughly )?[$\d]|(the|our) final loss ratio|loss ratio .{0,20}(is|was)
+    final
+  - net sales|order value|basket|outstanding balance|\bNPL\b|readmission|denial

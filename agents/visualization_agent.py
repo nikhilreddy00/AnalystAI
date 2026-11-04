@@ -2840,11 +2840,14 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     for every chart rebuilt from the filtered rows (a chart from the model's findings can't be:
     it keeps its pill), tiles: {label: value}, rows: n, suppressed}. On patient data a part of
     fewer than 11 records reports no number (a small cell, ADR-0008)."""
+    from domain_pack import superseded
     from guardrails import SMALL_CELL
     part = apply_filters(df, filters)
-    if part.empty or (contract is not None and contract.phi and len(part) < SMALL_CELL):
-        return {"charts": {}, "tiles": {}, "rows": int(len(part)),
-                "suppressed": bool(len(part)) and bool(contract and contract.phi)}
+    # the records shown and counted: a chain's earlier versions are neither (judged on all rows)
+    n = int((~superseded(df, contract)).reindex(part.index).sum())
+    if part.empty or (contract is not None and contract.phi and n < SMALL_CELL):
+        return {"charts": {}, "tiles": {}, "rows": n,
+                "suppressed": bool(n) and bool(contract and contract.phi)}
     ctx = build_context(part, contract=contract, narrative=narrative)
     ctx.full = df
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(
@@ -2853,4 +2856,4 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     out = {c.id: fresh[k] for c in charts if (k := _chart_key(c)) in fresh}
     tiles = {k.label: k.value for k in generate_smart_kpis(part, ctx.roles, query, narrative, contract,
                                                            full=df)}
-    return {"charts": out, "tiles": tiles, "rows": int(len(part)), "suppressed": False}
+    return {"charts": out, "tiles": tiles, "rows": n, "suppressed": False}

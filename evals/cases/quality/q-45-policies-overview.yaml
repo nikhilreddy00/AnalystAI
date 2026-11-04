@@ -1,0 +1,29 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-45-policies-overview
+insight_case: ins-45-policies-overview
+category: straightforward
+source:
+  report: insight-20261104T031810Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 0
+  kind: number
+  label: contradicted
+  text: This P&C insurance dataset covers 1,300 policies across Auto and Home lines, with $4,023,883.78
+    in earned premium and a 51.2% loss ratio over a 46-month period ending October 2026.
+- op: replace
+  i: 2
+  kind: certainty
+  label: overstated
+  text: Losses for 2025 and 2026 are final, so the 60.5% loss ratio can be compared directly with
+    earlier years.
+- op: replace
+  i: 3
+  kind: causal
+  label: overstated
+  text: Auto's losses are driven by its female policyholders, so raising auto rates for women would
+    bring the Auto loss ratio down.
+natural: []

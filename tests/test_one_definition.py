@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 ROOT = Path(__file__).parent.parent
 SHARED = [*sorted((ROOT / "agents").glob("*.py")), ROOT / "guardrails.py", ROOT / "domain_pack.py"]
@@ -126,7 +127,8 @@ def test_one_percent_change_rule_in_answers():
 
 
 _REDUCES = re.compile(r"\.(?:quantile|mean|median|sum|corr|std|nunique)\(|value_counts\(|aggregate\(|np\.histogram\(")
-_ROW_RULES = ("rows_for(", "entity_rows(", "compute_kpi(", "handle_kpi(", "pack_kpis(")
+_ROW_RULES = ("rows_for(", "entity_rows(", "compute_kpi(", "handle_kpi(", "pack_kpis(",
+              "superseded(")   # a version chain's earlier rows (domain_pack): counted rows only
 # Whole-table profile functions: they describe the table's shape (which column is a category,
 # how many rows per value), never a measure's value a tile also states. A new entry needs a
 # reason here; anything that states a measure's number takes rows_for (Domain 3: the outlier
@@ -237,3 +239,28 @@ def test_a_pooled_department_is_never_named_in_an_answer():
 def test_version_roles_are_named_once():
     """Pass 3: shared code asks domain_pack.version_roles, never re-lists a pack's version fields."""
     assert _hits(r"\(\*?pack\.version_key|pack\.version_order\)", {"domain_pack.py"}) == []
+
+
+@pytest.mark.parametrize("strategy", ["order_level", "paired", "conditional", "marker"])
+def test_a_layout_blank_is_never_reported_missing(strategy):
+    """Domain 4 live run: three copies of 'which blanks are the file's layout' (cleaning's list,
+    analysis evidence notes, insight alerts) disagreed: a loss run's Case Reserve (blank on
+    closed claims by design) was '71% missing' in evidence and a CRITICAL alert. Every reader
+    of the audit takes cleaning_agent.LAYOUT_STRATEGIES; tested on the behaviour, per kind."""
+    from agents.analysis_agent import build_evidence
+    from agents.cleaning_agent import LAYOUT_STRATEGIES
+    from agents.insight_agent import _alerts
+    from orchestrator.state import (AnalysisFindings, AnalysisSession, CleaningAudit,
+                                    CleaningDecision, SegmentResult)
+    assert strategy in LAYOUT_STRATEGIES
+    d = CleaningDecision(column="Col", operation="keep", strategy=strategy, reason="layout",
+                         rows_affected=0, before_null_pct=90.0, after_null_pct=90.0)
+    audit = CleaningAudit(decisions=[d], rows_before=10, rows_after=10, columns_coerced=[],
+                          duplicates_removed=0, outliers_flagged=[], high_null_columns=[], summary="")
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], anomalies=[], statistical_tests=[],
+                         forecast_points=[], distributions={}, code_executed="", segments=[
+        SegmentResult(segment_column="G", metric_column="Col", aggregation="sum",
+                      results=[{"name": "a", "value": 1.0}])])
+    notes = " ".join(a for e in build_evidence(f, {}, "", "", audit) for a in e.assumptions)
+    alerts, _ = _alerts(AnalysisSession(session_id="t", cleaning_audit=audit, analysis_findings=f))
+    assert "missing" not in notes and not [a for a in alerts if "missing" in a.title.lower()]

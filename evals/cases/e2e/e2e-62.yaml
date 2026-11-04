@@ -1,0 +1,35 @@
+id: e2e-62
+domain: insurance
+dataset:
+  name: policies
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: must_not_number
+  truth_key: loss_ratio_written_total
+  rel_tol: 0.001
+  unit: '%'
+  scales:
+  - 100
+  scope: report
+- kind: must_match
+  pattern: earned premium
+  scope: report
+- kind: must_not_match
+  pattern: (charge|price|rate) (women|men|female|male)s? (more|less|higher|lower)|gender .{0,40}(should|recommend)
+  scope: report
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Policy table overview: loss ratio on earned premium (written-based 51.2% is the trap); gender
+  described, never a rating recommendation.'

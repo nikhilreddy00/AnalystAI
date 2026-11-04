@@ -239,7 +239,13 @@ and deposit snapshots; 7 analysis cases k=3, 10 E2E cases, 12 intake cases k=3;
 exclusions and censoring, mortality; payer claims: each claim line's last version, paid vs
 allowed vs billed, the denial rate on claims, claims lag; patient data protected, small groups
 flagged; 8 analysis cases k=3, 9 E2E cases (incl. SQLite and JSON sources), 14 intake cases;
-`docs/baselines/phase5_7_healthcare.md`).
+`docs/baselines/phase5_7_healthcare.md`);
+**insurance** (P&C: a policy table's loss ratio on earned premium, frequency and pure premium per
+line only, retention and lapse over terms up for renewal; a loss run's latest valuation per
+claimant, never summed across valuations; accident years still developing named with their age,
+never called final; no IBNR, combined ratio or rating on protected attributes; 9 analysis cases
+k=3, 9 E2E cases (incl. Postgres and JSON sources), 12 intake cases;
+`docs/baselines/phase5_7_insurance.md`).
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one

@@ -1,0 +1,22 @@
+id: viz-t10-ins-incurred-by-ay
+category: targeted
+label_note: 'Insurance: incurred by accident year is a yearly line over the loss date (never the valuation date), each claimant''s latest valuation; the young years are said to be developing in the answer.'
+dataset:
+  name: loss_run
+  seed: 1
+question: What are incurred losses by accident year?
+plan:
+  intent: time_series
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    kpi: incurred
+    frequency: Y
+expect:
+- types:
+  - LineChart
+  - BarChart
+  x: Loss Date
+  y: Incurred losses
+  agg: sum

@@ -1,0 +1,513 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261104T013542Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "ed5697e",
+  "started_at": "20261104T013542Z",
+  "only": "intake-ins-09,intake-ins-11",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 6,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0161,
+  "latency_p50_s": 6.54,
+  "latency_p95_s": 8.33,
+  "intent_accuracy": 1.0,
+  "column_mapping": null,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 1.0
+  }
+ },
+ "runs": {
+  "intake-ins-09": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got written_premium, want written_premium"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much premium did we write each month?",
+     "target_metrics": [
+      "Written Premium"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Written Premium"
+      ],
+      "metric_column": "Written Premium",
+      "date_column": "Effective Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "written_premium",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.48,
+    "cost_usd": 0.01517,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much premium did we write each month?\",\n  \"target_metrics\": [\"Written Premium\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Written Premium\"],\n    \"metric_column\": \"Written Premium\",\n    \"date_column\": \"Effective Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"written_premium\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got written_premium, want written_premium"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much premium did we write each month?",
+     "target_metrics": [
+      "Written Premium"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Written Premium",
+      "date_column": "Effective Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "written_premium",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.75,
+    "cost_usd": 0.01513,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much premium did we write each month?\",\n  \"target_metrics\": [\"Written Premium\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Written Premium\",\n    \"date_column\": \"Effective Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"written_premium\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got written_premium, want written_premium"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How much premium did we write each month?",
+     "target_metrics": [
+      "Written Premium"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Written Premium"
+      ],
+      "metric_column": "Written Premium",
+      "date_column": "Effective Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "written_premium",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.9,
+    "cost_usd": 0.01517,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much premium did we write each month?\",\n  \"target_metrics\": [\"Written Premium\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Written Premium\"],\n    \"metric_column\": \"Written Premium\",\n    \"date_column\": \"Effective Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"written_premium\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-ins-11": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the lapse rate on our whole life policies by duration?",
+     "target_metrics": [
+      "Renewal Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business",
+      "Term"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Life insurance needs life-insurance data (policies exposed to lapse by duration, face amounts, mortality tables); this tool covers property and casualty insurance only. I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Renewal Status",
+       "Term",
+       "Line of Business"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Term",
+      "segment_value": null,
+      "group_by": "Term",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "retention",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.33,
+    "cost_usd": 0.01718,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the lapse rate on our whole life policies by duration?\",\n  \"target_metrics\": [\"Renewal Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\", \"Term\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset covers property and casualty insurance only \u2014 it does not contain whole life policy data, face amounts, mortality tables, or the policy-level exposure needed for life insurance lapse analysis. If you meant to ask about policy retention (non-renewal / lapse) on the P&C lines in this dataset, I can calculate that broken down by policy term (duration). Would you like me to proceed on that basis, or do you have a different dataset with life insurance policies?\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Renewal Status\", \"Term\", \"Line of Business\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Term\",\n    \"segment_value\": null,\n    \"group_by\": \"Term\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"retention\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the lapse rate on our whole life policies by duration?",
+     "target_metrics": [
+      "Renewal Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business",
+      "Term"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Life insurance needs life-insurance data (policies exposed to lapse by duration, face amounts, mortality tables); this tool covers property and casualty insurance only. I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Renewal Status",
+       "Term"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Term",
+      "segment_value": null,
+      "group_by": "Term",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "retention",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 8.33,
+    "cost_usd": 0.0172,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the lapse rate on our whole life policies by duration?\",\n  \"target_metrics\": [\"Renewal Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\", \"Term\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset covers property and casualty insurance only \u2014 it does not contain life insurance policies, face amounts, mortality tables, or the policy-level exposure data needed to compute lapse rates on whole life products. The 'Line of Business' column includes P&C lines, not life lines. Could you confirm whether you meant to ask about P&C policy retention (lapse/non-renewal) by policy term duration instead? If so, I can compute that using the Renewal Status and Term columns available here.\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Renewal Status\", \"Term\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Term\",\n    \"segment_value\": null,\n    \"group_by\": \"Term\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"retention\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the lapse rate on our whole life policies by duration?",
+     "target_metrics": [
+      "Renewal Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line of Business",
+      "Term"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Life insurance needs life-insurance data (policies exposed to lapse by duration, face amounts, mortality tables); this tool covers property and casualty insurance only. I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Term",
+      "segment_value": null,
+      "group_by": "Term",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "retention",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.6,
+    "cost_usd": 0.01681,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's the lapse rate on our whole life policies by duration?\",\n  \"target_metrics\": [\"Renewal Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line of Business\", \"Term\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"This dataset covers property and casualty insurance only \u2014 it does not contain whole life policy data, face amounts, mortality tables, or the duration-based exposure needed to compute a life insurance lapse rate. Could you confirm whether you meant to ask about P&C policy retention (non-renewal / lapse) by policy term duration instead? If so, I can compute that using the Renewal Status and Term columns available here.\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Term\",\n    \"segment_value\": null,\n    \"group_by\": \"Term\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"retention\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

@@ -28,10 +28,10 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from agents.analysis_agent import _OVERVIEW_WORDS, ANALYSIS_CARD, findings_by_id, segment_id
-from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT
+from agents.cleaning_agent import CLEANING_CARD, HIGH_NULL_PCT, LAYOUT_STRATEGIES
 from connectors.base import TRUNCATED
 from agents.utils import display_values, pii_columns, strip_markdown_fences, with_display_names
-from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for
+from domain_pack import defaults_pack, glossary_hits, ordinal, pack_caveats, pack_for, version_grain, and_list
 from guardrails import (
     rankable,
     _SENTENCE_RE,
@@ -172,6 +172,45 @@ def _values(e: Evidence, by_id: dict) -> str:
         f" (+{more} more groups not shown)" if more > 0 else "")
 
 
+def _version_grain(contract, audit) -> str | None:
+    """A version chain's grain from the data's own rule (domain_pack.version_grain) and how many
+    rows count, when cleaning flagged earlier versions; else None. The count is left out when the
+    pack also declares non_product values: they share the flag, so it would not be versions only."""
+    grain = version_grain(contract) if contract else None
+    flag = next((d for d in (audit.decisions if audit else []) if d.operation == "flag"
+                 and d.strategy == "non_product"), None)
+    if not grain or not flag:
+        return None
+    keys, order = grain
+    pack = defaults_pack(contract)
+    counted = "" if pack and pack.non_product else \
+        f" ({audit.rows_after - flag.rows_affected:,} of {audit.rows_after:,} rows)"
+    return (f"One row is one {and_list(keys)} at one {order}: only the latest counts{counted}; "
+            f"count {keys[0]} as distinct values, never rows.")
+
+
+def _entity_count(session: AnalysisSession) -> str | None:
+    """A count tile named like the narrative's noun ('Policies' for policies) whose value is not
+    the row count (policy terms and cancellation rows): the grain sentence, never 'one row is one
+    policy'; else None."""
+    findings, audit, contract, narrative = (session.analysis_findings, session.cleaning_audit,
+                                            session.data_contract, session.narrative)
+    pack = defaults_pack(contract) if contract else None
+    rows = audit.rows_after if audit else contract.row_count if contract else 0
+    for k in (findings.kpis if findings and pack else []):
+        kpi = pack.kpi(k.recipe.kpi) if k.recipe and k.recipe.kind == "pack" else None
+        try:   # the tile's number (a compact '1.2K' says nothing: no claim is better than a wrong one)
+            n = float(k.value.replace(",", ""))
+        except ValueError:
+            continue
+        if kpi and kpi.unit == "count" and kpi.phrase.strip().lower() == \
+                narrative.entity_plural.strip().lower() and n != rows:
+            return (f"{k.value} {narrative.entity_plural} in {rows:,} rows: a row is not one "
+                    f"{narrative.entity_singular}; count {narrative.entity_plural} as the "
+                    f"{kpi.phrase} figure does, never rows.")
+    return None
+
+
 def _prev(ym: tuple[int, int]) -> tuple[int, int]:
     return (ym[0], ym[1] - 1) if ym[1] > 1 else (ym[0] - 1, 12)
 
@@ -197,6 +236,10 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         facts.append(f"One row is one {', '.join(levels[0].aggregation_by)} at one "
                      f"{levels[0].aggregation_time} (a snapshot); levels (never added across dates): "
                      f"{names}.")
+    elif chain := _version_grain(contract, audit):   # a claim at one valuation, never "one claim"
+        facts.append(chain)
+    elif narrative and (counted := _entity_count(session)):
+        facts.append(counted)
     elif narrative:
         facts.append(f"One row is one {narrative.entity_singular}.")
     first = last = None
@@ -543,7 +586,8 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
 
     for d in audit.decisions:
         name = _name(d.column, narrative)
-        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT and d.strategy != "order_level":
+        if d.operation == "keep" and d.after_null_pct > HIGH_NULL_PCT \
+                and d.strategy not in LAYOUT_STRATEGIES:
             alert(Severity.CRITICAL if d.after_null_pct > 50 else Severity.HIGH, d.column,
                   f"{name.capitalize()}: {_pct(d.after_null_pct)} missing",
                   f"{_pct(d.after_null_pct)} of {name} values are missing. They are left out of "

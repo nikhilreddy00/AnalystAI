@@ -1,0 +1,820 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261104T015642Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "f4ee437",
+  "started_at": "20261104T015642Z",
+  "only": "ins-45",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0221,
+  "latency_p50_s": 23.96,
+  "latency_p95_s": 23.96,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": 1.0,
+  "must_not": 1.0,
+  "contradictions_named": null,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "straightforward": 1.0
+  },
+  "by_domain": {
+   "insurance": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "ins-45-policies-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/earned premium/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/home/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(ultimate (loss ratio|losses)|IBNR|combined ratio)( estimate)? (is|of|was|at|totals?|comes to|stands at|estimated at) (about |around |roughly )?[$\\d]|(the|our) final loss ratio|loss ratio .{0,20}(is|was) final/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|basket|outstanding balance|\\bNPL\\b|readmission|denial/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(charge|price|rate) (women|men|female|male)s? (more|less|higher|lower)/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "A 46-month P&C portfolio of 1,300 policies across Auto and Home lines has earned $4,023,883.78 in premium with a 60.5% loss ratio and $2,433,528.68 in incurred losses. Auto is the larger line by both premium and losses, while the overall loss ratio of 60.5% reflects case-incurred losses only, with no IBNR, meaning 2025 and 2026 results are still developing and not yet comparable to earlier years. Earned Premium dropped sharply month-over-month in Sep 2026 versus Aug 2026, and 178 Renewal Status records were unreadable and grouped as 'Unknown', which may affect retention analysis.",
+      "technical_findings": [
+       "Earned Premium MoM (Sep 2026 vs Aug 2026): -59.9% (n = 2,674; high confidence: 2674 rows)",
+       "sum Incurred Losses by Line of Business (2 groups) (n = 2,674; high confidence: 2674 rows)",
+       "sum Earned Premium by Line of Business (2 groups) (n = 2,674; high confidence: 2674 rows)",
+       "Incurred Losses: median 0, mean 910.07, range 0 to 96,357.19 (n = 2,674; high confidence: 2674 rows)",
+       "Earned Premium: median 1,415.89, mean 1,504.82, range -3,958.90 to 8,052.87 (n = 2,674; high confidence: 2674 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the negative Earned Premium records to confirm they represent valid cancellations or endorsements and are not data errors.",
+        "reasoning": "Ensures premium totals and loss ratios are not distorted by bad data.",
+        "metric_impact": "Ensures premium totals and loss ratios are not distorted by bad data."
+       },
+       {
+        "priority": 2,
+        "action": "Resolve the 178 'Unknown' Renewal Status records before running any retention or lapse analysis.",
+        "reasoning": "Missing renewal labels will skew retention rate calculations.",
+        "metric_impact": "Missing renewal labels will skew retention rate calculations."
+       },
+       {
+        "priority": 3,
+        "action": "Defer final loss-ratio conclusions for 2025 and 2026 until those years are fully developed, and obtain IBNR estimates before comparing them with earlier periods.",
+        "reasoning": "Avoids acting on immature loss figures that will likely increase.",
+        "metric_impact": "Avoids acting on immature loss figures that will likely increase."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Written premium: 44 extreme values",
+        "severity": "medium",
+        "description": "44 Written Premium values (1.6% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Written Premium",
+        "suggested_investigation": "Verify the largest Written Premium values against the source records."
+       },
+       {
+        "title": "Earned premium: 20 extreme values",
+        "severity": "medium",
+        "description": "20 Earned Premium values (0.7% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Earned Premium",
+        "suggested_investigation": "Verify the largest Earned Premium values against the source records."
+       },
+       {
+        "title": "Renewal status: missing labels grouped",
+        "severity": "low",
+        "description": "6.7% of Renewal Status labels were missing and are grouped as Unknown.",
+        "affected_metric": "Renewal Status",
+        "suggested_investigation": "Fill in Renewal Status at the source."
+       },
+       {
+        "title": "Earned exposure: a long tail of large values",
+        "severity": "low",
+        "description": "A few very large Earned Exposure values are normal for this data; they were kept.",
+        "affected_metric": "Earned Exposure",
+        "suggested_investigation": "Report the typical Earned Exposure alongside the average."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as P&C insurance data (earned premium, loss ratio, incurred losses, policies, claims, severity (incurred per claim), written premium, retention rate, average written premium per term). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them. Oct 2026 is partial (data through the 26th) and is left out of period comparisons. The data has no valuation date; measured to its last date (26 Oct 2026), 2026 (10 months) and 2025 (22 months) are still developing: their losses will usually rise, so they are not final and not comparable with mature years. Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "How does the loss ratio differ between Auto and Home when calculated separately, and how has each line trended over the 46-month period?",
+       "What share of the 304 claims account for the largest losses, and are the high-severity claims concentrated in a particular line, region, or policy segment?",
+       "What is driving the negative Earned Premium values, and how many policies are affected?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 2 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Outliers flagged (kept) in: Earned Exposure, Earned Premium, Written Premium. Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns. Final dataset: 2674 rows (started with 2674). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags). Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns.",
+      "executive_view": {
+       "headline": "A 46-month P&C portfolio of 1,300 policies across Auto and Home lines has earned $4,023,883.78 in premium with a 60.5% loss ratio and $2,433,528.68 in incurred losses.",
+       "headline_evidence_ids": [
+        "seg:Line of Business/Earned Premium:sum",
+        "seg:Line of Business/Incurred Losses:sum"
+       ],
+       "paragraphs": [
+        {
+         "text": "Auto is the larger line by both premium and losses, while the overall loss ratio of 60.5% reflects case-incurred losses only, with no IBNR, meaning 2025 and 2026 results are still developing and not yet comparable to earlier years.",
+         "evidence_ids": [
+          "seg:Line of Business/Earned Premium:sum",
+          "seg:Line of Business/Incurred Losses:sum"
+         ]
+        },
+        {
+         "text": "Earned Premium dropped sharply month-over-month in Sep 2026 versus Aug 2026, and 178 Renewal Status records were unreadable and grouped as 'Unknown', which may affect retention analysis.",
+         "evidence_ids": [
+          "trend:Earned Premium:MoM",
+          "clean:audit"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Auto accounts for $2,617,354.01 in earned premium and $1,448,019.65 in incurred losses; Home accounts for $1,406,529.77 in earned premium and $985,509.03 in incurred losses \u2014 Auto is the dominant line on both measures.",
+         "evidence_ids": [
+          "seg:Line of Business/Earned Premium:sum",
+          "seg:Line of Business/Incurred Losses:sum"
+         ]
+        },
+        {
+         "text": "Incurred losses are highly concentrated: the median policy shows $0 in losses while the mean is $910.07 and the maximum reaches $96,357.19, indicating that a small number of claims drive the bulk of total losses.",
+         "evidence_ids": [
+          "eda:Incurred Losses"
+         ]
+        },
+        {
+         "text": "Earned Premium ranges from -$3,958.90 to $8,052.87 per policy, with a median of $1,415.89; negative values suggest mid-term cancellations or endorsements and warrant a closer review.",
+         "evidence_ids": [
+          "eda:Earned Premium"
+         ]
+        },
+        {
+         "text": "Earned Premium fell in Sep 2026 compared with Aug 2026, a month-over-month move that may partly reflect the partial October cut-off rather than an underlying business shift.",
+         "evidence_ids": [
+          "trend:Earned Premium:MoM"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the negative Earned Premium records to confirm they represent valid cancellations or endorsements and are not data errors.",
+         "expected_impact": "Ensures premium totals and loss ratios are not distorted by bad data.",
+         "evidence_ids": [
+          "eda:Earned Premium"
+         ]
+        },
+        {
+         "action": "Resolve the 178 'Unknown' Renewal Status records before running any retention or lapse analysis.",
+         "expected_impact": "Missing renewal labels will skew retention rate calculations.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        },
+        {
+         "action": "Defer final loss-ratio conclusions for 2025 and 2026 until those years are fully developed, and obtain IBNR estimates before comparing them with earlier periods.",
+         "expected_impact": "Avoids acting on immature loss figures that will likely increase.",
+         "evidence_ids": [
+          "seg:Line of Business/Incurred Losses:sum",
+          "eda:Incurred Losses"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 2 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Outliers flagged (kept) in: Earned Exposure, Earned Premium, Written Premium. Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns. Final dataset: 2674 rows (started with 2674). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags). Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns.",
+       "statistical_notes": [
+        "Earned Premium MoM (Sep 2026 vs Aug 2026): -59.9% (n = 2,674; high confidence: 2674 rows)",
+        "sum Incurred Losses by Line of Business (2 groups) (n = 2,674; high confidence: 2674 rows)",
+        "sum Earned Premium by Line of Business (2 groups) (n = 2,674; high confidence: 2674 rows)",
+        "Incurred Losses: median 0, mean 910.07, range 0 to 96,357.19 (n = 2,674; high confidence: 2674 rows)",
+        "Earned Premium: median 1,415.89, mean 1,504.82, range -3,958.90 to 8,052.87 (n = 2,674; high confidence: 2674 rows)"
+       ],
+       "caveats": [
+        "Losses are case-incurred only (paid plus case reserves) with no IBNR and no loss-adjustment expense; the 60.5% loss ratio will rise as open claims develop, particularly for 2025 and 2026.",
+        "Auto and Home are mixed into a single portfolio total; because the lines differ in exposure units and mix, the combined loss ratio should be interpreted with caution.",
+        "Outlier flagging initially exceeded the 10% row cap and was switched to an extreme-only method, so some moderate outliers in Earned Exposure, Earned Premium, and Written Premium are retained in the data.",
+        "Read as P&C insurance data (earned premium, loss ratio, incurred losses, policies, claims, severity (incurred per claim), written premium, retention rate, average written premium per term). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them.",
+        "Oct 2026 is partial (data through the 26th) and is left out of period comparisons.",
+        "The data has no valuation date; measured to its last date (26 Oct 2026), 2026 (10 months) and 2025 (22 months) are still developing: their losses will usually rise, so they are not final and not comparable with mature years.",
+        "Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it.",
+        "Effective Date: Parsed as dates.",
+        "Expiration Date: Parsed as dates.",
+        "Renewal Status: 178 missing labels grouped as 'Unknown' (not guessed)."
+       ],
+       "code_references": [
+        "_period = pd.to_datetime(df['Effective Date'], format='mixed').dt.to_period('M'); df.groupby(_period)['Earned Premium'].sum()",
+        "df.groupby('Line of Business')['Incurred Losses'].sum()",
+        "df.groupby('Line of Business')['Earned Premium'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-04T01:57:06.136301Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Policy Number",
+       "Term",
+       "Line of Business",
+       "State",
+       "Effective Date",
+       "Expiration Date",
+       "Transaction Type",
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Renewal Status",
+       "Insured Gender",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Earned Premium:MoM",
+       "seg:Line of Business/Incurred Losses:sum",
+       "seg:Line of Business/Earned Premium:sum",
+       "eda:Incurred Losses",
+       "eda:Earned Premium"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 2674 \u2192 2674 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 2674, \"rows_after\": 2674, \"decisions\": [[\"Effective Date\", \"type_coerce\", 2674, 0], [\"Expiration Date\", \"type_coerce\", 2674, 0], [\"Renewal Status\", \"fill_unknown\", 178, 0]]}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Effective Date: Parsed as dates.",
+         "Expiration Date: Parsed as dates.",
+         "Renewal Status: 178 missing labels grouped as 'Unknown' (not guessed)."
+        ]
+       },
+       {
+        "id": "trend:Earned Premium:MoM",
+        "kind": "trend",
+        "claim": "Earned Premium MoM (Sep 2026 vs Aug 2026): -59.9%",
+        "result_excerpt": "{\"column\": \"Earned Premium\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -59.92, \"segment\": null, \"latest\": \"2026-09\", \"previous\": \"2026-08\"}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line of Business/Incurred Losses:sum",
+        "kind": "segment",
+        "claim": "sum Incurred Losses by Line of Business (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred Losses\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 1448019.65}, {\"name\": \"Home\", \"value\": 985509.03}]}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line of Business/Earned Premium:sum",
+        "kind": "segment",
+        "claim": "sum Earned Premium by Line of Business (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Earned Premium\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 2617354.01}, {\"name\": \"Home\", \"value\": 1406529.77}]}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Incurred Losses",
+        "kind": "eda",
+        "claim": "Incurred Losses: median 0, mean 910.07, range 0 to 96,357.19",
+        "result_excerpt": "{\"mean\": 910.0706, \"std\": 4893.9363, \"min\": 0.0, \"max\": 96357.19, \"median\": 0.0, \"count\": 2674.0}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Earned Premium",
+        "kind": "eda",
+        "claim": "Earned Premium: median 1,415.89, mean 1,504.82, range -3,958.90 to 8,052.87",
+        "result_excerpt": "{\"mean\": 1504.8182, \"std\": 1127.3625, \"min\": -3958.9, \"max\": 8052.87, \"median\": 1415.895, \"count\": 2674.0}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2023,
+       1
+      ],
+      "date_last": [
+       2027,
+       9
+      ],
+      "n_months": 57,
+      "audit_summary": "Parsed numbers or dates in 2 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Outliers flagged (kept) in: Earned Exposure, Earned Premium, Written Premium. Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns. Final dataset: 2674 rows (started with 2674).",
+      "chart_titles": [
+       "Incurred losses over time",
+       "Incurred losses by Line of Business",
+       "Loss ratio by Line of Business",
+       "Earned premium by Line of Business",
+       "Claims by Line of Business",
+       "Severity (incurred per claim) by Line of Business",
+       "earned premium fell 59.9% in Sep 2026 vs Aug 2026",
+       "Total incurred losses by line of business: Auto highest (1,448,019.65), Home lowest (985,509.03)",
+       "Total earned premium by line of business: Auto highest (2,617,354.01), Home lowest (1,406,529.77)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Incurred Losses": {
+          "mean": 910.0706,
+          "std": 4893.9363,
+          "min": 0.0,
+          "max": 96357.19,
+          "median": 0.0,
+          "count": 2674.0
+         },
+         "Earned Premium": {
+          "mean": 1504.8182,
+          "std": 1127.3625,
+          "min": -3958.9,
+          "max": 8052.87,
+          "median": 1415.895,
+          "count": 2674.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Earned Premium",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -59.92,
+          "segment": null,
+          "latest": "2026-09",
+          "previous": "2026-08"
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Line of Business",
+          "metric_column": "Incurred Losses",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 1448019.65
+           },
+           {
+            "name": "Home",
+            "value": 985509.03
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Line of Business",
+          "metric_column": "Earned Premium",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 2617354.01
+           },
+           {
+            "name": "Home",
+            "value": 1406529.77
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Policy Number": 0.0,
+         "Term": 0.0,
+         "Line of Business": 0.0,
+         "State": 0.0,
+         "Effective Date": 0.0,
+         "Expiration Date": 0.0,
+         "Transaction Type": 0.0,
+         "Written Premium": 0.0,
+         "Earned Premium": 0.0,
+         "Earned Exposure": 0.0,
+         "Renewal Status": 0.0,
+         "Insured Gender": 0.0,
+         "Claim Count": 0.0,
+         "Incurred Losses": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Earned premium",
+          "value": "$4,023,883.78",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "earned_premium",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Earned Premium; over counted rows."
+         },
+         {
+          "label": "Loss ratio",
+          "value": "60.5%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "loss_ratio",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Incurred losses, divided by sum of Earned Premium."
+         },
+         {
+          "label": "Incurred losses",
+          "value": "$2,433,528.68",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "incurred",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Incurred Losses; over counted rows."
+         },
+         {
+          "label": "Policies",
+          "value": "1,300",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "policies",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Policy Number where Earned Premium has a value; over counted rows."
+         },
+         {
+          "label": "Claims",
+          "value": "304",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "claims",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Claim Count; over counted rows."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 2674 \u2192 2674 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 2674, \"rows_after\": 2674, \"decisions\": [[\"Effective Date\", \"type_coerce\", 2674, 0], [\"Expiration Date\", \"type_coerce\", 2674, 0], [\"Renewal Status\", \"fill_unknown\", 178, 0]]}",
+         "row_count": 2674,
+         "assumptions": [
+          "Effective Date: Parsed as dates.",
+          "Expiration Date: Parsed as dates.",
+          "Renewal Status: 178 missing labels grouped as 'Unknown' (not guessed)."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Earned Premium MoM (Sep 2026 vs Aug 2026): -59.9%",
+         "result_excerpt": "{\"column\": \"Earned Premium\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -59.92, \"segment\": null, \"latest\": \"2026-09\", \"previous\": \"2026-08\"}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "sum Incurred Losses by Line of Business (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred Losses\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 1448019.65}, {\"name\": \"Home\", \"value\": 985509.03}]}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "sum Earned Premium by Line of Business (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Earned Premium\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 2617354.01}, {\"name\": \"Home\", \"value\": 1406529.77}]}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "Incurred Losses: median 0, mean 910.07, range 0 to 96,357.19",
+         "result_excerpt": "{\"mean\": 910.0706, \"std\": 4893.9363, \"min\": 0.0, \"max\": 96357.19, \"median\": 0.0, \"count\": 2674.0}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "Earned Premium: median 1,415.89, mean 1,504.82, range -3,958.90 to 8,052.87",
+         "result_excerpt": "{\"mean\": 1504.8182, \"std\": 1127.3625, \"min\": -3958.9, \"max\": 8052.87, \"median\": 1415.895, \"count\": 2674.0}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Effective Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2674,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Expiration Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2674,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Renewal Status",
+          "operation": "fill_unknown",
+          "strategy": "unknown_label",
+          "reason": "178 missing labels grouped as 'Unknown' (not guessed).",
+          "rows_affected": 178,
+          "before_null_pct": 6.7,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 2674,
+        "rows_after": 2674,
+        "columns_coerced": [
+         "Effective Date",
+         "Expiration Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "44 extreme outliers in Written Premium (1.6% of data, threshold: values outside [-1,849, 5,406])",
+         "20 extreme outliers in Earned Premium (0.7% of data, threshold: values outside [-2,458, 5,431])",
+         "Earned Exposure has a heavy-tailed distribution \u2014 23.2% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 2 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Outliers flagged (kept) in: Earned Exposure, Earned Premium, Written Premium. Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns. Final dataset: 2674 rows (started with 2674).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Written Premium",
+           "extreme_count": 44,
+           "mild_count": 0,
+           "extreme_pct": 1.6454749439042633,
+           "lower_bound": -1849.485,
+           "upper_bound": 5406.3475,
+           "mild_lower_bound": -294.66374999999994,
+           "mild_upper_bound": 3851.52625,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "44 extreme outliers in Written Premium (1.6% of data, threshold: values outside [-1,849, 5,406])"
+          },
+          {
+           "column": "Earned Premium",
+           "extreme_count": 20,
+           "mild_count": 0,
+           "extreme_pct": 0.7479431563201197,
+           "lower_bound": -2457.6775000000007,
+           "upper_bound": 5430.885000000001,
+           "mild_lower_bound": -767.2712500000005,
+           "mild_upper_bound": 3740.4787500000007,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "20 extreme outliers in Earned Premium (0.7% of data, threshold: values outside [-2,458, 5,431])"
+          },
+          {
+           "column": "Earned Exposure",
+           "extreme_count": 0,
+           "mild_count": 0,
+           "extreme_pct": 23.223635003739716,
+           "lower_bound": -0.20000000000000018,
+           "upper_bound": 1.9000000000000001,
+           "mild_lower_bound": 0.2499999999999999,
+           "mild_upper_bound": 1.4500000000000002,
+           "used_log_transform": false,
+           "heavy_tailed": true,
+           "message": "Earned Exposure has a heavy-tailed distribution \u2014 23.2% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+          }
+         ],
+         "methodology_note": "Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns.",
+         "eligible_columns": [
+          "Written Premium",
+          "Earned Premium",
+          "Earned Exposure",
+          "Incurred Losses"
+         ],
+         "skipped_columns": {
+          "Policy Number": "constant or unsupported",
+          "Term": "constant or unsupported",
+          "Line of Business": "binary column (only 2 values)",
+          "State": "non-numeric",
+          "Effective Date": "datetime column",
+          "Expiration Date": "datetime column",
+          "Transaction Type": "non-numeric",
+          "Renewal Status": "non-numeric",
+          "Insured Gender": "binary column (only 2 values)",
+          "Claim Count": "ordinal (low-cardinality numeric, e.g. Likert/class)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Effective Date": [
+          "2023-01-02",
+          "2026-10-26",
+          46
+         ],
+         "Expiration Date": [
+          "2024-01-02",
+          "2027-09-30",
+          45
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Effective Date": [
+          "2026-10",
+          26
+         ]
+        },
+        "main_currency": null
+       },
+       [
+        "Incurred losses over time",
+        "Incurred losses by Line of Business",
+        "Loss ratio by Line of Business",
+        "Earned premium by Line of Business",
+        "Claims by Line of Business",
+        "Severity (incurred per claim) by Line of Business",
+        "earned premium fell 59.9% in Sep 2026 vs Aug 2026",
+        "Total incurred losses by line of business: Auto highest (1,448,019.65), Home lowest (985,509.03)",
+        "Total earned premium by line of business: Auto highest (2,617,354.01), Home lowest (1,406,529.77)"
+       ],
+       [
+        2674,
+        14,
+        57
+       ],
+       [
+        2023,
+        2024,
+        2025,
+        2026,
+        2027
+       ],
+       [
+        "Read as P&C insurance data (earned premium, loss ratio, incurred losses, policies, claims, severity (incurred per claim), written premium, retention rate, average written premium per term). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them.",
+        "Oct 2026 is partial (data through the 26th) and is left out of period comparisons.",
+        "The data has no valuation date; measured to its last date (26 Oct 2026), 2026 (10 months) and 2025 (22 months) are still developing: their losses will usually rise, so they are not final and not comparable with mature years.",
+        "Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it."
+       ]
+      ]
+     }
+    },
+    "domain": "insurance",
+    "latency_s": 23.96,
+    "cost_usd": 0.02209,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"A 46-month P&C portfolio of 1,300 policies across Auto and Home lines has earned $4,023,883.78 in premium with a 60.5% loss ratio and $2,433,528.68 in incurred losses.\",\n    \"evidence\": [\"seg:Line of Business/Earned Premium:sum\", \"seg:Line of Business/Incurred Losses:sum\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Auto is the larger line by both premium and losses, while the overall loss ratio of 60.5% reflects case-incurred losses only, with no IBNR, meaning 2025 and 2026 results are still developing and not yet comparable to earlier years.\",\n      \"evidence\": [\"seg:Line of Business/Earned Premium:sum\", \"seg:Line of Business/Incurred Losses:sum\"]\n    },\n    {\n      \"text\": \"Earned Premium dropped sharply month-over-month in Sep 2026 versus Aug 2026, and 178 Renewal Status records were unreadable and grouped as 'Unknown', which may affect retention analysis.\",\n      \"evidence\": [\"trend:Earned Premium:MoM\", \"clean:audit\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Auto accounts for $2,617,354.01 in earned premium and $1,448,019.65 in incurred losses; Home accounts for $1,406,529.77 in earned premium and $985,509.03 in incurred losses \u2014 Auto is the dominant line on both measures.\",\n      \"evidence\": [\"seg:Line of Business/Earned Premium:sum\", \"seg:Line of Business/Incurred Losses:sum\"]\n    },\n    {\n      \"text\": \"Incurred losses are highly concentrated: the median policy shows $0 in losses while the mean is $910.07 and the maximum reaches $96,357.19, indicating that a small number of claims drive the bulk of total losses.\",\n      \"evidence\": [\"eda:Incurred Losses\"]\n    },\n    {\n      \"text\": \"Earned Premium ranges from -$3,958.90 to $8,052.87 per policy, with a median of $1,415.89; negative values suggest mid-term cancellations or endorsements and warrant a closer review.\",\n      \"evidence\": [\"eda:Earned Premium\"]\n    },\n    {\n      \"text\": \"Earned Premium fell in Sep 2026 compared with Aug 2026, a month-over-month move that may partly reflect the partial October cut-off rather than an underlying business shift.\",\n      \"evidence\": [\"trend:Earned Premium:MoM\"]\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the negative Earned Premium records to confirm they represent valid cancellations or endorsements and are not data errors.\",\n      \"impact\": \"Ensures premium totals and loss ratios are not distorted by bad data.\",\n      \"evidence\": [\"eda:Earned Premium\"]\n    },\n    {\n      \"action\": \"Resolve the 178 'Unknown' Renewal Status records before running any retention or lapse analysis.\",\n      \"impact\": \"Missing renewal labels will skew retention rate calculations.\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"action\": \"Defer final loss-ratio conclusions for 2025 and 2026 until those years are fully developed, and obtain IBNR estimates before comparing them with earlier periods.\",\n      \"impact\": \"Avoids acting on immature loss figures that will likely increase.\",\n      \"evidence\": [\"seg:Line of Business/Incurred Losses:sum\", \"eda:Incurred Losses\"]\n    }\n  ],\n  \"caveats\": [\n    \"Losses are case-incurred only (paid plus case reserves) with no IBNR and no loss-adjustment expense; the 60.5% loss ratio will rise as open claims develop, particularly for 2025 and 2026.\",\n    \"Auto and Home are mixed into a single portfolio total; because the lines differ in exposure units and mix, the combined loss ratio should be interpreted with caution.\",\n    \"Outlier flagging initially exceeded the 10% row cap and was switched to an extreme-only method, so some moderate outliers in Earned Exposure, Earned Premium, and Written Premium are retained in the data.\"\n  ],\n  \"questions\": [\n    \"How does the loss ratio differ between Auto and Home when calculated separately, and how has each line trended over the 46-month period?\",\n    \"What share of the 304 claims account for the largest losses, and are the high-severity claims concentrated in a particular line, region, or policy segment?\",\n    \"What is driving the negative Earned Premium values, and how many policies are affected?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

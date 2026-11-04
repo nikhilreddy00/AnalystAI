@@ -804,7 +804,8 @@ _COST_ASK_RE = re.compile(r"\b(?:add|adding|upload|provide|include|collect|track
                           r"without|missing|requires?|no)\b[^.]*\b(?:costs?|cogs)\b|"
                           r"\b(?:margin|profit|markup)s?\b[^.;]{0,30}\b(?:unknown|unavailable|not "
                           r"available|not known)\b", re.I)
-_PROFIT_RE = re.compile(r"\b(?:profit\w*|margins?|markups?)\b", re.I)
+_PROFIT_RE = re.compile(r"\b(?:profit\w*|(?<!wide )(?<!narrow )(?<!large )(?<!small )(?<!slim )"
+                        r"(?<!big )margins?|markups?)\b", re.I)   # 'by a wide margin' is no profit
 
 
 def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
@@ -821,6 +822,39 @@ def claim_profit_without_cost(text: str, has_cost: bool) -> str | None:
                       if not m.group(0)[0].isupper()
                       or (m.start() == 0 and not re.match(r"\s+[A-Z]", sentence[m.end():]))), None):
             return f"speaks of {m.group(0)} but the data has no cost or profit column"
+    return None
+
+
+def _noun_forms(label: str) -> set[str]:
+    """'Policies' → {policies, policy}; 'Claims' → {claims, claim}."""
+    w = label.strip().lower()
+    return {w, w[:-3] + "y" if w.endswith("ies") else w[:-1] if w.endswith("s") else w}
+
+
+def claim_rows_as_entities(text: str, rows: int, counts: dict[str, str]) -> str | None:
+    """The file's row count written as a count of a counted thing ('2,674 policies', '2,674-policy
+    book') whose figure says otherwise (Policies: 1,300): rows are not policies. `counts`: count
+    tiles {label: displayed value}. A group's own count ('60 claims in NY') is not the row count."""
+    if not rows:
+        return None
+    for label, value in counts.items():
+        if value.replace(",", "") == str(rows):
+            continue
+        nouns = "|".join(sorted(map(re.escape, _noun_forms(label)), key=len, reverse=True))
+        if re.search(rf"(?<![\d,.]){rows:,}(?![\d,.]\d)[\s-]+(?:[A-Za-z&]+[\s-]+)?(?:{nouns})\b",
+                     text, re.I):
+            return f"calls the file's {rows:,} rows {label.lower()}: the data has {value} {label.lower()}"
+    return None
+
+
+def claim_never_said(text: str, rules) -> str | None:
+    """A domain pack's never-say claim (Pack.never_say: a pattern and its reason, 'losses for a
+    still-developing year are final'), asserted: a sentence that hedges ('not yet final') is no
+    claim."""
+    for sentence in _SENTENCE_RE.split(text):
+        for rule in rules:
+            if re.search(rule.pattern, sentence, re.I) and not _HEDGE_RE.search(sentence):
+                return rule.reason
     return None
 
 
@@ -890,6 +924,13 @@ _PII_COL_RE = re.compile(
     rf"{_DOB_NAME}|"
     r"passport|surname|maiden_?name|given_?names?|family_?names?|forenames?|"
     r"(?:first|last|full|customer|contact|patient|employee|user)_?names?|names?)(?:$|_)", re.I)
+# A vehicle or driving licence identifier (NAIC Model 668: a driver's licence number identifies a
+# consumer). Anchored at the end: `vin_count`, `plate_count`, `license_count` are measures.
+_VEHICLE_COL_RE = re.compile(
+    r"(?:^|_)(?:vin(?:_?(?:no|number|num))?|vehicle_?identification_?number|"
+    r"drivers?_?licen[cs]e(?:_?(?:no|number|num|id))?|licen[cs]e_?(?:no|number|num)|"
+    r"dl_?(?:no|number|num)|licen[cs]e_?plate(?:_?(?:no|number|num))?|plate_?(?:no|number|num))$",
+    re.I)
 # Fail closed: any `name` column is a person's name unless a thing-noun qualifies it
 # (`product_name`, `file_name`). Unknown qualifiers (`patient_name`) stay masked.
 _THING_NAME_RE = re.compile(
@@ -1031,9 +1072,30 @@ def _norm_name(name: Any) -> str:
     return re.sub(r"[^0-9A-Za-z]+", "_", name).strip("_")
 
 
+_VIN_VALUES = dict(zip("ABCDEFGHJKLMNPRSTUVWXYZ", [1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 7, 9, 2,
+                                                       3, 4, 5, 6, 7, 8, 9]))
+_VIN_WEIGHTS = (8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2)
+
+
+def vin_check_digit(vin: str) -> str:
+    """The North American VIN check digit (position 9) for a 17-character VIN."""
+    total = sum((int(c) if c.isdigit() else _VIN_VALUES[c]) * w for c, w in zip(vin, _VIN_WEIGHTS))
+    return "X" if total % 11 == 10 else str(total % 11)
+
+
+def _is_vin(text: str) -> bool:
+    """A North American VIN: 17 characters without I, O or Q, letters and digits, and a valid
+    check digit (position 9). A random 17-character id passes the check 1 time in 11."""
+    v = text.strip().upper()
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", v) or v.isdigit() or v.isalpha():
+        return False
+    return v[8] == vin_check_digit(v)
+
+
 def is_pii_column(name: str) -> bool:
     name = _norm_name(name)
-    return bool(_PII_COL_RE.search(name)) and not _THING_NAME_RE.search(name)
+    return bool(_VEHICLE_COL_RE.search(name)) or (bool(_PII_COL_RE.search(name))
+                                                  and not _THING_NAME_RE.search(name))
 
 
 def _intl_phone(m: re.Match) -> str:
@@ -1128,6 +1190,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
       values read as people's names;
     - values: ≥ 30% of them contain an email, phone, SSN, card, IBAN or IP address."""
     norm = _norm_name(name)
+    if _VEHICLE_COL_RE.search(norm):
+        return "vehicle", f"the column name '{name}' marks a vehicle or licence identifier"
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")
@@ -1167,6 +1231,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
                 hits["card"] = hits.get("card", 0) + 1
             elif _iban_spans(t, whole_token=True):
                 hits["iban"] = hits.get("iban", 0) + 1
+    if sum(_is_vin(str(v)) for v in vals) >= 0.3 * len(vals):   # column level only: never in
+        return "vehicle", f"'{name}' holds vehicle identification numbers"   # free text (M6)
     if sum(hits.values()) >= 0.3 * len(vals):
         kind = max(hits, key=hits.get)
         return kind, f"{sum(hits.values())} of {len(vals)} sampled values contain personal data"

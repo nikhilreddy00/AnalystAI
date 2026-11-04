@@ -1,0 +1,26 @@
+id: clean-ins-01-loss-run
+dataset:
+  name: loss_run
+  seed: 1
+category: insurance
+expect_decisions:
+- column: Case Reserve
+  strategy: conditional
+  rows: 0
+- column: Cat Event
+  strategy: marker
+  rows: 0
+- operation: flag
+  strategy: non_product
+  rows: 34280
+forbid:
+- operation: drop_rows
+- operation: drop_duplicates
+- column: Case Reserve
+  operation: fill_unknown
+- column: Cat Event
+  operation: fill_unknown
+- column: Salvage Subrogation
+  strategy: numeric_sentinel
+- strategy: high_null
+label_note: 'A loss run: 34,280 earlier valuations flagged (each claimant''s latest counts), blank reserves on closed claims and blank cat codes kept as the layout, recoveries never read as sentinels; no high-null gate.'

@@ -18,6 +18,7 @@ import io
 import json
 import math
 import numbers
+import os
 import re
 import statistics
 import subprocess
@@ -209,9 +210,10 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
 
 
 def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
-    """Write the case's table as its `source` (csv by default | xlsx | json | parquet | sqlite)
-    and name it as POST /chat would: an upload, or a database with a table. Sync, so cases
-    running together never interleave a write."""
+    """Write the case's table as its `source` (csv by default | xlsx | json | parquet | sqlite |
+    postgres) and name it as POST /chat would: an upload, or a database with a table. Sync, so
+    cases running together never interleave a write. Postgres: a table in the scratch database
+    TEST_PG_URL names (never a real one: the table is replaced)."""
     source = case.get("source", "csv")
     UPLOADS.mkdir(parents=True, exist_ok=True)
     stem = f"{case['dataset']['name']}-{case['dataset']['seed']}"
@@ -221,6 +223,13 @@ def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
         df.to_sql("data", create_engine(f"sqlite:///{path}"), index=False)
         return ConnectorConfig(type=ConnectorType.SQL, connection_string=f"sqlite:///{path}",
                                table_name="data")
+    if source == "postgres":
+        url, table = os.environ["TEST_PG_URL"], "e2e_" + re.sub(r"\W", "_", stem)
+        engine = create_engine(url)
+        with engine.begin() as conn:
+            df.to_sql(table, conn, index=False, if_exists="replace")
+        engine.dispose()
+        return ConnectorConfig(type=ConnectorType.SQL, connection_string=url, table_name=table)
     path = UPLOADS / f"{stem}.{source}"
     if source == "csv":
         if not path.exists() or path.read_text() != csv:
@@ -459,11 +468,18 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
     for f in case.get("findings") or []:
         if f["kind"] == "trend":
             col, seg = f["column"], f.get("segment")
+            from domain_pack import developing_trend
+            if contract is not None and developing_trend(contract, df, col):
+                continue   # as the built-in: no MoM / YoY of a measure that still develops
             frame = df[df[plan["segments"][0]].astype(str) == seg] if seg else df
             agg = "mean" if df[col].dropna().between(0, 1).all() else "sum"   # analysis MoM rule
             agg = effective_agg(contract, col, agg) or agg
             frame = rows(frame, col)
-            tot = aggregate(frame, [month.loc[frame.index]], col, agg, contract,
+            m = month
+            if contract is not None and date:   # the built-in's month rule (partial month, run-out)
+                from agents.analysis_agent import counted_months
+                m = counted_months(df, contract, col, date)[1].reindex(df.index)
+            tot = aggregate(frame, [m.loc[frame.index]], col, agg, contract,
                             over_time=True).sort_index()
             # MoM: last month vs the one before. YoY: vs the same month a year earlier.
             # YoY_calendar: calendar-year totals, the partial-year shape the analysis model wrote.
@@ -510,11 +526,13 @@ def viz_findings(case: dict, df: pd.DataFrame, eda_columns: list[str] = (), cont
                                            p_value=float(p), interpretation=f"{metric} by {group}"))
             ids.append(f"test:{len(tests) - 1}")
     eda = {}
-    for col in eda_columns:   # the analysis agent's built-in describe block
+    from agents.analysis_agent import counted_summary
+    for col in eda_columns:   # the sandbox's describe block, then the built-in's counted rows
         s = pd.to_numeric(df[col], errors="coerce").dropna()
-        eda[col] = {k: round(float(v), 4) for k, v in {
-            "mean": s.mean(), "std": s.std(), "min": s.min(), "max": s.max(),
-            "median": s.median(), "count": len(s)}.items()}
+        eda[col] = (counted_summary(df, contract, col) if contract is not None else None) or {
+            k: round(float(v), 4) for k, v in {"mean": s.mean(), "std": s.std(), "min": s.min(),
+                                               "max": s.max(), "median": s.median(),
+                                               "count": len(s)}.items()}
     findings = AnalysisFindings(eda_summary=eda, correlations=corr, trends=trends, segments=segs,
                                 anomalies=anoms, statistical_tests=tests, code_executed="")
     raw = {"n_rows": len(df), "non_null": {str(c): int(n) for c, n in df.notna().sum().items()},

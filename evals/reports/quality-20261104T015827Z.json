@@ -1,0 +1,1658 @@
+{
+ "meta": {
+  "suite": "quality",
+  "report": "quality-20261104T015827Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "f4ee437",
+  "started_at": "20261104T015827Z",
+  "only": "q-45,q-46",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0118,
+  "latency_p50_s": 16.2,
+  "latency_p95_s": 19.55,
+  "defect_recall": 1.0,
+  "false_alarm_rate": 0.0,
+  "seeded_defects": 6,
+  "supported_claims": 13,
+  "recall_by_kind": {
+   "causal": 1.0,
+   "certainty": 1.0,
+   "number": 1.0,
+   "semantic": 1.0
+  },
+  "recall_by_source": {
+   "check": 0.5,
+   "critic": 0.5
+  },
+  "label_agreement_on_caught": 0.3333,
+  "natural_recall": null,
+  "false_alarms_on_actions": 0.0,
+  "clean_reports_with_false_alarm": null,
+  "hard_review_grounded": 1.0,
+  "hard_flags_valid": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "hard_bundle_reproduced": 1.0,
+  "holdout_pass_rate": null
+ },
+ "runs": {
+  "q-45-policies-overview": [
+   {
+    "checks": [
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "number",
+      "sources": [
+       "check"
+      ],
+      "label_match": false,
+      "detail": "[number] caught by ['check']A 46-month P&C portfolio of 1,300 policies across Auto and Home lines "
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "critic"
+      ],
+      "label_match": false,
+      "detail": "[certainty] caught by ['critic']Auto is the larger line by both premium and losses, and the 60.5% loss"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "causal",
+      "sources": [
+       "critic"
+      ],
+      "label_match": false,
+      "detail": "[causal] caught by ['critic']Auto's losses are driven by its female policyholders, so raising auto "
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "10 claims checked against the evidence; 4 flagged (2 unsupported, 1 contradicted, 1 overstated).",
+      "strengths": [],
+      "gaps": [
+       "No breakdown of incurred losses or earned premium by gender, despite gender being a column in the dataset. Understanding loss patterns by gender would support or refute claims about which groups drive losses.",
+       "No analysis of claims by line of business or other segments. The dataset contains 304 claims but no evidence shows their distribution, frequency, or severity by Auto vs Home or other dimensions.",
+       "No investigation of the negative earned premium values. The evidence flags their existence but provides no detail on their frequency, magnitude, or association with transaction type or renewal status."
+      ],
+      "next_investigations": [
+       "Analyze earned premium and incurred losses by transaction type to understand whether negative earned premiums are cancellations, endorsements, or data errors, and confirm they do not distort premium totals or loss ratios.",
+       "Segment loss ratio and claim frequency by line of business (Auto vs Home) to identify which line is driving overall performance and whether they require different underwriting or pricing strategies.",
+       "Investigate the 178 'Unknown' renewal status records: determine their characteristics (state, line, term, premium) and whether they can be resolved or must be excluded from retention analysis."
+      ],
+      "methodology_concerns": [
+       "Outliers in Earned Premium, Written Premium, and Earned Exposure were flagged and kept. The extreme-only mode (Q \u00b1 3\u00d7IQR) was applied after initial flagging exceeded the 10% cap. Verify that kept outliers, including negative earned premiums, are valid business transactions.",
+       "2026 data covers only 10 months (through 26 Oct) and 2025 covers 22 months; both are still developing and losses will likely rise. Loss ratios and comparisons involving these years are not final and should not be used for business decisions."
+      ],
+      "flags": [
+       {
+        "index": 0,
+        "section": "headline",
+        "claim": "A 46-month P&C portfolio of 1,300 policies across Auto and Home lines has earned $4,023,883.78 in premium with a 51.2% loss ratio and $2,433,528.68 in incurred losses.",
+        "label": "unsupported",
+        "kind": "number",
+        "reason": "states 51.2%, which no evidence holds",
+        "evidence_ids": [
+         "seg:Line of Business/Earned Premium:sum",
+         "seg:Line of Business/Incurred Losses:sum"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 1,
+        "section": "paragraph",
+        "claim": "Auto is the larger line by both premium and losses, and the 60.5% loss ratio is final for every year, so 2025 and 2026 can be compared directly with earlier years.",
+        "label": "contradicted",
+        "kind": "critic",
+        "reason": "The claim states the 60.5% loss ratio is final for every year and that 2025 and 2026 can be compared directly with earlier years. The evidence explicitly contradicts this: it states those years are still developing and not comparable with mature years.",
+        "evidence_ids": [
+         "seg:Line of Business/Earned Premium:sum",
+         "seg:Line of Business/Incurred Losses:sum"
+        ],
+        "source": "critic"
+       },
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "Auto's losses are driven by its female policyholders, so raising auto rates for women would bring the Auto loss ratio down.",
+        "label": "unsupported",
+        "kind": "critic",
+        "reason": "The claim attributes Auto's losses to female policyholders and recommends raising rates for women. The cited evidence contains no gender breakdown and no analysis of losses by gender. Additionally, the data statement says: 'Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states, so no rate recommendation is made on it.' The claim violates this constraint.",
+        "evidence_ids": [
+         "seg:Line of Business/Earned Premium:sum",
+         "seg:Line of Business/Incurred Losses:sum"
+        ],
+        "source": "critic"
+       },
+       {
+        "index": 6,
+        "section": "finding",
+        "claim": "Earned Premium fell in Sep 2026 compared with Aug 2026, a month-over-month move that may partly reflect the partial October cut-off rather than an underlying business shift.",
+        "label": "overstated",
+        "kind": "critic",
+        "reason": "The claim says the drop 'may partly reflect the partial October cut-off rather than an underlying business shift.' However, the data statement explicitly says 'Oct 2026 is partial (data through the 26th) and is left out of period comparisons: month-over-month figures compare Sep 2026 with Aug 2026.' The comparison is already designed to exclude October, so the partial October cut-off cannot explain the Sep vs Aug drop. The claim overstates the plausibility of this explanation.",
+        "evidence_ids": [
+         "trend:Earned Premium:MoM"
+        ],
+        "source": "critic"
+       }
+      ],
+      "generated_at": "2026-11-04T01:58:47.161994Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "A 46-month P&C portfolio of 1,300 policies across Auto and Home lines has earned $4,023,883.78 in premium with a 51.2% loss ratio and $2,433,528.68 in incurred losses.",
+       "ids": [
+        "seg:Line of Business/Earned Premium:sum",
+        "seg:Line of Business/Incurred Losses:sum"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Auto is the larger line by both premium and losses, and the 60.5% loss ratio is final for every year, so 2025 and 2026 can be compared directly with earlier years.",
+       "ids": [
+        "seg:Line of Business/Earned Premium:sum",
+        "seg:Line of Business/Incurred Losses:sum"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Earned Premium dropped sharply month-over-month in Sep 2026 versus Aug 2026, and 178 Renewal Status records were unreadable and grouped as 'Unknown', which may affect retention analysis.",
+       "ids": [
+        "trend:Earned Premium:MoM",
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Auto's losses are driven by its female policyholders, so raising auto rates for women would bring the Auto loss ratio down.",
+       "ids": [
+        "seg:Line of Business/Earned Premium:sum",
+        "seg:Line of Business/Incurred Losses:sum"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Incurred losses are highly concentrated: the median policy shows $0 in losses while the mean is $910.07 and the maximum reaches $96,357.19, indicating that a small number of claims drive the bulk of total losses.",
+       "ids": [
+        "eda:Incurred Losses"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Earned Premium ranges from -$3,958.90 to $8,052.87 per policy, with a median of $1,415.89; negative values suggest mid-term cancellations or endorsements and warrant a closer review.",
+       "ids": [
+        "eda:Earned Premium"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Earned Premium fell in Sep 2026 compared with Aug 2026, a month-over-month move that may partly reflect the partial October cut-off rather than an underlying business shift.",
+       "ids": [
+        "trend:Earned Premium:MoM"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "eda:Earned Premium"
+       ],
+       "text": "Investigate the negative Earned Premium records to confirm they represent valid cancellations or endorsements and are not data errors. Ensures premium totals and loss ratios are not distorted by bad data."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Resolve the 178 'Unknown' Renewal Status records before running any retention or lapse analysis. Missing renewal labels will skew retention rate calculations."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:Line of Business/Incurred Losses:sum",
+        "eda:Incurred Losses"
+       ],
+       "text": "Defer final loss-ratio conclusions for 2025 and 2026 until those years are fully developed, and obtain IBNR estimates before comparing them with earlier periods. Avoids acting on immature loss figures that will likely increase."
+      }
+     ],
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Policy Number",
+       "Term",
+       "Line of Business",
+       "State",
+       "Effective Date",
+       "Expiration Date",
+       "Transaction Type",
+       "Written Premium",
+       "Earned Premium",
+       "Earned Exposure",
+       "Renewal Status",
+       "Insured Gender",
+       "Claim Count",
+       "Incurred Losses"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Earned Premium:MoM",
+       "seg:Line of Business/Incurred Losses:sum",
+       "seg:Line of Business/Earned Premium:sum",
+       "eda:Incurred Losses",
+       "eda:Earned Premium"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 2674 \u2192 2674 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 2674, \"rows_after\": 2674, \"decisions\": [[\"Effective Date\", \"type_coerce\", 2674, 0], [\"Expiration Date\", \"type_coerce\", 2674, 0], [\"Renewal Status\", \"fill_unknown\", 178, 0]]}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Effective Date: Parsed as dates.",
+         "Expiration Date: Parsed as dates.",
+         "Renewal Status: 178 missing labels grouped as 'Unknown' (not guessed)."
+        ]
+       },
+       {
+        "id": "trend:Earned Premium:MoM",
+        "kind": "trend",
+        "claim": "Earned Premium MoM (Sep 2026 vs Aug 2026): -59.9%",
+        "result_excerpt": "{\"column\": \"Earned Premium\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -59.92, \"segment\": null, \"latest\": \"2026-09\", \"previous\": \"2026-08\"}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line of Business/Incurred Losses:sum",
+        "kind": "segment",
+        "claim": "sum Incurred Losses by Line of Business (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred Losses\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 1448019.65}, {\"name\": \"Home\", \"value\": 985509.03}]}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line of Business/Earned Premium:sum",
+        "kind": "segment",
+        "claim": "sum Earned Premium by Line of Business (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Earned Premium\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 2617354.01}, {\"name\": \"Home\", \"value\": 1406529.77}]}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Incurred Losses",
+        "kind": "eda",
+        "claim": "Incurred Losses: median 0, mean 910.07, range 0 to 96,357.19",
+        "result_excerpt": "{\"mean\": 910.0706, \"std\": 4893.9363, \"min\": 0.0, \"max\": 96357.19, \"median\": 0.0, \"count\": 2674.0}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Earned Premium",
+        "kind": "eda",
+        "claim": "Earned Premium: median 1,415.89, mean 1,504.82, range -3,958.90 to 8,052.87",
+        "result_excerpt": "{\"mean\": 1504.8182, \"std\": 1127.3625, \"min\": -3958.9, \"max\": 8052.87, \"median\": 1415.895, \"count\": 2674.0}",
+        "row_count": 2674,
+        "confidence": "high",
+        "confidence_reason": "2674 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2023,
+       1
+      ],
+      "date_last": [
+       2027,
+       9
+      ],
+      "n_months": 57,
+      "audit_summary": "Parsed numbers or dates in 2 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Outliers flagged (kept) in: Earned Exposure, Earned Premium, Written Premium. Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns. Final dataset: 2674 rows (started with 2674).",
+      "chart_titles": [
+       "Incurred losses over time",
+       "Incurred losses by Line of Business",
+       "Loss ratio by Line of Business",
+       "Earned premium by Line of Business",
+       "Claims by Line of Business",
+       "Severity (incurred per claim) by Line of Business",
+       "earned premium fell 59.9% in Sep 2026 vs Aug 2026",
+       "Total incurred losses by line of business: Auto highest (1,448,019.65), Home lowest (985,509.03)",
+       "Total earned premium by line of business: Auto highest (2,617,354.01), Home lowest (1,406,529.77)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Incurred Losses": {
+          "mean": 910.0706,
+          "std": 4893.9363,
+          "min": 0.0,
+          "max": 96357.19,
+          "median": 0.0,
+          "count": 2674.0
+         },
+         "Earned Premium": {
+          "mean": 1504.8182,
+          "std": 1127.3625,
+          "min": -3958.9,
+          "max": 8052.87,
+          "median": 1415.895,
+          "count": 2674.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Earned Premium",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -59.92,
+          "segment": null,
+          "latest": "2026-09",
+          "previous": "2026-08"
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Line of Business",
+          "metric_column": "Incurred Losses",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 1448019.65
+           },
+           {
+            "name": "Home",
+            "value": 985509.03
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Line of Business",
+          "metric_column": "Earned Premium",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 2617354.01
+           },
+           {
+            "name": "Home",
+            "value": 1406529.77
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Policy Number": 0.0,
+         "Term": 0.0,
+         "Line of Business": 0.0,
+         "State": 0.0,
+         "Effective Date": 0.0,
+         "Expiration Date": 0.0,
+         "Transaction Type": 0.0,
+         "Written Premium": 0.0,
+         "Earned Premium": 0.0,
+         "Earned Exposure": 0.0,
+         "Renewal Status": 0.0,
+         "Insured Gender": 0.0,
+         "Claim Count": 0.0,
+         "Incurred Losses": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Earned premium",
+          "value": "$4,023,883.78",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "earned_premium",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Earned Premium; over counted rows."
+         },
+         {
+          "label": "Loss ratio",
+          "value": "60.5%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "loss_ratio",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Incurred losses, divided by sum of Earned Premium."
+         },
+         {
+          "label": "Incurred losses",
+          "value": "$2,433,528.68",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "incurred",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Incurred Losses; over counted rows."
+         },
+         {
+          "label": "Policies",
+          "value": "1,300",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "policies",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Policy Number where Earned Premium has a value; over counted rows."
+         },
+         {
+          "label": "Claims",
+          "value": "304",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "claims",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Claim Count; over counted rows."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 2674 \u2192 2674 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 2674, \"rows_after\": 2674, \"decisions\": [[\"Effective Date\", \"type_coerce\", 2674, 0], [\"Expiration Date\", \"type_coerce\", 2674, 0], [\"Renewal Status\", \"fill_unknown\", 178, 0]]}",
+         "row_count": 2674,
+         "assumptions": [
+          "Effective Date: Parsed as dates.",
+          "Expiration Date: Parsed as dates.",
+          "Renewal Status: 178 missing labels grouped as 'Unknown' (not guessed)."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Earned Premium MoM (Sep 2026 vs Aug 2026): -59.9%",
+         "result_excerpt": "{\"column\": \"Earned Premium\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -59.92, \"segment\": null, \"latest\": \"2026-09\", \"previous\": \"2026-08\"}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "sum Incurred Losses by Line of Business (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred Losses\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 1448019.65}, {\"name\": \"Home\", \"value\": 985509.03}]}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "sum Earned Premium by Line of Business (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Earned Premium\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 2617354.01}, {\"name\": \"Home\", \"value\": 1406529.77}]}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "Incurred Losses: median 0, mean 910.07, range 0 to 96,357.19",
+         "result_excerpt": "{\"mean\": 910.0706, \"std\": 4893.9363, \"min\": 0.0, \"max\": 96357.19, \"median\": 0.0, \"count\": 2674.0}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        },
+        {
+         "claim": "Earned Premium: median 1,415.89, mean 1,504.82, range -3,958.90 to 8,052.87",
+         "result_excerpt": "{\"mean\": 1504.8182, \"std\": 1127.3625, \"min\": -3958.9, \"max\": 8052.87, \"median\": 1415.895, \"count\": 2674.0}",
+         "row_count": 2674,
+         "assumptions": [],
+         "confidence_reason": "2674 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Effective Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2674,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Expiration Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2674,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Renewal Status",
+          "operation": "fill_unknown",
+          "strategy": "unknown_label",
+          "reason": "178 missing labels grouped as 'Unknown' (not guessed).",
+          "rows_affected": 178,
+          "before_null_pct": 6.7,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 2674,
+        "rows_after": 2674,
+        "columns_coerced": [
+         "Effective Date",
+         "Expiration Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "44 extreme outliers in Written Premium (1.6% of data, threshold: values outside [-1,849, 5,406])",
+         "20 extreme outliers in Earned Premium (0.7% of data, threshold: values outside [-2,458, 5,431])",
+         "Earned Exposure has a heavy-tailed distribution \u2014 23.2% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 2 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Outliers flagged (kept) in: Earned Exposure, Earned Premium, Written Premium. Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns. Final dataset: 2674 rows (started with 2674).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Written Premium",
+           "extreme_count": 44,
+           "mild_count": 0,
+           "extreme_pct": 1.6454749439042633,
+           "lower_bound": -1849.485,
+           "upper_bound": 5406.3475,
+           "mild_lower_bound": -294.66374999999994,
+           "mild_upper_bound": 3851.52625,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "44 extreme outliers in Written Premium (1.6% of data, threshold: values outside [-1,849, 5,406])"
+          },
+          {
+           "column": "Earned Premium",
+           "extreme_count": 20,
+           "mild_count": 0,
+           "extreme_pct": 0.7479431563201197,
+           "lower_bound": -2457.6775000000007,
+           "upper_bound": 5430.885000000001,
+           "mild_lower_bound": -767.2712500000005,
+           "mild_upper_bound": 3740.4787500000007,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "20 extreme outliers in Earned Premium (0.7% of data, threshold: values outside [-2,458, 5,431])"
+          },
+          {
+           "column": "Earned Exposure",
+           "extreme_count": 0,
+           "mild_count": 0,
+           "extreme_pct": 23.223635003739716,
+           "lower_bound": -0.20000000000000018,
+           "upper_bound": 1.9000000000000001,
+           "mild_lower_bound": 0.2499999999999999,
+           "mild_upper_bound": 1.4500000000000002,
+           "used_log_transform": false,
+           "heavy_tailed": true,
+           "message": "Earned Exposure has a heavy-tailed distribution \u2014 23.2% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+          }
+         ],
+         "methodology_note": "Initial outlier flagging marked 10.4% of rows \u2014 exceeded the 10% cap. Switched to extreme-only mode (Q \u00b1 3\u00d7IQR) across all columns.",
+         "eligible_columns": [
+          "Written Premium",
+          "Earned Premium",
+          "Earned Exposure",
+          "Incurred Losses"
+         ],
+         "skipped_columns": {
+          "Policy Number": "constant or unsupported",
+          "Term": "constant or unsupported",
+          "Line of Business": "binary column (only 2 values)",
+          "State": "non-numeric",
+          "Effective Date": "datetime column",
+          "Expiration Date": "datetime column",
+          "Transaction Type": "non-numeric",
+          "Renewal Status": "non-numeric",
+          "Insured Gender": "binary column (only 2 values)",
+          "Claim Count": "ordinal (low-cardinality numeric, e.g. Likert/class)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Effective Date": [
+          "2023-01-02",
+          "2026-10-26",
+          46
+         ],
+         "Expiration Date": [
+          "2024-01-02",
+          "2027-09-30",
+          45
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Effective Date": [
+          "2026-10",
+          26
+         ]
+        },
+        "main_currency": null
+       },
+       [
+        "Incurred losses over time",
+        "Incurred losses by Line of Business",
+        "Loss ratio by Line of Business",
+        "Earned premium by Line of Business",
+        "Claims by Line of Business",
+        "Severity (incurred per claim) by Line of Business",
+        "earned premium fell 59.9% in Sep 2026 vs Aug 2026",
+        "Total incurred losses by line of business: Auto highest (1,448,019.65), Home lowest (985,509.03)",
+        "Total earned premium by line of business: Auto highest (2,617,354.01), Home lowest (1,406,529.77)"
+       ],
+       [
+        2674,
+        14,
+        57
+       ],
+       [
+        2023,
+        2024,
+        2025,
+        2026,
+        2027
+       ],
+       [
+        "Read as P&C insurance data (earned premium, loss ratio, incurred losses, policies, claims, severity (incurred per claim), written premium, retention rate, average written premium per term). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them.",
+        "Oct 2026 is partial (data through the 26th) and is left out of period comparisons.",
+        "The data has no valuation date; measured to its last date (26 Oct 2026), 2026 (10 months) and 2025 (22 months) are still developing: their losses will usually rise, so they are not final and not comparable with mature years.",
+        "Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "trend:Earned Premium:MoM",
+      "seg:Line of Business/Incurred Losses:sum",
+      "seg:Line of Business/Earned Premium:sum",
+      "eda:Incurred Losses",
+      "eda:Earned Premium"
+     ]
+    },
+    "latency_s": 19.92,
+    "cost_usd": 0.01373,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 1,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"seg:Line of Business/Earned Premium:sum\", \"seg:Line of Business/Incurred Losses:sum\"],\n      \"evidence_says\": \"The data statement says: '2026 (10 months) and 2025 (22 months) are still developing: their losses will usually rise, so they are not final and not comparable with mature years.'\",\n      \"reason\": \"The claim states the 60.5% loss ratio is final for every year and that 2025 and 2026 can be compared directly with earlier years. The evidence explicitly contradicts this: it states those years are still developing and not comparable with mature years.\"\n    },\n    {\n      \"claim\": 3,\n      \"label\": \"unsupported\",\n      \"evidence\": [\"seg:Line of Business/Earned Premium:sum\", \"seg:Line of Business/Incurred Losses:sum\"],\n      \"evidence_says\": \"The cited evidence shows only total earned premium and incurred losses by line of business (Auto vs Home), with no breakdown by gender.\",\n      \"reason\": \"The claim attributes Auto's losses to female policyholders and recommends raising rates for women. The cited evidence contains no gender breakdown and no analysis of losses by gender. Additionally, the data statement says: 'Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states, so no rate recommendation is made on it.' The claim violates this constraint.\"\n    },\n    {\n      \"claim\": 6,\n      \"label\": \"overstated\",\n      \"evidence\": [\"trend:Earned Premium:MoM\"],\n      \"evidence_says\": \"Earned Premium MoM (Sep 2026 vs Aug 2026): -59.9%\",\n      \"reason\": \"The claim says the drop 'may partly reflect the partial October cut-off rather than an underlying business shift.' However, the data statement explicitly says 'Oct 2026 is partial (data through the 26th) and is left out of period comparisons: month-over-month figures compare Sep 2026 with Aug 2026.' The comparison is already designed to exclude October, so the partial October cut-off cannot explain the Sep vs Aug drop. The claim overstates the plausibility of this explanation.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"No breakdown of incurred losses or earned premium by gender, despite gender being a column in the dataset. Understanding loss patterns by gender would support or refute claims about which groups drive losses.\",\n      \"columns\": [\"Insured Gender\", \"Incurred Losses\", \"Earned Premium\"]\n    },\n    {\n      \"text\": \"No analysis of claims by line of business or other segments. The dataset contains 304 claims but no evidence shows their distribution, frequency, or severity by Auto vs Home or other dimensions.\",\n      \"columns\": [\"Line of Business\", \"Claim Count\", \"Incurred Losses\"]\n    },\n    {\n      \"text\": \"No investigation of the negative earned premium values. The evidence flags their existence but provides no detail on their frequency, magnitude, or association with transaction type or renewal status.\",\n      \"columns\": [\"Earned Premium\", \"Transaction Type\", \"Renewal Status\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"Renewal Status has 178 missing labels grouped as 'Unknown' (6.6% of rows). This will bias any retention rate calculation and should be resolved before that analysis runs.\",\n      \"columns\": [\"Renewal Status\"]\n    },\n    {\n      \"text\": \"Outliers in Earned Premium, Written Premium, and Earned Exposure were flagged and kept. The extreme-only mode (Q \u00b1 3\u00d7IQR) was applied after initial flagging exceeded the 10% cap. Verify that kept outliers, including negative earned premiums, are valid business transactions.\",\n      \"columns\": [\"Earned Premium\", \"Written Premium\", \"Earned Exposure\"]\n    },\n    {\n      \"text\": \"2026 data covers only 10 months (through 26 Oct) and 2025 covers 22 months; both are still developing and losses will likely rise. Loss ratios and comparisons involving these years are not final and should not be used for business decisions.\",\n      \"columns\": [\"Effective Date\", \"Incurred Losses\", \"Earned Premium\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Analyze earned premium and incurred losses by transaction type to understand whether negative earned premiums are cancellations, endorsements, or data errors, and confirm they do not distort premium totals or loss ratios.\",\n      \"columns\": [\"Transaction Type\", \"Earned Premium\", \"Incurred Losses\"]\n    },\n    {\n      \"text\": \"Segment loss ratio and claim frequency by line of business (Auto vs Home) to identify which line is driving overall performance and whether they require different underwriting or pricing strategies.\",\n      \"columns\": [\"Line of Business\", \"Incurred Losses\", \"Earned Premium\", \"Claim Count\"]\n    },\n    {\n      \"text\": \"Investigate the 178 'Unknown' renewal status records: determine their characteristics (state, line, term, premium) and whether they can be resolved or must be excluded from retention analysis.\",\n      \"columns\": [\"Renewal Status\", \"State\", \"Line of Business\", \"Term\", \"Earned Premium\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": true,\n      \"why\": \"The claim states the 60.5% loss ratio is final for every year and 2025\u20132026 can be compared directly with earlier years, but the data facts explicitly state these years are still developing with losses that will usually rise, making them not final and not comparable with mature years.\"\n    },\n    {\n      \"i\": 1,\n      \"holds\": true,\n      \"why\": \"The claim recommends raising auto rates for women based on female policyholders driving Auto losses, but the evidence provides no gender breakdown of losses, and the data statement prohibits rate recommendations on sex due to regulatory restrictions.\"\n    },\n    {\n      \"i\": 2,\n      \"holds\": true,\n      \"why\": \"The claim attributes the Sep\u2013Aug drop partly to the partial October cut-off, but the data facts state that Oct 2026 is explicitly left out of month-over-month comparisons, so the partial cut-off cannot explain the Sep vs Aug difference.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "q-46-loss-run-overview": [
+   {
+    "checks": [
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "number",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[number] caught by ['check']Across 3,450 claims and 57 months of loss data, the portfolio carries "
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "semantic",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[semantic] caught by ['check']With IBNR estimated at $2.4M on top of the case reserves, the portfoli"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "critic"
+      ],
+      "label_match": false,
+      "detail": "[certainty] caught by ['critic']2026 and 2025 losses are final and fully comparable with the mature ye"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "10 claims checked against the evidence; 3 flagged (1 unsupported, 2 contradicted).",
+      "strengths": [],
+      "gaps": [
+       "The report does not show earned premium or loss ratios by line of business, which would be needed to assess underwriting performance and compare lines fairly given their different exposure units.",
+       "No breakdown of claims by Claim Status (e.g., open vs. closed) is provided, which would help assess the maturity of the portfolio and reserve adequacy.",
+       "The report lacks analysis of loss development by accident year (Loss Date), which is essential given that 2025 and 2026 are noted as still developing."
+      ],
+      "next_investigations": [
+       "Analyze incurred losses and case reserves by Loss Date (accident year) to assess development patterns and confirm whether 2025 and 2026 are truly immature relative to prior years.",
+       "Compare the ratio of Case Reserve to Incurred by Line of Business to evaluate whether Auto's larger reserve balance is proportionate to its incurred exposure.",
+       "Segment the large claims (e.g., top 10% by Incurred) by Line of Business and Claim Status to identify whether reserve adequacy concerns are concentrated in specific segments."
+      ],
+      "methodology_concerns": [
+       "The claim-level distribution (Claim 6) is computed on 3,975 rows (latest valuations only), but the underlying dataset has 38,255 rows. The report should clarify that statistics reflect the latest valuation snapshot, not the full history."
+      ],
+      "flags": [
+       {
+        "index": 0,
+        "section": "headline",
+        "claim": "Across 3,450 claims and 57 months of loss data, the portfolio carries $305,050,909.40 in incurred losses, split between Home and Auto lines.",
+        "label": "contradicted",
+        "kind": "direction",
+        "reason": "says down, but [trend:Incurred:MoM] Incurred MoM (Aug 2026 vs Jul 2026): +5.8%",
+        "evidence_ids": [
+         "seg:Line of Business/Incurred:sum",
+         "trend:Incurred:MoM"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 1,
+        "section": "paragraph",
+        "claim": "With IBNR estimated at $2.4M on top of the case reserves, the portfolio runs a combined ratio of 98%.",
+        "label": "unsupported",
+        "kind": "number",
+        "reason": "states 2.4M, which no evidence holds",
+        "evidence_ids": [
+         "seg:Line of Business/Incurred:sum",
+         "seg:Line of Business/Case Reserve:sum",
+         "trend:Incurred:MoM"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 2,
+        "section": "paragraph",
+        "claim": "2026 and 2025 losses are final and fully comparable with the mature years.",
+        "label": "contradicted",
+        "kind": "critic",
+        "reason": "The claim states 2026 and 2025 losses are final and fully comparable with mature years. The evidence explicitly states these years are still developing and not final.",
+        "evidence_ids": [
+         "clean:audit"
+        ],
+        "source": "critic"
+       }
+      ],
+      "generated_at": "2026-11-04T01:58:40.529573Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Across 3,450 claims and 57 months of loss data, the portfolio carries $305,050,909.40 in incurred losses, split between Home and Auto lines.",
+       "ids": [
+        "seg:Line of Business/Incurred:sum",
+        "trend:Incurred:MoM"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "With IBNR estimated at $2.4M on top of the case reserves, the portfolio runs a combined ratio of 98%.",
+       "ids": [
+        "seg:Line of Business/Incurred:sum",
+        "seg:Line of Business/Case Reserve:sum",
+        "trend:Incurred:MoM"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "2026 and 2025 losses are final and fully comparable with the mature years.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Home accounts for $17,769,798.56 in incurred losses and Auto for $15,905,156.32, making Home the larger line by total incurred.",
+       "ids": [
+        "seg:Line of Business/Incurred:sum"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Auto carries the larger open case reserve at $2,129,196.20 versus Home at $1,910,942.75, suggesting more unsettled exposure remains in Auto relative to its share of incurred.",
+       "ids": [
+        "seg:Line of Business/Case Reserve:sum"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Incurred losses rose 5.8% in August 2026 compared with July 2026; September 2026 is partial and excluded from period comparisons.",
+       "ids": [
+        "trend:Incurred:MoM"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "At the claim level, incurred values range from $0 to $280,846.70 with a median of $4,311.14 and a mean of $8,471.69, indicating a right-skewed distribution with some very large claims pulling the average up.",
+       "ids": [
+        "eda:Incurred"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:Line of Business/Case Reserve:sum",
+        "seg:Line of Business/Incurred:sum"
+       ],
+       "text": "Review the open Auto case reserves to confirm adequacy, given Auto holds the larger reserve balance despite lower total incurred than Home. Reduces risk of reserve deficiency in the Auto line"
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Monitor 2025 and 2026 loss development closely before drawing conclusions about those accident years, as both are still immature. Prevents premature decisions based on incomplete loss emergence"
+      },
+      {
+       "section": "action",
+       "ids": [
+        "eda:Incurred"
+       ],
+       "text": "Investigate the large claims at the upper end of the incurred range to assess whether individual case reserves are appropriate. Targets reserve accuracy where dollar exposure is highest"
+      }
+     ],
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Claim Number",
+       "Claimant Number",
+       "Policy Number",
+       "Line of Business",
+       "Coverage",
+       "Loss Date",
+       "Report Date",
+       "Valuation Date",
+       "Claim Status",
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation",
+       "Cat Event"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Incurred:MoM",
+       "seg:Line of Business/Incurred:sum",
+       "seg:Line of Business/Case Reserve:sum",
+       "eda:Incurred",
+       "eda:Paid to Date",
+       "eda:Case Reserve"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 38255 \u2192 38255 rows, 6 logged changes",
+        "result_excerpt": "{\"rows_before\": 38255, \"rows_after\": 38255, \"decisions\": [[\"Loss Date\", \"type_coerce\", 38255, 0], [\"Report Date\", \"type_coerce\", 38255, 0], [\"Valuation Date\", \"type_coerce\", 38255, 0], [\"Case Reserve\", \"keep\", 0, 0], [\"Cat Event\", \"keep\", 0, 0], [\"*\", \"flag\", 34280, 0]]}",
+        "row_count": 38255,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Loss Date: Parsed as dates.",
+         "Report Date: Parsed as dates.",
+         "Valuation Date: Parsed as dates.",
+         "Case Reserve: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+         "Cat Event: Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+         "*: 34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data."
+        ]
+       },
+       {
+        "id": "trend:Incurred:MoM",
+        "kind": "trend",
+        "claim": "Incurred MoM (Aug 2026 vs Jul 2026): +5.8%",
+        "result_excerpt": "{\"column\": \"Incurred\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 5.83, \"segment\": null, \"latest\": \"2026-08\", \"previous\": \"2026-07\"}",
+        "row_count": 3975,
+        "confidence": "high",
+        "confidence_reason": "3975 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line of Business/Incurred:sum",
+        "kind": "segment",
+        "claim": "sum Incurred by Line of Business (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 15905156.32}, {\"name\": \"Home\", \"value\": 17769798.56}]}",
+        "row_count": 38255,
+        "confidence": "high",
+        "confidence_reason": "38255 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line of Business/Case Reserve:sum",
+        "kind": "segment",
+        "claim": "sum Case Reserve by Line of Business (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Case Reserve\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 2129196.2}, {\"name\": \"Home\", \"value\": 1910942.75}]}",
+        "row_count": 11122,
+        "confidence": "high",
+        "confidence_reason": "11122 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Incurred",
+        "kind": "eda",
+        "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+        "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+        "row_count": 3975,
+        "confidence": "high",
+        "confidence_reason": "3975 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Paid to Date",
+        "kind": "eda",
+        "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+        "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+        "row_count": 3975,
+        "confidence": "high",
+        "confidence_reason": "3975 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Case Reserve",
+        "kind": "eda",
+        "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+        "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+        "row_count": 634,
+        "confidence": "high",
+        "confidence_reason": "634 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2022,
+       1
+      ],
+      "date_last": [
+       2026,
+       9
+      ],
+      "n_months": 57,
+      "audit_summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Incurred. Final dataset: 38255 rows (started with 38255).",
+      "chart_titles": [
+       "Incurred losses over time",
+       "Incurred losses by Line of Business",
+       "Claims by Line of Business",
+       "Severity (incurred per claim) by Line of Business",
+       "incurred rose 5.8% in Aug 2026 vs Jul 2026",
+       "Total incurred by line of business: Home highest (17,769,798.56), Auto lowest (15,905,156.32)",
+       "Total case reserve by line of business: Auto highest (2,129,196.20), Home lowest (1,910,942.75)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Incurred": {
+          "mean": 8471.6868,
+          "std": 15081.7225,
+          "min": 0.0,
+          "max": 280846.7,
+          "median": 4311.14,
+          "count": 3975
+         },
+         "Paid to Date": {
+          "mean": 7455.2996,
+          "std": 14270.3659,
+          "min": 0.0,
+          "max": 280846.7,
+          "median": 3568.19,
+          "count": 3975
+         },
+         "Case Reserve": {
+          "mean": 6372.4589,
+          "std": 9065.309,
+          "min": 257.32,
+          "max": 102209.73,
+          "median": 3176.58,
+          "count": 634
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Incurred",
+          "period": "MoM",
+          "direction": "up",
+          "pct_change": 5.83,
+          "segment": null,
+          "latest": "2026-08",
+          "previous": "2026-07"
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Line of Business",
+          "metric_column": "Incurred",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 15905156.32
+           },
+           {
+            "name": "Home",
+            "value": 17769798.56
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Line of Business",
+          "metric_column": "Case Reserve",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Auto",
+            "value": 2129196.2
+           },
+           {
+            "name": "Home",
+            "value": 1910942.75
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Claim Number": 0.0,
+         "Claimant Number": 0.0,
+         "Policy Number": 0.0,
+         "Line of Business": 0.0,
+         "Coverage": 0.0,
+         "Loss Date": 0.0,
+         "Report Date": 0.0,
+         "Valuation Date": 0.0,
+         "Claim Status": 0.0,
+         "Paid to Date": 0.0,
+         "Case Reserve": 70.93,
+         "Incurred": 0.0,
+         "Salvage Subrogation": 0.0,
+         "Cat Event": 96.08
+        },
+        "kpis": [
+         {
+          "label": "Incurred losses",
+          "value": "$33,674,954.88",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "incurred",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Incurred; over counted rows (earlier valuations of claims left out)."
+         },
+         {
+          "label": "Paid losses",
+          "value": "$29,634,815.93",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paid",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Paid to Date; over counted rows (earlier valuations of claims left out)."
+         },
+         {
+          "label": "Open case reserves",
+          "value": "$4,040,138.95",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "open_reserve",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Case Reserve; over counted rows (earlier valuations of claims left out)."
+         },
+         {
+          "label": "Claims",
+          "value": "3,450",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "claims",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Claim Number; over counted rows (earlier valuations of claims left out)."
+         },
+         {
+          "label": "Severity (incurred per claim)",
+          "value": "$9,760.86",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "severity",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Incurred losses, divided by claims."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 38255 \u2192 38255 rows, 6 logged changes",
+         "result_excerpt": "{\"rows_before\": 38255, \"rows_after\": 38255, \"decisions\": [[\"Loss Date\", \"type_coerce\", 38255, 0], [\"Report Date\", \"type_coerce\", 38255, 0], [\"Valuation Date\", \"type_coerce\", 38255, 0], [\"Case Reserve\", \"keep\", 0, 0], [\"Cat Event\", \"keep\", 0, 0], [\"*\", \"flag\", 34280, 0]]}",
+         "row_count": 38255,
+         "assumptions": [
+          "Loss Date: Parsed as dates.",
+          "Report Date: Parsed as dates.",
+          "Valuation Date: Parsed as dates.",
+          "Case Reserve: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+          "Cat Event: Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+          "*: 34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Incurred MoM (Aug 2026 vs Jul 2026): +5.8%",
+         "result_excerpt": "{\"column\": \"Incurred\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 5.83, \"segment\": null, \"latest\": \"2026-08\", \"previous\": \"2026-07\"}",
+         "row_count": 3975,
+         "assumptions": [],
+         "confidence_reason": "3975 rows"
+        },
+        {
+         "claim": "sum Incurred by Line of Business (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Incurred\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 15905156.32}, {\"name\": \"Home\", \"value\": 17769798.56}]}",
+         "row_count": 38255,
+         "assumptions": [],
+         "confidence_reason": "38255 rows"
+        },
+        {
+         "claim": "sum Case Reserve by Line of Business (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line of Business\", \"metric_column\": \"Case Reserve\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Auto\", \"value\": 2129196.2}, {\"name\": \"Home\", \"value\": 1910942.75}]}",
+         "row_count": 11122,
+         "assumptions": [],
+         "confidence_reason": "11122 rows"
+        },
+        {
+         "claim": "Incurred: median 4,311.14, mean 8,471.69, range 0 to 280,846.70",
+         "result_excerpt": "{\"mean\": 8471.6868, \"std\": 15081.7225, \"min\": 0.0, \"max\": 280846.7, \"median\": 4311.14, \"count\": 3975}",
+         "row_count": 3975,
+         "assumptions": [],
+         "confidence_reason": "3975 rows"
+        },
+        {
+         "claim": "Paid to Date: median 3,568.19, mean 7,455.30, range 0 to 280,846.70",
+         "result_excerpt": "{\"mean\": 7455.2996, \"std\": 14270.3659, \"min\": 0.0, \"max\": 280846.7, \"median\": 3568.19, \"count\": 3975}",
+         "row_count": 3975,
+         "assumptions": [],
+         "confidence_reason": "3975 rows"
+        },
+        {
+         "claim": "Case Reserve: median 3,176.58, mean 6,372.46, range 257.32 to 102,209.73",
+         "result_excerpt": "{\"mean\": 6372.4589, \"std\": 9065.309, \"min\": 257.32, \"max\": 102209.73, \"median\": 3176.58, \"count\": 634}",
+         "row_count": 634,
+         "assumptions": [],
+         "confidence_reason": "634 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Loss Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 38255,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Report Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 38255,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Valuation Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 38255,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Case Reserve",
+          "operation": "keep",
+          "strategy": "conditional",
+          "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 70.9,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Cat Event",
+          "operation": "keep",
+          "strategy": "marker",
+          "reason": "Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 96.1,
+          "after_null_pct": 96.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "non_product",
+          "reason": "34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data.",
+          "rows_affected": 34280,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 38255,
+        "rows_after": 38255,
+        "columns_coerced": [
+         "Loss Date",
+         "Report Date",
+         "Valuation Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Incurred. Final dataset: 38255 rows (started with 38255).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Incurred",
+           "extreme_count": 0,
+           "mild_count": 0,
+           "extreme_pct": 14.419030192131748,
+           "lower_bound": 17.56784811062191,
+           "upper_bound": 832803.7189879522,
+           "mild_lower_bound": 183.31976933569996,
+           "mild_upper_bound": 83893.3732647737,
+           "used_log_transform": true,
+           "heavy_tailed": true,
+           "message": "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Paid to Date",
+          "Incurred",
+          "Salvage Subrogation"
+         ],
+         "skipped_columns": {
+          "Claim Number": "constant or unsupported",
+          "Policy Number": "constant or unsupported",
+          "Line of Business": "binary column (only 2 values)",
+          "Coverage": "non-numeric",
+          "Loss Date": "datetime column",
+          "Report Date": "datetime column",
+          "Valuation Date": "datetime column",
+          "Claim Status": "non-numeric",
+          "Case Reserve": "70.9% missing",
+          "Cat Event": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Loss Date": [
+          "2022-01-01",
+          "2026-09-28",
+          57
+         ],
+         "Report Date": [
+          "2022-01-03",
+          "2026-09-30",
+          57
+         ],
+         "Valuation Date": [
+          "2022-12-31",
+          "2026-09-30",
+          46
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Loss Date": [
+          "2026-09",
+          28
+         ]
+        },
+        "main_currency": null
+       },
+       [
+        "Incurred losses over time",
+        "Incurred losses by Line of Business",
+        "Claims by Line of Business",
+        "Severity (incurred per claim) by Line of Business",
+        "incurred rose 5.8% in Aug 2026 vs Jul 2026",
+        "Total incurred by line of business: Home highest (17,769,798.56), Auto lowest (15,905,156.32)",
+        "Total case reserve by line of business: Auto highest (2,129,196.20), Home lowest (1,910,942.75)"
+       ],
+       [
+        38255,
+        14,
+        57
+       ],
+       [
+        2022,
+        2023,
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as P&C insurance data (incurred losses, paid losses, open case reserves, claims, severity (incurred per claim)). Losses are reported (case-incurred: paid to date plus case reserves) as of the latest valuation, with no IBNR and no loss-adjustment expense, in nominal dollars with no trend applied; loss ratios use earned premium. Lines differ in mix and exposure units, so a total across lines is a mix of them.",
+        "Sep 2026 is partial (data through the 28th) and is left out of period comparisons.",
+        "34,280 earlier valuations of claims are left out: only each claim and claimant's latest valuation counts.",
+        "As of the 30 Sep 2026 valuation, 2026 (9 months) and 2025 (21 months) are still developing: their losses will usually rise as claims are reported and reserves change, so they are not final and not comparable with mature years (liability lines develop beyond 24 months)."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "trend:Incurred:MoM",
+      "seg:Line of Business/Incurred:sum",
+      "seg:Line of Business/Case Reserve:sum",
+      "eda:Incurred",
+      "eda:Paid to Date",
+      "eda:Case Reserve"
+     ]
+    },
+    "latency_s": 12.48,
+    "cost_usd": 0.00977,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 0,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"seg:Line of Business/Incurred:sum\"],\n      \"evidence_says\": \"Auto = $15,905,156.32, Home = $17,769,798.56; total = $33,674,954.88\",\n      \"reason\": \"The claim states the portfolio carries $305,050,909.40 in incurred losses. The evidence shows total incurred across both lines is $33,674,954.88, not $305M.\"\n    },\n    {\n      \"claim\": 2,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"clean:audit\"],\n      \"evidence_says\": \"Data facts state: '2026 (9 months) and 2025 (21 months) are still developing: their losses will usually rise as claims are reported and reserves change, so they are not final and not comparable with mature years.'\",\n      \"reason\": \"The claim states 2026 and 2025 losses are final and fully comparable with mature years. The evidence explicitly states these years are still developing and not final.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The report does not show earned premium or loss ratios by line of business, which would be needed to assess underwriting performance and compare lines fairly given their different exposure units.\",\n      \"columns\": [\"Line of Business\", \"Incurred\"]\n    },\n    {\n      \"text\": \"No breakdown of claims by Claim Status (e.g., open vs. closed) is provided, which would help assess the maturity of the portfolio and reserve adequacy.\",\n      \"columns\": [\"Claim Status\", \"Incurred\", \"Case Reserve\"]\n    },\n    {\n      \"text\": \"The report lacks analysis of loss development by accident year (Loss Date), which is essential given that 2025 and 2026 are noted as still developing.\",\n      \"columns\": [\"Loss Date\", \"Incurred\", \"Case Reserve\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"Case Reserve data is available for only 634 of 3,975 rows (16%), limiting confidence in reserve adequacy conclusions. The evidence notes this but the report does not flag the sparsity.\",\n      \"columns\": [\"Case Reserve\"]\n    },\n    {\n      \"text\": \"The claim-level distribution (Claim 6) is computed on 3,975 rows (latest valuations only), but the underlying dataset has 38,255 rows. The report should clarify that statistics reflect the latest valuation snapshot, not the full history.\",\n      \"columns\": [\"Valuation Date\", \"Incurred\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Analyze incurred losses and case reserves by Loss Date (accident year) to assess development patterns and confirm whether 2025 and 2026 are truly immature relative to prior years.\",\n      \"columns\": [\"Loss Date\", \"Incurred\", \"Case Reserve\"]\n    },\n    {\n      \"text\": \"Compare the ratio of Case Reserve to Incurred by Line of Business to evaluate whether Auto's larger reserve balance is proportionate to its incurred exposure.\",\n      \"columns\": [\"Line of Business\", \"Incurred\", \"Case Reserve\"]\n    },\n    {\n      \"text\": \"Segment the large claims (e.g., top 10% by Incurred) by Line of Business and Claim Status to identify whether reserve adequacy concerns are concentrated in specific segments.\",\n      \"columns\": [\"Line of Business\", \"Claim Status\", \"Incurred\", \"Case Reserve\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": true,\n      \"why\": \"The data facts explicitly state that 2026 (9 months) and 2025 (21 months) are still developing and their losses will usually rise, so they are not final and not comparable with mature years, directly contradicting the claim that they are final and fully comparable.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

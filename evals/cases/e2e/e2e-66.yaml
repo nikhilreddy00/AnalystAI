@@ -1,0 +1,26 @@
+id: e2e-66
+domain: insurance
+dataset:
+  name: policies
+  seed: 1
+question: What's our retention rate by line?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: retention_by_line.Auto
+  rel_tol: 0.02
+  unit: '%'
+  scales:
+  - 100
+- kind: must_not_number
+  truth_key: retention_naive_by_line.Auto
+  rel_tol: 0.02
+  unit: '%'
+  scales:
+  - 100
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: Renewed ÷ terms up for renewal; terms not yet due in the base (47.6%) is the trap.

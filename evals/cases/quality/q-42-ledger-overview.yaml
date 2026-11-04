@@ -4,7 +4,7 @@ id: q-42-ledger-overview
 insight_case: ins-42-ledger-overview
 category: straightforward
 source:
-  report: insight-20261102T210024Z.json
+  report: insight-20261104T014955Z.json
   run: 0
 seeded: true
 defects:
@@ -14,7 +14,7 @@ defects:
   label: contradicted
   text: Fee income totals $135,577.00 across the period.
 - op: replace
-  i: 4
+  i: 5
   kind: causal
   label: overstated
   text: The fee waiver campaign caused transaction amounts to rise 1.8% month-over-month from September

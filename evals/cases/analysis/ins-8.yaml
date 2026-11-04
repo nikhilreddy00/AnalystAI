@@ -1,0 +1,33 @@
+id: ins-8
+domain: insurance
+category: trend
+pipeline: production
+dataset:
+  name: loss_run
+  seed: 1
+question: What are incurred losses by accident year?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Incurred
+  segments: []
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment:
+  - Accident Year
+  - AY
+  - Loss Year
+  - Year
+  - Loss Date Year
+  - Loss Date
+  truth_key: incurred_by_accident_year
+  abs_tol: 1000
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Grouped by the loss date's year (accident year), at each claimant's latest valuation; by valuation year (calendar) or summed over valuations is the trap. 2025-2026 are still developing (the insight's caveat).

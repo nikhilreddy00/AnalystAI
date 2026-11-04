@@ -1,0 +1,20 @@
+id: intake-ins-04
+category: clear
+pipeline: production
+source:
+  dataset: loss_run
+  seed: 1
+overview_done: true
+question: What are total losses by accident year?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: incurred
+  forbid:
+  - Valuation Date
+rationale: '''Losses'' = incurred (D9); ''by year'' = accident (loss) year, never
+  the valuation date (D8).'

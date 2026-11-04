@@ -1,0 +1,17 @@
+id: intake-ins-09
+category: clear
+pipeline: production
+source:
+  dataset: policies
+  seed: 1
+overview_done: true
+question: How much premium did we write each month?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: written_premium
+rationale: 'Written premium over time (not earned: the user said write).'

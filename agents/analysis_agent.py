@@ -25,6 +25,7 @@ from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
     runout_months,
+    developing_trend,
     ROW_KIND_COLUMN,
     ROW_KINDS,
     computable,
@@ -225,8 +226,7 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     Merged into the sandbox's `raw` result as before: a target's MoM (and YoY on a pack's data)
     replaces the model's; target-pair r and the joint breakdown fill gaps; a level by segment
     replaces only the model's totals and means of it. Ids go to raw['builtin'] (evidence)."""
-    from agents.utils import (LevelUnavailable, aggregate, effective_agg, latest_rows, partial_last_month,
-                              pct_change, ranked, time_axis, weekly_cadence)
+    from agents.utils import (LevelUnavailable, aggregate, effective_agg, latest_rows, pct_change, ranked, time_axis, weekly_cadence)
     from domain_pack import entity_rows, rows_for
     types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
     names = set(df.columns)
@@ -235,13 +235,8 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     # a column's summary over the rows its tiles count (a claim's replaced and voided versions
     # out, as every answer and chart): replaces the sandbox's every-row summary of that column
     for c in (c for c in contract.metric_columns if c in names):
-        rows, how = rows_for(df, contract, c)
-        s = pd.to_numeric(rows[c], errors="coerce").dropna()
-        if how and len(s) and len(rows) < len(df):
-            raw.setdefault("eda_summary", {})[c] = {
-                "mean": round(float(s.mean()), 4), "std": round(float(s.std()), 4),
-                "min": round(float(s.min()), 4), "max": round(float(s.max()), 4),
-                "median": round(float(s.median()), 4), "count": int(s.count())}
+        if (summary := counted_summary(df, contract, c)) is not None:
+            raw.setdefault("eda_summary", {})[c] = summary
     for key, empty in (("builtin", []), ("correlations", {}), ("trends", []), ("segments", []),
                        ("assumptions", [])):
         raw.setdefault(key, empty)
@@ -273,13 +268,8 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                 "mean" if pd.to_numeric(df[col], errors="coerce").dropna().between(0, 1).all() else "sum")
             if not date or (agg in ("last", "first") and col not in level):
                 return None
-            rows, _ = rows_for(df, contract, col)
+            rows, m = counted_months(df, contract, col, date)
             t = pd.to_datetime(rows[date], format="mixed", errors="coerce")
-            m = t.dt.to_period("M")
-            if partial_last_month(t):
-                m = m.where(m != m.max())
-            if runout := runout_months(contract):   # claims still arriving: never a trend
-                m = m.where(m < t.dt.to_period("M").max() - runout + 1)
             weeks = t.groupby(m).nunique() if yoy and agg == "sum" and weekly_cadence(t) else None
             return rows.assign(_m=m), agg, weeks
 
@@ -305,6 +295,12 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             rows, agg, weeks = made
             overall = series_of(rows, c, agg, weeks)
             if overall is None or len(overall) < 2:
+                continue
+            # a measure that develops (losses at a valuation): a change between young accident
+            # months is development, not a trend; no built-in MoM / YoY, the note says why
+            if note := developing_trend(contract, df, c):
+                if (note := f"{c}:{note}") not in raw["assumptions"]:
+                    raw["assumptions"].append(note)
                 continue
             # the data's own last month (before partial / run-out months were left out)
             data_last = pd.to_datetime(rows[time_axis(contract, c, df)], format="mixed",
@@ -369,6 +365,36 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                                         "results": [{"name": f"{a}|{b}", "value": round(float(means[(a, b)]), 4)}
                                                     for a, b in top]})
                 raw["builtin"].append(f"seg:{joint}/{c}")
+
+
+def counted_months(df: pd.DataFrame, contract, col: str, date: str):
+    """(the rows `col`'s tiles count, each row's calendar month): a mid-month export's partial
+    last month and the months still arriving (domain_pack.runout_months) are blank, judged once
+    on the whole file. THE month rule of the built-in trends and the eval harness."""
+    from agents.utils import partial_last_month
+    from domain_pack import rows_for
+    rows, _ = rows_for(df, contract, col)
+    t = pd.to_datetime(rows[date], format="mixed", errors="coerce")
+    m = t.dt.to_period("M")
+    if partial_last_month(t):
+        m = m.where(m != m.max())
+    if runout := runout_months(contract):   # claims still arriving: never a trend
+        m = m.where(m < t.dt.to_period("M").max() - runout + 1)
+    return rows, m
+
+
+def counted_summary(df: pd.DataFrame, contract, col: str) -> dict | None:
+    """`col`'s summary over the rows its tiles count (domain_pack.rows_for), when those are fewer
+    than every row; None: the sandbox's every-row summary stands. THE rule the built-ins and the
+    eval harness use."""
+    from domain_pack import rows_for
+    rows, how = rows_for(df, contract, col)
+    s = pd.to_numeric(rows[col], errors="coerce").dropna()
+    if not (how and len(s) and len(rows) < len(df)):
+        return None
+    return {"mean": round(float(s.mean()), 4), "std": round(float(s.std()), 4),
+            "min": round(float(s.min()), 4), "max": round(float(s.max()), 4),
+            "median": round(float(s.median()), 4), "count": int(s.count())}
 
 
 def builtin_result(df: pd.DataFrame, contract: DataContract, task: AnalysisTask,
@@ -1094,8 +1120,9 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
     # Labels grouped as "Unknown" are filled values: they lower confidence like imputation did.
     imputed = {d.column: d.before_null_pct for d in decisions
                if d.operation in ("impute", "fill_unknown")}
+    from agents.cleaning_agent import LAYOUT_STRATEGIES   # blanks that are the file's layout
     missing = {d.column: d.before_null_pct for d in decisions
-               if d.operation == "keep" and d.before_null_pct > 0 and d.strategy != "order_level"}
+               if d.operation == "keep" and d.before_null_pct > 0 and d.strategy not in LAYOUT_STRATEGIES}
     # an order-level field (Shopify's total): later lines are blank by the export's layout
     per_order = {d.column: d.after_null_pct for d in decisions if d.strategy == "order_level"}
     model_notes = [str(a) for a in raw.get("assumptions", []) if isinstance(a, str)][:5] \

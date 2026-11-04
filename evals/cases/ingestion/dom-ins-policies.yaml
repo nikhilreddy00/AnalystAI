@@ -1,0 +1,41 @@
+id: dom-ins-policies
+category: domain
+dataset:
+  name: policies
+  seed: 1
+roles:
+  Policy Number: id
+  Term: id
+  Line of Business: category
+  State: category
+  Effective Date: date
+  Expiration Date: date
+  Transaction Type: category
+  Written Premium: metric
+  Earned Premium: metric
+  Earned Exposure: metric
+  Renewal Status: category
+  Insured Gender: category
+  Claim Count: metric
+  Incurred Losses: metric
+traps:
+- Term
+- Claim Count
+expect_domain: insurance
+expect_roles:
+  date: Effective Date
+  expiration_date: Expiration Date
+  policy: Policy Number
+  term: Term
+  line: Line of Business
+  state: State
+  status: Transaction Type
+  written_premium: Written Premium
+  earned_premium: Earned Premium
+  exposure: Earned Exposure
+  renewal: Renewal Status
+  gender: Insured Gender
+  claim_count: Claim Count
+  incurred: Incurred Losses
+label_note: 'A policy table: terms, renewals and negative cancellation rows; earned premium and exposure
+  per term.'

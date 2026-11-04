@@ -1,0 +1,19 @@
+id: intake-ins-08
+category: clear
+pipeline: production
+source:
+  dataset: policies
+  seed: 1
+overview_done: true
+question: What's our retention rate by line?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: retention
+  columns:
+    by: Line of Business
+rationale: Retention KPI (renewed ÷ up for renewal) by line.

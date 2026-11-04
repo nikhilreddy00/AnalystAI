@@ -255,7 +255,9 @@ def _summary(df: pd.DataFrame, cols: list[ColumnInfo], layout: dict[str, str] | 
         parts.append("Missing values: " + ", ".join(f"{c.name} {c.null_pct:g}%" for c in missing)
                      + ".")
     for kind, why in (("order", "one value per order, on its first line"),
-                      ("conditional", "filled only for the rows whose status needs one")):
+                      ("conditional", "filled only for the rows whose status needs one"),
+                      ("paired", "each row fills this column or its pair"),
+                      ("marker", "filled only on the rows it applies to; blank means none")):
         if names := [c for c, k in layout.items() if k == kind]:
             parts.append(f"Blank by the file's layout, not missing ({why}): {_names(names)}.")
     return " ".join(parts)
