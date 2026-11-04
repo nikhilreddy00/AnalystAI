@@ -13,22 +13,26 @@ interface Props {
   hasActiveFilters?: boolean;
   /** Phase 5: how the number was computed, in words. */
   how?: string;
+  /** Filters are active and the server's value is on its way: a neutral "…", never a stale number. */
+  loading?: boolean;
 }
 
-export default function KPICard({ label, value, sublabel, filteredValue, hasActiveFilters, how }: Props) {
-  const showDelta = hasActiveFilters && filteredValue != null && filteredValue !== value;
-  const primary = showDelta ? filteredValue : value;
+export default function KPICard({ label, value, sublabel, filteredValue, hasActiveFilters, how, loading }: Props) {
+  const showDelta = !loading && hasActiveFilters && filteredValue != null && filteredValue !== value;
+  const primary = loading ? "…" : showDelta ? filteredValue : value;
 
   return (
     <div className="bg-card px-4 py-3 flex flex-col gap-0.5 min-w-0">
       <span className="text-xs text-muted-foreground truncate">{label}</span>
-      <span title={typeof primary === "string" ? primary : undefined}
+      <span title={typeof primary === "string" ? primary : undefined} aria-busy={loading || undefined}
         className={`font-mono font-medium tabular-nums tracking-tight text-foreground truncate ${
           // five tiles in the report column (~150 px at 1440): "$310,635.46" must fit
           String(primary).length > 12 ? "text-sm" : String(primary).length > 8 ? "text-base" : "text-xl"}`}>
         {primary}
       </span>
-      {showDelta ? (
+      {loading ? (
+        <span className="text-xs text-muted-foreground">Updating for the filters…</span>
+      ) : showDelta ? (
         <span className="text-xs text-muted-foreground">vs {value} overall</span>
       ) : (
         // the context wraps: "by Product: highest Credit Card 10.4%" is the tile's point

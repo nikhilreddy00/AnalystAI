@@ -2,6 +2,8 @@
 charts were recounted in the browser; every sum, KPI chart and domain-pack tile stayed as the run
 computed it (the browser lacks the domain rules). The server recomputes them now, with the same
 functions that built them (one definition)."""
+import re
+
 import pandas as pd
 import pytest
 
@@ -162,6 +164,7 @@ def test_patient_data_filtered_to_a_small_cell_is_suppressed():
     out = filtered_dashboard(clean, contract, charts,
                              {"Encounter ID": {"kind": "equality", "value": one}})
     assert out["suppressed"] and out["tiles"] == {} and out["charts"] == {}
+    assert out["rows"] is None   # fix-diff review: 'Showing 7 of …' was the small cell itself
 
 
 def test_a_time_zone_aware_date_range_keeps_whole_days():
@@ -178,14 +181,17 @@ def test_the_endpoint_refilters_only_this_sessions_pins():
     assert "session_ids={session.session_id}" in inspect.getsource(dashboard.get_latest_dashboard_filtered)
 
 
-async def test_a_loss_runs_earlier_valuations_count_against_no_dashboard_cap(tmp_path, monkeypatch):
-    """Domain 4 browser check: a 38,255-row loss run (3,975 claimant rows at their latest valuation)
-    got 422 'too large' from /latest/data. Superseded versions are never counted or shown: the
-    cap reads the rows that count, the browser gets those, and the server's filtered numbers
-    still judge kinds on every row."""
+async def test_the_dashboard_sends_filter_options_never_rows_and_has_no_browser_cap(tmp_path, monkeypatch):
+    """The 25,000-row 'too large' 422 came back in Domains 3 and 4 (a 38,255-row loss run): it
+    existed only because every row was shipped to the browser, which also recounted charts and
+    tiles itself (a second copy of the rules, without row kinds, versions or currency: the
+    'sometimes wrong under filters'). /latest/data now sends the filter options (values, ranges,
+    dates from the rows that count) and the counted total; every number comes from the server.
+    A server compute guard stays (far above any upload the 50 MB cap allows)."""
     import asyncio
     from types import SimpleNamespace
 
+    from fastapi import HTTPException
     from starlette.requests import Request
 
     from api.auth import UserProfile
@@ -207,20 +213,160 @@ async def test_a_loss_runs_earlier_valuations_count_against_no_dashboard_cap(tmp
         insight_report=InsightReport(executive_summary="x", technical_findings=[], recommended_actions=[],
                                      anomaly_alerts=[], proactive_questions=[], methodology_notes="")))
     monkeypatch.setattr(limiter, "enabled", False)
-    monkeypatch.setattr(dashboard, "MAX_ROWS", 10_000)   # below the file, above its counted rows
     app = SimpleNamespace(state=SimpleNamespace(session_store=store, limiter=limiter))
     req = Request({"type": "http", "method": "GET", "path": "/", "headers": [], "app": app,
                    "client": ("127.0.0.1", 1)})
     data = await get_latest_dashboard_data(req, UserProfile("owner"))
-    assert data["row_count"] == truth["claim_rows_latest"]
+    assert "rows" not in data and data["row_count"] == truth["claim_rows_latest"]
+    lob = next(o for o in data["options"] if o["column"] == "Line of Business")
+    assert lob["control"] in ("binary", "pills") and lob["values"] == ["Auto", "Home"]
+    status = next(o for o in data["options"] if o["column"] == "Claim Status")
+    assert "Reopened" not in status["values"]   # no claim is Reopened at its latest valuation
     home = await get_latest_dashboard_filtered(req, FilterRequest(
         filters={"Line of Business": {"kind": "equality", "value": "Home"}}), UserProfile("owner"))
     assert home["tiles"]["Open case reserves"] == f"${truth['open_reserve_by_line']['Home']:,.2f}"
-    # 'Showing N of M records': the filtered N counts the same rows as M (browser check: 15,780 of 3,975)
-    assert home["rows"] == truth["claimants_by_line"]["Home"]
-    # security review: the server still reads every row, so the whole frame has a hard cap too
-    from fastapi import HTTPException
-    monkeypatch.setattr(dashboard, "MAX_RAW_ROWS", 30_000)
+    assert home["rows"] == truth["claimants_by_line"]["Home"]   # 'Showing N of M': the same rows
+    # the server's guard: every row it reads (earlier versions included)
+    monkeypatch.setattr(dashboard, "MAX_ROWS", 30_000)
     with pytest.raises(HTTPException) as e:
         await get_latest_dashboard_data(req, UserProfile("owner"))
     assert e.value.status_code == 422
+
+
+# ── Every filter on every domain (user request 2026-11-04: 'no matter what the filters, the
+# right answers'): relations that need no truth table, so every new domain is covered at once.
+
+def _number(text: str) -> float:
+    return float(re.sub(r"[^0-9.\-]", "", text.split(" vs ")[0]))
+
+
+def _filter_columns(clean, contract, k: int = 8) -> list[tuple[str, list[str]]]:
+    """The first k category filters the dashboard offers whose counted rows all have a value
+    (a blank row is in no filter value), never the currency (filtering by it changes which
+    currency counts)."""
+    from domain_pack import as_text, superseded
+    from agents.visualization_agent import filter_options
+    shown = clean[~superseded(clean, contract)]
+    cur = contract.roles.get("currency")
+    out = []
+    for o in filter_options(clean, contract)["options"]:
+        if o["control"] in ("binary", "pills") and o["column"] != cur and 2 <= len(o["values"]) <= 8 \
+                and shown[o["column"]].notna().all():
+            out.append((o["column"], o["values"]))
+    return [(c, v) for c, v in out if as_text(shown[c]).isin(v).all()][:k]
+
+
+PACK_DATASETS = ["retail_lines", "store_weeks", "b2b_invoices", "loan_tape", "card_ledger",
+                 "bank_balances", "deposits_daily", "inpatient", "health_claims", "policies",
+                 "loss_run", "claims"]
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+def test_every_filter_partitions_and_matches_the_group_answer(name):
+    """Every category filter the dashboard offers, every value, every tile and chart, on every
+    domain dataset, through filtered_dashboard (the production path). Truth-free relations:
+    counts add up; a filtered tile = the KPI by that column (kinds judged on all rows); an
+    additive tile's values add up to the whole; a chart grouped by the filtered column shows
+    only that value, with its unfiltered number."""
+    import domain_pack
+    clean, contract, charts, kpis, _ = _dashboard(name)
+    pack = domain_pack.pack_for(contract.domain)
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    tiles = {k.label: pack.kpi(k.recipe.kpi) for k in kpis if k.recipe and k.recipe.kind == "pack"}
+    assert tiles, f"{name}: no pack tiles"
+    whole = filtered_dashboard(clean, contract, charts, {})
+    columns = _filter_columns(clean, contract)
+    assert columns, f"{name}: no category filter to test"
+    for col, values in columns:
+        outs = {v: filtered_dashboard(clean, contract, charts, {col: {"kind": "equality", "value": v}})
+                for v in values}
+        for v, o in outs.items():   # a small cell on patient data: no number at all, not even a count
+            assert not o["suppressed"] or (o["rows"] is None and not o["tiles"] and not o["charts"]), v
+        if not any(o["suppressed"] for o in outs.values()):
+            assert sum(o["rows"] for o in outs.values()) == whole["rows"], (name, col, "rows")
+        for label, kpi in tiles.items():
+            by = domain_pack.compute_kpi(clean, roles, pack, kpi.name, by=col, full=clean)
+            got = {v: _number(o["tiles"][label]) for v, o in outs.items() if label in o["tiles"]}
+            scale = 100 if kpi.unit == "percent" else 1
+            tol = 0.051 if kpi.unit == "percent" else 0.0051
+            for v, x in got.items():   # the filtered tile = the KPI computed by that column
+                if by is None or v not in by.index.astype(str):
+                    assert x == 0, (name, col, label, v, x)   # rows that never count (voided): 0
+                    continue
+                want = float(by[by.index.astype(str) == v].iloc[0]) * scale
+                assert abs(x - want) <= tol * max(1, abs(want)) if kpi.unit == "count" else \
+                    abs(x - want) <= tol + 1e-9 * abs(want), (name, col, label, v, x, want)
+            if domain_pack.additive(pack, kpi.name) and label in whole["tiles"] and len(got) == len(values) \
+                    and not any(o["suppressed"] for o in outs.values()):
+                total = _number(whole["tiles"][label])   # a partition adds up to the whole
+                assert abs(sum(got.values()) - total) <= 0.01 * len(values) + 1e-9 * abs(total), \
+                    (name, col, label, sum(got.values()), total)
+        for c in charts:   # a chart grouped by the filtered column
+            if c.x_key != col or c.id not in whole["charts"]:
+                continue
+            ys = [y for y in c.y_keys if not y.endswith(("__n", "__ci"))]
+            before = {str(r[col]): r for r in whole["charts"][c.id]}
+            for v, o in outs.items():
+                for r in o["charts"].get(c.id, []):
+                    assert str(r[col]) == v, (name, col, c.title, v, r)
+                    for y in ys:
+                        if y in r and v in before and y in before[v]:
+                            b = float(before[v][y])
+                            assert abs(float(r[y]) - b) <= 1e-6 * max(1, abs(b)), \
+                                (name, col, c.title, v, y, r[y], b)
+
+async def test_dashboard_recomputations_are_bounded_server_wide(monkeypatch):
+    """Security review: a timed-out recomputation keeps running in its thread; the dashboard pool's
+    workers bound what runs at once (a semaphore released on cancel did not)."""
+    import asyncio
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    from api.routes import dashboard
+    monkeypatch.setattr(dashboard, "_POOL", ThreadPoolExecutor(max_workers=1))
+    running, peak = [0], [0]
+
+    def slow():
+        running[0] += 1
+        peak[0] = max(peak[0], running[0])
+        time.sleep(0.05)
+        running[0] -= 1
+        return "ok"
+    assert await asyncio.gather(*(dashboard._bounded(slow) for _ in range(4))) == ["ok"] * 4
+    assert peak[0] == 1
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+def test_in_range_and_date_filters_agree_with_their_parts(name):
+    """Fix-diff review: the property test used equality only. 'in' of two values = the sum of each
+    value's additive tiles; a range and a date span count exactly the counted rows inside them."""
+    import domain_pack
+    from agents.visualization_agent import filter_options
+    clean, contract, charts, kpis, _ = _dashboard(name)
+    pack = domain_pack.pack_for(contract.domain)
+    shown = clean[~domain_pack.superseded(clean, contract)]
+    adds = {k.label for k in kpis if k.recipe and k.recipe.kind == "pack"
+            and domain_pack.additive(pack, k.recipe.kpi)}
+    for col, values in _filter_columns(clean, contract, k=1):
+        a, b = values[:2]
+        both = filtered_dashboard(clean, contract, charts, {col: {"kind": "in", "values": [a, b]}})
+        one = [filtered_dashboard(clean, contract, charts, {col: {"kind": "equality", "value": v}}) for v in (a, b)]
+        if both["suppressed"] or any(o["suppressed"] for o in one):
+            continue
+        assert both["rows"] == one[0]["rows"] + one[1]["rows"], (name, col)
+        for label in adds & set(both["tiles"]):
+            total = sum(_number(o["tiles"][label]) for o in one)
+            assert abs(_number(both["tiles"][label]) - total) <= 0.02 + 1e-9 * abs(total), (name, label)
+    for o in filter_options(clean, contract)["options"]:
+        if o["control"] == "range":
+            lo, hi = o["min"], (o["min"] + o["max"]) / 2
+            out = filtered_dashboard(clean, contract, charts, {o["column"]: {"kind": "range", "min": lo, "max": hi}})
+            want = int(pd.to_numeric(shown[o["column"]], errors="coerce").between(lo, hi).sum())
+        elif o["control"] == "dates":
+            out = filtered_dashboard(clean, contract, charts, {o["column"]: {"kind": "date_range",
+                                                                               "from": o["from"], "to": o["to"]}})
+            t = pd.to_datetime(shown[o["column"]], format="mixed", errors="coerce")
+            want = int(t.notna().sum())
+        else:
+            continue
+        assert out["suppressed"] or out["rows"] == want, (name, o["column"], out["rows"], want)

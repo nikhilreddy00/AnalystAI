@@ -2101,7 +2101,9 @@ def build_context(df: pd.DataFrame, task: AnalysisTask | None = None,
     # With a contract, its time axis (never a birth date; one rule with answers and the trend);
     # without one, the first datetime column.
     date = time_axis(contract, None, df) if contract is not None else (dates[0] if dates else None)
-    return VizContext(df=df, roles=roles, measures=measure_columns(df, roles),
+    # an id is never a measure: the contract's id decision (values first), one rule with ingestion
+    ids = set(contract.id_columns) if contract is not None else set()
+    return VizContext(df=df, roles=roles, measures=measure_columns(df, roles) - ids,
                       date=date, task=task, findings=findings,
                       evidence={e.id: e for e in (findings.evidence if findings else [])},
                       narrative=narrative, contract=contract)
@@ -2204,6 +2206,12 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     cols = [x, metric] + ([split] if split else [])
     if any(c not in df.columns for c in cols):
         return None
+    from domain_pack import average_entity
+    if agg == "mean" and (per := average_entity(ctx.contract, metric)) and per in df.columns:
+        # an average per claim (Pack.average_per): each claim's total in each bar, then their
+        # mean, n and CI over claims (agents.utils.aggregate gives the same value)
+        df = df.assign(**{metric: pd.to_numeric(df[metric], errors="coerce")}).groupby(
+            [*cols[:1], *cols[2:], per], dropna=True)[metric].sum(min_count=1).reset_index()
     sub = df[cols].copy()
     sub[metric] = pd.to_numeric(sub[metric], errors="coerce")
     sub = sub.dropna()
@@ -2827,6 +2835,38 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
     return df[keep]
 
 
+def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
+    """The dashboard's filters, from the rows that count (a chain's earlier versions are never
+    shown: domain_pack.superseded): {row_count, column_roles, options: [{column, control:
+    binary | pills | range | dates, values | min, max | from, to}]}. Values are written as
+    apply_filters compares them (as_text). The browser draws these and never reads a row: every
+    number under a filter comes from filtered_dashboard."""
+    from domain_pack import as_text, superseded
+    shown = df[~superseded(df, contract)]
+    roles = classify_columns(shown)
+    ids = set(contract.id_columns) if contract is not None else set()   # an id is no filter
+    roles = {k: [c for c in v if c not in ids] if isinstance(v, list) else v for k, v in roles.items()}
+    options: list[dict] = []
+
+    def values(col: str) -> list[str]:
+        return sorted(as_text(shown[col].dropna()).unique().tolist())
+    for col in roles.get("binary_cols", []):
+        options.append({"column": col, "control": "binary", "values": values(col)})
+    for col in roles.get("low_card_cat", [])[:8]:
+        options.append({"column": col, "control": "pills", "values": values(col)})
+    for col in roles.get("continuous", [])[:3]:
+        n = pd.to_numeric(shown[col], errors="coerce")
+        n = n[np.isfinite(n)]   # an infinite value is no slider end (and no valid JSON)
+        if len(n):
+            options.append({"column": col, "control": "range", "min": float(n.min()), "max": float(n.max())})
+    for col in roles.get("datetime_cols", []):
+        t = pd.to_datetime(shown[col], format="mixed", errors="coerce").dropna()
+        if len(t):
+            options.append({"column": col, "control": "dates", "from": f"{t.min():%Y-%m-%d}",
+                            "to": f"{t.max():%Y-%m-%d}"})
+    return {"row_count": int(len(shown)), "column_roles": roles, "options": options}
+
+
 def _chart_key(c: ChartConfig):
     r = c.rationale
     return (r.rule, r.x, r.y, r.aggregation, r.split) if r else None
@@ -2846,8 +2886,8 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     # the records shown and counted: a chain's earlier versions are neither (judged on all rows)
     n = int((~superseded(df, contract)).reindex(part.index).sum())
     if part.empty or (contract is not None and contract.phi and n < SMALL_CELL):
-        return {"charts": {}, "tiles": {}, "rows": n,
-                "suppressed": bool(n) and bool(contract and contract.phi)}
+        small = bool(n) and bool(contract and contract.phi)   # a small cell: not even its count
+        return {"charts": {}, "tiles": {}, "rows": None if small else n, "suppressed": small}
     ctx = build_context(part, contract=contract, narrative=narrative)
     ctx.full = df
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(

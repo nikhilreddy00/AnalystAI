@@ -1047,10 +1047,15 @@ SMALL_CELL = 11
 POOLED_LABEL = "Other (fewer than 11 each)"
 
 
+# Cleaning's label for a missing category value (agents.cleaning_agent fill_unknown)
+UNKNOWN_LABEL = "Unknown"
+
+
 def rankable(name) -> bool:
     """A group a sentence may call highest or lowest: never the pooled small groups (a privacy
-    bucket of several groups, not a group). THE rule for every 'highest … lowest' sentence."""
-    return str(name) != POOLED_LABEL
+    bucket of several groups, not a group) nor the missing labels ('Unknown': blanks, not a
+    group). THE rule for every 'highest … lowest' sentence."""
+    return str(name) not in (POOLED_LABEL, UNKNOWN_LABEL)
 # Never searched for or tokenized as PII values: "May" or "June" in a first-name column would
 # corrupt every date in a prompt.
 CALENDAR_WORDS = {"January", "February", "March", "April", "May", "June", "July", "August",

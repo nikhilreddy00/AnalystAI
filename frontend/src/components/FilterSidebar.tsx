@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { formatDay, parseDay } from "@/lib/localDate";
+import { useMemo, useState, type ReactNode } from "react";
+import type { FilterOption } from "@/types";
 import { useDashboardData } from "@/context/DashboardDataContext";
 import {
   useDashboardFilter,
@@ -18,86 +20,44 @@ import type { DateRange } from "react-day-picker";
 type SetFilter = (key: string, value: FilterValue | null) => void;
 
 interface ControlProps {
-  col: string;
-  rows: Record<string, unknown>[];
+  option: FilterOption;
   filter: FilterValue | undefined;
   setFilter: SetFilter;
 }
 
+/** The server's filter options, drawn as they come (binary, pills, ranges, dates, in its order):
+ * no row is read here. */
 export function FilterSidebar() {
-  const { columnRoles, rows, status } = useDashboardData();
+  const { options, status } = useDashboardData();
   const { filters, setFilter } = useDashboardFilter();
 
-  if (status !== "ok" || !columnRoles || rows.length === 0) return null;
-
-  const binary = columnRoles.binary_cols ?? [];
-  const lowCard = (columnRoles.low_card_cat ?? []).slice(0, 8);
-  const continuous = (columnRoles.continuous ?? []).slice(0, 3);
-  const datetime = columnRoles.datetime_cols ?? [];
-
-  const total =
-    binary.length + lowCard.length + continuous.length + datetime.length;
-  if (total === 0) return null;
+  if (status !== "ok" || options.length === 0) return null;
 
   return (
     <aside aria-label="Filters" className="w-full lg:w-60 flex-shrink-0 rounded-lg border border-border bg-card px-4 py-3 space-y-5 lg:rounded-none lg:border-0 lg:border-r lg:bg-transparent">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Filters
       </h3>
-      {binary.map((col) => (
-        <BinaryToggle
-          key={col}
-          col={col}
-          rows={rows}
-          filter={filters[col]}
-          setFilter={setFilter}
-        />
-      ))}
-      {lowCard.map((col) => (
-        <PillSelect
-          key={col}
-          col={col}
-          rows={rows}
-          filter={filters[col]}
-          setFilter={setFilter}
-        />
-      ))}
-      {continuous.map((col) => (
-        <RangeSliderControl
-          key={col}
-          col={col}
-          rows={rows}
-          filter={filters[col]}
-          setFilter={setFilter}
-        />
-      ))}
-      {datetime.map((col) => (
-        <DateRangeControl
-          key={col}
-          col={col}
-          rows={rows}
-          filter={filters[col]}
-          setFilter={setFilter}
-        />
-      ))}
+      {options.map((option) => {
+        const Control = CONTROLS[option.control];
+        return Control ? (
+          <Control
+            key={option.column}
+            option={option}
+            filter={filters[option.column]}
+            setFilter={setFilter}
+          />
+        ) : null;
+      })}
     </aside>
   );
 }
 
 // ── BinaryToggle ──────────────────────────────────────────────────────────────
 
-function BinaryToggle({ col, rows, filter, setFilter }: ControlProps) {
-  const values = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of rows) {
-      const v = r[col];
-      if (v == null || v === "") continue;
-      seen.add(String(v));
-      if (seen.size >= 2) break;
-    }
-    return Array.from(seen);
-  }, [rows, col]);
-
+function BinaryToggle({ option, filter, setFilter }: ControlProps) {
+  const col = option.column;
+  const values = option.values ?? [];
   if (values.length < 2) return null;
 
   const current =
@@ -134,7 +94,7 @@ function BinaryToggle({ col, rows, filter, setFilter }: ControlProps) {
                 : "border-border text-foreground hover:bg-muted"
             }`}
           >
-            {v}
+            {v === "" ? "(blank)" : v}
           </button>
         ))}
       </div>
@@ -144,18 +104,9 @@ function BinaryToggle({ col, rows, filter, setFilter }: ControlProps) {
 
 // ── PillSelect ────────────────────────────────────────────────────────────────
 
-function PillSelect({ col, rows, filter, setFilter }: ControlProps) {
-  const values = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of rows) {
-      const v = r[col];
-      if (v == null || v === "") continue;
-      seen.add(String(v));
-      if (seen.size >= 12) break;
-    }
-    return Array.from(seen).sort();
-  }, [rows, col]);
-
+function PillSelect({ option, filter, setFilter }: ControlProps) {
+  const col = option.column;
+  const values = option.values ?? [];
   const selected = useMemo(() => {
     if (filter?.kind === "in") return new Set(filter.values.map(String));
     return new Set<string>();
@@ -188,7 +139,7 @@ function PillSelect({ col, rows, filter, setFilter }: ControlProps) {
                   : "border-border text-foreground hover:bg-muted"
               }`}
             >
-              {v}
+              {v === "" ? "(blank)" : v}
             </button>
           );
         })}
@@ -199,24 +150,11 @@ function PillSelect({ col, rows, filter, setFilter }: ControlProps) {
 
 // ── RangeSliderControl ────────────────────────────────────────────────────────
 
-function RangeSliderControl({ col, rows, filter, setFilter }: ControlProps) {
-  const extent = useMemo(() => {
-    let mn = Number.POSITIVE_INFINITY;
-    let mx = Number.NEGATIVE_INFINITY;
-    for (const r of rows) {
-      const v = r[col];
-      if (v == null) continue;
-      const n = typeof v === "number" ? v : Number(v);
-      if (!Number.isFinite(n)) continue;
-      if (n < mn) mn = n;
-      if (n > mx) mx = n;
-    }
-    return Number.isFinite(mn) && Number.isFinite(mx) ? [mn, mx] : null;
-  }, [rows, col]);
-
-  if (!extent) return null;
-  const [mn, mx] = extent;
-  if (mn === mx) return null;
+function RangeSliderControl({ option, filter, setFilter }: ControlProps) {
+  const col = option.column;
+  const { min: mn, max: mx } = option;
+  if (mn == null || mx == null || mn === mx) return null;
+  const [lo0, hi0] = [mn, mx];   // narrowed for the closure below
 
   const current =
     filter?.kind === "range" ? [filter.min, filter.max] : [mn, mx];
@@ -226,7 +164,7 @@ function RangeSliderControl({ col, rows, filter, setFilter }: ControlProps) {
   function commit(next: number | readonly number[]) {
     const arr = Array.isArray(next) ? (next as number[]) : [next as number];
     const [lo, hi] = arr;
-    if (lo <= mn && hi >= mx) setFilter(col, null);
+    if (lo <= lo0 && hi >= hi0) setFilter(col, null);
     else setFilter(col, { kind: "range", min: lo, max: hi });
   }
 
@@ -250,34 +188,20 @@ function RangeSliderControl({ col, rows, filter, setFilter }: ControlProps) {
 
 // ── DateRangeControl ──────────────────────────────────────────────────────────
 
-function DateRangeControl({ col, rows, filter, setFilter }: ControlProps) {
+function DateRangeControl({ option, filter, setFilter }: ControlProps) {
+  const col = option.column;
   const [open, setOpen] = useState(false);
-
-  const extent = useMemo(() => {
-    let mn = Number.POSITIVE_INFINITY;
-    let mx = Number.NEGATIVE_INFINITY;
-    for (const r of rows) {
-      const v = r[col];
-      if (v == null) continue;
-      const t = new Date(String(v)).getTime();
-      if (!Number.isFinite(t) || isNaN(t)) continue;
-      if (t < mn) mn = t;
-      if (t > mx) mx = t;
-    }
-    if (!Number.isFinite(mn) || !Number.isFinite(mx)) return null;
-    return { from: new Date(mn), to: new Date(mx) };
-  }, [rows, col]);
-
-  if (!extent) return null;
+  if (!option.from || !option.to) return null;
+  const extent = { from: parseDay(option.from), to: parseDay(option.to) };
 
   const selected: DateRange | undefined =
     filter?.kind === "date_range"
-      ? { from: new Date(filter.from), to: new Date(filter.to) }
+      ? { from: parseDay(filter.from), to: parseDay(filter.to) }
       : undefined;
 
   const label =
     selected?.from && selected?.to
-      ? `${selected.from.toISOString().slice(0, 10)} → ${selected.to.toISOString().slice(0, 10)}`
+      ? `${formatDay(selected.from)} → ${formatDay(selected.to)}`
       : "Any date";
 
   // @base-ui/react Popover: onOpenChange receives (open, eventDetails)
@@ -302,8 +226,8 @@ function DateRangeControl({ col, rows, filter, setFilter }: ControlProps) {
               if (range?.from && range?.to) {
                 setFilter(col, {
                   kind: "date_range",
-                  from: range.from.toISOString().slice(0, 10),
-                  to: range.to.toISOString().slice(0, 10),
+                  from: formatDay(range.from),
+                  to: formatDay(range.to),
                 });
               }
             }}
@@ -327,3 +251,10 @@ function DateRangeControl({ col, rows, filter, setFilter }: ControlProps) {
     </div>
   );
 }
+
+const CONTROLS: Record<FilterOption["control"], (p: ControlProps) => ReactNode> = {
+  binary: BinaryToggle,
+  pills: PillSelect,
+  range: RangeSliderControl,
+  dates: DateRangeControl,
+};

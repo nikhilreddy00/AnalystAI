@@ -16,6 +16,7 @@ from agents.visualization_agent import (
     classify_columns,
     generate_smart_kpis,
     compute_briefing_extras,
+    filter_options,
     run_visualization_agent,
 )
 from evals.run import load_cases, viz_session
@@ -203,17 +204,12 @@ w(
     ],
 )
 print(len(charts), "charts", len(kpis), "kpis", len(evidence), "evidence")
-rows = json.loads(df.to_json(orient="records", date_format="iso"))
-json.dump(
-    {
-        "session_id": "ui-check",
-        "row_count": len(rows),
-        "column_roles": json.loads(json.dumps(roles, default=list)),
-        "rows": rows,
-    },
-    open(f"{OUT}/dash_data.json", "w"),
-    default=str,
-)
+# the dashboard reads no rows: filter options here, and the mock's /latest/filtered runs the
+# real filtered_dashboard on the saved frame + contract (no copy of the rules in the mock)
+json.dump({"session_id": "ui-check", **filter_options(df, _session.data_contract)},
+          open(f"{OUT}/dash_data.json", "w"), default=str)
+df.to_parquet(f"{OUT}/dash_frame.parquet", index=False)
+open(f"{OUT}/dash_contract.json", "w").write(_session.data_contract.model_dump_json())
 json.dump(
     {
         "latest": {

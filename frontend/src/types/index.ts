@@ -484,9 +484,21 @@ export interface ColumnRoles {
   skip_cols: string[];
 }
 
+/** One sidebar control, as the server's filter_options builds it (the browser never reads a
+ * row). `values` are strings exactly as the server's apply_filters compares them. */
+export interface FilterOption {
+  column: string;
+  control: "binary" | "pills" | "range" | "dates";
+  values?: string[];
+  min?: number;
+  max?: number;
+  from?: string;
+  to?: string;
+}
+
 export interface DashboardDataPayload {
   session_id: string;
   row_count: number;
   column_roles: ColumnRoles;
-  rows: Record<string, unknown>[];
+  options: FilterOption[];
 }

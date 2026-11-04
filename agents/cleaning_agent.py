@@ -52,6 +52,7 @@ from agents.visualization_agent import classify_columns
 from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
                          words)
 from guardrails import (
+    UNKNOWN_LABEL,
     is_pii_column,
     is_zip_column,
     mask_pii,
@@ -100,7 +101,7 @@ CLEANING_CARD = AgentCard(
 )
 
 HIGH_NULL_PCT = 40.0
-UNKNOWN = "Unknown"
+UNKNOWN = UNKNOWN_LABEL   # guardrails: rankings never name it
 # Compared after strip + casefold. Only tokens that are never a real label: "NA" (North
 # America), "None" (a tier) and "Unknown" are labels and stay.
 _SENTINELS = {"", "-", "--", "---", "?", "??", "n/a", "#n/a", "null", "nan", "missing", "nil"}

@@ -104,6 +104,8 @@ conditional_fields: {reserve: [open, reopened, re-opened, pending, litigated, in
                      renewal: [new business, renewal, new, reinstatement, rewrite]}
 marker_fields: [cat_event]
 
+# an average of money is per claim (claimant or claim-line rows): 'average paid by payer'
+average_per: claim_id
 overview_groups: [line, coverage, state]
 overview_kpis: [incurred, loss_ratio, earned_premium, claims, severity]
 kind_codes: {sale: counted, return: netted, refunded: reversed, cancel: voided, test: test,

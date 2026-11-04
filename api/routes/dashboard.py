@@ -3,6 +3,9 @@ Dashboard endpoints — pin/unpin charts, load user dashboard.
 Full implementation in Phase 5 (frontend). Stub for Phase 1.
 """
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import Response
 from api.auth import get_current_user, UserProfile
@@ -182,15 +185,6 @@ async def download_latest_report(
     )
 
 
-def json_rows(df):
-    """Rows as JSON-safe records: NaN, ±inf and NaT become None (a float column keeps NaN
-    under a plain `where(notna, None)`, and JSONResponse refuses it)."""
-    import numpy as np
-
-    df = df.replace([np.inf, -np.inf], np.nan).astype(object)
-    return df.where(df.notna(), None).to_dict("records")
-
-
 async def _latest_frame(request: Request, user: UserProfile):
     """(latest completed session, its cleaned frame): the frame every dashboard view reads."""
     from pathlib import Path
@@ -205,21 +199,29 @@ async def _latest_frame(request: Request, user: UserProfile):
         raise HTTPException(status_code=404, detail="No completed analysis yet")
     if not session.cleaned_data_path or not Path(session.cleaned_data_path).is_file():
         raise HTTPException(status_code=404, detail="Cleaned data is not cached for this session")
-    df = pd.read_parquet(session.cleaned_data_path)
-    import domain_pack   # a chain's earlier versions are never counted or shown: not in the cap
-    # the server still reads every row (kinds are judged on all): a hard cap on the whole frame
-    shown = len(df) if len(df) > MAX_RAW_ROWS else \
-        int((~domain_pack.superseded(df, session.data_contract)).sum())
-    if shown > MAX_ROWS:   # every dashboard view: the rows and their filtered recomputation
+    import pyarrow.parquet as pq
+    n = pq.ParquetFile(session.cleaned_data_path).metadata.num_rows   # before reading it
+    if n > MAX_ROWS:   # the server's compute guard: every row a recomputation reads
         raise HTTPException(
             status_code=422,
-            detail=(f"Dataset too large for the interactive dashboard ({shown:,} rows; limit is "
+            detail=(f"Dataset too large for the interactive dashboard ({n:,} rows; limit is "
                     f"{MAX_ROWS:,}). Run a targeted question via chat instead."))
-    return session, df
+    return session, await asyncio.to_thread(pd.read_parquet, session.cleaned_data_path)
 
 
-MAX_ROWS = 25_000
-MAX_RAW_ROWS = 4 * MAX_ROWS   # every row the server reads (earlier versions included)
+# The rows the server recomputes a dashboard view from (no row ever goes to the browser: it
+# gets filter options and the server's numbers). A 50 MB upload is well under this.
+MAX_ROWS = 1_000_000
+# Recomputations run on this pool only: its workers bound the work actually running, even when
+# a request times out and its thread keeps going (the rate limit bounds each user; this, the
+# server). A queued job whose request timed out is cancelled before it starts.
+_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="dashboard")
+
+
+async def _bounded(fn, *args):
+    """fn(*args) on the dashboard pool, within 30 s of the request."""
+    return await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(_POOL, fn, *args),
+                                  timeout=30)
 
 
 class FilterRequest(BaseModel):
@@ -240,7 +242,6 @@ async def get_latest_dashboard_filtered(
     """The latest dashboard under filters, recomputed on the server by the functions that built
     it: {charts: {chart id: data}, tiles: {label: value}, rows}. A chart from the model's own
     findings can't be rebuilt and is not in `charts` (the page marks it unfiltered)."""
-    import asyncio
 
     from agents.visualization_agent import filtered_dashboard
     from orchestrator.state import ChartConfig
@@ -255,9 +256,8 @@ async def get_latest_dashboard_filtered(
         except ValueError:   # a pin saved before a schema change: shown as pinned, not refiltered
             continue
     try:
-        return await asyncio.wait_for(asyncio.to_thread(
-            filtered_dashboard, df, session.data_contract, charts, body.filters,
-            session.task_plan.raw_query if session.task_plan else "", session.narrative), timeout=30)
+        return await _bounded(filtered_dashboard, df, session.data_contract, charts, body.filters,
+                              session.task_plan.raw_query if session.task_plan else "", session.narrative)
     except (KeyError, ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=f"Invalid filter: {exc}") from exc
     except TimeoutError as exc:
@@ -271,25 +271,14 @@ async def get_latest_dashboard_data(
     request: Request,
     current_user: UserProfile = Depends(get_current_user),
 ):
-    """Return raw cleaned rows + column_roles for the user's latest completed session.
-    Used by the dashboard page for its filter options; the numbers under filters come from
-    POST /latest/filtered (the domain rules live on the server)."""
+    """The latest dashboard's filters: {session_id, row_count, column_roles, options}. No rows:
+    every number under a filter comes from POST /latest/filtered (the domain rules live on the
+    server; the browser used to recount rows itself, without them)."""
+
+    from agents.visualization_agent import filter_options
+
     session, df = await _latest_frame(request, current_user)
-
-    from agents.visualization_agent import classify_columns
-    roles = classify_columns(df)
-
-    # The rows a re-count reads (plan v2 R1, the one row rule): on snapshot data each account's
-    # latest row on the books (a loan is one loan, not 14 month-ends); otherwise every row
-    import domain_pack
-    df = df[~domain_pack.superseded(df, session.data_contract)]   # filter options: counted rows only
-    if domain_pack.snapshot_entity(session.data_contract, df.columns):
-        df = df.assign(__counted=df.index.isin(domain_pack.entity_rows(df, session.data_contract).index))
-    rows = json_rows(df)
-
-    return {
-        "session_id": session.session_id,
-        "row_count": len(rows),
-        "column_roles": roles,
-        "rows": rows,
-    }
+    try:
+        return {"session_id": session.session_id, **await _bounded(filter_options, df, session.data_contract)}
+    except TimeoutError as exc:
+        raise HTTPException(status_code=503, detail="The dashboard took too long; ask in chat.") from exc

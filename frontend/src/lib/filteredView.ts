@@ -1,35 +1,32 @@
 import type { ChartConfig } from "@/types";
 import type { FilteredDashboard } from "./api.ts";
-import { aggregateForChart } from "./aggregateForChart.ts";
 
 export interface ChartView {
   data: Record<string, unknown>[];
-  /** The chart could not be recomputed for the filters (built from the model's own findings). */
+  /** The chart could not be recomputed for the filters (built from the model's own findings,
+   * a suppressed small cell, or the request failed): it shows the whole data, and says so. */
   unfiltered: boolean;
-  /** Recounted in the browser as row counts (no server result for it). */
-  counted: boolean;
+  /** The server's numbers for the filters are on their way: the chart as built, marked. */
+  updating: boolean;
 }
 
 /**
- * What one dashboard chart shows. No filters: the chart as built. Filters: the server's
- * recomputation (the domain's rules, the same functions that built it); while it loads, or for
- * a chart the server couldn't rebuild, a row-count chart is recounted from the filtered rows and
- * any other chart says it shows unfiltered data.
+ * What one dashboard chart shows. No filters: the chart as built. Filters: only the server's
+ * recomputation (the domain's rules, the same functions that built it). The browser never
+ * computes a number: while the server works the chart as built is marked "updating", and a
+ * chart the server couldn't rebuild says it shows unfiltered data.
  */
 export function chartView(chart: ChartConfig, active: boolean, server: FilteredDashboard | undefined,
-                          filteredRows: Record<string, unknown>[]): ChartView {
-  if (!active) return { data: chart.data, unfiltered: false, counted: false };
-  // a small cell on patient data: the whole data's chart with its pill, never the few records
-  if (server?.suppressed) return { data: chart.data, unfiltered: true, counted: false };
-  const fresh = server?.charts[chart.id];
-  if (fresh) return { data: fresh, unfiltered: false, counted: false };
-  const agg = aggregateForChart(filteredRows, chart);
-  if (agg.mode === "unfiltered") return { data: chart.data, unfiltered: true, counted: false };
-  return { data: agg.data, unfiltered: false, counted: agg.mode === "count" };
+                          failed = false): ChartView {
+  if (!active) return { data: chart.data, unfiltered: false, updating: false };
+  if (!server) return { data: chart.data, unfiltered: failed, updating: !failed };
+  const fresh = server.suppressed ? undefined : server.charts[chart.id];
+  return fresh ? { data: fresh, unfiltered: false, updating: false }
+    : { data: chart.data, unfiltered: true, updating: false };
 }
 
-/** A tile's value under filters: the server's, by label; null while it loads or for a tile the
- * filtered rows can't give. */
+/** A tile's value under filters: the server's, by label; null with no filters, while it loads,
+ * or for a tile the server couldn't give. */
 export function tileView(label: string, active: boolean, server: FilteredDashboard | undefined): string | null {
-  return active && server ? (server.tiles[label] ?? null) : null;
+  return active && server && !server.suppressed ? (server.tiles[label] ?? null) : null;
 }

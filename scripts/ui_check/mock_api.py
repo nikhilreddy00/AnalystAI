@@ -21,6 +21,7 @@ import json
 import sys
 import threading
 import time
+from pathlib import Path
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 D = sys.argv[1]
@@ -84,29 +85,20 @@ def run_status() -> str:
 
 
 def filtered(filters: dict) -> dict:
-    """The fixture dashboard under equality / in filters: each sum or mean chart regrouped from
-    the fixture rows (the real server rebuilds every chart by the functions that made it)."""
-    rows = json.load(open(D + "/dash_data.json"))["rows"]
+    """The fixture dashboard under filters, by the server's own function on the fixture's frame
+    and contract (make_fixture.py writes them): no copy of the rules here. Needs the repo's
+    environment (`uv run`); the rest of the mock runs on plain python3."""
+    import pandas as pd
 
-    def keep(r):
-        for col, f in filters.items():
-            vals = [f.get("value")] if f.get("kind") == "equality" else f.get("values") or []
-            if str(r.get(col)) not in {str(v) for v in vals}:
-                return False
-        return True
-    part = [r for r in rows if keep(r)]
-    charts = {}
-    for c in json.load(open(D + "/dash_latest.json"))["latest"]["charts"]:
-        why = c.get("rationale") or {}
-        if why.get("aggregation") not in ("sum", "mean") or not part or c["x_key"] not in part[0]:
-            continue
-        groups: dict = {}
-        for r in part:
-            if isinstance(r.get(why["y"]), (int, float)):
-                groups.setdefault(r[c["x_key"]], []).append(r[why["y"]])
-        agg = (lambda v: sum(v)) if why["aggregation"] == "sum" else (lambda v: sum(v) / len(v))
-        charts[c["id"]] = [{c["x_key"]: k, c["y_keys"][0]: round(agg(v), 2)} for k, v in groups.items()]
-    return {"charts": charts, "tiles": {}, "rows": len(part)}
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from agents.visualization_agent import filtered_dashboard
+    from orchestrator.state import ChartConfig, DataContract
+
+    latest = json.load(open(D + "/dash_latest.json"))["latest"]
+    return filtered_dashboard(
+        pd.read_parquet(D + "/dash_frame.parquet"),
+        DataContract.model_validate_json(open(D + "/dash_contract.json").read()),
+        [ChartConfig.model_validate(c) for c in latest["charts"]], filters, latest["raw_query"])
 
 
 class H(BaseHTTPRequestHandler):

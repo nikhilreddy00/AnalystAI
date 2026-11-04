@@ -1,9 +1,8 @@
 // `node --experimental-strip-types --test src/lib/*.test.ts`: no framework needed.
 // The strings below are the backend's (agents/visualization_agent.py _format_value, pinned in
-// tests/test_semantic_hints.py): a dashboard tile recomputed here must read exactly the same.
+// tests/test_semantic_hints.py): a unit shown here must read exactly as the backend writes it.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { evaluateKPI } from "./evaluateKPI.ts";
 import { columnUnit, formatMoney, formatWithUnit, isCurrency } from "./formatUnit.ts";
 
 const NB = " ";
@@ -25,27 +24,6 @@ test("an unknown code is a unit, and nothing throws or prints NaN", () => {
   assert.equal(formatMoney(5, null), "$5.00");
   assert.equal(formatWithUnit(Number.NaN, "USD"), "—");
   assert.equal(formatWithUnit(Number.POSITIVE_INFINITY, "°C"), "—");
-});
-
-test("a filtered KPI tile keeps its currency and unit", () => {
-  const rows = [{ fee: 10 }, { fee: 20 }];
-  assert.equal(evaluateKPI({ kind: "metric_avg", column: "fee", format_kind: "currency",
-                             currency: "EUR" }, rows).value, "€15.00");
-  assert.equal(evaluateKPI({ kind: "metric_avg", column: "fee", format_kind: "number",
-                             unit: "°C" }, rows).value, `15.00${NB}°C`);
-  assert.equal(evaluateKPI({ kind: "metric_avg", column: "fee", format_kind: "currency" },
-                           rows).value, "$15.00");   // a report from before Phase 5.5
-});
-
-test("a filtered comparison tile reads like the backend's", () => {
-  const rows = [{ g: "A", y: 1 }, { g: "A", y: 0 }, { g: "B", y: 0 }, { g: "B", y: 0 }];
-  assert.equal(evaluateKPI({ kind: "comparison_split", segment_column: "g", target_column: "y" },
-                           rows).value, "50.0% vs 0.0%");
-});
-
-test("a filtered variability tile reads like the backend's", () => {
-  const rows = [{ x: 1 }, { x: 2 }, { x: 3 }];
-  assert.equal(evaluateKPI({ kind: "highest_cv", column: "x" }, rows).value, "CV 0.50");
 });
 
 test("the Data tab follows the backend's units on new reports, the name rule only on old ones", () => {

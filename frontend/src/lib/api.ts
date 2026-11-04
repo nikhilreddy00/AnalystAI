@@ -259,7 +259,7 @@ export async function getLatestDashboardData(): Promise<DashboardDataResult> {
 export interface FilteredDashboard {
   charts: Record<string, Record<string, unknown>[]>;
   tiles: Record<string, string>;
-  rows: number;
+  rows: number | null;   // null: a small cell on patient data (its count is not shown either)
   /** Patient data filtered below 11 records: no number is shown (a small cell). */
   suppressed?: boolean;
 }

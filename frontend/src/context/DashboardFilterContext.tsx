@@ -2,8 +2,8 @@
 
 // D4 + Gap 2 Spec 2: dashboard-wide filter state.
 // Cross-filter clicks write {kind: "equality"}; sidebar controls write
-// {kind: "in" | "range" | "date_range"}. applyFilters evaluates per kind
-// across active filters with AND semantics.
+// {kind: "in" | "range" | "date_range"}. The server applies them (AND across columns):
+// the browser never filters or counts a row.
 
 import {
   createContext,
@@ -73,34 +73,4 @@ export function useDashboardFilter() {
       "useDashboardFilter must be used within DashboardFilterProvider",
     );
   return v;
-}
-
-// Pure utility — apply active filters to a raw-row array. AND across columns.
-function matchOne(cell: unknown, f: FilterValue): boolean {
-  if (cell == null) return false;
-  switch (f.kind) {
-    case "equality":
-      return String(cell) === String(f.value);
-    case "in":
-      return f.values.some((v) => String(cell) === String(v));
-    case "range": {
-      const n = typeof cell === "number" ? cell : Number(cell);
-      return Number.isFinite(n) && n >= f.min && n <= f.max;
-    }
-    case "date_range": {
-      const t = new Date(String(cell)).getTime();
-      const lo = new Date(f.from).getTime();
-      const hi = new Date(f.to).getTime();
-      return !isNaN(t) && t >= lo && t <= hi;
-    }
-  }
-}
-
-export function applyFilters<T extends Record<string, unknown>>(
-  rows: T[],
-  filters: FilterState,
-): T[] {
-  const entries = Object.entries(filters);
-  if (entries.length === 0) return rows;
-  return rows.filter((row) => entries.every(([col, f]) => matchOne(row[col], f)));
 }

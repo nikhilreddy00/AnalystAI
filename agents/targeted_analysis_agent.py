@@ -57,7 +57,9 @@ from domain_pack import (
     developing_note,
     mixes,
     roles_of,
-    kpi_roles,
+    kpi_measures,
+    average_entity,
+    follow_up_complete,
     additive,
     entity_rows,
     layout_columns,
@@ -651,13 +653,15 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
                              f"{metric}", [f"Distribution of {metric}", "Pick a different segment"])
 
     order = ranked(full)
-    answer = f"{_of(agg, metric, False)} by {segment}: {_lead_and_last(order)}." + (
-        f" {kept}" if kept else "")
+    per = average_entity(contract, metric) if agg == "mean" else None   # an average per claim
+    what = f"Average {metric} per {per}" if per else _of(agg, metric, False)
+    answer = f"{what} by {segment}: {_lead_and_last(order)}." + (f" {kept}" if kept else "") + (
+        f" Per {per}: each group's total ÷ its distinct {per} with a value." if per else "")
     group = _named_group(df, params)
     if group is not None:
         # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
         value = float(full[full.index.astype(str) == group].sum())
-        answer = f"{_of(agg, metric, False)} for {segment} '{group}': {_num(value)}. " + answer
+        answer = f"{what} for {segment} '{group}': {_num(value)}. " + answer
     ctx = ctx or build_context(df, contract=contract)
     chart = group_bars(df, segment, metric, agg, ctx, top=20)
     if chart and chart.rationale:
@@ -1035,6 +1039,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     how = describe_kpi(pack, kpi.name, roles, present) + read + (
         f" {currency} only: {other:,} rows in other currencies left out." if other else "")   # counts too
     group = params.group_by or params.segment_column
+    # a measure still developing (losses at a valuation): its young periods are never compared
+    # with older ones, never cut as partial; the answer says why (domain_pack.developing_note)
+    develops = developing_note(contract, all_rows, kpi_measures(pack, kpi.name))
     if mixes(df, roles, kpi, group if group in df.columns else None):   # never one total across lines
         per = roles[kpi.per]
         if group or intent == QuestionIntent.TIME_SERIES or params.frequency:   # asked otherwise
@@ -1054,7 +1061,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         lead, tail = named.index[0], named.index[-1]
         answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                   f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
-        if params.compare == "yoy" and date:
+        if params.compare == "yoy" and date and develops:
+            answer += develops
+        elif params.compare == "yoy" and date:
             prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                        weekly)
             prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, by=group, full=all_rows)
@@ -1109,7 +1118,19 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         covered = t if all_rows is full else _local(pd.to_datetime(all_rows[date], errors="coerce"))
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
-        note += developing_note(contract, full, kpi_roles(pack, kpi.name))
+        if develops:   # every period shown, the young ones named: never a partial cut or a trend
+            if len(whole) < len(series) and series.index[-1] not in whole.index:   # say its coverage
+                develops = (f" The latest period ({series.index[-1]}) is covered only to "
+                            f"{covered.max():%d %b %Y}.") + develops
+            whole, note = series, develops
+        if followed := follow_up_complete(pack, kpi.name, all_rows, roles):   # a 30-day window:
+            # a period ending after its last complete follow-up is censored rows, never a rate
+            done, days = followed
+            late = [p for p in whole.index if p.end_time.normalize() > done]
+            if late:
+                whole = whole.drop(late)
+                note += (f" {late[0]} on is left out: the {days}-day follow-up after it runs past "
+                         f"the data's end ({done:%d %b %Y} is the last day it covers).")
         series = whole
         if asked:   # the buckets inside the asked window; comparisons still read `whole`
             lo, hi = period_window(full, date, params.period_start, params.period_end)[:2]
@@ -1134,19 +1155,20 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                 return v is not None and not pd.isna(v) and (kind == "percent" or pct_change(1.0, v) is not None)
 
             back = {"W": 52, "M": 12, "Q": 4, "Y": 1}[freq]
-            before = whole.get(latest - 1)   # by label: a missing period is no "period before"
+            # a developing measure: no period before, no year earlier (development, not a trend)
+            before = None if develops else whole.get(latest - 1)   # by label: a missing period is none
             if base(before):
                 answer += f", vs {fmt(before)} the period before ({change(series.iloc[-1], before)})"
             elif before is not None and not pd.isna(before):   # a $0 month is a month
                 answer += f", vs {fmt(before)} the period before (no % change from a zero or negative base)"
-            prior = whole.get(latest - back) if freq != "Y" else None
+            prior = whole.get(latest - back) if freq != "Y" and not develops else None
             if base(prior):   # (by year, "a year earlier" is the period before: said once)
                 answer += (f"; a year earlier {fmt(prior)} ({change(series.iloc[-1], prior)} year over year)")
             elif prior is not None and not pd.isna(prior):   # a $0 month a year earlier is said
                 answer += f"; a year earlier {fmt(prior)} (no % change from a zero or negative base)"
             compared = latest - back if base(prior) else latest - 1 if (
                 before is not None and not pd.isna(before)) else None
-            if compared is None:
+            if compared is None and not develops:
                 answer += "; there is no earlier complete period to compare with"
             answer += "." + note + (stores_note(contract, full, date, (
                 frame[frame["_period"] == compared], frame[frame["_period"] == latest]))
@@ -1165,14 +1187,16 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     if value is None:
         return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
                              ["Ask about a longer period"])
-    answer = f"{kpi.label}{where}: {fmt(value)}." + carry
+    answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)
     # one period asked on strong pack data (a month or longer): against the same period a year
     # earlier when the data has it (seasonal sales: last January, never December); unasked, so
     # silent when it can't, and never a single day (a Monday against a Sunday)
     auto = params.compare is None and bool(params.period_start or params.period_end) \
         and defaults_pack(contract) is not None and date is not None \
         and _window_days(full, date, params.period_start, params.period_end) >= 28
-    if (params.compare == "yoy" or auto) and date:
+    if (params.compare == "yoy" or auto) and date and develops:
+        answer += develops
+    elif (params.compare == "yoy" or auto) and date:
         prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                    weekly)
         prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, full=all_rows)
@@ -1199,6 +1223,21 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")
+
+
+def _arriving(contract: DataContract, full: pd.DataFrame, date: str | None, params: TargetedParams) -> str:
+    """' <months> on are still arriving …' when an asked window reaches into the months whose
+    records still arrive (domain_pack.runout_months), else '': the figure will rise."""
+    months = runout_months(contract)
+    if not months or not date or not (params.period_start or params.period_end):
+        return ""
+    last = _local(pd.to_datetime(full[date], errors="coerce")).max()
+    since = last.to_period("M") - months + 1
+    hi = period_window(full, date, params.period_start, params.period_end)[1]
+    if pd.isna(last) or hi < since.start_time:
+        return ""
+    return (f" {since.strftime('%b %Y')} on is still arriving (about {months} months after the "
+            "period): this figure will rise.")
 
 
 _HANDLERS: dict[QuestionIntent, Callable[..., TargetedResponse]] = {
