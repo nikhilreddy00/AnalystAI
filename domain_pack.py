@@ -1747,7 +1747,8 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     return with_spell_events(out, pack, roles), name
 
 
-SPELL_EVENT_COLUMNS = ("hire_event_date", "exit_event_date", "exit_in_window", "in_force_now")
+SPELL_EVENT_COLUMNS = ("hire_event_date", "exit_event_date", "exit_in_window", "in_force_now",
+                       "left_date_unknown")
 
 
 def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd.DataFrame:
@@ -1779,6 +1780,11 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
             # model never forgets to filter it (Domain 5 gate: hr-1 counted every exit ever)
             out["exit_in_window"] = (out[col] > lo).map({True: "yes", False: ""})
         out[col] = out[col].dt.strftime("%Y-%m-%d")
+    s = pack.spell   # over at an unknown date (status ended, no end date): never in force
+    end = _day(df[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=df.index)
+    undated = (words(df[roles["status"]]).isin(set(words(pd.Series(s.ended)))) & end.isna()
+               if s.ended and "status" in roles else pd.Series(False, index=df.index))
+    out["left_date_unknown"] = undated.map({True: "yes", False: ""})
     now = _in_force(df, roles, pack, as_of)
     out["in_force_now"] = ""
     out.loc[now.index[counted.loc[now.index].to_numpy()], "in_force_now"] = "yes"
@@ -1801,6 +1807,11 @@ def rows_for(df: pd.DataFrame, contract, column: str,
     row, no note."""
     pack = defaults_pack(contract)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
+    if role and pack.roles[role].over_time == "last" and (gone := exit_records(df, contract)).any():
+        # a spell's snapshot row past its end (its exit record) holds no one: its level is
+        # blank, so latest_rows never averages a leaver in (Domain 5 gate: hr-8)
+        return df.assign(**{column: df[column].where(~gone)}), \
+            f"{int(gone.sum()):,} exit records (rows after a person left) hold no {column}."
     if not (role and counted(pack, role)):
         return df, ""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
@@ -1819,6 +1830,25 @@ def rows_for(df: pd.DataFrame, contract, column: str,
         else df[kept]
     return out, pack.say("money_rows_note", currency=f" in {currency}" if currency else "",
                               n=f"{int((~kept).sum()):,}")
+
+
+def exit_records(df: pd.DataFrame, contract) -> pd.Series:
+    """True on a spell's snapshot rows that record its end: dated on or after its end date, or
+    with an `ended` status and no end date (the state rule _in_force applies); all False
+    elsewhere (rosters, packs without a spell)."""
+    pack = defaults_pack(contract)
+    none = pd.Series(False, index=df.index)
+    if not pack or not pack.spell:
+        return none
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    s, snap = pack.spell, _snapshot_column(pack, roles)
+    if not snap:
+        return none
+    end = _day(df[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=df.index)
+    out = end.notna() & (end <= _day(df[snap]))
+    if s.ended and "status" in roles:
+        out |= words(df[roles["status"]]).isin(set(words(pd.Series(s.ended)))) & end.isna()
+    return out
 
 
 def snapshot_entity(contract, columns) -> tuple[list[str], str] | None:

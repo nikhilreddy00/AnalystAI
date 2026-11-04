@@ -888,3 +888,12 @@ def test_hr_the_frame_marks_who_is_in_force_and_which_exits_fall_in_the_window()
     now = f[(f["in_force_now"] == "yes") & f["Gender"].isin(["Male", "Female"]) & f["Annual_Salary"].notna()]
     g = now.assign(p=now["Annual_Salary"] / now["FTE"]).groupby(["Job_Level", "Gender"])["p"].mean().unstack()
     assert close(((g["Male"] - g["Female"]) / g["Male"]).to_dict(), truth["pay_gap_mean_fte_by_level"], tol=0.01)
+
+
+def test_hr_a_level_never_counts_an_exit_record_as_a_person():
+    """Domain 5 gate (hr-8): the built-in 'mean Base_Salary by Department' at the latest
+    snapshot read each person's latest row, exit records ('Terminated' final rows) included."""
+    _, _, _, truth = _built("hr_snapshots")
+    res = builtin("hr_snapshots", ["Base_Salary"], ["Department"], ["segmentation"])
+    got = segment(res, "Department", "Base_Salary", "mean")
+    assert close(got, truth["avg_salary_by_dept_asof"], tol=0.01), got
