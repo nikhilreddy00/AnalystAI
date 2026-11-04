@@ -215,6 +215,16 @@ except Exception:
     return "\n".join(lines)
 
 
+def model_frame(df: pd.DataFrame, contract: DataContract) -> tuple[pd.DataFrame, list[str]]:
+    """(the frame the model's code gets, its columns beyond the schema): each row's kind, the
+    pack's derived columns and spell events. THE frame: the eval scores the model's columns
+    against it (CODING_STANDARDS: adapters take the production path)."""
+    framed, col = with_row_kind(df, contract)
+    framed, added = with_derived(framed, contract)
+    events = [c for c in SPELL_EVENT_COLUMNS if c in framed.columns and c not in df.columns]
+    return framed, [*([col] if col else []), *added, *events]
+
+
 def kind_column(contract: DataContract) -> str:
     """The row-kind column's name in the frame analysis gets (domain_pack.with_row_kind's rule)."""
     names = {c.name for c in contract.columns}
@@ -763,12 +773,10 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     known = [c.name for c in contract.columns]
     if ctx.domain or defaults_pack(contract):   # 5.7: row kinds as a column code filters on
         def framed_bytes() -> tuple[bytes, str | None]:
-            framed, col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
-            framed, added = with_derived(framed, contract)
+            framed, extra = model_frame(pd.read_parquet(io.BytesIO(df_parquet)), contract)
             buf = io.BytesIO()
             framed.to_parquet(buf, index=False)
-            events = [c for c in SPELL_EVENT_COLUMNS if c in framed.columns]   # with_row_kind's
-            return buf.getvalue(), [*([col] if col else []), *added, *events]
+            return buf.getvalue(), extra
         new_bytes, extra = await asyncio.to_thread(framed_bytes)
         if extra:
             df_parquet, known = new_bytes, known + extra

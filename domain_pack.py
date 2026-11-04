@@ -883,6 +883,11 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     if mean and (v := compute_kpi(df, roles, pack, mean.name)) is not None:
         lines.append(f"{mean.label} = {v:,.1f} (their mean): divide the window's counts by it "
                      "for a rate; never recount it from rows.")
+        for g in [g for g in pack.overview_groups if g in roles][:2]:   # a group's own base
+            by = compute_kpi(df, roles, pack, mean.name, by=roles[g])
+            if by is not None and len(by) <= 15:
+                lines.append(f"{mean.label} by {roles[g]} (a group's rate divides by its own): "
+                             + ", ".join(f"{k} {x:,.1f}" for k, x in by.items()) + ".")
     later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
     if later:
         lines.append(f"{later} hire or exit dates fall after {as_of:%-d %b %Y}: not counted yet.")
@@ -1749,9 +1754,16 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
     as_of = spell_as_of(pack, df, roles)
     if as_of is None:
         return df
+    # the people the headcount counts (its `where`: contractors out on HR), so a rate's events
+    # and its denominator are one population
+    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
+                  and computable(pack, k.name, roles)), None)
+    where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), []) if stock else []
+    counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
     out = df.copy()
     for col, which in zip(SPELL_EVENT_COLUMNS, ("starts", "ends")):
         rows, when = _spell_events(df, roles, pack, which, as_of)
+        rows, when = rows[counted.loc[rows.index]], when[counted.loc[rows.index]]
         out[col] = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
         out.loc[rows.index, col] = when.astype("datetime64[ns]")
         out[col] = out[col].dt.strftime("%Y-%m-%d")

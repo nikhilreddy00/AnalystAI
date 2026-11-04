@@ -193,8 +193,10 @@ def builtin_only(case: dict) -> bool:
 def score_analysis(case: dict, findings, error: str | None, baseline: bool = True) -> dict:
     """Scores one analysis run from its stored output (so `rescore` costs nothing), against the
     frame the agent was given (PHI mode's working copy on patient data)."""
+    from agents.analysis_agent import model_frame
     _, truth, _ = dataset(case)
-    df = working_frame(case)[0]
+    df, contract = working_frame(case)
+    df = model_frame(df, contract)[0] if contract and contract.domain else df   # the model's own frame
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}

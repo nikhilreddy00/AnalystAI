@@ -849,3 +849,23 @@ def test_hr_employees_flag_file_keeps_sales_highest_on_the_12_month_rate():
     _, by = answer("employees", "top_n", "attrition by department", kpi="attrition_rate",
                    group_by="department")
     assert close(by, truth["attrition_12m_by_dept"], tol=0.05) and max(by, key=by.get) == "Sales"
+
+
+@pytest.mark.parametrize("name, key", [("hr_roster", "attrition_12m_by_dept"),
+                                       ("hr_snapshots", "attrition_12m_by_dept_at_exit")])
+def test_hr_a_model_following_the_brief_gets_the_truth(name, key):
+    """Domain 5 red-team B6: the brief's recipe (count rows with an exit_event_date in the
+    window, by their department, ÷ the facts' average headcount of that department), run as
+    model code would, equals the generator's truth: the brief is enough, nothing re-derived."""
+    from agents.analysis_agent import model_frame
+    _, clean, contract, truth = _built(name)
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    frame, extra = model_frame(clean, contract)
+    assert {"exit_event_date", "hire_event_date"} <= set(extra)
+    e = pd.to_datetime(frame["exit_event_date"])
+    exits = frame[(e > "2025-10-31") & (e <= "2026-10-31")].groupby("Department").size()
+    line = next(x for x in domain_pack.spell_facts(domain_pack.pack_for("hr"), clean, roles)
+                if " by Department " in x)
+    avg = dict(re.findall(r"(\w+) ([\d,]+\.\d)", line.split("):", 1)[1]))
+    got = {k: exits.get(k, 0) / float(v.replace(",", "")) for k, v in avg.items()}
+    assert close(got, truth[key], tol=0.5), (got, truth[key])
