@@ -749,6 +749,13 @@ def _within(df: pd.DataFrame, whole: pd.DataFrame, roles: dict[str, str], w: Wit
     return (keep & hit.reindex(df.index, fill_value=False)).astype(float)
 
 
+# A spell series reaches back at most this many years and has at most this many periods (one
+# in-force pass per period: a weekly axis over a decade is 520 passes).
+# ponytail: one pass per period; an interval sweep over start/end events if rosters pass ~500k rows
+SPELL_YEARS = 10
+SPELL_PERIODS = 520
+
+
 def _snapshot_column(pack: Pack, roles: dict[str, str]) -> str | None:
     """A spell's snapshot date column (the pack's date role, when it is neither the start nor the
     end and the data has it): rows are then dated snapshots, not spells."""
@@ -777,7 +784,8 @@ def spell_from(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timest
     s = pack.spell
     for col in [_snapshot_column(pack, roles), roles.get(s.end), roles.get(s.start)]:
         if col and pd.notna(t := _day(df[col]).min()):
-            return t
+            as_of = spell_as_of(pack, df, roles)   # bounded: a 1900 typo never means 6,000 months
+            return max(t, as_of - pd.DateOffset(years=SPELL_YEARS)) if as_of is not None else t
     return None
 
 
@@ -925,7 +933,7 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
 
     if periodic:
         freq = df[by].dtype.freq
-        axis = pd.period_range(first, as_of, freq=freq)
+        axis = pd.period_range(first, as_of, freq=freq)[-SPELL_PERIODS:]
         groups = None
     else:
         axis = None

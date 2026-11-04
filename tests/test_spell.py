@@ -184,3 +184,11 @@ def test_snapshots_a_filter_counts_who_is_in_the_group_at_the_date(pack):
     act = compute_kpi(basic, SNAP_ROLES, pack, "active", by="_period", full=df)
     assert act[pd.Period("2026-03", "M")] == 3   # A, B, D
     assert act[pd.Period("2026-05", "M")] == 1   # B moved to pro: only D
+
+
+def test_a_typo_date_never_makes_an_unbounded_series(pack):
+    df = _roster()
+    df.loc[len(df)] = ("S0", "1900-01-01", "1901-01-01", "basic", "paid", 1, "cancelled")
+    df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("W")
+    act = compute_kpi(df, ROLES, pack, "active", by="_period")
+    assert len(act) <= 520 and act.index[0].start_time >= pd.Timestamp("2016-10-01")
