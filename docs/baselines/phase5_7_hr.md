@@ -178,7 +178,7 @@ Builder terms: `GLOSSARY.md` (Spell, In force at t, As-of date, Protected role, 
 
 ## Post-domain senior audit (2026-11-05, after the merge; $0)
 
-Four fresh reviewers in parallel:
+Four fresh reviewers in parallel, then one fix-diff reviewer (1 major in the first fix, fixed; 1 minor kept: a store_weeks donut rebuilt as a bar under a date filter shows the honest 'unfiltered' pill):
 - the code-review skill's Standards axis;
 - its Spec axis;
 - a dashboard-filter accuracy check against generator truth on 19 datasets;
@@ -188,7 +188,7 @@ Four fresh reviewers in parallel:
 | finding | severity | fix |
 |---|---|---|
 | The KPI-over-time line ignored every dashboard filter on all 15 non-HR datasets (retail Canada Jan 2025: $23,653.70 shown, truth $2,559.78). Present on main before Domain 5. | major | Under a dashboard filter the series counts the part's rows (row kinds still judged on all rows). Guard on all 20 datasets: an additive KPI's months add up over a filter's values. |
-| Donut breakdowns went blank under a filter (a bar of the same breakdown overwrote their rows). Pre-existing. | major | `_chart_key` tells round charts apart (never the exact type: a filter can turn horizontal bars into bars). |
+| Donut breakdowns went blank under a filter (a bar of the same breakdown overwrote their rows). Pre-existing. | major | `_chart_key` includes the key the rows carry (`x_key`: a donut's `name`), never the chart type. The fix-diff review caught the first version, which keyed on the type and lost 42 user-switched charts; guarded. |
 | Targeted HR answers didn't say how a rate is built (12 month-ends, exits as events, contractors out, "not counted yet"). | major | A ratio of spell KPIs describes its parts in the answer's "How", plus the shared `not_counted_yet` sentence. Model inputs unchanged. |
 | retail `store_weeks` offered a Store_No range slider and lost COGS (a Domain 5 regression, 2b03017). | minor | An id is never a range filter. Guard on all 20 datasets. |
 | A date range kept "as of 31 Oct 2026" on tiles and chart titles. | minor | The server sends each filtered tile's context and chart's title; the UI shows them. |

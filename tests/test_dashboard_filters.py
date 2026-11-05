@@ -414,6 +414,12 @@ def test_a_filter_reaches_the_kpi_over_time_and_every_donut(name):
         if c.chart_type.value in ("PieChart", "DonutChart"):
             for o in outs:
                 assert all({"name", "value"} <= set(r) for r in o["charts"].get(c.id, [])), (name, c.title)
+    # a chart the user switched to another type (chart_feedback saves it) is still refiltered
+    switched = [c.model_copy(update={"chart_type": next(t for t in type(c.chart_type) if t != c.chart_type)})
+                for c in charts]
+    sw = filtered_dashboard(clean, contract, switched, {col: {"kind": "equality", "value": values[0]}})
+    if not sw["suppressed"] and sw["charts"]:
+        assert set(sw["charts"]) == set(outs[0]["charts"]) if outs else True, (name, "type switch")
     if line is None or line.id not in whole["charts"] or not outs:
         return
     y = line.y_keys[0]

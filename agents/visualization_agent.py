@@ -2965,12 +2965,12 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
 
 
 def _chart_key(c: ChartConfig):
-    """Which rebuilt chart a stored chart is: its rule, axes and shape (a donut and a bar of the
-    same breakdown carry different rows: post-Domain-5 audit, donuts went blank). The shape is
-    round or not, never the exact type (a filter can turn horizontal bars into bars)."""
+    """Which rebuilt chart a stored chart is: its rule, axes and the key its rows carry (a donut's
+    rows are {name, value}, a bar's {column, count}: post-Domain-5 audit, donuts went blank).
+    Never the chart type: the user can switch it (chart_feedback), and a filter can turn
+    horizontal bars into bars."""
     r = c.rationale
-    round_ = c.chart_type in (ChartType.PIE, ChartType.DONUT)
-    return (r.rule, r.x, r.y, r.aggregation, r.split, round_) if r else None
+    return (r.rule, r.x, r.y, r.aggregation, r.split, c.x_key) if r else None
 
 
 def _spell_window_filters(df: pd.DataFrame, contract: DataContract | None,
