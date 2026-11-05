@@ -537,6 +537,17 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
     charts, a follow-up's chart, the Dashboard page and the KPI tiles a senior analyst of that
     domain expects, **and apply one dashboard filter: a tile and a chart must change** (a first
     render proves nothing about an interaction; filters were broken for three domains). Fix what it finds before "Domain N done".
+    The finished domains' part runs at $0 on the mock stack: `scripts/ui_check` with
+    `make_fixture.py --dataset <name>` (the real `filtered_dashboard` on that dataset; spend paid
+    live runs on the new domain only, and read their cost with `scripts/live_check/spend.py`).
+  - **Added 2026-11-05 (retro Domain 5):** before "Domain N done", and before the final paid
+    re-measure: (1) `uv run python scripts/domain_diff.py main` on the branch, every difference
+    named in the review note as intended (with its reason) or fixed: the golden pins what the
+    model sees, this diff catches what users see (tiles, charts, filter options, filtered
+    dashboards, answers); (2) the code-review Spec axis against the domain's plan (Domain 5's
+    found its answers missing their method, after the merge); (3) a dashboard-filter accuracy
+    pass against generator truth on charts whose x axis is NOT the filtered column (the
+    over-time line ignored filters on 15 datasets since before Domain 4).
   - **Added 2026-11-04 (user, after Domain 4: the same dashboard bugs in Domains 3 and 4):**
     - **A repeating bug is fixed at its structural cause**, never per dataset: ask why it
       survived the last fix (a cap, a fallback, a client-side recount is usually a second copy

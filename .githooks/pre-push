@@ -4,6 +4,16 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
+# the hook checks the working tree and the push sends HEAD: they must be the same files, from
+# the first check to the last (retro Domain 5: a file edited while the hook ran was checked,
+# never pushed)
+tree() { git diff HEAD --name-only; git diff HEAD | shasum; }
+start=$(tree)
+if [ -n "$(git diff HEAD --name-only)" ]; then
+  echo "pre-push: uncommitted changes to tracked files (commit or stash them):"
+  git diff HEAD --name-only; exit 1
+fi
+
 # a report a test reads must be committed (CI can't see an untracked one)
 missing=$(git ls-files --others --exclude-standard evals/reports | while read -r f; do
   grep -rqF "$(basename "$f")" tests/ && echo "$f"; done || true)
@@ -25,7 +35,15 @@ rm -rf "$out"
   && node --experimental-strip-types --test src/lib/*.test.ts > /dev/null)
 # CI's Playwright e2e ($0, mock backend, ~1-2 min): opt in with PREPUSH_E2E=1 git push
 if [ "${PREPUSH_E2E:-0}" = 1 ]; then
+  for port in 3100 8100 54321; do   # the live-check stack uses the same ports
+    if lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1; then
+      echo "pre-push: port $port is in use (the live stack? scripts/live_check/down.sh)"; exit 1
+    fi
+  done
   uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures --dashboard-only > /dev/null
   (cd frontend && npx playwright test)
+fi
+if [ "$(tree)" != "$start" ]; then
+  echo "pre-push: files changed while the checks ran: commit them and push again"; exit 1
 fi
 echo "pre-push: all checks passed"

@@ -5,6 +5,12 @@ output of one analysis-agent run, kept in the committed full.sse. The insight re
 review are hand-written from the numbers in a real e2e-01 answer, so the UI has every panel.
 
     uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures
+    uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures --dataset policies
+
+--dataset <name>: only the dashboard (dash_*.json + frame) of any evals dataset, built by the
+production path (reader, contract, cleaning; pack charts and tiles) as tests/test_dashboard_filters
+builds it: the finished domains' 1440 px filter check at $0 (retro Domain 5). The committed
+recordings (full.sse …) are left as they are.
 """
 
 import json
@@ -22,6 +28,33 @@ from agents.visualization_agent import (
 from evals.run import load_cases, viz_session
 
 OUT = sys.argv[1]
+DATASET = sys.argv[sys.argv.index("--dataset") + 1] if "--dataset" in sys.argv else None
+
+
+def write_dashboard(frame, contract, charts, kpis, query) -> None:
+    """The dashboard the mock serves: filter options, the frame + contract its
+    /latest/filtered runs the real filtered_dashboard on, and the stored report's charts and tiles."""
+    json.dump({"session_id": "ui-check", **filter_options(frame, contract)},
+              open(f"{OUT}/dash_data.json", "w"), default=str)
+    frame.to_parquet(f"{OUT}/dash_frame.parquet", index=False)
+    open(f"{OUT}/dash_contract.json", "w").write(contract.model_dump_json())
+    json.dump({"latest": {"session_id": "ui-check", "updated_at": "2026-10-27T12:00:00Z",
+                          "raw_query": query, "charts": charts, "insight": None,
+                          "briefing": {"kpis": kpis}, "expert_review": None}},
+              open(f"{OUT}/dash_latest.json", "w"), default=str)
+
+
+if DATASET:
+    from agents.visualization_agent import build_context, generate_dashboard_charts, pack_overview_charts
+    from tests.test_oracle import _built
+    _, frame, contract, _ = _built(DATASET)
+    ctx = build_context(frame, contract=contract)
+    built = pack_overview_charts(frame, ctx) + generate_dashboard_charts(frame, ctx.roles, ctx=ctx)
+    tiles = generate_smart_kpis(frame, ctx.roles, "overview", contract=contract)
+    write_dashboard(frame, contract, [c.model_dump() for c in built], [k.model_dump() for k in tiles],
+                    "Give me an overview of this dataset")
+    print(DATASET, len(built), "charts", len(tiles), "tiles")
+    sys.exit(0)
 # CI: write only the git-ignored dashboard JSON; the committed recordings (full.sse …) stay as
 # committed (a spec replays a pre-5.5 run on purpose)
 DASHBOARD_ONLY = "--dashboard-only" in sys.argv
@@ -206,22 +239,7 @@ w(
 print(len(charts), "charts", len(kpis), "kpis", len(evidence), "evidence")
 # the dashboard reads no rows: filter options here, and the mock's /latest/filtered runs the
 # real filtered_dashboard on the saved frame + contract (no copy of the rules in the mock)
-json.dump({"session_id": "ui-check", **filter_options(df, _session.data_contract)},
-          open(f"{OUT}/dash_data.json", "w"), default=str)
-df.to_parquet(f"{OUT}/dash_frame.parquet", index=False)
-open(f"{OUT}/dash_contract.json", "w").write(_session.data_contract.model_dump_json())
-json.dump(
-    {
-        "latest": {
-            "session_id": "ui-check",
-            "updated_at": "2026-10-27T12:00:00Z",
-            "raw_query": q,
-            "charts": charts,
-            "insight": insight,
-            "briefing": briefing,
-            "expert_review": review,
-        }
-    },
-    open(f"{OUT}/dash_latest.json", "w"),
-    default=str,
-)
+write_dashboard(df, _session.data_contract, charts, kpis, q)
+_latest = json.load(open(f"{OUT}/dash_latest.json"))   # the full report: the chat replays it
+_latest["latest"].update(insight=insight, briefing=briefing, expert_review=review)
+json.dump(_latest, open(f"{OUT}/dash_latest.json", "w"), default=str)
