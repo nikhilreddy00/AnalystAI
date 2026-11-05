@@ -1,0 +1,76 @@
+"""A column the product adds to the data at ingestion (Pack.columns, Domain 6 S1): a pack's
+formula of several roles (a subscription's MRR from its price, seats, discount and billing
+interval), so every reader (KPIs, charts, filters, the model's frame) reads one number. The toy
+pack here is the second reader beside saas.yaml."""
+import pandas as pd
+import pytest
+import yaml
+
+from domain_pack import Pack, pack_columns
+
+TOY = """
+domain: toyrent
+signals:
+  - {unit: [unit_id], rent: [rent]}
+roles:
+  unit_id:  {kind: id, headers: [unit_id]}
+  moved_in: {kind: date, headers: [moved_in]}
+  rent:     {kind: money, headers: [rent]}
+  units:    {kind: count, headers: [units]}
+  rebate:   {kind: rate, headers: [rebate]}
+  term:     {kind: category, headers: [term], numbers: {monthly: 1, quarterly: 3, yearly: 12}}
+  terms:    {kind: count, headers: [terms]}
+  monthly_rent: {kind: money, headers: [monthly_rent]}
+columns:
+  monthly_rent: {times: [rent, units], net_of: rebate, over: [term, terms],
+                 optional: [units, rebate, terms]}
+caveats:
+  read_as_domain_weak: "Read as rental data: {roles}."
+"""
+
+
+@pytest.fixture
+def pack():
+    return Pack.model_validate(yaml.safe_load(TOY))
+
+
+def test_a_formula_of_several_roles_is_one_column(pack):
+    df = pd.DataFrame({"unit_id": ["a", "b", "c", "d", "e"],
+                       "rent": ["1,200", "300", "90", "50", "10"],
+                       "units": [1, 2, None, 1, 1], "rebate": [0.25, None, 0, 0, 0],
+                       "term": ["Yearly", "monthly", "quarterly", "weekly", "monthly"],
+                       "terms": [1, 1, 1, 1, 2]})
+    out, notes = pack_columns(df, pack, {r: r for r in df.columns})
+    got = out["monthly_rent"].tolist()
+    assert got[:3] == [75.0, 600.0, 30.0] and pd.isna(got[3]) and got[4] == 5.0
+    assert notes == ["monthly_rent: 1 row has a term the formula doesn't know (weekly): left blank."]
+
+
+def test_a_missing_required_role_or_an_own_column_adds_nothing(pack):
+    df = pd.DataFrame({"unit_id": ["a"], "rent": [10.0]})
+    assert pack_columns(df, pack, {"unit_id": "unit_id", "rent": "rent"})[0].columns.tolist() \
+        == ["unit_id", "rent"]   # no term: no monthly rent, never a guess
+    own = pd.DataFrame({"unit_id": ["a"], "rent": [10.0], "term": ["yearly"], "monthly_rent": [9.0]})
+    out, _ = pack_columns(own, pack, {r: r for r in own.columns})
+    assert out["monthly_rent"].tolist() == [9.0]   # the user's own column is never replaced
+
+
+def test_every_finished_pack_adds_no_column():
+    from domain_pack import load_packs
+    assert all(not p.columns for p in load_packs() if p.domain != "saas")
+
+
+def test_a_term_times_a_constant_is_a_run_rate_of_the_same_kind():
+    """ARR = 12 × MRR (Domain 6 S1b): `times` scales a term; a KPI of a state KPI is a state
+    ('as of 31 Oct', never '12 months to'), and a string where a number belongs is refused."""
+    from tests.test_spell import ROLES, SUBS, _roster
+    from domain_pack import compute_kpi, window_words
+    raw = yaml.safe_load(SUBS)
+    raw["kpis"] += [{"name": "seats_x12", "label": "Annual seats", "num": [[{"kpi": "seats", "times": 12}]]}]
+    p = Pack.model_validate(raw)
+    df = _roster()
+    assert compute_kpi(df, ROLES, p, "seats_x12") == 12 * compute_kpi(df, ROLES, p, "seats")
+    assert p.kpi("seats_x12").state and window_words(p, df, ROLES, "seats_x12").startswith("as of")
+    raw["kpis"][-1]["num"][0][0]["times"] = "1/12"
+    with pytest.raises(ValueError):
+        Pack.model_validate(raw)

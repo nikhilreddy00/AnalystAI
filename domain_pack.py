@@ -70,6 +70,8 @@ class Role(_Strict):
     # "last": a level (a balance): adds across the snapshot_key's entities at one date, never
     # across dates; each entity's latest snapshot per period (the ColumnInfo level hint).
     over_time: Literal["sum", "last"] = "sum"
+    # A category's numeric meaning in a formula (Pack.columns): a billing interval in months
+    numbers: dict[str, float] = Field(default_factory=dict)
 
 
 class Cond(_Strict):
@@ -131,6 +133,17 @@ class NeverSay(_Strict):
     reason: str
 
 
+class Formula(_Strict):
+    """A column the product adds to the data (Pack.columns): the product of `times`, net of the
+    `net_of` rate, divided by the product of `over` (a subscription's MRR: price × seats ×
+    (1 − discount) ÷ (interval months × interval count)). An `optional` role the data lacks, or
+    a blank value of one, counts 1 (a rate: 0)."""
+    times: list[str]
+    over: list[str] = Field(default_factory=list)
+    net_of: str | None = None
+    optional: list[str] = Field(default_factory=list)
+
+
 class Within(_Strict):
     """Rows followed by another row of the same entity starting (0, days] after this row's end
     (a 30-day readmission). Follow-ups are found anywhere in the data and must meet `follow`;
@@ -186,6 +199,7 @@ class Term(_Strict):
     sign: Literal[1, -1] = 1
     optional: bool = False        # a missing role drops this term (and a blank value counts 0)
     net_of: str | None = None     # a rate role: each row's value × (1 − rate) (a 25% line discount)
+    times: float = 1              # a constant multiplier: ARR = 12 × MRR (a run-rate)
     # Only rows meeting one of these groups (each group: all its conditions): NPL = 90+ days
     # past due OR non-accrual, never counted twice.
     where: list[list[Cond]] = Field(default_factory=list)
@@ -238,12 +252,15 @@ class KPI(_Strict):
     # a role whose values the KPI never adds across (exposure units differ by line): computed
     # within one value only; asked without a group, answered by this role
     per: str | None = None
+    # set by Pack._check: every numerator term is a state KPI (ARR = 12 × MRR is as of a date)
+    _of_state: bool = PrivateAttr(default=False)
 
     @property
     def state(self) -> bool:
         """A state at a date (a balance, a headcount), never a flow over the period: THE test
         (`at: latest`, or a spell's entities in force)."""
-        return self.at == "latest" or any(t.spell == "active" for alt in self.num for t in alt)
+        return self.at == "latest" or any(t.spell == "active" for alt in self.num for t in alt) \
+            or self._of_state
 
     def written(self, value: str) -> str:
         """A formatted value with its unit word: THE way a KPI's number is written."""
@@ -334,6 +351,10 @@ class Pack(_Strict):
     # frame gets it as a column named after the role's first header, so the model never invents
     # one ("LOS (derived)" was rejected as an unknown column)
     derived: dict[str, list[str]] = Field(default_factory=dict)
+    # A role the product adds to the data at ingestion when the data lacks it (a subscription
+    # list's MRR from its price, seats, discount and interval): one column every reader reads
+    # (KPIs, charts, filters, the model), never a formula repeated per KPI
+    columns: dict[str, Formula] = Field(default_factory=dict)
     # A version chain (a claim line adjudicated, replaced, voided): the rows sharing these roles'
     # values, ordered by `version_order`; only the last counts, earlier ones are non_product, and
     # a chain whose last row carries a `version_void` value is cancelled (every row)
@@ -438,6 +459,10 @@ class Pack(_Strict):
             if r not in self.roles or len(expr) != 3 or expr[1] not in ("*", "-", "days") \
                     or expr[0] not in self.roles or expr[2] not in self.roles:
                 errors.append(f"derived {r}: a role and [role, '*', '-' or 'days', role]")
+        for r, f in self.columns.items():
+            errors += [f"columns {r}: unknown role {x}" for x in
+                       [r, *f.times, *f.over, *([f.net_of] if f.net_of else []), *f.optional]
+                       if x not in self.roles]
         if bool(self.version_key) != bool(self.version_order):
             errors.append("version_key and version_order go together")
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
@@ -484,7 +509,12 @@ class Pack(_Strict):
                    for q in self.first_questions if isinstance(q, dict)
                    for need in q.get("needs", []) for n in need.split("|")   # "sku|product": either
                    if n not in names and n not in self.roles and n not in ROW_KINDS and n != "year"]
-        for k in self.kpis:
+        for k in self.kpis:   # in order: a KPI refers to KPIs written before it
+            # ponytail: a ratio of state KPIs isn't marked (banking's avg_balance is a logged
+            # follow-up with its own re-measure); a ratio of spell terms is a state already
+            k._of_state = k.den is None and all(
+                t.kpi and t.kpi in names and self.kpi(t.kpi) and self.kpi(t.kpi).state
+                for alt in k.num for t in alt)
             for alt in [*k.num, *(k.den or [])]:
                 for t in alt:
                     if t.spell and not self.spell:
@@ -1260,7 +1290,7 @@ def _side(df, kinds, roles, pack, kpi, alternatives, by):
             v = _term(df, kinds, roles, pack, kpi, t, by)
             if v is None:
                 break
-            v = v * t.sign
+            v = v * t.sign * t.times
             total = v if total is None else (total.add(v, fill_value=0) if by else total + v)
         else:
             if total is not None:
@@ -1963,6 +1993,52 @@ def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
     pack = pack_for(contract.domain) if contract is not None else None
     return list(layout_columns(df, pack, {r: c for r, c in (contract.roles if pack else {}).items()
                                           if c in df.columns}))
+
+
+def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
+                 ) -> tuple[pd.DataFrame, list[str]]:
+    """(the data with each Pack.columns role it lacks, a note per row left blank). Raw values are
+    parsed as cleaning parses numbers ('1,200'); a category reads its Role.numbers (an unknown
+    one leaves the row blank, said). Needs every non-optional role; the user's own column of
+    that role is never replaced."""
+    from agents.data_cleaning import try_numeric_conversion
+    if pack is None:
+        return df, []
+    notes: list[str] = []
+    for r, f in pack.columns.items():
+        name = pack.roles[r].headers[0]
+        needed = [x for x in [*f.times, *f.over, *([f.net_of] if f.net_of else [])]
+                  if x not in f.optional]
+        if r in roles or name in df.columns or any(x not in roles for x in needed):
+            continue
+
+        def value(role: str, blank: float) -> pd.Series:
+            if role not in roles:
+                return pd.Series(blank, index=df.index)
+            s, nums = df[roles[role]], pack.roles[role].numbers
+            if nums:
+                v = words(s).map({k.casefold(): x for k, x in nums.items()})
+            else:
+                parsed = try_numeric_conversion(s.astype(str).where(s.notna())) \
+                    if pd.api.types.is_string_dtype(s) else None
+                v = pd.to_numeric(parsed[0] if parsed else s, errors="coerce")
+            return v.fillna(blank) if role in f.optional else v
+
+        out = pd.Series(1.0, index=df.index)
+        for x in f.times:
+            out = out * value(x, 1.0)
+        if f.net_of:
+            out = out * (1 - value(f.net_of, 0.0))
+        for x in f.over:
+            out = out / value(x, 1.0)
+        for x in (x for x in f.over if pack.roles[x].numbers and x in roles):
+            unknown = df[roles[x]].notna() & value(x, 1.0).isna()
+            if n := int(unknown.sum()):
+                seen = ", ".join(sorted(map(str, df.loc[unknown, roles[x]].unique()))[:3])
+                notes.append(f"{name}: {n:,} row{'s' * (n != 1)} {'have' if n != 1 else 'has'} a "
+                             f"{roles[x]} the formula doesn't know ({seen}): left blank.")
+        df = df.assign(**{name: out})
+    return df, notes
 
 
 def with_derived(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, list[str]]:
