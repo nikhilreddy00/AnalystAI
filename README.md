@@ -245,7 +245,14 @@ line only, retention and lapse over terms up for renewal; a loss run's latest va
 claimant, never summed across valuations; accident years still developing named with their age,
 never called final; no IBNR, combined ratio or rating on protected attributes; 9 analysis cases
 k=3, 9 E2E cases (incl. Postgres and JSON sources), 12 intake cases;
-`docs/baselines/phase5_7_insurance.md`).
+`docs/baselines/phase5_7_insurance.md`);
+**HR** (people analytics: headcount and FTE at a date from a roster's hire and termination dates
+or from monthly snapshots; attrition = separations ÷ the average of 12 month-end headcounts over
+the 12 months to the latest date, contractors out, retirements separate, a partial year never
+annualised; groups of fewer than 11 people by gender, ethnicity or pay never shown; no
+individual flight-risk scores, adjusted pay gap or compliance verdicts; 10 analysis cases k=3,
+7 E2E cases (incl. Excel, JSON and Postgres sources), 12 intake cases;
+`docs/baselines/phase5_7_hr.md`).
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one
