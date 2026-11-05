@@ -296,3 +296,10 @@ def test_a_column_statistic_grouped_by_pay_shows_no_group():
     _, by = answer("hr_roster", "segment_compare", "q", metric_column="Performance_Rating",
                    segment_column="Annual_Salary", aggregation="mean")
     assert not by, by
+    from agents.utils import aggregate
+    _, clean, contract, _ = _built("hr_roster")
+    for keys in (["Department", "Annual_Salary"], ["Annual_Salary", "Department"]):   # joint
+        assert aggregate(clean, keys, "Performance_Rating", "mean", contract).empty, keys
+    text, _ = answer("hr_roster", "top_n", "q", metric_column="Performance_Rating",
+                     group_by="Annual_Salary", aggregation="mean")
+    assert "is pay" in text, text   # the honest reason, never 'no rows have both'

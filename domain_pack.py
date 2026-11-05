@@ -1414,7 +1414,7 @@ def protected_groups(df: pd.DataFrame, contract, keys, column: str, label: str =
     crossed = [c for c in prot if pack.roles[prot[c]].kind != "money" and c not in names
                and set(normalize_header(c).split("_")) <= said]
     if set(names) & pay_columns(pack, roles):   # grouped by pay values: every group is one pay
-        return sorted(pd.unique(df[names].dropna().itertuples(index=False, name=None))
+        return sorted(set(df[names].dropna().itertuples(index=False, name=None))
                       if len(names) > 1 else pd.unique(df[names[0]].dropna()), key=str)
     asked = protected_cut(cut, roles, pack)   # a part that is itself a protected group
     if not (set(names) & set(prot) or column in prot or crossed or asked):

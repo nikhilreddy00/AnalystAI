@@ -216,6 +216,17 @@ def _asked_agg(params: TargetedParams | None, contract: DataContract, question: 
     return params.model_copy(update={"aggregation": None})
 
 
+def _by_pay(intent: QuestionIntent, group, contract, df, instead: str) -> TargetedResponse | None:
+    """THE refusal of a group by pay values (domain_pack.pay_columns): each value is one
+    person's pay. KPI and column answers say the same reason."""
+    pack = defaults_pack(contract)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    if pack and group in pay_columns(pack, roles):
+        return _unanswerable(intent, f"{group} is pay: grouping by its values would show "
+                             "individual people's pay", [instead])
+    return None
+
+
 def _unanswerable(intent: QuestionIntent, reason: str, suggestions: list[str]) -> TargetedResponse:
     return TargetedResponse(
         intent=intent,
@@ -399,6 +410,8 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     asked = asked if asked in valid_aggs else None
     agg = effective_agg(contract, metric, asked) or "sum"   # a balance is its current total
     asc = (params.order or "desc").lower() == "asc"
+    if refused := _by_pay(QuestionIntent.TOP_N, group, contract, df, f"{metric} by a group"):
+        return refused
     df, kept = rows_for(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
@@ -649,6 +662,8 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     asked = (params.aggregation or "").lower() or None
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "mean"
+    if refused := _by_pay(QuestionIntent.SEGMENT_COMPARE, segment, contract, df, f"{metric} by a group"):
+        return refused
     df, kept = rows_for(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
@@ -1089,9 +1104,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                  f"them would mix their units", [f"{kpi.label} by {per}",
                                                                 f"{kpi.label} for {df[per].dropna().iloc[0]}"])
         group, how = per, how + f" Given by {per} only: one figure across them would mix their units."
-    if group in pay_columns(pack, roles):   # pay values
-        return _unanswerable(intent, f"{group} is pay: grouping by its values would show "
-                             "individual people's pay", [f"{kpi.label} by a group the data has"])
+    if refused := _by_pay(intent, group, contract, df, f"{kpi.label} by a group the data has"):
+        return refused
     if group and group not in df.columns:   # never the overall figure in its place
         return _unanswerable(intent, f"this data has no column {group!r}",
                              [f"{kpi.label} overall", f"{kpi.label} by a column the data has"])
