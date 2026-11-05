@@ -148,3 +148,33 @@ def test_the_semantic_layer_never_calls_a_leaver_share_attrition():
     layer = yaml.safe_load(Path("semantic_layers/hr.yaml").read_text())
     names = {m["name"] for m in layer["metrics"]}
     assert "leaver_share" in names and "attrition_rate" not in names
+
+
+def test_a_year_over_year_answer_on_a_protected_pack_never_crashes():
+    """Audit pass 3: a reused name made compute_kpi(cut=True) raise on insurance YoY answers."""
+    from tests.test_oracle import answer
+    for params in (dict(group_by="State"), dict(segment_column="Insured Gender", segment_value="F")):
+        text, _ = answer("policies", "top_n", "q", kpi="written_premium", compare="yoy", **params)
+        assert "year-earlier" in text or "year earlier" in text, text
+
+
+def test_a_split_chart_loses_a_small_cells_counts_and_spread_too():
+    """Audit pass 3: a hidden series kept its __n and __ci beside it (gender counts under 11)."""
+    from agents.visualization_agent import _without_small_cells, build_context, group_bars
+    _, clean, contract, _ = _built("hr_roster")
+    ctx = build_context(clean, contract=contract)
+    chart = group_bars(clean, "Department", "Annual_Salary", "mean", ctx, split="Gender")
+    out = _without_small_cells(chart, ctx)
+    for row in (out.data if out else []):
+        assert "Non-binary__n" not in row or row["Non-binary__n"] >= 11, row
+        assert set(row) - {"Department"}, row   # no empty bar
+
+
+def test_two_date_ranges_that_dont_overlap_show_nothing():
+    from agents.visualization_agent import filtered_dashboard
+    from tests.test_dashboard_filters import _dashboard
+    clean, contract, charts, _, _ = _dashboard("hr_roster")
+    out = filtered_dashboard(clean, contract, charts, {
+        "Hire_Date": {"kind": "date_range", "from": "2024-01-01", "to": "2024-12-31"},
+        "Termination_Date": {"kind": "date_range", "from": "2026-01-01", "to": "2026-03-31"}})
+    assert out["rows"] == 0 and not out["tiles"]

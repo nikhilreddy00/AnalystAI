@@ -1915,7 +1915,7 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
 
 # ── Last-resort fallback (DataContract only, no df available) ────────────────
 
-def _contract_fallback_charts(contract: DataContract) -> list[ChartConfig]:
+def _contract_fallback_charts(contract: DataContract, frame_present: bool = False) -> list[ChartConfig]:
     """When the DataFrame isn't available (e.g. resume failure), draw at least
     one chart from contract metadata so the UI isn't empty."""
     charts: list[ChartConfig] = []
@@ -1939,8 +1939,9 @@ def _contract_fallback_charts(contract: DataContract) -> list[ChartConfig]:
             source_finding="contract_fallback",
             placement="data",
             rationale=ChartRationale(
-                rule="profile:missing_values", reason="The data frame was not available, so this "
-                "shows the share of missing values per column from the data contract.",
+                rule="profile:missing_values", reason=("No other chart passed the chart checks, so "
+                if frame_present else "The data frame was not available, so ") + "this shows the "
+                "share of missing values per column from the data contract.",
                 x="column", y="missing %", aggregation="none", n_rows=contract.row_count,
                 code="df.isna().mean() * 100"),
         ))
@@ -2665,13 +2666,15 @@ def _without_small_cells(chart: ChartConfig, ctx: VizContext) -> ChartConfig | N
         return chart
     split = r.split if r.split and r.split in ctx.df.columns else None
     hide = protected_groups(ctx.df, ctx.contract, [r.x, split] if split else r.x, r.y or "",
-                            chart.title or "")
+                            chart.title or "", ctx.cut)
     if not hide:
         return chart
-    if split:   # a split chart loses its small cells (a series value in a bar), never the bar
-        cells = {(str(h[0]), str(h[1])) for h in hide if isinstance(h, tuple)}
-        rows = [{k: v for k, v in row.items() if (str(row.get(chart.x_key)), str(k)) not in cells}
+    if split:   # a split chart loses its small cells (a series value with its __n and __ci),
+        cells = {(str(h[0]), str(h[1])) for h in hide if isinstance(h, tuple)}   # never the bar
+        rows = [{k: v for k, v in row.items()
+                 if (str(row.get(chart.x_key)), str(k).split("__")[0]) not in cells}
                 for row in chart.data]
+        rows = [row for row in rows if set(row) - {chart.x_key}]   # a bar left with no values
     else:
         gone = {str(h) for h in hide}
         rows = [row for row in chart.data if str(row.get(chart.x_key)) not in gone]
@@ -2797,9 +2800,9 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
                 continue
             charts.append(ch)
     charts = finalize_charts(charts, ctx)
-    # the fallback says the frame was missing: never true here (spell data has no generic
-    # profile charts, and its findings' charts may all be linted out)
-    return charts
+    # the profile fallback keeps a report from an empty chart list (a quality retry costs a
+    # paid run); its rationale says why it is shown
+    return charts or _contract_fallback_charts(contract, frame_present=True)
 
 
 def build_single_chart(
@@ -2952,8 +2955,10 @@ def _spell_window_filters(df: pd.DataFrame, contract: DataContract | None,
     # several ranges (hired in H1, left in Q3): their intersection, never one of them silently
     lo = max(pd.Timestamp(f["from"]) for f in span.values())
     hi = min(pd.Timestamp(f["to"]) for f in span.values())
+    if hi < lo:   # ranges that don't overlap: nothing, never a one-day window
+        return {"__none__": {"kind": "equality", "value": "\x00"}}, None
     return {c: f for c, f in filters.items() if c not in span}, (lo.strftime("%Y-%m-%d"),
-                                                                 max(hi, lo).strftime("%Y-%m-%d"))
+                                                                 hi.strftime("%Y-%m-%d"))
 
 
 def _protected_part(df: pd.DataFrame, part: pd.DataFrame, contract: DataContract | None,
@@ -2983,7 +2988,12 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     from guardrails import SMALL_CELL
     # personal data and ids are never filters (filter_options offers none; a crafted one is
     # refused: a name filter is one person)
-    banned = set(getattr(contract, "pii_columns", None) or []) | set(getattr(contract, "id_columns", None) or [])
+    # personal data and the person key (one person's part); other ids that are pack dimensions
+    # (a store number, a manager) stay filters (a cross-filter click on a bar)
+    from domain_pack import _person_col
+    pack = defaults_pack(contract) if contract is not None else None
+    person = _person_col(pack, {r: c for r, c in contract.roles.items() if c in df.columns}) if pack else None
+    banned = set(getattr(contract, "pii_columns", None) or []) | ({person} if person else set())
     if set(filters or {}) & banned:   # fail closed: one person's (or record's) part, no numbers
         return {"charts": {}, "tiles": {}, "rows": None, "suppressed": True}
     filters, window = _spell_window_filters(df, contract, filters)

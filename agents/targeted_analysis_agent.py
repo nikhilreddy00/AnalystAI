@@ -55,7 +55,6 @@ from scipy import stats
 
 from guardrails import rankable
 from domain_pack import (
-    small_groups,
     kpi_roles,
     protected_value,
     spell_covered,
@@ -1099,9 +1098,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                  + (f"every group has fewer than {SMALL_CELL} people"
                                     if pack.protected_roles else "it can't be computed from these rows"),
                                  ["Ask without the group", "Ask about a longer period"])
-        hidden = [g for g in small_groups(df, roles, pack, kpi.name, group, all_rows,
-                                          pd.unique(df[group].dropna()), win, cut)
-                  if g not in by.index]   # never a group the KPI leaves out by definition
+        hidden = list(by.attrs.get("hidden", []))   # the groups compute_kpi suppressed: one list
         asc = (params.order or "desc").lower() == "asc"
         by = ranked(by, ascending=asc).head(params.n or 20)
         named = by[[rankable(k) for k in by.index]]   # the pooled bucket is never a lead or a tail
@@ -1118,7 +1115,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         else:
             answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                       f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
-        if hidden and pack.protected_roles:
+        if hidden:
             answer += (f" Not shown: {', '.join(map(str, hidden[:5]))} (a group of fewer than "
                        f"{SMALL_CELL} people, and with one hidden, the next smallest, so it can't be "
                        "worked back from the total).") if len(hidden) > 1 else (
@@ -1137,12 +1134,12 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                        weekly)
             prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, by=group, full=all_rows, cut=cut)
-            rows, days, cut = current_window(full, date, params.period_start, params.period_end, weekly)
+            rows, days, same_days = current_window(full, date, params.period_start, params.period_end, weekly)
             now = compute_kpi(rows, roles, pack, kpi.name, by=group, full=all_rows, cut=cut)
             if prior is None or now is None:
                 answer += f" No year-earlier comparison: {why or 'nothing to compare'}."
             elif lead in prior.index and lead in now.index and (kind == "percent" or prior[lead]):
-                same = f" On the same days ({days}) {lead} was {fmt(now[lead])};" if cut else ""
+                same = f" On the same days ({days}) {lead} was {fmt(now[lead])};" if same_days else ""
                 answer += (f"{same} A year earlier ({prior_period}) {lead} was {fmt(prior[lead])} "
                            f"({change(now[lead], prior[lead])}, {_basis(prior_period)})."
                            + stores_note(contract, full, date, (prior_df, rows)))
@@ -1305,12 +1302,12 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         prior_df, prior_period, why = year_earlier(full, date, params.period_start, params.period_end,
                                                    weekly)
         prior = None if why else compute_kpi(prior_df, roles, pack, kpi.name, full=all_rows, cut=cut)
-        rows, days, cut = current_window(full, date, params.period_start, params.period_end, weekly)
+        rows, days, same_days = current_window(full, date, params.period_start, params.period_end, weekly)
         now = compute_kpi(rows, roles, pack, kpi.name, full=all_rows, cut=cut)   # the same days as the year-earlier window
         both = prior is not None and now is not None and (kind == "percent" or prior != 0)
         if state:   # two dates, not two windows of days
             prior_period, days, cut = _as_of(prior_df, date), _as_of(rows, date), False
-        same = f" On the same days ({days}): {fmt(now)}." if cut and both else ""
+        same = f" On the same days ({days}): {fmt(now)}." if same_days and both else ""
         answer += same + (f" A year earlier ({prior_period}): {fmt(prior)} "
                    f"({change(now, prior)} year over year"
                    f"{'' if state else ', ' + _basis(prior_period)})."

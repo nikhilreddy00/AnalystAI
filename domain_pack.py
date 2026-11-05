@@ -1305,9 +1305,9 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if value is None:
         return None
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
-        value = value.drop(small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index,
-                                        window, cut), errors="ignore")
-        value = value.dropna()
+        hidden = small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index, window, cut)
+        value = value.drop(hidden, errors="ignore").dropna()
+        value.attrs["hidden"] = list(hidden)   # said in the answer ('Not shown: …')
         return value if len(value) else None
     if full is not None and protected_value(df, full, roles, pack, name, window, cut):
         return None   # a protected group of fewer than 11 people (pay in a 6-person department)
@@ -1360,7 +1360,7 @@ def protected_cut(cut, roles: dict[str, str], pack: Pack) -> bool:
     return bool(set(cut or ()) & prot)
 
 
-def protected_groups(df: pd.DataFrame, contract, keys, column: str, label: str = "") -> list:
+def protected_groups(df: pd.DataFrame, contract, keys, column: str, label: str = "", cut=()) -> list:
     """The groups of a by-group column statistic the protected rule hides: grouped by a protected
     role (or a label naming one: a 'gender pay gap' by level), or of a protected measure (pay),
     with fewer than SMALL_CELL people (people_in, on the rows the statistic reads). small_groups'
@@ -1379,7 +1379,8 @@ def protected_groups(df: pd.DataFrame, contract, keys, column: str, label: str =
     said = set(normalize_header(label or "").split("_"))   # whole words: 'Sex' is not 'Essex'
     crossed = [c for c in prot if pack.roles[prot[c]].kind != "money" and c not in names
                and set(normalize_header(c).split("_")) <= said]
-    if not (set(names) & set(prot) or column in prot or crossed):
+    asked = protected_cut(cut, roles, pack)   # a part that is itself a protected group
+    if not (set(names) & set(prot) or column in prot or crossed or asked):
         return []
     rows = level_rows(df, column, contract) if column in df.columns else df
     key = names if len(names) > 1 else names[0]
