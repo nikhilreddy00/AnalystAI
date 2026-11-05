@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import sys
 from pathlib import Path
 
 from evals import run as harness
@@ -211,13 +210,26 @@ def diff(a: dict, b: dict) -> dict:
 
 GOLDEN = Path(__file__).parent / "snapshots" / "golden.json"
 
-if __name__ == "__main__":
-    if sys.argv[1] == "pin":   # only at a domain's end, its changes listed in its review note
-        GOLDEN.write_text(json.dumps(asyncio.run(snapshot()), indent=1, sort_keys=True))
-        print(f"→ {GOLDEN}")
-    elif sys.argv[1] == "diff":
+def main(argv: list[str] | None = None) -> None:
+    """pin (only at a domain's end, its changes listed in its review note) | diff A B | write
+    PATH. Subcommands, never a bare path: `--help` once wrote a 443 KB file named '--help'."""
+    import argparse
+    ap = argparse.ArgumentParser(prog="python -m evals.snapshot")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("pin", help="re-pin evals/snapshots/golden.json")
+    d = sub.add_parser("diff", help="the cases that differ between two snapshots")
+    d.add_argument("a")
+    d.add_argument("b")
+    sub.add_parser("write", help="write a snapshot to a path").add_argument("path")
+    args = ap.parse_args(argv)
+    if args.cmd == "diff":
         load = lambda p: json.loads(Path(p).read_text())   # noqa: E731
-        print(json.dumps(diff(load(sys.argv[2]), load(sys.argv[3])), indent=1))
-    else:
-        Path(sys.argv[1]).write_text(json.dumps(asyncio.run(snapshot()), indent=1, sort_keys=True))
-        print(f"→ {sys.argv[1]}")
+        print(json.dumps(diff(load(args.a), load(args.b)), indent=1))
+        return
+    out = GOLDEN if args.cmd == "pin" else Path(args.path)
+    out.write_text(json.dumps(asyncio.run(snapshot()), indent=1, sort_keys=True))
+    print(f"→ {out}")
+
+
+if __name__ == "__main__":
+    main()

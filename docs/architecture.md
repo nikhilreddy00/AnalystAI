@@ -138,6 +138,14 @@ frontend/src/
   hooks/useAnalysis.ts     — SSE stream consumer, state management; hydrateThread (reopen)
   types/index.ts           — TypeScript mirrors of Python Pydantic models
   lib/api.ts               — fetch wrappers for dashboard endpoints
+
+scripts/
+  domain_diff.py           — a branch vs a base ref: every finished domain's user-facing outputs
+                             (tiles, charts, filters, filtered dashboards, answers), $0
+  ui_check/                — the real frontend on a mock backend ($0); make_fixture.py --dataset
+                             <name> serves any dataset's dashboard through the real filtered_dashboard
+  live_check/              — the live stack (production mode, asyncpg, real worker): up.sh, ask.py,
+                             spend.py (what live runs cost), down.sh
 ```
 
 ---

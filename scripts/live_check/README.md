@@ -10,4 +10,7 @@ The real API + worker in production mode on asyncpg, the real frontend, a mocked
    `input[type=file]` (the drop zone covers it).
 4. Dashboard: `/dashboard`; apply a filter and read a tile AND a chart before/after (ROADMAP 5.7).
 5. `scripts/live_check/down.sh` (`--pg` also stops Postgres).
-Spend: each overview is a paid run (~$0.13); announce it first.
+Spend: each overview is a paid run (~$0.13) and a targeted question runs the whole pipeline too
+(~$0.11); announce it first. What the stack has spent, browser runs included:
+`uv run python scripts/live_check/spend.py --since "<start>" --budget <estimate>` (exit 1 when over).
+Domain end check for the finished domains at $0: `scripts/ui_check` with `make_fixture.py --dataset <name>`.
