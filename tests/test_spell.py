@@ -237,3 +237,21 @@ def test_month_labels_on_the_first_mean_the_month(pack, monkeypatch):
     assert spell_as_of(labelled, snaps.iloc[:2], roles) == pd.Timestamp("2026-10-31")
     mid = snaps.assign(snapshot_date=["2026-09-15", "2026-10-01", "2026-10-31"])
     assert spell_as_of(labelled, mid, roles) == pd.Timestamp("2026-10-31")   # not labels: as written
+
+
+def test_a_converted_trial_counts_from_its_trial_end(pack):
+    """Red-team R3: a subscription converted from a trial pays from the trial's end; counted
+    from its start, a December trial was a paying subscriber at 31 Dec."""
+    raw = yaml.safe_load(SUBS)
+    raw["roles"]["trial_end"] = {"kind": "date", "headers": ["trial_end"]}
+    raw["spell"]["paid_from"] = "trial_end"
+    paid = Pack.model_validate(raw)
+    df = pd.DataFrame([("T1", "2025-12-20", "", "2026-01-03", "paid", 1, "active"),
+                       ("T2", "2025-12-01", "", "", "paid", 1, "active")],
+                      columns=["subscriber_id", "start_date", "cancel_date", "trial_end", "kind",
+                               "seats", "status"])
+    roles = {**{k: v for k, v in ROLES.items() if k in df}, "trial_end": "trial_end"}
+    frame = df.assign(_p=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+    by = compute_kpi(frame, roles, paid, "active", by="_p", full=df)
+    assert by[pd.Period("2025-12", "M")] == 1 and by[pd.Period("2026-01", "M")] == 2
+    assert compute_kpi(frame, roles, pack, "active", by="_p", full=df)[pd.Period("2025-12", "M")] == 2

@@ -187,6 +187,9 @@ class Spell(_Strict):
     # Snapshots labelled by month on its 1st ('2026-10-01' = October, an MRR export): the as-of
     # is the labelled month's end (clipped to today) when every snapshot date is a 1st
     month_labels: bool = False
+    # A later date the spell counts from when filled (a trial's end: a subscription converted
+    # from a trial pays from then, not from its start; red-team R3)
+    paid_from: str | None = None
 
 
 class Term(_Strict):
@@ -462,7 +465,8 @@ class Pack(_Strict):
                 *self.role_caveats, *self.protected_roles, *(k.per for k in self.kpis if k.per),
                 *([self.person_key] if self.person_key else []),
                 *([self.spell.entity, self.spell.start, self.spell.end,
-                   *([self.spell.as_of] if self.spell.as_of else [])] if self.spell else []),
+                   *([self.spell.as_of] if self.spell.as_of else []),
+                   *([self.spell.paid_from] if self.spell.paid_from else [])] if self.spell else []),
                 *([self.average_per] if self.average_per else []), *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
@@ -852,7 +856,8 @@ def spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Times
             if col == snap and s.month_labels and (_day(df[col]).dropna().dt.day == 1).all():
                 return min(t + pd.offsets.MonthEnd(0), today())
             return t
-    dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end) if r in roles] or [pd.Series(dtype="datetime64[ns]")])
+    dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end, s.paid_from) if r in roles]
+                      or [pd.Series(dtype="datetime64[ns]")])
     dates = dates[dates <= today()]
     return dates.max() if dates.notna().any() else None
 
@@ -1046,7 +1051,7 @@ def _in_force(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t: pd.Time
         from agents.utils import snapshot_rows
         rows = snapshot_rows(whole[_day(whole[snap]) <= t], [ent], snap)
     else:
-        start = _day(whole[roles[s.start]])
+        start = _started(whole, roles, pack)
         rows = whole.loc[start[start <= t].sort_values(kind="stable").index]
         if not s.concurrent:
             rows = rows.groupby(ent).tail(1)
@@ -1067,7 +1072,8 @@ def not_counted_yet(pack: Pack, df: pd.DataFrame, roles: dict[str, str], as_of) 
     still in force / not yet started, so not counted yet. The file's story and every spell
     answer say it."""
     s = pack.spell
-    later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
+    later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end, s.paid_from)
+                if r in roles)
     return f"{later:,} start or end dates fall after {as_of:%-d %b %Y}: not counted yet." if later else ""
 
 
@@ -1079,6 +1085,16 @@ def _ended_undated(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.
         return pd.Series(False, index=rows.index)
     end = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
     return words(rows[roles["status"]]).isin(set(words(pd.Series(s.ended)))) & end.isna()
+
+
+def _started(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
+    """THE date a spell row counts from: its start, or its `paid_from` when later (a converted
+    trial pays from the trial's end). _in_force, the start events and the population read it."""
+    s = pack.spell
+    start = _day(rows[roles[s.start]])
+    if s.paid_from in roles:
+        start = pd.concat([start, _day(rows[roles[s.paid_from]])], axis=1).max(axis=1)
+    return start
 
 
 def has_spell(pack: Pack | None, roles: dict[str, str]) -> bool:
@@ -1115,7 +1131,7 @@ def _spell_events(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, which:
         col = roles.get(s.start if which == "starts" else s.end)
         if col is None:
             return whole.iloc[:0], pd.Series(dtype="datetime64[ns]")
-        when = _day(whole[col])
+        when = _started(whole, roles, pack) if which == "starts" else _day(whole[col])
         rows = whole[when.notna()]
         rows = rows[~pd.DataFrame({"e": rows[ent].astype(str), "t": when[rows.index]}).duplicated()]
         when = when[rows.index]
@@ -1547,12 +1563,12 @@ def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool
         if state:
             rows = _in_force(whole, roles, pack, as_of)
         else:   # in force at some point of (lo, as_of]: started by its end, not ended by its start
-            snap, s = _snapshot_column(pack, roles), pack.spell
+            snap = _snapshot_column(pack, roles)
             if snap:
                 t = _day(whole[snap])
                 rows = whole[(t > lo) & (t <= as_of)]
             else:
-                rows = whole[(_day(whole[roles[s.start]]) <= as_of) & ~_ended(whole, roles, pack, lo)]
+                rows = whole[(_started(whole, roles, pack) <= as_of) & ~_ended(whole, roles, pack, lo)]
         rows = rows.loc[rows.index.intersection(part.index)]
         if where:   # the KPI's own population (a contractor is no employee in a group of 10)
             rows = rows[_meets(rows, roles, where)]
