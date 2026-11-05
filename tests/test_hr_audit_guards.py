@@ -154,8 +154,28 @@ def test_a_year_over_year_answer_on_a_protected_pack_never_crashes():
     """Audit pass 3: a reused name made compute_kpi(cut=True) raise on insurance YoY answers."""
     from tests.test_oracle import answer
     for params in (dict(group_by="State"), dict(segment_column="Insured Gender", segment_value="F")):
-        text, _ = answer("policies", "top_n", "q", kpi="written_premium", compare="yoy", **params)
-        assert "year-earlier" in text or "year earlier" in text, text
+        text, _ = answer("policies", "top_n", "q", kpi="written_premium", compare="yoy",
+                         period_start="2025-01-01", period_end="2025-06-30", **params)
+        assert "A year earlier" in text, text   # compared, not only 'no comparison'
+
+
+def test_a_crafted_filter_on_any_domains_id_or_personal_column_shows_nothing():
+    """Audit pass 4: relaxing the refused filters to 'the person key' let one patient's claims
+    through on healthcare (no person key there). Every id and personal column is refused, but a
+    pack's declared grouping dimension (a store number) stays a cross-filter."""
+    from agents.visualization_agent import filtered_dashboard
+    from domain_pack import pack_for
+    from tests.test_dashboard_filters import PACK_DATASETS, _dashboard
+    for name in PACK_DATASETS:
+        clean, contract, charts, _, _ = _dashboard(name)
+        pack = pack_for(contract.domain)
+        dims = {contract.roles.get(r) for r in pack.overview_groups}
+        for col in (set(contract.id_columns) | set(contract.pii_columns)) - dims:
+            if col not in clean.columns or clean[col].dropna().empty:
+                continue
+            value = str(clean[col].dropna().iloc[0])
+            out = filtered_dashboard(clean, contract, charts, {col: {"kind": "equality", "value": value}})
+            assert out["suppressed"] and not out["tiles"], (name, col)
 
 
 def test_a_split_chart_loses_a_small_cells_counts_and_spread_too():
@@ -178,3 +198,18 @@ def test_two_date_ranges_that_dont_overlap_show_nothing():
         "Hire_Date": {"kind": "date_range", "from": "2024-01-01", "to": "2024-12-31"},
         "Termination_Date": {"kind": "date_range", "from": "2026-01-01", "to": "2026-03-31"}})
     assert out["rows"] == 0 and not out["tiles"]
+
+
+def test_the_partial_month_is_decided_on_the_packs_own_dates_never_a_birth_date():
+    """Audit pass 4: Date_of_Birth (the column with the most dates) decided the partial month."""
+    import asyncio
+
+    from agents.cleaning_agent import run_cleaning_agent
+    from tests.test_oracle import _parquet
+    s, clean, contract, _ = _built("employees")
+    df = clean.assign(date_of_birth=pd.to_datetime("1980-01-01"))
+    df.loc[df.index[0], "hire_date"] = pd.Timestamp("2026-12-15")   # one pre-boarded hire
+    s.__dict__["_df_parquet"] = _parquet(df)
+    _, audit = asyncio.run(run_cleaning_agent(s))
+    assert audit.partial_months.get("hire_date") == ["2026-10", 24], audit.partial_months
+    assert "date_of_birth" not in audit.partial_months

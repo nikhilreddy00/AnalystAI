@@ -1919,10 +1919,13 @@ def _contract_fallback_charts(contract: DataContract, frame_present: bool = Fals
     """When the DataFrame isn't available (e.g. resume failure), draw at least
     one chart from contract metadata so the UI isn't empty."""
     charts: list[ChartConfig] = []
+    # a column blank by the file's layout (an end date of someone still employed) is not missing
+    pack = defaults_pack(contract)
+    layout = {contract.roles.get(r) for r in (pack.marker_fields if pack else [])} - {None}
     null_data = [
         {"label": c.name, "count": round(c.null_pct, 1)}
         for c in contract.columns
-        if c.null_pct > 0
+        if c.null_pct > 0 and c.name not in layout
     ]
     if null_data:
         charts.append(ChartConfig(
@@ -2671,10 +2674,14 @@ def _without_small_cells(chart: ChartConfig, ctx: VizContext) -> ChartConfig | N
         return chart
     if split:   # a split chart loses its small cells (a series value with its __n and __ci),
         cells = {(str(h[0]), str(h[1])) for h in hide if isinstance(h, tuple)}   # never the bar
-        rows = [{k: v for k, v in row.items()
-                 if (str(row.get(chart.x_key)), str(k).split("__")[0]) not in cells}
+        def series(k) -> str:   # 'Female__n' → 'Female' (a value may itself hold '__')
+            return str(k).removesuffix("__n").removesuffix("__ci")
+        rows = [{k: v for k, v in row.items() if (str(row.get(chart.x_key)), series(k)) not in cells}
                 for row in chart.data]
         rows = [row for row in rows if set(row) - {chart.x_key}]   # a bar left with no values
+        kept = {series(k) for row in rows for k in row}
+        return chart.model_copy(update={"data": rows, "y_keys": [y for y in chart.y_keys if y in kept]}) \
+            if rows else None
     else:
         gone = {str(h) for h in hide}
         rows = [row for row in chart.data if str(row.get(chart.x_key)) not in gone]
@@ -2988,12 +2995,13 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     from guardrails import SMALL_CELL
     # personal data and ids are never filters (filter_options offers none; a crafted one is
     # refused: a name filter is one person)
-    # personal data and the person key (one person's part); other ids that are pack dimensions
-    # (a store number, a manager) stay filters (a cross-filter click on a bar)
-    from domain_pack import _person_col
+    # personal data and ids (one person's or record's part) are refused; only an id role a pack
+    # declares as a grouping dimension (its overview_groups: a store number) stays a filter (a
+    # cross-filter click on its bar)
     pack = defaults_pack(contract) if contract is not None else None
-    person = _person_col(pack, {r: c for r, c in contract.roles.items() if c in df.columns}) if pack else None
-    banned = set(getattr(contract, "pii_columns", None) or []) | ({person} if person else set())
+    groups = {contract.roles.get(r) for r in (pack.overview_groups if pack else [])} - {None}
+    banned = (set(getattr(contract, "pii_columns", None) or []) |
+              set(getattr(contract, "id_columns", None) or [])) - groups
     if set(filters or {}) & banned:   # fail closed: one person's (or record's) part, no numbers
         return {"charts": {}, "tiles": {}, "rows": None, "suppressed": True}
     filters, window = _spell_window_filters(df, contract, filters)

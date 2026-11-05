@@ -1306,7 +1306,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         now = compute_kpi(rows, roles, pack, kpi.name, full=all_rows, cut=cut)   # the same days as the year-earlier window
         both = prior is not None and now is not None and (kind == "percent" or prior != 0)
         if state:   # two dates, not two windows of days
-            prior_period, days, cut = _as_of(prior_df, date), _as_of(rows, date), False
+            prior_period, days, same_days = _as_of(prior_df, date), _as_of(rows, date), False
         same = f" On the same days ({days}): {fmt(now)}." if same_days and both else ""
         answer += same + (f" A year earlier ({prior_period}): {fmt(prior)} "
                    f"({change(now, prior)} year over year"

@@ -598,7 +598,9 @@ def _partial_months(dated: pd.DataFrame, df: pd.DataFrame, ctx) -> dict[str, lis
            for c in _date_ranges(dated, ctx.pii) if partial_last_month(dated[c])}
     if dated is df:
         return out
-    spell = [c for c in dated.columns if c in df.columns and pd.api.types.is_datetime64_any_dtype(dated[c])
+    # the pack's own date roles only (never a birth date or another dated column)
+    own = {ctx.roles[r] for r, x in ctx.pack.roles.items() if x.kind == "date" and r in ctx.roles} - set(ctx.pii)
+    spell = [c for c in dated.columns if c in own and pd.api.types.is_datetime64_any_dtype(dated[c])
              and dated[c].iloc[:len(df)].notna().any()]
     if not spell:
         return out
