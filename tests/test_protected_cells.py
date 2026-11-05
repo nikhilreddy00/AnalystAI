@@ -112,3 +112,24 @@ def test_a_filtered_pay_series_counts_only_the_filtered_people(pack):
     tiny = df[df["team"] == "Tiny"]   # 4 in force, while the company has 35
     series = compute_kpi(tiny, ROLES, pack, "avg_pay", by="_period", full=df)
     assert series is None or pd.Period("2026-10", "M") not in series.index
+
+
+def test_suppression_follows_what_was_asked_never_the_parts_values(pack):
+    """Audit pass 2: a part of 4 people was hidden only when it happened to be all one gender
+    (the hiding itself said so). Asked by team: shown alike, whatever its genders; asked by
+    gender: a protected group."""
+    df = _staff()
+    tiny = df[df["team"] == "Tiny"]   # 4 in force, all women
+    assert compute_kpi(tiny, ROLES, pack, "people", full=df, cut=("team",)) == 4
+    assert compute_kpi(tiny, ROLES, pack, "people", full=df, cut=("team", "gender")) is None
+    mixed = df[df["person_id"].isin(["B0", "B1", "B2", "B3"])]   # 4 people, both genders
+    assert compute_kpi(mixed, ROLES, pack, "people", full=df, cut=("team",)) == 4
+
+
+def test_pay_by_gender_hides_only_the_small_gender_never_the_comparison():
+    """Audit pass 2: women's pay (110 people) vanished as the 'complement' of a non-binary cell
+    under 11; by a protected role there is no complement."""
+    from tests.test_oracle import answer
+    text, by = answer("hr_roster", "top_n", "average salary by gender", kpi="avg_salary",
+                      group_by="Gender")
+    assert {"Male", "Female"} <= set(by), (by, text)

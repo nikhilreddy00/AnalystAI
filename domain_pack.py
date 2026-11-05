@@ -928,13 +928,14 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok else None
         if now is not None:
             out.append(f"{k.label} ({words_(pack, df, roles, k.name)}): {now:.1%}" + (
-                f"; a year earlier ({words_(pack, df, roles, k.name, back)}): {then:.1%}, a change of "
-                f"{(now - then) * 100:+.1f} points (a rate's change is in points)" if then is not None
+                f"; a year earlier ({words_(pack, df, roles, k.name, back)}): {then:.1%}, "
+                f"{(now - then) * 100:+.1f} points" if then is not None
                 else "; no full year-earlier window in the data") + ".")
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
     if stock is not None and (s_ := compute_kpi(frame, roles, pack, stock.name, by="_period", full=df)) is not None:
         inside = s_[[p for p in s_.index if p.end_time.normalize() > lo]].dropna()
-        if len(inside) > 1 and inside.idxmax() != inside.index[-1]:
+        if len(inside) > 1 and inside.idxmax() != inside.index[-1] \
+                and inside.iloc[-1] <= 0.95 * inside.max():   # a material fall only (5%+)
             peak, now = inside.max(), inside.iloc[-1]
             out.append(f"{stock.label} peaked at {peak:,.0f} ({inside.idxmax().strftime('%b %Y')}) and is {now:,.0f} "
                        f"at {as_of:%-d %b %Y} ({(now / peak - 1) * 100:+.1f}%).")
@@ -949,15 +950,14 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
                                            window=(top.start_time, top.end_time.normalize()))) is not None \
                     and len(g) and g.max() >= 0.5 * e[top]:
                 line += f", {g.max():,.0f} of them in {g.idxmax()} ({group})"
-            out.append(line + ": name it and its share before reading a trend or a group's rate.")
+            out.append(line + ".")
     col = _person_col(pack, roles)
     if col:
         people = df[col].nunique()
         now_n = compute_kpi(df, roles, pack, stock.name) if stock else None
         out.append(f"{len(df):,} rows are {people:,} people ({int((df[col].value_counts() > 1).sum()):,} with "
                    "more than one row)" + (f"; {now_n:,.0f} in force at {as_of:%-d %b %Y}" if now_n else "")
-                   + ": never call rows people. Column statistics (a salary by department, a distribution) "
-                   "read every row, people who left included; the tiles count those in force.")
+                   + ".")
     s = pack.spell
     later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
     undated = int((_ended(df, roles, pack, pd.Timestamp.max.normalize()) & (
@@ -965,8 +965,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     if later:
         out.append(f"{later:,} start or end dates fall after {as_of:%-d %b %Y}: not counted yet.")
     if undated:
-        out.append(f"{undated:,} rows have an ended status but no end date: never in force, no "
-                   "end counted (a data-quality point to raise).")
+        out.append(f"{undated:,} rows have an ended status but no end date.")
     return out
 
 
@@ -1270,11 +1269,13 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
 
 def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
                 by: str | None = None, full: pd.DataFrame | None = None,
-                window: tuple | None = None):
+                window: tuple | None = None, cut=()):
     """A KPI's value (or a Series per `by` group) on the main currency's rows; None when the data
     lacks its roles or a denominator is 0 — never a 0 or an infinity standing in for "unknown".
     `full`: the whole data when `df` is a period of it (a month with no returns has a 0% return
-    rate when the data has returns at all). `window` (lo, hi): an asked period for a spell KPI,
+    rate when the data has returns at all). `cut`: the columns `df` was filtered by (a dashboard
+    filter, a named value): a protected one makes it a protected group. `window` (lo, hi): an
+    asked period for a spell KPI,
     which clips its window and as-of instead of cutting rows (rows dated in Q3 are the people
     hired in Q3, not the people employed then)."""
     kpi = pack.kpi(name)
@@ -1305,10 +1306,10 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         return None
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
         value = value.drop(small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index,
-                                        window), errors="ignore")
+                                        window, cut), errors="ignore")
         value = value.dropna()
         return value if len(value) else None
-    if full is not None and protected_value(df, full, roles, pack, name, window):
+    if full is not None and protected_value(df, full, roles, pack, name, window, cut):
         return None   # a protected group of fewer than 11 people (pay in a 6-person department)
     return None if pd.isna(value) else float(value)
 
@@ -1350,15 +1351,13 @@ def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool
     return rows.groupby(by)[col].nunique() if col else rows.groupby(by).size()
 
 
-def protected_cut(part: pd.DataFrame, whole: pd.DataFrame, roles: dict[str, str], pack: Pack) -> bool:
-    """`part` is one value of a protected role (women, one ethnicity) cut from `whole`: every
-    number on it is about that protected group."""
-    for r in pack.protected_roles:
-        c = roles.get(r)
-        if c in part.columns and pack.roles[r].kind != "money" and part[c].nunique() == 1 \
-                and whole[c].nunique() > 1:
-            return True
-    return False
+def protected_cut(cut, roles: dict[str, str], pack: Pack) -> bool:
+    """A part was asked by a protected role (`cut`: the columns the user filtered or named:
+    women, one ethnicity): every number on it is about that protected group. Decided from what
+    was asked, never from the part's values (a part hidden because it happens to be all one
+    gender would say so: audit pass 2)."""
+    prot = {roles.get(r) for r in pack.protected_roles if pack.roles[r].kind != "money"} - {None}
+    return bool(set(cut or ()) & prot)
 
 
 def protected_groups(df: pd.DataFrame, contract, keys, column: str, label: str = "") -> list:
@@ -1377,21 +1376,27 @@ def protected_groups(df: pd.DataFrame, contract, keys, column: str, label: str =
         return []
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     prot = {roles[r]: r for r in pack.protected_roles if r in roles}
+    said = set(normalize_header(label or "").split("_"))   # whole words: 'Sex' is not 'Essex'
     crossed = [c for c in prot if pack.roles[prot[c]].kind != "money" and c not in names
-               and normalize_header(c) in normalize_header(label or "")]
+               and set(normalize_header(c).split("_")) <= said]
     if not (set(names) & set(prot) or column in prot or crossed):
         return []
     rows = level_rows(df, column, contract) if column in df.columns else df
-    by = names + crossed[:1]   # a gap by level is a cell per level × gender
-    n = people_in(rows, roles, pack, False, df, by=by if len(by) > 1 else by[0])
-    small = {k for k, v in n.items() if v < SMALL_CELL}
-    if crossed:   # a level is hidden when any of its gender cells is small
-        return sorted({k[:-1] if len(k) > 2 else k[0] for k in small}, key=str)
-    return sorted(small, key=str)
+    key = names if len(names) > 1 else names[0]
+    if crossed:   # a gap by level compares its two largest groups: both need 11 people
+        cells = people_in(rows, roles, pack, False, df, by=names + crossed[:1])
+        top2 = cells.groupby(level=list(range(len(names)))).apply(
+            lambda c: sorted(c.tolist(), reverse=True)[1] if len(c) > 1 else 0)
+        return sorted([k for k, v in top2.items() if v < SMALL_CELL], key=str)
+    n = people_in(rows, roles, pack, False, df, by=key)
+    by_protected = bool(set(names) & set(prot))
+    return sorted(_with_complement([k for k, v in n.items() if v < SMALL_CELL], list(n.index), n,
+                                   column in prot and not by_protected), key=str)
 
 
 def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str, by: str,
-                 whole: pd.DataFrame | None = None, groups=None, window: tuple | None = None) -> list:
+                 whole: pd.DataFrame | None = None, groups=None, window: tuple | None = None,
+                 cut=()) -> list:
     """The `by` groups a KPI never shows: fewer than SMALL_CELL people (people_in), when `by` is
     a protected role, the KPI measures one (pay by team), or `df` is itself a protected group
     (headcount by department among non-binary staff). THE small-cell rule outside patient data
@@ -1401,7 +1406,7 @@ def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if not pack.protected_roles or by not in df.columns:
         return []
     if not ({r for r, c in roles.items() if c == by} & set(pack.protected_roles)) and not (
-            kpi_roles(pack, name) & set(pack.protected_roles)) and not protected_cut(df, whole, roles, pack):
+            kpi_roles(pack, name) & set(pack.protected_roles)) and not protected_cut(cut, roles, pack):
         return []
     state = pack.kpi(name).state
     groups = pd.unique(df[by].dropna()) if groups is None else groups
@@ -1412,24 +1417,33 @@ def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         return [p for p in groups if people_in(df, roles, pack, state, whole,
                                                (p.start_time, p.end_time.normalize())) < SMALL_CELL]
     n = people_in(df, roles, pack, state, whole, window, by=by)
-    hidden = [g for g in groups if n.get(g, 0) < SMALL_CELL]
-    if len(hidden) == 1 and kpi_roles(pack, name) & set(pack.protected_roles):
-        # complementary: with one pay group hidden, the total and the others give it back by
-        # subtraction; the next smallest is hidden with it (statistical disclosure control)
-        rest = [g for g in groups if g not in hidden]
-        if len(rest) > 1:
-            hidden.append(min(rest, key=lambda g: (n.get(g, 0), str(g))))
+    by_protected = bool({r for r, c in roles.items() if c == by} & set(pack.protected_roles))
+    return _with_complement([g for g in groups if n.get(g, 0) < SMALL_CELL], groups, n,
+                            bool(kpi_roles(pack, name) & set(pack.protected_roles)) and not by_protected)
+
+
+def _with_complement(hidden: list, groups, n, measure_protected: bool) -> list:
+    """The hidden groups, plus one more when a protected measure (pay) by an ordinary group
+    (departments) hides exactly one: the total and the others would give it back by
+    subtraction, so the next smallest is hidden with it. By a protected role itself (pay by
+    gender) no complement: hiding women's pay because a non-binary cell is small would hide the
+    comparison asked; the small cell is hidden alone (its residual differencing against a total
+    is a stated limit). THE complement rule (small_groups, protected_groups)."""
+    hidden = list(hidden)
+    rest = [g for g in groups if g not in hidden]
+    if measure_protected and len(hidden) == 1 and len(rest) > 1:
+        hidden.append(min(rest, key=lambda g: (n.get(g, 0), str(g))))
     return hidden
 
 
 def protected_value(df: pd.DataFrame, whole: pd.DataFrame, roles: dict[str, str], pack: Pack,
-                    name: str, window: tuple | None = None) -> bool:
+                    name: str, window: tuple | None = None, cut=()) -> bool:
     """A single KPI value on `df` the protected rule hides: `df` is a protected group (one gender)
     or the KPI measures one (pay in Legal), with fewer than SMALL_CELL people (people_in)."""
     from guardrails import SMALL_CELL
     if not pack.protected_roles or len(df) == len(whole):
         return False
-    if not (kpi_roles(pack, name) & set(pack.protected_roles)) and not protected_cut(df, whole, roles, pack):
+    if not (kpi_roles(pack, name) & set(pack.protected_roles)) and not protected_cut(cut, roles, pack):
         return False
     return people_in(df, roles, pack, pack.kpi(name).state, whole, window) < SMALL_CELL
 

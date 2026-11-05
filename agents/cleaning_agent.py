@@ -573,16 +573,22 @@ def _spell_story(df: pd.DataFrame, ctx) -> list[str]:
 
 
 def _as_of_dated(df: pd.DataFrame, ctx) -> pd.DataFrame:
-    """On spell data, the pack's dates after the as-of (a notice-period exit, a pre-boarded hire:
-    not yet events) left out of the data's period: the report's date range and partial month
-    end at the as-of, never at a future hire (Domain 5 audit: 'data through Dec 2026')."""
+    """On spell data, the data's period of each of the pack's date columns is its first date to
+    the as-of: dates after it (a notice-period exit, a pre-boarded hire) are not yet events, and
+    the last month is judged against the as-of, never against a column's own last hire (Domain 5
+    audits: 'data through Dec 2026', 'Mar 2026 is partial' on a file that runs to Oct). A row
+    dated the as-of stands for it."""
     from domain_pack import has_spell, spell_as_of
     if not ctx.pack or not ctx.strong or not has_spell(ctx.pack, ctx.roles):
         return df
     as_of = spell_as_of(ctx.pack, df, ctx.roles)
     dated = [ctx.roles[r] for r, x in ctx.pack.roles.items() if x.kind == "date" and r in ctx.roles
              and pd.api.types.is_datetime64_any_dtype(df[ctx.roles[r]])]
-    return df.assign(**{c: df[c].where(df[c] <= as_of) for c in dated}) if as_of is not None else df
+    if as_of is None or not dated:
+        return df
+    out = df.assign(**{c: df[c].where(df[c] <= as_of) for c in dated})
+    edge = pd.DataFrame({c: pd.Series([as_of], dtype=out[c].dtype) for c in dated})   # the as-of
+    return pd.concat([out, edge], ignore_index=True)
 
 
 def _date_ranges(df: pd.DataFrame, pii: set[str] = frozenset()) -> dict[str, list]:

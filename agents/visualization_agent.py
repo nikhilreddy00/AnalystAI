@@ -1158,7 +1158,8 @@ def _unit_fields(kind: str, unit: str | None) -> dict:
 
 
 def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
-              full: pd.DataFrame | None = None, window: tuple | None = None) -> list[KPI]:
+              full: pd.DataFrame | None = None, window: tuple | None = None,
+              cut: tuple = ()) -> list[KPI]:
     """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. A KPI the
     data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
     and the run goes on. Money is in the main currency; other currencies are left out, said in
@@ -1176,7 +1177,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         if not k.tile:
             continue
         try:
-            v = compute_kpi(df, roles, pack, k.name, full=full, window=window)
+            v = compute_kpi(df, roles, pack, k.name, full=full, window=window, cut=cut)
         except Exception:   # a pack/data mismatch is a missing tile, never a failed run
             logger.warning("KPI %s failed", k.name, exc_info=True)
             trace_verdict("visualization", VIZ_CARD.version, "kpi_failed")
@@ -1220,6 +1221,7 @@ def generate_smart_kpis(
     contract: DataContract | None = None,
     full: pd.DataFrame | None = None,
     window: tuple | None = None,
+    cut: tuple = (),
 ) -> list[KPI]:
     """Build up to 5 hero KPIs from a DataFrame and the visualization agent's
     column roles. Works on any dataset: row count + (optional) target rate +
@@ -1246,7 +1248,7 @@ def generate_smart_kpis(
     # Phase 5.7: a domain's own KPIs (net sales, orders, AOV …) replace the generic tiles, which
     # would count order lines as orders, average line amounts and call a share of rows a share
     # of sales.
-    if kpis := pack_kpis(df, contract, full, window):
+    if kpis := pack_kpis(df, contract, full, window, cut):
         return kpis
 
     # KPI 1 — row count, labeled by the detected entity (column count belongs
@@ -2098,6 +2100,8 @@ class VizContext:
     # A dashboard date range on spell data: the window spell KPIs are measured over (never a row
     # cut: rows hired in H1 are not the people employed in H1); (lo, hi) ISO dates
     window: tuple | None = None
+    # the columns a dashboard part was filtered by: a protected one makes it a protected group
+    cut: tuple = ()
 
 
 def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
@@ -2659,13 +2663,18 @@ def _without_small_cells(chart: ChartConfig, ctx: VizContext) -> ChartConfig | N
     if ctx.contract is None or r is None or not r.x or r.x not in ctx.df.columns or r.x != chart.x_key \
             or chart.chart_type in (ChartType.SCATTER, ChartType.LINE):
         return chart
-    keys = [r.x] + ([r.split] if r.split and r.split in ctx.df.columns else [])
-    hide = protected_groups(ctx.df, ctx.contract, keys if len(keys) > 1 else keys[0],
-                            r.y or "", chart.title or "")
+    split = r.split if r.split and r.split in ctx.df.columns else None
+    hide = protected_groups(ctx.df, ctx.contract, [r.x, split] if split else r.x, r.y or "",
+                            chart.title or "")
     if not hide:
         return chart
-    gone = {str(h[0]) if isinstance(h, tuple) else str(h) for h in hide}
-    rows = [row for row in chart.data if str(row.get(chart.x_key)) not in gone]
+    if split:   # a split chart loses its small cells (a series value in a bar), never the bar
+        cells = {(str(h[0]), str(h[1])) for h in hide if isinstance(h, tuple)}
+        rows = [{k: v for k, v in row.items() if (str(row.get(chart.x_key)), str(k)) not in cells}
+                for row in chart.data]
+    else:
+        gone = {str(h) for h in hide}
+        rows = [row for row in chart.data if str(row.get(chart.x_key)) not in gone]
     return chart.model_copy(update={"data": rows}) if rows else None
 
 
@@ -2788,7 +2797,9 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
                 continue
             charts.append(ch)
     charts = finalize_charts(charts, ctx)
-    return charts or _contract_fallback_charts(contract)
+    # the fallback says the frame was missing: never true here (spell data has no generic
+    # profile charts, and its findings' charts may all be linted out)
+    return charts
 
 
 def build_single_chart(
@@ -2938,12 +2949,15 @@ def _spell_window_filters(df: pd.DataFrame, contract: DataContract | None,
     span = {c: f for c, f in (filters or {}).items() if c in dates and f.get("kind") == "date_range"}
     if not span:
         return filters, None
-    f = next(iter(span.values()))
-    return {c: f for c, f in filters.items() if c not in span}, (f.get("from"), f.get("to"))
+    # several ranges (hired in H1, left in Q3): their intersection, never one of them silently
+    lo = max(pd.Timestamp(f["from"]) for f in span.values())
+    hi = min(pd.Timestamp(f["to"]) for f in span.values())
+    return {c: f for c, f in filters.items() if c not in span}, (lo.strftime("%Y-%m-%d"),
+                                                                 max(hi, lo).strftime("%Y-%m-%d"))
 
 
 def _protected_part(df: pd.DataFrame, part: pd.DataFrame, contract: DataContract | None,
-                    window: tuple | None = None) -> bool:
+                    window: tuple | None = None, cut: tuple = ()) -> bool:
     """A filtered part that is itself a protected group (women, one ethnicity) of fewer than 11
     people (domain_pack.people_in): a small cell, shown as nothing. Pay of a small part that is
     not a protected group is hidden tile by tile (compute_kpi), its headcount kept."""
@@ -2953,7 +2967,7 @@ def _protected_part(df: pd.DataFrame, part: pd.DataFrame, contract: DataContract
     if not pack or not pack.protected_roles or part.empty:
         return False
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    return protected_cut(part, df, roles, pack) and \
+    return protected_cut(cut, roles, pack) and \
         people_in(part, roles, pack, True, df, window) < SMALL_CELL
 
 
@@ -2967,20 +2981,26 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     fewer than 11 records reports no number (a small cell, ADR-0008)."""
     from domain_pack import superseded
     from guardrails import SMALL_CELL
+    # personal data and ids are never filters (filter_options offers none; a crafted one is
+    # refused: a name filter is one person)
+    banned = set(getattr(contract, "pii_columns", None) or []) | set(getattr(contract, "id_columns", None) or [])
+    if set(filters or {}) & banned:   # fail closed: one person's (or record's) part, no numbers
+        return {"charts": {}, "tiles": {}, "rows": None, "suppressed": True}
     filters, window = _spell_window_filters(df, contract, filters)
+    cut = tuple(filters)
     part = apply_filters(df, filters)
     # the records shown and counted: a chain's earlier versions are neither (judged on all rows)
     n = int((~superseded(df, contract)).reindex(part.index).sum())
-    protected = _protected_part(df, part, contract, window)
+    protected = _protected_part(df, part, contract, window, cut)
     if part.empty or (contract is not None and contract.phi and n < SMALL_CELL) or protected:
         small = bool(n) and bool(contract and (contract.phi or protected))
         return {"charts": {}, "tiles": {}, "rows": None if small else n, "suppressed": small}
     ctx = build_context(part, contract=contract, narrative=narrative)
-    ctx.full, ctx.window = df, window
+    ctx.full, ctx.window, ctx.cut = df, window, cut
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(
         part, ctx.roles, query=query, narrative=narrative, ctx=ctx)
     fresh = {k: c.data for c in rebuilt if (k := _chart_key(c))}
     out = {c.id: fresh[k] for c in charts if (k := _chart_key(c)) in fresh}
     tiles = {k.label: k.value for k in generate_smart_kpis(part, ctx.roles, query, narrative, contract,
-                                                           full=df, window=window)}
+                                                           full=df, window=window, cut=cut)}
     return {"charts": out, "tiles": tiles, "rows": n, "suppressed": False}

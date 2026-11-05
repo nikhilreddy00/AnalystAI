@@ -378,6 +378,8 @@ def test_in_range_and_date_filters_agree_with_their_parts(name):
                         v = domain_pack.compute_kpi(clean, roles, pack, kpi.name, full=clean,
                                                     window=(o["from"], o["to"]))
                         assert _number(out["tiles"][k.label]) == v, (name, o["column"], k.label)
+                trend = [c.id for c in charts if c.rationale and c.rationale.rule == "targeted:kpi→line"]
+                assert not trend or set(trend) & set(out["charts"]), (name, o["column"], "trend chart lost")
         else:
             continue
         assert out["suppressed"] or out["rows"] == want, (name, o["column"], out["rows"], want)
