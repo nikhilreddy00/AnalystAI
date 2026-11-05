@@ -226,3 +226,16 @@ def test_the_fallback_chart_never_calls_a_layout_blank_missing():
         charts = _contract_fallback_charts(contract, True, clean)
         shown = {r["label"] for c in charts for r in c.data}
         assert not shown & set(layout_blanks(clean, contract)), (name, shown & set(layout_blanks(clean, contract)))
+
+
+def test_the_fallback_reads_the_frame_it_describes_and_keeps_markers_without_one():
+    """Audit pass 6: with a frame the bars were the contract's pre-cleaning shares; without one
+    the marker fields (an end date of someone still employed) were 'missing' again."""
+    from agents.visualization_agent import _contract_fallback_charts
+    from domain_pack import marker_columns, pack_for
+    _, clean, contract, _ = _built("hr_roster")
+    for row in _contract_fallback_charts(contract, True, clean)[0].data:
+        assert row["count"] == round(float(clean[row["label"]].isna().mean() * 100), 1), row
+    bare = _contract_fallback_charts(contract)
+    shown = {r["label"] for c in bare for r in c.data}
+    assert not shown & set(marker_columns(pack_for("hr"), contract.roles))

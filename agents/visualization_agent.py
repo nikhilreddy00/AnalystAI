@@ -1922,13 +1922,16 @@ def _contract_fallback_charts(contract: DataContract, frame_present: bool = Fals
     charts: list[ChartConfig] = []
     # a column blank by the file's layout (an end date of someone still employed, a Debit on a
     # credit row) is not missing: THE layout rule (domain_pack.layout_blanks), with the frame
-    from domain_pack import layout_blanks
-    layout = set(layout_blanks(df, contract)) if df is not None else set()
-    null_data = [
-        {"label": c.name, "count": round(c.null_pct, 1)}
-        for c in contract.columns
-        if c.null_pct > 0 and c.name not in layout
-    ]
+    from domain_pack import layout_blanks, marker_columns
+    if df is not None:   # the frame's own missing share, less its layout blanks
+        layout = set(layout_blanks(df, contract))
+        null_data = [{"label": str(c), "count": round(float(df[c].isna().mean() * 100), 1)}
+                     for c in df.columns if df[c].isna().any() and c not in layout]
+    else:   # no frame: the contract's, less the blanks a contract alone can tell (markers)
+        layout = set(marker_columns(pack_for(contract.domain) if contract.domain else None,
+                                    contract.roles or {}))
+        null_data = [{"label": c.name, "count": round(c.null_pct, 1)}
+                     for c in contract.columns if c.null_pct > 0 and c.name not in layout]
     if null_data:
         charts.append(ChartConfig(
             id=str(uuid.uuid4()),
@@ -2913,6 +2916,19 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
     return df[keep]
 
 
+def not_a_filter(contract: DataContract | None) -> set[str]:
+    """THE columns that are never a dashboard filter (filter_options offers none, filtered_dashboard
+    refuses a crafted one): personal data (a date-of-birth range is one person) and ids (one
+    record), except an id role a pack declares as a grouping dimension (its overview_groups: a
+    store number stays a cross-filter click on its bar). Personal data never: fail closed."""
+    if contract is None:
+        return set()
+    pack = defaults_pack(contract)
+    groups = {contract.roles.get(r) for r in (pack.overview_groups if pack else [])} - {None}
+    return set(getattr(contract, "pii_columns", None) or []) | (
+        set(getattr(contract, "id_columns", None) or []) - groups)
+
+
 def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
     """The dashboard's filters, from the rows that count (a chain's earlier versions are never
     shown: domain_pack.superseded): {row_count, column_roles, options: [{column, control:
@@ -2922,8 +2938,7 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
     from domain_pack import as_text, superseded
     shown = df[~superseded(df, contract)]
     roles = classify_columns(shown)
-    # an id is no filter, nor is personal data (a date-of-birth range narrows to one person)
-    ids = set(contract.id_columns) | set(contract.pii_columns) if contract is not None else set()
+    ids = not_a_filter(contract)
     roles = {k: [c for c in v if c not in ids] if isinstance(v, list) else v for k, v in roles.items()}
     options: list[dict] = []
 
@@ -2999,13 +3014,7 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     from guardrails import SMALL_CELL
     # personal data and ids are never filters (filter_options offers none; a crafted one is
     # refused: a name filter is one person)
-    # personal data and ids (one person's or record's part) are refused; only an id role a pack
-    # declares as a grouping dimension (its overview_groups: a store number) stays a filter (a
-    # cross-filter click on its bar)
-    pack = defaults_pack(contract) if contract is not None else None
-    groups = {contract.roles.get(r) for r in (pack.overview_groups if pack else [])} - {None}
-    banned = set(getattr(contract, "pii_columns", None) or []) | (   # personal data: always
-        set(getattr(contract, "id_columns", None) or []) - groups)
+    banned = not_a_filter(contract)
     if set(filters or {}) & banned:   # fail closed: one person's (or record's) part, no numbers
         return {"charts": {}, "tiles": {}, "rows": None, "suppressed": True}
     filters, window = _spell_window_filters(df, contract, filters)

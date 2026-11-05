@@ -1879,11 +1879,16 @@ def layout_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]) -
             filled = df[col].notna()
             if filled.any() and (filled & filled_statuses(df, pack, roles, role)).sum() >= 0.95 * filled.sum():
                 out[col] = "conditional"
-    for role in pack.marker_fields:   # blank = none (no event): the layout, never missing
-        col = roles.get(role)
+    for col in marker_columns(pack, roles):   # blank = none (no event): the layout, never missing
         if col in df.columns and col not in out and df[col].isna().any():
             out[col] = "marker"
     return out
+
+
+def marker_columns(pack: Pack | None, roles: dict[str, str]) -> list[str]:
+    """The pack's marker-field columns (blank = no event): the one branch of layout_columns that
+    needs no rows, so a contract alone can tell it (the no-frame fallback chart)."""
+    return [roles[r] for r in (pack.marker_fields if pack else []) if r in roles]
 
 
 def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
