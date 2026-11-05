@@ -247,3 +247,35 @@ async def test_e2e_harness_writes_each_source(source, tmp_path, monkeypatch):
         else:
             assert text(a).tolist() == text(b).tolist(), c
     json.dumps(cfg.model_dump(mode="json"))
+
+
+# ── S4 (Domain 6): a table in another schema loads by its qualified name ───────────────────
+
+async def test_a_table_in_another_schema_loads_by_its_qualified_name():
+    """HR minor: the load checked names against the default schema only, so `hr_live.roster`
+    was refused. The names offered are the inspector's own (no injection: a name must be listed),
+    each part quoted; an unqualified name keeps meaning the default schema."""
+    import os
+
+    from sqlalchemy import text
+    url = os.environ.get("TEST_PG_URL")
+    if not url:
+        pytest.skip("TEST_PG_URL not set")
+    eng = create_engine(url.replace("+asyncpg", "+psycopg"))
+    with eng.begin() as c:
+        c.execute(text('DROP SCHEMA IF EXISTS "s4 live" CASCADE'))
+        c.execute(text('CREATE SCHEMA "s4 live"'))
+        c.execute(text('CREATE TABLE "s4 live".mrr (customer_id text, mrr float)'))
+        c.execute(text('''INSERT INTO "s4 live".mrr VALUES ('C1', 10.5), ('C2', 20)'''))
+        c.execute(text('DROP TABLE IF EXISTS public.mrr'))
+        c.execute(text('CREATE TABLE public.mrr (only_public int)'))
+    try:
+        df = await _sql(url, "s4 live.mrr").load()
+        assert list(df.columns) == ["customer_id", "mrr"] and len(df) == 2
+        assert list((await _sql(url, "mrr").load()).columns) == ["only_public"]
+        with pytest.raises(ValueError, match="does not exist"):
+            await _sql(url, 's4 live".mrr; --').load()
+    finally:
+        with eng.begin() as c:
+            c.execute(text('DROP SCHEMA "s4 live" CASCADE'))
+            c.execute(text("DROP TABLE public.mrr"))
