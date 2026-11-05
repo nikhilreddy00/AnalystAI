@@ -218,8 +218,9 @@ def _asked_agg(params: TargetedParams | None, contract: DataContract, question: 
 
 def _by_pay(intent: QuestionIntent, group, contract, df, instead: str) -> TargetedResponse | None:
     """THE refusal of a group by pay values (domain_pack.pay_columns): each value is one
-    person's pay. KPI and column answers say the same reason."""
-    pack = defaults_pack(contract)
+    person's pay. KPI and column answers say the same reason. The detected domain's pack, at
+    any confidence: a privacy rule (protected_groups' own reading), never a default."""
+    pack = pack_for(contract.domain)
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     if pack and group in pay_columns(pack, roles):
         return _unanswerable(intent, f"{group} is pay: grouping by its values would show "

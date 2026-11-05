@@ -303,3 +303,14 @@ def test_a_column_statistic_grouped_by_pay_shows_no_group():
     text, _ = answer("hr_roster", "top_n", "q", metric_column="Performance_Rating",
                      group_by="Annual_Salary", aggregation="mean")
     assert "is pay" in text, text   # the honest reason, never 'no rows have both'
+
+
+def test_a_weak_domain_match_still_refuses_a_group_by_pay(monkeypatch):
+    """Security review of audit 8: the pay refusal read defaults_pack (None on a weak match),
+    the small-cell rule pack_for: one privacy rule at every confidence."""
+    from agents import targeted_analysis_agent as t
+    from tests.test_oracle import answer
+    monkeypatch.setattr(t, "defaults_pack", lambda contract: None)
+    text, _ = answer("hr_roster", "segment_compare", "q", metric_column="Performance_Rating",
+                     segment_column="Annual_Salary", aggregation="mean")
+    assert "is pay" in text, text

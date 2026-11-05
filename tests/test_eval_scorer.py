@@ -495,3 +495,18 @@ def test_a_breakdown_may_leave_out_a_group_with_no_events_but_not_a_real_one():
     truth = {"r": {"Sales": 0.3, "Legal": 0.0}}
     assert check_segment_value_truth(f({"Sales": 0.3}), truth, "Department", "r")[0]
     assert not check_segment_value_truth(f({"Legal": 0.0}), truth, "Department", "r")[0]
+
+
+def test_a_group_named_with_a_qualifier_is_its_group_never_another():
+    """Domain 5 re-measure (hr-7): the model named the partial year '2026_ytd' (right numbers,
+    the partial period said); '20261' or two '2026…' names never match."""
+    from evals.scoring import check_segment_value_truth
+    truth = {"r": {"2025": 0.23, "2026": 0.26}}
+    def f(names):
+        seg = SegmentResult(segment_column="exit_event_date", metric_column="x", aggregation="ratio",
+                            results=[{"name": n, "value": v} for n, v in names.items()])
+        return _findings(segments=[seg])
+    assert check_segment_value_truth(f({"2025": 0.23, "2026_ytd": 0.26}), truth, "exit_event_date", "r")[0]
+    assert not check_segment_value_truth(f({"2025": 0.23, "20261": 0.26}), truth, "exit_event_date", "r")[0]
+    assert not check_segment_value_truth(f({"2025": 0.23, "2026 H1": 0.26, "2026 H2": 0.26}),
+                                         truth, "exit_event_date", "r")[0]
