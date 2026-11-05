@@ -30,7 +30,12 @@ defects:
   kind: certainty
   label: overstated
   text: Ten Support employees are flight risks and should be put on retention plans now.
-natural: []
+natural:
+- i: 8
+  kind: number
+  label: contradicted
 label_note: 'Seeded over the claims the pre-fix report carried a 6-person department''s pay in (now suppressed
   upstream): a causal pay claim, a partial year annualised (31.4%), a small protected cell, an individual
-  prediction.'
+  prediction. Natural (Domain 5 senior audit): the stored action cites Support''s average over every row,
+  leavers included ($62,996); pay by department is current staff''s ($61,678), so the check flags it as
+  ungrounded.'
