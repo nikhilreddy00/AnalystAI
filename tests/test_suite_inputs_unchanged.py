@@ -15,17 +15,7 @@ import pytest
 from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-CHANGES: dict[str, dict[str, str]] = {
-    "deterministic": {"loss_run-1": "post-Domain-4 audit: a developing measure's period answers keep "
-                      "the youngest accident year and compare no periods; scatters and correlations read "
-                      "each claimant's latest valuation (entity_rows)",
-                      **{f"employees-{i}": "Domain 5: employees is strong HR (hr.yaml): HR tiles "
-                         "(headcount, attrition over the 12 months to the as-of), domain notes, the "
-                         "spell's answers; rows unchanged" for i in (1, 2, 3)}},
-    "analysis": {f"hr-{i}": "Domain 5: employees is strong HR: the context carries the HR pack's "
-                 "rules (headcount at a date, attrition ÷ average headcount); re-measured at the "
-                 "Domain 5 analysis gate" for i in (1, 2, 3)},
-}
+CHANGES: dict[str, dict[str, str]] = {}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())
