@@ -200,3 +200,21 @@ def test_an_asked_window_from_mid_month_keeps_that_months_end(pack):
     assert pts[0] == pd.Timestamp("2026-03-31") and pts[-1] == pd.Timestamp("2026-06-30") and len(pts) == 4
     _, _, full = spell_window(pack, _roster(), ROLES)
     assert len(full) == 12   # the default 12-month window keeps its 12 month-ends
+
+
+def test_concurrent_spells_of_one_entity_all_count_when_the_pack_says_so(pack):
+    """Domain 6 S3 (red-team R1): a customer with a base plan and a newer add-on cancelled since
+    was out of force (its latest spell had ended), losing the base plan's seats. With
+    `concurrent: true` every spell in force counts (counts stay distinct entities); HR's rehires
+    never overlap, so its rule (the latest spell) is unchanged."""
+    raw = yaml.safe_load(SUBS)
+    raw["spell"]["concurrent"] = True
+    both = Pack.model_validate(raw)
+    df = pd.DataFrame([("C1", "2025-01-01", "", "pro", "paid", 5, "active"),
+                       ("C1", "2026-03-01", "2026-06-01", "pro", "paid", 2, "cancelled"),
+                       ("C2", "2025-01-01", "", "pro", "paid", 1, "active"),
+                       ("C2", "2025-06-01", "", "pro", "paid", 3, "active")],
+                      columns=["subscriber_id", "start_date", "cancel_date", "plan", "kind",
+                               "seats", "status"])
+    assert compute_kpi(df, ROLES, both, "active") == 2 and compute_kpi(df, ROLES, both, "seats") == 9
+    assert compute_kpi(df, ROLES, pack, "seats") == 3   # the latest spell only: C1 out, C2's add-on

@@ -181,6 +181,9 @@ class Spell(_Strict):
     ended: list[str] = Field(default_factory=list)
     as_of: str | None = None
     words: SpellWords = Field(default_factory=SpellWords)
+    # An entity holds several spells at once (a base plan and an add-on): every one in force
+    # counts, summed for a role; otherwise only its latest spell started by t (a rehire)
+    concurrent: bool = False
 
 
 class Term(_Strict):
@@ -1022,7 +1025,9 @@ def _in_force(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t: pd.Time
         rows = snapshot_rows(whole[_day(whole[snap]) <= t], [ent], snap)
     else:
         start = _day(whole[roles[s.start]])
-        rows = whole.loc[start[start <= t].sort_values(kind="stable").index].groupby(ent).tail(1)
+        rows = whole.loc[start[start <= t].sort_values(kind="stable").index]
+        if not s.concurrent:
+            rows = rows.groupby(ent).tail(1)
     return rows[~_ended(rows, roles, pack, t)]
 
 
