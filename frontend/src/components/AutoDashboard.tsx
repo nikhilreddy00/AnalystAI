@@ -403,7 +403,7 @@ function ChartGrid({
     () =>
       charts.map((c) => {
         const view = chartView(c, hasActiveFilters, server, failed);
-        return { ...c, renderedData: view.data, showUnfilteredPill: view.unfiltered,
+        return { ...c, title: view.title || c.title, renderedData: view.data, showUnfilteredPill: view.unfiltered,
                  updating: view.updating };
       }),
     [charts, hasActiveFilters, server, failed],

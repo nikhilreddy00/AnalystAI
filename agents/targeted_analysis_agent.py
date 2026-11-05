@@ -59,6 +59,8 @@ from domain_pack import (
     protected_value,
     spell_covered,
     spell_terms,
+    has_spell,
+    not_counted_yet,
     spell_window,
     window_words,
     runout_months,
@@ -384,6 +386,11 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
             f"({int(vc.iloc[0])} rows, {vc.iloc[0] / len(series) * 100:.1f}%)."
         )
 
+    pack = defaults_pack(contract)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    if pack and has_spell(pack, roles):   # a distribution reads every row (C0 Q11): said, so a
+        # roster's salary spread is never read as current staff's (the KPI tiles are)
+        answer += " Read over every row: current and former, ended spells included."
     return TargetedResponse(intent=QuestionIntent.DISTRIBUTION, answer_text=answer, chart_configs=[chart])
 
 
@@ -416,7 +423,8 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     df, kept = rows_for(df, contract, metric)   # a domain's money: the rows its tiles count
 
     try:
-        grouped = ranked(aggregate(df, [group], metric, agg, contract), ascending=asc).head(n)
+        agged = aggregate(df, [group], metric, agg, contract)
+        grouped = ranked(agged, ascending=asc).head(n)
     except Exception as exc:
         return _unanswerable(
             QuestionIntent.TOP_N,
@@ -432,7 +440,8 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
     answer = (
         f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}. "
         f"Leader: {grouped.index[0]} = {_num(grouped.iloc[0])}."
-    ) + (f" {kept}" if kept else "")
+    ) + (f" {kept}" if kept else "") + hidden_note(agged.attrs.get("hidden", []),
+                                                   _is_protected_column(contract, group))
     chart = _chart(
         ChartType.HORIZONTAL_BAR, f"{direction} {len(grouped)} {group} by {_of(agg, metric, False)}",
         chart_data, x_key=group, y_keys=[metric], x_label=group, y_label=_with_unit(_of(agg, metric, False), metric, contract),
@@ -444,6 +453,24 @@ def handle_top_n(df: pd.DataFrame, params: TargetedParams, contract: DataContrac
          code=_code(f"df.groupby({group!r})[{metric!r}]", agg, metric, contract)
          + f".sort_index(kind='stable').sort_values(ascending={asc}, kind='stable').head({n})")
     return TargetedResponse(intent=QuestionIntent.TOP_N, answer_text=answer, chart_configs=[chart])
+
+
+def hidden_note(hidden: list, protected: bool) -> str:
+    """THE sentence for the groups the small-cell rule hid (KPI and column answers alike): a
+    protected group's name only as a count; an ordinary one named, with its complement."""
+    if not hidden:
+        return ""
+    if protected:
+        return f" {len(hidden)} group{'s' * (len(hidden) != 1)} not shown (fewer than {SMALL_CELL} people)."
+    if len(hidden) > 1:
+        return (f" Not shown: {', '.join(map(str, hidden[:5]))} (a group of fewer than {SMALL_CELL} "
+                "people, and with one hidden, the next smallest, so it can't be worked back from the total).")
+    return f" Not shown: {hidden[0]} (fewer than {SMALL_CELL} people: a figure for so few can identify them)."
+
+
+def _is_protected_column(contract, column: str) -> bool:
+    pack = pack_for(contract.domain) if contract is not None else None
+    return bool(pack) and any(contract.roles.get(r) == column for r in pack.protected_roles)
 
 
 def _why_failed(exc: Exception) -> str:
@@ -684,7 +711,8 @@ def handle_segment_compare(df: pd.DataFrame, params: TargetedParams, contract: D
     per = average_entity(contract, metric) if agg == "mean" else None   # an average per claim
     what = f"Average {metric} per {per}" if per else _of(agg, metric, False)
     answer = f"{what} by {segment}: {_lead_and_last(order)}." + (f" {kept}" if kept else "") + (
-        f" Per {per}: each group's total ÷ its distinct {per} with a value." if per else "")
+        f" Per {per}: each group's total ÷ its distinct {per} with a value." if per else "") + \
+        hidden_note(full.attrs.get("hidden", []), _is_protected_column(contract, segment))
     group = _named_group(df, params)
     if group is not None:
         # from the same totals as the comparison (a group that stopped reporting is 0, not stale)
@@ -1092,8 +1120,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     lines = pack_caveats(pack, None, roles, "weak", always=True) \
         if contract.domain_confidence == "weak" else []
     read = " " + lines[0] if lines else ""   # (a pack without that line says nothing)
-    how = describe_kpi(pack, kpi.name, roles, present) + read + (
+    how = describe_kpi(pack, kpi.name, roles, present, parts=True) + read + (
         f" {currency} only: {other:,} rows in other currencies left out." if other else "")   # counts too
+    if spelled and (w := spell_window(pack, all_rows, roles)) and (later := not_counted_yet(
+            pack, all_rows, roles, w[1])):
+        how += " " + later
     group = params.group_by or params.segment_column
     # a measure still developing (losses at a valuation): its young periods are never compared
     # with older ones, never cut as partial; the answer says why (domain_pack.developing_note)
@@ -1134,15 +1165,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         else:
             answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                       f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
-        if hidden and protected_by:   # a protected group's name is said only as a count
-            answer += (f" {len(hidden)} group{'s' * (len(hidden) != 1)} not shown (fewer than "
-                       f"{SMALL_CELL} people).")
-        elif hidden:
-            answer += (f" Not shown: {', '.join(map(str, hidden[:5]))} (a group of fewer than "
-                       f"{SMALL_CELL} people, and with one hidden, the next smallest, so it can't be "
-                       "worked back from the total).") if len(hidden) > 1 else (
-                f" Not shown: {hidden[0]} (fewer than {SMALL_CELL} people: a figure for so few can "
-                "identify them).")
+        answer += hidden_note(hidden, bool(protected_by))
         if params.compare == "yoy" and spelled:
             prior, prior_period = year_before(group)
             if prior is not None and lead in prior.index and (kind == "percent" or prior[lead]):
@@ -1198,6 +1221,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         # a spell series reads the filtered part (Support's headcount, never the company's)
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype(f"period[{rule}]")) \
             if spelled else full.assign(_period=t.dt.to_period(rule))
+        if not spelled and ctx is not None and ctx.cut:   # a dashboard filter: the part's rows
+            # only (Canada's months, never the company's); row kinds still judged on all rows
+            frame = frame[frame.index.isin(df.index)]
         series = compute_kpi(frame, roles, pack, kpi.name, by="_period", full=all_rows, window=win, cut=cut)
         if series is None or series.empty:
             return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here",

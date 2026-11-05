@@ -386,6 +386,7 @@ def _drop_protected_cells(raw: dict, df: pd.DataFrame, contract: DataContract) -
     hides (domain_pack.protected_groups: pay of a 6-person department, a gender cell of 3), said
     in an assumption: every segment leaves the analysis through here (Domain 5 insight gate:
     '$96,450 in Legal')."""
+    from guardrails import SMALL_CELL
     hidden = 0
     for seg in raw.get("segments") or []:
         if not isinstance(seg, dict) or not seg.get("segment_column") or not seg.get("metric_column"):
@@ -400,7 +401,7 @@ def _drop_protected_cells(raw: dict, df: pd.DataFrame, contract: DataContract) -
             hidden += before - len(seg["results"])
     if hidden:
         raw.setdefault("assumptions", []).append(
-            f"{hidden} group figure(s) of fewer than 11 people (pay or a protected attribute) are "
+            f"{hidden} group figure(s) of fewer than {SMALL_CELL} people (pay or a protected attribute) are "
             "not shown: they could identify people.")
 
 

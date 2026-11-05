@@ -274,3 +274,23 @@ def test_missing_labels_are_never_ranked_highest_or_lowest():
     from guardrails import POOLED_LABEL, UNKNOWN_LABEL, rankable
     assert cleaning_agent.UNKNOWN is UNKNOWN_LABEL
     assert not rankable(UNKNOWN_LABEL) and not rankable(POOLED_LABEL) and rankable("Cardiology")
+
+
+def test_a_spells_ended_statuses_are_read_once():
+    """Post-Domain-5 audit: 'ended with no date' was written three ways (_ended, the frame's
+    left_date_unknown marker, the file's story). One reader, domain_pack._ended_undated; its
+    three users agree on the planted rows (5 Terminated, no date, on hr_roster)."""
+    import domain_pack as dp
+    from tests.test_oracle import _built
+    src = (ROOT / "domain_pack.py").read_text().splitlines()
+    start = next(i for i, ln in enumerate(src, 1) if ln.startswith("def _ended_undated("))
+    end = next(i for i, ln in enumerate(src[start:], start + 1) if ln.startswith("def "))
+    readers = [h for h in _hits(r"\.ended\b") if not (h.startswith("domain_pack.py:")
+                                                       and start <= int(h.split(":")[1]) < end)]
+    assert not readers, f"read the ended statuses through domain_pack._ended_undated: {readers}"
+    _, df, contract, _ = _built("hr_roster")
+    pack, roles = dp.pack_for("hr"), {r: c for r, c in contract.roles.items() if c in df.columns}
+    marked = dp.with_spell_events(df, pack, roles)["left_date_unknown"].eq("yes")
+    as_of = dp.spell_as_of(pack, df, roles)
+    assert marked.sum() == 5 and not marked[dp._in_force(df, roles, pack, as_of).index].any()
+    assert any(f"{int(marked.sum())} rows have an ended status" in s for s in dp.spell_story(pack, df, roles))

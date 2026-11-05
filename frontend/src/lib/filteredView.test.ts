@@ -2,7 +2,7 @@
 // domain-pack tile now show the server's recomputation for the filters.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { chartView, tileView } from "./filteredView.ts";
+import { chartView, tileContextView, tileView } from "./filteredView.ts";
 
 const kpiChart = { id: "c1", chart_type: "BarChart", x_key: "dept", y_keys: ["rate"],
   data: [{ dept: "Cardiology", rate: 14.3 }, { dept: "Neurology", rate: 7.0 }],
@@ -50,4 +50,11 @@ test("a failed recomputation says the chart is unfiltered, not updating forever"
 
 test("a suppressed small cell shows no tile value", () => {
   assert.equal(tileView("Discharges", true, { ...server, suppressed: true }), null);
+});
+
+test("a date range relabels its numbers: the server's tile context and chart title", () => {
+  const dated = { ...server, contexts: { Discharges: "as of 30 Jun 2026" }, titles: { c1: "Rate (as of 30 Jun 2026)" } };
+  assert.equal(tileContextView("Discharges", true, dated), "as of 30 Jun 2026");
+  assert.equal(tileContextView("Discharges", false, dated), null);
+  assert.equal(chartView(kpiChart, true, dated).title, "Rate (as of 30 Jun 2026)");
 });

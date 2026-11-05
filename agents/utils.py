@@ -220,6 +220,7 @@ def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = 
         from domain_pack import protected_groups
         if hide := protected_groups(df, contract, keys, column):
             out = out.drop(hide, errors="ignore")
+            out.attrs["hidden"] = [h for h in hide]   # said in the answer (targeted.hidden_note)
     return out
 
 

@@ -175,3 +175,36 @@ Builder terms: `GLOSSARY.md` (Spell, In force at t, As-of date, Protected role, 
   read (part values vs asked columns; ids vs groups; leavers vs people).
 - **Lesson:** write the small-cell population as a function of the KPI's own population in the
   plan, not after the gates.
+
+## Post-domain senior audit (2026-11-05, after the merge; $0)
+
+Four fresh reviewers in parallel:
+- the code-review skill's Standards axis;
+- its Spec axis;
+- a dashboard-filter accuracy check against generator truth on 19 datasets;
+- a before/after regression diff of every non-HR dataset against pre-Domain-5 main (76e5cd6):
+  tiles, charts, filter options, filtered dashboards, oracle answers and built-ins.
+
+| finding | severity | fix |
+|---|---|---|
+| The KPI-over-time line ignored every dashboard filter on all 15 non-HR datasets (retail Canada Jan 2025: $23,653.70 shown, truth $2,559.78). Present on main before Domain 5. | major | Under a dashboard filter the series counts the part's rows (row kinds still judged on all rows). Guard on all 20 datasets: an additive KPI's months add up over a filter's values. |
+| Donut breakdowns went blank under a filter (a bar of the same breakdown overwrote their rows). Pre-existing. | major | `_chart_key` tells round charts apart (never the exact type: a filter can turn horizontal bars into bars). |
+| Targeted HR answers didn't say how a rate is built (12 month-ends, exits as events, contractors out, "not counted yet"). | major | A ratio of spell KPIs describes its parts in the answer's "How", plus the shared `not_counted_yet` sentence. Model inputs unchanged. |
+| retail `store_weeks` offered a Store_No range slider and lost COGS (a Domain 5 regression, 2b03017). | minor | An id is never a range filter. Guard on all 20 datasets. |
+| A date range kept "as of 31 Oct 2026" on tiles and chart titles. | minor | The server sends each filtered tile's context and chart's title; the UI shows them. |
+| "Ended with no date" written three ways. | minor | `_ended_undated`, one reader; guard in `test_one_definition.py`. |
+| Column answers hid groups silently; the distribution didn't say "every row"; a literal 11. | minor | One `hidden_note` for KPI and column answers; the distribution says it reads current and former; `SMALL_CELL`. |
+
+- **Regression diff:** no number changed on any finished domain:
+  - 13 datasets are byte-identical;
+  - the store_weeks slider is fixed above;
+  - one refusal was reworded (intended).
+- **Deliberate deviations and follow-ups:**
+  - `bank_account_no` stays personal data. The spec listed it as an id, but no banking header uses
+    it, and an HR payroll file's bank account is a person's.
+  - The plan's "annualised" and "tenure" intake cases, the Postgres "involuntary in Support" E2E
+    and the multi-turn's third turn were not built (cases differ from the plan).
+  - Annualising on request is unsupported.
+  - A no-row filter shows the whole-data charts, marked "unfiltered".
+  - Filtering on an exit's own category leaves rates without a base.
+  - HR column names in shared code are still deferred to Domain 6.
