@@ -10,7 +10,7 @@ import type { BriefingData, KPI } from "@/types";
 import { useDashboardData } from "@/context/DashboardDataContext";
 import { useDashboardFilter } from "@/context/DashboardFilterContext";
 import { useFilteredDashboard } from "@/hooks/useFilteredDashboard";
-import { tileView } from "@/lib/filteredView";
+import { tileContextView, tileView } from "@/lib/filteredView";
 
 interface Props {
   briefing: BriefingData;
@@ -52,7 +52,7 @@ export default function KPISection({ briefing, sessionId }: Props) {
             value={kpi.value}
             sublabel={hasActiveFilters && !loading && filteredValue == null
               ? [missing, kpi.context].filter(Boolean).join(" · ")
-              : kpi.context || undefined}
+              : tileContextView(kpi.label, hasActiveFilters, server) || kpi.context || undefined}
             filteredValue={filteredValue}
             hasActiveFilters={hasActiveFilters}
             loading={loading}

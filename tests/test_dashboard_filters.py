@@ -394,6 +394,69 @@ def test_personal_data_is_never_a_filter():
         assert not offered & set(contract.pii_columns), (name, offered & set(contract.pii_columns))
 
 
+@pytest.mark.parametrize("name", PACK_DATASETS)
+def test_a_filter_reaches_the_kpi_over_time_and_every_donut(name):
+    """Post-Domain-5 audit: the KPI-over-time line read the whole file under every filter
+    (retail Canada plotted $23,653.70 for Jan 2025, truth $2,559.78) and donuts went blank (a
+    bar of the same breakdown overwrote their rows). Truth-free: an additive KPI's months add
+    up over a filter's values to the unfiltered months; a non-additive one moves for some value;
+    a donut keeps its own keys."""
+    import domain_pack
+    clean, contract, charts, *_ = _dashboard(name)
+    pack = domain_pack.pack_for(contract.domain)
+    whole = filtered_dashboard(clean, contract, charts, {})
+    line = next((c for c in charts if c.rationale and c.rationale.rule == "targeted:kpi→line"), None)
+    col, values = _filter_columns(clean, contract)[0]
+    outs = [filtered_dashboard(clean, contract, charts, {col: {"kind": "equality", "value": v}})
+            for v in values]
+    outs = [o for o in outs if not o["suppressed"] and o["charts"]]
+    for c in charts:
+        if c.chart_type.value in ("PieChart", "DonutChart"):
+            for o in outs:
+                assert all({"name", "value"} <= set(r) for r in o["charts"].get(c.id, [])), (name, c.title)
+    # a chart the user switched to another type (chart_feedback saves it) is still refiltered
+    switched = [c.model_copy(update={"chart_type": next(t for t in type(c.chart_type) if t != c.chart_type)})
+                for c in charts]
+    sw = filtered_dashboard(clean, contract, switched, {col: {"kind": "equality", "value": values[0]}})
+    if not sw["suppressed"] and sw["charts"]:
+        assert set(sw["charts"]) == set(outs[0]["charts"]) if outs else True, (name, "type switch")
+    if line is None or line.id not in whole["charts"] or not outs:
+        return
+    y = line.y_keys[0]
+    full = {r[line.x_key]: r.get(y) for r in whole["charts"][line.id]}
+    parts = [{r[line.x_key]: r.get(y) for r in o["charts"].get(line.id, [])} for o in outs]
+    kpi = next(k for k in pack.kpis if k.label == y or k.label in line.title)
+    if domain_pack.additive(pack, kpi.name) and len(outs) == len(values) and not pack.spell:
+        for period, v in full.items():
+            if v is None:
+                continue
+            got = sum(p.get(period) or 0 for p in parts)
+            assert abs(got - v) <= 0.01 * max(1, abs(v)), (name, col, period, got, v)
+    else:
+        assert any(p != full for p in parts), (name, col, "the line never moved under a filter")
+
+
+def test_a_date_range_relabels_its_tiles_and_charts():
+    """Post-Domain-5 audit: an HR date range showed 30 Jun numbers under 'as of 31 Oct 2026'.
+    The server sends each filtered tile's context and chart's title with its numbers."""
+    clean, contract, charts, _, truth = _dashboard("hr_roster")
+    out = filtered_dashboard(clean, contract, charts, {"Termination_Date": {
+        "kind": "date_range", "from": "2026-01-01", "to": "2026-06-30"}})
+    assert out["tiles"]["Headcount"] == f"{truth['headcount_by_month_end']['2026-06-30']:,} employees"
+    assert out["contexts"]["Headcount"] == "as of 30 Jun 2026", out["contexts"]
+    assert all("31 Oct" not in t for t in out["titles"].values()), out["titles"]
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+def test_an_id_is_never_a_range_filter(name):
+    """Post-Domain-5 audit: store_weeks offered a Store_No 101–112 slider (a grouping id let
+    into filter_options) and lost its COGS slider. A grouping id stays a click on its bar."""
+    from agents.visualization_agent import filter_options
+    clean, contract, *_ = _dashboard(name)
+    ranges = {o["column"] for o in filter_options(clean, contract)["options"] if o["control"] == "range"}
+    assert not ranges & set(contract.id_columns), (name, ranges & set(contract.id_columns))
+
+
 def test_every_domain_dataset_is_in_the_every_filter_check():
     """User, 2026-11-04: a new domain must never skip the every-filter check. Any eval dataset that
     reads as a domain (a strong pack match) is in PACK_DATASETS: enforced here, not remembered."""

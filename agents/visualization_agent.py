@@ -2949,7 +2949,9 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
         options.append({"column": col, "control": "binary", "values": values(col)})
     for col in roles.get("low_card_cat", [])[:8]:
         options.append({"column": col, "control": "pills", "values": values(col)})
-    for col in roles.get("continuous", [])[:3]:
+    id_cols = set(getattr(contract, "id_columns", None) or [])
+    # an id is never a range (store 101–112 means nothing): a grouping id stays a click on its bar
+    for col in [c for c in roles.get("continuous", []) if c not in id_cols][:3]:
         n = pd.to_numeric(shown[col], errors="coerce")
         n = n[np.isfinite(n)]   # an infinite value is no slider end (and no valid JSON)
         if len(n):
@@ -2963,8 +2965,12 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
 
 
 def _chart_key(c: ChartConfig):
+    """Which rebuilt chart a stored chart is: its rule, axes and the key its rows carry (a donut's
+    rows are {name, value}, a bar's {column, count}: post-Domain-5 audit, donuts went blank).
+    Never the chart type: the user can switch it (chart_feedback), and a filter can turn
+    horizontal bars into bars."""
     r = c.rationale
-    return (r.rule, r.x, r.y, r.aggregation, r.split) if r else None
+    return (r.rule, r.x, r.y, r.aggregation, r.split, c.x_key) if r else None
 
 
 def _spell_window_filters(df: pd.DataFrame, contract: DataContract | None,
@@ -3031,8 +3037,11 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     ctx.full, ctx.window, ctx.cut = df, window, cut
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(
         part, ctx.roles, query=query, narrative=narrative, ctx=ctx)
-    fresh = {k: c.data for c in rebuilt if (k := _chart_key(c))}
-    out = {c.id: fresh[k] for c in charts if (k := _chart_key(c)) in fresh}
-    tiles = {k.label: k.value for k in generate_smart_kpis(part, ctx.roles, query, narrative, contract,
-                                                           full=df, window=window, cut=cut)}
-    return {"charts": out, "tiles": tiles, "rows": n, "suppressed": False}
+    fresh = {k: c for c in rebuilt if (k := _chart_key(c))}
+    out = {c.id: fresh[k].data for c in charts if (k := _chart_key(c)) in fresh}
+    # the labels the numbers were made for (a date range: "as of 30 Jun 2026", never the
+    # report's "31 Oct"): the server's words, as the numbers are
+    titles = {c.id: fresh[k].title for c in charts if (k := _chart_key(c)) in fresh}
+    made = generate_smart_kpis(part, ctx.roles, query, narrative, contract, full=df, window=window, cut=cut)
+    return {"charts": out, "tiles": {k.label: k.value for k in made}, "rows": n, "suppressed": False,
+            "contexts": {k.label: k.context or "" for k in made}, "titles": titles}

@@ -259,6 +259,10 @@ export async function getLatestDashboardData(): Promise<DashboardDataResult> {
 export interface FilteredDashboard {
   charts: Record<string, Record<string, unknown>[]>;
   tiles: Record<string, string>;
+  /** Each filtered tile's own context and each rebuilt chart's own title (a date range: "as of
+   * 30 Jun 2026", never the report's date): the server's words, as its numbers are. */
+  contexts?: Record<string, string>;
+  titles?: Record<string, string>;
   rows: number | null;   // null: a small cell on patient data (its count is not shown either)
   /** Patient data filtered below 11 records: no number is shown (a small cell). */
   suppressed?: boolean;

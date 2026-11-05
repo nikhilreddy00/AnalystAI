@@ -921,7 +921,6 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
                   and computable(pack, k.name, roles)), None)
     ends = next((k for k in pack.kpis if k.tile and k.unit == "count" and computable(pack, k.name, roles)
                  and [t.spell for t in used_terms(pack, k, roles)] == ["ends"]), None)
-    words_ = window_words
     back = (None, as_of - pd.DateOffset(years=1))   # the default window a year earlier (12 points)
     prior_ok = (pw := spell_window(pack, df, roles, back)) is not None and len(pw[2]) >= len(pts)
     for k in pack.kpis:   # each rate tile now and a year earlier, the change in points
@@ -930,8 +929,8 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         now = compute_kpi(df, roles, pack, k.name)
         then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok else None
         if now is not None:
-            out.append(f"{k.label} ({words_(pack, df, roles, k.name)}): {now:.1%}" + (
-                f"; a year earlier ({words_(pack, df, roles, k.name, back)}): {then:.1%}, "
+            out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
+                f"; a year earlier ({window_words(pack, df, roles, k.name, back)}): {then:.1%}, "
                 f"{(now - then) * 100:+.1f} points" if then is not None
                 else "; no full year-earlier window in the data") + ".")
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
@@ -961,12 +960,9 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         out.append(f"{len(df):,} rows are {people:,} people ({int((df[col].value_counts() > 1).sum()):,} with "
                    "more than one row)" + (f"; {now_n:,.0f} in force at {as_of:%-d %b %Y}" if now_n else "")
                    + ".")
-    s = pack.spell
-    later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
-    undated = int((_ended(df, roles, pack, pd.Timestamp.max.normalize()) & (
-        _day(df[roles[s.end]]).isna() if s.end in roles else True)).sum()) if s.ended else 0
-    if later:
-        out.append(f"{later:,} start or end dates fall after {as_of:%-d %b %Y}: not counted yet.")
+    if later := not_counted_yet(pack, df, roles, as_of):
+        out.append(later)
+    undated = int(_ended_undated(df, roles, pack).sum())
     if undated:
         out.append(f"{undated:,} rows have an ended status but no end date.")
     return out
@@ -994,10 +990,26 @@ def _ended(rows: pd.DataFrame, roles: dict[str, str], pack: Pack, t) -> pd.Serie
     exit_records both read it."""
     s = pack.spell
     end = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
-    out = end.notna() & (end <= t)
-    if s.ended and "status" in roles:
-        out |= words(rows[roles["status"]]).isin(set(words(pd.Series(s.ended)))) & end.isna()
-    return out
+    return (end.notna() & (end <= t)) | _ended_undated(rows, roles, pack)
+
+
+def not_counted_yet(pack: Pack, df: pd.DataFrame, roles: dict[str, str], as_of) -> str:
+    """THE sentence about start or end dates after the as-of (notice periods, pre-boarding):
+    still in force / not yet started, so not counted yet. The file's story and every spell
+    answer say it."""
+    s = pack.spell
+    later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
+    return f"{later:,} start or end dates fall after {as_of:%-d %b %Y}: not counted yet." if later else ""
+
+
+def _ended_undated(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
+    """THE over-at-an-unknown-date test: an `ended` status with no end date (never in force at
+    any date). _ended, the frame's marker and the file's story all read it."""
+    s = pack.spell
+    if not (s.ended and "status" in roles):
+        return pd.Series(False, index=rows.index)
+    end = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
+    return words(rows[roles["status"]]).isin(set(words(pd.Series(s.ended)))) & end.isna()
 
 
 def has_spell(pack: Pack | None, roles: dict[str, str]) -> bool:
@@ -1576,14 +1588,18 @@ def kpi_roles(pack: Pack, name: str) -> set[str]:
 
 
 def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
-                 present: set[str] = frozenset(ROW_KINDS)) -> str:
+                 present: set[str] = frozenset(ROW_KINDS), parts: bool = False) -> str:
     """How a KPI was computed on this data, in words, from the alternative that applied. Only
-    the row kinds the data has (`present`) are named as left out."""
+    the row kinds the data has (`present`) are named as left out. `parts`: a ratio of spell KPIs
+    also says how each part was counted (an answer's 'How': the 12 month-ends, exits as events,
+    who is out), never just 'separations ÷ headcount'."""
     kpi = pack.kpi(name)
 
     def term(t: Term) -> str:
         if t.kpi:
-            return pack.kpi(t.kpi).phrase
+            how = describe_kpi(pack, t.kpi, roles, present).rstrip(".")
+            return pack.kpi(t.kpi).phrase + (f" ({how[:1].lower() + how[1:]})" if parts and kpi.den
+                                             is not None and spell_terms(pack, t.kpi) else "")
         if t.nunique:
             return f"distinct {roles[t.nunique]}" + (f" where {where(t.where)}" if t.where else "")
         if t.spell:
@@ -2006,11 +2022,7 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
             # model never forgets to filter it (Domain 5 gate: hr-1 counted every exit ever)
             out["exit_in_window"] = (out[col] > lo).map({True: "yes", False: ""})
         out[col] = out[col].dt.strftime("%Y-%m-%d")
-    s = pack.spell   # over at an unknown date (status ended, no end date): never in force
-    end = _day(df[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=df.index)
-    undated = (words(df[roles["status"]]).isin(set(words(pd.Series(s.ended)))) & end.isna()
-               if s.ended and "status" in roles else pd.Series(False, index=df.index))
-    out["left_date_unknown"] = undated.map({True: "yes", False: ""})
+    out["left_date_unknown"] = _ended_undated(df, roles, pack).map({True: "yes", False: ""})
     now = _in_force(df, roles, pack, as_of)
     out["in_force_now"] = ""
     out.loc[now.index[counted.loc[now.index].to_numpy()], "in_force_now"] = "yes"

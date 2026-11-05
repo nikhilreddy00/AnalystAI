@@ -3,6 +3,8 @@ import type { FilteredDashboard } from "./api.ts";
 
 export interface ChartView {
   data: Record<string, unknown>[];
+  /** The server's title for the filtered numbers, when it rebuilt the chart. */
+  title?: string;
   /** The chart could not be recomputed for the filters (built from the model's own findings,
    * a suppressed small cell, or the request failed): it shows the whole data, and says so. */
   unfiltered: boolean;
@@ -21,7 +23,7 @@ export function chartView(chart: ChartConfig, active: boolean, server: FilteredD
   if (!active) return { data: chart.data, unfiltered: false, updating: false };
   if (!server) return { data: chart.data, unfiltered: failed, updating: !failed };
   const fresh = server.suppressed ? undefined : server.charts[chart.id];
-  return fresh ? { data: fresh, unfiltered: false, updating: false }
+  return fresh ? { data: fresh, title: server.titles?.[chart.id], unfiltered: false, updating: false }
     : { data: chart.data, unfiltered: true, updating: false };
 }
 
@@ -29,4 +31,10 @@ export function chartView(chart: ChartConfig, active: boolean, server: FilteredD
  * or for a tile the server couldn't give. */
 export function tileView(label: string, active: boolean, server: FilteredDashboard | undefined): string | null {
   return active && server && !server.suppressed ? (server.tiles[label] ?? null) : null;
+}
+
+/** A filtered tile's context line (its window under a date range), from the server; null when
+ * the tile shows its value as built. */
+export function tileContextView(label: string, active: boolean, server: FilteredDashboard | undefined): string | null {
+  return tileView(label, active, server) != null ? (server?.contexts?.[label] || null) : null;
 }
