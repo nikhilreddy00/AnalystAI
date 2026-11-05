@@ -811,9 +811,11 @@ def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
     if window and window[1] is not None:
         as_of = min(as_of, pd.Timestamp(window[1]).normalize())
     lo = as_of - pd.DateOffset(months=12)
-    if window and window[0] is not None:
-        lo = pd.Timestamp(window[0]).normalize() - pd.Timedelta(days=1)
-    return max(lo, first - pd.Timedelta(days=1)), as_of, [e for e in _month_ends(lo, as_of) if e >= first]
+    ends = _month_ends(lo, as_of)
+    if window and window[0] is not None:   # an asked start: its own month's end counts ('since
+        lo = pd.Timestamp(window[0]).normalize() - pd.Timedelta(days=1)   # 15 Mar' keeps 31 Mar)
+        ends = [e for e in _month_ends(lo - pd.offsets.MonthEnd(1), as_of) if e > lo]
+    return max(lo, first - pd.Timedelta(days=1)), as_of, [e for e in ends if e >= first]
 
 
 def spell_covered(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Series:
@@ -898,10 +900,74 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             if by is not None and len(by) <= 15:
                 lines.append(f"{mean.label} by {roles[g]} (a group's rate divides by its own): "
                              + ", ".join(f"{k} {x:,.1f}" for k, x in by.items()) + ".")
+    return lines + spell_story(pack, df, roles)
+
+
+def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str]:
+    """The file's story in the product's own numbers (Domain 5 audit: overviews missed a layoff,
+    a model's YoY contradicted the product's, rows were read as people): the tiles' rates now and
+    the same window a year earlier (in points), the stock's peak in the window against now, the
+    largest month of ends against the usual month and the group most of it came from, people
+    against rows, and what is dated after the as-of. Computed facts for the analysis and the
+    insight, never re-derived by a model."""
+    if not has_spell(pack, roles) or (w := spell_window(pack, df, roles)) is None:
+        return []
+    lo, as_of, pts = w
+    out: list[str] = []
+    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
+                  and computable(pack, k.name, roles)), None)
+    ends = next((k for k in pack.kpis if k.tile and k.unit == "count" and computable(pack, k.name, roles)
+                 and [t.spell for t in used_terms(pack, k, roles)] == ["ends"]), None)
+    words_ = window_words
+    back = (None, as_of - pd.DateOffset(years=1))   # the default window a year earlier (12 points)
+    prior_ok = (pw := spell_window(pack, df, roles, back)) is not None and len(pw[2]) >= len(pts)
+    for k in pack.kpis:   # each rate tile now and a year earlier, the change in points
+        if not (k.tile and k.unit == "percent" and spell_terms(pack, k.name) and computable(pack, k.name, roles)):
+            continue
+        now = compute_kpi(df, roles, pack, k.name)
+        then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok else None
+        if now is not None:
+            out.append(f"{k.label} ({words_(pack, df, roles, k.name)}): {now:.1%}" + (
+                f"; a year earlier ({words_(pack, df, roles, k.name, back)}): {then:.1%}, a change of "
+                f"{(now - then) * 100:+.1f} points (a rate's change is in points)" if then is not None
+                else "; no full year-earlier window in the data") + ".")
+    frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+    if stock is not None and (s_ := compute_kpi(frame, roles, pack, stock.name, by="_period", full=df)) is not None:
+        inside = s_[[p for p in s_.index if p.end_time.normalize() > lo]].dropna()
+        if len(inside) > 1 and inside.idxmax() != inside.index[-1]:
+            peak, now = inside.max(), inside.iloc[-1]
+            out.append(f"{stock.label} peaked at {peak:,.0f} ({inside.idxmax().strftime('%b %Y')}) and is {now:,.0f} "
+                       f"at {as_of:%-d %b %Y} ({(now / peak - 1) * 100:+.1f}%).")
+    if ends is not None and (e := compute_kpi(frame, roles, pack, ends.name, by="_period", full=df)) is not None \
+            and len(e) >= 6:
+        top, usual = e.idxmax(), float(e.drop(e.idxmax()).median())
+        if e[top] >= 10 and e[top] >= 2.5 * max(usual, 1):
+            line = (f"The largest month of {ends.phrase}: {top.strftime('%b %Y')} with {e[top]:,.0f} (a usual month: "
+                    f"{usual:,.0f})")
+            group = next((roles[g] for g in pack.overview_groups if g in roles), None)
+            if group and (g := compute_kpi(df, roles, pack, ends.name, by=group, full=df,
+                                           window=(top.start_time, top.end_time.normalize()))) is not None \
+                    and len(g) and g.max() >= 0.5 * e[top]:
+                line += f", {g.max():,.0f} of them in {g.idxmax()} ({group})"
+            out.append(line + ": name it and its share before reading a trend or a group's rate.")
+    col = _person_col(pack, roles)
+    if col:
+        people = df[col].nunique()
+        now_n = compute_kpi(df, roles, pack, stock.name) if stock else None
+        out.append(f"{len(df):,} rows are {people:,} people ({int((df[col].value_counts() > 1).sum()):,} with "
+                   "more than one row)" + (f"; {now_n:,.0f} in force at {as_of:%-d %b %Y}" if now_n else "")
+                   + ": never call rows people. Column statistics (a salary by department, a distribution) "
+                   "read every row, people who left included; the tiles count those in force.")
+    s = pack.spell
     later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
+    undated = int((_ended(df, roles, pack, pd.Timestamp.max.normalize()) & (
+        _day(df[roles[s.end]]).isna() if s.end in roles else True)).sum()) if s.ended else 0
     if later:
-        lines.append(f"{later} hire or exit dates fall after {as_of:%-d %b %Y}: not counted yet.")
-    return lines
+        out.append(f"{later:,} start or end dates fall after {as_of:%-d %b %Y}: not counted yet.")
+    if undated:
+        out.append(f"{undated:,} rows have an ended status but no end date: never in force, no "
+                   "end counted (a data-quality point to raise).")
+    return out
 
 
 def _in_force(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t: pd.Timestamp) -> pd.DataFrame:

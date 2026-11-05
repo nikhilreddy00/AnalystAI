@@ -581,12 +581,16 @@ def _domain(contract: DataContract, task: AnalysisTask, audit, parquet: bytes | 
     grain = audit.grain if audit else None
     brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None,
                        kind_column(contract))
+    facts: list[str] = []
     if brief and pack.spell and parquet and defaults_pack(contract):   # the product's numbers
         frame = pd.read_parquet(io.BytesIO(parquet))
-        brief += spell_facts(pack, frame, {r: c for r, c in roles.items() if c in frame.columns})
+        facts = spell_facts(pack, frame, {r: c for r, c in roles.items() if c in frame.columns})
     if not brief:
         return {}
-    return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
+    # the facts name the data's own values (departments, locations): inside the untrusted-data
+    # block with the roles, never a rule line (a department named 'Ignore previous rules')
+    return {"domain": brief, "domain_roles": "\n".join(
+        [*(f"{r} = {c}" for r, c in roles.items()), *(f"fact: {x}" for x in facts)])}
 
 
 def _aggregation_line(c, names: set[str], correlates: bool = False) -> str:
@@ -793,7 +797,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     df_parquet = session.__dict__.get("_df_parquet")
     if df_parquet is None:
         raise ValueError("No DataFrame in session. Run ingestion and cleaning first.")
-    ctx = build_context(session)
+    ctx = await asyncio.to_thread(build_context, session)   # reads the frame (spell facts)
     contract = session.data_contract
     known = [c.name for c in contract.columns]
     if ctx.domain or defaults_pack(contract):   # 5.7: row kinds as a column code filters on

@@ -1,0 +1,1452 @@
+{
+ "meta": {
+  "suite": "quality",
+  "report": "quality-20261104T215807Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "c2e97c2",
+  "started_at": "20261104T215807Z",
+  "only": "q-47,q-48",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.009,
+  "latency_p50_s": 14.19,
+  "latency_p95_s": 16.3,
+  "defect_recall": 1.0,
+  "false_alarm_rate": 0.0,
+  "seeded_defects": 6,
+  "supported_claims": 12,
+  "recall_by_kind": {
+   "causal": 1.0,
+   "certainty": 1.0,
+   "number": 1.0,
+   "small_cell": 1.0
+  },
+  "recall_by_source": {
+   "check": 0.8333,
+   "critic": 0.1667
+  },
+  "label_agreement_on_caught": 0.6667,
+  "natural_recall": null,
+  "false_alarms_on_actions": 0.0,
+  "clean_reports_with_false_alarm": null,
+  "hard_review_grounded": 1.0,
+  "hard_flags_valid": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "hard_bundle_reproduced": 1.0,
+  "holdout_pass_rate": null
+ },
+ "runs": {
+  "q-47-hr-roster-overview": [
+   {
+    "checks": [
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "causal",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[causal] caught by ['check']Low pay is driving attrition: Support, the lowest-paid department, los"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "number",
+      "sources": [
+       "check"
+      ],
+      "label_match": false,
+      "detail": "[number] caught by ['check']Attrition so far in 2026 is 26.2%, an annual attrition rate of 31.4% i"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "small_cell",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[small_cell] caught by ['check']Only 2 women in Legal left this year, both from the same team."
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[certainty] caught by ['check']Ten Support employees are flight risks and should be put on retention "
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "10 claims checked against the evidence; 4 flagged (1 unsupported, 2 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The evidence shows Support has the lowest mean salary ($62,996) but does not explain whether this reflects job-level mix, experience, or market rates. Comparing Support salaries to other departments within the same job levels would clarify whether the gap is structural.",
+       "The claim about attrition trends ('highest in four years') requires historical attrition rates by period, but the evidence provides only the 12-month attrition rate to 31 Oct 2026 (29.6%). A trend analysis across prior years is not shown.",
+       "The evidence does not show which employees are 'flight risks' or how they were identified. Claim 7 names 10 Support employees for retention plans, but no evidence item lists individuals or flags them as at-risk."
+      ],
+      "next_investigations": [
+       "Compare mean annual salary in Support to other departments within each job level to determine whether the $62,996 average reflects lower-level roles or a true pay gap at equivalent levels.",
+       "Analyze attrition rate by department and termination category (voluntary vs. involuntary) over the 12-month period to identify whether Support's attrition is primarily voluntary and whether it differs from other departments."
+      ],
+      "methodology_concerns": [
+       "Attrition is defined as separations \u00f7 average month-end headcount over 12 months, but the evidence does not show the month-end headcount figures used in the denominator or break down separations by voluntary vs. involuntary within departments. This limits the ability to assess whether Support's attrition is driven by voluntary departures or other factors."
+      ],
+      "flags": [
+       {
+        "index": 0,
+        "section": "headline",
+        "claim": "Low pay is driving attrition: Support, the lowest-paid department, loses the most people, so raising Support salaries would cut its attrition.",
+        "label": "overstated",
+        "kind": "causal",
+        "reason": "says the salaries caused a change ('driving'); without a control group that can't be told from the season or the mix",
+        "evidence_ids": [
+         "clean:audit",
+         "seg:Department/Annual_Salary"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "Attrition so far in 2026 is 26.2%, an annual attrition rate of 31.4% if the pace holds, the highest in four years.",
+        "label": "unsupported",
+        "kind": "number",
+        "reason": "states 26.2%, which no evidence holds",
+        "evidence_ids": [
+         "clean:audit"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 4,
+        "section": "finding",
+        "claim": "Only 2 women in Legal left this year, both from the same team.",
+        "label": "privacy",
+        "kind": "small_cell",
+        "reason": "reports '2 women', a group of fewer than 11: small groups of people are not reported (they can identify them)",
+        "evidence_ids": [
+         "seg:Department/Annual_Salary"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 7,
+        "section": "action",
+        "claim": "Ten Support employees are flight risks and should be put on retention plans now. Reducing voluntary attrition would directly lower replacement costs and preserve institutional knowledge.",
+        "label": "overstated",
+        "kind": "certainty",
+        "reason": "predicts which people will leave: a decision about individuals this data can't support (EU AI Act Annex III 4(b))",
+        "evidence_ids": [
+         "clean:audit"
+        ],
+        "source": "check"
+       }
+      ],
+      "generated_at": "2026-11-04T21:58:23.702248Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Low pay is driving attrition: Support, the lowest-paid department, loses the most people, so raising Support salaries would cut its attrition.",
+       "ids": [
+        "clean:audit",
+        "seg:Department/Annual_Salary"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "As of 31 Oct 2026, the organisation employs 885 people (839.0 FTE), with 286 separations recorded over the prior 12 months driving a 29.6% attrition rate \u2014 15.9% of which was voluntary.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Pay spread across departments and a high attrition rate are the two areas most deserving immediate attention.",
+       "ids": [
+        "seg:Department/Annual_Salary",
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Attrition so far in 2026 is 26.2%, an annual attrition rate of 31.4% if the pace holds, the highest in four years.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Only 2 women in Legal left this year, both from the same team.",
+       "ids": [
+        "seg:Department/Annual_Salary"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The overall annual salary distribution is wide \u2014 from $19,100 to $217,100 \u2014 with a median of $69,300 and a mean of $76,006, and outliers have been flagged but kept in the data.",
+       "ids": [
+        "eda:Annual_Salary"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The dataset covers hire dates from 2015 to 2026 across 885 employees recorded in 1,770 rows, meaning each employee appears more than once (e.g. across role or status changes), so headcount should never be read from row counts.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Ten Support employees are flight risks and should be put on retention plans now. Reducing voluntary attrition would directly lower replacement costs and preserve institutional knowledge."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:Department/Annual_Salary",
+        "eda:Annual_Salary"
+       ],
+       "text": "Review the pay gap between Support ($62,996 average) and the organisation-wide median ($69,300) to assess whether compensation is competitive enough to retain staff in that department. Support is the lowest-paid department and may be contributing disproportionately to attrition."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "eda:Annual_Salary"
+       ],
+       "text": "Examine the high-salary outliers (up to $217,100) to confirm they are correctly classified and not data errors before using salary figures in any pay-equity or benchmarking work. Outliers inflate the mean and could distort department-level comparisons."
+      }
+     ],
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Employee_ID",
+       "Employee_Name",
+       "Work_Email",
+       "SSN",
+       "Date_of_Birth",
+       "Gender",
+       "Ethnicity",
+       "Department",
+       "Job_Level",
+       "Manager_ID",
+       "Worker_Type",
+       "FTE",
+       "Annual_Salary",
+       "Hire_Date",
+       "Termination_Date",
+       "Termination_Category",
+       "Regrettable",
+       "Employment_Status",
+       "Performance_Rating"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:Department/Annual_Salary",
+       "eda:Annual_Salary"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 1770 \u2192 1770 rows, 8 logged changes",
+        "result_excerpt": "{\"rows_before\": 1770, \"rows_after\": 1770, \"decisions\": [[\"Date_of_Birth\", \"type_coerce\", 1770, 0], [\"Hire_Date\", \"type_coerce\", 1770, 0], [\"Termination_Date\", \"type_coerce\", 863, 0], [\"Annual_Salary\", \"keep\", 0, 0], [\"Termination_Date\", \"keep\", 0, 0], [\"Termination_Category\", \"keep\", 0, 0], [\"Regrettable\", \"keep\", 0, 0], [\"Performance_Rating\", \"keep\", 0, 0]]}",
+        "row_count": 1770,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Date_of_Birth: Parsed as dates.",
+         "Hire_Date: Parsed as dates.",
+         "Termination_Date: Parsed as dates.",
+         "Annual_Salary: 121 missing (6.8%), metric of the question: left as missing; totals and averages use the 1649 known rows.",
+         "Termination_Date: Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+         "Termination_Category: Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+         "Regrettable: Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+         "Performance_Rating: 121 missing (6.8%), number: left as missing; totals and averages use the 1649 known rows."
+        ]
+       },
+       {
+        "id": "seg:Department/Annual_Salary",
+        "kind": "segment",
+        "claim": "mean Annual_Salary by Department (6 groups)",
+        "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"Annual_Salary\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Engineering\", \"value\": 87341.0798}, {\"name\": \"Finance\", \"value\": 78136.2069}, {\"name\": \"Marketing\", \"value\": 74418.5897}, {\"name\": \"Operations\", \"value\": 70909.375}, {\"name\": \"Sales\", \"value\": 77741.0127}, {\"name\": \"Support\", \"value\": 62996.0894}]}",
+        "row_count": 1649,
+        "confidence": "high",
+        "confidence_reason": "1649 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Annual_Salary",
+        "kind": "eda",
+        "claim": "Annual_Salary: median 69,300.00, mean 76,006.06, range 19,100.00 to 217,100.00",
+        "result_excerpt": "{\"mean\": 76006.0643, \"std\": 30833.5116, \"min\": 19100.0, \"max\": 217100.0, \"median\": 69300.0, \"count\": 1649.0}",
+        "row_count": 1649,
+        "confidence": "high",
+        "confidence_reason": "1649 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2015,
+       1
+      ],
+      "date_last": [
+       2027,
+       1
+      ],
+      "n_months": 145,
+      "audit_summary": "Parsed numbers or dates in 3 column(s). Left missing values as missing in 2 column(s); nothing was imputed. Outliers flagged (kept) in: Annual_Salary. Final dataset: 1770 rows (started with 1770).",
+      "chart_titles": [
+       "Headcount over time",
+       "Headcount by Department (as of 31 Oct 2026)",
+       "Attrition rate by Department (12 months to 31 Oct 2026)",
+       "Voluntary attrition by Department (12 months to 31 Oct 2026)",
+       "Hires by Department (12 months to 31 Oct 2026)",
+       "Separations by Department (12 months to 31 Oct 2026)",
+       "Average annual salary by department: Legal highest (96,450.00), Support lowest (62,996.09)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Annual_Salary": {
+          "mean": 76006.0643,
+          "std": 30833.5116,
+          "min": 19100.0,
+          "max": 217100.0,
+          "median": 69300.0,
+          "count": 1649.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "Department",
+          "metric_column": "Annual_Salary",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Engineering",
+            "value": 87341.0798
+           },
+           {
+            "name": "Finance",
+            "value": 78136.2069
+           },
+           {
+            "name": "Marketing",
+            "value": 74418.5897
+           },
+           {
+            "name": "Operations",
+            "value": 70909.375
+           },
+           {
+            "name": "Sales",
+            "value": 77741.0127
+           },
+           {
+            "name": "Support",
+            "value": 62996.0894
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Employee_ID": 0.0,
+         "Employee_Name": 0.0,
+         "Work_Email": 0.0,
+         "SSN": 0.0,
+         "Date_of_Birth": 0.0,
+         "Gender": 0.0,
+         "Ethnicity": 0.0,
+         "Department": 0.0,
+         "Job_Level": 0.0,
+         "Manager_ID": 0.0,
+         "Worker_Type": 0.0,
+         "FTE": 0.0,
+         "Annual_Salary": 6.84,
+         "Hire_Date": 0.0,
+         "Termination_Date": 51.24,
+         "Termination_Category": 51.24,
+         "Regrettable": 51.24,
+         "Employment_Status": 0.0,
+         "Performance_Rating": 6.84
+        },
+        "kpis": [
+         {
+          "label": "Headcount",
+          "value": "885 employees",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "headcount",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Employee_ID in force at the date (Hire_Date on or before the date, Termination_Date blank or after it) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over sale rows."
+         },
+         {
+          "label": "FTE",
+          "value": "839.00",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "fte",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "number",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of FTE over the distinct Employee_ID in force at the date (Hire_Date on or before the date, Termination_Date blank or after it) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over sale rows."
+         },
+         {
+          "label": "Separations",
+          "value": "286",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "separations",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Exits in the period (events: by Termination_Date; a returning Employee_ID's exits count separately) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over sale rows."
+         },
+         {
+          "label": "Attrition rate",
+          "value": "29.6%",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "attrition_rate",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Separations, divided by average headcount."
+         },
+         {
+          "label": "Voluntary attrition",
+          "value": "15.9%",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "voluntary_attrition",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Voluntary separations, divided by average headcount."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 1770 \u2192 1770 rows, 8 logged changes",
+         "result_excerpt": "{\"rows_before\": 1770, \"rows_after\": 1770, \"decisions\": [[\"Date_of_Birth\", \"type_coerce\", 1770, 0], [\"Hire_Date\", \"type_coerce\", 1770, 0], [\"Termination_Date\", \"type_coerce\", 863, 0], [\"Annual_Salary\", \"keep\", 0, 0], [\"Termination_Date\", \"keep\", 0, 0], [\"Termination_Category\", \"keep\", 0, 0], [\"Regrettable\", \"keep\", 0, 0], [\"Performance_Rating\", \"keep\", 0, 0]]}",
+         "row_count": 1770,
+         "assumptions": [
+          "Date_of_Birth: Parsed as dates.",
+          "Hire_Date: Parsed as dates.",
+          "Termination_Date: Parsed as dates.",
+          "Annual_Salary: 121 missing (6.8%), metric of the question: left as missing; totals and averages use the 1649 known rows.",
+          "Termination_Date: Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+          "Termination_Category: Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+          "Regrettable: Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+          "Performance_Rating: 121 missing (6.8%), number: left as missing; totals and averages use the 1649 known rows."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "mean Annual_Salary by Department (6 groups)",
+         "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"Annual_Salary\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Engineering\", \"value\": 87341.0798}, {\"name\": \"Finance\", \"value\": 78136.2069}, {\"name\": \"Marketing\", \"value\": 74418.5897}, {\"name\": \"Operations\", \"value\": 70909.375}, {\"name\": \"Sales\", \"value\": 77741.0127}, {\"name\": \"Support\", \"value\": 62996.0894}]}",
+         "row_count": 1649,
+         "assumptions": [],
+         "confidence_reason": "1649 rows"
+        },
+        {
+         "claim": "Annual_Salary: median 69,300.00, mean 76,006.06, range 19,100.00 to 217,100.00",
+         "result_excerpt": "{\"mean\": 76006.0643, \"std\": 30833.5116, \"min\": 19100.0, \"max\": 217100.0, \"median\": 69300.0, \"count\": 1649.0}",
+         "row_count": 1649,
+         "assumptions": [],
+         "confidence_reason": "1649 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Date_of_Birth",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 1770,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Hire_Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 1770,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Termination_Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 863,
+          "before_null_pct": 51.2,
+          "after_null_pct": 51.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Annual_Salary",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "121 missing (6.8%), metric of the question: left as missing; totals and averages use the 1649 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 6.8,
+          "after_null_pct": 6.8,
+          "rows_removed": 0
+         },
+         {
+          "column": "Termination_Date",
+          "operation": "keep",
+          "strategy": "marker",
+          "reason": "Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 51.2,
+          "after_null_pct": 51.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Termination_Category",
+          "operation": "keep",
+          "strategy": "marker",
+          "reason": "Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 51.2,
+          "after_null_pct": 51.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Regrettable",
+          "operation": "keep",
+          "strategy": "marker",
+          "reason": "Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 51.2,
+          "after_null_pct": 51.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Performance_Rating",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "121 missing (6.8%), number: left as missing; totals and averages use the 1649 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 6.8,
+          "after_null_pct": 6.8,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 1770,
+        "rows_after": 1770,
+        "columns_coerced": [
+         "Date_of_Birth",
+         "Hire_Date",
+         "Termination_Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "2 extreme outliers in Annual_Salary (0.1% of data, threshold: values > 203,700)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 3 column(s). Left missing values as missing in 2 column(s); nothing was imputed. Outliers flagged (kept) in: Annual_Salary. Final dataset: 1770 rows (started with 1770).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Annual_Salary",
+           "extreme_count": 2,
+           "mild_count": 60,
+           "extreme_pct": 0.1212856276531231,
+           "lower_bound": -58100.0,
+           "upper_bound": 203700.0,
+           "mild_lower_bound": -2000.0,
+           "mild_upper_bound": 147600.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "2 extreme outliers in Annual_Salary (0.1% of data, threshold: values > 203,700)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Annual_Salary"
+         ],
+         "skipped_columns": {
+          "Employee_ID": "id column",
+          "Employee_Name": "constant or unsupported",
+          "Work_Email": "constant or unsupported",
+          "SSN": "constant or unsupported",
+          "Date_of_Birth": "datetime column",
+          "Gender": "non-numeric",
+          "Ethnicity": "non-numeric",
+          "Department": "non-numeric",
+          "Job_Level": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Manager_ID": "id column",
+          "Worker_Type": "non-numeric",
+          "FTE": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Hire_Date": "datetime column",
+          "Termination_Date": "datetime column",
+          "Termination_Category": "non-numeric",
+          "Regrettable": "binary column (only 2 values)",
+          "Employment_Status": "non-numeric",
+          "Performance_Rating": "ordinal (low-cardinality numeric, e.g. Likert/class)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Hire_Date": [
+          "2015-01-13",
+          "2026-12-01",
+          144
+         ],
+         "Termination_Date": [
+          "2023-01-03",
+          "2027-01-31",
+          49
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Hire_Date": [
+          "2026-12",
+          1
+         ]
+        },
+        "main_currency": null
+       },
+       [
+        "Headcount over time",
+        "Headcount by Department (as of 31 Oct 2026)",
+        "Attrition rate by Department (12 months to 31 Oct 2026)",
+        "Voluntary attrition by Department (12 months to 31 Oct 2026)",
+        "Hires by Department (12 months to 31 Oct 2026)",
+        "Separations by Department (12 months to 31 Oct 2026)",
+        "Average annual salary by department: Legal highest (96,450.00), Support lowest (62,996.09)"
+       ],
+       [
+        1770,
+        19,
+        145
+       ],
+       [
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025,
+        2026,
+        2027
+       ],
+       [
+        "Read as HR data (headcount, FTE, separations, attrition rate, voluntary attrition, hires, average salary (current staff)). Headcount is the people in force at the latest date (contractors and agency workers out, interns and part-timers in); separations and hires are events (a rehire's exits count separately); attrition is separations \u00f7 the average of the month-end headcounts over the 12 months to that date. Pay and protected attributes (gender, ethnicity) are never shown for groups of fewer than 11 people.",
+        "Gender is shown as a description only: hiring, firing or pay decisions on it are discrimination, so no recommendation is made on it; groups of fewer than 11 people are not shown.",
+        "Ethnicity is special-category data (GDPR Art. 9): shown as a description only, never a recommendation about people, and never for groups of fewer than 11.",
+        "Performance ratings describe groups here; they are never used to rank or predict individuals."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "seg:Department/Annual_Salary",
+      "eda:Annual_Salary"
+     ]
+    },
+    "latency_s": 16.53,
+    "cost_usd": 0.00939,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 0,\n      \"label\": \"overstated\",\n      \"evidence\": [\"seg:Department/Annual_Salary\"],\n      \"evidence_says\": \"Support has mean annual salary of $62,996.09, the lowest of six departments shown\",\n      \"reason\": \"The claim states low pay is 'driving' attrition and that 'raising Support salaries would cut its attrition', implying causation. The evidence shows only an association: Support is both lowest-paid and (from the data facts) has high attrition, but the evidence does not establish that salary differences cause the attrition or that raising salaries would reduce it. This requires a control group or mechanism the evidence does not provide.\"\n    },\n    {\n      \"claim\": 3,\n      \"label\": \"unsupported\",\n      \"evidence\": [],\n      \"evidence_says\": \"No evidence item contains a figure of 26.2% attrition for 2026 year-to-date\",\n      \"reason\": \"The claim states 'Attrition so far in 2026 is 26.2%', but this specific value does not appear in any cited evidence. The data facts note that Dec 2026 is partial and is left out of period comparisons, but no 2026 year-to-date attrition rate is provided in the evidence.\"\n    },\n    {\n      \"claim\": 4,\n      \"label\": \"privacy\",\n      \"evidence\": [\"seg:Department/Annual_Salary\"],\n      \"evidence_says\": \"seg:Department/Annual_Salary reports mean salary by department for 6 groups; no breakdown by gender within department is shown\",\n      \"reason\": \"The claim reports '2 women in Legal left this year, both from the same team', identifying a group of fewer than 11 people by gender. The report's stated policy prohibits showing pay and protected attributes (gender, ethnicity) for groups of fewer than 11 people, and this claim violates that rule by reporting a gender-based subgroup.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The evidence shows Support has the lowest mean salary ($62,996) but does not explain whether this reflects job-level mix, experience, or market rates. Comparing Support salaries to other departments within the same job levels would clarify whether the gap is structural.\",\n      \"columns\": [\"Department\", \"Job_Level\", \"Annual_Salary\"]\n    },\n    {\n      \"text\": \"The claim about attrition trends ('highest in four years') requires historical attrition rates by period, but the evidence provides only the 12-month attrition rate to 31 Oct 2026 (29.6%). A trend analysis across prior years is not shown.\",\n      \"columns\": [\"Hire_Date\", \"Termination_Date\", \"Employment_Status\"]\n    },\n    {\n      \"text\": \"The evidence does not show which employees are 'flight risks' or how they were identified. Claim 7 names 10 Support employees for retention plans, but no evidence item lists individuals or flags them as at-risk.\",\n      \"columns\": [\"Department\", \"Performance_Rating\", \"Termination_Category\", \"Regrettable\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"Annual_Salary is computed on 1,649 rows (out of 1,770), meaning 121 rows have missing salary data. The evidence notes outliers were flagged but kept; the mean ($76,006) is notably higher than the median ($69,300), suggesting the outliers (up to $217,100) inflate the average and may skew department-level comparisons.\",\n      \"columns\": [\"Annual_Salary\"]\n    },\n    {\n      \"text\": \"Attrition is defined as separations \u00f7 average month-end headcount over 12 months, but the evidence does not show the month-end headcount figures used in the denominator or break down separations by voluntary vs. involuntary within departments. This limits the ability to assess whether Support's attrition is driven by voluntary departures or other factors.\",\n      \"columns\": [\"Termination_Date\", \"Termination_Category\", \"Employment_Status\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Compare mean annual salary in Support to other departments within each job level to determine whether the $62,996 average reflects lower-level roles or a true pay gap at equivalent levels.\",\n      \"columns\": [\"Department\", \"Job_Level\", \"Annual_Salary\"]\n    },\n    {\n      \"text\": \"Analyze attrition rate by department and termination category (voluntary vs. involuntary) over the 12-month period to identify whether Support's attrition is primarily voluntary and whether it differs from other departments.\",\n      \"columns\": [\"Department\", \"Termination_Category\", \"Termination_Date\", \"Employment_Status\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "q-48-hr-snapshots-overview": [
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "number",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[number] caught by ['check']The dataset covers 24 months of monthly HR snapshots (Nov 2024 \u2013 Oct 2"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "causal",
+      "sources": [
+       "critic"
+      ],
+      "label_match": false,
+      "detail": "[causal] caught by ['critic']Hiring 70 people in 12 months is what pushed attrition up to 14.3%: th"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "8 claims checked against the evidence; 2 flagged (1 unsupported, 1 contradicted).",
+      "strengths": [],
+      "gaps": [
+       "The report does not show attrition by department or tenure, which the user's question asks for in claim 6 (an action). Breakdown of the 49 separations by department and employee tenure would be needed to identify where retention efforts should focus.",
+       "No evidence on the composition of the 70 hires (by department, worker type, or hire date) is shown. Understanding where new joiners were placed would help assess whether they contributed disproportionately to separations.",
+       "The report does not show headcount or FTE trends over the 24-month period. Month-by-month or quarter-by-quarter headcount would reveal whether attrition and hiring patterns are stable or changing."
+      ],
+      "next_investigations": [
+       "Break down the 49 separations by department and compare to headcount by department as of 31 Oct 2026 to identify which departments have the highest attrition rates.",
+       "Segment separations by tenure (months between hire date and termination date) to determine whether recent hires account for a disproportionate share of the 49 separations.",
+       "Compare average base salary by department and worker type to assess whether pay differences correlate with attrition or hiring patterns."
+      ],
+      "methodology_concerns": [
+       "Attrition is calculated as separations \u00f7 average month-end headcount over 12 months. The evidence does not show the month-end headcounts used in the denominator, so the 14.3% figure cannot be independently verified from the data shown."
+      ],
+      "flags": [
+       {
+        "index": 1,
+        "section": "paragraph",
+        "claim": "The dataset covers 24 months of monthly HR snapshots (Nov 2024 \u2013 Oct 2026) across 8,220 employees, tracking headcount, pay, hires, and separations.",
+        "label": "contradicted",
+        "kind": "number",
+        "reason": "calls the file's 8,220 rows employees: the data has 353 employees",
+        "evidence_ids": [
+         "clean:audit"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 2,
+        "section": "paragraph",
+        "claim": "Hiring 70 people in 12 months is what pushed attrition up to 14.3%: the new joiners left first.",
+        "label": "unsupported",
+        "kind": "critic",
+        "reason": "The claim states that hiring 70 people 'pushed attrition up to 14.3%' and that 'new joiners left first.' The evidence provides the hiring and separation counts and the resulting attrition rate, but contains no information about whether new joiners were responsible for the separations, the timing of their departures, or any causal mechanism. This is an unsupported inference from the data.",
+        "evidence_ids": [
+         "clean:audit"
+        ],
+        "source": "critic"
+       }
+      ],
+      "generated_at": "2026-11-04T21:58:20.695129Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "As of 31 Oct 2026, the workforce stands at 353 employees with an annual attrition rate of 14.3% and a median base salary of $82,700.",
+       "ids": [
+        "eda:Base_Salary",
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The dataset covers 24 months of monthly HR snapshots (Nov 2024 \u2013 Oct 2026) across 8,220 employees, tracking headcount, pay, hires, and separations.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Hiring 70 people in 12 months is what pushed attrition up to 14.3%: the new joiners left first.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The workforce totals 353 employees (338.40 FTE) as of 31 Oct 2026, with 70 hires and 49 separations over the prior 12 months, yielding an attrition rate of 14.3%.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Base salary ranges widely \u2014 from $34,400 to $170,800 \u2014 with a median of $82,700 and a mean of $84,622; salary outliers have been flagged but kept in the data.",
+       "ids": [
+        "eda:Base_Salary"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Average base salary is broadly similar across the six departments, with Marketing averaging $87,825 and Finance the lowest at $83,437.",
+       "ids": [
+        "seg:Department/Base_Salary"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Investigate the drivers of the 14.3% attrition rate by department and tenure to identify where retention efforts should be focused. 49 separations in 12 months represent meaningful workforce disruption and replacement cost."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "eda:Base_Salary"
+       ],
+       "text": "Review the salary outliers flagged in base salary to confirm they reflect legitimate roles rather than data errors before using pay data in decisions. The $34,400\u2013$170,800 range is wide; unverified outliers could distort any pay equity or benchmarking analysis."
+      }
+     ],
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Snapshot_Date",
+       "Emp_ID",
+       "Department",
+       "Location",
+       "Worker_Type",
+       "FTE",
+       "Base_Salary",
+       "Hire_Date",
+       "Termination_Date",
+       "Status",
+       "Gender"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:Department/Base_Salary",
+       "eda:Base_Salary"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 8220 \u2192 8220 rows, 4 logged changes",
+        "result_excerpt": "{\"rows_before\": 8220, \"rows_after\": 8220, \"decisions\": [[\"Snapshot_Date\", \"type_coerce\", 8220, 0], [\"Hire_Date\", \"type_coerce\", 8220, 0], [\"Termination_Date\", \"type_coerce\", 35, 0], [\"Termination_Date\", \"keep\", 0, 0]]}",
+        "row_count": 8220,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Snapshot_Date: Parsed as dates.",
+         "Hire_Date: Parsed as dates.",
+         "Termination_Date: Parsed as dates.",
+         "Termination_Date: Filled only on the rows it applies to, so 8185 blanks mean none, not missing values. Kept as it is."
+        ]
+       },
+       {
+        "id": "seg:Department/Base_Salary",
+        "kind": "segment",
+        "claim": "mean Base_Salary by Department (6 groups)",
+        "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"Base_Salary\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Engineering\", \"value\": 87081.1765}, {\"name\": \"Finance\", \"value\": 83436.6667}, {\"name\": \"Marketing\", \"value\": 87825.0}, {\"name\": \"Operations\", \"value\": 86818.1818}, {\"name\": \"Sales\", \"value\": 87192.5532}, {\"name\": \"Support\", \"value\": 83600.0}]}",
+        "row_count": 8220,
+        "confidence": "high",
+        "confidence_reason": "8220 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Base_Salary",
+        "kind": "eda",
+        "claim": "Base_Salary: median 82,700.00, mean 84,622.10, range 34,400.00 to 170,800.00",
+        "result_excerpt": "{\"mean\": 84622.1046, \"std\": 20535.2159, \"min\": 34400.0, \"max\": 170800.0, \"median\": 82700.0, \"count\": 8220.0}",
+        "row_count": 8220,
+        "confidence": "high",
+        "confidence_reason": "8220 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2012,
+       2
+      ],
+      "date_last": [
+       2026,
+       11
+      ],
+      "n_months": 178,
+      "audit_summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Base_Salary. Final dataset: 8220 rows (started with 8220).",
+      "chart_titles": [
+       "Headcount over time",
+       "Headcount by Department (as of 31 Oct 2026)",
+       "Attrition rate by Department (12 months to 31 Oct 2026)",
+       "Hires by Department (12 months to 31 Oct 2026)",
+       "Separations by Department (12 months to 31 Oct 2026)",
+       "Average base salary by department: Marketing highest (87,825.00), Finance lowest (83,436.67)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Base_Salary": {
+          "mean": 84622.1046,
+          "std": 20535.2159,
+          "min": 34400.0,
+          "max": 170800.0,
+          "median": 82700.0,
+          "count": 8220.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "Department",
+          "metric_column": "Base_Salary",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Engineering",
+            "value": 87081.1765
+           },
+           {
+            "name": "Finance",
+            "value": 83436.6667
+           },
+           {
+            "name": "Marketing",
+            "value": 87825.0
+           },
+           {
+            "name": "Operations",
+            "value": 86818.1818
+           },
+           {
+            "name": "Sales",
+            "value": 87192.5532
+           },
+           {
+            "name": "Support",
+            "value": 83600.0
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Snapshot_Date": 0.0,
+         "Emp_ID": 0.0,
+         "Department": 0.0,
+         "Location": 0.0,
+         "Worker_Type": 0.0,
+         "FTE": 0.0,
+         "Base_Salary": 0.0,
+         "Hire_Date": 0.0,
+         "Termination_Date": 99.57,
+         "Status": 0.0,
+         "Gender": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Headcount",
+          "value": "353 employees",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "headcount",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Emp_ID in force at the date (each Emp_ID's latest Snapshot_Date snapshot on or before the date, Termination_Date blank or after it) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over sale rows."
+         },
+         {
+          "label": "FTE",
+          "value": "338.40",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "fte",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "number",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of FTE over the distinct Emp_ID in force at the date (each Emp_ID's latest Snapshot_Date snapshot on or before the date, Termination_Date blank or after it) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over sale rows."
+         },
+         {
+          "label": "Separations",
+          "value": "49",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "separations",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Exits in the period (events: by Termination_Date, or the first snapshot an entity is missing from; a returning Emp_ID's exits count separately) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over sale rows."
+         },
+         {
+          "label": "Attrition rate",
+          "value": "14.3%",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "attrition_rate",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Separations, divided by average headcount."
+         },
+         {
+          "label": "Hires",
+          "value": "70",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "hires",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Spells starting in the period (by Hire_Date) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over sale rows."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 8220 \u2192 8220 rows, 4 logged changes",
+         "result_excerpt": "{\"rows_before\": 8220, \"rows_after\": 8220, \"decisions\": [[\"Snapshot_Date\", \"type_coerce\", 8220, 0], [\"Hire_Date\", \"type_coerce\", 8220, 0], [\"Termination_Date\", \"type_coerce\", 35, 0], [\"Termination_Date\", \"keep\", 0, 0]]}",
+         "row_count": 8220,
+         "assumptions": [
+          "Snapshot_Date: Parsed as dates.",
+          "Hire_Date: Parsed as dates.",
+          "Termination_Date: Parsed as dates.",
+          "Termination_Date: Filled only on the rows it applies to, so 8185 blanks mean none, not missing values. Kept as it is."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "mean Base_Salary by Department (6 groups)",
+         "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"Base_Salary\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Engineering\", \"value\": 87081.1765}, {\"name\": \"Finance\", \"value\": 83436.6667}, {\"name\": \"Marketing\", \"value\": 87825.0}, {\"name\": \"Operations\", \"value\": 86818.1818}, {\"name\": \"Sales\", \"value\": 87192.5532}, {\"name\": \"Support\", \"value\": 83600.0}]}",
+         "row_count": 8220,
+         "assumptions": [],
+         "confidence_reason": "8220 rows"
+        },
+        {
+         "claim": "Base_Salary: median 82,700.00, mean 84,622.10, range 34,400.00 to 170,800.00",
+         "result_excerpt": "{\"mean\": 84622.1046, \"std\": 20535.2159, \"min\": 34400.0, \"max\": 170800.0, \"median\": 82700.0, \"count\": 8220.0}",
+         "row_count": 8220,
+         "assumptions": [],
+         "confidence_reason": "8220 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Snapshot_Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 8220,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Hire_Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 8220,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Termination_Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 35,
+          "before_null_pct": 99.6,
+          "after_null_pct": 99.6,
+          "rows_removed": 0
+         },
+         {
+          "column": "Termination_Date",
+          "operation": "keep",
+          "strategy": "marker",
+          "reason": "Filled only on the rows it applies to, so 8185 blanks mean none, not missing values. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 99.6,
+          "after_null_pct": 99.6,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 8220,
+        "rows_after": 8220,
+        "columns_coerced": [
+         "Snapshot_Date",
+         "Hire_Date",
+         "Termination_Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "112 mild outliers in Base_Salary (threshold: values outside [-15,400, 183,400]) \u2014 see analyst tab"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Base_Salary. Final dataset: 8220 rows (started with 8220).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Base_Salary",
+           "extreme_count": 0,
+           "mild_count": 112,
+           "extreme_pct": 0.0,
+           "lower_bound": -15400.0,
+           "upper_bound": 183400.0,
+           "mild_lower_bound": 27200.0,
+           "mild_upper_bound": 140800.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "112 mild outliers in Base_Salary (threshold: values outside [-15,400, 183,400]) \u2014 see analyst tab"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Base_Salary"
+         ],
+         "skipped_columns": {
+          "Snapshot_Date": "datetime column",
+          "Emp_ID": "id column",
+          "Department": "non-numeric",
+          "Location": "non-numeric",
+          "Worker_Type": "binary column (only 2 values)",
+          "FTE": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Hire_Date": "datetime column",
+          "Termination_Date": "datetime column",
+          "Status": "binary column (only 2 values)",
+          "Gender": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Snapshot_Date": [
+          "2024-11-30",
+          "2026-10-31",
+          24
+         ],
+         "Hire_Date": [
+          "2012-02-19",
+          "2026-10-19",
+          177
+         ],
+         "Termination_Date": [
+          "2024-12-12",
+          "2026-11-20",
+          24
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null
+       },
+       [
+        "Headcount over time",
+        "Headcount by Department (as of 31 Oct 2026)",
+        "Attrition rate by Department (12 months to 31 Oct 2026)",
+        "Hires by Department (12 months to 31 Oct 2026)",
+        "Separations by Department (12 months to 31 Oct 2026)",
+        "Average base salary by department: Marketing highest (87,825.00), Finance lowest (83,436.67)"
+       ],
+       [
+        8220,
+        11,
+        178
+       ],
+       [
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as HR data (headcount, FTE, separations, attrition rate, hires, average salary (current staff)). Headcount is the people in force at the latest date (contractors and agency workers out, interns and part-timers in); separations and hires are events (a rehire's exits count separately); attrition is separations \u00f7 the average of the month-end headcounts over the 12 months to that date. Pay and protected attributes (gender, ethnicity) are never shown for groups of fewer than 11 people.",
+        "Gender is shown as a description only: hiring, firing or pay decisions on it are discrimination, so no recommendation is made on it; groups of fewer than 11 people are not shown."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "seg:Department/Base_Salary",
+      "eda:Base_Salary"
+     ]
+    },
+    "latency_s": 11.85,
+    "cost_usd": 0.00863,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 2,\n      \"label\": \"unsupported\",\n      \"evidence\": [\"clean:audit\"],\n      \"evidence_says\": \"70 hires and 49 separations over 12 months to 31 Oct 2026; attrition rate is 14.3%.\",\n      \"reason\": \"The claim states that hiring 70 people 'pushed attrition up to 14.3%' and that 'new joiners left first.' The evidence provides the hiring and separation counts and the resulting attrition rate, but contains no information about whether new joiners were responsible for the separations, the timing of their departures, or any causal mechanism. This is an unsupported inference from the data.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The report does not show attrition by department or tenure, which the user's question asks for in claim 6 (an action). Breakdown of the 49 separations by department and employee tenure would be needed to identify where retention efforts should focus.\",\n      \"columns\": [\"Department\", \"Termination_Date\", \"Hire_Date\"]\n    },\n    {\n      \"text\": \"No evidence on the composition of the 70 hires (by department, worker type, or hire date) is shown. Understanding where new joiners were placed would help assess whether they contributed disproportionately to separations.\",\n      \"columns\": [\"Department\", \"Hire_Date\", \"Worker_Type\"]\n    },\n    {\n      \"text\": \"The report does not show headcount or FTE trends over the 24-month period. Month-by-month or quarter-by-quarter headcount would reveal whether attrition and hiring patterns are stable or changing.\",\n      \"columns\": [\"Snapshot_Date\", \"Emp_ID\", \"FTE\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"Attrition is calculated as separations \u00f7 average month-end headcount over 12 months. The evidence does not show the month-end headcounts used in the denominator, so the 14.3% figure cannot be independently verified from the data shown.\",\n      \"columns\": [\"Snapshot_Date\", \"Emp_ID\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Break down the 49 separations by department and compare to headcount by department as of 31 Oct 2026 to identify which departments have the highest attrition rates.\",\n      \"columns\": [\"Department\", \"Termination_Date\", \"Snapshot_Date\", \"Emp_ID\"]\n    },\n    {\n      \"text\": \"Segment separations by tenure (months between hire date and termination date) to determine whether recent hires account for a disproportionate share of the 49 separations.\",\n      \"columns\": [\"Hire_Date\", \"Termination_Date\"]\n    },\n    {\n      \"text\": \"Compare average base salary by department and worker type to assess whether pay differences correlate with attrition or hiring patterns.\",\n      \"columns\": [\"Department\", \"Worker_Type\", \"Base_Salary\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": true,\n      \"why\": \"The claim states a causal mechanism ('pushed attrition up') and attributes separations to new joiners ('new joiners left first'), but the evidence provides only counts of hires, separations, and the resulting attrition rate with no data on timing of departures, cohort analysis, or causal relationship between hiring and attrition.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

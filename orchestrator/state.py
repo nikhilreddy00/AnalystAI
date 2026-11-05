@@ -283,6 +283,9 @@ class CleaningAudit(BaseModel):
     # Period comparisons leave that month out (utils.partial_last_month).
     partial_months: dict[str, list] = Field(default_factory=dict)
     main_currency: str | None = None   # 5.7: money totals' currency when rows carry several
+    # 5.7 Domain 5: on spell data, the file's story as computed facts (domain_pack.spell_story:
+    # year-earlier rates, peak to now, the largest month of ends, people vs rows, dated later)
+    spell_story: list[str] = Field(default_factory=list)
 
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────

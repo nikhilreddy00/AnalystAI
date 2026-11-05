@@ -378,6 +378,8 @@ HR_SEGMENT = {"attrition_12m_by_dept": "Department", "pay_gap_mean_fte_by_level"
     ("hr_roster", "attrition_12m_by_dept", "attrition_12m_by_dept_end_hc", RATE),
     ("hr_roster", "attrition_12m", "attrition_all_rows", RATE),                      # 2 AVG(left)
     ("hr_roster", "people", "rows", EXACT),                                          # 3 rehires
+    ("hr_roster", "headcount_asof", "headcount_asof_future_exits_out", EXACT),       # 12 future exit
+    ("hr_roster", "headcount_asof", "headcount_asof_with_terminated_no_date", EXACT),  # 13 no date
     ("hr_roster_onerow", "avg_headcount_12m", "avg_headcount_12m_original_hire", AVG_HC),  # 4
     ("hr_roster", "attrition_12m", "attrition_12m_with_contingent", RATE),           # 5
     ("hr_roster", "voluntary_attrition_12m", "voluntary_incl_retirement", RATE),     # 6

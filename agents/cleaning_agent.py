@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import re
 from collections import Counter
 from dataclasses import dataclass, field
@@ -131,6 +132,8 @@ class CleanContext:
     roles: dict[str, str] = field(default_factory=dict)
     strong: bool = False       # a shape only that domain has: the pack may rewrite rows
 
+
+logger = logging.getLogger(__name__)
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
     df_parquet = session.__dict__.get("_df_parquet")
@@ -532,6 +535,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                      "The cleaning step broke its own audit rules; nothing was changed.")
 
     duplicates = sum(d.rows_removed for d in decisions if d.operation == "drop_duplicates")
+    spell_dated = _as_of_dated(df, ctx)
     audit = CleaningAudit(
         decisions=decisions,
         rows_before=rows_before,
@@ -545,13 +549,40 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                anomaly_report.methodology_note),
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
-        date_ranges=_date_ranges(df, ctx.pii),
+        date_ranges=_date_ranges(spell_dated, ctx.pii),
         grain=grain,
-        partial_months={c: [str(df[c].max().to_period("M")), int(df[c].max().day)]
-                        for c in _date_ranges(df, ctx.pii) if partial_last_month(df[c])},
+        partial_months={c: [str(spell_dated[c].max().to_period("M")), int(spell_dated[c].max().day)]
+                        for c in _date_ranges(spell_dated, ctx.pii) if partial_last_month(spell_dated[c])},
         main_currency=currency if ctx.pack and other else None,
+        spell_story=_spell_story(df, ctx),
     )
     return df, audit
+
+
+def _spell_story(df: pd.DataFrame, ctx) -> list[str]:
+    """On strong spell data, the file's story as computed facts (domain_pack.spell_story): the
+    insight agent reads them from the audit, as it reads the date ranges."""
+    from domain_pack import has_spell, spell_story
+    if not ctx.pack or not ctx.strong or not has_spell(ctx.pack, ctx.roles):
+        return []
+    try:
+        return spell_story(ctx.pack, df, ctx.roles)
+    except Exception:   # a story the data can't tell is no story, never a failed cleaning
+        logger.warning("spell story failed", exc_info=True)
+        return []
+
+
+def _as_of_dated(df: pd.DataFrame, ctx) -> pd.DataFrame:
+    """On spell data, the pack's dates after the as-of (a notice-period exit, a pre-boarded hire:
+    not yet events) left out of the data's period: the report's date range and partial month
+    end at the as-of, never at a future hire (Domain 5 audit: 'data through Dec 2026')."""
+    from domain_pack import has_spell, spell_as_of
+    if not ctx.pack or not ctx.strong or not has_spell(ctx.pack, ctx.roles):
+        return df
+    as_of = spell_as_of(ctx.pack, df, ctx.roles)
+    dated = [ctx.roles[r] for r, x in ctx.pack.roles.items() if x.kind == "date" and r in ctx.roles
+             and pd.api.types.is_datetime64_any_dtype(df[ctx.roles[r]])]
+    return df.assign(**{c: df[c].where(df[c] <= as_of) for c in dated}) if as_of is not None else df
 
 
 def _date_ranges(df: pd.DataFrame, pii: set[str] = frozenset()) -> dict[str, list]:

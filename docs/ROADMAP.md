@@ -577,6 +577,15 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
 
 - **Status (2026-11-03):** 1 retail, 2 banking, 3 healthcare, 4 insurance done
   (`docs/baselines/phase5_7_*.md`); next 5 HR.
+- **HR follow-ups (Domain 5, 2026-11-05; each said "unsupported" or noted in the review note):**
+  cohort retention and first-year attrition (a spell cohort term), span of control, time to fill
+  and offer acceptance (a requisitions table), absence rate, engagement; a built-in pay gap
+  (mean and median by level, n, suppression) instead of the model's segments; spell frame
+  columns and event words named by the pack (`hire_event_date` … are HR words in shared code:
+  due when SaaS, the second real spell reader, lands in Domain 6); on snapshots the first month's
+  exits are unobservable (a prior window says so); a % change on a base under 10; a blank
+  measure on rows a KPI excludes (contractors' pay) read as layout, not missing; the drill-down
+  path's causal filter.
 - **Follow-up PR (found in Domain 4's plan red-team, 2026-11-03):** the built-in summary stats of
   a level column (a balance) read every snapshot (`agents/analysis_agent.py` eda path: a level's
   blanked rows keep `len(rows) == len(df)`), a recurring-class-1 bug in banking. Its own PR with a

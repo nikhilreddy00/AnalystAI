@@ -332,10 +332,10 @@ def test_a_kpi_that_fails_is_a_dropped_tile_and_a_trace_never_a_failed_run(monke
     monkeypatch.setattr(viz, "trace_verdict", lambda agent, version, rule: traced.append(rule))
     real = viz.compute_kpi
 
-    def boom(df, roles, pack, name, by=None, full=None):
+    def boom(df, roles, pack, name, by=None, full=None, window=None):
         if name == "aov":
             raise ZeroDivisionError("planted")
-        return real(df, roles, pack, name, by, full=full)
+        return real(df, roles, pack, name, by, full=full, window=window)
 
     monkeypatch.setattr(viz, "compute_kpi", boom)
     df = _gen("b2b_invoices")   # a strong match: the pack's tiles

@@ -244,6 +244,7 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         facts.append(counted)
     elif narrative:
         facts.append(f"One row is one {narrative.entity_singular}.")
+    facts += audit.spell_story if audit else []   # the file's story, in the product's numbers
     first = last = None
     months = 0
     if span := _date_span(session):

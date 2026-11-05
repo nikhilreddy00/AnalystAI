@@ -1037,7 +1037,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         """(the same window a year earlier, its value, its words) for a spell KPI; (None, '') when
         the data covers fewer of that window's months (a 4-month prior is no year-earlier 12)."""
         lo, hi, pts = spell_window(pack, all_rows, roles, win)
-        back = (lo + pd.Timedelta(days=1) - pd.DateOffset(years=1), hi - pd.DateOffset(years=1))
+        back = (None if win is None or win[0] is None else lo + pd.Timedelta(days=1) - pd.DateOffset(years=1),
+                hi - pd.DateOffset(years=1))   # unasked: the default window a year earlier
         prior = spell_window(pack, all_rows, roles, back)
         if prior is None or len(prior[2]) < len(pts):
             return None, ""

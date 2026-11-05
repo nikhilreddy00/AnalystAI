@@ -2065,6 +2065,11 @@ def _hr_roster_truth(df: pd.DataFrame) -> dict:
                                                / _HR_MONTH).median()),
         "tenure_median_at_exit_months": float(((s.loc[left, "term"] - s.loc[left, "hire"]).dt.days
                                                / _HR_MONTH).median()),
+        # trap 12: a notice-period exit read as already gone; trap 13: a 'Terminated' row with
+        # no date read as still in force
+        "headcount_asof_future_exits_out": hc_end - int((now & (s["term"] > as_of)).sum()),
+        "headcount_asof_with_terminated_no_date": hc_end + int(
+            (emp & s["out"] & (s["hire"] <= as_of)).groupby(s["id"]).any().sum()),
         "future_exits": int((emp & (s["term"] > as_of)).sum()),
         "future_hires": int((emp & (s["hire"] > as_of)).sum()),
         "terminated_without_date": int(s["out"].sum()),
