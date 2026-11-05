@@ -178,6 +178,11 @@ async def test_a_spell_rate_over_the_last_12_months_is_one_figure_not_a_monthly_
     recorded_llm.responses += [plan, plan]
     task = await run_intake_agent(s, "What was involuntary attrition over the last 12 months?", recorded_llm)
     assert task.question_intent == QuestionIntent.SEGMENT_COMPARE and task.targeted_params.frequency is None
+    assert task.targeted_params.kpi == "involuntary_attrition"   # e2e-75 rerun: the rule wiped it
+    no_kpi = json.dumps({**json.loads(plan), "targeted_params": {"frequency": "M"}})
+    recorded_llm.responses += [no_kpi, no_kpi]   # the model named no KPI: the glossary's, kept
+    task = await run_intake_agent(s, "What was involuntary attrition over the last 12 months?", recorded_llm)
+    assert task.targeted_params.kpi == "involuntary_attrition"
     recorded_llm.responses += [plan, plan]   # a grain asked keeps the series
     task = await run_intake_agent(s, "Involuntary attrition by month over the last 12 months", recorded_llm)
     assert task.question_intent == QuestionIntent.TIME_SERIES

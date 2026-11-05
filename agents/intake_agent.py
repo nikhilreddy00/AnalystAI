@@ -402,7 +402,10 @@ async def run_intake_agent(
         # "attrition over the last 12 months": the spell KPI's own window, one figure, never a
         # monthly series of it (Domain 5 E2E gate: 0.6% in October for an 11.0% year)
         data["question_intent"] = QuestionIntent.SEGMENT_COMPARE.value
-        data["targeted_params"] = {**tp, "frequency": None, "period_start": None, "period_end": None}
+        drop = {"frequency": None, "period_start": None, "period_end": None}
+        params = data.get("targeted_params")   # typed by now (_targeted_params): keep its KPI
+        data["targeted_params"] = params.model_copy(update=drop) if hasattr(params, "model_copy") \
+            else {**(params or {}), **drop}
     if is_overview_request:   # the first run is always a full overview, never a question
         data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
                     clarification_question=None, resume_from=None)
