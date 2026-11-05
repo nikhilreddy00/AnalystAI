@@ -1,0 +1,31 @@
+id: e2e-72
+domain: hr
+dataset:
+  name: hr_roster
+  seed: 1
+question: What is voluntary attrition by department over the last 12 months?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: voluntary_attrition_12m_by_dept.Sales
+  rel_tol: 0.01
+  scales:
+  - - 1
+    - null
+  - - 100
+    - '%'
+- kind: must_not_number
+  truth_key: attrition_12m_by_dept.Sales
+  rel_tol: 0.005
+  scales:
+  - - 1
+    - null
+  - - 100
+    - '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Voluntary attrition by department: Sales leads (resignations only, retirements out), never
+  all exits.'

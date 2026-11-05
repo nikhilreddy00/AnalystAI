@@ -17,7 +17,9 @@ WORDS = {"retail": r"sales?|orders?|returns?|refund(?:ed|s)?|cancell?ed|products
          "healthcare": r"patients?|readmi\w*|discharges?|claims?|payers?|denial\w*|alos|"
                        r"encounters?|members?",
          "insurance": r"premiums?|polic(?:y|ies)|reserves?|incurred|claims?|claimants?|"
-                      r"valuations?|underwrit\w*|exposures?|loss ratio|accident years?"}
+                      r"valuations?|underwrit\w*|exposures?|loss ratio|accident years?",
+         "hr": r"employees?|headcount|attrition|turnover|separations?|hires?|leavers?|"
+               r"salar(?:y|ies)|tenure|fte|contractors?|discharges?"}
 LEXICON = re.compile(rf"\b({WORDS['retail']})\b", re.I)   # TEXT_DEFAULTS: fit every domain
 
 
@@ -32,7 +34,8 @@ def _lexicon(domain: str) -> re.Pattern:
 
 DATASETS = [("banking", n) for n in ("loan_tape", "card_ledger", "bank_statement", "ledger_drcr")] + [
     ("healthcare", n) for n in ("inpatient", "health_claims")] + [
-    ("insurance", n) for n in ("policies", "loss_run", "claims")]
+    ("insurance", n) for n in ("policies", "loss_run", "claims")] + [
+    ("hr", n) for n in ("hr_roster", "hr_snapshots", "employees")]
 
 
 def _pseudo(domain: str = "banking"):

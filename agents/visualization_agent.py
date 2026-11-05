@@ -41,6 +41,9 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    has_spell,
+    pack_for,
+    window_words,
     runout_months,
     computable,
     compute_kpi,
@@ -1155,7 +1158,8 @@ def _unit_fields(kind: str, unit: str | None) -> dict:
 
 
 def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
-              full: pd.DataFrame | None = None) -> list[KPI]:
+              full: pd.DataFrame | None = None, window: tuple | None = None,
+              cut: tuple = ()) -> list[KPI]:
     """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. A KPI the
     data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
     and the run goes on. Money is in the main currency; other currencies are left out, said in
@@ -1173,7 +1177,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         if not k.tile:
             continue
         try:
-            v = compute_kpi(df, roles, pack, k.name, full=full)
+            v = compute_kpi(df, roles, pack, k.name, full=full, window=window, cut=cut)
         except Exception:   # a pack/data mismatch is a missing tile, never a failed run
             logger.warning("KPI %s failed", k.name, exc_info=True)
             trace_verdict("visualization", VIZ_CARD.version, "kpi_failed")
@@ -1183,7 +1187,11 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
-        if k.at == "latest" and kind == "percent":   # a book's ratio hides its mix: say the spread
+        # a headcount is as of a date, an attrition rate over 12 months to it: the tile says which
+        context = "; ".join(x for x in (window_words(pack, df if full is None else full, roles, k.name,
+                                                     window),
+                                        context) if x)
+        if k.state and kind == "percent":   # a book's ratio hides its mix: say the spread
             context = "; ".join(x for x in (_spread(df, roles, pack, k.name), context) if x)
         tiles.append(KPI(label=k.label, value=k.written(_format_value(v, kind, unit)), context=context,
                          recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
@@ -1212,6 +1220,8 @@ def generate_smart_kpis(
     narrative: DataNarrative | None = None,
     contract: DataContract | None = None,
     full: pd.DataFrame | None = None,
+    window: tuple | None = None,
+    cut: tuple = (),
 ) -> list[KPI]:
     """Build up to 5 hero KPIs from a DataFrame and the visualization agent's
     column roles. Works on any dataset: row count + (optional) target rate +
@@ -1238,7 +1248,7 @@ def generate_smart_kpis(
     # Phase 5.7: a domain's own KPIs (net sales, orders, AOV …) replace the generic tiles, which
     # would count order lines as orders, average line amounts and call a share of rows a share
     # of sales.
-    if kpis := pack_kpis(df, contract, full):
+    if kpis := pack_kpis(df, contract, full, window, cut):
         return kpis
 
     # KPI 1 — row count, labeled by the detected entity (column count belongs
@@ -1687,6 +1697,12 @@ def generate_dashboard_charts(
     a global color_map so categorical values render consistently across charts.
     """
     ctx = ctx or build_context(df, narrative=narrative)
+    pack = defaults_pack(ctx.contract) if ctx.contract is not None else None
+    if pack and has_spell(pack, {r: c for r, c in ctx.contract.roles.items() if c in df.columns}):
+        # spell data (people over time): a generic count, donut or histogram counts rows (spells,
+        # person-months) and puts one person's pay on a birth-month axis; the pack's charts count
+        # people (Domain 5 audit)
+        return []
     target: str | None = column_roles.get("target_col")  # type: ignore[assignment]
     # Phase 5: a measure (`units` 1-8) is never a category axis.
     cat_pool: list[str] = [
@@ -1859,7 +1875,7 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
     elif src == "target_rate_by_cat" and target:
         for row in ch.data:   # Wilson CI from each bar's rate and n
             rate, n = row[ch.y_keys[0]] / 100, row.get("n", 0)
-            ci = _ci(pd.Series([1] * round(rate * n) + [0] * (n - round(rate * n))), "mean") if n else None
+            ci = _ci(pd.Series([1] * round(rate * n) + [0] * (n - round(rate * n))), "mean", True) if n else None
             if ci:
                 row[f"{ch.y_keys[0]}__ci"] = ci
         ch.error_key = "__ci"
@@ -1899,15 +1915,23 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
 
 # ── Last-resort fallback (DataContract only, no df available) ────────────────
 
-def _contract_fallback_charts(contract: DataContract) -> list[ChartConfig]:
+def _contract_fallback_charts(contract: DataContract, frame_present: bool = False,
+                              df: pd.DataFrame | None = None) -> list[ChartConfig]:
     """When the DataFrame isn't available (e.g. resume failure), draw at least
     one chart from contract metadata so the UI isn't empty."""
     charts: list[ChartConfig] = []
-    null_data = [
-        {"label": c.name, "count": round(c.null_pct, 1)}
-        for c in contract.columns
-        if c.null_pct > 0
-    ]
+    # a column blank by the file's layout (an end date of someone still employed, a Debit on a
+    # credit row) is not missing: THE layout rule (domain_pack.layout_blanks), with the frame
+    from domain_pack import layout_blanks, marker_columns
+    if df is not None:   # the frame's own missing share, less its layout blanks
+        layout = set(layout_blanks(df, contract))
+        null_data = [{"label": str(c), "count": round(float(df[c].isna().mean() * 100), 1)}
+                     for c in df.columns if df[c].isna().any() and c not in layout]
+    else:   # no frame: the contract's, less the blanks a contract alone can tell (markers)
+        layout = set(marker_columns(pack_for(contract.domain) if contract.domain else None,
+                                    contract.roles or {}))
+        null_data = [{"label": c.name, "count": round(c.null_pct, 1)}
+                     for c in contract.columns if c.null_pct > 0 and c.name not in layout]
     if null_data:
         charts.append(ChartConfig(
             id=str(uuid.uuid4()),
@@ -1923,8 +1947,9 @@ def _contract_fallback_charts(contract: DataContract) -> list[ChartConfig]:
             source_finding="contract_fallback",
             placement="data",
             rationale=ChartRationale(
-                rule="profile:missing_values", reason="The data frame was not available, so this "
-                "shows the share of missing values per column from the data contract.",
+                rule="profile:missing_values", reason=("No other chart passed the chart checks, so "
+                if frame_present else "The data frame was not available, so ") + "this shows the "
+                "share of missing values per column from the data contract.",
                 x="column", y="missing %", aggregation="none", n_rows=contract.row_count,
                 code="df.isna().mean() * 100"),
         ))
@@ -2081,6 +2106,11 @@ class VizContext:
     # The whole data when `df` is a filtered part of it (a dashboard filter): a ratio with none of
     # its rows in the part is 0, not unknown (compute_kpi's `full`)
     full: pd.DataFrame | None = None
+    # A dashboard date range on spell data: the window spell KPIs are measured over (never a row
+    # cut: rows hired in H1 are not the people employed in H1); (lo, hi) ISO dates
+    window: tuple | None = None
+    # the columns a dashboard part was filtered by: a protected one makes it a protected group
+    cut: tuple = ()
 
 
 def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
@@ -2166,14 +2196,15 @@ def _why(chart: ChartConfig, ctx: VizContext | None, rule: str, reason: str, x: 
     return chart
 
 
-def _ci(s: pd.Series, agg: str) -> list[float] | None:
+def _ci(s: pd.Series, agg: str, rate: bool) -> list[float] | None:
     """95% CI as [minus, plus] around the plotted value: Wilson for a 0/1 rate, t for a mean,
-    none for totals and counts (no sampling error to show)."""
+    none for totals and counts (no sampling error to show). `rate` is the column's (_is_flag on
+    all its values), never one bar's: a team whose FTE are all 1.0 is no 100% rate (live check)."""
     v = pd.to_numeric(s, errors="coerce").dropna()
     n = len(v)
     if agg != "mean" or n < 2:
         return None
-    if set(v.unique()) <= {0, 1}:
+    if rate:
         p, z = float(v.mean()), 1.96
         centre = (p + z * z / (2 * n)) / (1 + z * z / n)
         half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
@@ -2233,7 +2264,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
                 continue
             row[name] = round(float(part.agg(agg)) * scale, 4)
             row[f"{name}__n"] = int(len(part))
-            if (ci := _ci(part, agg)) is not None:
+            if (ci := _ci(part, agg, rate)) is not None:
                 row[f"{name}__ci"], any_ci = ci, True
         data.append(row)
     y_keys = [metric] if not split else [str(s) for s in series]
@@ -2625,6 +2656,46 @@ def swap_options(chart: ChartConfig) -> list[ChartType]:
     return opts if chart.chart_type in opts else [chart.chart_type, *opts]
 
 
+def _personal_axis(chart: ChartConfig, ctx: VizContext) -> bool:
+    """A chart grouped or split by a personal-data column (an employee's name): it shows people,
+    whatever its values (Domain 5 audit: 'Tenure by Employee Name')."""
+    pii = set(ctx.contract.pii_columns) if ctx.contract is not None else set()
+    split = chart.rationale.split if chart.rationale else None
+    return bool(pii) and chart.chart_type != ChartType.SCATTER and (chart.x_key in pii or split in pii)
+
+
+def _without_small_cells(chart: ChartConfig, ctx: VizContext) -> ChartConfig | None:
+    """The chart less its bars for protected groups under 11 people (domain_pack.protected_groups,
+    the rule every by-group number reads): one place every chart builder's bars pass. None when
+    nothing is left."""
+    from domain_pack import protected_groups
+    r = chart.rationale
+    if ctx.contract is None or r is None or not r.x or r.x not in ctx.df.columns or r.x != chart.x_key \
+            or chart.chart_type in (ChartType.SCATTER, ChartType.LINE):
+        return chart
+    split = r.split if r.split and r.split in ctx.df.columns else None
+    hide = protected_groups(ctx.df, ctx.contract, [r.x, split] if split else r.x, r.y or "",
+                            chart.title or "", ctx.cut)
+    if not hide:
+        return chart
+    if split:   # a split chart loses its small cells (a series value with its __n and __ci),
+        cells = {(str(h[0]), str(h[1])) for h in hide if isinstance(h, tuple)}   # never the bar
+        def series(k) -> str:   # 'Female__n' → 'Female' (a value may itself hold '__')
+            return str(k).removesuffix("__n").removesuffix("__ci")
+        rows = [{k: v for k, v in row.items() if (str(row.get(chart.x_key)), series(k)) not in cells}
+                for row in chart.data]
+        rows = [row for row in rows if set(row) - {chart.x_key}]   # a bar left with no values
+        kept = {series(k) for row in rows for k in row}
+        ys = [i for i, y in enumerate(chart.y_keys) if y in kept]   # colours follow their series
+        colors = [chart.colors[i] for i in ys] if len(chart.colors or []) == len(chart.y_keys) else chart.colors
+        return chart.model_copy(update={"data": rows, "y_keys": [chart.y_keys[i] for i in ys],
+                                        "colors": colors}) if rows else None
+    else:
+        gone = {str(h) for h in hide}
+        rows = [row for row in chart.data if str(row.get(chart.x_key)) not in gone]
+    return chart.model_copy(update={"data": rows}) if rows else None
+
+
 def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
                     user_chosen: bool = False) -> list[ChartConfig]:
     """Every chart passes here before it leaves the backend. Agent-chosen charts are repaired or
@@ -2634,6 +2705,13 @@ def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
     for chart in charts:
         if chart.colors and all(c.lower() in _GENERIC_COLORS for c in chart.colors):
             chart.colors = []
+        if _personal_axis(chart, ctx):   # people's names on an axis: never a chart
+            trace_verdict("visualization", VIZ_CARD.version, "dropped:personal_axis")
+            continue
+        chart = _without_small_cells(chart, ctx)
+        if chart is None:
+            trace_verdict("visualization", VIZ_CARD.version, "dropped:small_cells")
+            continue
         if chart.rationale is None:
             if not user_chosen:
                 trace_verdict("visualization", VIZ_CARD.version, "no_rationale")
@@ -2672,7 +2750,7 @@ def _overview_asks(pack, roles: dict[str, str], columns) -> list[tuple[QuestionI
         money = next((k for k in pack.kpis if k.tile and k.unit == "money"
                       and computable(pack, k.name, roles)), None)
         # a state ratio (NPL, 30+ delinquency) by that group: a book's ratio hides its mix
-        ratio = next((k for k in pack.kpis if k.tile and k.at == "latest" and k.unit == "percent"
+        ratio = next((k for k in pack.kpis if k.tile and k.state and k.unit == "percent"
                       and computable(pack, k.name, roles)), None)
         can = [money, ratio] if money and ratio else [money] if money else []
     if not can:
@@ -2696,6 +2774,8 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     asks = _overview_asks(pack, ctx.contract.roles if ctx.contract else {}, df.columns) if pack else []
     out = []
     for intent, params in asks:
+        if ctx.window:   # a dashboard date range on spell data: the KPIs' window
+            params = params.model_copy(update={"period_start": ctx.window[0], "period_end": ctx.window[1]})
         try:
             out += handle_kpi(df, params, ctx.contract, ctx, full=ctx.full,
                               intent=intent).chart_configs[:1]
@@ -2735,7 +2815,9 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
                 continue
             charts.append(ch)
     charts = finalize_charts(charts, ctx)
-    return charts or _contract_fallback_charts(contract)
+    # the profile fallback keeps a report from an empty chart list (a quality retry costs a
+    # paid run); its rationale says why it is shown
+    return charts or _contract_fallback_charts(contract, frame_present=True, df=ctx.df)
 
 
 def build_single_chart(
@@ -2835,6 +2917,19 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
     return df[keep]
 
 
+def not_a_filter(contract: DataContract | None) -> set[str]:
+    """THE columns that are never a dashboard filter (filter_options offers none, filtered_dashboard
+    refuses a crafted one): personal data (a date-of-birth range is one person) and ids (one
+    record), except an id role a pack declares as a grouping dimension (its overview_groups: a
+    store number stays a cross-filter click on its bar). Personal data never: fail closed."""
+    if contract is None:
+        return set()
+    pack = defaults_pack(contract)
+    groups = {contract.roles.get(r) for r in (pack.overview_groups if pack else [])} - {None}
+    return set(getattr(contract, "pii_columns", None) or []) | (
+        set(getattr(contract, "id_columns", None) or []) - groups)
+
+
 def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
     """The dashboard's filters, from the rows that count (a chain's earlier versions are never
     shown: domain_pack.superseded): {row_count, column_roles, options: [{column, control:
@@ -2844,7 +2939,7 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
     from domain_pack import as_text, superseded
     shown = df[~superseded(df, contract)]
     roles = classify_columns(shown)
-    ids = set(contract.id_columns) if contract is not None else set()   # an id is no filter
+    ids = not_a_filter(contract)
     roles = {k: [c for c in v if c not in ids] if isinstance(v, list) else v for k, v in roles.items()}
     options: list[dict] = []
 
@@ -2872,6 +2967,42 @@ def _chart_key(c: ChartConfig):
     return (r.rule, r.x, r.y, r.aggregation, r.split) if r else None
 
 
+def _spell_window_filters(df: pd.DataFrame, contract: DataContract | None,
+                          filters: dict) -> tuple[dict, tuple | None]:
+    """(row filters, window): on spell data a date range on one of the pack's date roles is the
+    spell KPIs' window (people employed in H1 are not the rows hired in H1), never a row cut."""
+    pack = defaults_pack(contract) if contract is not None else None
+    roles = {r: c for r, c in (contract.roles if contract else {}).items() if c in df.columns}
+    if not pack or not has_spell(pack, roles):
+        return filters, None
+    dates = {roles[r] for r, x in pack.roles.items() if x.kind == "date" and r in roles}
+    span = {c: f for c, f in (filters or {}).items() if c in dates and f.get("kind") == "date_range"}
+    if not span:
+        return filters, None
+    # several ranges (hired in H1, left in Q3): their intersection, never one of them silently
+    lo = max(pd.Timestamp(f["from"]) for f in span.values())
+    hi = min(pd.Timestamp(f["to"]) for f in span.values())
+    if hi < lo:   # ranges that don't overlap: nothing, never a one-day window
+        return {"__none__": {"kind": "equality", "value": "\x00"}}, None
+    return {c: f for c, f in filters.items() if c not in span}, (lo.strftime("%Y-%m-%d"),
+                                                                 hi.strftime("%Y-%m-%d"))
+
+
+def _protected_part(df: pd.DataFrame, part: pd.DataFrame, contract: DataContract | None,
+                    window: tuple | None = None, cut: tuple = ()) -> bool:
+    """A filtered part that is itself a protected group (women, one ethnicity) of fewer than 11
+    people (domain_pack.people_in): a small cell, shown as nothing. Pay of a small part that is
+    not a protected group is hidden tile by tile (compute_kpi), its headcount kept."""
+    from domain_pack import people_in, protected_cut
+    from guardrails import SMALL_CELL
+    pack = pack_for(contract.domain) if contract else None
+    if not pack or not pack.protected_roles or part.empty:
+        return False
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    return protected_cut(cut, roles, pack) and \
+        people_in(part, roles, pack, True, df, window) < SMALL_CELL
+
+
 def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: list[ChartConfig],
                        filters: dict, query: str = "",
                        narrative: DataNarrative | None = None) -> dict:
@@ -2882,18 +3013,26 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     fewer than 11 records reports no number (a small cell, ADR-0008)."""
     from domain_pack import superseded
     from guardrails import SMALL_CELL
+    # personal data and ids are never filters (filter_options offers none; a crafted one is
+    # refused: a name filter is one person)
+    banned = not_a_filter(contract)
+    if set(filters or {}) & banned:   # fail closed: one person's (or record's) part, no numbers
+        return {"charts": {}, "tiles": {}, "rows": None, "suppressed": True}
+    filters, window = _spell_window_filters(df, contract, filters)
+    cut = tuple(filters)
     part = apply_filters(df, filters)
     # the records shown and counted: a chain's earlier versions are neither (judged on all rows)
     n = int((~superseded(df, contract)).reindex(part.index).sum())
-    if part.empty or (contract is not None and contract.phi and n < SMALL_CELL):
-        small = bool(n) and bool(contract and contract.phi)   # a small cell: not even its count
+    protected = _protected_part(df, part, contract, window, cut)
+    if part.empty or (contract is not None and contract.phi and n < SMALL_CELL) or protected:
+        small = bool(n) and bool(contract and (contract.phi or protected))
         return {"charts": {}, "tiles": {}, "rows": None if small else n, "suppressed": small}
     ctx = build_context(part, contract=contract, narrative=narrative)
-    ctx.full = df
+    ctx.full, ctx.window, ctx.cut = df, window, cut
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(
         part, ctx.roles, query=query, narrative=narrative, ctx=ctx)
     fresh = {k: c.data for c in rebuilt if (k := _chart_key(c))}
     out = {c.id: fresh[k] for c in charts if (k := _chart_key(c)) in fresh}
     tiles = {k.label: k.value for k in generate_smart_kpis(part, ctx.roles, query, narrative, contract,
-                                                           full=df)}
+                                                           full=df, window=window, cut=cut)}
     return {"charts": out, "tiles": tiles, "rows": n, "suppressed": False}

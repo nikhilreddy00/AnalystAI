@@ -241,7 +241,7 @@ def test_bank_balances_month_end_and_segment_averages_are_the_truth():
 # ── Invariances ───────────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("name", ["loan_tape", "card_ledger", "bank_balances", "retail_lines",
-                                  "loss_run", "policies"])
+                                  "loss_run", "policies", "hr_roster", "hr_snapshots"])
 def test_row_order_changes_no_number(name):
     assert tiles(name) == tiles(name, transform="shuffle")
 
@@ -411,7 +411,7 @@ def _mocked_source(source: str, df: pd.DataFrame, csv: str, monkeypatch):
 
 
 @pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines",
-                                  "policies", "loss_run"])
+                                  "policies", "loss_run", "hr_roster", "hr_snapshots"])
 @pytest.mark.parametrize("source", ["xlsx", "json", "parquet", "sqlite", "postgres", "api", "sheets"])
 async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
     import connectors.csv_connector as csvc
@@ -773,3 +773,150 @@ def test_a_developing_measures_partial_latest_period_says_how_far_it_is_covered(
     youngest accident period) but said: covered only to its last date."""
     text, chart = answer("claims", "time_series", "incurred by quarter", kpi="incurred", frequency="Q")
     assert "2026Q4" in chart and "2026Q4" in text and "covered only to" in text, text
+
+
+# ── HR (Domain 5): every answer path = the generator's truth (computed without domain_pack) ──
+
+def test_hr_attrition_by_department_divides_by_the_average_headcount():
+    _, _, _, truth = _built("hr_roster")
+    text, by = answer("hr_roster", "top_n", "attrition by department", kpi="attrition_rate",
+                      group_by="Department")
+    assert close(by, {k: v for k, v in truth["attrition_12m_by_dept"].items()}, tol=0.05), (by, text)
+    assert "12 months to 31 Oct 2026" in text
+    assert not close(by, {"Support": truth["attrition_12m"] * 2}, tol=0.05)   # sanity
+
+
+def test_hr_overall_rates_and_counts():
+    _, _, _, truth = _built("hr_roster")
+    for kpi, key in [("attrition_rate", "attrition_12m"), ("voluntary_attrition", "voluntary_attrition_12m"),
+                     ("involuntary_attrition", "involuntary_attrition_12m"), ("retirement_rate", "retirement_rate_12m")]:
+        text, _ = answer("hr_roster", "segment_compare", f"what is our {kpi}?", kpi=kpi)
+        assert f"{truth[key] * 100:.1f}%" in text, (kpi, text)
+    text, _ = answer("hr_roster", "segment_compare", "how many employees do we have?", kpi="headcount")
+    assert f"{truth['headcount_asof']:,}" in text and "as of 31 Oct 2026" in text, text
+    assert truth["headcount_asof"] != truth["rows"]   # people, never rows
+
+
+def test_hr_headcount_by_department_and_pay_of_a_small_department_is_hidden():
+    _, _, _, truth = _built("hr_roster")
+    _, by = answer("hr_roster", "top_n", "headcount by department", kpi="headcount", group_by="Department")
+    assert by == {k: float(v) for k, v in truth["headcount_by_dept_asof"].items()}   # Legal (6) shown
+    _, pay = answer("hr_roster", "top_n", "average salary by department", kpi="avg_salary",
+                    group_by="Department")
+    assert "Legal" not in pay and truth["legal_people_asof"] < 11   # pay of 6 people: never shown
+    # complementary: one more held back, so Legal can't be worked back from the total
+    assert len(pay) == len(truth["avg_salary_by_dept_asof"]) - 2
+    want = {k: v for k, v in truth["avg_salary_by_dept_asof"].items() if k in pay}
+    assert close(pay, want, tol=0.01), pay
+
+
+def test_hr_a_partial_year_is_named_and_never_compared_as_a_year():
+    _, _, _, truth = _built("hr_roster")
+    text, series = answer("hr_roster", "time_series", "attrition by year", kpi="attrition_rate",
+                          frequency="Y")
+    full = {str(y): v for y, v in truth["attrition_by_year"].items()}
+    assert close(series, full, tol=0.05), (series, text)   # 2026 shown, over its 10 months
+    assert "2026 so far (10 months" in text and "not annualised" in text and "12 months to" not in text, text
+    assert "latest 2025" in text   # compared: 2025 with 2024, never 2026 with a full year
+
+
+def test_hr_an_asked_year_is_its_window_not_the_rows_dated_in_it():
+    _, _, _, truth = _built("hr_roster")
+    text, _ = answer("hr_roster", "segment_compare", "attrition in 2025", kpi="attrition_rate",
+                     period_start="2025-01-01", period_end="2025-12-31")
+    assert f"{truth['attrition_by_year'][2025 if 2025 in truth['attrition_by_year'] else '2025'] * 100:.1f}%" in text, text
+
+
+def test_hr_one_row_rosters_lose_only_the_earlier_exits():
+    _, _, _, truth = _built("hr_roster_onerow")
+    text, _ = answer("hr_roster_onerow", "segment_compare", "headcount", kpi="headcount")
+    assert f"{truth['headcount_asof']:,}" in text, text
+    text, _ = answer("hr_roster_onerow", "segment_compare", "how many people left", kpi="separations")
+    assert f"{truth['separations_12m']:,}" in text, text
+
+
+def test_hr_snapshots_count_exits_where_people_left_and_never_sum_months():
+    _, _, _, truth = _built("hr_snapshots")
+    _, by = answer("hr_snapshots", "top_n", "attrition by department", kpi="attrition_rate",
+                   group_by="Department")
+    assert close(by, truth["attrition_12m_by_dept_at_exit"], tol=0.05), by
+    text, _ = answer("hr_snapshots", "segment_compare", "headcount", kpi="headcount")
+    assert f"{truth['headcount_asof']:,}" in text, text
+    _, pay = answer("hr_snapshots", "top_n", "average salary by department", kpi="avg_salary",
+                    group_by="Department")
+    assert close(pay, {k: v for k, v in truth["avg_salary_by_dept_asof"].items() if k in pay}, tol=0.01)
+
+
+def test_hr_employees_flag_file_keeps_sales_highest_on_the_12_month_rate():
+    _, _, _, truth = _built("employees")
+    _, by = answer("employees", "top_n", "attrition by department", kpi="attrition_rate",
+                   group_by="department")
+    assert close(by, truth["attrition_12m_by_dept"], tol=0.05) and max(by, key=by.get) == "Sales"
+
+
+@pytest.mark.parametrize("name, key", [("hr_roster", "attrition_12m_by_dept"),
+                                       ("hr_snapshots", "attrition_12m_by_dept_at_exit")])
+def test_hr_a_model_following_the_brief_gets_the_truth(name, key):
+    """Domain 5 red-team B6: the brief's recipe (count rows with an exit_event_date in the
+    window, by their department, ÷ the facts' average headcount of that department), run as
+    model code would, equals the generator's truth: the brief is enough, nothing re-derived."""
+    from agents.analysis_agent import model_frame
+    _, clean, contract, truth = _built(name)
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    frame, extra = model_frame(clean, contract)
+    assert {"exit_event_date", "hire_event_date"} <= set(extra)
+    e = pd.to_datetime(frame["exit_event_date"])
+    exits = frame[(e > "2025-10-31") & (e <= "2026-10-31")].groupby("Department").size()
+    line = next(x for x in domain_pack.spell_facts(domain_pack.pack_for("hr"), clean, roles)
+                if " by Department " in x)
+    avg = dict(re.findall(r"(\w+) ([\d,]+\.\d)", line.split("):", 1)[1]))
+    got = {k: exits.get(k, 0) / float(v.replace(",", "")) for k, v in avg.items()}
+    assert close(got, truth[key], tol=0.5), (got, truth[key])
+
+
+def test_hr_the_frame_marks_who_is_in_force_and_which_exits_fall_in_the_window():
+    """Domain 5 gate: models dropped the window (every exit ever) and kept people terminated
+    without a date: the frame's own markers give the truth with a filter, nothing re-derived."""
+    from agents.analysis_agent import model_frame
+    for name in ("hr_roster", "hr_snapshots", "employees"):
+        _, clean, contract, truth = _built(name)
+        f, _ = model_frame(clean, contract)
+        ent = contract.roles["employee"]
+        if "headcount_asof" in truth:
+            assert f.loc[f["in_force_now"] == "yes", ent].nunique() == truth["headcount_asof"]
+        if "separations_12m" in truth:
+            assert int((f["exit_in_window"] == "yes").sum()) == truth["separations_12m"]
+    _, clean, contract, truth = _built("hr_roster")
+    f, _ = model_frame(clean, contract)
+    now = f[(f["in_force_now"] == "yes") & f["Gender"].isin(["Male", "Female"]) & f["Annual_Salary"].notna()]
+    g = now.assign(p=now["Annual_Salary"] / now["FTE"]).groupby(["Job_Level", "Gender"])["p"].mean().unstack()
+    assert close(((g["Male"] - g["Female"]) / g["Male"]).to_dict(), truth["pay_gap_mean_fte_by_level"], tol=0.01)
+
+
+def test_hr_a_level_never_counts_an_exit_record_as_a_person():
+    """Domain 5 gate (hr-8): the built-in 'mean Base_Salary by Department' at the latest
+    snapshot read each person's latest row, exit records ('Terminated' final rows) included."""
+    _, _, _, truth = _built("hr_snapshots")
+    res = builtin("hr_snapshots", ["Base_Salary"], ["Department"], ["segmentation"])
+    got = segment(res, "Department", "Base_Salary", "mean")
+    assert close(got, truth["avg_salary_by_dept_asof"], tol=0.01), got
+
+
+def test_hr_pay_of_a_department_under_11_people_never_leaves_the_builtins():
+    """Domain 5 insight gate: 'average annual salary … $96,450 in Legal' (6 people) came from the
+    built-in 'mean Annual_Salary by Department', a path that never read the protected rule."""
+    from agents.analysis_agent import builtin_result, model_frame
+    from orchestrator.state import AnalysisTask
+    _, clean, contract, truth = _built("hr_roster")
+    frame, _ = model_frame(clean, contract)
+    pay = clean.groupby("Department")["Annual_Salary"].mean()   # what the sandbox's code reports
+    raw = {"eda_summary": {}, "correlations": {}, "trends": [], "anomalies": [], "statistical_tests": [],
+           "forecast_points": [], "distributions": {}, "head_preview": [], "dtypes_summary": {},
+           "missing_pct": {}, "assumptions": [], "segments": [
+               {"segment_column": "Department", "metric_column": "Annual_Salary", "aggregation": "mean",
+                "results": [{"name": k, "value": float(v)} for k, v in pay.items()]}]}
+    out = builtin_result(frame, contract, AnalysisTask(raw_query="q", analysis_types=["eda"],
+                                                       target_metrics=[]), raw)
+    got = segment(out, "Department", "Annual_Salary", "mean")
+    assert "Legal" not in got and "Sales" in got and truth["legal_people_asof"] < 11, got
+    assert any("fewer than 11 people" in a for a in out["assumptions"])

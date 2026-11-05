@@ -19,5 +19,6 @@ forbid:
   strategy: non_product
 - operation: flag
   strategy: out_of_range
-expect_grain: null
-label_note: 'Another domain (hr): no retail rule may fire.'
+expect_grain: aggregate
+label_note: 'Another domain (hr): no retail rule may fire. Domain 5: employees is HR pack data now: one
+  row per person, no order key (grain ''aggregate'', as banking and insurance).'

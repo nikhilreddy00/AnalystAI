@@ -1,0 +1,35 @@
+id: hr-7
+domain: hr
+category: ratio
+pipeline: production
+dataset:
+  name: hr_roster
+  seed: 1
+question: How does attrition so far in 2026 compare with 2025?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Termination_Date
+  segments: []
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment:
+  - exit_event_date
+  - Year
+  - year
+  - Termination_Date
+  - Termination Year
+  - Period
+  truth_key: attrition_2025_vs_2026
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: '2026 covers January–October only (10 month-ends): its rate is over 10 months, never ×12/10
+  or called a full year; 2025 is a full year.'

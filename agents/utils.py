@@ -200,10 +200,30 @@ def time_axis(contract, metric: str | None = None, df=None) -> str | None:
     if pack and (own := contract.roles.get(pack.date_role)) in contract.date_columns:
         cands.append(own)
     cands += list(contract.date_columns) if contract is not None else []
+    # a personal date (birth) is never a timeline: one person's pay on a birth-month axis
+    cands = [c for c in cands if c not in set(contract.pii_columns if contract is not None else [])]
+    if pack and pack.spell and not (pack.date_role not in (pack.spell.start, pack.spell.end)
+                                    and contract.roles.get(pack.date_role)):
+        # a roster's dates are events (a hire, an exit), never a timeline: a trend "by hire
+        # month" is a cohort, and its latest month can be a future hire (Domain 5 smoke)
+        events = {contract.roles.get(r) for r in pack.roles if pack.roles[r].kind == "date"}
+        cands = [c for c in cands if c not in events]
     return next((c for c in cands if c and (df is None or c in df.columns)), None)
 
 
 def aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = False):
+    """_aggregate, less the groups the protected small-cell rule hides (pay of a 6-person team,
+    a gender cell of 3: domain_pack.protected_groups): every by-group number an answer, chart or
+    built-in shows goes through here."""
+    out = _aggregate(df, keys, column, agg, contract, over_time)
+    if contract is not None and hasattr(out, "drop"):
+        from domain_pack import protected_groups
+        if hide := protected_groups(df, contract, keys, column):
+            out = out.drop(hide, errors="ignore")
+    return out
+
+
+def _aggregate(df, keys, column: str, agg: str, contract=None, over_time: bool = False):
     """`df.groupby(keys)[column].agg(agg)`, except a level ('last' / 'first'): over time (a key
     is a period) each entity's window value within each period, summed; across groups (no
     period) the current total, each entity's latest snapshot in the latest period (latest_rows),
@@ -288,8 +308,22 @@ def level_rows(df, column: str, contract):
     account weighted by its history, a closed one still averaged in); anything else: all rows.
     The one selector for answers and their charts."""
     hint = column_hint(contract, column)
-    return latest_rows(df, column, contract) if hint is not None and hint.aggregation in _LEVEL \
-        else df
+    if hint is not None and hint.aggregation in _LEVEL:
+        return latest_rows(df, column, contract)
+    return _in_force_rows(df, column, contract)
+
+
+def _in_force_rows(df, column: str, contract):
+    """On a spell roster, a level (salary, FTE) is the people in force's: a total or an average
+    of pay by department never adds leavers' pay (the KPIs' rule: domain_pack._in_force)."""
+    from domain_pack import _in_force, _snapshot_column, defaults_pack, has_spell, spell_as_of
+    pack = defaults_pack(contract)
+    roles = {r: c for r, c in (contract.roles if pack else {}).items() if c in df.columns}
+    role = next((r for r, c in roles.items() if c == column), None)
+    if not role or not has_spell(pack, roles) or _snapshot_column(pack, roles) \
+            or pack.roles[role].over_time != "last" or (as_of := spell_as_of(pack, df, roles)) is None:
+        return df
+    return df.loc[_in_force(df, roles, pack, as_of).index]
 
 
 def latest_rows(df, column: str, contract):
@@ -304,6 +338,15 @@ def latest_rows(df, column: str, contract):
     # account closed) is never replaced by an older one (never carried forward)
     rows = snapshot_rows(df, hint.aggregation_by, hint.aggregation_time, hint.aggregation)
     return rows.dropna(subset=[column])
+
+
+def today():
+    """Today, midnight: the latest date a file's own dates may count up to (a future-dated exit is
+    not yet one). ANALYSTAI_TODAY pins it (tests and evals: the generators' extract date)."""
+    import os
+
+    import pandas as pd
+    return pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today()).normalize()
 
 
 def _in_time_order(d):

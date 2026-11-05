@@ -1,0 +1,29 @@
+id: hr-8
+domain: hr
+category: ratio
+pipeline: production
+dataset:
+  name: hr_snapshots
+  seed: 1
+question: What is the average base salary by department as of the latest snapshot?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Base_Salary
+  segments:
+  - Department
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Department
+  truth_key: avg_salary_by_dept_asof
+  abs_tol: 60
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Each person''s salary on the 31 Oct 2026 snapshot (a level): never the mean over every monthly
+  row (raises each April) or a sum across months.'

@@ -332,10 +332,10 @@ def test_a_kpi_that_fails_is_a_dropped_tile_and_a_trace_never_a_failed_run(monke
     monkeypatch.setattr(viz, "trace_verdict", lambda agent, version, rule: traced.append(rule))
     real = viz.compute_kpi
 
-    def boom(df, roles, pack, name, by=None, full=None):
+    def boom(df, roles, pack, name, by=None, full=None, **kw):
         if name == "aov":
             raise ZeroDivisionError("planted")
-        return real(df, roles, pack, name, by, full=full)
+        return real(df, roles, pack, name, by, full=full, **kw)
 
     monkeypatch.setattr(viz, "compute_kpi", boom)
     df = _gen("b2b_invoices")   # a strong match: the pack's tiles
@@ -585,7 +585,8 @@ def test_domain_notes_appear_only_for_pack_terms_and_periods():
     assert 'targeted_params.kpi = "aov"' in notes and "avg order value" in notes.lower()
     period = build_context(s, "Net sales in Q4 2025 vs last year").domain
     assert 'compare = "yoy"' in period and "period_start" in period
-    assert build_context(_intake_session("employees"), "salary in Q4 2025").domain == ""
+    # no domain's data ("simpson" is a statistics fixture; employees became HR in Domain 5)
+    assert build_context(_intake_session("simpson"), "salary in Q4 2025").domain == ""
 
 
 def test_domain_notes_never_carry_a_column_name_outside_the_delimiter():
@@ -608,7 +609,7 @@ def test_pack_params_are_checked_without_the_model():
     assert p == {"kpi": "aov", "period_start": None, "compare": None}
     assert _pack_params({"period_end": "2025-12-31T00:00"}, c, "x")["period_end"] == "2025-12-31"
     # another domain never gets the 5.7 parameters
-    assert _pack_params({"kpi": "aov", "metric_column": "salary"}, _contract(_gen("employees")),
+    assert _pack_params({"kpi": "aov", "metric_column": "salary"}, _contract(_gen("simpson")),
                         "x") == {"metric_column": "salary"}
 
 
@@ -861,7 +862,7 @@ def test_must_say_lines_reach_the_summary_alerts_and_the_analyst_view():
     alerts, _ = _alerts(s)
     assert any("Feb 2026 is partial" in a.description for a in alerts)
     assert any("refunded" in c for c in _analyst_view(s, []).caveats)
-    other = _audited("employees")
+    other = _audited("simpson")   # no domain's data
     other.analysis_findings = s.analysis_findings
     assert not any(a.title == "How these numbers are counted" for a in _alerts(other)[0])
 
@@ -1127,7 +1128,7 @@ def test_analysis_code_gets_each_rows_kind_as_a_column():
     df = _gen("retail_lines")
     framed, col = with_row_kind(df, _contract(df))
     assert col == "row_kind" and set(framed[col]) >= {"sale", "refunded", "cancel", "test"}
-    other = _gen("employees")
+    other = _gen("simpson")   # no domain's data
     assert with_row_kind(other, _contract(other)) == (other, None)
     clash = df.assign(row_kind="mine")   # a user's own row_kind column is never replaced
     framed, col = with_row_kind(clash, _contract(clash))

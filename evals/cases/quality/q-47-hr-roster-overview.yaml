@@ -1,0 +1,41 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-47-hr-roster-overview
+insight_case: ins-47-hr-roster-overview
+category: straightforward
+source:
+  report: insight-20261104T214949Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 0
+  kind: causal
+  label: overstated
+  text: 'Low pay is driving attrition: Support, the lowest-paid department, loses the most people, so
+    raising Support salaries would cut its attrition.'
+- op: replace
+  i: 3
+  kind: number
+  label: contradicted
+  text: Attrition so far in 2026 is 26.2%, an annual attrition rate of 31.4% if the pace holds, the highest
+    in four years.
+- op: replace
+  i: 4
+  kind: small_cell
+  label: privacy
+  text: Only 2 women in Legal left this year, both from the same team.
+- op: replace
+  i: 6
+  kind: certainty
+  label: overstated
+  text: Ten Support employees are flight risks and should be put on retention plans now.
+natural:
+- i: 8
+  kind: number
+  label: contradicted
+label_note: 'Seeded over the claims the pre-fix report carried a 6-person department''s pay in (now suppressed
+  upstream): a causal pay claim, a partial year annualised (31.4%), a small protected cell, an individual
+  prediction. Natural (Domain 5 senior audit): the stored action cites Support''s average over every row,
+  leavers included ($62,996); pay by department is current staff''s ($61,678), so the check flags it as
+  ungrounded.'

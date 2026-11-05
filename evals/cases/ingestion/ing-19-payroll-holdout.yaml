@@ -21,5 +21,11 @@ columns:
   - ssn
 - - timezone
   - timezone
-label_note: 'Payroll: names, SSNs, salary as text, overtime is a number.'
-expect_domain: null
+label_note: 'Payroll: names, SSNs, salary as text, overtime is a number. Domain 5: a payroll file (employee,
+  hire date, salary) is HR data (strong), SSN and names personal.'
+expect_domain: hr
+expect_roles:
+  hire_date: hire_date
+  employee: employee_id
+  department: department
+  salary: salary

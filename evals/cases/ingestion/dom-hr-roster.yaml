@@ -1,0 +1,47 @@
+id: dom-hr-roster
+category: domain
+dataset:
+  name: hr_roster
+  seed: 1
+roles:
+  Employee_ID: id
+  Employee_Name: category
+  Work_Email: id
+  SSN: id
+  Date_of_Birth: date
+  Gender: category
+  Ethnicity: category
+  Department: category
+  Job_Level: category
+  Manager_ID: id
+  Worker_Type: category
+  FTE: metric
+  Annual_Salary: metric
+  Hire_Date: date
+  Termination_Date: date
+  Termination_Category: category
+  Regrettable: category
+  Employment_Status: category
+  Performance_Rating: metric
+traps:
+- Termination_Date
+- Manager_ID
+expect_domain: hr
+expect_roles:
+  hire_date: Hire_Date
+  termination_date: Termination_Date
+  employee: Employee_ID
+  manager: Manager_ID
+  department: Department
+  job_level: Job_Level
+  worker_type: Worker_Type
+  gender: Gender
+  ethnicity: Ethnicity
+  termination_category: Termination_Category
+  regrettable: Regrettable
+  performance: Performance_Rating
+  fte: FTE
+  salary: Annual_Salary
+  status: Employment_Status
+label_note: 'A roster (one row per employment spell): no snapshot date, so no level hint; SSN, DOB, name
+  and email are personal data.'

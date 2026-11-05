@@ -95,7 +95,13 @@ DEPTH = {"retail": ["analysis-20261102T002211Z.json",           # 7 retail cases
                        "e2e-20261104T021044Z-rescored.json",         # 9 insurance E2E cases, k=1
                        "e2e-20261104T021614Z.json",                  # e2e-64/65 k=3 after their fixes
                        "e2e-20261104T021756Z.json",                  # e2e-65 k=3 after the totals rule
-                       "e2e-20261104T033752Z-rescored.json"]}        # 9 + 3 cross-domain after the audits
+                       "e2e-20261104T033752Z-rescored.json"],        # 9 + 3 cross-domain after the audits
+         "hr": ["intake-20261104T214751Z.json",                 # 12 HR intake cases
+                "intake-20261104T214923Z.json",                 # hr-04/06 k=3 after their fixes
+                "insight-20261104T214949Z.json",                # 2 HR overviews
+                "quality-20261104T215807Z.json",                # 2 seeded HR reports (critic)
+                "analysis-20261105T180055Z-rescored.json",      # hr-1..10 k=3 after 9 audit passes
+                "e2e-20261105T181554Z.json"]}                   # 7 HR E2E cases after the audits
 
 
 def _listed(text: str) -> set[str]:

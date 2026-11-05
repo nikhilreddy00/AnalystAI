@@ -1,0 +1,24 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-48-hr-snapshots-overview
+insight_case: ins-48-hr-snapshots-overview
+category: straightforward
+source:
+  report: insight-20261104T214949Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 1
+  kind: number
+  label: contradicted
+  text: The dataset covers 24 months of monthly HR snapshots (Nov 2024 – Oct 2026) across 8,220 employees,
+    tracking headcount, pay, hires, and separations.
+- op: replace
+  i: 2
+  kind: causal
+  label: overstated
+  text: 'Hiring 70 people in 12 months is what pushed attrition up to 14.3%: the new joiners left first.'
+natural: []
+label_note: Rows called employees (8,220 snapshot rows, 353 people); a causal claim with no pack trigger
+  word, for the critic.

@@ -1,0 +1,18 @@
+id: intake-hr-04
+category: clear
+pipeline: production
+source:
+  dataset: hr_roster
+  seed: 1
+overview_done: true
+question: What is our headcount?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: headcount
+rationale: Headcount at the as-of. A state KPI asked plainly may be its latest value and change (time_series),
+  as banking's NPL ratio.

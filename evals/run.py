@@ -193,8 +193,10 @@ def builtin_only(case: dict) -> bool:
 def score_analysis(case: dict, findings, error: str | None, baseline: bool = True) -> dict:
     """Scores one analysis run from its stored output (so `rescore` costs nothing), against the
     frame the agent was given (PHI mode's working copy on patient data)."""
+    from agents.analysis_agent import model_frame
     _, truth, _ = dataset(case)
-    df = working_frame(case)[0]
+    df, contract = working_frame(case)
+    df = model_frame(df, contract)[0] if contract and contract.domain else df   # the model's own frame
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}
@@ -720,8 +722,11 @@ def quality_report(case: dict) -> tuple[dict, list[dict]]:
         if sec == "headline":
             ev["headline"] = d["text"]
             ev["headline_evidence_ids"] = d.get("ids", ev.get("headline_evidence_ids", []))
-        else:
-            ev[sec][j] = {"text": d["text"], "evidence_ids": d.get("ids", ev[sec][j]["evidence_ids"])}
+        else:   # an action item's words are its 'action' (its other fields kept)
+            item = dict(ev[sec][j])
+            item["action" if sec == "action_items" else "text"] = d["text"]
+            item["evidence_ids"] = d.get("ids", ev[sec][j]["evidence_ids"])
+            ev[sec][j] = item
     report["executive_summary"] = _flatten_executive_to_text(ExecutiveSummary.model_validate(ev))
     by_text = {d["text"]: {"label": d["label"], "origin": "seeded", "kind": d["kind"]}
                for d in case.get("defects", [])}

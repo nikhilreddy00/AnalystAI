@@ -158,3 +158,31 @@ async def test_a_total_question_is_the_overall_value_not_a_trend(recorded_llm, q
     recorded_llm.responses.append(_plan("time_series", metric_column="revenue"))
     task = await run_intake_agent(_session(), question, recorded_llm)
     assert task.question_intent == want
+
+
+async def test_a_spell_rate_over_the_last_12_months_is_one_figure_not_a_monthly_series(recorded_llm):
+    """Domain 5 E2E gate (e2e-75): 'What was involuntary attrition over the last 12 months?' was
+    planned as a monthly series (0.6% in October) instead of the 12-month rate (11.0%): the
+    trailing 12 months IS a spell KPI's own window."""
+    from connectors.csv_connector import CSVConnector, _read_bytes
+    from evals import datagen
+    from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
+    raw, _ = datagen.make("hr_roster", 1)
+    df = _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0]
+    s = AnalysisSession(session_id="t", data_contract=CSVConnector(
+        ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df))
+    plan = json.dumps({"raw_query": "q", "target_metrics": [], "segments": [], "analysis_types": [],
+                       "question_intent": "time_series", "clarification_needed": False,
+                       "targeted_params": {"kpi": "involuntary_attrition", "frequency": "M",
+                                           "date_column": "Termination_Date"}})
+    recorded_llm.responses += [plan, plan]
+    task = await run_intake_agent(s, "What was involuntary attrition over the last 12 months?", recorded_llm)
+    assert task.question_intent == QuestionIntent.SEGMENT_COMPARE and task.targeted_params.frequency is None
+    assert task.targeted_params.kpi == "involuntary_attrition"   # e2e-75 rerun: the rule wiped it
+    no_kpi = json.dumps({**json.loads(plan), "targeted_params": {"frequency": "M"}})
+    recorded_llm.responses += [no_kpi, no_kpi]   # the model named no KPI: the glossary's, kept
+    task = await run_intake_agent(s, "What was involuntary attrition over the last 12 months?", recorded_llm)
+    assert task.targeted_params.kpi == "involuntary_attrition"
+    recorded_llm.responses += [plan, plan]   # a grain asked keeps the series
+    task = await run_intake_agent(s, "Involuntary attrition by month over the last 12 months", recorded_llm)
+    assert task.question_intent == QuestionIntent.TIME_SERIES

@@ -1,0 +1,17 @@
+id: intake-hr-03
+category: clear
+pipeline: production
+source:
+  dataset: hr_roster
+  seed: 1
+overview_done: true
+question: How many terminations did we have in 2025?
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: separations
+rationale: Terminations = separations (events), a year asked.

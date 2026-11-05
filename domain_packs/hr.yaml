@@ -1,0 +1,320 @@
+# HR / people analytics (Phase 5.7, domain 5): employee rosters (one row per employment spell, or
+# per person with a latest hire date) and monthly snapshots (one row per person per month-end,
+# usually active people only). Headcount is a stock at a date; separations and hires are events;
+# attrition = separations ÷ the mean of the month-end headcounts, over the 12 months to the
+# as-of. Headers are normalized (domain_pack.normalize_header). Cited definitions and traps:
+# docs/research/2026-11-04-hr.md ([JC] BLS JOLTS concepts, [WD] Workday People Analytics,
+# [GPG] UK gender pay gap regulations, [TN] BLS tenure).
+domain: hr
+
+strong:
+  - {who: [employee], hired: [hire_date], left: [termination_date]}
+  - {who: [employee], hired: [hire_date], pay: [salary]}
+  - {who: [employee], when: [snapshot_date], org: [department]}
+  - {who: [employee], flag: [left], org: [department]}
+signals:
+  - {who: [employee], org: [department]}
+  - {who: [employee], pay: [salary]}
+# Another domain's headers (all words in ONE header): insurance (a workers'-comp loss run has an
+# employee and a hire date, and a claim), healthcare, retail, banking, SaaS, IoT, logistics. Not
+# balance alone (PTO balance) and not loan alone (a 401k loan deduction).
+exclude_headers: [[claim], [policy], [premium], [patient], [mrn], [admit], [discharge], [sku],
+                  [order, id], [account, balance], [loan, id], [mrr], [subscription], [sensor],
+                  [shipment], [customer, id]]
+abbreviations: {emp: employee, ee: employee, hc: headcount, term: termination, dept: department,
+                mgr: manager, sal: salary, doh: date_of_hire, dot: date_of_termination,
+                loa: leave_of_absence, pto: paid_time_off, dt: date, "no": number, num: number,
+                nbr: number, eid: employee_id, org: organization, sep: separation}
+
+roles:
+  # The time role first: a snapshot's date. A roster has none (its hire and termination dates are
+  # the spell's own): then no level hint and no time role, and spell KPIs keep their own axis.
+  snapshot_date:   {kind: date, headers: [snapshot_date, snapshot, month_end, month_end_date,
+                                          period_end_date, reporting_month, snapshot_month,
+                                          headcount_date]}
+  report_date:     {kind: date, headers: [report_date, extract_date, run_date, report_run_date,
+                                          data_as_of]}
+  hire_date:       {kind: date, headers: [hire_date, date_of_hire, start_date, hired_on,
+                                          employment_start_date, most_recent_hire_date,
+                                          latest_hire_date, rehire_date, joining_date,
+                                          date_joined]}
+  original_hire_date: {kind: date, headers: [original_hire_date, first_hire_date,
+                                             continuous_service_date, seniority_date,
+                                             adjusted_service_date, service_date]}
+  termination_date: {kind: date, headers: [termination_date, date_of_termination,
+                                           separation_date, exit_date, leaving_date, leave_date,
+                                           end_date, last_day_worked, last_working_day]}
+  employee:        {kind: id, headers: [employee_id, employee_number, employeenumber, employee,
+                                        worker_id, person_id, staff_id, associate_id,
+                                        personnel_number]}
+  manager:         {kind: id, headers: [manager_id, manager_employee_id, supervisor_id,
+                                        reports_to, manager]}
+  department:      {kind: category, headers: [department, division, business_unit, team,
+                                              function, organization, supervisory_organization,
+                                              cost_center]}
+  job_level:       {kind: category, headers: [job_level, level, grade, job_grade, pay_grade,
+                                              band, career_level, job_band]}
+  job_title:       {kind: category, headers: [job_title, title, job_role, position, job_profile]}
+  location:        {kind: category, headers: [location, work_location, office, site,
+                                              work_country, country]}
+  worker_type:     {kind: category, headers: [worker_type, employment_type, employee_type,
+                                              worker_category, contract_type, time_type]}
+  gender:          {kind: category, headers: [gender, sex, gender_identity]}
+  ethnicity:       {kind: category, headers: [ethnicity, race, race_ethnicity, ethnic_origin,
+                                              ethnic_group]}
+  disability:      {kind: category, headers: [disability, disability_status, disabled]}
+  religion:        {kind: category, headers: [religion, religion_or_belief]}
+  union_member:    {kind: category, headers: [union_member, union_membership, union_status]}
+  marital_status:  {kind: category, headers: [marital_status, maritalstatus]}
+  age_band:        {kind: category, headers: [age_band, age_group, age_range]}
+  termination_category: {kind: category, headers: [termination_category, termination_type,
+                                                   separation_type, separation_category,
+                                                   exit_type, leaving_type, attrition_type]}
+  termination_reason: {kind: category, headers: [termination_reason, separation_reason,
+                                                 reason_for_leaving, leaving_reason,
+                                                 exit_reason, primary_termination_reason]}
+  regrettable:     {kind: category, headers: [regrettable, regretted, regrettable_loss,
+                                              regrettable_termination]}
+  performance:     {kind: number, additive: false, headers: [performance_rating,
+                                                             performance_score, rating,
+                                                             last_performance_rating,
+                                                             performancerating]}
+  fte:             {kind: number, over_time: last, headers: [fte, fte_value,
+                                                             full_time_equivalent]}
+  salary:          {kind: money, over_time: last, additive: false,
+                    headers: [annual_salary, base_salary, salary, annual_base_salary, base_pay,
+                              annual_pay, compensation, monthlyincome, monthly_income, pay_rate]}
+  tenure:          {kind: number, additive: false, headers: [tenure_months, tenure, tenure_years,
+                                                            years_at_company, length_of_service,
+                                                            yearsatcompany]}
+  # a yes/no or 0/1 flag of who ever left (no date): the leaver share, never a rate
+  left:            {kind: number, additive: false, headers: [attrition, left, has_left, leaver,
+                                                             terminated_flag]}
+  status:          {kind: status, headers: [employment_status, status, employee_status,
+                                            worker_status, active_status]}
+
+# Every status counts (compared as words): leave of absence is in force; terminated with no
+# termination date is over at an unknown date (the spell's `ended`).
+status_values:
+  ok: [active, terminated, leave of absence, on leave, loa, leave, inactive, retired, deceased,
+       suspended, pending, hired, new hire, withdrawn, separated, notice, garden leave]
+
+# One person from hire to termination; a rehire is another spell of the same id. Snapshots: the
+# person's latest snapshot on or before a date (absent from the newest = gone).
+spell: {entity: employee, start: hire_date, end: termination_date,
+        ended: [terminated, inactive, separated, withdrawn, retired, deceased],
+        as_of: report_date}
+snapshot_key: employee
+marker_fields: [termination_date, termination_category, termination_reason, regrettable]
+
+row_labels: {sale: employment records}
+# The codes the model's frame and brief use for each kind (never a retail 'sale')
+kind_codes: {sale: counted, return: netted, refunded: reversed, cancel: voided, test: test,
+             non_product: excluded}
+overview_groups: [department, job_level, location, worker_type]
+overview_kpis: [headcount, attrition_rate, voluntary_attrition, hires, separations]
+# Special-category attributes and pay: never shown for fewer than 11 people
+protected_roles: [gender, ethnicity, disability, religion, union_member, marital_status, age_band,
+                  salary]
+small_cell_nouns: [women, men, non-binary people, non-binary employees]
+text:
+  people_nouns: "employees, people, staff, workers, leavers, hires, managers, colleagues"
+  rows_brief: "Headcount, average headcount, separations, hires and the rates are given below as computed facts: use them as they are, never recount them from rows. The facts also tell the file's story: report a year-over-year change of a rate in points, name the largest month of exits and where it came from before reading a trend or a department's rate, never call rows people, and raise rows with an ended status but no date as a data-quality point. Pay and FTE by group (a salary by department) read the people in force (in_force_now = 'yes'), as the tiles do; a distribution of a column reads every row, people who left included. Exits, hires and who is in force are already marked, in five more columns `df` has beyond the schema: 'left_date_unknown' ('yes' on a person whose status says they left but whose termination date is blank: never in force at any date, so leave these rows out of any headcount), 'in_force_now' ('yes' on each employee's row in force at the latest date: use it for current headcount, current pay and the pay gap, never re-derive it; on snapshots a row with status Terminated is an exit record, not a person employed then, even on the latest snapshot), 'exit_in_window' ('yes' on each exit in the 12-month window the facts name: count these rows for that window's separations), 'exit_event_date' (on the row of each employee's exit, contractors and agency workers never marked; the date the person left: the termination date, or on monthly snapshots the first snapshot they are missing from, since most leavers simply stop appearing) and 'hire_event_date' (on the row of each hire); every other row is blank. A window's separations are the rows with an exit_event_date in it (count rows: a rehire's two exits are two, never distinct ids), by that row's department (where the person left from). Attrition counts ALL separations (voluntary, involuntary, retirement and other) unless the question names a kind; voluntary attrition leaves out retirements. Dates reach the sandbox as text: pd.to_datetime them before comparing (a text date compared with a Timestamp fails and loses the answer). At another date t, a person is in force when hired on or before t and the termination date is blank or after t, and never when the status says Terminated with no termination date; on snapshots, the person's latest snapshot on or before t, out when that row is Terminated. A rate by year divides each year's exits (exit_event_date in that year) by that year's own average headcount (the facts give it): file it under segment_column = 'exit_event_date' with each group named by the year alone ('2025'). A pay gap by level is one group per level (segment_column = the level column, groups named by the level alone, never a group called 'gap' or 'mean'), its value the gap, reported both as the mean gap and the median gap (two segments), each saying it is unadjusted. A column named like a flag of who left ('left', 'attrition' 0/1) is the share of the file who ever left, over no period: never an attrition rate. Contractors and agency workers carry no salary by design: their blank pay is not missing data. A difference in tenure between leavers and current staff is survivorship (current staff haven't left yet), never a cause. One person can have several rows (a rehire is a second row with the same id; a snapshot file lists each person every month): count people as distinct employee ids, never rows. Headcount is the people in force at a date (hired on or before it, termination blank or after it): never a sum of rows or of months. Separations are exits (events: a rehire's two exits are two). Attrition = separations ÷ the AVERAGE headcount over the same window (the mean of its month-end headcounts), never ÷ the headcount at the end or today. Contractors, agency workers and consultants are out of headcount and every rate; interns, seasonal, temporary and part-time employees are in. Retirements are not voluntary separations. A partial period (fewer months) is named with its months and never annualised. A department's exits count in the department the person left from. Pay gap = (men's pay − women's pay) ÷ men's pay, unadjusted, on full-time-equivalent pay (salary ÷ FTE) when FTE exists. Never give a figure for a group of fewer than 11 people by gender, ethnicity or any protected attribute, or anyone's pay in a group under 11."
+  grain_line: "One row is an employment spell or a person's month-end snapshot: count people as distinct {key}, never rows."
+  unsupported_alternatives: "I can answer with what the data has: headcount and FTE now or by month, separations and hires, attrition (all, voluntary, involuntary) over the 12 months to the latest date, by department, level or location, and average salary of current staff. Which would help?"
+  kpis_default: its headcount, hire and termination columns
+  causal_removed: "{n} sentence(s) saying pay, a manager, performance or a policy caused people to leave were removed: from observational data without a controlled comparison that can't be shown."
+
+kpis:
+  - name: headcount
+    label: Headcount
+    unit: count
+    tile: true
+    unit_word: employees
+    num: [[{spell: active, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}]]}],
+          [{spell: active}]]
+  - name: fte
+    label: FTE
+    unit: number
+    tile: true
+    num: [[{spell: active, sum: fte, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}]]}],
+          [{spell: active, sum: fte}]]
+  - name: contingent_workers
+    label: Contingent workers
+    unit: count
+    num: [[{spell: active, where: [[{role: worker_type, in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}]]}]]
+  # The mean of the month-end headcounts in the window [WD 12-month average active headcount]
+  - name: avg_headcount
+    label: Average headcount
+    unit: number
+    num: [[{spell: average, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}]]}],
+          [{spell: average}]]
+  # Exits are events: a rehire's two exits count twice [JC]
+  - name: separations
+    label: Separations
+    unit: count
+    tile: true
+    num: [[{spell: ends, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}]]}],
+          [{spell: ends}]]
+  - name: voluntary_separations
+    label: Voluntary separations
+    unit: count
+    num: [[{spell: ends, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}, {role: termination_category, in: [voluntary, resignation, resigned, quit, voluntary resignation]}]]}],
+          [{spell: ends, where: [[{role: termination_category, in: [voluntary, resignation, resigned, quit, voluntary resignation]}]]}]]
+  - name: involuntary_separations
+    label: Involuntary separations
+    unit: count
+    num: [[{spell: ends, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}, {role: termination_category, in: [involuntary, layoff, laid off, dismissal, dismissed, discharge, discharged, redundancy, redundant, end of contract, termination for cause, fired]}]]}],
+          [{spell: ends, where: [[{role: termination_category, in: [involuntary, layoff, laid off, dismissal, dismissed, discharge, discharged, redundancy, redundant, end of contract, termination for cause, fired]}]]}]]
+  - name: retirements
+    label: Retirements
+    unit: count
+    num: [[{spell: ends, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}, {role: termination_category, in: [retirement, retired, retire]}]]}],
+          [{spell: ends, where: [[{role: termination_category, in: [retirement, retired, retire]}]]}]]
+  - name: regrettable_separations
+    label: Regrettable separations
+    unit: count
+    num: [[{spell: ends, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}, {role: regrettable, in: ["yes", "y", "true", "1", regrettable, regretted]}]]}],
+          [{spell: ends, where: [[{role: regrettable, in: ["yes", "y", "true", "1", regrettable, regretted]}]]}]]
+  # Attrition (turnover): separations ÷ average headcount over the same window [WD, JC]
+  - {name: attrition_rate, label: Attrition rate, unit: percent, tile: true,
+     num: [[{kpi: separations}]], den: [[{kpi: avg_headcount}]]}
+  - {name: voluntary_attrition, label: Voluntary attrition, unit: percent, tile: true,
+     num: [[{kpi: voluntary_separations}]], den: [[{kpi: avg_headcount}]]}
+  - {name: involuntary_attrition, label: Involuntary attrition, unit: percent,
+     num: [[{kpi: involuntary_separations}]], den: [[{kpi: avg_headcount}]]}
+  - {name: retirement_rate, label: Retirement rate, unit: percent,
+     num: [[{kpi: retirements}]], den: [[{kpi: avg_headcount}]]}
+  - {name: regrettable_attrition, label: Regrettable attrition, unit: percent,
+     num: [[{kpi: regrettable_separations}]], den: [[{kpi: avg_headcount}]]}
+  # Hires include rehires [JC]; the first snapshot holds none
+  - name: hires
+    label: Hires
+    unit: count
+    tile: true
+    num: [[{spell: starts, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}]]}],
+          [{spell: starts}]]
+  - {name: hire_rate, label: Hire rate, unit: percent, num: [[{kpi: hires}]], den: [[{kpi: avg_headcount}]]}
+  # Current staff with a salary, contractors out: annual base as recorded (part-time pay is not
+  # grossed up)
+  - name: avg_salary
+    label: Average salary (current staff)
+    unit: money
+    tile: true
+    num: [[{spell: active, sum: salary, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}, {role: salary, not_in: []}]]}],
+          [{spell: active, sum: salary, where: [[{role: salary, not_in: []}]]}]]
+    den: [[{spell: active, where: [[{role: worker_type, not_in: [contractor, contingent, agency, agency worker, consultant, freelancer, vendor, contract worker, temp agency]}, {role: salary, not_in: []}]]}],
+          [{spell: active, where: [[{role: salary, not_in: []}]]}]]
+  # A flag file (Attrition yes/no, no dates): the share of the file who left, over no period
+  - name: leaver_share
+    label: Share of the file who left (no period)
+    unit: percent
+    num: [[{nunique: employee, where: [[{role: left, in: ["yes", "y", "1", "true", left, leaver, terminated]}]]}]]
+    den: [[{nunique: employee, where: [[{role: left, not_in: []}]]}]]
+
+glossary:
+  attrition_rate: [attrition, attrition rate, turnover, turnover rate, employee turnover,
+                   staff turnover, separation rate, terminations rate, churn rate, leaving rate]
+  voluntary_attrition: [voluntary attrition, voluntary turnover, resignations, resignation rate,
+                        quit rate, quits, people who quit, people who resigned]
+  involuntary_attrition: [involuntary attrition, involuntary turnover, layoffs, dismissals,
+                          redundancies, firings, people we let go, laid off]
+  retirement_rate: [retirements, retirement rate, retired]
+  regrettable_attrition: [regrettable attrition, regretted attrition, regrettable turnover,
+                          regrettable losses]
+  separations: [separations, leavers, exits, terminations, departures, people left,
+                number of leavers, how many people left, people leaving]
+  headcount: [headcount, head count, employees, number of employees, staff count, workforce
+              size, how many employees, how many people work, how many staff]
+  fte: [fte, ftes, full time equivalent, full time equivalents]
+  avg_headcount: [average headcount, avg headcount, mean headcount]
+  hires: [hires, new hires, joiners, starters, people hired, hiring]
+  hire_rate: [hire rate, hiring rate]
+  contingent_workers: [contractors, contingent workers, contingent, agency workers, consultants]
+  avg_salary: [average salary, avg salary, mean salary, average pay, average compensation,
+               salary per employee]
+  leaver_share: [share who left, leaver share, percent who left, proportion who left]
+  pay_gap: [pay gap, gender pay gap, pay equity, equal pay, gender pay, pay disparity]
+  tenure: [tenure, length of service, years of service, time at company, seniority]
+  annualised: [annualised, annualized, annual rate, per year, yearly rate, run rate]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+  retention: [retention, retention rate, retained, cohort retention, stay rate]
+  first_year_attrition: [first year attrition, new hire turnover, new hire attrition,
+                         early attrition, first year turnover]
+  span_of_control: [span of control, direct reports per manager, reports per manager]
+  time_to_fill: [time to fill, time to hire, days to fill, recruiting time, offer acceptance,
+                 offer acceptance rate, requisitions, open roles]
+  absence_rate: [absence rate, absenteeism, sick days, sickness absence, bradford factor,
+                 days lost]
+  engagement: [engagement, engagement score, enps, employee satisfaction, survey]
+  adjusted_pay_gap: [adjusted pay gap, adjusted gap, controlling for, like for like pay,
+                     equal pay for equal work, unexplained gap]
+  flight_risk: [flight risk, likely to leave, likely to quit, will quit, who will leave,
+                predict attrition, attrition risk, at risk of leaving, which employees will]
+  protected_decision: [hire fewer, hire more women, hire more men, hire fewer women,
+                       hire fewer men, promote fewer, fire older, lay off older,
+                       based on gender, based on race, based on age, because of their gender]
+  compliance: [gpg filing, gender pay gap report, pay transparency directive,
+               joint pay assessment, compliant, compliance, legal requirement]
+definitions:
+  pay_gap: "The unadjusted pay gap is (men's average pay − women's average pay) ÷ men's average pay, the mean and the median, on full-time-equivalent pay (salary ÷ FTE) where the data has FTE, by job level where it has one, people in force at the latest date, contractors out. It is unadjusted: it compares groups, not people doing equal work, so it is not evidence of unequal pay for equal work (or of its absence). Non-binary people are not in either group; groups of fewer than 11 people are not shown."
+  tenure: "Tenure is months from the latest hire date: for current staff to the latest date in the data (incomplete spells, a lower bound: they haven't left yet), for leavers to their exit. The median of each is reported separately; comparing them is survivorship, not a trend."
+  annualised: "An annualised rate scales a partial year linearly (× 12 ÷ months): it assumes the rest of the year looks the same. Rates here are over the 12 months to the latest date unless a period is asked; a partial period is named with its months and not annualised unless asked."
+  yoy: "Year over year compares the same 12-month window (or the asked period) a year earlier."
+unsupported:
+  retention: "cohort retention (of the people employed at the start of a period, the share still employed at its end) is not computed here; it is not 1 − attrition (attrition also counts the exits of people hired during the period). Attrition over the same window is available"
+  first_year_attrition: "first-year attrition needs each hire cohort followed for 12 months (cohorts younger than that are incomplete); it is not computed here"
+  span_of_control: "direct reports per manager (managers with at least one report) is not computed here"
+  time_to_fill: "a requisitions table (open, filled and offer dates); an employee roster has none"
+  absence_rate: "absence records and each person's available days; ranking people by absence (a Bradford factor) is not done"
+  engagement: "survey responses; an employee roster has none"
+  adjusted_pay_gap: "a regression with controls chosen with HR and legal: controls such as level or prior pay can themselves carry unequal treatment (EEOC Compliance Manual §10), so only the unadjusted gap is given"
+  flight_risk: "nothing that should be used: predicting or scoring which individuals will leave is a decision about a person (EU AI Act Annex III 4(b), GDPR Art. 22). The data can show which groups had higher attrition, never who will leave"
+  protected_decision: "nothing that should be used: hiring, firing or promoting by gender, ethnicity, age or another protected attribute is discrimination, and equality data may not drive decisions about a person (UK DPA 2018 Sch. 1 para 8). The data can be described by these groups, never turned into a recommendation about them"
+  compliance: "a legal review: this tool reports the figures in the data, not whether a gender pay gap report or a pay-transparency assessment is compliant"
+
+caveats:
+  read_as_domain: "Read as HR data ({kpis}). Headcount is the people in force at the latest date (contractors and agency workers out, interns and part-timers in); separations and hires are events (a rehire's exits count separately); attrition is separations ÷ the average of the month-end headcounts over the 12 months to that date. Pay and protected attributes (gender, ethnicity) are never shown for groups of fewer than 11 people."
+  read_as_domain_weak: "Read as HR data because it has {roles} columns; if these are not employees, the HR figures here don't apply."
+  repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons; it is not annualised."
+  months_lt_13: "The data covers {months} months, so a 12-month rate isn't available for a full year before it, and month-over-month changes may be seasonal."
+role_caveats:
+  gender: "Gender is shown as a description only: hiring, firing or pay decisions on it are discrimination, so no recommendation is made on it; groups of fewer than 11 people are not shown."
+  ethnicity: "Ethnicity is special-category data (GDPR Art. 9): shown as a description only, never a recommendation about people, and never for groups of fewer than 11."
+  disability: "Disability is health data (GDPR Art. 9; ADA confidentiality): shown as a description only and never for groups of fewer than 11."
+  religion: "Religion is special-category data (GDPR Art. 9): shown as a description only and never for groups of fewer than 11."
+  union_member: "Trade-union membership is special-category data (GDPR Art. 9): shown as a description only and never for groups of fewer than 11."
+  marital_status: "Marital status is shown as a description only, never a recommendation about people."
+  age_band: "Age is shown as a description only: decisions about people on age are discrimination."
+  performance: "Performance ratings describe groups here; they are never used to rank or predict individuals."
+  salary: "Pay is annual base salary as recorded: part-time salaries are not full-time equivalents, so groups with more part-timers (often women) show lower pay than on a full-time-equivalent basis, which the unadjusted pay gap uses; pay is never shown for a group of fewer than 11 people."
+  original_hire_date: "This file lists each person once with their latest hire date: an earlier employment's exit is not in it, so separations and past headcount from it run slightly low."
+
+causal_triggers: [salary, salaries, pay, paid, lowest-paid, highest-paid, underpaid, compensation,
+                  raise, raises, bonus, bonuses, promotion,
+                  promotions, manager, managers, management, performance, rating, ratings,
+                  remote, hybrid, office, training, benefits, overtime, commute, workload,
+                  engagement, culture, policy, policies, program, programs, flexible working,
+                  tenure, women, men, gender, ethnicity, age]
+
+never_say:
+  - {pattern: '\b(?:flight[- ]risks?|(?:is|are|will be)\s+(?:likely|expected|about)\s+to\s+(?:quit|leave|resign)|at risk of (?:leaving|quitting))\b',
+     reason: "predicts which people will leave: a decision about individuals this data can't support (EU AI Act Annex III 4(b))"}
+  - {pattern: '\b(?:no|zero)\s+(?:gender\s+)?pay\s+(?:gap|discrimination|inequity|bias)\b|\bpays?\s+(?:men and women|women and men)\s+(?:equally|fairly)\b',
+     reason: "draws an equal-pay conclusion from an unadjusted gap: it compares groups, not people doing equal work"}
+  - {pattern: '\b(?:hire|promote|fire|lay off|let go|recruit)\s+(?:fewer|more|less)\s+(?:women|men|older|younger|disabled|\w+\s+(?:employees|people|candidates))\b',
+     reason: "recommends acting on a protected attribute: discrimination, and equality data may not drive decisions about people"}
+  - {pattern: '\b(?:annual(?:i[sz]ed)?|yearly|full[- ]year)\s+(?:attrition|turnover|separation|hire)\s+(?:rate\s+)?(?:of|at|is|was|reached)\s+[\d.]+%[^.]{0,60}\b(?:so far|year[- ]to[- ]date|ytd|\d{1,2} months)\b|\b(?:so far|year[- ]to[- ]date|ytd)\b[^.]{0,60}\b(?:annual(?:i[sz]ed)?|full[- ]year)\s+(?:attrition|turnover)',
+     reason: "calls a partial year's rate annual: it covers fewer than 12 months (annualise only when asked, linearly, and say so)"}
+  - {pattern: '\b(?:is|are|we are|the company is)\s+(?:fully\s+)?(?:compliant|in compliance|non-compliant)\b|\b(?:meets|satisfies|breaches)\s+(?:the\s+)?(?:gender pay gap|pay transparency|equal pay)\s+(?:rules|regulations|requirements|directive)',
+     reason: "a compliance verdict: this tool reports the figures, a legal review decides compliance"}
+
+first_questions:
+  - {q: "What is our attrition rate over the last 12 months, by department?", needs: [attrition_rate, department]}
+  - {q: "How do voluntary and involuntary attrition compare?", needs: [voluntary_attrition, involuntary_attrition]}
+  - {q: "What are headcount and FTE now, and how has headcount moved by month?", needs: [headcount]}
+  - {q: "How many people did we hire, and how many left, by month?", needs: [hires, separations]}
+  - {q: "What is the average salary of current staff by department and level?", needs: [avg_salary, job_level]}
+  - {q: "What is the unadjusted gender pay gap by job level?", needs: [gender, job_level, salary]}
+  - {q: "How does the tenure of leavers compare with current staff?", needs: [tenure]}

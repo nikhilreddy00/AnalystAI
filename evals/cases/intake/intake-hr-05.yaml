@@ -1,0 +1,18 @@
+id: intake-hr-05
+category: clear
+pipeline: production
+source:
+  dataset: hr_roster
+  seed: 1
+overview_done: true
+question: How many FTEs do we have by department?
+expect:
+  ask: false
+  intent_any:
+  - top_n
+  - segment_compare
+  params:
+    kpi: fte
+  columns:
+    by: Department
+rationale: FTE is its own KPI (never heads).

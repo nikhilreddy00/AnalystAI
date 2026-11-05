@@ -1,0 +1,1201 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261104T211227Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "1a651dc",
+  "started_at": "20261104T211227Z",
+  "only": "hr-4,hr-9",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 2,
+  "hard_rules_na": 2,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 1,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0505,
+  "latency_p50_s": 42.67,
+  "latency_p95_s": 54.0,
+  "numeric_accuracy": 0.0,
+  "insight_recall": 0.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 30,
+  "by_domain": {
+   "hr": {
+    "cases": 2,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 2,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 2,
+    "numeric_accuracy": 0.0,
+    "insight_recall": 0.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 30,
+    "model_dependent_quality": {
+     "numeric_accuracy": 0.0,
+     "insight_recall": 0.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 30
+    }
+   }
+  }
+ },
+ "runs": {
+  "hr-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no Department breakdown matches attrition_12m_by_dept (tried ['exit_event_date', 'exit_event_date'])",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": false,
+      "detail": "unknown columns ['exit_event_date']"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 5185,
+    "output": {
+     "eda_summary": {
+      "FTE": {
+       "mean": 0.9488,
+       "std": 0.1375,
+       "min": 0.5,
+       "max": 1.0,
+       "median": 1.0,
+       "count": 1770
+      },
+      "Annual_Salary": {
+       "mean": 76006.0643,
+       "std": 30833.5116,
+       "min": 19100.0,
+       "max": 217100.0,
+       "median": 69300.0,
+       "count": 1649
+      },
+      "Performance_Rating": {
+       "mean": 3.0958,
+       "std": 1.0511,
+       "min": 1.0,
+       "max": 5.0,
+       "median": 3.0,
+       "count": 1649
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Department",
+       "metric_column": "exit_event_date",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Support",
+         "value": 0.1171
+        },
+        {
+         "name": "Engineering",
+         "value": 0.0777
+        },
+        {
+         "name": "Sales",
+         "value": 0.0746
+        },
+        {
+         "name": "Finance",
+         "value": 0.0218
+        },
+        {
+         "name": "Operations",
+         "value": 0.0218
+        },
+        {
+         "name": "Marketing",
+         "value": 0.0218
+        }
+       ],
+       "label": "attrition_rate"
+      },
+      {
+       "segment_column": "Department",
+       "metric_column": "exit_event_date",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Support",
+         "value": 113.0
+        },
+        {
+         "name": "Engineering",
+         "value": 75.0
+        },
+        {
+         "name": "Sales",
+         "value": 72.0
+        },
+        {
+         "name": "Finance",
+         "value": 21.0
+        },
+        {
+         "name": "Operations",
+         "value": 21.0
+        },
+        {
+         "name": "Marketing",
+         "value": 21.0
+        }
+       ],
+       "label": "separations_nov2025_oct2026"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "FTE": [
+       {
+        "label": "(0.5, 0.667]",
+        "count": 133
+       },
+       {
+        "label": "(0.667, 0.833]",
+        "count": 121
+       },
+       {
+        "label": "(0.833, 1.0]",
+        "count": 1516
+       }
+      ],
+      "Annual_Salary": [
+       {
+        "label": "(18902.0, 38900.0]",
+        "count": 101
+       },
+       {
+        "label": "(38900.0, 58700.0]",
+        "count": 431
+       },
+       {
+        "label": "(58700.0, 78500.0]",
+        "count": 505
+       },
+       {
+        "label": "(78500.0, 98300.0]",
+        "count": 281
+       },
+       {
+        "label": "(98300.0, 118100.0]",
+        "count": 159
+       },
+       {
+        "label": "(118100.0, 137900.0]",
+        "count": 88
+       },
+       {
+        "label": "(137900.0, 157700.0]",
+        "count": 47
+       },
+       {
+        "label": "(157700.0, 177500.0]",
+        "count": 28
+       },
+       {
+        "label": "(177500.0, 197300.0]",
+        "count": 7
+       },
+       {
+        "label": "(197300.0, 217100.0]",
+        "count": 2
+       }
+      ],
+      "Performance_Rating": [
+       {
+        "label": "(0.996, 1.8]",
+        "count": 143
+       },
+       {
+        "label": "(1.8, 2.6]",
+        "count": 261
+       },
+       {
+        "label": "(2.6, 3.4]",
+        "count": 689
+       },
+       {
+        "label": "(3.4, 4.2]",
+        "count": 407
+       },
+       {
+        "label": "(4.2, 5.0]",
+        "count": 149
+       }
+      ],
+      "Employee_Name": [
+       {
+        "label": "Eli Lopez",
+        "count": 32
+       },
+       {
+        "label": "Eli Quinn",
+        "count": 31
+       },
+       {
+        "label": "Fay Ito",
+        "count": 30
+       },
+       {
+        "label": "Ivo Kaur",
+        "count": 29
+       },
+       {
+        "label": "Ana Quinn",
+        "count": 29
+       },
+       {
+        "label": "Fay Okafor",
+        "count": 29
+       },
+       {
+        "label": "Jun Ito",
+        "count": 29
+       },
+       {
+        "label": "Fay Lopez",
+        "count": 28
+       },
+       {
+        "label": "Hana Quinn",
+        "count": 28
+       },
+       {
+        "label": "Ben Novak",
+        "count": 28
+       }
+      ],
+      "Gender": [
+       {
+        "label": "Male",
+        "count": 959
+       },
+       {
+        "label": "Female",
+        "count": 785
+       },
+       {
+        "label": "Non-binary",
+        "count": 26
+       }
+      ],
+      "Ethnicity": [
+       {
+        "label": "White",
+        "count": 772
+       },
+       {
+        "label": "Asian",
+        "count": 367
+       },
+       {
+        "label": "Hispanic or Latino",
+        "count": 275
+       },
+       {
+        "label": "Black or African American",
+        "count": 192
+       },
+       {
+        "label": "Two or More Races",
+        "count": 94
+       },
+       {
+        "label": "Declined",
+        "count": 70
+       }
+      ],
+      "Department": [
+       {
+        "label": "Engineering",
+        "count": 460
+       },
+       {
+        "label": "Sales",
+        "count": 422
+       },
+       {
+        "label": "Support",
+        "count": 390
+       },
+       {
+        "label": "Operations",
+        "count": 203
+       },
+       {
+        "label": "Marketing",
+        "count": 165
+       },
+       {
+        "label": "Finance",
+        "count": 124
+       },
+       {
+        "label": "Legal",
+        "count": 6
+       }
+      ],
+      "Job_Level": [
+       {
+        "label": "L1",
+        "count": 545
+       },
+       {
+        "label": "L2",
+        "count": 523
+       },
+       {
+        "label": "L3",
+        "count": 341
+       },
+       {
+        "label": "L4",
+        "count": 239
+       },
+       {
+        "label": "L5",
+        "count": 122
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    avg_headcount = 965.0\n    window_start = pd.Timestamp('2025-11-01')\n    window_end   = pd.Timestamp('2026-10-31')\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits = df[\n        (df['row_kind'] == 'counted') &\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end)\n    ].copy()\n\n    dept_seps = (\n        exits.groupby('Department')['Employee_ID']\n        .count()\n        .reset_index()\n        .rename(columns={'Employee_ID': 'separations'})\n    )\n\n    dept_rate_results = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['separations']) / avg_headcount, 4)}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    dept_count_results = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_rate_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_count_results\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \"\n        f\"divided by provided average headcount of {avg_headcount:.0f}; denominator not recomputed from rows.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) included per 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department recorded on the exit row (where the person left from).\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'FTE' in df.columns and pd.api.types.is_numeric_dtype(df['FTE']):\n        _s = df['FTE'].dropna()\n        if len(_s) > 0 and 'FTE' not in result['eda_summary']:\n            result['eda_summary']['FTE'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Annual_Salary' in df.columns and pd.api.types.is_numeric_dtype(df['Annual_Salary']):\n        _s = df['Annual_Salary'].dropna()\n        if len(_s) > 0 and 'Annual_Salary' not in result['eda_summary']:\n            result['eda_summary']['Annual_Salary'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Performance_Rating' in df.columns and pd.api.types.is_numeric_dtype(df['Performance_Rating']):\n        _s = df['Performance_Rating'].dropna()\n        if len(_s) > 0 and 'Performance_Rating' not in result['eda_summary']:\n            result['eda_summary']['Performance_Rating'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'FTE' in df.columns and pd.api.types.is_numeric_dtype(df['FTE']):\n        _col_data = df['FTE'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['FTE'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Annual_Salary' in df.columns and pd.api.types.is_numeric_dtype(df['Annual_Salary']):\n        _col_data = df['Annual_Salary'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Annual_Salary'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Performance_Rating' in df.columns and pd.api.types.is_numeric_dtype(df['Performance_Rating']):\n        _col_data = df['Performance_Rating'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Performance_Rating'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Employee_Name' in df.columns:\n        _vc = df['Employee_Name'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Employee_Name'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Gender' in df.columns:\n        _vc = df['Gender'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Gender'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Ethnicity' in df.columns:\n        _vc = df['Ethnicity'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Ethnicity'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Department' in df.columns:\n        _vc = df['Department'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Department'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Job_Level' in df.columns:\n        _vc = df['Job_Level'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Job_Level'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Employee_ID": 100001,
+       "Employee_Name": "Fay Kaur",
+       "Work_Email": "fay.kaur100001@example.com",
+       "SSN": "570-81-7568",
+       "Date_of_Birth": 1963,
+       "Gender": "Male",
+       "Ethnicity": "Two or More Races",
+       "Department": "Sales",
+       "Job_Level": "L1",
+       "Manager_ID": 101346,
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Annual_Salary": 56000.0,
+       "Hire_Date": "2015-01-13",
+       "Termination_Date": null,
+       "Termination_Category": null,
+       "Regrettable": null,
+       "Employment_Status": "Active",
+       "Performance_Rating": 3.0,
+       "row_kind": "counted",
+       "hire_event_date": "2015-01-13",
+       "exit_event_date": null
+      },
+      {
+       "Employee_ID": 100002,
+       "Employee_Name": "Eli Kaur",
+       "Work_Email": "eli.kaur100002@example.com",
+       "SSN": "758-89-4335",
+       "Date_of_Birth": 1993,
+       "Gender": "Male",
+       "Ethnicity": "White",
+       "Department": "Operations",
+       "Job_Level": "L2",
+       "Manager_ID": 101629,
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Annual_Salary": 63400.0,
+       "Hire_Date": "2015-03-13",
+       "Termination_Date": null,
+       "Termination_Category": null,
+       "Regrettable": null,
+       "Employment_Status": "Active",
+       "Performance_Rating": 4.0,
+       "row_kind": "counted",
+       "hire_event_date": "2015-03-13",
+       "exit_event_date": null
+      },
+      {
+       "Employee_ID": 100003,
+       "Employee_Name": "Hana Lopez",
+       "Work_Email": "hana.lopez100003@example.com",
+       "SSN": "252-94-6023",
+       "Date_of_Birth": 1980,
+       "Gender": "Male",
+       "Ethnicity": "Black or African American",
+       "Department": "Support",
+       "Job_Level": "L5",
+       "Manager_ID": 100348,
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Annual_Salary": 135800.0,
+       "Hire_Date": "2015-03-15",
+       "Termination_Date": null,
+       "Termination_Category": null,
+       "Regrettable": null,
+       "Employment_Status": "Active",
+       "Performance_Rating": 1.0,
+       "row_kind": "counted",
+       "hire_event_date": "2015-03-15",
+       "exit_event_date": null
+      },
+      {
+       "Employee_ID": 100004,
+       "Employee_Name": "Ivo Kaur",
+       "Work_Email": "ivo.kaur100004@example.com",
+       "SSN": "453-87-3903",
+       "Date_of_Birth": 1992,
+       "Gender": "Male",
+       "Ethnicity": "Hispanic or Latino",
+       "Department": "Sales",
+       "Job_Level": "L5",
+       "Manager_ID": 101528,
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Annual_Salary": 163400.0,
+       "Hire_Date": "2015-04-08",
+       "Termination_Date": null,
+       "Termination_Category": null,
+       "Regrettable": null,
+       "Employment_Status": "Active",
+       "Performance_Rating": 1.0,
+       "row_kind": "counted",
+       "hire_event_date": "2015-04-08",
+       "exit_event_date": null
+      },
+      {
+       "Employee_ID": 100005,
+       "Employee_Name": "Fay Park",
+       "Work_Email": "fay.park100005@example.com",
+       "SSN": "468-99-3137",
+       "Date_of_Birth": 1968,
+       "Gender": "Female",
+       "Ethnicity": "Asian",
+       "Department": "Engineering",
+       "Job_Level": "L1",
+       "Manager_ID": 100189,
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Annual_Salary": 54000.0,
+       "Hire_Date": "2015-04-12",
+       "Termination_Date": null,
+       "Termination_Category": null,
+       "Regrettable": null,
+       "Employment_Status": "Active",
+       "Performance_Rating": 4.0,
+       "row_kind": "counted",
+       "hire_event_date": "2015-04-12",
+       "exit_event_date": null
+      }
+     ],
+     "dtypes_summary": {
+      "Employee_ID": "int64",
+      "Employee_Name": "object",
+      "Work_Email": "object",
+      "SSN": "object",
+      "Date_of_Birth": "int64",
+      "Gender": "object",
+      "Ethnicity": "object",
+      "Department": "object",
+      "Job_Level": "object",
+      "Manager_ID": "int64",
+      "Worker_Type": "object",
+      "FTE": "float64",
+      "Annual_Salary": "float64",
+      "Hire_Date": "object",
+      "Termination_Date": "object",
+      "Termination_Category": "object",
+      "Regrettable": "object",
+      "Employment_Status": "object",
+      "Performance_Rating": "float64",
+      "row_kind": "object",
+      "hire_event_date": "object",
+      "exit_event_date": "datetime64[ns]"
+     },
+     "missing_pct": {
+      "Employee_ID": 0.0,
+      "Employee_Name": 0.0,
+      "Work_Email": 0.0,
+      "SSN": 0.0,
+      "Date_of_Birth": 0.0,
+      "Gender": 0.0,
+      "Ethnicity": 0.0,
+      "Department": 0.0,
+      "Job_Level": 0.0,
+      "Manager_ID": 0.0,
+      "Worker_Type": 0.0,
+      "FTE": 0.0,
+      "Annual_Salary": 6.84,
+      "Hire_Date": 0.0,
+      "Termination_Date": 51.24,
+      "Termination_Category": 51.24,
+      "Regrettable": 51.24,
+      "Employment_Status": 0.0,
+      "Performance_Rating": 6.84,
+      "row_kind": 0.0,
+      "hire_event_date": 0.11,
+      "exit_event_date": 51.41
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Department/exit_event_date:ratio:attrition_rate",
+       "kind": "segment",
+       "claim": "attrition_rate (from exit_event_date) by Department (6 groups)",
+       "code": "try:\n    avg_headcount = 965.0\n    window_start = pd.Timestamp('2025-11-01')\n    window_end   = pd.Timestamp('2026-10-31')\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits = df[\n        (df['row_kind'] == 'counted') &\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end)\n    ].copy()\n\n    dept_seps = (\n        exits.groupby('Department')['Employee_ID']\n        .count()\n        .reset_index()\n        .rename(columns={'Employee_ID': 'separations'})\n    )\n\n    dept_rate_results = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['separations']) / avg_headcount, 4)}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    dept_count_results = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_rate_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_count_results\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \"\n        f\"divided by provided average headcount of {avg_headcount:.0f}; denominator not recomputed from rows.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) included per 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department recorded on the exit row (where the person left from).\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"exit_event_date\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Support\", \"value\": 0.1171}, {\"name\": \"Engineering\", \"value\": 0.0777}, {\"name\": \"Sales\", \"value\": 0.0746}, {\"name\": \"Finance\", \"value\": 0.0218}, {\"name\": \"Operations\", \"value\": 0.0218}, {\"name\": \"Marketing\", \"value\": 0.0218}], \"label\": \"attrition_rate\"}",
+       "row_count": 860,
+       "confidence": "high",
+       "confidence_reason": "860 rows",
+       "assumptions": [
+        "Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') divided by provided average headcount of 965; denominator not recomputed from rows.",
+        "Department is the department recorded on the exit row (where the person left from)."
+       ]
+      },
+      {
+       "id": "seg:Department/exit_event_date:count",
+       "kind": "segment",
+       "claim": "count exit_event_date by Department (6 groups)",
+       "code": "try:\n    avg_headcount = 965.0\n    window_start = pd.Timestamp('2025-11-01')\n    window_end   = pd.Timestamp('2026-10-31')\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits = df[\n        (df['row_kind'] == 'counted') &\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end)\n    ].copy()\n\n    dept_seps = (\n        exits.groupby('Department')['Employee_ID']\n        .count()\n        .reset_index()\n        .rename(columns={'Employee_ID': 'separations'})\n    )\n\n    dept_rate_results = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['separations']) / avg_headcount, 4)}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    dept_count_results = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_rate_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_count_results\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \"\n        f\"divided by provided average headcount of {avg_headcount:.0f}; denominator not recomputed from rows.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) included per 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department recorded on the exit row (where the person left from).\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"exit_event_date\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Support\", \"value\": 113.0}, {\"name\": \"Engineering\", \"value\": 75.0}, {\"name\": \"Sales\", \"value\": 72.0}, {\"name\": \"Finance\", \"value\": 21.0}, {\"name\": \"Operations\", \"value\": 21.0}, {\"name\": \"Marketing\", \"value\": 21.0}], \"label\": \"separations_nov2025_oct2026\"}",
+       "row_count": 860,
+       "confidence": "high",
+       "confidence_reason": "860 rows",
+       "assumptions": [
+        "Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') divided by provided average headcount of 965; denominator not recomputed from rows.",
+        "Department is the department recorded on the exit row (where the person left from)."
+       ]
+      },
+      {
+       "id": "eda:FTE",
+       "kind": "eda",
+       "claim": "FTE: median 1.00, mean 0.9488, range 0.5 to 1.00",
+       "code": "try:\n    avg_headcount = 965.0\n    window_start = pd.Timestamp('2025-11-01')\n    window_end   = pd.Timestamp('2026-10-31')\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits = df[\n        (df['row_kind'] == 'counted') &\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end)\n    ].copy()\n\n    dept_seps = (\n        exits.groupby('Department')['Employee_ID']\n        .count()\n        .reset_index()\n        .rename(columns={'Employee_ID': 'separations'})\n    )\n\n    dept_rate_results = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['separations']) / avg_headcount, 4)}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    dept_count_results = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_rate_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_count_results\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \"\n        f\"divided by provided average headcount of {avg_headcount:.0f}; denominator not recomputed from rows.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) included per 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department recorded on the exit row (where the person left from).\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 0.9488, \"std\": 0.1375, \"min\": 0.5, \"max\": 1.0, \"median\": 1.0, \"count\": 1770}",
+       "row_count": 1770,
+       "confidence": "high",
+       "confidence_reason": "1770 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Annual_Salary",
+       "kind": "eda",
+       "claim": "Annual_Salary: median 69,300.00, mean 76,006.06, range 19,100.00 to 217,100.00",
+       "code": "try:\n    avg_headcount = 965.0\n    window_start = pd.Timestamp('2025-11-01')\n    window_end   = pd.Timestamp('2026-10-31')\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits = df[\n        (df['row_kind'] == 'counted') &\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end)\n    ].copy()\n\n    dept_seps = (\n        exits.groupby('Department')['Employee_ID']\n        .count()\n        .reset_index()\n        .rename(columns={'Employee_ID': 'separations'})\n    )\n\n    dept_rate_results = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['separations']) / avg_headcount, 4)}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    dept_count_results = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_rate_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_count_results\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \"\n        f\"divided by provided average headcount of {avg_headcount:.0f}; denominator not recomputed from rows.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) included per 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department recorded on the exit row (where the person left from).\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 76006.0643, \"std\": 30833.5116, \"min\": 19100.0, \"max\": 217100.0, \"median\": 69300.0, \"count\": 1649}",
+       "row_count": 1649,
+       "confidence": "high",
+       "confidence_reason": "1649 rows",
+       "assumptions": [
+        "Annual_Salary: 7% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Performance_Rating",
+       "kind": "eda",
+       "claim": "Performance_Rating: median 3.00, mean 3.10, range 1.00 to 5.00",
+       "code": "try:\n    avg_headcount = 965.0\n    window_start = pd.Timestamp('2025-11-01')\n    window_end   = pd.Timestamp('2026-10-31')\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits = df[\n        (df['row_kind'] == 'counted') &\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end)\n    ].copy()\n\n    dept_seps = (\n        exits.groupby('Department')['Employee_ID']\n        .count()\n        .reset_index()\n        .rename(columns={'Employee_ID': 'separations'})\n    )\n\n    dept_rate_results = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['separations']) / avg_headcount, 4)}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    dept_count_results = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_rate_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_count_results\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \"\n        f\"divided by provided average headcount of {avg_headcount:.0f}; denominator not recomputed from rows.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) included per 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department recorded on the exit row (where the person left from).\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 3.0958, \"std\": 1.0511, \"min\": 1.0, \"max\": 5.0, \"median\": 3.0, \"count\": 1649}",
+       "row_count": 1649,
+       "confidence": "high",
+       "confidence_reason": "1649 rows",
+       "assumptions": [
+        "Performance_Rating: 7% missing, left out of this result"
+       ]
+      }
+     ]
+    },
+    "domain": "hr",
+    "latency_s": 55.26,
+    "cost_usd": 0.0762,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "finding_columns"
+    ],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    import numpy as np\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n    df['hire_event_date'] = pd.to_datetime(df['hire_event_date'], errors='coerce')\n\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    avg_headcount = 965.0\n\n    exits_in_window = df[\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end) &\n        (df['row_kind'] == 'counted')\n    ].copy()\n\n    dept_separations = exits_in_window.groupby('Department')['Employee_ID'].count().reset_index()\n    dept_separations.columns = ['Department', 'separations']\n\n    dept_hc_map = {\n        'Nov 2025': 996, 'Dec 2025': 999, 'Jan 2026': 994, 'Feb 2026': 997,\n        'Mar 2026': 1002, 'Apr 2026': 1000, 'May 2026': 1009, 'Jun 2026': 945,\n        'Jul 2026': 934, 'Aug 2026': 918, 'Sep 2026': 901, 'Oct 2026': 885\n    }\n\n    total_separations = len(exits_in_window)\n    overall_attrition = total_separations / avg_headcount\n\n    dept_results = []\n    for _, row in dept_separations.iterrows():\n        dept = row['Department']\n        seps = float(row['separations'])\n        rate = seps / avg_headcount\n        dept_results.append({\"name\": str(dept), \"value\": round(rate, 4)})\n\n    dept_results_sorted = sorted(dept_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_count_nov2025_oct2026\",\n        \"results\": [{\"name\": str(r['Department']), \"value\": float(r['separations'])} for _, r in dept_separations.iterrows()]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Overall\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"All Departments\", \"value\": round(overall_attrition, 4)}]\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \u00f7 average headcount (965.0); denominator is the provided 12-month average, not recomputed.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) are included per the question's 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department the person left from, as recorded on the exit row.\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "Let me inspect the data to understand the available columns before rewriting.",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_015E6rPm3MkZVkCmvvrxtpsW",
+        "name": "sample_rows",
+        "input": {
+         "n": 5,
+         "columns": [
+          "Department",
+          "exit_event_date",
+          "hire_event_date",
+          "row_kind",
+          "Employment_Status",
+          "Termination_Category"
+         ]
+        }
+       },
+       {
+        "id": "toolu_01YGjHFhR35SKAYCoZuqoREj",
+        "name": "get_schema",
+        "input": {
+         "column": "Department"
+        }
+       }
+      ]
+     },
+     {
+      "text": "Good \u2014 `Department` has 7 distinct values and no nulls. Now I have what I need to write a clean, valid rewrite.\n\n```python\ntry:\n    avg_headcount = 965.0\n    window_start = pd.Timestamp('2025-11-01')\n    window_end   = pd.Timestamp('2026-10-31')\n\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits = df[\n        (df['row_kind'] == 'counted') &\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end)\n    ].copy()\n\n    dept_seps = (\n        exits.groupby('Department')['Employee_ID']\n        .count()\n        .reset_index()\n        .rename(columns={'Employee_ID': 'separations'})\n    )\n\n    dept_rate_results = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['separations']) / avg_headcount, 4)}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    dept_count_results = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_seps.sort_values('separations', ascending=False).iterrows()\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_rate_results\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_count_results\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') \"\n        f\"divided by provided average headcount of {avg_headcount:.0f}; denominator not recomputed from rows.\"\n    )\n    result['assumptions'].append(\n        \"All separation types (voluntary, involuntary, retirement, other) included per 'attrition rate' definition.\"\n    )\n    result['assumptions'].append(\n        \"Department is the department recorded on the exit row (where the person left from).\"\n    )\n    result['assumptions'].append(\n        \"5 hire/exit dates after 31 Oct 2026 are excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")\n```\n\n**Key fix:** The rejected code used `\"Overall\"` as a `segment_column`, which is not a real column in the schema. The rewrite removes that entirely \u2014 only `\"Department\"` (a listed column) is used as `segment_column`. The overall rate is derivable by summing the department counts and dividing by `965.0`, but it is not emitted as a fake column name. All other logic (window filter, `row_kind == 'counted'`, average headcount of 965.0) is unchanged.",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ],
+  "hr-9": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no Department breakdown matches attrition_12m_by_dept_at_exit (tried ['exit_event_date', 'exit_event_date'])",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": false,
+      "detail": "unknown columns ['exit_event_date']"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 12,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "FTE": {
+       "mean": 0.9555,
+       "std": 0.1305,
+       "min": 0.5,
+       "max": 1.0,
+       "median": 1.0,
+       "count": 8220
+      },
+      "Base_Salary": {
+       "mean": 84622.1046,
+       "std": 20535.2159,
+       "min": 34400.0,
+       "max": 170800.0,
+       "median": 82700.0,
+       "count": 8220
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Department",
+       "metric_column": "exit_event_date",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Engineering",
+         "value": 12.0
+        },
+        {
+         "name": "Finance",
+         "value": 3.0
+        },
+        {
+         "name": "Marketing",
+         "value": 4.0
+        },
+        {
+         "name": "Operations",
+         "value": 3.0
+        },
+        {
+         "name": "Sales",
+         "value": 21.0
+        },
+        {
+         "name": "Support",
+         "value": 6.0
+        },
+        {
+         "name": "Overall",
+         "value": 49.0
+        }
+       ],
+       "label": "separations_nov2025_oct2026"
+      },
+      {
+       "segment_column": "Department",
+       "metric_column": "exit_event_date",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Engineering",
+         "value": 0.035
+        },
+        {
+         "name": "Finance",
+         "value": 0.0087
+        },
+        {
+         "name": "Marketing",
+         "value": 0.0117
+        },
+        {
+         "name": "Operations",
+         "value": 0.0087
+        },
+        {
+         "name": "Sales",
+         "value": 0.0612
+        },
+        {
+         "name": "Support",
+         "value": 0.0175
+        },
+        {
+         "name": "Overall",
+         "value": 0.1428
+        }
+       ],
+       "label": "attrition_rate"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "FTE": [
+       {
+        "label": "(0.5, 0.667]",
+        "count": 554
+       },
+       {
+        "label": "(0.667, 0.833]",
+        "count": 445
+       },
+       {
+        "label": "(0.833, 1.0]",
+        "count": 7221
+       }
+      ],
+      "Base_Salary": [
+       {
+        "label": "(34263.6, 48040.0]",
+        "count": 150
+       },
+       {
+        "label": "(48040.0, 61680.0]",
+        "count": 858
+       },
+       {
+        "label": "(61680.0, 75320.0]",
+        "count": 1989
+       },
+       {
+        "label": "(75320.0, 88960.0]",
+        "count": 2102
+       },
+       {
+        "label": "(88960.0, 102600.0]",
+        "count": 1498
+       },
+       {
+        "label": "(102600.0, 116240.0]",
+        "count": 1094
+       },
+       {
+        "label": "(116240.0, 129880.0]",
+        "count": 321
+       },
+       {
+        "label": "(129880.0, 143520.0]",
+        "count": 127
+       },
+       {
+        "label": "(143520.0, 157160.0]",
+        "count": 50
+       },
+       {
+        "label": "(157160.0, 170800.0]",
+        "count": 31
+       }
+      ],
+      "Department": [
+       {
+        "label": "Sales",
+        "count": 2308
+       },
+       {
+        "label": "Engineering",
+        "count": 2033
+       },
+       {
+        "label": "Support",
+        "count": 1403
+       },
+       {
+        "label": "Operations",
+        "count": 967
+       },
+       {
+        "label": "Marketing",
+        "count": 836
+       },
+       {
+        "label": "Finance",
+        "count": 673
+       }
+      ],
+      "Location": [
+       {
+        "label": "Remote",
+        "count": 2444
+       },
+       {
+        "label": "London",
+        "count": 1990
+       },
+       {
+        "label": "Austin",
+        "count": 1978
+       },
+       {
+        "label": "New York",
+        "count": 1808
+       }
+      ],
+      "Worker_Type": [
+       {
+        "label": "Employee",
+        "count": 7221
+       },
+       {
+        "label": "Part-Time",
+        "count": 999
+       }
+      ],
+      "Status": [
+       {
+        "label": "Active",
+        "count": 8186
+       },
+       {
+        "label": "Terminated",
+        "count": 34
+       }
+      ],
+      "Gender": [
+       {
+        "label": "Female",
+        "count": 4152
+       },
+       {
+        "label": "Male",
+        "count": 4068
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    # Window: 1 Nov 2025 \u2013 31 Oct 2026\n    window_start = pd.Timestamp(\"2025-11-01\")\n    window_end = pd.Timestamp(\"2026-10-31\")\n    avg_headcount = 343.1\n\n    # Provided month-end headcounts by department are not given, so we use exit_event_date\n    # to count separations per department in the window\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits_in_window = df[\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end) &\n        (df['row_kind'] == 'counted')\n    ].copy()\n\n    # Total separations in window\n    total_separations = len(exits_in_window)\n\n    # Separations by department\n    dept_separations = exits_in_window.groupby('Department').size().reset_index(name='separations')\n\n    # Overall attrition rate\n    overall_attrition_rate = total_separations / avg_headcount\n\n    # Per-department attrition rate: separations / avg_headcount (overall avg, as dept avg not provided)\n    dept_separations['attrition_rate'] = dept_separations['separations'] / avg_headcount\n\n    dept_results_sep = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    dept_results_rate = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['attrition_rate']), 4)}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    # Add overall\n    dept_results_sep.append({\"name\": \"Overall\", \"value\": float(total_separations)})\n    dept_results_rate.append({\"name\": \"Overall\", \"value\": round(overall_attrition_rate, 4)})\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_results_sep\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_results_rate\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided).\"\n    )\n    result['assumptions'].append(\n        \"Per-department attrition rate uses the overall average headcount (343.1) as department-level monthly headcounts were not provided.\"\n    )\n    result['assumptions'].append(\n        \"1 exit dated after 31 Oct 2026 excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'FTE' in df.columns and pd.api.types.is_numeric_dtype(df['FTE']):\n        _s = df['FTE'].dropna()\n        if len(_s) > 0 and 'FTE' not in result['eda_summary']:\n            result['eda_summary']['FTE'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Base_Salary' in df.columns and pd.api.types.is_numeric_dtype(df['Base_Salary']):\n        _s = df['Base_Salary'].dropna()\n        if len(_s) > 0 and 'Base_Salary' not in result['eda_summary']:\n            result['eda_summary']['Base_Salary'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'FTE' in df.columns and pd.api.types.is_numeric_dtype(df['FTE']):\n        _col_data = df['FTE'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['FTE'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Base_Salary' in df.columns and pd.api.types.is_numeric_dtype(df['Base_Salary']):\n        _col_data = df['Base_Salary'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Base_Salary'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Department' in df.columns:\n        _vc = df['Department'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Department'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Location' in df.columns:\n        _vc = df['Location'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Location'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Worker_Type' in df.columns:\n        _vc = df['Worker_Type'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Worker_Type'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Status' in df.columns:\n        _vc = df['Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Gender' in df.columns:\n        _vc = df['Gender'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Gender'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Snapshot_Date": "2024-11-30",
+       "Emp_ID": "E50001",
+       "Department": "Support",
+       "Location": "London",
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Base_Salary": 73800.0,
+       "Hire_Date": "2018-02-09",
+       "Termination_Date": null,
+       "Status": "Active",
+       "Gender": "Female",
+       "row_kind": "counted",
+       "hire_event_date": "2018-02-09",
+       "exit_event_date": null
+      },
+      {
+       "Snapshot_Date": "2024-11-30",
+       "Emp_ID": "E50002",
+       "Department": "Sales",
+       "Location": "Remote",
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Base_Salary": 62700.0,
+       "Hire_Date": "2016-03-01",
+       "Termination_Date": null,
+       "Status": "Active",
+       "Gender": "Male",
+       "row_kind": "counted",
+       "hire_event_date": "2016-03-01",
+       "exit_event_date": null
+      },
+      {
+       "Snapshot_Date": "2024-11-30",
+       "Emp_ID": "E50003",
+       "Department": "Marketing",
+       "Location": "Remote",
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Base_Salary": 86200.0,
+       "Hire_Date": "2022-11-05",
+       "Termination_Date": null,
+       "Status": "Active",
+       "Gender": "Female",
+       "row_kind": "counted",
+       "hire_event_date": "2022-11-05",
+       "exit_event_date": null
+      },
+      {
+       "Snapshot_Date": "2024-11-30",
+       "Emp_ID": "E50004",
+       "Department": "Sales",
+       "Location": "London",
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Base_Salary": 76900.0,
+       "Hire_Date": "2020-12-10",
+       "Termination_Date": null,
+       "Status": "Active",
+       "Gender": "Female",
+       "row_kind": "counted",
+       "hire_event_date": "2020-12-10",
+       "exit_event_date": null
+      },
+      {
+       "Snapshot_Date": "2024-11-30",
+       "Emp_ID": "E50005",
+       "Department": "Finance",
+       "Location": "New York",
+       "Worker_Type": "Employee",
+       "FTE": 1.0,
+       "Base_Salary": 44300.0,
+       "Hire_Date": "2019-11-15",
+       "Termination_Date": null,
+       "Status": "Active",
+       "Gender": "Female",
+       "row_kind": "counted",
+       "hire_event_date": "2019-11-15",
+       "exit_event_date": null
+      }
+     ],
+     "dtypes_summary": {
+      "Snapshot_Date": "object",
+      "Emp_ID": "object",
+      "Department": "object",
+      "Location": "object",
+      "Worker_Type": "object",
+      "FTE": "float64",
+      "Base_Salary": "float64",
+      "Hire_Date": "object",
+      "Termination_Date": "object",
+      "Status": "object",
+      "Gender": "object",
+      "row_kind": "object",
+      "hire_event_date": "object",
+      "exit_event_date": "datetime64[ns]"
+     },
+     "missing_pct": {
+      "Snapshot_Date": 0.0,
+      "Emp_ID": 0.0,
+      "Department": 0.0,
+      "Location": 0.0,
+      "Worker_Type": 0.0,
+      "FTE": 0.0,
+      "Base_Salary": 0.0,
+      "Hire_Date": 0.0,
+      "Termination_Date": 99.57,
+      "Status": 0.0,
+      "Gender": 0.0,
+      "row_kind": 0.0,
+      "hire_event_date": 94.25,
+      "exit_event_date": 98.54
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Department/exit_event_date:count",
+       "kind": "segment",
+       "claim": "count exit_event_date by Department (7 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Window: 1 Nov 2025 \u2013 31 Oct 2026\n    window_start = pd.Timestamp(\"2025-11-01\")\n    window_end = pd.Timestamp(\"2026-10-31\")\n    avg_headcount = 343.1\n\n    # Provided month-end headcounts by department are not given, so we use exit_event_date\n    # to count separations per department in the window\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits_in_window = df[\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end) &\n        (df['row_kind'] == 'counted')\n    ].copy()\n\n    # Total separations in window\n    total_separations = len(exits_in_window)\n\n    # Separations by department\n    dept_separations = exits_in_window.groupby('Department').size().reset_index(name='separations')\n\n    # Overall attrition rate\n    overall_attrition_rate = total_separations / avg_headcount\n\n    # Per-department attrition rate: separations / avg_headcount (overall avg, as dept avg not provided)\n    dept_separations['attrition_rate'] = dept_separations['separations'] / avg_headcount\n\n    dept_results_sep = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    dept_results_rate = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['attrition_rate']), 4)}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    # Add overall\n    dept_results_sep.append({\"name\": \"Overall\", \"value\": float(total_separations)})\n    dept_results_rate.append({\"name\": \"Overall\", \"value\": round(overall_attrition_rate, 4)})\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_results_sep\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_results_rate\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided).\"\n    )\n    result['assumptions'].append(\n        \"Per-department attrition rate uses the overall average headcount (343.1) as department-level monthly headcounts were not provided.\"\n    )\n    result['assumptions'].append(\n        \"1 exit dated after 31 Oct 2026 excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"exit_event_date\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Engineering\", \"value\": 12.0}, {\"name\": \"Finance\", \"value\": 3.0}, {\"name\": \"Marketing\", \"value\": 4.0}, {\"name\": \"Operations\", \"value\": 3.0}, {\"name\": \"Sales\", \"value\": 21.0}, {\"name\": \"Support\", \"value\": 6.0}, {\"name\": \"Overall\", \"value\": 49.0}], \"label\": \"separations_nov2025_oct2026\"}",
+       "row_count": 120,
+       "confidence": "high",
+       "confidence_reason": "120 rows",
+       "assumptions": [
+        "Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided)."
+       ]
+      },
+      {
+       "id": "seg:Department/exit_event_date:ratio:attrition_rate",
+       "kind": "segment",
+       "claim": "attrition_rate (from exit_event_date) by Department (7 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Window: 1 Nov 2025 \u2013 31 Oct 2026\n    window_start = pd.Timestamp(\"2025-11-01\")\n    window_end = pd.Timestamp(\"2026-10-31\")\n    avg_headcount = 343.1\n\n    # Provided month-end headcounts by department are not given, so we use exit_event_date\n    # to count separations per department in the window\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits_in_window = df[\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end) &\n        (df['row_kind'] == 'counted')\n    ].copy()\n\n    # Total separations in window\n    total_separations = len(exits_in_window)\n\n    # Separations by department\n    dept_separations = exits_in_window.groupby('Department').size().reset_index(name='separations')\n\n    # Overall attrition rate\n    overall_attrition_rate = total_separations / avg_headcount\n\n    # Per-department attrition rate: separations / avg_headcount (overall avg, as dept avg not provided)\n    dept_separations['attrition_rate'] = dept_separations['separations'] / avg_headcount\n\n    dept_results_sep = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    dept_results_rate = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['attrition_rate']), 4)}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    # Add overall\n    dept_results_sep.append({\"name\": \"Overall\", \"value\": float(total_separations)})\n    dept_results_rate.append({\"name\": \"Overall\", \"value\": round(overall_attrition_rate, 4)})\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_results_sep\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_results_rate\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided).\"\n    )\n    result['assumptions'].append(\n        \"Per-department attrition rate uses the overall average headcount (343.1) as department-level monthly headcounts were not provided.\"\n    )\n    result['assumptions'].append(\n        \"1 exit dated after 31 Oct 2026 excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Department\", \"metric_column\": \"exit_event_date\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Engineering\", \"value\": 0.035}, {\"name\": \"Finance\", \"value\": 0.0087}, {\"name\": \"Marketing\", \"value\": 0.0117}, {\"name\": \"Operations\", \"value\": 0.0087}, {\"name\": \"Sales\", \"value\": 0.0612}, {\"name\": \"Support\", \"value\": 0.0175}, {\"name\": \"Overall\", \"value\": 0.1428}], \"label\": \"attrition_rate\"}",
+       "row_count": 120,
+       "confidence": "high",
+       "confidence_reason": "120 rows",
+       "assumptions": [
+        "Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided)."
+       ]
+      },
+      {
+       "id": "eda:FTE",
+       "kind": "eda",
+       "claim": "FTE: median 1.00, mean 0.9555, range 0.5 to 1.00",
+       "code": "try:\n    import numpy as np\n\n    # Window: 1 Nov 2025 \u2013 31 Oct 2026\n    window_start = pd.Timestamp(\"2025-11-01\")\n    window_end = pd.Timestamp(\"2026-10-31\")\n    avg_headcount = 343.1\n\n    # Provided month-end headcounts by department are not given, so we use exit_event_date\n    # to count separations per department in the window\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits_in_window = df[\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end) &\n        (df['row_kind'] == 'counted')\n    ].copy()\n\n    # Total separations in window\n    total_separations = len(exits_in_window)\n\n    # Separations by department\n    dept_separations = exits_in_window.groupby('Department').size().reset_index(name='separations')\n\n    # Overall attrition rate\n    overall_attrition_rate = total_separations / avg_headcount\n\n    # Per-department attrition rate: separations / avg_headcount (overall avg, as dept avg not provided)\n    dept_separations['attrition_rate'] = dept_separations['separations'] / avg_headcount\n\n    dept_results_sep = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    dept_results_rate = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['attrition_rate']), 4)}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    # Add overall\n    dept_results_sep.append({\"name\": \"Overall\", \"value\": float(total_separations)})\n    dept_results_rate.append({\"name\": \"Overall\", \"value\": round(overall_attrition_rate, 4)})\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_results_sep\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_results_rate\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided).\"\n    )\n    result['assumptions'].append(\n        \"Per-department attrition rate uses the overall average headcount (343.1) as department-level monthly headcounts were not provided.\"\n    )\n    result['assumptions'].append(\n        \"1 exit dated after 31 Oct 2026 excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 0.9555, \"std\": 0.1305, \"min\": 0.5, \"max\": 1.0, \"median\": 1.0, \"count\": 8220}",
+       "row_count": 8220,
+       "confidence": "high",
+       "confidence_reason": "8220 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Base_Salary",
+       "kind": "eda",
+       "claim": "Base_Salary: median 82,700.00, mean 84,622.10, range 34,400.00 to 170,800.00",
+       "code": "try:\n    import numpy as np\n\n    # Window: 1 Nov 2025 \u2013 31 Oct 2026\n    window_start = pd.Timestamp(\"2025-11-01\")\n    window_end = pd.Timestamp(\"2026-10-31\")\n    avg_headcount = 343.1\n\n    # Provided month-end headcounts by department are not given, so we use exit_event_date\n    # to count separations per department in the window\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits_in_window = df[\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end) &\n        (df['row_kind'] == 'counted')\n    ].copy()\n\n    # Total separations in window\n    total_separations = len(exits_in_window)\n\n    # Separations by department\n    dept_separations = exits_in_window.groupby('Department').size().reset_index(name='separations')\n\n    # Overall attrition rate\n    overall_attrition_rate = total_separations / avg_headcount\n\n    # Per-department attrition rate: separations / avg_headcount (overall avg, as dept avg not provided)\n    dept_separations['attrition_rate'] = dept_separations['separations'] / avg_headcount\n\n    dept_results_sep = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    dept_results_rate = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['attrition_rate']), 4)}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    # Add overall\n    dept_results_sep.append({\"name\": \"Overall\", \"value\": float(total_separations)})\n    dept_results_rate.append({\"name\": \"Overall\", \"value\": round(overall_attrition_rate, 4)})\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_results_sep\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_results_rate\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided).\"\n    )\n    result['assumptions'].append(\n        \"Per-department attrition rate uses the overall average headcount (343.1) as department-level monthly headcounts were not provided.\"\n    )\n    result['assumptions'].append(\n        \"1 exit dated after 31 Oct 2026 excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 84622.1046, \"std\": 20535.2159, \"min\": 34400.0, \"max\": 170800.0, \"median\": 82700.0, \"count\": 8220}",
+       "row_count": 8220,
+       "confidence": "high",
+       "confidence_reason": "8220 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "hr",
+    "latency_s": 30.09,
+    "cost_usd": 0.02478,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    import numpy as np\n\n    # Window: 1 Nov 2025 \u2013 31 Oct 2026\n    window_start = pd.Timestamp(\"2025-11-01\")\n    window_end = pd.Timestamp(\"2026-10-31\")\n    avg_headcount = 343.1\n\n    # Provided month-end headcounts by department are not given, so we use exit_event_date\n    # to count separations per department in the window\n    df['exit_event_date'] = pd.to_datetime(df['exit_event_date'], errors='coerce')\n\n    exits_in_window = df[\n        (df['exit_event_date'] >= window_start) &\n        (df['exit_event_date'] <= window_end) &\n        (df['row_kind'] == 'counted')\n    ].copy()\n\n    # Total separations in window\n    total_separations = len(exits_in_window)\n\n    # Separations by department\n    dept_separations = exits_in_window.groupby('Department').size().reset_index(name='separations')\n\n    # Overall attrition rate\n    overall_attrition_rate = total_separations / avg_headcount\n\n    # Per-department attrition rate: separations / avg_headcount (overall avg, as dept avg not provided)\n    dept_separations['attrition_rate'] = dept_separations['separations'] / avg_headcount\n\n    dept_results_sep = [\n        {\"name\": str(row['Department']), \"value\": float(row['separations'])}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    dept_results_rate = [\n        {\"name\": str(row['Department']), \"value\": round(float(row['attrition_rate']), 4)}\n        for _, row in dept_separations.iterrows()\n    ]\n\n    # Add overall\n    dept_results_sep.append({\"name\": \"Overall\", \"value\": float(total_separations)})\n    dept_results_rate.append({\"name\": \"Overall\", \"value\": round(overall_attrition_rate, 4)})\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"count\",\n        \"label\": \"separations_nov2025_oct2026\",\n        \"results\": dept_results_sep\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Department\",\n        \"metric_column\": \"exit_event_date\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"attrition_rate\",\n        \"results\": dept_results_rate\n    })\n\n    result['assumptions'].append(\n        \"Attrition rate = separations (exit_event_date in Nov 2025\u2013Oct 2026, row_kind='counted') / avg headcount 343.1 (provided).\"\n    )\n    result['assumptions'].append(\n        \"Per-department attrition rate uses the overall average headcount (343.1) as department-level monthly headcounts were not provided.\"\n    )\n    result['assumptions'].append(\n        \"1 exit dated after 31 Oct 2026 excluded per domain rules.\"\n    )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

@@ -1,0 +1,15 @@
+id: clean-hr-02-snapshots
+dataset:
+  name: hr_snapshots
+  seed: 1
+category: hr
+expect_decisions:
+- column: Termination_Date
+  strategy: marker
+  rows: 0
+forbid:
+- operation: drop_rows
+- operation: drop_duplicates
+- strategy: high_null
+label_note: A person's monthly rows are snapshots, never duplicates; a 99.6% blank termination date is
+  the layout.

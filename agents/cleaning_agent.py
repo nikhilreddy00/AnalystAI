@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import re
 from collections import Counter
 from dataclasses import dataclass, field
@@ -131,6 +132,8 @@ class CleanContext:
     roles: dict[str, str] = field(default_factory=dict)
     strong: bool = False       # a shape only that domain has: the pack may rewrite rows
 
+
+logger = logging.getLogger(__name__)
 
 def build_context(session: AnalysisSession, drop_high_null: bool = False) -> CleanContext:
     df_parquet = session.__dict__.get("_df_parquet")
@@ -532,6 +535,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                      "The cleaning step broke its own audit rules; nothing was changed.")
 
     duplicates = sum(d.rows_removed for d in decisions if d.operation == "drop_duplicates")
+    spell_dated = _as_of_dated(df, ctx)
     audit = CleaningAudit(
         decisions=decisions,
         rows_before=rows_before,
@@ -545,13 +549,67 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                                anomaly_report.methodology_note),
         anomaly_report=anomaly_report,
         skipped_columns=sorted(skip),
-        date_ranges=_date_ranges(df, ctx.pii),
+        date_ranges=_date_ranges(spell_dated, ctx.pii),
         grain=grain,
-        partial_months={c: [str(df[c].max().to_period("M")), int(df[c].max().day)]
-                        for c in _date_ranges(df, ctx.pii) if partial_last_month(df[c])},
+        partial_months=_partial_months(spell_dated, df, ctx),
         main_currency=currency if ctx.pack and other else None,
+        spell_story=_spell_story(df, ctx),
     )
     return df, audit
+
+
+def _spell_story(df: pd.DataFrame, ctx) -> list[str]:
+    """On strong spell data, the file's story as computed facts (domain_pack.spell_story): the
+    insight agent reads them from the audit, as it reads the date ranges."""
+    from domain_pack import has_spell, spell_story
+    if not ctx.pack or not ctx.strong or not has_spell(ctx.pack, ctx.roles):
+        return []
+    try:
+        return spell_story(ctx.pack, df, ctx.roles)
+    except Exception:   # a story the data can't tell is no story, never a failed cleaning
+        logger.warning("spell story failed", exc_info=True)
+        return []
+
+
+def _as_of_dated(df: pd.DataFrame, ctx) -> pd.DataFrame:
+    """On spell data, the data's period of each of the pack's date columns is its first date to
+    the as-of: dates after it (a notice-period exit, a pre-boarded hire) are not yet events, and
+    the last month is judged against the as-of, never against a column's own last hire (Domain 5
+    audits: 'data through Dec 2026', 'Mar 2026 is partial' on a file that runs to Oct). A row
+    dated the as-of stands for it."""
+    from domain_pack import has_spell, spell_as_of
+    if not ctx.pack or not ctx.strong or not has_spell(ctx.pack, ctx.roles):
+        return df
+    as_of = spell_as_of(ctx.pack, df, ctx.roles)
+    dated = [ctx.roles[r] for r, x in ctx.pack.roles.items() if x.kind == "date" and r in ctx.roles
+             and pd.api.types.is_datetime64_any_dtype(df[ctx.roles[r]])]
+    if as_of is None or not dated:
+        return df
+    out = df.assign(**{c: df[c].where(df[c] <= as_of) for c in dated})
+    edge = pd.DataFrame({c: pd.Series([as_of], dtype=out[c].dtype) for c in dated})   # the as-of
+    return pd.concat([out, edge], ignore_index=True)
+
+
+def _partial_months(dated: pd.DataFrame, df: pd.DataFrame, ctx) -> dict[str, list]:
+    """Each date column's partial last month; on spell data one decision for every spell date
+    column (they share the as-of: judged on the column with the most dates), and a column with
+    no real date up to the as-of has no period at all (audit pass 3)."""
+    out = {c: [str(dated[c].max().to_period("M")), int(dated[c].max().day)]
+           for c in _date_ranges(dated, ctx.pii) if partial_last_month(dated[c])}
+    if dated is df:
+        return out
+    # the pack's own date roles only (never a birth date or another dated column)
+    own = {ctx.roles[r] for r, x in ctx.pack.roles.items() if x.kind == "date" and r in ctx.roles} - set(ctx.pii)
+    spell = [c for c in dated.columns if c in own and pd.api.types.is_datetime64_any_dtype(dated[c])
+             and dated[c].iloc[:len(df)].notna().any()]
+    if not spell:
+        return out
+    lead = max(spell, key=lambda c: int(dated[c].notna().sum()))
+    for c in spell:
+        out.pop(c, None)
+        if lead in out or partial_last_month(dated[lead]):
+            out[c] = [str(dated[lead].max().to_period("M")), int(dated[lead].max().day)]
+    return out
 
 
 def _date_ranges(df: pd.DataFrame, pii: set[str] = frozenset()) -> dict[str, list]:

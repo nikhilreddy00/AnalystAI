@@ -1,0 +1,11 @@
+id: intake-hr-08
+category: clear
+pipeline: production
+source:
+  dataset: hr_roster
+  seed: 1
+overview_done: true
+question: What is our employee retention rate?
+expect:
+  ask: true
+rationale: Cohort retention is unsupported (never 1 − attrition). Ask (the insurance unsupported convention).

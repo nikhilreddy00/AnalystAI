@@ -258,7 +258,8 @@ def _filter_columns(clean, contract, k: int = 8) -> list[tuple[str, list[str]]]:
 
 PACK_DATASETS = ["retail_lines", "store_weeks", "b2b_invoices", "loan_tape", "loan_tape_messy",
                  "card_ledger", "bank_balances", "bank_statement", "ledger_drcr", "deposits_daily",
-                 "inpatient", "encounters", "health_claims", "policies", "loss_run", "claims"]
+                 "inpatient", "encounters", "health_claims", "policies", "loss_run", "claims",
+                 "hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"]
 
 
 @pytest.mark.parametrize("name", PACK_DATASETS)
@@ -367,9 +368,30 @@ def test_in_range_and_date_filters_agree_with_their_parts(name):
                                                                                "from": o["from"], "to": o["to"]}})
             t = pd.to_datetime(shown[o["column"]], format="mixed", errors="coerce")
             want = int(t.notna().sum())
+            roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+            dated = {roles[r] for r, x in pack.roles.items() if x.kind == "date" and r in roles}
+            if domain_pack.has_spell(pack, roles) and o["column"] in dated:   # a window (M9):
+                want = len(shown)   # every row stays; a state tile is the state at the window's end
+                for k in kpis:
+                    kpi = pack.kpi(k.recipe.kpi) if k.recipe and k.recipe.kind == "pack" else None
+                    if kpi and kpi.state and kpi.unit == "count" and k.label in out["tiles"]:
+                        v = domain_pack.compute_kpi(clean, roles, pack, kpi.name, full=clean,
+                                                    window=(o["from"], o["to"]))
+                        assert _number(out["tiles"][k.label]) == v, (name, o["column"], k.label)
+                trend = [c.id for c in charts if c.rationale and c.rationale.rule == "targeted:kpi→line"]
+                assert not trend or set(trend) & set(out["charts"]), (name, o["column"], "trend chart lost")
         else:
             continue
         assert out["suppressed"] or out["rows"] == want, (name, o["column"], out["rows"], want)
+
+
+def test_personal_data_is_never_a_filter():
+    """Domain 5 audit: a Date_of_Birth range was offered as a filter (it narrows to one person)."""
+    from agents.visualization_agent import filter_options
+    for name in ("hr_roster", "retail_lines", "inpatient"):
+        clean, contract, *_ = _dashboard(name)
+        offered = {o["column"] for o in filter_options(clean, contract)["options"]}
+        assert not offered & set(contract.pii_columns), (name, offered & set(contract.pii_columns))
 
 
 def test_every_domain_dataset_is_in_the_every_filter_check():

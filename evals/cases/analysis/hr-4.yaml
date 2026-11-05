@@ -1,0 +1,30 @@
+id: hr-4
+domain: hr
+category: ratio
+pipeline: production
+dataset:
+  name: hr_roster
+  seed: 1
+question: What is our attrition rate over the last 12 months by department?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Termination_Date
+  segments:
+  - Department
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Department
+  truth_key: attrition_12m_by_dept
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: Separations in the 12 months to 31 Oct 2026 ÷ the mean of the 12 month-end employee headcounts,
+  contractors out; ÷ the October headcount (Support's June layoff) or ÷ every row is the trap.

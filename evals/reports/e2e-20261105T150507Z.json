@@ -1,0 +1,1019 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261105T150507Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "0f66bf5",
+  "started_at": "20261105T150507Z",
+  "only": "e2e-75",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0284,
+  "latency_p50_s": 14.83,
+  "latency_p95_s": 14.83,
+  "by_domain": {
+   "hr": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-75": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22480.1098 [(1.0, None), (100.0, '%')] in answer; saw []"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "answer": "I couldn't answer this \u2014 Which number should I use: FTE, Annual_Salary or Performance_Rating?",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 5185,
+    "approvals": [],
+    "output": {
+     "session_id": "a650bdce-7124-4945-a198-8ba23e31e52e",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What was involuntary attrition over the last 12 months?",
+       "timestamp": "2026-11-05T15:05:21.522494Z"
+      },
+      {
+       "role": "assistant",
+       "content": "I couldn't answer this \u2014 Which number should I use: FTE, Annual_Salary or Performance_Rating?",
+       "timestamp": "2026-11-05T15:05:21.613329Z"
+      }
+     ],
+     "connector_config": {
+      "type": "sql",
+      "file_path": null,
+      "connection_string": "postgresql+psycopg://postgres@localhost:54329/analystai_eval",
+      "table_name": "e2e_hr_roster_1",
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What was involuntary attrition over the last 12 months?",
+      "target_metrics": [
+       "Termination_Category",
+       "Employment_Status",
+       "FTE"
+      ],
+      "timeframe": "last 12 months",
+      "segments": [],
+      "analysis_types": [
+       "eda",
+       "trend"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "sql",
+      "row_count": 1770,
+      "column_count": 19,
+      "columns": [
+       {
+        "name": "Employee_ID",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         100001,
+         100002,
+         100003,
+         100004,
+         100005
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "whole numbers named as an identifier ('Employee_ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Employee_Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Work_Email",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "unique codes, one per row",
+        "pii": "email",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "SSN",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "unique codes, one per row",
+        "pii": "ssn",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Date_of_Birth",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": "dob",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Gender",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Male",
+         "Male",
+         "Male",
+         "Male",
+         "Female"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ethnicity",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Two or More Races",
+         "White",
+         "Black or African American",
+         "Hispanic or Latino",
+         "Asian"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Department",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Sales",
+         "Operations",
+         "Support",
+         "Sales",
+         "Engineering"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Job_Level",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "L1",
+         "L2",
+         "L5",
+         "L5",
+         "L1"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Manager_ID",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         101346,
+         101629,
+         100348,
+         101528,
+         100189
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "whole numbers named as an identifier ('Manager_ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Worker_Type",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Employee",
+         "Employee",
+         "Employee",
+         "Employee",
+         "Employee"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "FTE",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         1.0,
+         1.0,
+         1.0,
+         1.0,
+         1.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Annual_Salary",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         56000.0,
+         63400.0,
+         135800.0,
+         163400.0,
+         54000.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 6.84,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Hire_Date",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "2015-01-13",
+         "2015-03-13",
+         "2015-03-15",
+         "2015-04-08",
+         "2015-04-12"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Termination_Date",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "2023-06-29",
+         "2026-10-21",
+         "2026-05-19",
+         "2023-01-05",
+         "2023-10-13"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 51.24,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Termination_Category",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "Voluntary",
+         "Voluntary",
+         "Retirement",
+         "Voluntary",
+         "Voluntary"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 51.24,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Regrettable",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "No",
+         "Yes",
+         "No",
+         "No",
+         "Yes"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 51.24,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Employment_Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Active",
+         "Active",
+         "Active",
+         "Active",
+         "Active"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Performance_Rating",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         3.0,
+         4.0,
+         1.0,
+         1.0,
+         4.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 6.84,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Employee_ID": 100001,
+        "Employee_Name": "[REDACTED]",
+        "Work_Email": "[REDACTED]",
+        "SSN": "[REDACTED]",
+        "Date_of_Birth": "[REDACTED]",
+        "Gender": "Male",
+        "Ethnicity": "Two or More Races",
+        "Department": "Sales",
+        "Job_Level": "L1",
+        "Manager_ID": 101346,
+        "Worker_Type": "Employee",
+        "FTE": 1.0,
+        "Annual_Salary": 56000.0,
+        "Hire_Date": "2015-01-13",
+        "Termination_Date": null,
+        "Termination_Category": null,
+        "Regrettable": null,
+        "Employment_Status": "Active",
+        "Performance_Rating": 3.0
+       },
+       {
+        "Employee_ID": 100002,
+        "Employee_Name": "[REDACTED]",
+        "Work_Email": "[REDACTED]",
+        "SSN": "[REDACTED]",
+        "Date_of_Birth": "[REDACTED]",
+        "Gender": "Male",
+        "Ethnicity": "White",
+        "Department": "Operations",
+        "Job_Level": "L2",
+        "Manager_ID": 101629,
+        "Worker_Type": "Employee",
+        "FTE": 1.0,
+        "Annual_Salary": 63400.0,
+        "Hire_Date": "2015-03-13",
+        "Termination_Date": null,
+        "Termination_Category": null,
+        "Regrettable": null,
+        "Employment_Status": "Active",
+        "Performance_Rating": 4.0
+       },
+       {
+        "Employee_ID": 100003,
+        "Employee_Name": "[REDACTED]",
+        "Work_Email": "[REDACTED]",
+        "SSN": "[REDACTED]",
+        "Date_of_Birth": "[REDACTED]",
+        "Gender": "Male",
+        "Ethnicity": "Black or African American",
+        "Department": "Support",
+        "Job_Level": "L5",
+        "Manager_ID": 100348,
+        "Worker_Type": "Employee",
+        "FTE": 1.0,
+        "Annual_Salary": 135800.0,
+        "Hire_Date": "2015-03-15",
+        "Termination_Date": null,
+        "Termination_Category": null,
+        "Regrettable": null,
+        "Employment_Status": "Active",
+        "Performance_Rating": 1.0
+       },
+       {
+        "Employee_ID": 100004,
+        "Employee_Name": "[REDACTED]",
+        "Work_Email": "[REDACTED]",
+        "SSN": "[REDACTED]",
+        "Date_of_Birth": "[REDACTED]",
+        "Gender": "Male",
+        "Ethnicity": "Hispanic or Latino",
+        "Department": "Sales",
+        "Job_Level": "L5",
+        "Manager_ID": 101528,
+        "Worker_Type": "Employee",
+        "FTE": 1.0,
+        "Annual_Salary": 163400.0,
+        "Hire_Date": "2015-04-08",
+        "Termination_Date": null,
+        "Termination_Category": null,
+        "Regrettable": null,
+        "Employment_Status": "Active",
+        "Performance_Rating": 1.0
+       },
+       {
+        "Employee_ID": 100005,
+        "Employee_Name": "[REDACTED]",
+        "Work_Email": "[REDACTED]",
+        "SSN": "[REDACTED]",
+        "Date_of_Birth": "[REDACTED]",
+        "Gender": "Female",
+        "Ethnicity": "Asian",
+        "Department": "Engineering",
+        "Job_Level": "L1",
+        "Manager_ID": 100189,
+        "Worker_Type": "Employee",
+        "FTE": 1.0,
+        "Annual_Salary": 54000.0,
+        "Hire_Date": "2015-04-12",
+        "Termination_Date": null,
+        "Termination_Category": null,
+        "Regrettable": null,
+        "Employment_Status": "Active",
+        "Performance_Rating": 4.0
+       }
+      ],
+      "date_columns": [
+       "Hire_Date",
+       "Termination_Date"
+      ],
+      "id_columns": [
+       "Employee_ID",
+       "Work_Email",
+       "SSN",
+       "Manager_ID"
+      ],
+      "metric_columns": [
+       "FTE",
+       "Annual_Salary",
+       "Performance_Rating"
+      ],
+      "schema_summary": "1,770 rows \u00d7 19 columns. Dates: Hire_Date from 2015-01-13 to 2026-12-01 (weekly). Metrics: FTE, Annual_Salary, Performance_Rating. Identifiers: Employee_ID, Manager_ID. Categories: Gender, Ethnicity, Department, Job_Level, Worker_Type, Termination_Category, Regrettable, Employment_Status. Personal data, masked before any model sees it: Employee_Name (name), Work_Email (email), SSN (ssn), Date_of_Birth (dob). Missing values: Annual_Salary 6.84%, Performance_Rating 6.84%. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Termination_Date, Termination_Category, Regrettable.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 1,770 rows \u00d7 19 columns from the database.",
+       "code": "database connector load()",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Employee_ID\", \"Work_Email\", \"SSN\", \"Manager_ID\"], \"category\": [\"Employee_Name\", \"Gender\", \"Ethnicity\", \"Department\", \"Job_Level\", \"Worker_Type\", \"Termination_Category\", \"Regrettable\", \"Employment_Status\"], \"date\": [\"Date_of_Birth\", \"Hire_Date\", \"Termination_Date\"], \"metric\": [\"FTE\", \"Annual_Salary\", \"Performance_Rating\"]}, \"personal_data\": {\"Employee_Name\": \"name\", \"Work_Email\": \"email\", \"SSN\": \"ssn\", \"Date_of_Birth\": \"dob\"}, \"fingerprint\": \"89a4f063aecfcea4\"}",
+       "row_count": 1770,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "4 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "89a4f063aecfcea47b3154e8a131a77d4f8fb4e3d0690519f12ff48c9bc9be3a",
+      "pii_columns": [
+       "Employee_Name",
+       "Work_Email",
+       "SSN",
+       "Date_of_Birth"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "hr",
+      "roles": {
+       "hire_date": "Hire_Date",
+       "termination_date": "Termination_Date",
+       "employee": "Employee_ID",
+       "manager": "Manager_ID",
+       "department": "Department",
+       "job_level": "Job_Level",
+       "worker_type": "Worker_Type",
+       "gender": "Gender",
+       "ethnicity": "Ethnicity",
+       "termination_category": "Termination_Category",
+       "regrettable": "Regrettable",
+       "performance": "Performance_Rating",
+       "fte": "FTE",
+       "salary": "Annual_Salary",
+       "status": "Employment_Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Date_of_Birth",
+        "operation": "type_coerce",
+        "strategy": "to_datetime",
+        "reason": "Parsed as dates.",
+        "rows_affected": 1770,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Hire_Date",
+        "operation": "type_coerce",
+        "strategy": "to_datetime",
+        "reason": "Parsed as dates.",
+        "rows_affected": 1770,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Termination_Date",
+        "operation": "type_coerce",
+        "strategy": "to_datetime",
+        "reason": "Parsed as dates.",
+        "rows_affected": 863,
+        "before_null_pct": 51.2,
+        "after_null_pct": 51.2,
+        "rows_removed": 0
+       },
+       {
+        "column": "Annual_Salary",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "121 missing (6.8%), number: left as missing; totals and averages use the 1649 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 6.8,
+        "after_null_pct": 6.8,
+        "rows_removed": 0
+       },
+       {
+        "column": "Termination_Date",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 51.2,
+        "after_null_pct": 51.2,
+        "rows_removed": 0
+       },
+       {
+        "column": "Termination_Category",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 51.2,
+        "after_null_pct": 51.2,
+        "rows_removed": 0
+       },
+       {
+        "column": "Regrettable",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 907 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 51.2,
+        "after_null_pct": 51.2,
+        "rows_removed": 0
+       },
+       {
+        "column": "Performance_Rating",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "121 missing (6.8%), number: left as missing; totals and averages use the 1649 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 6.8,
+        "after_null_pct": 6.8,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 1770,
+      "rows_after": 1770,
+      "columns_coerced": [
+       "Date_of_Birth",
+       "Hire_Date",
+       "Termination_Date"
+      ],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "2 extreme outliers in Annual_Salary (0.1% of data, threshold: values > 203,700)"
+      ],
+      "high_null_columns": [],
+      "summary": "Parsed numbers or dates in 3 column(s). Left missing values as missing in 2 column(s); nothing was imputed. Outliers flagged (kept) in: Annual_Salary. Final dataset: 1770 rows (started with 1770).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Annual_Salary",
+         "extreme_count": 2,
+         "mild_count": 60,
+         "extreme_pct": 0.1212856276531231,
+         "lower_bound": -58100.0,
+         "upper_bound": 203700.0,
+         "mild_lower_bound": -2000.0,
+         "mild_upper_bound": 147600.0,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "2 extreme outliers in Annual_Salary (0.1% of data, threshold: values > 203,700)"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Annual_Salary"
+       ],
+       "skipped_columns": {
+        "Employee_ID": "id column",
+        "Employee_Name": "constant or unsupported",
+        "Work_Email": "constant or unsupported",
+        "SSN": "constant or unsupported",
+        "Date_of_Birth": "datetime column",
+        "Gender": "non-numeric",
+        "Ethnicity": "non-numeric",
+        "Department": "non-numeric",
+        "Job_Level": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+        "Manager_ID": "id column",
+        "Worker_Type": "non-numeric",
+        "FTE": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+        "Hire_Date": "datetime column",
+        "Termination_Date": "datetime column",
+        "Termination_Category": "non-numeric",
+        "Regrettable": "binary column (only 2 values)",
+        "Employment_Status": "non-numeric",
+        "Performance_Rating": "ordinal (low-cardinality numeric, e.g. Likert/class)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Hire_Date": [
+        "2015-01-13",
+        "2026-12-01",
+        144
+       ],
+       "Termination_Date": [
+        "2023-01-03",
+        "2027-01-31",
+        49
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Hire_Date": [
+        "2026-12",
+        1
+       ]
+      },
+      "main_currency": null
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "I couldn't answer this \u2014 Which number should I use: FTE, Annual_Salary or Performance_Rating?",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [
+       "Show the distribution of FTE",
+       "Show the distribution of Annual_Salary"
+      ],
+      "unanswerable_reason": "Which number should I use: FTE, Annual_Salary or Performance_Rating?",
+      "generated_at": "2026-11-05T15:05:21.613298Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Employee_ID": "Employee ID",
+       "Employee_Name": "Employee Name",
+       "Work_Email": "Work Email",
+       "SSN": "Social Security Number",
+       "Date_of_Birth": "Date of Birth",
+       "Gender": "Gender",
+       "Ethnicity": "Ethnicity",
+       "Department": "Department",
+       "Job_Level": "Job Level",
+       "Manager_ID": "Manager ID",
+       "Worker_Type": "Worker Type",
+       "FTE": "Full Time Equivalent",
+       "Annual_Salary": "Annual Salary",
+       "Hire_Date": "Hire Date",
+       "Termination_Date": "Termination Date",
+       "Termination_Category": "Termination Category",
+       "Regrettable": "Regrettable Termination",
+       "Employment_Status": "Employment Status",
+       "Performance_Rating": "Performance Rating"
+      },
+      "entity_singular": "employee",
+      "entity_plural": "employees"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/a650bdce-7124-4945-a198-8ba23e31e52e/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-05T15:05:08.090836Z",
+     "updated_at": "2026-11-05T15:05:21.613331Z"
+    },
+    "domain": "hr",
+    "latency_s": 14.83,
+    "cost_usd": 0.02837,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\"What is the rolling 12-month attrition rate by Department, and how does it break down between voluntary and involuntary Termination_Category?\", \"What are current active headcount and total FTE by Department and Job_Level, and how has monthly headcount trended from 2024 through 2026 based on Hire_Date and Termination_Date?\", \"What is the monthly hire and termination volume over the past 24 months, and which months show the largest imbalances between new Hire_Date entries and Termination_Date records?\", \"What is the average Annual_Salary for active employees (Employment_Status) broken down by Department and Job_Level, and where do salary gaps between Job_Levels appear largest?\", \"Is there an unadjusted gender pay gap in Annual_Salary when controlling for Job_Level, and do Performance_Rating distributions differ significantly by Gender or Ethnicity within the same Job_Level?\"]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Employee_ID\": \"Employee ID\",\n    \"Employee_Name\": \"Employee Name\",\n    \"Work_Email\": \"Work Email\",\n    \"SSN\": \"Social Security Number\",\n    \"Date_of_Birth\": \"Date of Birth\",\n    \"Gender\": \"Gender\",\n    \"Ethnicity\": \"Ethnicity\",\n    \"Department\": \"Department\",\n    \"Job_Level\": \"Job Level\",\n    \"Manager_ID\": \"Manager ID\",\n    \"Worker_Type\": \"Worker Type\",\n    \"FTE\": \"Full Time Equivalent\",\n    \"Annual_Salary\": \"Annual Salary\",\n    \"Hire_Date\": \"Hire Date\",\n    \"Termination_Date\": \"Termination Date\",\n    \"Termination_Category\": \"Termination Category\",\n    \"Regrettable\": \"Regrettable Termination\",\n    \"Employment_Status\": \"Employment Status\",\n    \"Performance_Rating\": \"Performance Rating\"\n  },\n  \"entity_singular\": \"employee\",\n  \"entity_plural\": \"employees\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What was involuntary attrition over the last 12 months?\",\n  \"target_metrics\": [\"Termination_Category\", \"Employment_Status\", \"FTE\"],\n  \"timeframe\": \"last 12 months\",\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Termination_Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"involuntary_attrition\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

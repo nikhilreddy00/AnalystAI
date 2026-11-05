@@ -2191,7 +2191,7 @@
    }
   },
   "hr-1": {
-   "context": "48be3a67a078b926",
+   "context": "14cb816e0e586296",
    "roles": {
     "department": {
      "date": false,
@@ -2255,8 +2255,127 @@
     }
    }
   },
+  "hr-10": {
+   "context": "b13f127512f98a6e",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
   "hr-2": {
-   "context": "0a5e8bbf72fc2097",
+   "context": "c0b800f1ef1bf748",
    "roles": {
     "department": {
      "date": false,
@@ -2321,7 +2440,7 @@
    }
   },
   "hr-3": {
-   "context": "2e696982401046f9",
+   "context": "d5d3bb246f5d54de",
    "roles": {
     "department": {
      "date": false,
@@ -2380,6 +2499,624 @@
     "termination_date": {
      "date": true,
      "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "hr-4": {
+   "context": "f43326c65e96e896",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "hr-5": {
+   "context": "0dd3df5eff7e48a9",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "hr-6": {
+   "context": "f94225deb405280b",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "hr-7": {
+   "context": "920b41fde4135264",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "hr-8": {
+   "context": "1b0cf204acee2705",
+   "roles": {
+    "Base_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Emp_ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Location": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Snapshot_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "hr-9": {
+   "context": "2f52b54739afb6ed",
+   "roles": {
+    "Base_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Emp_ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Location": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Snapshot_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
      "id": false,
      "metric": false
     }
@@ -5971,37 +6708,37 @@
    "standard_code": "42dafc04eca73055"
   },
   "employees-1": {
-   "answers": "20a769e8b434de76",
-   "answers_by_group": "da4cf494405309c9",
-   "audit": "49f731886993257f",
+   "answers": "64a1107cb43edf4f",
+   "answers_by_group": "fc91d7b0105d2d06",
+   "audit": "835d0f40cc137a13",
    "chart": "773fb9a9a9b6b498",
-   "contract": "64b3a60aff1918cd",
+   "contract": "bf7e59aa7c3d3166",
    "extras": "43f3cb09b925e77a",
    "frame": "d90dfcf32be42829",
-   "kpis": "0f4ea242d3396432",
-   "standard_code": "ac3d6a1d7e993321"
+   "kpis": "c99a796f7e1f22e4",
+   "standard_code": "033527e0b0285610"
   },
   "employees-2": {
-   "answers": "7d1f327299e9b80e",
-   "answers_by_group": "f7b26cf5bdbda761",
-   "audit": "a22e744a5dd4ddd6",
+   "answers": "785c38a8f2a05979",
+   "answers_by_group": "bb57df36e1d223aa",
+   "audit": "a9783a3ede516a40",
    "chart": "0a1881399edb7096",
-   "contract": "fee0b53cd64bb2ea",
+   "contract": "3e7c3f778708b425",
    "extras": "2bf721e16d23c921",
    "frame": "f9b9b0f94521af25",
-   "kpis": "82f5f0ea5dc64404",
-   "standard_code": "d00d863cf6d4cb86"
+   "kpis": "afb2a8cbc1caacea",
+   "standard_code": "033527e0b0285610"
   },
   "employees-3": {
-   "answers": "7148e9fb2fe53cb8",
-   "answers_by_group": "2ae3a3720e671ad4",
-   "audit": "bf64d9b5c47c4b72",
+   "answers": "3f35fc5d795ef193",
+   "answers_by_group": "aaad8042fd10e016",
+   "audit": "5dbd32d70f45df11",
    "chart": "34c904fe9d21a475",
-   "contract": "e0dcf7023b415060",
+   "contract": "c8e326802721940c",
    "extras": "232cf7e24483265d",
    "frame": "45de1f5f827349b5",
-   "kpis": "c5b98bd8c9453518",
-   "standard_code": "ffe22cb1bdb42ac7"
+   "kpis": "1c114276585e0e1d",
+   "standard_code": "033527e0b0285610"
   },
   "encounters-1": {
    "answers": "29ea85bec6621a3e",
@@ -6047,6 +6784,39 @@
    "kpis": "ba4960001dc66b87",
    "standard_code": "c478b06389b95606"
   },
+  "hr_roster-1": {
+   "answers": "f802484eb4ea8c39",
+   "answers_by_group": "9410fdcdf54c7ed8",
+   "audit": "9236d79930eebd15",
+   "chart": "9da14161615a1b71",
+   "contract": "584853a42bb160c5",
+   "extras": "28f029406ec7d830",
+   "frame": "ca9709e4ef6dc2d2",
+   "kpis": "e1dfcc1178eda01d",
+   "standard_code": "033527e0b0285610"
+  },
+  "hr_roster_onerow-1": {
+   "answers": "f802484eb4ea8c39",
+   "answers_by_group": "9410fdcdf54c7ed8",
+   "audit": "dd064137664fee91",
+   "chart": "8d0df1bf208611f5",
+   "contract": "963e14ec2b95254f",
+   "extras": "b03ba52b33b535dd",
+   "frame": "2b1f47cee1b4aa59",
+   "kpis": "15c27fcb7c02a44b",
+   "standard_code": "033527e0b0285610"
+  },
+  "hr_snapshots-1": {
+   "answers": "a70861690a87c849",
+   "answers_by_group": "25c31f67d4aebade",
+   "audit": "11040f983b5047e3",
+   "chart": "e98ffddaeaa87224",
+   "contract": "a3f5f0de68d8ad60",
+   "extras": "424696454c0a15f8",
+   "frame": "f585734bc6d324d1",
+   "kpis": "13e09511aa015b26",
+   "standard_code": "6a06f095b27e4eae"
+  },
   "inpatient-1": {
    "answers": "a4ba8ea185610563",
    "answers_by_group": "235643583a94f4a2",
@@ -6070,7 +6840,7 @@
    "standard_code": "6d0b6eb8316adbe4"
   },
   "loss_run-1": {
-   "answers": "237bba9b86970ec7",
+   "answers": "0a698b50e3aece9d",
    "answers_by_group": "1381e5cda8f50b16",
    "audit": "5ca9ccc960c0ffe8",
    "chart": "752e259811d51120",
@@ -11014,6 +11784,790 @@
      "metric": false
     }
    }
+  },
+  "e2e-71": {
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-72": {
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-73": {
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Original_Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-74": {
+   "roles": {
+    "Base_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Emp_ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Location": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Snapshot_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-75": {
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-76": {
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-77": {
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
   }
  },
  "insight": {
@@ -14031,6 +15585,196 @@
     },
     "Valuation Date": {
      "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-47-hr-roster-overview": {
+   "context": "8f720f1b7d00d067",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-48-hr-snapshots-overview": {
+   "context": "53ef22cc9da4e85d",
+   "roles": {
+    "Base_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Emp_ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Location": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Snapshot_Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
      "dtype": "str",
      "id": false,
      "metric": false
@@ -18578,6 +20322,1386 @@
     "Service From": {
      "date": true,
      "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-01": {
+   "context": "210c338f48be0a57",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-02": {
+   "context": "0769b04f86b258f9",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-03": {
+   "context": "4f272d2165c92ef1",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-04": {
+   "context": "ec9e617882a2533d",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-05": {
+   "context": "af716492c998540c",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-06": {
+   "context": "bbacd9ef0cb89f25",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-07": {
+   "context": "f82ab78afb547f78",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-08": {
+   "context": "c10302f29be24bf2",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-09": {
+   "context": "cbafe251120ba5e8",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-10": {
+   "context": "86ee6980e6fea4e1",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-11": {
+   "context": "555baab85a7b740f",
+   "roles": {
+    "Annual_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Date_of_Birth": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employee_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Employee_Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Employment_Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ethnicity": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Job_Level": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Manager_ID": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Performance_Rating": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Regrettable": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SSN": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Termination_Category": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Work_Email": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-hr-12": {
+   "context": "6cf7ea256d3b78df",
+   "roles": {
+    "Base_Salary": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Department": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Emp_ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "FTE": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Gender": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Hire_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Location": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Snapshot_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Termination_Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Worker_Type": {
+     "date": false,
+     "dtype": "str",
      "id": false,
      "metric": false
     }

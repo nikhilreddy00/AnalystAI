@@ -35,3 +35,10 @@ def encryption_key(monkeypatch):
     from api.config import settings
     if not settings.encryption_key:
         monkeypatch.setattr(settings, "encryption_key", "dGVzdC1maXhlZC1rZXktZm9yLXBzZXVkb255bXMtMTI=")
+
+
+@pytest.fixture(autouse=True)
+def today(monkeypatch):
+    """Today is the generators' extract date (agents.utils.today): an HR exit dated after it
+    is not yet one, so a test's answer never changes with the calendar."""
+    monkeypatch.setenv("ANALYSTAI_TODAY", "2026-11-01")

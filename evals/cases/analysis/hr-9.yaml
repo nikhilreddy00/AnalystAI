@@ -1,0 +1,30 @@
+id: hr-9
+domain: hr
+category: ratio
+pipeline: production
+dataset:
+  name: hr_snapshots
+  seed: 1
+question: What was attrition by department over the last 12 months?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Termination_Date
+  segments:
+  - Department
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Department
+  truth_key: attrition_12m_by_dept_at_exit
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Monthly snapshots: most leavers vanish without a date (exit = the first snapshot they are
+  missing from), exits count in the department left from (30 transfers), ÷ the mean month-end headcount.'

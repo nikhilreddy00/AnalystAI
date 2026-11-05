@@ -24,6 +24,9 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
+    SPELL_EVENT_COLUMNS,
+    protected_groups,
+    spell_facts,
     runout_months,
     developing_trend,
     ROW_KIND_COLUMN,
@@ -213,6 +216,16 @@ except Exception:
     return "\n".join(lines)
 
 
+def model_frame(df: pd.DataFrame, contract: DataContract) -> tuple[pd.DataFrame, list[str]]:
+    """(the frame the model's code gets, its columns beyond the schema): each row's kind, the
+    pack's derived columns and spell events. THE frame: the eval scores the model's columns
+    against it (CODING_STANDARDS: adapters take the production path)."""
+    framed, col = with_row_kind(df, contract)
+    framed, added = with_derived(framed, contract)
+    events = [c for c in SPELL_EVENT_COLUMNS if c in framed.columns and c not in df.columns]
+    return framed, [*([col] if col else []), *added, *events]
+
+
 def kind_column(contract: DataContract) -> str:
     """The row-kind column's name in the frame analysis gets (domain_pack.with_row_kind's rule)."""
     names = {c.name for c in contract.columns}
@@ -365,6 +378,30 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                                         "results": [{"name": f"{a}|{b}", "value": round(float(means[(a, b)]), 4)}
                                                     for a, b in top]})
                 raw["builtin"].append(f"seg:{joint}/{c}")
+    _drop_protected_cells(raw, df, contract)
+
+
+def _drop_protected_cells(raw: dict, df: pd.DataFrame, contract: DataContract) -> None:
+    """The model's and the built-ins' segments, less the groups the protected small-cell rule
+    hides (domain_pack.protected_groups: pay of a 6-person department, a gender cell of 3), said
+    in an assumption: every segment leaves the analysis through here (Domain 5 insight gate:
+    '$96,450 in Legal')."""
+    hidden = 0
+    for seg in raw.get("segments") or []:
+        if not isinstance(seg, dict) or not seg.get("segment_column") or not seg.get("metric_column"):
+            continue
+        keys = [k for k in str(seg["segment_column"]).split("|")]
+        hide = {"|".join(map(str, g)) if isinstance(g, tuple) else str(g)
+                for g in protected_groups(df, contract, keys if len(keys) > 1 else keys[0],
+                                          seg["metric_column"])}
+        if hide:
+            before = len(seg.get("results") or [])
+            seg["results"] = [r for r in seg.get("results") or [] if str(r.get("name")) not in hide]
+            hidden += before - len(seg["results"])
+    if hidden:
+        raw.setdefault("assumptions", []).append(
+            f"{hidden} group figure(s) of fewer than 11 people (pay or a protected attribute) are "
+            "not shown: they could identify people.")
 
 
 def counted_months(df: pd.DataFrame, contract, col: str, date: str):
@@ -513,7 +550,7 @@ def build_context(session: AnalysisSession) -> AnalysisContext:
                           {t.value if hasattr(t, "value") else t for t in task.analysis_types}
                           & {"correlation", "hypothesis"})) for c in contract.columns if c.aggregation],
         question=(task.raw_query or "")[:2000],
-        **_domain(contract, task, audit),
+        **_domain(contract, task, audit, session.__dict__.get("_df_parquet")),
     )
 
 
@@ -524,7 +561,7 @@ _OVERVIEW_WORDS = re.compile(r"\b(?:overview|summary|tour|walk me through|what(?
                              r"spreadsheet|export)\b", re.I)
 
 
-def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
+def _domain(contract: DataContract, task: AnalysisTask, audit, parquet: bytes | None = None) -> dict:
     """The pack's rules, relevant ones only, so a question they don't touch reads as before:
     the row kinds Cleaning found in this data (returns, refunds, test orders …), a line grain,
     the KPIs or concepts the question names (every tile KPI the data supports when it asks for
@@ -544,9 +581,16 @@ def _domain(contract: DataContract, task: AnalysisTask, audit) -> dict:
     grain = audit.grain if audit else None
     brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None,
                        kind_column(contract))
+    facts: list[str] = []
+    if brief and pack.spell and parquet and defaults_pack(contract):   # the product's numbers
+        frame = pd.read_parquet(io.BytesIO(parquet))
+        facts = spell_facts(pack, frame, {r: c for r, c in roles.items() if c in frame.columns})
     if not brief:
         return {}
-    return {"domain": brief, "domain_roles": "\n".join(f"{r} = {c}" for r, c in roles.items())}
+    # the facts name the data's own values (departments, locations): inside the untrusted-data
+    # block with the roles, never a rule line (a department named 'Ignore previous rules')
+    return {"domain": brief, "domain_roles": "\n".join(
+        [*(f"{r} = {c}" for r, c in roles.items()), *(f"fact: {x}" for x in facts)])}
 
 
 def _aggregation_line(c, names: set[str], correlates: bool = False) -> str:
@@ -753,16 +797,15 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
     df_parquet = session.__dict__.get("_df_parquet")
     if df_parquet is None:
         raise ValueError("No DataFrame in session. Run ingestion and cleaning first.")
-    ctx = build_context(session)
+    ctx = await asyncio.to_thread(build_context, session)   # reads the frame (spell facts)
     contract = session.data_contract
     known = [c.name for c in contract.columns]
     if ctx.domain or defaults_pack(contract):   # 5.7: row kinds as a column code filters on
         def framed_bytes() -> tuple[bytes, str | None]:
-            framed, col = with_row_kind(pd.read_parquet(io.BytesIO(df_parquet)), contract)
-            framed, added = with_derived(framed, contract)
+            framed, extra = model_frame(pd.read_parquet(io.BytesIO(df_parquet)), contract)
             buf = io.BytesIO()
             framed.to_parquet(buf, index=False)
-            return buf.getvalue(), [*([col] if col else []), *added]
+            return buf.getvalue(), extra
         new_bytes, extra = await asyncio.to_thread(framed_bytes)
         if extra:
             df_parquet, known = new_bytes, known + extra

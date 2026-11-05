@@ -1,0 +1,22 @@
+id: clean-hr-01-roster
+dataset:
+  name: hr_roster
+  seed: 1
+category: hr
+expect_decisions:
+- column: Termination_Date
+  strategy: marker
+  rows: 0
+- column: Termination_Category
+  strategy: marker
+  rows: 0
+forbid:
+- operation: drop_rows
+- operation: drop_duplicates
+- strategy: high_null
+- column: Termination_Category
+  operation: fill_unknown
+- column: Termination_Date
+  operation: fill_unknown
+label_note: 'Active employees have no termination date: the layout (marker fields), never missing values,
+  no high-null gate; rehires are not duplicates.'

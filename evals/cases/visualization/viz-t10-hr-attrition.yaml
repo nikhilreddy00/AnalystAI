@@ -1,0 +1,23 @@
+id: viz-t10-hr-attrition
+category: targeted
+label_note: 'HR: attrition by department is a ratio per department (separations ÷ average headcount):
+  bars, never a sum of rows.'
+dataset:
+  name: hr_roster
+  seed: 1
+question: What is attrition by department?
+plan:
+  intent: top_n
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    kpi: attrition_rate
+    group_by: Department
+expect:
+- types:
+  - BarChart
+  - HorizontalBarChart
+  x: Department
+  y: Attrition rate
+  agg: none

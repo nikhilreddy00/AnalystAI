@@ -171,15 +171,28 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     triggers = pack.causal_triggers if pack else ()
     # the profit rule is a pack's: only one that names its cost roles has it
     has_cost = not (pack and pack.cost_roles) or bool(set(pack.cost_roles) & set(contract.roles))
-    # small cells are a patient-data rule: any phi pack's nouns, strong or weak match
-    phi_pack = pack_for(contract.domain) if contract and contract.phi else None
-    nouns = phi_pack.small_cell_nouns if phi_pack else []
+    # small cells: on patient data any phi pack's nouns (strong or weak); elsewhere a pack with
+    # protected roles flags a small group named by a protected value ("2 women", "3 Asian
+    # employees"), never a plain count of people ("3 employees left Finance")
+    own = pack_for(contract.domain) if contract else None
+    nouns = own.small_cell_nouns if own and (contract.phi or own.protected_roles) else []
+    if own and own.protected_roles and not contract.phi:
+        values = {str(v).strip().lower() for c in contract.columns
+                  if c.name in {contract.roles.get(r) for r in own.protected_roles}
+                  and not c.is_metric for v in c.sample_values if str(v).strip()}
+        people = [w.strip() for w in own.say("people_nouns").split(",") if w.strip()]
+        nouns = [*nouns, *(f"{v} {n}" for v in sorted(values) for n in people)]
     # count tiles (Policies: 1,300) and the file's rows: rows are never called policies
     audit = session.cleaning_audit
     rows = audit.rows_after if audit else (contract.row_count if contract else 0)
-    counts = {k.label: k.value for k in (session.analysis_findings.kpis if session.analysis_findings
-                                         else []) if pack and k.recipe and k.recipe.kind == "pack"
-              and (kpi := pack.kpi(k.recipe.kpi)) and kpi.unit == "count"}
+    counts = {}
+    for k in (session.analysis_findings.kpis if session.analysis_findings else []):
+        if pack and k.recipe and k.recipe.kind == "pack" and (kpi := pack.kpi(k.recipe.kpi)) \
+                and kpi.unit == "count":
+            n = k.value.split(" ")[0]   # '353 employees': its number, by its name and its noun
+            counts[k.label] = n
+            if kpi.unit_word:   # 'Headcount' counts employees (Domain 5: '8,226 employees')
+                counts[kpi.unit_word] = n
     flags: list[ReviewFlag] = []
     for i, c in enumerate(report_claims(report)):
         text, ids = c["text"], [x for x in c["ids"] if x in evidence]

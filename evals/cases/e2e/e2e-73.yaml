@@ -1,0 +1,22 @@
+id: e2e-73
+domain: hr
+source: xlsx
+dataset:
+  name: hr_roster_onerow
+  seed: 1
+question: How many employees do we have?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: headcount_asof
+  rel_tol: 0.0
+- kind: must_not_number
+  truth_key: rows
+  rel_tol: 0.0
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'From Excel, Workday''s one-row format: 885 people in force (Original Hire Date never puts
+  a returner in force during their gap).'

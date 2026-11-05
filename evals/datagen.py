@@ -415,6 +415,14 @@ def make_employees(seed: int) -> tuple[pd.DataFrame, dict]:
         "null_pairs": [["salary", "left"]],
         "pii_columns": ["employee_name", "email"],
     }
+    # The period rate (make_hr_roster's rules; no worker type: everyone is an employee). The
+    # as-of is the latest date in the file (2026-10-24 at seed 1), not a month-end: the last
+    # headcount point is the as-of itself.
+    r = _hr_rates(_hr_spells(df, {"id": "employee_id", "dept": "department",
+                                  "hire": "hire_date", "term": "termination_date"}))
+    truth.update(as_of=r["as_of"].strftime("%Y-%m-%d"), attrition_12m_by_dept=r["by_dept"],
+                 avg_headcount_12m=r["avg"], separations_12m=int(r["left"].sum()))
+    assert max(r["by_dept"], key=r["by_dept"].get) == "Sales"
     assert truth["attrition_by_dept"]["Sales"] == 0.25 or abs(truth["attrition_by_dept"]["Sales"] - 0.25) < 0.002
     return df, truth
 
@@ -1914,6 +1922,544 @@ def make_loss_run(seed: int) -> tuple[pd.DataFrame, dict]:
     return df, truth
 
 
+# ── Domain 5: HR (people analytics) ───────────────────────────────────────────────────────────
+
+_HR_TODAY = pd.Timestamp("2026-11-01")   # frozen "today": a date after it is future-dated
+_HR_CONTINGENT = ("Contractor", "Agency", "Consultant")   # every other worker type is an employee
+_HR_VOLUNTARY, _HR_INVOLUNTARY = ("Voluntary", "Resignation"), ("Involuntary", "Layoff", "Dismissal")
+_HR_MONTH = 365.25 / 12   # days per month, for tenure
+# department -> (share of hires, pay factor, mean tenure in years); Legal is planted (6 people)
+_HR_DEPTS = {"Sales": (0.25, 1.00, 3.5), "Engineering": (0.25, 1.15, 7.0),
+             "Support": (0.22, 0.85, 5.5), "Finance": (0.08, 1.05, 8.0),
+             "Marketing": (0.10, 0.95, 6.0), "Operations": (0.10, 0.90, 7.0)}
+_HR_LEVELS = {"L1": (0.30, 55_000), "L2": (0.30, 70_000), "L3": (0.20, 90_000),
+              "L4": (0.13, 115_000), "L5": (0.07, 150_000)}
+_HR_PERF = {"stay": [0.05, 0.15, 0.45, 0.25, 0.10], "fired": [0.35, 0.35, 0.20, 0.07, 0.03]}
+_HR_ETHNICITY = (["White", "Asian", "Hispanic or Latino", "Black or African American",
+                  "Two or More Races", "Declined"], [0.45, 0.20, 0.15, 0.10, 0.05, 0.05])
+
+
+def _hr_window(as_of: pd.Timestamp) -> tuple[list[pd.Timestamp], pd.Timestamp]:
+    """The 12 headcount points of the 12 months ending at the as-of (each month-end; the as-of
+    itself when it is not one) and the start of the separations window (as-of − 12 months,
+    exclusive)."""
+    ends = pd.date_range(end=as_of + pd.offsets.MonthEnd(0), periods=12, freq="ME")
+    return [*ends[:-1], as_of], as_of - pd.DateOffset(months=12)
+
+
+def _hr_spells(df: pd.DataFrame, cols: dict) -> pd.DataFrame:
+    """One row per employment spell in the rule's own words: id, dept, hire, term, out (status
+    Terminated with no date: out at every date), emp (not a contingent worker type)."""
+    term = pd.to_datetime(df[cols["term"]].replace("", None))
+    status = df[cols["status"]] if "status" in cols else pd.Series("", index=df.index)
+    wtype = df[cols["type"]] if "type" in cols else pd.Series("Employee", index=df.index)
+    return pd.DataFrame({"id": df[cols["id"]], "dept": df[cols["dept"]],
+                         "hire": pd.to_datetime(df[cols["hire"]]), "term": term,
+                         "out": status.eq("Terminated") & term.isna(),
+                         "emp": ~wtype.isin(_HR_CONTINGENT)})
+
+
+def _hr_in_force(s: pd.DataFrame, t: pd.Timestamp) -> pd.Series:
+    return (s["hire"] <= t) & (s["term"].isna() | (s["term"] > t)) & ~s["out"]
+
+
+def _hr_rates(s: pd.DataFrame) -> dict:
+    """Stock and flows of employees: as-of = the latest hire/termination date not after today;
+    headcount = distinct employees in force; average headcount = mean of the 12 month-end points;
+    separations = employee exits (events) dated in the window; department of an exit = its
+    spell's department."""
+    dates = pd.concat([s["hire"], s["term"]]).dropna()
+    as_of = dates[dates <= _HR_TODAY].max()
+    points, start = _hr_window(as_of)
+    emp = s["emp"]
+
+    def heads(t, mask=emp) -> int:
+        return int(s.loc[mask & _hr_in_force(s, t), "id"].nunique())
+
+    hc = {t: heads(t) for t in points}
+    avg = float(np.mean(list(hc.values())))
+    left = emp & (s["term"] > start) & (s["term"] <= as_of)
+    depts = sorted(s.loc[emp, "dept"].unique())
+    dept_avg = {d: float(np.mean([heads(t, emp & s["dept"].eq(d)) for t in points])) for d in depts}
+    dept_seps = s.loc[left, "dept"].value_counts()
+    return {"as_of": as_of, "points": points, "start": start, "heads": heads, "hc": hc,
+            "avg": avg, "left": left, "dept_avg": dept_avg,
+            "by_dept": {d: float(dept_seps.get(d, 0) / dept_avg[d]) for d in depts
+                        if dept_avg[d] > 0}}
+
+
+_HR_ROSTER_COLS = {"id": "Employee_ID", "dept": "Department", "hire": "Hire_Date",
+                   "term": "Termination_Date", "status": "Employment_Status", "type": "Worker_Type"}
+_HR_PII = ["Employee_Name", "Work_Email", "SSN", "Date_of_Birth"]
+
+
+def _hr_roster_truth(df: pd.DataFrame) -> dict:
+    """Every roster KPI and its naive twin, from the frame alone (rules in make_hr_roster)."""
+    s = _hr_spells(df, _HR_ROSTER_COLS)
+    r = _hr_rates(s)
+    as_of, start, heads, emp, left, avg = (r["as_of"], r["start"], r["heads"], s["emp"],
+                                           r["left"], r["avg"])
+    now = emp & _hr_in_force(s, as_of)
+    cat = df["Termination_Category"]
+    seps = int(left.sum())
+
+    def rate(cats) -> float:
+        return float((left & cat.isin(cats)).sum() / avg)
+
+    by_year, months = {}, {}
+    for y in range(2023, as_of.year + 1):
+        pts = [t for t in pd.date_range(f"{y}-01-31", f"{y}-12-31", freq="ME") if t <= as_of]
+        yl = emp & s["term"].dt.year.eq(y) & (s["term"] <= as_of)
+        by_year[str(y)] = float(yl.sum() / np.mean([heads(t) for t in pts]))
+        months[str(y)] = len(pts)
+    last_y = str(as_of.year)
+    everyone = pd.Series(True, index=df.index)
+    all_left = (s["term"] > start) & (s["term"] <= as_of)
+    pay = df[now & df["Gender"].isin(["Male", "Female"]) & df["Annual_Salary"].notna()].assign(
+        fte_pay=lambda x: x["Annual_Salary"] / x["FTE"])
+
+    def gap(col: str, how: str) -> dict:
+        g = pay.groupby(["Job_Level", "Gender"])[col].agg(how).unstack()
+        return {k: float(v) for k, v in ((g["Male"] - g["Female"]) / g["Male"]).items()}
+
+    sal = df[now & df["Annual_Salary"].notna()]
+    paid = emp & df["Annual_Salary"].notna()
+    ever_left = (s["term"].notna() | df["Employment_Status"].eq("Terminated")).astype(int)
+    rated = emp & df["Performance_Rating"].notna()
+    fired = cat.isin(_HR_INVOLUNTARY).astype(int)
+    hc_end = r["hc"][as_of]
+    return {
+        "as_of": as_of.strftime("%Y-%m-%d"), "window_start": start.strftime("%Y-%m-%d"),
+        "headcount_asof": hc_end, "contingent_asof": heads(as_of, ~emp),
+        "fte_asof": float(df.loc[now, "FTE"].sum()),
+        "headcount_by_month_end": {t.strftime("%Y-%m-%d"): v for t, v in r["hc"].items()},
+        "avg_headcount_12m": avg, "separations_12m": seps, "attrition_12m": seps / avg,
+        "attrition_12m_by_dept": r["by_dept"],
+        "voluntary_attrition_12m": rate(_HR_VOLUNTARY),
+        "involuntary_attrition_12m": rate(_HR_INVOLUNTARY),
+        "retirement_rate_12m": rate(["Retirement"]),
+        "voluntary_attrition_12m_by_dept": {
+            d: float((left & cat.isin(_HR_VOLUNTARY) & s["dept"].eq(d)).sum() / a)
+            for d, a in r["dept_avg"].items() if a > 0},
+        "attrition_12m_by_category": {"Voluntary": rate(_HR_VOLUNTARY),
+                                      "Involuntary": rate(_HR_INVOLUNTARY),
+                                      "Retirement": rate(["Retirement"])},
+        "headcount_by_dept_2025_12_31": {
+            k: int(v) for k, v in s.loc[emp & _hr_in_force(s, pd.Timestamp("2025-12-31"))]
+            .groupby("dept")["id"].nunique().items()},
+        "attrition_2025_vs_2026": {y: by_year[y] for y in ("2025", "2026")},
+        "hires_12m": int((emp & (s["hire"] > start) & (s["hire"] <= as_of)).sum()),
+        "headcount_by_dept_asof": {k: int(v) for k, v in
+                                   s.loc[now].groupby("dept")["id"].nunique().items()},
+        "avg_salary_asof": float(sal["Annual_Salary"].mean()),
+        "avg_salary_by_dept_asof": {k: float(v) for k, v in
+                                    sal.groupby("Department")["Annual_Salary"].mean().items()},
+        "legal_people_asof": heads(as_of, emp & s["dept"].eq("Legal")),
+        "attrition_by_year": by_year, "attrition_by_year_months": months,
+        "attrition_partial_year": last_y,
+        f"attrition_{last_y}_partial": by_year[last_y],
+        "people": int(df["Employee_ID"].nunique()), "rows": len(df),
+        "pay_gap_mean_fte_by_level": gap("fte_pay", "mean"),
+        "pay_gap_median_fte_by_level": gap("fte_pay", "median"),
+        "tenure_median_current_months": float(((as_of - s.loc[now, "hire"]).dt.days
+                                               / _HR_MONTH).median()),
+        "tenure_median_at_exit_months": float(((s.loc[left, "term"] - s.loc[left, "hire"]).dt.days
+                                               / _HR_MONTH).median()),
+        # trap 12: a notice-period exit read as already gone; trap 13: a 'Terminated' row with
+        # no date read as still in force
+        "headcount_asof_future_exits_out": hc_end - int((now & (s["term"] > as_of)).sum()),
+        "headcount_asof_with_terminated_no_date": hc_end + int(
+            (emp & s["out"] & (s["hire"] <= as_of)).groupby(s["id"]).any().sum()),
+        "future_exits": int((emp & (s["term"] > as_of)).sum()),
+        "future_hires": int((emp & (s["hire"] > as_of)).sum()),
+        "terminated_without_date": int(s["out"].sum()),
+        "corr_salary_left": float(df.loc[paid, "Annual_Salary"].corr(ever_left[paid])),
+        "corr_performance_involuntary": float(df.loc[rated, "Performance_Rating"].astype(float)
+                                              .corr(fired[rated])),
+        "involuntary_share_by_rating": {str(int(k)): float(v) for k, v in fired[rated].groupby(
+            df.loc[rated, "Performance_Rating"]).mean().items()},
+        # naive answers (traps): each is asserted to differ from its right answer
+        "attrition_12m_end_hc": seps / hc_end,                                          # 1
+        "attrition_12m_by_dept_end_hc": {
+            d: float(left[s["dept"].eq(d)].sum() / n) for d, n in
+            s.loc[now].groupby("dept")["id"].nunique().items()},
+        "attrition_all_rows": float(s["term"].notna().mean()),                         # 2
+        "attrition_12m_with_contingent": float(all_left.sum() / np.mean(
+            [heads(t, everyone) for t in r["points"]])),                               # 5
+        "voluntary_incl_retirement": rate([*_HR_VOLUNTARY, "Retirement"]),             # 6
+        "avg_headcount_start_end": (heads(start) + hc_end) / 2,
+        f"attrition_{last_y}_annualised": by_year[last_y] * 12 / months[last_y],      # 8
+        "pay_gap_mean_annual_by_level": gap("Annual_Salary", "mean"),                  # 15
+        "pay_gap_median_annual_by_level": gap("Annual_Salary", "median"),
+    }
+
+
+def make_hr_roster(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A Workday-style worker roster in spell format: one row per employment spell (a rehire is a
+    second row with the same Employee_ID). Hires from 2015; leavers who left before 2023-01-01
+    are purged (HRIS exports keep recent leavers), so exits run 2023-01 .. 2026-10. Blank exit
+    fields when active. Today is frozen at 2026-11-01.
+
+    Rules the truth implements: as-of = the latest hire/termination date not after today
+    (2026-10-31). Employees = every worker type except Contractor/Agency/Consultant (part-time
+    and interns are employees); every rate and headcount is employees only. In force at t:
+    hired on or before t, no termination date or one after t, and not Status=Terminated with a
+    blank date (out at every t); distinct people. Window = the 12 months to the as-of; average
+    headcount = mean of the 12 month-end headcounts (2025-11-30 .. 2026-10-31). Separations =
+    exits (events) dated in (2025-10-31, 2026-10-31]: a person who leaves twice counts twice.
+    Attrition = separations ÷ average headcount; voluntary, involuntary and retirement are
+    separate. By year: a year's separations ÷ the mean of its month-end headcounts; 2026 has 10
+    month-ends and is partial, never ×12/10.
+
+    Traps (each asserted to move its answer): a 60-person Support layoff on 2026-06-15 and a
+    hiring freeze after it, so ÷ end headcount is wrong (1); share of rows with an exit date (2);
+    40 rehires (3); contractors churn fast (5) and one becomes an employee (two spells, two
+    worker types); retirements counted as voluntary (6); FTE vs heads (7); 2026 annualised (8);
+    3 future-dated exits and 2 future-dated hires (12); 5 Terminated rows with no date (13);
+    someone hired 2026-03-03 and gone 2026-03-20 (14); part-timers mostly women: the pay gap on
+    annual salary vs on FTE-equivalent pay (15); salary unrelated to leaving, low performance
+    associated with involuntary exits (16); a 6-person Legal department (17); current-staff
+    tenure vs at exit (18)."""
+    rng = np.random.default_rng(seed)
+    as_of, purge = pd.Timestamp("2026-10-31"), pd.Timestamp("2023-01-01")
+    depts, levels = list(_HR_DEPTS), list(_HR_LEVELS)
+
+    def person(hire, dept=None, wtype=None):
+        g = str(rng.choice(["Female", "Male", "Non-binary"], p=[0.46, 0.52, 0.02]))
+        lvl = str(rng.choice(levels, p=[v[0] for v in _HR_LEVELS.values()]))
+        pt = rng.random() < {"Female": 0.28, "Male": 0.04, "Non-binary": 0.10}[g]
+        wtype = wtype or ("Part-Time" if pt else
+                          "Intern" if lvl == "L1" and rng.random() < 0.06 else "Employee")
+        dept = dept or str(rng.choice(depts, p=[v[0] for v in _HR_DEPTS.values()]))
+        return {"gender": g, "level": lvl, "wtype": wtype, "dept": dept, "hire": hire,
+                "fte": float(rng.choice([0.5, 0.8])) if wtype == "Part-Time" else 1.0,
+                "dob": hire - pd.Timedelta(days=int(rng.integers(21, 62) * 365.25)
+                                           + int(rng.integers(0, 365))),
+                "first": str(rng.choice(_FIRST)), "last": str(rng.choice(_LAST)),
+                "eth": str(rng.choice(_HR_ETHNICITY[0], p=_HR_ETHNICITY[1])),
+                "ssn": f"{rng.integers(100, 900)}-{rng.integers(10, 100)}-{rng.integers(1000, 10000)}",
+                "noise": float(rng.lognormal(0, 0.10)), "term": pd.NaT, "cat": None,
+                "status": None, "layoff": False}
+
+    def leave(p, mean_years):
+        """Natural exit: tenure, or retirement at 65-67 if that comes first; blank after as-of."""
+        # Weibull shape 0.7: the exit hazard falls with tenure (most leavers go early)
+        term = p["hire"] + pd.Timedelta(days=60 + int(rng.weibull(0.7) * mean_years * 288.5))
+        retire = p["dob"] + pd.Timedelta(days=int(rng.integers(65, 68) * 365.25))
+        if retire < term:
+            term, p["cat"] = retire, "Retirement"
+        elif (term - p["dob"]).days >= 57 * 365.25 and rng.random() < 0.5:
+            p["cat"] = "Retirement"
+        else:
+            p["cat"] = "Involuntary" if rng.random() < 0.22 else "Voluntary"
+        if term > as_of:
+            term, p["cat"] = pd.NaT, None
+        p["term"] = term
+
+    # hires: steady from 2015, a push from May 2024, replacement only from Nov 2025 (headcount
+    # flat), a freeze after the layoff
+    hires = []
+    for lo, hi, per_day in (("2015-01-01", "2024-04-30", 0.47), ("2024-05-01", "2025-10-31", 1.10),
+                            ("2025-11-01", "2026-06-14", 0.72), ("2026-06-15", "2026-10-30", 0.0)):
+        lo, hi = pd.Timestamp(lo), pd.Timestamp(hi)
+        days = (hi - lo).days + 1
+        hires += list(lo + pd.to_timedelta(np.sort(rng.integers(0, days, int(per_day * days))),
+                                           unit="D"))
+    pool = []
+    for h in hires:
+        p = person(h)
+        leave(p, _HR_DEPTS[p["dept"]][2])
+        if pd.isna(p["term"]) or p["term"] >= purge:
+            pool.append(p)
+    used: set[int] = set()
+
+    def pick(n, cond):
+        idx = [i for i, p in enumerate(pool) if i not in used and cond(p)]
+        out = [int(i) for i in rng.choice(idx, size=n, replace=False)]
+        used.update(out)
+        return out
+
+    def active_since(day):
+        return lambda p: pd.isna(p["term"]) and p["wtype"] == "Employee" and p["hire"] < day
+
+    for i in pick(6, active_since(pd.Timestamp("2024-01-01"))):                       # 17
+        pool[i]["dept"] = "Legal"
+    layoff = pd.Timestamp("2026-06-15")
+    for i in pick(60, lambda p: p["dept"] == "Support" and p["hire"] < layoff
+                  and (pd.isna(p["term"]) or p["term"] > layoff)):                     # 1
+        pool[i].update(term=layoff, cat="Involuntary", layoff=True)
+    for i, day in zip(pick(3, active_since(as_of)), ["2026-11-15", "2026-12-31", "2027-01-31"]):
+        pool[i].update(term=pd.Timestamp(day), cat="Voluntary")                        # 12
+    pool[pick(1, active_since(as_of))[0]].update(term=as_of, cat="Voluntary")   # pins the as-of
+    for i in pick(5, active_since(pd.Timestamp("2025-01-01"))):                       # 13
+        pool[i]["status"] = "Terminated"
+    for i in pick(10, active_since(as_of)):
+        pool[i]["status"] = "Leave of Absence"
+    spells = [[p] for p in pool]
+    win = (pd.Timestamp("2025-10-31"), pd.Timestamp("2026-08-31"))
+    first_in_window = pick(15, lambda p: p["cat"] in _HR_VOLUNTARY and win[0] < p["term"] <= win[1])
+    for i in first_in_window + pick(25, lambda p: p["cat"] in _HR_VOLUNTARY
+                                    and p["term"] <= pd.Timestamp("2025-06-30")):      # 3
+        p = pool[i]
+        back = p["term"] + pd.Timedelta(days=int(rng.integers(30, min(
+            300, (pd.Timestamp("2026-10-20") - p["term"]).days))))
+        again = {**p, "hire": back, "noise": float(rng.lognormal(0, 0.10)), "status": None,
+                 "dept": p["dept"] if rng.random() < 0.8 else str(rng.choice(depts))}
+        leave(again, _HR_DEPTS[again["dept"]][2])
+        if again["cat"] == "Retirement":   # a returner does not retire again within the file
+            again.update(term=pd.NaT, cat=None)
+        spells[i].append(again)
+    for _ in range(120):                                                               # 5
+        h = purge + pd.Timedelta(days=int(rng.integers(0, (as_of - purge).days)))
+        c = person(h, wtype="Contractor")
+        c["term"] = h + pd.Timedelta(days=30 + int(rng.exponential(240)))
+        c["cat"] = str(rng.choice(["Voluntary", "Involuntary"]))
+        if c["term"] > as_of:
+            c.update(term=pd.NaT, cat=None)
+        spells.append([c])
+    conv = person(pd.Timestamp("2024-02-01"), dept="Engineering", wtype="Contractor")
+    conv.update(term=pd.Timestamp("2025-03-31"), cat="Voluntary")
+    spells.append([conv, {**conv, "wtype": "Employee", "hire": pd.Timestamp("2025-04-01"),
+                          "term": pd.NaT, "cat": None}])
+    spells += [[person(pd.Timestamp(d))] for d in ("2026-11-15", "2026-12-01")]        # 12
+    quick = person(pd.Timestamp("2026-03-03"), wtype="Employee")                       # 14
+    quick.update(term=pd.Timestamp("2026-03-20"), cat="Voluntary")
+    spells.append([quick])
+
+    spells.sort(key=lambda sp: sp[0]["hire"])
+    managers = [100_001 + i for i, sp in enumerate(spells) if sp[-1]["level"] in ("L4", "L5")]
+    rows = []
+    for i, sp in enumerate(spells):
+        emp_id = 100_001 + i
+        for p in sp:
+            gone = pd.notna(p["term"]) and p["term"] <= as_of
+            fte_pay = (_HR_LEVELS[p["level"]][1] * (1.3 if p["dept"] == "Legal" else
+                                                    _HR_DEPTS[p["dept"]][1])
+                       * p["noise"] * (0.97 if p["gender"] == "Female" else 1.0))
+            perf = _HR_PERF["fired" if p["cat"] == "Involuntary" and not p["layoff"] else "stay"]
+            rows.append({
+                "Employee_ID": emp_id, "Employee_Name": f"{p['first']} {p['last']}",
+                "Work_Email": f"{p['first']}.{p['last']}{emp_id}@example.com".lower(),
+                "SSN": p["ssn"], "Date_of_Birth": p["dob"], "Gender": p["gender"],
+                "Ethnicity": p["eth"], "Department": p["dept"], "Job_Level": p["level"],
+                "Manager_ID": int(rng.choice(managers)), "Worker_Type": p["wtype"],
+                "FTE": p["fte"],
+                "Annual_Salary": (None if p["wtype"] == "Contractor"
+                                  else round(fte_pay * p["fte"], -2)),
+                "Hire_Date": p["hire"], "Termination_Date": p["term"],
+                "Termination_Category": p["cat"],
+                "Regrettable": (None if p["cat"] is None else "Yes" if p["cat"] == "Voluntary"
+                                and rng.random() < 0.45 else "No"),
+                "Employment_Status": p["status"] or ("Terminated" if gone else "Active"),
+                "Performance_Rating": (None if p["wtype"] == "Contractor"
+                                       else int(rng.choice([1, 2, 3, 4, 5], p=perf))),
+            })
+    df = pd.DataFrame(rows)
+    # trap 16: salary has no relation to leaving. The layoff and Sales churn would tie the two
+    # through department pay; one factor on the leavers' rows evens the means (r = 0 up to
+    # rounding), so a 'significant' salary effect is a false finding.
+    sal = df["Annual_Salary"].notna()
+    gone = sal & (df["Termination_Date"].notna() | df["Employment_Status"].eq("Terminated"))
+    k = df.loc[sal & ~gone, "Annual_Salary"].mean() / df.loc[gone, "Annual_Salary"].mean()
+    df.loc[gone, "Annual_Salary"] = (df.loc[gone, "Annual_Salary"] * k).round(-2)
+    for c in ("Date_of_Birth", "Hire_Date", "Termination_Date"):
+        df[c] = df[c].dt.strftime("%Y-%m-%d")
+
+    truth = {"row_count": len(df), "pii_columns": _HR_PII, **_hr_roster_truth(df)}
+    t = truth
+    assert t["as_of"] == "2026-10-31" and t["rows"] - t["people"] == 41               # 3
+    assert df["Department"].eq("Legal").sum() == t["legal_people_asof"] == 6           # 17
+    assert ((df["Termination_Date"] == "2026-06-15") & df["Department"].eq("Support")).sum() >= 60
+    assert t["attrition_12m_end_hc"] - t["attrition_12m"] > 0.015                      # 1
+    assert t["attrition_12m"] - t["attrition_all_rows"] < -0.10                        # 2
+    assert t["attrition_12m_with_contingent"] - t["attrition_12m"] > 0.01              # 5
+    assert t["retirement_rate_12m"] > 0.01                                             # 6
+    assert t["headcount_asof"] - t["fte_asof"] > 0.02 * t["headcount_asof"]            # 7
+    assert abs(t["avg_headcount_start_end"] / t["avg_headcount_12m"] - 1) > 0.01
+    assert t["attrition_2026_annualised"] - t["attrition_2026_partial"] > 0.01         # 8
+    assert t["future_exits"] == 3 and t["future_hires"] == 2                           # 12
+    assert t["terminated_without_date"] == 5                                           # 13
+    assert all(abs(t["pay_gap_mean_annual_by_level"][k] - t["pay_gap_mean_fte_by_level"][k])
+               > 0.02 for k in t["pay_gap_mean_fte_by_level"])                         # 15
+    assert abs(t["corr_salary_left"]) < 0.05 < -t["corr_performance_involuntary"]      # 16
+    assert t["involuntary_share_by_rating"]["1"] > 3 * t["involuntary_share_by_rating"]["4"]
+    assert t["tenure_median_current_months"] > 1.2 * t["tenure_median_at_exit_months"]  # 18
+    assert max(t["attrition_12m_by_dept"], key=t["attrition_12m_by_dept"].get) == "Support"
+    return df, truth
+
+
+def make_hr_roster_onerow(seed: int) -> tuple[pd.DataFrame, dict]:
+    """The same people as hr_roster in Workday's one-row-per-person format: Hire_Date = the
+    latest hire, Original_Hire_Date = the first; an earlier spell's exit is not in the file
+    (trap 4), so the 12-month separations are lower than the roster's by the rehires whose first
+    exit fell in the window. Same rules as make_hr_roster."""
+    spells, _ = make_hr_roster(seed)
+    first = spells.groupby("Employee_ID")["Hire_Date"].transform("min")
+    df = spells.assign(Original_Hire_Date=first).groupby("Employee_ID").tail(1)
+    cols = list(spells.columns)
+    cols.insert(cols.index("Hire_Date") + 1, "Original_Hire_Date")
+    df = df[cols].reset_index(drop=True)
+    full, one = _hr_roster_truth(spells), _hr_roster_truth(df)
+    s = _hr_spells(spells, _HR_ROSTER_COLS)
+    lost = s[s["emp"] & s["id"].duplicated(keep="last") & (s["term"] > pd.Timestamp("2025-10-31"))
+             & (s["term"] <= pd.Timestamp("2026-10-31"))]
+    truth = {"row_count": len(df), "pii_columns": _HR_PII,
+             **{k: one[k] for k in ("as_of", "headcount_asof", "avg_headcount_12m",
+                                    "separations_12m", "attrition_12m", "people", "rows")},
+             "separations_12m_spells": full["separations_12m"],
+             "first_exits_not_in_file": len(lost),
+             # naive: Original_Hire_Date taken as the spell start (the gap counted in force)
+             "avg_headcount_12m_original_hire": _hr_roster_truth(
+                 df.assign(Hire_Date=df["Original_Hire_Date"]))["avg_headcount_12m"]}
+    assert one["headcount_asof"] == full["headcount_asof"] and one["people"] == len(df)
+    assert full["separations_12m"] - one["separations_12m"] == len(lost) >= 10         # 4
+    assert truth["avg_headcount_12m_original_hire"] / one["avg_headcount_12m"] - 1 > 0.005
+    return df, truth
+
+
+def make_hr_snapshots(seed: int) -> tuple[pd.DataFrame, dict]:
+    """Monthly headcount snapshots: one row per person in force at each of 24 month-ends
+    (2024-11-30 .. 2026-10-31). Most leavers simply stop appearing (no termination date anywhere);
+    ~30% get a final row at their exit month-end with Status=Terminated and the Termination_Date.
+    Base_Salary rises 3% each April. Headcount, FTE and salary are levels: never summed over
+    months (trap 9).
+
+    Rules the truth implements: in force at month-end m = listed at m and not (Terminated with a
+    Termination_Date on or before m). Exit date = Termination_Date when present, else the month
+    after the last appearance (trap 10). Department of an exit = the department on the person's
+    last row (trap 11: 30 transfers, 8 of whom later leave, all Support → Sales). as-of = the
+    latest Snapshot_Date; window and average headcount as in make_hr_roster. One person is
+    Active with Termination_Date 2026-11-20 on the last snapshot: in force (12)."""
+    rng = np.random.default_rng(seed)
+    ends = pd.date_range("2024-11-30", "2026-10-31", freq="ME")
+    last = len(ends) - 1
+    depts = ["Sales", "Engineering", "Support", "Finance", "Marketing", "Operations"]
+    dp = [0.25, 0.25, 0.22, 0.08, 0.10, 0.10]
+
+    def month_day(m):
+        lo = ends[m - 1] + pd.Timedelta(days=1)
+        return lo + pd.Timedelta(days=int(rng.integers(0, (ends[m] - lo).days + 1)))
+
+    people = []
+
+    def add(start, hire):
+        exit_m = next((m for m in range(start + 1, last + 1) if rng.random() < 0.016), None)
+        wt = "Part-Time" if rng.random() < 0.12 else "Employee"
+        people.append({"start": start, "hire": hire, "exit": exit_m,
+                       "final": rng.random() < 0.25, "dept": [str(rng.choice(depts, p=dp))] * 2,
+                       "move": None, "loc": str(rng.choice(["New York", "Austin", "London",
+                                                            "Remote"])),
+                       "wt": wt, "fte": float(rng.choice([0.5, 0.8])) if wt == "Part-Time" else 1.0,
+                       "sal": float(round(rng.lognormal(np.log(82_000), 0.25), -2)),
+                       "gender": str(rng.choice(["Female", "Male"], p=[0.48, 0.52])),
+                       "future": None})
+
+    for _ in range(345):
+        add(0, pd.Timestamp("2012-01-01") + pd.Timedelta(days=int(rng.integers(0, 4716))))
+    for m in range(1, last + 1):
+        for _ in range(int(rng.poisson(5.5))):
+            add(m, month_day(m))
+    free = set(range(len(people)))
+
+    def pick(n, cond):
+        idx = sorted(i for i in free if cond(people[i]))
+        out = [int(i) for i in rng.choice(idx, size=n, replace=False)]
+        free.difference_update(out)
+        return out
+
+    for i in pick(8, lambda p: p["exit"] is not None and p["exit"] >= 14
+                  and p["exit"] - p["start"] >= 4):                                    # 11
+        p = people[i]
+        p.update(dept=["Support", "Sales"], move=int(rng.integers(p["start"] + 1, p["exit"] - 1)))
+    for i in pick(22, lambda p: p["exit"] is None and p["start"] < 18):
+        p = people[i]
+        p.update(dept=[p["dept"][0], str(rng.choice([d for d in depts if d != p["dept"][0]]))],
+                 move=int(rng.integers(p["start"] + 1, 20)))
+    for i in pick(4, lambda p: p["exit"] is None):   # leavers with a final row on the as-of
+        people[i].update(exit=last, final=True)
+    people[pick(1, lambda p: p["exit"] is None)[0]]["future"] = pd.Timestamp("2026-11-20")
+    rows = []
+    for n, p in enumerate(people):
+        emp_id = f"E{50_001 + n}"
+        stop = p["exit"] if p["exit"] is not None else last + 1
+        listed = list(range(p["start"], stop)) + ([p["exit"]] if p["exit"] is not None
+                                                  and p["final"] else [])
+        term = month_day(p["exit"]) if p["exit"] is not None and p["final"] else None
+        for m in listed:
+            raises = sum(1 for a in range(p["start"] + 1, m + 1) if ends[a].month == 4)
+            final = m == p["exit"]
+            rows.append({"Snapshot_Date": ends[m], "Emp_ID": emp_id,
+                         "Department": p["dept"][int(p["move"] is not None and m >= p["move"])],
+                         "Location": p["loc"], "Worker_Type": p["wt"], "FTE": p["fte"],
+                         "Base_Salary": round(p["sal"] * 1.03 ** raises, -2),
+                         "Hire_Date": p["hire"],
+                         "Termination_Date": term if final else
+                         (p["future"] if m == last else None),
+                         "Status": "Terminated" if final else "Active", "Gender": p["gender"]})
+    df = pd.DataFrame(rows).sort_values(["Snapshot_Date", "Emp_ID"], kind="stable")
+    df = df.reset_index(drop=True)
+
+    # Truth, from the frame alone.
+    snap, term = df["Snapshot_Date"], pd.to_datetime(df["Termination_Date"])
+    force = ~(df["Status"].eq("Terminated") & term.notna() & (term <= snap))
+    as_of = snap.max()
+    points, start = _hr_window(as_of)
+
+    def heads(t, mask=True) -> int:
+        return int(df.loc[force & snap.eq(t) & mask, "Emp_ID"].nunique())
+
+    hc = {t: heads(t) for t in points}
+    avg = float(np.mean(list(hc.values())))
+    order = df.sort_values("Snapshot_Date", kind="stable").groupby("Emp_ID")
+    lastrow, firstrow = order.tail(1).set_index("Emp_ID"), order.head(1).set_index("Emp_ID")
+    exit_at = pd.to_datetime(lastrow["Termination_Date"]).fillna(
+        lastrow["Snapshot_Date"] + pd.offsets.MonthEnd(1))
+    left = (exit_at > start) & (exit_at <= as_of)
+    dept_avg = {d: float(np.mean([heads(t, df["Department"].eq(d)) for t in points]))
+                for d in sorted(df["Department"].unique())}
+
+    def by_dept(dept: pd.Series) -> dict:
+        n = dept[left].value_counts()
+        return {d: float(n.get(d, 0) / a) for d, a in dept_avg.items()}
+
+    now = df[force & snap.eq(as_of)]
+    seps = int(left.sum())
+    truth = {
+        "row_count": len(df), "pii_columns": [], "rows": len(df),
+        "as_of": as_of.strftime("%Y-%m-%d"), "headcount_asof": hc[as_of],
+        "headcount_by_month_end": {t.strftime("%Y-%m-%d"): v for t, v in hc.items()},
+        "avg_headcount_12m": avg, "separations_12m": seps, "attrition_12m": seps / avg,
+        "attrition_12m_by_dept_at_exit": by_dept(lastrow["Department"]),
+        "avg_salary_by_dept_asof": {k: float(v) for k, v in
+                                    now.groupby("Department")["Base_Salary"].mean().items()},
+        "total_salary_asof": float(now["Base_Salary"].sum()),
+        "transfers": int((df.groupby("Emp_ID")["Department"].nunique() > 1).sum()),
+        "hires_after_first_snapshot": int((firstrow["Snapshot_Date"] > ends[0]).sum()),
+        "separations_12m_with_termination_date": int(
+            (left & lastrow["Termination_Date"].notna()).sum()),
+        # naive answers (traps)
+        "headcount_summed_rows": len(df),                                               # 9
+        "salary_summed_all_months": float(df["Base_Salary"].sum()),                    # 9
+        "attrition_by_dept_current_dept": by_dept(firstrow["Department"]),             # 11
+        "headcount_asof_with_terminated_rows": int(snap.eq(as_of).sum()),              # 10
+    }
+    t = truth
+    for d in ("Snapshot_Date", "Hire_Date", "Termination_Date"):
+        df[d] = pd.to_datetime(df[d]).dt.strftime("%Y-%m-%d")
+    assert df["Snapshot_Date"].nunique() == 24 and 7_000 < len(df) < 9_000
+    assert t["transfers"] == 30 and t["hires_after_first_snapshot"] > 50
+    assert t["headcount_summed_rows"] > 20 * t["headcount_asof"]                       # 9
+    assert t["salary_summed_all_months"] > 20 * t["total_salary_asof"]
+    assert t["headcount_asof_with_terminated_rows"] - t["headcount_asof"] >= 4          # 10
+    assert t["separations_12m_with_termination_date"] < 0.5 * t["separations_12m"]     # 10
+    gap = {d: t["attrition_12m_by_dept_at_exit"][d] - t["attrition_by_dept_current_dept"][d]
+           for d in dept_avg}
+    assert gap["Sales"] > 0.05 and gap["Support"] < -0.05                              # 11
+    fut = df[df["Termination_Date"].eq("2026-11-20")]
+    assert len(fut) == 1 and fut["Snapshot_Date"].iloc[0] == t["as_of"]               # 12
+    return df, truth
+
+
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
@@ -1925,7 +2471,9 @@ DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mi
             "ledger_drcr": make_ledger_drcr, "deposits_daily": make_deposits_daily,
             "inpatient": make_inpatient, "health_claims": make_health_claims,
             "member_months": make_member_months,
-            "policies": make_policies, "loss_run": make_loss_run}
+            "policies": make_policies, "loss_run": make_loss_run,
+            "hr_roster": make_hr_roster, "hr_roster_onerow": make_hr_roster_onerow,
+            "hr_snapshots": make_hr_snapshots}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

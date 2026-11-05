@@ -180,8 +180,14 @@ def check_segment_value_truth(f: AnalysisFindings, truth: dict, segment: str | l
         if key(seg.segment_column) not in names:
             continue
         got = {str(r.get("name")): r.get("value") for r in seg.results}
-        if any(all(k in got and _close(got[k], v * sc, 0, abs_tol * sc) for k, v in want.items())
-               for sc in scales):
+        for k in want:   # a group named with a qualifier ('2026_ytd': a partial year said so)
+            alike = [n for n in got if re.match(rf"{re.escape(str(k).lower())}(?![a-z0-9])", n.lower())]
+            if k not in got and len(alike) == 1:
+                got[k] = got[alike[0]]
+        # a group with none of the events (a 0% rate: no exits in Legal) may be left out of a
+        # breakdown of the events: a missing zero is no wrong number (Domain 5 smoke, hr-4)
+        if any(all((k in got and _close(got[k], v * sc, 0, abs_tol * sc)) or (k not in got and v == 0)
+                   for k, v in want.items()) for sc in scales):
             return True, f"ok ({seg.metric_column})"
         tried.append(seg.metric_column)
     return False, f"no {segment} breakdown matches {truth_key} (tried {tried})"

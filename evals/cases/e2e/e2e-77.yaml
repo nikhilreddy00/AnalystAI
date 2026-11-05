@@ -1,0 +1,46 @@
+id: e2e-77
+domain: hr
+dataset:
+  name: hr_roster
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: headcount_asof
+  rel_tol: 0.001
+- kind: must_not_match
+  pattern: 1,?770 (employees|people|staff|workers|employee records|personnel)
+  scope: report
+turns:
+- question: Which department has the highest attrition?
+  checks:
+  - kind: number_in_answer
+    truth_key: attrition_12m_by_dept.Support
+    rel_tol: 0.01
+    scales: &id001
+    - - 1
+      - null
+    - - 100
+      - '%'
+  - kind: must_not_number
+    truth_key: attrition_12m_by_dept_end_hc.Support
+    rel_tol: 0.005
+    scales: *id001
+- question: Only voluntary?
+  checks:
+  - kind: must_not_number
+    truth_key: attrition_12m_by_dept.Support
+    rel_tol: 0.005
+    scales: *id001
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Multi-turn: overview, attrition by department (Support, ÷ average headcount, not the post-layoff
+  October headcount), then an elliptical voluntary follow-up.'

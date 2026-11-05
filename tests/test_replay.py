@@ -24,6 +24,10 @@ def _stored_runs():
     return out
 
 
+# fields added to stored structures since runs were recorded (evals/snapshot.py's _set_only)
+NEW_EMPTY_FIELDS = {"spell_story"}
+
+
 def _same(a, b):
     """Equal outputs, a report's own timestamp aside (generated_at is when, not what), floats at
     display precision (utils.display_values: a scipy statistic's last digits differ between the
@@ -34,8 +38,9 @@ def _same(a, b):
     from agents.utils import display_values
 
     def plain(x):
-        if isinstance(x, dict):
-            return {k: plain(v) for k, v in x.items() if k != "generated_at"}
+        if isinstance(x, dict):   # a field added since the run, still empty, is no change
+            return {k: plain(v) for k, v in x.items() if k != "generated_at"
+                    and not (k in NEW_EMPTY_FIELDS and not v)}
         if isinstance(x, str):
             x = re.sub(r"\((analysis|intake|insight|quality) v\d+\)", r"(\1 vN)", x)
         return [plain(v) for v in x] if isinstance(x, list) else display_values(x)
@@ -69,6 +74,12 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
 # A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
 # to its stored output (that is the $0 regression check over every old case).
 CHANGED = {
+    ("insight-20261104T214949Z.json", "ins-48-hr-snapshots-overview"):
+        "Domain 5 audit 1: the cleaning audit carries the file's story (domain_pack.spell_story: "
+        "year-earlier rates, peak to now, people vs rows), the insight's computed facts",
+    ("insight-20261104T214949Z.json", "ins-47-hr-roster-overview"):
+        "Domain 5 insight gate: pay of a group under 11 people (Legal, 6) is dropped from every "
+        "segment (analysis standard_stats, protected_groups), so the bundle's evidence changed",
     **{(r, "ins-45-policies-overview"): "Domain 4 audit pass 1: a policy table's transaction type "
        "is its status (renewal status blank by design on cancellation rows), earned-premium and "
        "protected-attribute cautions, lapse rate"
