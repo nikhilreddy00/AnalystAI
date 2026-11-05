@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from agents.utils import _bound
+from guardrails import SMALL_CELL
 from agents.utils import cut_partial as _cut_partial
 from agents.utils import (
     ranked,
@@ -54,6 +55,8 @@ from scipy import stats
 
 from guardrails import rankable
 from domain_pack import (
+    kpi_roles,
+    protected_value,
     spell_covered,
     spell_terms,
     spell_window,
@@ -1031,9 +1034,13 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     kind = {"money": "currency", "percent": "percent", "count": "count"}.get(kpi.unit, "number")
 
     def year_before(group_by):
-        """(the same window a year earlier, its value, its words) for a spell KPI."""
-        lo, hi, _ = spell_window(pack, all_rows, roles, win)
+        """(the same window a year earlier, its value, its words) for a spell KPI; (None, '') when
+        the data covers fewer of that window's months (a 4-month prior is no year-earlier 12)."""
+        lo, hi, pts = spell_window(pack, all_rows, roles, win)
         back = (lo + pd.Timedelta(days=1) - pd.DateOffset(years=1), hi - pd.DateOffset(years=1))
+        prior = spell_window(pack, all_rows, roles, back)
+        if prior is None or len(prior[2]) < len(pts):
+            return None, ""
         return (compute_kpi(df, roles, pack, kpi.name, by=group_by, full=all_rows, window=back),
                 window_words(pack, all_rows, roles, kpi.name, back))
 
@@ -1056,6 +1063,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     elif state:   # asked for a period or not: a balance is as of a date
         period = _as_of(df, date)
     where = f" ({period})" if period else ""
+    if named:   # 'Attrition rate, Support (12 months …)': the filter is in the answer's label
+        where = f", {named}{where}"
     present = set(row_kinds(df, roles, pack).unique())
     # every KPI answer on a weak match says how the file was read
     lines = pack_caveats(pack, None, roles, "weak", always=True) \
@@ -1074,18 +1083,39 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                  f"them would mix their units", [f"{kpi.label} by {per}",
                                                                 f"{kpi.label} for {df[per].dropna().iloc[0]}"])
         group, how = per, how + f" Given by {per} only: one figure across them would mix their units."
+    if group and group not in df.columns:   # never the overall figure in its place
+        return _unanswerable(intent, f"this data has no column {group!r}",
+                             [f"{kpi.label} overall", f"{kpi.label} by a column the data has"])
     if group and group in df.columns:
         by = compute_kpi(df, roles, pack, kpi.name, by=group, full=all_rows, window=win)
         if by is None or by.empty:
-            return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
+            return _unanswerable(intent, f"{kpi.phrase} can't be shown by {group}: "
+                                 + (f"every group has fewer than {SMALL_CELL} people"
+                                    if pack.protected_roles else "it can't be computed from these rows"),
                                  ["Ask without the group", "Ask about a longer period"])
+        hidden = [g for g in pd.unique(df[group].dropna()) if g not in by.index]
         asc = (params.order or "desc").lower() == "asc"
         by = ranked(by, ascending=asc).head(params.n or 20)
         named = by[[rankable(k) for k in by.index]]   # the pooled bucket is never a lead or a tail
         named = named if len(named) else by
         lead, tail = named.index[0], named.index[-1]
-        answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
-                  f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
+        protected_by = {r for r, c in roles.items() if c == group} & set(pack.protected_roles)
+        if protected_by:   # a protected group is described side by side, never a ranking, with
+            # its caution and the measure's (pay as recorded vs full-time equivalent)
+            measured = kpi_roles(pack, kpi.name) & set(pack.protected_roles) - protected_by
+            answer = (f"{kpi.label} by {group}{where}: "
+                      + ", ".join(f"{k} {fmt(v)}" for k, v in by.items()) + ".")
+            answer += "".join(f" {pack.role_caveats[r]}" for r in sorted(protected_by | measured)
+                              if r in pack.role_caveats and r in roles)
+        else:
+            answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
+                      f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
+        if hidden and pack.protected_roles:
+            answer += (f" Not shown: {', '.join(map(str, hidden[:5]))} (a group of fewer than "
+                       f"{SMALL_CELL} people, and with one hidden, the next smallest, so it can't be "
+                       "worked back from the total).") if len(hidden) > 1 else (
+                f" Not shown: {hidden[0]} (fewer than {SMALL_CELL} people: a figure for so few can "
+                "identify them).")
         if params.compare == "yoy" and spelled:
             prior, prior_period = year_before(group)
             if prior is not None and lead in prior.index and (kind == "percent" or prior[lead]):
@@ -1138,8 +1168,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         t = spell_covered(pack, all_rows, roles) if spelled else \
             _local(pd.to_datetime(full[date], errors="coerce"))
         rule = _week_anchor(t, contract) if freq == "W" else freq
-        frame = full.assign(_period=pd.Series(pd.NaT, index=full.index).astype(f"period[{rule}]")
-                            if spelled else t.dt.to_period(rule))
+        # a spell series reads the filtered part (Support's headcount, never the company's)
+        frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype(f"period[{rule}]")) \
+            if spelled else full.assign(_period=t.dt.to_period(rule))
         series = compute_kpi(frame, roles, pack, kpi.name, by="_period", full=all_rows, window=win)
         if series is None or series.empty:
             return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here",
@@ -1154,8 +1185,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         # the data's edges are the whole file's; a spell's are its month-ends to the as-of
         covered = t if all_rows is full or spelled else \
             _local(pd.to_datetime(all_rows[date], errors="coerce"))
+        uncut = series
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
+        if spelled and freq != "Y" and kind == "percent":   # a month's rate is a month's
+            unit = f"{unit} ({ {'W': 'weekly', 'M': 'monthly', 'Q': 'quarterly'}[freq]} rates, not annualised)"
         if develops:   # every period shown, the young ones named: never a partial cut or a trend
             if len(whole) < len(series) and series.index[-1] not in whole.index:   # say its coverage
                 develops = (f" The latest period ({series.index[-1]}) is covered only to "
@@ -1209,6 +1243,14 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                 before is not None and not pd.isna(before)) else None
             if compared is None and not develops:
                 answer += "; there is no earlier complete period to compare with"
+            last = uncut.index[-1]
+            if spelled and not asked and last not in whole.index and pd.notna(uncut[last]):
+                # the partial last period is named with its months and shown, never compared
+                # or annualised (the layoff year must not vanish: Domain 5 audit)
+                lo_p, as_of, pts = spell_window(pack, all_rows, roles, (last.start_time, last.end_time))
+                answer += (f"; {name(last)} so far ({len(pts)} month{'s' * (len(pts) != 1)} to "
+                           f"{as_of:%-d %b %Y}, not annualised and not compared) {fmt(uncut[last])}")
+                series, note = pd.concat([series, uncut[[last]]]), ""
             answer += "." + note + (stores_note(contract, full, date, (
                 frame[frame["_period"] == compared], frame[frame["_period"] == latest]))
                 if compared is not None else "")
@@ -1224,8 +1266,11 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                     chart_configs=[chart])
     value = compute_kpi(df, roles, pack, kpi.name, full=all_rows, window=win)
     if value is None:
-        return _unanswerable(intent, f"{kpi.phrase} can't be computed from these rows",
-                             ["Ask about a longer period"])
+        hidden = protected_value(df, all_rows, roles, pack, kpi.name, win)
+        return _unanswerable(intent, f"{kpi.phrase}{where} isn't shown: fewer than {SMALL_CELL} "
+                             "people, so a figure can identify them" if hidden else
+                             f"{kpi.phrase} can't be computed from these rows",
+                             ["Ask about a larger group" if hidden else "Ask about a longer period"])
     answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)
     if spelled:   # the same window a year earlier, when asked (never against rows of other dates)
         if params.compare == "yoy":

@@ -804,7 +804,9 @@ def test_hr_headcount_by_department_and_pay_of_a_small_department_is_hidden():
     _, pay = answer("hr_roster", "top_n", "average salary by department", kpi="avg_salary",
                     group_by="Department")
     assert "Legal" not in pay and truth["legal_people_asof"] < 11   # pay of 6 people: never shown
-    want = {k: v for k, v in truth["avg_salary_by_dept_asof"].items() if k != "Legal"}
+    # complementary: one more held back, so Legal can't be worked back from the total
+    assert len(pay) == len(truth["avg_salary_by_dept_asof"]) - 2
+    want = {k: v for k, v in truth["avg_salary_by_dept_asof"].items() if k in pay}
     assert close(pay, want, tol=0.01), pay
 
 
@@ -812,9 +814,10 @@ def test_hr_a_partial_year_is_named_and_never_compared_as_a_year():
     _, _, _, truth = _built("hr_roster")
     text, series = answer("hr_roster", "time_series", "attrition by year", kpi="attrition_rate",
                           frequency="Y")
-    full = {str(y): v for y, v in truth["attrition_by_year"].items() if str(y) != "2026"}
-    assert close(series, full, tol=0.05) and "2026" not in series, (series, text)
-    assert "(2026) is left out" in text and "12 months to" not in text, text
+    full = {str(y): v for y, v in truth["attrition_by_year"].items()}
+    assert close(series, full, tol=0.05), (series, text)   # 2026 shown, over its 10 months
+    assert "2026 so far (10 months" in text and "not annualised" in text and "12 months to" not in text, text
+    assert "latest 2025" in text   # compared: 2025 with 2024, never 2026 with a full year
 
 
 def test_hr_an_asked_year_is_its_window_not_the_rows_dated_in_it():

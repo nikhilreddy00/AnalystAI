@@ -271,6 +271,7 @@ caveats:
 # Described only, and never shown for a group of fewer than 11 people (a gender × line cell of 3
 # policyholders identifies them)
 protected_roles: [gender, marital_status, race, religion, national_origin]
+person_key: policy   # a policyholder: never a claim's valuation rows
 role_caveats:
   cat_event: "Catastrophe events are marked in the data: one event can dominate a period, line or coverage, so compare results with and without it before reading a trend or a ranking."
   race: "Race is shown as a description only: rating or underwriting on it is an unfair trade practice (NAIC Model 880), so no rating recommendation is made on it."

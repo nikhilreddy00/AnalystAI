@@ -286,6 +286,8 @@ role_caveats:
   marital_status: "Marital status is shown as a description only, never a recommendation about people."
   age_band: "Age is shown as a description only: decisions about people on age are discrimination."
   performance: "Performance ratings describe groups here; they are never used to rank or predict individuals."
+  salary: "Pay is annual base salary as recorded: part-time salaries are not full-time equivalents, so groups with more part-timers (often women) show lower pay than on a full-time-equivalent basis, which the unadjusted pay gap uses; pay is never shown for a group of fewer than 11 people."
+  original_hire_date: "This file lists each person once with their latest hire date: an earlier employment's exit is not in it, so separations and past headcount from it run slightly low."
 
 causal_triggers: [salary, salaries, pay, compensation, raise, raises, bonus, bonuses, promotion,
                   promotions, manager, managers, management, performance, rating, ratings,

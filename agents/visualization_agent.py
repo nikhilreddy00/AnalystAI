@@ -41,6 +41,7 @@ from agents.utils import (
     weekly_cadence,
 )
 from domain_pack import (
+    has_spell,
     pack_for,
     window_words,
     runout_months,
@@ -1157,7 +1158,7 @@ def _unit_fields(kind: str, unit: str | None) -> dict:
 
 
 def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
-              full: pd.DataFrame | None = None) -> list[KPI]:
+              full: pd.DataFrame | None = None, window: tuple | None = None) -> list[KPI]:
     """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. A KPI the
     data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
     and the run goes on. Money is in the main currency; other currencies are left out, said in
@@ -1175,7 +1176,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         if not k.tile:
             continue
         try:
-            v = compute_kpi(df, roles, pack, k.name, full=full)
+            v = compute_kpi(df, roles, pack, k.name, full=full, window=window)
         except Exception:   # a pack/data mismatch is a missing tile, never a failed run
             logger.warning("KPI %s failed", k.name, exc_info=True)
             trace_verdict("visualization", VIZ_CARD.version, "kpi_failed")
@@ -1186,7 +1187,8 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         unit = money if kind == "currency" else None
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
         # a headcount is as of a date, an attrition rate over 12 months to it: the tile says which
-        context = "; ".join(x for x in (window_words(pack, df if full is None else full, roles, k.name),
+        context = "; ".join(x for x in (window_words(pack, df if full is None else full, roles, k.name,
+                                                     window),
                                         context) if x)
         if k.state and kind == "percent":   # a book's ratio hides its mix: say the spread
             context = "; ".join(x for x in (_spread(df, roles, pack, k.name), context) if x)
@@ -1217,6 +1219,7 @@ def generate_smart_kpis(
     narrative: DataNarrative | None = None,
     contract: DataContract | None = None,
     full: pd.DataFrame | None = None,
+    window: tuple | None = None,
 ) -> list[KPI]:
     """Build up to 5 hero KPIs from a DataFrame and the visualization agent's
     column roles. Works on any dataset: row count + (optional) target rate +
@@ -1243,7 +1246,7 @@ def generate_smart_kpis(
     # Phase 5.7: a domain's own KPIs (net sales, orders, AOV …) replace the generic tiles, which
     # would count order lines as orders, average line amounts and call a share of rows a share
     # of sales.
-    if kpis := pack_kpis(df, contract, full):
+    if kpis := pack_kpis(df, contract, full, window):
         return kpis
 
     # KPI 1 — row count, labeled by the detected entity (column count belongs
@@ -1692,6 +1695,12 @@ def generate_dashboard_charts(
     a global color_map so categorical values render consistently across charts.
     """
     ctx = ctx or build_context(df, narrative=narrative)
+    pack = defaults_pack(ctx.contract) if ctx.contract is not None else None
+    if pack and has_spell(pack, {r: c for r, c in ctx.contract.roles.items() if c in df.columns}):
+        # spell data (people over time): a generic count, donut or histogram counts rows (spells,
+        # person-months) and puts one person's pay on a birth-month axis; the pack's charts count
+        # people (Domain 5 audit)
+        return []
     target: str | None = column_roles.get("target_col")  # type: ignore[assignment]
     # Phase 5: a measure (`units` 1-8) is never a category axis.
     cat_pool: list[str] = [
@@ -2086,6 +2095,9 @@ class VizContext:
     # The whole data when `df` is a filtered part of it (a dashboard filter): a ratio with none of
     # its rows in the part is 0, not unknown (compute_kpi's `full`)
     full: pd.DataFrame | None = None
+    # A dashboard date range on spell data: the window spell KPIs are measured over (never a row
+    # cut: rows hired in H1 are not the people employed in H1); (lo, hi) ISO dates
+    window: tuple | None = None
 
 
 def measure_columns(df: pd.DataFrame, roles: dict) -> set[str]:
@@ -2630,6 +2642,33 @@ def swap_options(chart: ChartConfig) -> list[ChartType]:
     return opts if chart.chart_type in opts else [chart.chart_type, *opts]
 
 
+def _personal_axis(chart: ChartConfig, ctx: VizContext) -> bool:
+    """A chart grouped or split by a personal-data column (an employee's name): it shows people,
+    whatever its values (Domain 5 audit: 'Tenure by Employee Name')."""
+    pii = set(ctx.contract.pii_columns) if ctx.contract is not None else set()
+    split = chart.rationale.split if chart.rationale else None
+    return bool(pii) and chart.chart_type != ChartType.SCATTER and (chart.x_key in pii or split in pii)
+
+
+def _without_small_cells(chart: ChartConfig, ctx: VizContext) -> ChartConfig | None:
+    """The chart less its bars for protected groups under 11 people (domain_pack.protected_groups,
+    the rule every by-group number reads): one place every chart builder's bars pass. None when
+    nothing is left."""
+    from domain_pack import protected_groups
+    r = chart.rationale
+    if ctx.contract is None or r is None or not r.x or r.x not in ctx.df.columns or r.x != chart.x_key \
+            or chart.chart_type in (ChartType.SCATTER, ChartType.LINE):
+        return chart
+    keys = [r.x] + ([r.split] if r.split and r.split in ctx.df.columns else [])
+    hide = protected_groups(ctx.df, ctx.contract, keys if len(keys) > 1 else keys[0],
+                            r.y or "", chart.title or "")
+    if not hide:
+        return chart
+    gone = {str(h[0]) if isinstance(h, tuple) else str(h) for h in hide}
+    rows = [row for row in chart.data if str(row.get(chart.x_key)) not in gone]
+    return chart.model_copy(update={"data": rows}) if rows else None
+
+
 def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
                     user_chosen: bool = False) -> list[ChartConfig]:
     """Every chart passes here before it leaves the backend. Agent-chosen charts are repaired or
@@ -2639,6 +2678,13 @@ def finalize_charts(charts: list[ChartConfig], ctx: VizContext,
     for chart in charts:
         if chart.colors and all(c.lower() in _GENERIC_COLORS for c in chart.colors):
             chart.colors = []
+        if _personal_axis(chart, ctx):   # people's names on an axis: never a chart
+            trace_verdict("visualization", VIZ_CARD.version, "dropped:personal_axis")
+            continue
+        chart = _without_small_cells(chart, ctx)
+        if chart is None:
+            trace_verdict("visualization", VIZ_CARD.version, "dropped:small_cells")
+            continue
         if chart.rationale is None:
             if not user_chosen:
                 trace_verdict("visualization", VIZ_CARD.version, "no_rationale")
@@ -2701,6 +2747,8 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     asks = _overview_asks(pack, ctx.contract.roles if ctx.contract else {}, df.columns) if pack else []
     out = []
     for intent, params in asks:
+        if ctx.window:   # a dashboard date range on spell data: the KPIs' window
+            params = params.model_copy(update={"period_start": ctx.window[0], "period_end": ctx.window[1]})
         try:
             out += handle_kpi(df, params, ctx.contract, ctx, full=ctx.full,
                               intent=intent).chart_configs[:1]
@@ -2849,7 +2897,8 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
     from domain_pack import as_text, superseded
     shown = df[~superseded(df, contract)]
     roles = classify_columns(shown)
-    ids = set(contract.id_columns) if contract is not None else set()   # an id is no filter
+    # an id is no filter, nor is personal data (a date-of-birth range narrows to one person)
+    ids = set(contract.id_columns) | set(contract.pii_columns) if contract is not None else set()
     roles = {k: [c for c in v if c not in ids] if isinstance(v, list) else v for k, v in roles.items()}
     options: list[dict] = []
 
@@ -2877,21 +2926,35 @@ def _chart_key(c: ChartConfig):
     return (r.rule, r.x, r.y, r.aggregation, r.split) if r else None
 
 
+def _spell_window_filters(df: pd.DataFrame, contract: DataContract | None,
+                          filters: dict) -> tuple[dict, tuple | None]:
+    """(row filters, window): on spell data a date range on one of the pack's date roles is the
+    spell KPIs' window (people employed in H1 are not the rows hired in H1), never a row cut."""
+    pack = defaults_pack(contract) if contract is not None else None
+    roles = {r: c for r, c in (contract.roles if contract else {}).items() if c in df.columns}
+    if not pack or not has_spell(pack, roles):
+        return filters, None
+    dates = {roles[r] for r, x in pack.roles.items() if x.kind == "date" and r in roles}
+    span = {c: f for c, f in (filters or {}).items() if c in dates and f.get("kind") == "date_range"}
+    if not span:
+        return filters, None
+    f = next(iter(span.values()))
+    return {c: f for c, f in filters.items() if c not in span}, (f.get("from"), f.get("to"))
+
+
 def _protected_part(df: pd.DataFrame, part: pd.DataFrame, contract: DataContract | None,
-                    filters: dict) -> bool:
-    """A filtered part of fewer than 11 people, cut by a protected role (women in Legal) or with
-    a protected measure among its tiles (pay): a small cell, shown as nothing (domain_pack
-    small_groups is the same rule for groups)."""
-    from domain_pack import kpi_roles, people
+                    window: tuple | None = None) -> bool:
+    """A filtered part that is itself a protected group (women, one ethnicity) of fewer than 11
+    people (domain_pack.people_in): a small cell, shown as nothing. Pay of a small part that is
+    not a protected group is hidden tile by tile (compute_kpi), its headcount kept."""
+    from domain_pack import people_in, protected_cut
     from guardrails import SMALL_CELL
     pack = pack_for(contract.domain) if contract else None
     if not pack or not pack.protected_roles or part.empty:
         return False
-    prot = set(pack.protected_roles)
-    cut = {r for r, c in (contract.roles or {}).items() if c in (filters or {})} & prot
-    paid = any(k.tile and kpi_roles(pack, k.name) & prot for k in pack.kpis)
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    return bool(cut or paid) and people(part, roles, pack, True, df) < SMALL_CELL
+    return protected_cut(part, df, roles, pack) and \
+        people_in(part, roles, pack, True, df, window) < SMALL_CELL
 
 
 def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: list[ChartConfig],
@@ -2904,20 +2967,20 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     fewer than 11 records reports no number (a small cell, ADR-0008)."""
     from domain_pack import superseded
     from guardrails import SMALL_CELL
+    filters, window = _spell_window_filters(df, contract, filters)
     part = apply_filters(df, filters)
     # the records shown and counted: a chain's earlier versions are neither (judged on all rows)
     n = int((~superseded(df, contract)).reindex(part.index).sum())
-    if part.empty or (contract is not None and contract.phi and n < SMALL_CELL) or \
-            _protected_part(df, part, contract, filters):
-        small = bool(n) and bool(contract and (contract.phi or _protected_part(df, part, contract,
-                                                                           filters)))
+    protected = _protected_part(df, part, contract, window)
+    if part.empty or (contract is not None and contract.phi and n < SMALL_CELL) or protected:
+        small = bool(n) and bool(contract and (contract.phi or protected))
         return {"charts": {}, "tiles": {}, "rows": None if small else n, "suppressed": small}
     ctx = build_context(part, contract=contract, narrative=narrative)
-    ctx.full = df
+    ctx.full, ctx.window = df, window
     rebuilt = pack_overview_charts(part, ctx) + generate_dashboard_charts(
         part, ctx.roles, query=query, narrative=narrative, ctx=ctx)
     fresh = {k: c.data for c in rebuilt if (k := _chart_key(c))}
     out = {c.id: fresh[k] for c in charts if (k := _chart_key(c)) in fresh}
     tiles = {k.label: k.value for k in generate_smart_kpis(part, ctx.roles, query, narrative, contract,
-                                                           full=df)}
+                                                           full=df, window=window)}
     return {"charts": out, "tiles": tiles, "rows": n, "suppressed": False}

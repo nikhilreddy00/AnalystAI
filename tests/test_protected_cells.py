@@ -77,7 +77,9 @@ def test_the_dashboard_shows_nothing_for_a_protected_part_under_11_people(pack, 
                                                 "gender": {"kind": "equality", "value": "Female"}})
     assert out["suppressed"] and out["rows"] is None and not out["tiles"]
     women = {"gender": {"kind": "equality", "value": "Female"}}
-    assert not viz._protected_part(df, viz.apply_filters(df, women), contract, women)   # 15 + 4
+    assert not viz._protected_part(df, viz.apply_filters(df, women), contract)   # 15 + 4
+    tiny = {"team": {"kind": "equality", "value": "Tiny"}}   # 4 people, not a protected group
+    assert not viz._protected_part(df, viz.apply_filters(df, tiny), contract)
 
 
 def test_a_sentence_naming_a_small_protected_group_is_flagged_and_a_plain_count_is_not():

@@ -200,6 +200,8 @@ def time_axis(contract, metric: str | None = None, df=None) -> str | None:
     if pack and (own := contract.roles.get(pack.date_role)) in contract.date_columns:
         cands.append(own)
     cands += list(contract.date_columns) if contract is not None else []
+    # a personal date (birth) is never a timeline: one person's pay on a birth-month axis
+    cands = [c for c in cands if c not in set(contract.pii_columns if contract is not None else [])]
     if pack and pack.spell and not (pack.date_role not in (pack.spell.start, pack.spell.end)
                                     and contract.roles.get(pack.date_role)):
         # a roster's dates are events (a hire, an exit), never a timeline: a trend "by hire
