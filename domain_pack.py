@@ -144,6 +144,17 @@ class Within(_Strict):
     base: bool = False
 
 
+class SpellWords(_Strict):
+    """A spell's own words, for the frame columns the model's code reads and the sentences the
+    product writes: HR's hire / exit / people, a subscription's start / cancellation / customers.
+    Shared code never names them (tests/test_one_definition.py)."""
+    start: str = "start"
+    end: str = "end"
+    unknown: str = "end_date_unknown"   # the column marking an ended status with no end date
+    plural: str = "entities"            # who the entities are ('885 people', '412 customers')
+    after_end: str = "rows after the end"   # an exit record's gloss on snapshots
+
+
 class Spell(_Strict):
     """Entities in force between two dates: an employee from hire to termination, a subscriber
     from start to cancellation. Rows are spells (a returning entity has a row per spell) or dated
@@ -156,6 +167,7 @@ class Spell(_Strict):
     end: str
     ended: list[str] = Field(default_factory=list)
     as_of: str | None = None
+    words: SpellWords = Field(default_factory=SpellWords)
 
 
 class Term(_Strict):
@@ -957,7 +969,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     if col:
         people = df[col].nunique()
         now_n = compute_kpi(df, roles, pack, stock.name) if stock else None
-        out.append(f"{len(df):,} rows are {people:,} people ({int((df[col].value_counts() > 1).sum()):,} with "
+        out.append(f"{len(df):,} rows are {people:,} {pack.spell.words.plural} ({int((df[col].value_counts() > 1).sum()):,} with "
                    "more than one row)" + (f"; {now_n:,.0f} in force at {as_of:%-d %b %Y}" if now_n else "")
                    + ".")
     if later := not_counted_yet(pack, df, roles, as_of):
@@ -987,7 +999,7 @@ def _in_force(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t: pd.Time
 def _ended(rows: pd.DataFrame, roles: dict[str, str], pack: Pack, t) -> pd.Series:
     """THE ended test of a spell's row at `t` (a date, or each row's own date): its end on or
     before t, or an `ended` status with no end date (over at an unknown date). _in_force and
-    exit_records both read it."""
+    ended_records both read it."""
     s = pack.spell
     end = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
     return (end.notna() & (end <= t)) | _ended_undated(rows, roles, pack)
@@ -1612,9 +1624,9 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                     "average": f"the mean of the month-end counts of distinct {ent} in force "
                                f"({at}, {gone})",
                     "starts": f"spells starting in the period (by {roles.get(sp.start, 'first snapshot')})",
-                    "ends": f"exits in the period (events: by {roles.get(sp.end, sp.end)}"
+                    "ends": f"{sp.words.end}s in the period (events: by {roles.get(sp.end, sp.end)}"
                             + (", or the first snapshot an entity is missing from" if snap else "")
-                            + f"; a returning {ent}'s exits count separately)"}[t.spell]
+                            + f"; a returning {ent}'s {sp.words.end}s count separately)"}[t.spell]
             if t.sum is not None:
                 text = f"sum of {roles[t.sum] if isinstance(t.sum, str) else t.sum} over the " + text
             return text + (f" where {where(t.where)}" if t.where else "")
@@ -1988,18 +2000,25 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     return with_spell_events(out, pack, roles), name
 
 
-SPELL_EVENT_COLUMNS = ("hire_event_date", "exit_event_date", "exit_in_window", "in_force_now",
-                       "left_date_unknown")
+def spell_event_columns(pack: Pack) -> tuple[str, str, str, str, str]:
+    """THE names of the spell markers in the model's frame, from the pack's words: (start event
+    date, end event date, end in window, in force now, ended with no date)."""
+    w = pack.spell.words
+    return (f"{w.start}_event_date", f"{w.end}_event_date", f"{w.end}_in_window", "in_force_now",
+            w.unknown)
 
 
 def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd.DataFrame:
     """On spell data, the product's own events as columns for code the model writes: each
     spell's first row carries its hire (start) date, its last row its exit date (the end date,
     or on snapshots the first snapshot the person is missing from), up to the as-of; blank on
-    every other row. Counting a window's exits is then counting rows with an exit_event_date in
+    every other row. Counting a window's exits is then counting rows with an end event date in
     it, by the row's own department (where the person left from): the model never re-derives a
     vanished leaver (Domain 5 smoke: it counted only dated exits, 20 of 49)."""
-    if not has_spell(pack, roles) or any(c in df.columns for c in SPELL_EVENT_COLUMNS):
+    if not has_spell(pack, roles):
+        return df
+    start_col, end_col, window_col, now_col, unknown_col = names = spell_event_columns(pack)
+    if any(c in df.columns for c in names):
         return df
     w = spell_window(pack, df, roles)
     if w is None:
@@ -2013,19 +2032,19 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
     counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
     out = df.copy()
     lo = w[0]
-    for col, which in zip(SPELL_EVENT_COLUMNS[:2], ("starts", "ends")):
+    for col, which in ((start_col, "starts"), (end_col, "ends")):
         rows, when = _spell_events(df, roles, pack, which, as_of)
         rows, when = rows[counted.loc[rows.index]], when[counted.loc[rows.index]]
         out[col] = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
         out.loc[rows.index, col] = when.astype("datetime64[ns]")
         if which == "ends":   # the window the facts name (12 months to the as-of): marked, so a
             # model never forgets to filter it (Domain 5 gate: hr-1 counted every exit ever)
-            out["exit_in_window"] = (out[col] > lo).map({True: "yes", False: ""})
+            out[window_col] = (out[col] > lo).map({True: "yes", False: ""})
         out[col] = out[col].dt.strftime("%Y-%m-%d")
-    out["left_date_unknown"] = _ended_undated(df, roles, pack).map({True: "yes", False: ""})
+    out[unknown_col] = _ended_undated(df, roles, pack).map({True: "yes", False: ""})
     now = _in_force(df, roles, pack, as_of)
-    out["in_force_now"] = ""
-    out.loc[now.index[counted.loc[now.index].to_numpy()], "in_force_now"] = "yes"
+    out[now_col] = ""
+    out.loc[now.index[counted.loc[now.index].to_numpy()], now_col] = "yes"
     return out
 
 
@@ -2045,11 +2064,12 @@ def rows_for(df: pd.DataFrame, contract, column: str,
     row, no note."""
     pack = defaults_pack(contract)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
-    if role and pack.roles[role].over_time == "last" and (gone := exit_records(df, contract)).any():
+    if role and pack.roles[role].over_time == "last" and (gone := ended_records(df, contract)).any():
         # a spell's snapshot row past its end (its exit record) holds no one: its level is
         # blank, so latest_rows never averages a leaver in (Domain 5 gate: hr-8)
         return df.assign(**{column: df[column].where(~gone)}), \
-            f"{int(gone.sum()):,} exit records (rows after a person left) hold no {column}."
+            f"{int(gone.sum()):,} {pack.spell.words.end} records ({pack.spell.words.after_end}) " \
+            f"hold no {column}."
     if not (role and counted(pack, role)):
         return df, ""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
@@ -2070,7 +2090,7 @@ def rows_for(df: pd.DataFrame, contract, column: str,
                               n=f"{int((~kept).sum()):,}")
 
 
-def exit_records(df: pd.DataFrame, contract) -> pd.Series:
+def ended_records(df: pd.DataFrame, contract) -> pd.Series:
     """True on a spell's snapshot rows that record its end: dated on or after its end date, or
     with an `ended` status and no end date (the state rule _in_force applies); all False
     elsewhere (rosters, packs without a spell)."""

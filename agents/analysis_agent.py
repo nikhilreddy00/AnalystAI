@@ -24,7 +24,6 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
-    SPELL_EVENT_COLUMNS,
     protected_groups,
     spell_facts,
     runout_months,
@@ -222,7 +221,7 @@ def model_frame(df: pd.DataFrame, contract: DataContract) -> tuple[pd.DataFrame,
     against it (CODING_STANDARDS: adapters take the production path)."""
     framed, col = with_row_kind(df, contract)
     framed, added = with_derived(framed, contract)
-    events = [c for c in SPELL_EVENT_COLUMNS if c in framed.columns and c not in df.columns]
+    events = [c for c in framed.columns if c not in df.columns and c not in (col, *added)]
     return framed, [*([col] if col else []), *added, *events]
 
 
