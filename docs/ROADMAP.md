@@ -585,7 +585,9 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   due when SaaS, the second real spell reader, lands in Domain 6); on snapshots the first month's
   exits are unobservable (a prior window says so); a % change on a base under 10; a blank
   measure on rows a KPI excludes (contractors' pay) read as layout, not missing; the drill-down
-  path's causal filter.
+  path's causal filter; small cells in line charts split by a protected role (bars and splits
+  are filtered at finalize_charts, lines not yet); a single small protected cell differenced
+  against a shown total (complements cover a pay measure by an ordinary group only).
 - **Follow-up PR (found in Domain 4's plan red-team, 2026-11-03):** the built-in summary stats of
   a level column (a balance) read every snapshot (`agents/analysis_agent.py` eda path: a level's
   blanked rows keep `len(rows) == len(df)`), a recurring-class-1 bug in banking. Its own PR with a
