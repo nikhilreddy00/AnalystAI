@@ -2038,6 +2038,9 @@ def _hr_roster_truth(df: pd.DataFrame) -> dict:
         "voluntary_attrition_12m": rate(_HR_VOLUNTARY),
         "involuntary_attrition_12m": rate(_HR_INVOLUNTARY),
         "retirement_rate_12m": rate(["Retirement"]),
+        "voluntary_attrition_12m_by_dept": {
+            d: float((left & cat.isin(_HR_VOLUNTARY) & s["dept"].eq(d)).sum() / a)
+            for d, a in r["dept_avg"].items() if a > 0},
         "attrition_12m_by_category": {"Voluntary": rate(_HR_VOLUNTARY),
                                       "Involuntary": rate(_HR_INVOLUNTARY),
                                       "Retirement": rate(["Retirement"])},

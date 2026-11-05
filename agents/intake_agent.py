@@ -20,6 +20,7 @@ from pydantic import BaseModel, ValidationError
 from agents.errors import LLMOutputError
 from agents.utils import conversation_context, strip_markdown_fences
 from domain_pack import (
+    spell_terms,
     layout_blanks,
     computable,
     defaults_pack,
@@ -293,6 +294,9 @@ def _targeted_params(raw: dict) -> TargetedParams:
 
 _TOTAL_RE = re.compile(r"\b(?:in total|totals?|overall|altogether|all time|grand total|how many|"
                        r"how much)\b", re.I)   # a count or amount with no period: the total
+# the trailing year a spell KPI is measured over by default ("over the last 12 months")
+_TRAILING_RE = re.compile(r"\b(?:last|past|previous|trailing|prior) (?:12|twelve) months\b|"
+                          r"\b(?:past|trailing) year\b|\bltm\b|\bttm\b", re.I)
 # a time grain or trend word: the question wants periods ("total revenue each month")
 _GRAIN_RE = re.compile(r"\b(?:each|every|per|by) (?:day|week|month|quarter|year)\b|\b(?:daily|"
                        r"weekly|monthly|quarterly|yearly|annual|trend\w*|over time|month over month|"
@@ -391,6 +395,14 @@ async def run_intake_agent(
             and not tp.get("frequency") and not tp.get("period_start"):
         # "How much did we pay in total?": the overall value, never the latest month's change
         data["question_intent"] = QuestionIntent.SEGMENT_COMPARE.value
+    pack = pack_for(session.data_contract.domain) if session.data_contract else None
+    if not is_overview_request and named and pack and pack.spell and spell_terms(pack, named) \
+            and data.get("question_intent") == QuestionIntent.TIME_SERIES.value \
+            and _TRAILING_RE.search(user_message) and not _GRAIN_RE.search(user_message):
+        # "attrition over the last 12 months": the spell KPI's own window, one figure, never a
+        # monthly series of it (Domain 5 E2E gate: 0.6% in October for an 11.0% year)
+        data["question_intent"] = QuestionIntent.SEGMENT_COMPARE.value
+        data["targeted_params"] = {**tp, "frequency": None, "period_start": None, "period_end": None}
     if is_overview_request:   # the first run is always a full overview, never a question
         data.update(question_intent=QuestionIntent.OVERVIEW.value, clarification_needed=False,
                     clarification_question=None, resume_from=None)

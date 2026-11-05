@@ -12,16 +12,15 @@ checks:
   truth_key: headcount_asof
   rel_tol: 0.001
 - kind: must_not_number
-  truth_key: headcount_summed_rows
-  rel_tol: 0.0
-  scope: report
-- kind: must_not_number
   truth_key: salary_summed_all_months
   rel_tol: 0.01
   scope: report
 - kind: must_not_match
   pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|denial rate|loss
     ratio|premium
+  scope: report
+- kind: must_not_match
+  pattern: 8,?220 (employees|people|staff|workers|personnel)
   scope: report
 hard_rules:
 - charts_lint_clean

@@ -69,6 +69,9 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
 # A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
 # to its stored output (that is the $0 regression check over every old case).
 CHANGED = {
+    ("insight-20261104T214949Z.json", "ins-47-hr-roster-overview"):
+        "Domain 5 insight gate: pay of a group under 11 people (Legal, 6) is dropped from every "
+        "segment (analysis standard_stats, protected_groups), so the bundle's evidence changed",
     **{(r, "ins-45-policies-overview"): "Domain 4 audit pass 1: a policy table's transaction type "
        "is its status (renewal status blank by design on cancellation rows), earned-premium and "
        "protected-attribute cautions, lapse rate"

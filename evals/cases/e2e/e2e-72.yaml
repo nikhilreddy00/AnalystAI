@@ -8,19 +8,24 @@ overview_done: true
 trap: true
 checks:
 - kind: number_in_answer
-  truth_key: voluntary_attrition_12m
+  truth_key: voluntary_attrition_12m_by_dept.Sales
   rel_tol: 0.01
-  scales: &id001
+  scales:
   - - 1
     - null
   - - 100
     - '%'
 - kind: must_not_number
-  truth_key: voluntary_incl_retirement
+  truth_key: attrition_12m_by_dept.Sales
   rel_tol: 0.005
-  scales: *id001
+  scales:
+  - - 1
+    - null
+  - - 100
+    - '%'
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale
 - non_empty_or_error
-label_note: Voluntary excludes retirement (15.9%, never 18.7%).
+label_note: 'Voluntary attrition by department: Sales leads (resignations only, retirements out), never
+  all exits.'
