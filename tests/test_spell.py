@@ -218,3 +218,22 @@ def test_concurrent_spells_of_one_entity_all_count_when_the_pack_says_so(pack):
                                "seats", "status"])
     assert compute_kpi(df, ROLES, both, "active") == 2 and compute_kpi(df, ROLES, both, "seats") == 9
     assert compute_kpi(df, ROLES, pack, "seats") == 3   # the latest spell only: C1 out, C2's add-on
+
+
+def test_month_labels_on_the_first_mean_the_month(pack, monkeypatch):
+    """Domain 6 S5 (red-team R17): an MRR export labels October '2026-10-01'; read as a date,
+    every figure was 'as of 1 Oct' and the window a month short. With month_labels the as-of
+    is the labelled month's end (clipped to today); unset, the dates stay as written."""
+    monkeypatch.setenv("ANALYSTAI_TODAY", "2026-11-05")
+    raw = yaml.safe_load(SUBS)
+    snaps = pd.DataFrame({"snapshot_date": ["2026-09-01", "2026-10-01", "2026-11-01"],
+                          "subscriber_id": ["S1"] * 3, "start_date": ["2025-01-01"] * 3,
+                          "cancel_date": [""] * 3, "kind": ["paid"] * 3, "status": ["active"] * 3})
+    roles = {**{k: v for k, v in ROLES.items() if k in snaps}, "snapshot_date": "snapshot_date"}
+    assert spell_as_of(Pack.model_validate(raw), snaps, roles) == pd.Timestamp("2026-11-01")
+    raw["spell"]["month_labels"] = True
+    labelled = Pack.model_validate(raw)
+    assert spell_as_of(labelled, snaps, roles) == pd.Timestamp("2026-11-05")   # Nov, to today
+    assert spell_as_of(labelled, snaps.iloc[:2], roles) == pd.Timestamp("2026-10-31")
+    mid = snaps.assign(snapshot_date=["2026-09-15", "2026-10-01", "2026-10-31"])
+    assert spell_as_of(labelled, mid, roles) == pd.Timestamp("2026-10-31")   # not labels: as written

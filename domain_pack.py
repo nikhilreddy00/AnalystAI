@@ -184,6 +184,9 @@ class Spell(_Strict):
     # An entity holds several spells at once (a base plan and an add-on): every one in force
     # counts, summed for a role; otherwise only its latest spell started by t (a rehire)
     concurrent: bool = False
+    # Snapshots labelled by month on its 1st ('2026-10-01' = October, an MRR export): the as-of
+    # is the labelled month's end (clipped to today) when every snapshot date is a 1st
+    month_labels: bool = False
 
 
 class Term(_Strict):
@@ -827,8 +830,11 @@ def spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Times
     not yet). Always judged on all rows (a filter never moves it)."""
     from agents.utils import today
     s = pack.spell
-    for col in [roles.get(s.as_of) if s.as_of else None, _snapshot_column(pack, roles)]:
+    snap = _snapshot_column(pack, roles)
+    for col in [roles.get(s.as_of) if s.as_of else None, snap]:
         if col and pd.notna(t := _day(df[col]).max()):
+            if col == snap and s.month_labels and (_day(df[col]).dropna().dt.day == 1).all():
+                return min(t + pd.offsets.MonthEnd(0), today())
             return t
     dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end) if r in roles] or [pd.Series(dtype="datetime64[ns]")])
     dates = dates[dates <= today()]
