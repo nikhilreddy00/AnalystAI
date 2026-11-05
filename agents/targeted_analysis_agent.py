@@ -78,6 +78,7 @@ from domain_pack import (
     describe_kpi,
     main_currency,
     money_columns,
+    pay_columns,
     pack_caveats,
     pack_for,
     row_kinds,
@@ -1088,8 +1089,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                  f"them would mix their units", [f"{kpi.label} by {per}",
                                                                 f"{kpi.label} for {df[per].dropna().iloc[0]}"])
         group, how = per, how + f" Given by {per} only: one figure across them would mix their units."
-    if group and {r for r, c in roles.items() if c == group} & {
-            r for r in pack.protected_roles if pack.roles[r].kind == "money"}:   # pay values
+    if group in pay_columns(pack, roles):   # pay values
         return _unanswerable(intent, f"{group} is pay: grouping by its values would show "
                              "individual people's pay", [f"{kpi.label} by a group the data has"])
     if group and group not in df.columns:   # never the overall figure in its place

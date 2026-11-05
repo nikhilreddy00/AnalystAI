@@ -274,3 +274,25 @@ def test_a_kpi_never_reports_a_group_it_leaves_out_by_definition():
     text, by = answer("hr_roster", "top_n", "headcount by worker type", kpi="headcount",
                       group_by="Worker_Type")
     assert "Contractor" not in by and "1 employees" not in text, (by, text)
+
+
+def test_a_kind_of_exit_counts_the_groups_people_never_its_leavers():
+    """Audit 7: retirements by ethnicity hid five groups (their people counted as retirees) and
+    voluntary attrition by department lost Legal's 0 (its groups were the voluntary leavers')."""
+    from tests.test_oracle import answer
+    _, _, _, truth = _built("hr_roster")
+    _, by = answer("hr_roster", "segment_compare", "q", kpi="voluntary_attrition",
+                   segment_column="Department")
+    assert by.get("Legal") == truth["voluntary_attrition_12m_by_dept"]["Legal"] == 0.0, by
+    for kpi in ("voluntary_attrition", "attrition_rate"):   # siblings agree on who is small
+        _, by = answer("hr_roster", "segment_compare", "q", kpi=kpi, segment_column="Gender")
+        assert "Non-binary" in by, (kpi, by)
+
+
+def test_a_column_statistic_grouped_by_pay_shows_no_group():
+    """Audit 7: rating by salary value listed ex-employees' salaries (a leaver's group was absent
+    from people_in, so never small)."""
+    from tests.test_oracle import answer
+    _, by = answer("hr_roster", "segment_compare", "q", metric_column="Performance_Rating",
+                   segment_column="Annual_Salary", aggregation="mean")
+    assert not by, by

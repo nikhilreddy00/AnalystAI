@@ -1085,7 +1085,7 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         groups = None
     else:   # the groups its population has (never 'Contractor: 0' for an employees' KPI)
         axis = None
-        pop = df[_meets(df, roles, term.where)] if term.where and by else df
+        pop = df[_meets(df, roles, w)] if by and (w := _population(pack, term.where)) else df
         groups = pd.unique(pop[by].dropna()) if by else None
 
     if term.spell in ("starts", "ends"):
@@ -1327,6 +1327,19 @@ def _person_col(pack: Pack, roles: dict[str, str]) -> str | None:
     return None
 
 
+def _population(pack: Pack, where: list | None) -> list:
+    """A spell term's people: its `where` without conditions on the event's own fields
+    (marker_fields: an exit's category). Retirements' people are the employees, never the
+    retirees: who a small cell counts, and the groups a count of no such exits shows as 0."""
+    groups = [[c for c in g if c.role not in pack.marker_fields] for g in where or []]
+    return [] if any(not g for g in groups) else groups
+
+
+def pay_columns(pack: Pack, roles: dict[str, str]) -> set[str]:
+    """The protected money columns (pay): grouping by their values shows one person's pay."""
+    return {roles[r] for r in pack.protected_roles if r in roles and pack.roles[r].kind == "money"}
+
+
 def _kpi_where(pack: Pack, name: str | None, roles: dict[str, str]) -> list:
     """The population filter of a KPI's spell terms (contractors out), through the KPIs it
     refers to: who its small cells count."""
@@ -1334,7 +1347,7 @@ def _kpi_where(pack: Pack, name: str | None, roles: dict[str, str]) -> list:
         return []
     for t in used_terms(pack, pack.kpi(name), roles):
         if t.spell and t.where:
-            return t.where
+            return _population(pack, t.where)
         if t.kpi and (w := _kpi_where(pack, t.kpi, roles)):
             return w
     return []
@@ -1368,7 +1381,8 @@ def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool
         rows = part[row_kinds(part, roles, pack) != "non_product"] if pack.version_key else part
     if by is None:
         return rows[col].nunique() if col else len(rows)
-    return rows.groupby(by)[col].nunique() if col else rows.groupby(by).size()
+    n = rows.groupby(by)[col].nunique() if col else rows.groupby(by).size()
+    return n.reindex(part.groupby(by).size().index, fill_value=0)   # a group nobody counts: 0
 
 
 def protected_cut(cut, roles: dict[str, str], pack: Pack) -> bool:
@@ -1399,6 +1413,9 @@ def protected_groups(df: pd.DataFrame, contract, keys, column: str, label: str =
     said = set(normalize_header(label or "").split("_"))   # whole words: 'Sex' is not 'Essex'
     crossed = [c for c in prot if pack.roles[prot[c]].kind != "money" and c not in names
                and set(normalize_header(c).split("_")) <= said]
+    if set(names) & pay_columns(pack, roles):   # grouped by pay values: every group is one pay
+        return sorted(pd.unique(df[names].dropna().itertuples(index=False, name=None))
+                      if len(names) > 1 else pd.unique(df[names[0]].dropna()), key=str)
     asked = protected_cut(cut, roles, pack)   # a part that is itself a protected group
     if not (set(names) & set(prot) or column in prot or crossed or asked):
         return []
