@@ -1915,13 +1915,15 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
 
 # ── Last-resort fallback (DataContract only, no df available) ────────────────
 
-def _contract_fallback_charts(contract: DataContract, frame_present: bool = False) -> list[ChartConfig]:
+def _contract_fallback_charts(contract: DataContract, frame_present: bool = False,
+                              df: pd.DataFrame | None = None) -> list[ChartConfig]:
     """When the DataFrame isn't available (e.g. resume failure), draw at least
     one chart from contract metadata so the UI isn't empty."""
     charts: list[ChartConfig] = []
-    # a column blank by the file's layout (an end date of someone still employed) is not missing
-    pack = defaults_pack(contract)
-    layout = {contract.roles.get(r) for r in (pack.marker_fields if pack else [])} - {None}
+    # a column blank by the file's layout (an end date of someone still employed, a Debit on a
+    # credit row) is not missing: THE layout rule (domain_pack.layout_blanks), with the frame
+    from domain_pack import layout_blanks
+    layout = set(layout_blanks(df, contract)) if df is not None else set()
     null_data = [
         {"label": c.name, "count": round(c.null_pct, 1)}
         for c in contract.columns
@@ -2680,8 +2682,10 @@ def _without_small_cells(chart: ChartConfig, ctx: VizContext) -> ChartConfig | N
                 for row in chart.data]
         rows = [row for row in rows if set(row) - {chart.x_key}]   # a bar left with no values
         kept = {series(k) for row in rows for k in row}
-        return chart.model_copy(update={"data": rows, "y_keys": [y for y in chart.y_keys if y in kept]}) \
-            if rows else None
+        ys = [i for i, y in enumerate(chart.y_keys) if y in kept]   # colours follow their series
+        colors = [chart.colors[i] for i in ys] if len(chart.colors or []) == len(chart.y_keys) else chart.colors
+        return chart.model_copy(update={"data": rows, "y_keys": [chart.y_keys[i] for i in ys],
+                                        "colors": colors}) if rows else None
     else:
         gone = {str(h) for h in hide}
         rows = [row for row in chart.data if str(row.get(chart.x_key)) not in gone]
@@ -2809,7 +2813,7 @@ async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]
     charts = finalize_charts(charts, ctx)
     # the profile fallback keeps a report from an empty chart list (a quality retry costs a
     # paid run); its rationale says why it is shown
-    return charts or _contract_fallback_charts(contract, frame_present=True)
+    return charts or _contract_fallback_charts(contract, frame_present=True, df=ctx.df)
 
 
 def build_single_chart(
@@ -3000,8 +3004,8 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     # cross-filter click on its bar)
     pack = defaults_pack(contract) if contract is not None else None
     groups = {contract.roles.get(r) for r in (pack.overview_groups if pack else [])} - {None}
-    banned = (set(getattr(contract, "pii_columns", None) or []) |
-              set(getattr(contract, "id_columns", None) or [])) - groups
+    banned = set(getattr(contract, "pii_columns", None) or []) | (   # personal data: always
+        set(getattr(contract, "id_columns", None) or []) - groups)
     if set(filters or {}) & banned:   # fail closed: one person's (or record's) part, no numbers
         return {"charts": {}, "tiles": {}, "rows": None, "suppressed": True}
     filters, window = _spell_window_filters(df, contract, filters)

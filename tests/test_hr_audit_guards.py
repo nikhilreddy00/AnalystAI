@@ -213,3 +213,16 @@ def test_the_partial_month_is_decided_on_the_packs_own_dates_never_a_birth_date(
     _, audit = asyncio.run(run_cleaning_agent(s))
     assert audit.partial_months.get("hire_date") == ["2026-10", 24], audit.partial_months
     assert "date_of_birth" not in audit.partial_months
+
+
+def test_the_fallback_chart_never_calls_a_layout_blank_missing():
+    """Audit pass 5: the fallback had its own partial copy of the layout rule (marker fields only):
+    Charge Off Date, Debit/Credit, Case Reserve were 'missing'. It reads domain_pack.layout_blanks."""
+    from agents.visualization_agent import _contract_fallback_charts
+    from domain_pack import layout_blanks
+    from tests.test_dashboard_filters import PACK_DATASETS
+    for name in PACK_DATASETS:
+        _, clean, contract, _ = _built(name)
+        charts = _contract_fallback_charts(contract, True, clean)
+        shown = {r["label"] for c in charts for r in c.data}
+        assert not shown & set(layout_blanks(clean, contract)), (name, shown & set(layout_blanks(clean, contract)))
