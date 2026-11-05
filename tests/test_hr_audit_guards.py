@@ -239,3 +239,38 @@ def test_the_fallback_reads_the_frame_it_describes_and_keeps_markers_without_one
     bare = _contract_fallback_charts(contract)
     shown = {r["label"] for c in bare for r in c.data}
     assert not shown & set(marker_columns(pack_for("hr"), contract.roles))
+
+
+# ── the $0 senior audit over every domain's answer paths (before 'done') ───────────────────────
+
+def test_a_groups_size_counts_the_people_the_kpi_counts_never_its_contractors():
+    """Non-binary attrition in 2023 was shown: 11 in force, one a contractor the KPI leaves out."""
+    from tests.test_oracle import answer
+    text, _ = answer("hr_roster", "segment_compare", "q", kpi="attrition_rate", segment_column="Gender",
+                     segment_value="Non-binary", period_start="2023-01-01", period_end="2023-12-31")
+    assert "isn't shown" in text and "%" not in text.split("isn't shown")[0][-30:], text
+
+
+def test_a_filter_or_a_group_on_a_pay_value_is_one_persons_pay():
+    from tests.test_oracle import answer
+    text, _ = answer("hr_snapshots", "segment_compare", "q", kpi="headcount",
+                     segment_column="Base_Salary", segment_value="84600.0")
+    assert "isn't shown" in text or "can't" in text, text
+    text, _ = answer("employees", "segment_compare", "q", kpi="avg_salary", segment_column="salary")
+    assert "84300" not in text and "$84,300" not in text, text   # never a pay value as a label
+
+
+def test_a_rosters_pay_total_by_department_is_current_staff():
+    """'Total salary by department' summed leavers' pay on a roster (37.2M vs 22.0M payroll)."""
+    from tests.test_oracle import answer
+    _, _, _, truth = _built("hr_roster")
+    _, by = answer("hr_roster", "segment_compare", "Average salary by department",
+                   metric_column="Annual_Salary", segment_column="Department", aggregation="mean")
+    assert abs(by["Engineering"] - truth["avg_salary_by_dept_asof"]["Engineering"]) < 1, by
+
+
+def test_a_kpi_never_reports_a_group_it_leaves_out_by_definition():
+    from tests.test_oracle import answer
+    text, by = answer("hr_roster", "top_n", "headcount by worker type", kpi="headcount",
+                      group_by="Worker_Type")
+    assert "Contractor" not in by and "1 employees" not in text, (by, text)

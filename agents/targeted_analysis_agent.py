@@ -1088,6 +1088,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                  f"them would mix their units", [f"{kpi.label} by {per}",
                                                                 f"{kpi.label} for {df[per].dropna().iloc[0]}"])
         group, how = per, how + f" Given by {per} only: one figure across them would mix their units."
+    if group and {r for r, c in roles.items() if c == group} & {
+            r for r in pack.protected_roles if pack.roles[r].kind == "money"}:   # pay values
+        return _unanswerable(intent, f"{group} is pay: grouping by its values would show "
+                             "individual people's pay", [f"{kpi.label} by a group the data has"])
     if group and group not in df.columns:   # never the overall figure in its place
         return _unanswerable(intent, f"this data has no column {group!r}",
                              [f"{kpi.label} overall", f"{kpi.label} by a column the data has"])
@@ -1115,7 +1119,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         else:
             answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                       f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
-        if hidden:
+        if hidden and protected_by:   # a protected group's name is said only as a count
+            answer += (f" {len(hidden)} group{'s' * (len(hidden) != 1)} not shown (fewer than "
+                       f"{SMALL_CELL} people).")
+        elif hidden:
             answer += (f" Not shown: {', '.join(map(str, hidden[:5]))} (a group of fewer than "
                        f"{SMALL_CELL} people, and with one hidden, the next smallest, so it can't be "
                        "worked back from the total).") if len(hidden) > 1 else (

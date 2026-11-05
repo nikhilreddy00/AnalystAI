@@ -308,8 +308,22 @@ def level_rows(df, column: str, contract):
     account weighted by its history, a closed one still averaged in); anything else: all rows.
     The one selector for answers and their charts."""
     hint = column_hint(contract, column)
-    return latest_rows(df, column, contract) if hint is not None and hint.aggregation in _LEVEL \
-        else df
+    if hint is not None and hint.aggregation in _LEVEL:
+        return latest_rows(df, column, contract)
+    return _in_force_rows(df, column, contract)
+
+
+def _in_force_rows(df, column: str, contract):
+    """On a spell roster, a level (salary, FTE) is the people in force's: a total or an average
+    of pay by department never adds leavers' pay (the KPIs' rule: domain_pack._in_force)."""
+    from domain_pack import _in_force, _snapshot_column, defaults_pack, has_spell, spell_as_of
+    pack = defaults_pack(contract)
+    roles = {r: c for r, c in (contract.roles if pack else {}).items() if c in df.columns}
+    role = next((r for r, c in roles.items() if c == column), None)
+    if not role or not has_spell(pack, roles) or _snapshot_column(pack, roles) \
+            or pack.roles[role].over_time != "last" or (as_of := spell_as_of(pack, df, roles)) is None:
+        return df
+    return df.loc[_in_force(df, roles, pack, as_of).index]
 
 
 def latest_rows(df, column: str, contract):

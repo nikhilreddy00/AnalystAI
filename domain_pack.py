@@ -235,7 +235,10 @@ class KPI(_Strict):
 
     def written(self, value: str) -> str:
         """A formatted value with its unit word: THE way a KPI's number is written."""
-        return f"{value} {self.unit_word}" if self.unit_word else value
+        word = self.unit_word
+        if word and value.strip() == "1" and " " not in word and word.endswith("s"):
+            word = word[:-1]   # '1 employee', never '1 employees'
+        return f"{value} {word}" if word else value
 
     @property
     def phrase(self) -> str:
@@ -1080,9 +1083,10 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         freq = df[by].dtype.freq
         axis = pd.period_range(first, as_of, freq=freq)[-SPELL_PERIODS:]
         groups = None
-    else:
+    else:   # the groups its population has (never 'Contractor: 0' for an employees' KPI)
         axis = None
-        groups = pd.unique(df[by].dropna()) if by else None
+        pop = df[_meets(df, roles, term.where)] if term.where and by else df
+        groups = pd.unique(pop[by].dropna()) if by else None
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
@@ -1323,8 +1327,22 @@ def _person_col(pack: Pack, roles: dict[str, str]) -> str | None:
     return None
 
 
+def _kpi_where(pack: Pack, name: str | None, roles: dict[str, str]) -> list:
+    """The population filter of a KPI's spell terms (contractors out), through the KPIs it
+    refers to: who its small cells count."""
+    if not name or not pack.kpi(name):
+        return []
+    for t in used_terms(pack, pack.kpi(name), roles):
+        if t.spell and t.where:
+            return t.where
+        if t.kpi and (w := _kpi_where(pack, t.kpi, roles)):
+            return w
+    return []
+
+
 def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool,
-              whole: pd.DataFrame | None = None, window: tuple | None = None, by: str | None = None):
+              whole: pd.DataFrame | None = None, window: tuple | None = None, by: str | None = None,
+              where: list | None = None):
     """THE count of the people a number is about (the small-cell rule's): on spell data, for a
     state the people in force at the window's end, for a flow or rate the people in force at any
     point of its window; elsewhere the distinct people (person column) among the rows counted
@@ -1344,6 +1362,8 @@ def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool
             else:
                 rows = whole[(_day(whole[roles[s.start]]) <= as_of) & ~_ended(whole, roles, pack, lo)]
         rows = rows.loc[rows.index.intersection(part.index)]
+        if where:   # the KPI's own population (a contractor is no employee in a group of 10)
+            rows = rows[_meets(rows, roles, where)]
     else:
         rows = part[row_kinds(part, roles, pack) != "non_product"] if pack.version_key else part
     if by is None:
@@ -1356,7 +1376,7 @@ def protected_cut(cut, roles: dict[str, str], pack: Pack) -> bool:
     women, one ethnicity): every number on it is about that protected group. Decided from what
     was asked, never from the part's values (a part hidden because it happens to be all one
     gender would say so: audit pass 2)."""
-    prot = {roles.get(r) for r in pack.protected_roles if pack.roles[r].kind != "money"} - {None}
+    prot = {roles.get(r) for r in pack.protected_roles} - {None}   # a pay value: one person's pay
     return bool(set(cut or ()) & prot)
 
 
@@ -1416,8 +1436,9 @@ def small_groups(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         if not has_spell(pack, roles):
             return []
         return [p for p in groups if people_in(df, roles, pack, state, whole,
-                                               (p.start_time, p.end_time.normalize())) < SMALL_CELL]
-    n = people_in(df, roles, pack, state, whole, window, by=by)
+                                               (p.start_time, p.end_time.normalize()),
+                                               where=_kpi_where(pack, name, roles)) < SMALL_CELL]
+    n = people_in(df, roles, pack, state, whole, window, by=by, where=_kpi_where(pack, name, roles))
     by_protected = bool({r for r, c in roles.items() if c == by} & set(pack.protected_roles))
     return _with_complement([g for g in groups if n.get(g, 0) < SMALL_CELL], groups, n,
                             bool(kpi_roles(pack, name) & set(pack.protected_roles)) and not by_protected)
@@ -1446,7 +1467,8 @@ def protected_value(df: pd.DataFrame, whole: pd.DataFrame, roles: dict[str, str]
         return False
     if not (kpi_roles(pack, name) & set(pack.protected_roles)) and not protected_cut(cut, roles, pack):
         return False
-    return people_in(df, roles, pack, pack.kpi(name).state, whole, window) < SMALL_CELL
+    return people_in(df, roles, pack, pack.kpi(name).state, whole, window,
+                     where=_kpi_where(pack, name, roles)) < SMALL_CELL
 
 
 def mixes(df: pd.DataFrame, roles: dict[str, str], kpi: KPI, by: str | None = None) -> bool:

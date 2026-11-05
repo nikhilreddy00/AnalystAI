@@ -577,6 +577,15 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
 
 - **Status (2026-11-03):** 1 retail, 2 banking, 3 healthcare, 4 insurance done
   (`docs/baselines/phase5_7_*.md`); next 5 HR.
+- **Cross-domain follow-up PR (found by Domain 5's $0 senior audit over every domain, 2026-11-05;
+  all present on main before Domain 5, none a regression):** banking: a count of accounts
+  (open accounts) is cut to the main currency like money (54 accounts shown as 32 on a
+  multi-currency deposit book: decide count vs money rows); healthcare: a pooled 'Other (fewer
+  than 11 each)' group can itself total under 11 patients (suppress or merge the pool); insurance:
+  a partial developing month is the series headline (headline the latest complete period);
+  minors: avg balance per account not treated as a state, year-earlier window text when data
+  starts mid-year, a pooled 'Unknown' DRG, retail POSTAGE answers, a 1 Jan non-trading day
+  making 2025 'incomplete'. Each with that domain's re-measure.
 - **HR follow-ups (Domain 5, 2026-11-05; each said "unsupported" or noted in the review note):**
   cohort retention and first-year attrition (a spell cohort term), span of control, time to fill
   and offer acceptance (a requisitions table), absence rate, engagement; a built-in pay gap
