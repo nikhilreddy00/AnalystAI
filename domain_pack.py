@@ -200,7 +200,12 @@ class Term(_Strict):
     nunique: str | None = None
     kpi: str | None = None
     within: Within | None = None
-    spell: Literal["active", "average", "starts", "ends"] | None = None
+    spell: Literal["active", "average", "starts", "ends", "opening", "retained", "moves"] | None = None
+    # the ledger's terms (Domain 6): `opening` = the entities in force at the window's start (a
+    # cohort; with `sum`, their value), `retained` = that cohort's value at its end (`capped`: no
+    # entity above its opening value: GRR), `moves` = the month-end changes of one kind summed
+    move: Literal["new", "expansion", "contraction", "churn", "reactivation"] | None = None
+    capped: bool = False
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] | None = None
     sign: Literal[1, -1] = 1
     optional: bool = False        # a missing role drops this term (and a blank value counts 0)
@@ -215,9 +220,14 @@ class Term(_Strict):
 
     @model_validator(mode="after")
     def _one(self) -> Term:
+        if (self.move is not None) != (self.spell == "moves"):
+            raise ValueError("`move` goes with `spell: moves` (which change it sums)")
+        if self.capped and self.spell != "retained":
+            raise ValueError("`capped` is a retained term's (GRR)")
         if self.spell is not None:
-            if self.spell != "active" and self.sum is not None:
-                raise ValueError("a spell term sums a role only for `active` (at a date)")
+            if self.spell in ("average", "starts", "ends") and self.sum is not None:
+                raise ValueError("a spell term sums a role only at dates (active, opening, "
+                                 "retained) or over moves")
             if any(x is not None for x in (self.sum_abs, self.nunique, self.kpi, self.within)):
                 raise ValueError("a spell term counts its entities (or sums one role): no "
                                  "sum_abs, nunique, kpi or within")
@@ -235,8 +245,8 @@ class Term(_Strict):
             expr, str) else [expr[0], expr[2]]
         if w := self.within:
             own = [w.entity, w.start, w.end, *(c.role for g in w.follow for c in g)]
-        if self.spell:   # the entity only: snapshots need no start or end column
-            own = [*self._spell_roles[:1], *own]
+        if self.spell:   # the entity only: snapshots need no start or end column (a ledger's
+            own = [*self._spell_roles, *own]   # history terms also need the snapshot date)
         return list(dict.fromkeys([*own, *([self.net_of] if self.net_of else []),
                                    *(c.role for g in self.where for c in g)]))
 
@@ -526,7 +536,13 @@ class Pack(_Strict):
                     if t.spell and not self.spell:
                         errors.append(f"kpi {k.name}: a spell term needs the pack's spell")
                     elif t.spell:
-                        t._spell_roles = [self.spell.entity]
+                        # a value's history (expansion, retention) exists only on dated snapshots:
+                        # a subscription list holds today's price at both ends (red-team R4)
+                        history = t.move in ("expansion", "contraction") or t.spell == "retained" \
+                            and t.sum is not None
+                        t._spell_roles = [self.spell.entity, *(
+                            [self.date_role] if history and self.date_role not in
+                            (self.spell.start, self.spell.end) else [])]
                         if k.at == "latest":
                             errors.append(f"kpi {k.name}: at latest and a spell term are two "
                                           "state rules")
@@ -1153,6 +1169,10 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         pop = df[_meets(df, roles, w)] if by and (w := _population(pack, term.where)) else df
         groups = pd.unique(pop[by].dropna()) if by else None
 
+    if term.spell in ("opening", "retained", "moves"):
+        return _ledger_term(df, whole, roles, pack, term, allk, ok, by, lo, as_of, first,
+                            axis if periodic else None, groups)
+
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
         rows = kept(rows)
@@ -1190,6 +1210,100 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     if by:
         return (pd.concat(vals, axis=1).fillna(0).sum(axis=1) / len(pts)).reindex(groups, fill_value=0)
     return sum(vals) / len(pts)
+
+
+def _ledger(whole, roles, pack, term: Term, allk, ok, points, part, by):
+    """THE ledger: (values, in the part, group), each an entity × date frame. An entity's value
+    at t is its rows in force at t (on ALL rows: _in_force) of the KPI's kinds meeting `where`,
+    the term's role summed (concurrent spells add up) or 1 for a count; 0 when none. `in part`:
+    one of those rows is in `part` (a filter); `group`: the `by` value of its first row."""
+    ent = roles[pack.spell.entity]
+    vals, inside, grp = {}, {}, {}
+    for t in points:
+        rows = _in_force(whole, roles, pack, t)
+        m = allk.reindex(rows.index).isin(ok).to_numpy()
+        if term.where:
+            m &= _meets(rows, roles, term.where).to_numpy()
+        rows = rows[m]
+        v = _column(rows, roles, term.sum) if term.sum is not None \
+            else pd.Series(1.0, index=rows.index)
+        vals[t] = v.groupby(rows[ent]).sum()
+        inside[t] = pd.Series(rows.index.isin(part), index=rows.index).groupby(rows[ent]).any()
+        if by:
+            grp[t] = rows[by].groupby(rows[ent]).first()
+    values = pd.DataFrame(vals, columns=points).fillna(0.0).clip(lower=0)
+    return (values, pd.DataFrame(inside, columns=points).reindex(values.index).fillna(False)
+            .astype(bool), pd.DataFrame(grp, columns=points).reindex(values.index) if by else None)
+
+
+def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, first, axis, groups):
+    """An opening / retained / moves term from the ledger. Moves: each pair of consecutive
+    month-ends classes each entity's change (0→x new, or reactivation when it was in force at an
+    earlier month-end; up expansion; down contraction; x→0 churn), counted where its later row
+    is (a churn: its earlier row), so a segment's bridge adds up and a mover's growth counts in
+    its new segment. Opening / retained: the cohort in force at the window's start (by period:
+    12 months before each period's end), placed by its row then; retained values it at the end
+    (an entity back after a churn is retained). A start or end before the data counts 0."""
+    def pts(a, b):   # month-ends after a up to b, with both ends
+        return sorted({a, *_month_ends(a, b), b})
+
+    history = [t for t in _month_ends(first - pd.Timedelta(days=1), as_of) if t <= as_of]
+    if term.spell == "moves":
+        points = sorted({*history, lo, as_of})
+    else:
+        ends = [min(p.end_time.normalize(), as_of) for p in axis] if axis is not None else [as_of]
+        starts = [e - pd.DateOffset(months=12) for e in ends] if axis is not None else [lo]
+        points = sorted({*ends, *starts})
+    points = [t for t in points if t <= as_of]
+    by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
+    v, inside, g = _ledger(whole, roles, pack, term, allk, ok, points, df.index, by)
+
+    def total(x: pd.Series, at, key=None):
+        """x summed over the entities in the part at `at` (by group or one number)."""
+        keep = inside[at]
+        x = x[keep & (x != 0)]
+        if by:
+            return x.groupby(g.loc[x.index, at]).sum().reindex(groups, fill_value=0)
+        return float(x.sum())
+
+    if term.spell == "moves":
+        prev_ever = (v > 0).cummax(axis=1).shift(1, axis=1, fill_value=False)
+        out = {}
+        for a, b in zip(points, points[1:]):
+            x, y = v[a], v[b]
+            kind = term.move
+            amount = {"new": (x == 0) & (y > 0) & ~prev_ever[a],
+                      "reactivation": (x == 0) & (y > 0) & prev_ever[a],
+                      "expansion": (x > 0) & (y > x), "contraction": (y > 0) & (y < x),
+                      "churn": (x > 0) & (y == 0)}[kind]
+            if term.sum is None:
+                delta = amount.astype(float)
+            else:
+                delta = {"new": y, "reactivation": y, "expansion": y - x, "contraction": x - y,
+                         "churn": x}[kind].where(amount, 0.0)
+            out[b] = total(delta, a if kind == "churn" else b)
+        if axis is not None:
+            per = {}
+            for b, n in out.items():
+                per[pd.Period(b, freq=axis.freq)] = per.get(pd.Period(b, freq=axis.freq), 0.0) + n
+            return pd.Series(per, dtype=float).reindex(axis, fill_value=0.0)
+        inside_window = [b for b in out if b > lo]
+        if by:
+            return sum((out[b] for b in inside_window), pd.Series(0.0, index=groups)) \
+                if inside_window else pd.Series(0.0, index=groups)
+        return float(sum(out[b] for b in inside_window))
+
+    def cohort(start, end):
+        base = v[start]
+        if term.spell == "opening":
+            return total(base, start)
+        later = v[end].where(base > 0, 0.0)
+        return total(later.clip(upper=base) if term.capped else later, start)
+
+    if axis is not None:
+        return pd.Series({p: cohort(s_, e) if s_ >= first - pd.Timedelta(days=1) else float("nan")
+                          for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
+    return cohort(lo, as_of)
 
 
 def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> bool:
@@ -1594,7 +1708,8 @@ def additive(pack: Pack, name: str) -> bool:
     does not: a month's customers are not 4 weeks of customers."""
     kpi = pack.kpi(name)
     # spell events (hires, exits) add up over weeks; people in force and their average do not
-    return kpi.den is None and all(not t.nunique and t.spell not in ("active", "average")
+    return kpi.den is None and all(not t.nunique and t.spell not in ("active", "average", "opening",
+                                                                     "retained")
                                    and (not t.kpi or additive(pack, t.kpi))
                                    for alt in kpi.num for t in alt)
 
