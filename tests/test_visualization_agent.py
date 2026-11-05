@@ -142,11 +142,22 @@ async def test_drill_down_chart_on_a_fake_column_is_skipped_and_a_measure_bar_is
 
 def test_confidence_intervals():
     flags = pd.Series([1] * 50 + [0] * 50)
-    minus, plus = viz._ci(flags, "mean")                   # Wilson, in % points
+    minus, plus = viz._ci(flags, "mean", True)             # Wilson, in % points
     assert minus == pytest.approx(9.65, abs=0.05) and plus == pytest.approx(9.65, abs=0.05)
-    assert viz._ci(flags, "sum") is None                    # a total has no sampling error
-    m, p = viz._ci(pd.Series([1.0, 2.0, 3.0, 4.0]), "mean")
+    assert viz._ci(flags, "sum", True) is None              # a total has no sampling error
+    m, p = viz._ci(pd.Series([1.0, 2.0, 3.0, 4.0]), "mean", False)
     assert m == p == pytest.approx(2.054, abs=0.001)        # t(0.975, 3) · s / √n
+
+
+def test_a_bar_whose_values_are_all_one_is_no_rate_when_its_column_isnt():
+    """Domain 5 browser check: average FTE by level and department drew whiskers to -65 (a
+    team whose FTE are all 1.0 got a Wilson interval ×100). The rate is the column's."""
+    df = pd.DataFrame({"lvl": ["L1"] * 6 + ["L2"] * 6, "team": ["A"] * 12,
+                       "fte": [1.0] * 6 + [0.5, 1.0] * 3})
+    ch = viz.group_bars(df, "lvl", "fte", "mean", viz.build_context(df), split="team")
+    for row in ch.data:
+        lo, hi = row.get("A__ci", [0, 0])
+        assert row["A"] - lo >= 0 and lo <= 1, row
 
 
 @pytest.mark.parametrize("seed", range(200))

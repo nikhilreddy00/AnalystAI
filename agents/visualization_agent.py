@@ -1875,7 +1875,7 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
     elif src == "target_rate_by_cat" and target:
         for row in ch.data:   # Wilson CI from each bar's rate and n
             rate, n = row[ch.y_keys[0]] / 100, row.get("n", 0)
-            ci = _ci(pd.Series([1] * round(rate * n) + [0] * (n - round(rate * n))), "mean") if n else None
+            ci = _ci(pd.Series([1] * round(rate * n) + [0] * (n - round(rate * n))), "mean", True) if n else None
             if ci:
                 row[f"{ch.y_keys[0]}__ci"] = ci
         ch.error_key = "__ci"
@@ -2196,14 +2196,15 @@ def _why(chart: ChartConfig, ctx: VizContext | None, rule: str, reason: str, x: 
     return chart
 
 
-def _ci(s: pd.Series, agg: str) -> list[float] | None:
+def _ci(s: pd.Series, agg: str, rate: bool) -> list[float] | None:
     """95% CI as [minus, plus] around the plotted value: Wilson for a 0/1 rate, t for a mean,
-    none for totals and counts (no sampling error to show)."""
+    none for totals and counts (no sampling error to show). `rate` is the column's (_is_flag on
+    all its values), never one bar's: a team whose FTE are all 1.0 is no 100% rate (live check)."""
     v = pd.to_numeric(s, errors="coerce").dropna()
     n = len(v)
     if agg != "mean" or n < 2:
         return None
-    if set(v.unique()) <= {0, 1}:
+    if rate:
         p, z = float(v.mean()), 1.96
         centre = (p + z * z / (2 * n)) / (1 + z * z / n)
         half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
@@ -2263,7 +2264,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
                 continue
             row[name] = round(float(part.agg(agg)) * scale, 4)
             row[f"{name}__n"] = int(len(part))
-            if (ci := _ci(part, agg)) is not None:
+            if (ci := _ci(part, agg, rate)) is not None:
                 row[f"{name}__ci"], any_ci = ci, True
         data.append(row)
     y_keys = [metric] if not split else [str(s) for s in series]
