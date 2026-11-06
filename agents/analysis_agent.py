@@ -238,7 +238,8 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     Merged into the sandbox's `raw` result as before: a target's MoM (and YoY on a pack's data)
     replaces the model's; target-pair r and the joint breakdown fill gaps; a level by segment
     replaces only the model's totals and means of it. Ids go to raw['builtin'] (evidence)."""
-    from agents.utils import (LevelUnavailable, aggregate, effective_agg, latest_rows, pct_change, ranked, time_axis, weekly_cadence)
+    from agents.utils import (LevelUnavailable, aggregate, cut_partial, effective_agg, latest_rows, pct_change, ranked,
+                              time_axis, weekly_cadence)
     from domain_pack import entity_rows, rows_for
     types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
     names = set(df.columns)
@@ -320,7 +321,14 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             # every segment compares the same months as the whole file (never its own last two,
             # which can be a stale pair); a flow's month with no rows is 0
             last = overall.index[-1]
-            pairs = [("MoM", overall.index[-2]), ("YoY", last - 12 if yoy else None)]
+            # a first month the data covers only part of (invoices from 26 Sep) is no month to
+            # compare with: utils.cut_partial, the one rule (Domain 6 live run: '+109% YoY'
+            # against five days of September)
+            dated = pd.to_datetime(rows[time_axis(contract, c, df)], format="mixed", errors="coerce")
+            kept, _ = cut_partial(overall, dated, "M")
+            partial_first = overall.index[0] if len(kept) and kept.index[0] != overall.index[0] else None
+            pairs = [(k, p_) for k, p_ in (("MoM", overall.index[-2]), ("YoY", last - 12 if yoy else None))
+                     if p_ != partial_first]
             jobs = [(None, overall, rows)]
             if segs:   # the 10 largest groups, ties by name (the same on every machine)
                 for v in ranked(df[segs[0]].value_counts()).head(10).index:

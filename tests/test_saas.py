@@ -379,7 +379,9 @@ _N = ["Churn was concentrated in poor-fit accounts.", "Retention data is poor fo
  "Retention by plan: Pro 95%, Basic 80%.", "Churn was highest among poor payers.",
  "NRR was 106.5%; healthy is not a grade this report gives.", "Churn fell after strong onboarding.",
  "Retention improved with strong adoption of the new tier."]
-VERDICTS = [*_V, "with net revenue retention of 106.5% — healthy, but below", "GRR remains strong at 99.3%.",
+VERDICTS = [*_V, "Net revenue retention, at 106.5% over the 12 months to 31 Oct 2026, is strong.",
+            "NRR, which reached 104%, remains healthy.", "GRR of 91.2%, up from 89%, is solid.",
+            "Retention in Enterprise, SMB and Mid-Market is strong.", "Churn, at 2.1% a month, is relatively strong.", "with net revenue retention of 106.5% — healthy, but below", "GRR remains strong at 99.3%.",
             "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is healthy and improving."]
 NEUTRAL = [*_N, "Logo churn rose to 20.1% while new MRR showed strong growth.",
            "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
@@ -476,3 +478,24 @@ def test_one_month_of_moves_is_unknown_never_zero():
     df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
     one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
     assert dp.compute_kpi(one, roles, pack, "new_mrr") is None
+
+
+def test_a_partial_first_month_is_no_year_over_year_base():
+    """Live run (JSON invoices): '+109% year over year' compared Sep 2026 with the 5 days of Sep
+    2025 the data covers. The built-in leaves a partial first month out of every comparison."""
+    from tests.test_oracle import builtin
+    r = builtin("saas_invoices", ["amount"], [], ["trend"])
+    assert {t["period"] for t in r["trends"] if not t.get("segment")} == {"MoM"}
+
+
+def test_a_group_of_former_rows_scores_its_own_reading():
+    """Audit pass 8: mean MRR by status (canceled = only former rows) was false at x1.0."""
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df, *_ = _setup("saas_subscriptions")
+    m = df.groupby("status")["mrr"].mean().dropna()
+    seg = SegmentResult(segment_column="status", metric_column="mrr", aggregation="mean",
+                        results=[{"name": k, "value": float(v)} for k, v in m.items() if k == "canceled"])
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert out["false"] == 0

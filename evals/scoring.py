@@ -157,8 +157,9 @@ def _populations(df: pd.DataFrame, metric: str, by_group: bool = True) -> list[p
         # a level on a spell list (MRR of each subscription): production's in-force rows
         # (utils.level_rows -> domain_pack.in_force_counted), what the brief tells the agent
         current = level_rows(df, metric, contract)
-        if by_group and len(current) != len(df):   # a level by group on spell data: only who is in
-            return [current]   # force (pass 7: every row passed wrong values); a column's distribution
+        if by_group and len(current) != len(df):   # a level by group on spell data: who is in force,
+            # or only former rows (a group of leavers: pass 8), never every row mixed (pass 7)
+            return [current, df.loc[~df.index.isin(current.index)]]   # a column's distribution
         # reads every row by design (current and former: HR's rule), so a summary keeps them
         return [df, counted] if how else [df]
     return [df, latest_rows(df, metric, contract)]
