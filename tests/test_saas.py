@@ -583,3 +583,37 @@ def test_a_duplicate_row_index_gives_the_same_spell_kpis(name):
         assert dp.compute_kpi(dup, roles, pack, k) == dp.compute_kpi(df, roles, pack, k), k
     with pytest.raises(ValueError, match="unique row labels"):
         dp.compute_kpi(dup.head(50), roles, pack, "mrr" if "saas" in name else pack.kpis[0].name, full=dup)
+
+
+@pytest.mark.parametrize("name, cut", [("hr_snapshots", "Snapshot_Date"), ("saas_mrr_snapshots", "month")])
+def test_one_snapshot_keeps_its_snapshot_role(name, cut):
+    """Review of the first billing_date fix: dropping the role on row shape alone dropped a real
+    one-snapshot extract (the as-of fell back to the latest hire date). A trusted header stays."""
+    from evals import datagen
+    raw, _ = datagen.make(name, 1)
+    one = raw[raw[cut] == raw[cut].max()]
+    if name == "saas_mrr_snapshots":   # with a start column, as a warehouse model has
+        one = one.assign(created="2024-01-15")
+    assert dp.detect(one, {cut, "created", "Hire_Date", "Termination_Date"} & set(one.columns))[1].get(snapshot_of(name)) == cut
+
+
+def snapshot_of(name):
+    return dp.snapshot_role(dp.pack_for("hr" if name.startswith("hr") else "saas"))
+
+
+def test_a_next_billing_date_with_add_ons_is_still_no_snapshot(monkeypatch):
+    """Spec review: most customers on a base plan + an add-on billed on different days put each
+    customer on 2+ dates; each subscription (customer and start) is still on one."""
+    import numpy as np
+
+    from tests import test_oracle
+
+    def add_ons(raw):
+        twin = raw.assign(subscription_id=raw["subscription_id"] + "_addon",
+                          created=(pd.to_datetime(raw["created"]) + pd.Timedelta(days=3)).dt.strftime("%Y-%m-%d"))
+        both = pd.concat([raw, twin], ignore_index=True)
+        days = pd.to_timedelta(np.arange(len(both)) % 28, unit="D")
+        return both.assign(billing_date=(pd.Timestamp("2026-11-01") + days).strftime("%Y-%m-%d"))
+    monkeypatch.setitem(test_oracle.TRANSFORMS, "add_ons", add_ons)
+    _, df, contract, _ = test_oracle._built("saas_subscriptions", transform="add_ons")
+    assert "month" not in contract.roles

@@ -73,6 +73,15 @@ class Role(_Strict):
     over_time: Literal["sum", "last"] = "sum"
     # A category's numeric meaning in a formula (Pack.columns): a billing interval in months
     numbers: dict[str, float] = Field(default_factory=dict)
+    # Headers another meaning shares (a subscription list's next `billing_date`): they fill a
+    # spell pack's snapshot role only when each spell repeats over their dates (_snapshot_dates)
+    weak_headers: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _weak_are_headers(self):
+        if not set(self.weak_headers) <= set(self.headers):
+            raise ValueError(f"weak_headers {self.weak_headers} must be among headers")
+        return self
 
 
 class Cond(_Strict):
@@ -653,18 +662,26 @@ def _panel(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> bool:
     if not (pack.strong_panel and key and date and all(r in roles for r in pack.strong_panel)):
         return False
     pairs = df[[key, date]].dropna()
-    return len(pairs) > 0 and not pairs.duplicated().any() and pairs.groupby(key).size().median() >= 3
+    return not pairs.duplicated().any() and _dates_each(df, [key], date) >= 3
 
 
-def _snapshot_dates(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> bool:
-    """False when a spell pack's snapshot role column is no snapshot date: the file has the
-    spell's start (a subscription list) and its entities don't repeat over the column's dates
-    (a next-billing date per subscription). An MRR export or HR snapshots repeat, or have no start."""
+def _dates_each(df: pd.DataFrame, keys: list[str], date: str) -> float:
+    """THE repeat test of dated rows: the median number of distinct dates per key (0: none)."""
+    pairs = df[[*keys, date]].dropna().drop_duplicates()
+    return float(pairs.groupby(keys).size().median()) if len(pairs) else 0.0
+
+
+def _snapshot_dates(df: pd.DataFrame, pack: Pack, roles: dict[str, str], header: str | None) -> bool:
+    """Whether a spell pack's snapshot role column holds snapshot dates. A header only the role
+    means (month, snapshot_date) is trusted, one snapshot included; a weak one (Role.weak_headers:
+    a list's next billing_date) needs each spell (its entity and start, when the file has one) on
+    2+ of its dates. Review: a list with a next-billing date was read as snapshots (MRR $476k for
+    $869k); dropping the role on row shape alone also dropped real one-month snapshots."""
     snap = snapshot_role(pack) if pack.spell else None
-    if not (snap in roles and pack.spell.start in roles and pack.spell.entity in roles):
+    if snap not in roles or header not in pack.roles[snap].weak_headers or pack.spell.entity not in roles:
         return True
-    pairs = df[[roles[pack.spell.entity], roles[snap]]].dropna().drop_duplicates()
-    return len(pairs) > 0 and pairs.groupby(roles[pack.spell.entity]).size().median() >= 2
+    keys = [roles[r] for r in (pack.spell.entity, pack.spell.start) if r in roles]
+    return _dates_each(df, keys, roles[snap]) >= 2
 
 
 def _matches(alts: list[dict[str, list[str]]], roles: dict[str, str]) -> bool:
@@ -687,6 +704,7 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                 any(set(v) <= tokens for v in pack.exclude_pairs):
             continue
         roles: dict[str, str] = {}
+        matched: dict[str, str] = {}   # role → the header that filled it
         expanded = {c: expand_header(n, pack) for c, n in norm.items()}
         for role, r in pack.roles.items():
             for header in r.headers:
@@ -694,10 +712,11 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                             and not (r.kind == "id" and c in pii_columns)
                             and _fits(df[c], r, pack, c in date_columns)), None)
                 if col is not None:
-                    roles[role] = col
+                    roles[role], matched[role] = col, header
                     break
-        if not _snapshot_dates(df, pack, roles):   # a list's next billing date: not a snapshot
-            roles.pop(snapshot_role(pack))
+        snap = snapshot_role(pack) if pack.spell else None
+        if snap and not _snapshot_dates(df, pack, roles, matched.get(snap)):
+            roles.pop(snap)   # a list's next billing date: no snapshot
         if _matches(pack.strong, roles) or _panel(df, pack, roles):
             found.append((pack.domain, roles, "strong"))
         elif _matches(pack.signals, roles):

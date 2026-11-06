@@ -30,7 +30,9 @@ roles:
   # none (its created and ended dates are the spell's own); an invoice file dates by invoice.
   month:          {kind: date, headers: [month, mrr_month, snapshot_month, month_start,
                                          billing_month, billing_date, reporting_month,
-                                         snapshot_date]}
+                                         snapshot_date],
+                   # a subscription list's next bill: a snapshot only when spells repeat over it
+                   weak_headers: [billing_month, billing_date]}
   created:        {kind: date, headers: [created, created_at, created_utc, start_date,
                                          subscription_start, started_at, start,
                                          subscription_start_date]}

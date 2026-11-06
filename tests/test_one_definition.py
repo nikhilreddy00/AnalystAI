@@ -337,3 +337,9 @@ def test_no_spell_kpi_label_names_a_period():
     bad = [(p.domain, k.label) for p in load_packs() if p.spell for k in p.kpis
            if spell_terms(p, k.name) and period.search(k.label)]
     assert not bad, bad
+
+
+def test_one_repeat_test_for_dated_rows():
+    """Review: _snapshot_dates copied _panel's 'dates per entity' median. domain_pack._dates_each
+    is the one; a second `.size().median()` in shared code is a second definition."""
+    assert len(_hits(r"\.size\(\)\.median\(\)")) == 1, _hits(r"\.size\(\)\.median\(\)")
