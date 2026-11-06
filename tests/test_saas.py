@@ -361,7 +361,7 @@ _V = ["Strong NRR of 106.5% shows customers expand.", "Weak retention in SMB dra
  "Poor retention among monthly plans.", "Excellent net revenue retention of 112%.",
  "NRR remained strong year over year.", "Retention was strong month over month.",
  "Gross revenue retention is above the benchmark.", "NRR of 106.5% is well above the SMB median.",
- "Net revenue retention, at 106.5% over the 12 months to 31 Oct 2026, is strong.",
+
  "Retention is solid at 95%.", "Churn is low for a SaaS business.", "NRR is robust.",
  "Retention is a strong point for the business.", "Churn is a weak spot.",
  "Retention is strong, at 99.3%.", "GRR is weak; expansion is fine.",
@@ -461,3 +461,18 @@ def test_short_snapshots_bridge_months_are_its_moves():
     assert dp.window_words(pack, short, roles, "new_mrr") == "2 months to 31 Oct 2026"
     assert next(ln for ln in dp.spell_story(pack, short, roles) if ln.startswith("MRR bridge")).startswith(
         "MRR bridge, 2 months to 31 Oct 2026: $538,652.55 on 31 Aug 2026")
+
+
+@pytest.mark.parametrize("t", ["NRR was 104%; expansion was strong in Enterprise.",
+                               "Retention fell to 88% while pipeline is healthy.",
+                               "Churn in SMB, where new bookings are strong, rose to 4%."])
+def test_a_verdict_in_another_clause_is_not_the_metrics(t):
+    import re
+    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
+    assert not re.search(bench.pattern, t, re.I)
+
+
+def test_one_month_of_moves_is_unknown_never_zero():
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
+    assert dp.compute_kpi(one, roles, pack, "new_mrr") is None

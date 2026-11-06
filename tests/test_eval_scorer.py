@@ -570,3 +570,39 @@ def test_a_levels_count_and_mean_on_a_spell_list_are_per_customer():
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=segs,
                                           anomalies=[], statistical_tests=[], code_executed=""), df, {})
     assert out["false"] == 0 and out["verifiable"] == 6
+
+
+def test_a_level_on_spell_data_read_over_every_row_is_false():
+    """Audit pass 7: readings over all 479 subscription rows (cancelled ones too) passed."""
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from tests.test_saas import _setup
+    df, contract, *_ = _setup("saas_subscriptions")
+    allrows = df.groupby("segment")["mrr"].count()   # 'customers' counted as every row
+    seg = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="count",
+                        results=[{"name": k, "value": float(v)} for k, v in allrows.items()])
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert out["false"] == 3
+
+
+def test_a_churned_customers_mean_by_month_is_checked_both_ways():
+    """Final re-measure saas-8: mean churned MRR per churned customer by month equals truth and is
+    accepted; the same values x1.07 are false."""
+    import pandas as pd
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df = datagen.make("saas_mrr_snapshots", 1)[0]
+    df["month"] = pd.to_datetime(df["month"])
+    end = df["month"] + pd.offsets.MonthEnd(0)
+    v = df.assign(_t=end).pivot_table(index="customer_id", columns="_t", values="mrr", aggfunc="sum").fillna(0)
+    c = sorted(v.columns)
+    right = {f"{b:%Y-%m}": v.loc[(v[a] > 0) & (v[b] == 0), a].mean() for a, b in zip(c[-4:], c[-3:])}
+
+    def ff(k):
+        seg = SegmentResult(segment_column="month", metric_column="mrr", aggregation="mean",
+                            results=[{"name": n, "value": float(x) * k} for n, x in right.items()])
+        return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert ff(1.0)["false"] == 0 and ff(1.07)["false"] == 3

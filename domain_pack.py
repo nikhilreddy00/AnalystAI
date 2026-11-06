@@ -1534,6 +1534,8 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
                 series[series.index <= pd.Period(first, freq=axis.freq)] = float("nan")
             return series
         inside_window = [b for b in out if b > lo]
+        if not inside_window:   # no month of moves (one month of data): unknown, never $0 (pass 7)
+            return None
         if by:
             return sum((out[b] for b in inside_window), pd.Series(0.0, index=groups)) \
                 if inside_window else pd.Series(0.0, index=groups)

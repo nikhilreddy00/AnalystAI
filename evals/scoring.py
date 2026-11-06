@@ -55,7 +55,7 @@ def _summary_values(df: pd.DataFrame, column: str, stat: str) -> list[float]:
     """`stat` of `column` over each population production summarises (every row, or the rows
     its tiles count: domain_pack.rows_for). THE rule of eda_stat and false_findings."""
     return [float(s.count() if stat == "count" else getattr(s, stat)())
-            for s in (rows[column].dropna() for rows in _populations(df, column))]
+            for s in (rows[column].dropna() for rows in _populations(df, column, by_group=False))]
 
 
 def _is_rate(s: pd.Series) -> bool:
@@ -111,7 +111,35 @@ def _per_entity(df: pd.DataFrame, cols: list[str], metric: str, agg: str) -> lis
     return [out]
 
 
-def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
+def _move_means(df: pd.DataFrame, cols: list[str], metric: str, agg: str) -> list[pd.Series]:
+    """A snapshot level's mean by its month, per customer who churned or joined that month (mean
+    churned MRR per churned customer: the final re-measure's saas-8, equal to truth), as the
+    ledger reads it: month-end values, a churn by its earlier value, a new one by its later."""
+    from agents.ingestion_agent import build_contract
+    from agents.utils import column_hint
+    from orchestrator.state import ConnectorType
+    if agg != "mean" or len(cols) != 1:
+        return []
+    hint = column_hint(build_contract(df, ConnectorType.CSV, {}), metric)
+    if not (hint and hint.aggregation in ("last", "first") and hint.aggregation_time == cols[0]
+            and len(hint.aggregation_by) == 1):
+        return []
+    end = pd.to_datetime(df[cols[0]], errors="coerce") + pd.offsets.MonthEnd(0)
+    v = df.assign(_t=end).pivot_table(index=hint.aggregation_by[0], columns="_t", values=metric,
+                                      aggfunc="sum").fillna(0)
+    cols_ = sorted(v.columns)
+    out = []
+    for pick in ("churn", "new"):
+        means = {}
+        for a, b in zip(cols_, cols_[1:]):
+            m = (v[a] > 0) & (v[b] == 0) if pick == "churn" else (v[a] == 0) & (v[b] > 0)
+            if m.any():
+                means[f"{b:%Y-%m}"] = (v.loc[m, a] if pick == "churn" else v.loc[m, b]).mean()
+        out.append(pd.Series(means, dtype=float))
+    return out
+
+
+def _populations(df: pd.DataFrame, metric: str, by_group: bool = True) -> list[pd.DataFrame]:
     """The rows a group value of `metric` can be computed over. A snapshot column (a
     semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
     entity's current snapshot ("seats per account" — production's latest_rows, which the agent
@@ -129,7 +157,10 @@ def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
         # a level on a spell list (MRR of each subscription): production's in-force rows
         # (utils.level_rows -> domain_pack.in_force_counted), what the brief tells the agent
         current = level_rows(df, metric, contract)
-        return [df, *([counted] if how else []), *([current] if len(current) != len(df) else [])]
+        if by_group and len(current) != len(df):   # a level by group on spell data: only who is in
+            return [current]   # force (pass 7: every row passed wrong values); a column's distribution
+        # reads every row by design (current and former: HR's rule), so a summary keeps them
+        return [df, counted] if how else [df]
     return [df, latest_rows(df, metric, contract)]
 
 
@@ -350,11 +381,9 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         if seg.aggregation not in (*_AGGS, "last", "first") or _derived_truth(seg, truth):
             continue
         agg = seg.aggregation
-        if _is_level(df, seg.metric_column) and (agg == "sum" or agg == "mean" and any(
-                pd.api.types.is_datetime64_any_dtype(df[c]) for c in cols)):
-            # a sum or mean of a level by its dates that production kept is a part of it (churned
-            # MRR by month, its mean per churned customer: analysis_agent._a_part_of); a summed
-            # level is replaced by the level before scoring
+        if agg == "sum" and _is_level(df, seg.metric_column):
+            # a sum of a level that production kept is a part of it (churned or new MRR by month:
+            # analysis_agent._a_part_of); a summed level is replaced by the level before scoring
             continue
         wants = []
         # a date column grouped by month ('2025-09'): its month, as the agent named the groups
@@ -375,7 +404,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                      and k not in want.index} if len(whole) else {}
             want = pd.concat([want, pd.Series(extra, dtype=float)]) if extra else want
             wants.append(want)
-        wants += _per_entity(df, cols, seg.metric_column, agg)
+        wants += _per_entity(df, cols, seg.metric_column, agg) + _move_means(df, cols, seg.metric_column, agg)
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
         distinct = df.groupby(cols)[seg.metric_column].nunique() if agg == "count" else pd.Series()
         distinct.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)

@@ -30,7 +30,7 @@
   "numeric_accuracy": 1.0,
   "insight_recall": 1.0,
   "false_finding_rate": 0.0,
-  "verifiable_claims": 445,
+  "verifiable_claims": 469,
   "by_domain": {
    "saas": {
     "cases": 7,
@@ -46,12 +46,12 @@
     "numeric_accuracy": 1.0,
     "insight_recall": 1.0,
     "false_finding_rate": 0.0,
-    "verifiable_claims": 445,
+    "verifiable_claims": 469,
     "model_dependent_quality": {
      "numeric_accuracy": 1.0,
      "insight_recall": 1.0,
      "false_finding_rate": 0.0,
-     "verifiable_claims": 445
+     "verifiable_claims": 469
     }
    }
   }
@@ -9457,7 +9457,7 @@
     "error": null,
     "false_findings": {
      "false": 0,
-     "verifiable": 6,
+     "verifiable": 18,
      "details": []
     },
     "builtin_only": false,
@@ -10018,7 +10018,7 @@
     "error": null,
     "false_findings": {
      "false": 0,
-     "verifiable": 6,
+     "verifiable": 18,
      "details": []
     },
     "builtin_only": false,

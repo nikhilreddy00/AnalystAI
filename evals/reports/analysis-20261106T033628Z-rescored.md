@@ -24,8 +24,8 @@ Rescored with the current scorer from `analysis-20261106T033628Z` (no new model 
 | numeric_accuracy | 1.0 |
 | insight_recall | 1.0 |
 | false_finding_rate | 0.0 |
-| verifiable_claims | 445 |
-| by_domain | {'saas': {'cases': 7, 'k_min': 3, 'k_max': 3, 'cases_passed_all_runs': 7, 'pass_rate': 1.0, 'hard_rule_violations': 0, 'hard_rules_na': 24, 'builtin_only_cases': [], 'model_dependent_passed': 7, 'model_dependent_cases': 7, 'numeric_accuracy': 1.0, 'insight_recall': 1.0, 'false_finding_rate': 0.0, 'verifiable_claims': 445, 'model_dependent_quality': {'numeric_accuracy': 1.0, 'insight_recall': 1.0, 'false_finding_rate': 0.0, 'verifiable_claims': 445}}} |
+| verifiable_claims | 469 |
+| by_domain | {'saas': {'cases': 7, 'k_min': 3, 'k_max': 3, 'cases_passed_all_runs': 7, 'pass_rate': 1.0, 'hard_rule_violations': 0, 'hard_rules_na': 24, 'builtin_only_cases': [], 'model_dependent_passed': 7, 'model_dependent_cases': 7, 'numeric_accuracy': 1.0, 'insight_recall': 1.0, 'false_finding_rate': 0.0, 'verifiable_claims': 469, 'model_dependent_quality': {'numeric_accuracy': 1.0, 'insight_recall': 1.0, 'false_finding_rate': 0.0, 'verifiable_claims': 469}}} |
 
 ## Cases
 
