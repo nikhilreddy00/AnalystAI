@@ -11,9 +11,10 @@ every agent gets guardrails, memory context, an agent card (self-knowledge), ret
 evals/tests, and evidence-backed justification; then an open-source v0.1 release.
 
 **Working rules**
-- **Phase 5.7: one domain per session**, plan mode first (expert brief from the domain expert's
-  and the builders' view, red-teamed, approved), < $5 eval spend per domain, converging audits
-  (see `docs/ROADMAP.md` Phase 5.7). Say "Domain N (<name>) done" at the end.
+- **Phase 5.7: one domain per session**, < $5 eval spend. **Plan mode is done when the plan file
+  checks off every plan-mode step of `docs/ROADMAP.md` Phase 5.7, by name**: expert brief,
+  `domain-modeling` term ledger, `codebase-design` on the shared-fix table, red-team, grill. A
+  domain prompt that omits a step does not drop it. Say "Domain N (<name>) done" at the end.
 - **Domain regression contract (every domain, never skipped; ROADMAP 5.7).** Code as a 30-year
   senior engineer would: one shared definition per rule (fix the root in the shared function,
   then add a guard in `tests/test_one_definition.py` so it can't come back), domain knowledge in
@@ -111,52 +112,10 @@ The LangGraph entry point is `ingestion`, NOT `intake`. The graph runs:
 
 This is intentional: ingestion loads data first so the intake agent has schema context (column names, row count) when parsing the user's question.
 
-### Quality Check Retry Loop (FEAT-02)
-After `insight_node`, the graph routes to either `error_node` (if `session.error_message` is set) or `quality_check_node`. The quality check inspects the report for missing/short summary, missing technical findings, or missing charts. If issues are found AND `session.quality_check_attempts < 2`, it clears the analysis state and routes back to `analysis` for one retry; the retry budget is reset to 0 at the start of every graph run inside `ingestion_node`. The node is the single source of truth for the retry decision — `route_after_quality_check` only translates "did the node clear `insight_report`?" into `analysis` vs `end`. On the commit path the node runs the review (`agents/quality_agent.py`): code checks every claim against the evidence it cites on every full run; on the first run a Haiku critic (+ a verification pass) labels what the checks can't; the report itself is never changed (flags are shown next to their claims); then it flips `overview_done`.
-
-### Errors (Phase 2)
-Agents raise typed `AgentError` subclasses (`agents/errors.py`); graph nodes route every failure through `_fail()`, which puts `exc.user_message` into `session.error_message` → `error_node` → SSE `error`. Never return empty output on failure, and never `except ...: pass` in `orchestrator/` (a test enforces it). `targeted_analysis` / `drill_down` failures also route to `error_node`.
-
-### Multi-Turn Resume
-When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps directly from ingestion to analysis. The DataFrame is re-loaded from the connector (not stored in DB).
-
-### Durable Runs (Phase 5.6a, ADR-0006)
-`POST /chat` stores a run (`memory/run_store.py`: `runs` is also the queue, `FOR UPDATE SKIP
-LOCKED`) and returns `{run_id, session_id, status}`. A worker (`python -m worker`; development
-also runs one inside the API) executes it with `orchestrator/runner.py`. The graph is
-checkpointed after every node (`durability="sync"`, thread id = **run id**, encrypted on
-Postgres), so a crash resumes at the last finished node. Lease/heartbeat are fenced by `attempt`
-(only goes up); `crashes` is the reaper's budget (3). One active run per session (the store
-enforces it); only the latest run of a session can be retried. Cancel and "retry from
-where it failed" are `POST /runs/{id}/cancel|retry`.
-- **State holds no queue, stores or DataFrame**: those live in `graph.RunEnv` (a ContextVar; tests
-  get one from the `run_env` fixture). The state names the frame by `frame_ref`; a resume reloads
-  it and checks the hash (a change fails the run). The runner seeds `pii_values` on every (re)start.
-- Every SSE event goes to `run_events` before its node's checkpoint; `GET /runs/{id}/events`
-  replays after `Last-Event-ID`. Audit B4: production API and the worker refuse to start without
-  Postgres; dev falls back to memory and `/health` says `persistent: false` (UI: "Not saved").
-
-### Workspace (Phase 5.6b, ADR-0007)
-- **One dataset per thread.** Uploads are dataset versions (`datasets`, `dataset_versions`): same
-  bytes → that version, same name + columns → new version, else a new dataset; live sources are
-  one dataset per connection, no versions. `POST /chat` names data by `dataset_version_id` /
-  `dataset_id` (never a file path); other data on an existing thread is a 409.
-- **A report is its run's own report events** (`run_store.report_events`, segmented as the UI
-  does), sealed in `runs.report_sha256` at every terminal transition; never rebuilt from the
-  session. Provenance = the run's `provenance` + `usage` events (`llm.client.run_meter`).
-  `/api/sessions/{id}/thread` returns them; the UI replays them through `handle()`.
-- **Only `POST /chat` creates a thread** (`session_store.create`); `save` is update-only and a
-  no-op on a deleted thread. Seed tests with `create`.
-- **Deletion = tombstone + purge** (`memory/retention.py`, in the worker loop): every table with
-  user data is in `PURGE_TABLES` (a test checks); `RETENTION_DAYS` (0 = forever).
-
-### Human Approval Gates
-- **Clarification**: intake detects ambiguous query → `human_approval` node → SSE `approval_required` event
-- **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend;
-  the answer reaches `cleaning_node` (Continue = keep as missing, Drop = `drop_column`, Cancel = stop)
-- Both are persisted `interrupt()`s: the run waits (`waiting_approval`) across restarts; the
-  answer (`POST /chat` with `is_approval`) resumes the same run → intake or cleaning
-  (`route_after_approval`). `rerun_overview` is a UI choice: the run ends, the UI asks again.
+### Runtime internals
+`docs/architecture.md` → "Runtime internals" (the quality-check retry loop, typed errors, multi-turn resume,
+durable runs, workspace, approval gates, how the DataFrame flows): read it before touching
+`orchestrator/`, a `memory/` store or a graph node.
 
 ---
 
@@ -164,15 +123,6 @@ where it failed" are `POST /runs/{id}/cancel|retry`.
 
 `docs/architecture.md` → "Key File Map": read it before searching for where an agent, route, store,
 connector or UI component lives, and update it in the commit that adds or moves a module.
-
-## Data Flow Through the System
-
-1. **DataFrame is NEVER stored in the database** (nor in a checkpoint: a test checks). Agents read it as parquet bytes from `session.__dict__["_df_parquet"]` (a transient attribute, not a Pydantic field).
-2. In `graph.py`, nodes keep it in `run_env.frame` (in memory, per run) and put it on the session for the agent; the checkpointed state only names it (`frame_ref`).
-3. For E2B, parquet is converted to CSV locally (`_parquet_to_csv_bytes`) because E2B's Python env lacks pyarrow.
-4. The final `analysis_node` discards `_df_parquet` — it's not needed after analysis.
-
----
 
 ## SSE Event Protocol
 
@@ -195,20 +145,11 @@ connector or UI component lives, and update it in the commit that adds or moves 
 - **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)
 - **Review**: reviewers apply `CODING_STANDARDS.md` (judgement calls; mechanical rules are tests/linters)
 - **Before pushing**: `.githooks/pre-push` runs ruff, the branch's touched tests + the contract gates, the $0 suites and the frontend checks, ~2-3 min (turn on once: `git config core.hooksPath .githooks`; `PREPUSH_FULL=1` runs the whole suite, `PREPUSH_E2E=1` adds the Playwright e2e). CI (4 shards, ~8 min) is the merge gate
-- **Tests, fast**: while iterating run only the touched test files; the golden per dataset (`pytest tests/test_suite_inputs_unchanged.py -k <dataset>`, ~3 s); the full suite once per batch, in parallel and in the background (`uv run pytest -q -n 8`, ~1m40s; CI stays serial: shared scratch PG)
+- **Tests, fast**: while iterating run only the touched test files; the golden per dataset (`pytest tests/test_suite_inputs_unchanged.py -k <dataset>`, ~3 s); the full suite once per batch, in parallel and in the background (`uv run pytest -q -n 8`, ~5 min). **Is a golden or domain_diff change only the text you meant?** `python -m evals.snapshot text <ref>` and `scripts/domain_diff.py main --show` print each change once
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
-- **Eval budget (real money, the user's prepaid credits)**: iterate with `--only <case> --k 1`; one full k=3
-  run per suite per PR, at the end; **E2E gate = k=1, then k=3 only on failing cases** (user's choice,
-  2026-10-28; a failure must be diagnosed, a pass on retry is not a diagnosis). `--max-usd` (default $2)
-  refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
-  user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
-  Per-phase costs and what drove them: `docs/agent-contract.md` → "Eval cost playbook". **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
-- **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
-  URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
-  PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
-  `pg_ctl -D <dir> -o "-p 54329 -c unix_socket_directories='' -c listen_addresses=localhost" start`, `createdb -h localhost -p 54329 -U postgres analystai_eval`. Cases: `evals/cases/sql/` (golden SQL never goes
-  in a layer's `verified_queries` or a prompt — a test checks)
-- **Evals**: `uv run python -m evals.run {analysis|e2e|sql|intake|visualization|cleaning|insight|quality|ingestion} --k 3 [--compare <prev.json>] [--exclude holdout]`; a scorer fix is re-scored for $0 with `python -m evals.run rescore <report.json>` (never re-run for it) — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch
+- **Evals (real money, the user's prepaid credits)**: before any paid run read `docs/agent-contract.md` →
+  "Running evals" (budget rules, `--max-usd`, k choices, SQL eval scratch DB, rescoring) and the
+  "Eval cost playbook".
 
 ---
 
