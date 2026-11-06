@@ -1,0 +1,11 @@
+id: intake-saas-13
+category: clear
+pipeline: production
+source:
+  dataset: saas_mrr_snapshots
+  seed: 1
+overview_done: true
+question: "What's our CAC payback period?"
+expect:
+  ask: true
+rationale: "CAC payback needs S&M spend: unsupported. Ask."

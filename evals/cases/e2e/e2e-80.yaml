@@ -1,0 +1,24 @@
+id: e2e-80
+domain: saas
+source: json
+dataset:
+  name: saas_invoices
+  seed: 1
+question: What were our total billings, and how much of it was recurring?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: billings
+  rel_tol: 0.001
+- kind: must_not_number
+  truth_key: billings_paid_only
+  rel_tol: 0.002
+- kind: must_not_number
+  truth_key: billings_with_tax
+  rel_tol: 0.002
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'JSON invoice lines: billings $5,931,219 (open, paid, uncollectible ex-tax; voids and drafts out;
+  credit notes netted), never paid-only or with tax; billings are not MRR.'

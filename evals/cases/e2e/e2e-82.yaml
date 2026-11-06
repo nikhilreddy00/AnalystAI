@@ -1,0 +1,43 @@
+id: e2e-82
+domain: saas
+dataset:
+  name: saas_mrr_snapshots
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: mrr
+  rel_tol: 0.001
+- kind: must_not_number
+  truth_key: annual_churn_monthly_x12
+  rel_tol: 0.01
+  scales: &pct
+  - - 1
+    - null
+  - - 100
+    - '%'
+  scope: report
+turns:
+- question: What is MRR by segment?
+  checks:
+  - kind: number_in_answer
+    truth_key: mrr_by_segment_now.Enterprise
+    rel_tol: 0.001
+- question: Why did MRR drop in March?
+  checks:
+  - kind: must_not_match
+    pattern: \b(?:because of|caused by|due to|driven by)\b[^.]{0,40}\b(?:price|pricing|support|tickets|onboarding|feature)
+    scope: answer
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Multi-turn on the MRR export: overview (MRR $562,608.85; annual churn never monthly × 12), MRR by
+  segment, then a why: the March drop is one Enterprise customer (Northwind) leaving, never a causal claim about
+  pricing or support.'

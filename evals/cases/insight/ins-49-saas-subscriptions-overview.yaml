@@ -1,0 +1,37 @@
+id: ins-49-saas-subscriptions-overview
+domain: saas
+category: straightforward
+label_note: 'A Stripe subscription list: MRR as of 29 Oct 2026 (a run-rate, annual plans ÷ 12), paying customers in
+  customers (never rows), logo churn on the customers paying 12 months earlier; no expansion or NRR from a list
+  of today''s prices, no revenue, LTV or benchmark verdicts.'
+dataset:
+  name: saas_subscriptions
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- customer
+- customers
+plan:
+  target_metrics:
+  - mrr
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - segmentation
+findings:
+- kind: segment
+  segment_column: segment
+  metric: mrr
+  aggregation: sum
+expect:
+  must_mention:
+  - MRR
+  - 12 months|twelve months
+  must_not_match:
+  - \b(?:MRR|ARR)\s+(?:revenue|in revenue)\b|\brevenue\s*\((?:MRR|ARR)\)
+  - \bmonthly\s+(?:logo\s+|customer\s+)?churn[^.]{0,60}(?:×|x|times)\s*12\b
+  - \b(?:LTV|CAC|payback|rule of 40)\s+(?:is|of|was)\s+[$\d]
+  - \b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile)\b[^.]{0,40}\b(?:NRR|churn|retention)\b
+  - \bexpansion (?:MRR )?(?:of|was|is) \$
+  - net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|loss ratio|headcount|attrition

@@ -1,0 +1,352 @@
+# SaaS / subscription analytics (Phase 5.7, domain 6). Three shapes, one pack:
+# - a subscription list (Stripe, Chargebee): one row per subscription, today's price only, so
+#   expansion, contraction and revenue retention are not computable from it (said);
+# - MRR snapshots (ChartMogul, Baremetrics, a warehouse model): one row per customer per month,
+#   labelled on the month's 1st; the MRR bridge and cohort retention come from these;
+# - invoice lines (Stripe): billings, never MRR.
+# MRR is a run-rate at month-ends, never recognised revenue. Headers are normalized
+# (domain_pack.normalize_header). Cited definitions and traps: docs/research/2026-11-05-saas.md
+# ([CM] ChartMogul, [STRIPE] Stripe Billing, [BM] Baremetrics, [PW] ProfitWell/Paddle,
+# [SC] SaaS Capital, [KB] KeyBanc, [A16Z]).
+domain: saas
+
+strong:
+  - {who: [customer], mrr: [mrr]}
+  - {sub: [subscription], start: [created], end: [ended_at, cancel_at, canceled_at]}
+  - {sub: [subscription], start: [created], price: [unit_amount]}
+  - {inv: [invoice], who: [customer], from: [period_start], to: [period_end]}
+signals:
+  - {who: [customer], mrr: [mrr]}
+  - {sub: [subscription], plan: [plan]}
+# Another domain's headers (all words in ONE header)
+exclude_headers: [[employee], [hire], [termination], [patient], [mrn], [admit], [discharge],
+                  [claim], [policy], [premium], [loan], [balance], [sku], [payroll], [sensor],
+                  [shipment], [diagnosis], [ticker]]
+abbreviations: {cus: customer, cust: customer, sub: subscription, subs: subscription,
+                acct: account, amt: amount, qty: quantity, inv: invoice, pct: percent}
+
+roles:
+  # The time role first: an MRR export's month (labelled on its 1st). A subscription list has
+  # none (its created and ended dates are the spell's own); an invoice file dates by invoice.
+  month:          {kind: date, headers: [month, mrr_month, snapshot_month, month_start,
+                                         billing_month, billing_date, reporting_month,
+                                         snapshot_date]}
+  created:        {kind: date, headers: [created, created_at, created_utc, start_date,
+                                         subscription_start, started_at, start,
+                                         subscription_start_date]}
+  trial_end:      {kind: date, headers: [trial_end, trial_end_date, trial_ends_at,
+                                         trial_end_utc]}
+  # the subscription's end; Stripe's canceled_at is the date a cancellation was REQUESTED
+  ended_at:       {kind: date, headers: [ended_at, ended_utc, end_date, ended, churn_date,
+                                         churned_at, cancellation_date, ended_date]}
+  canceled_at:    {kind: date, headers: [canceled_at, cancelled_at, canceled_utc, canceled_date,
+                                         cancellation_requested_at]}
+  cancel_at:      {kind: date, headers: [cancel_at, cancel_at_utc, scheduled_cancel_date,
+                                         cancel_at_period_end_date]}
+  invoice_date:   {kind: date, headers: [invoice_date, invoice_created, date_utc, invoiced_at,
+                                         invoice_created_at, finalized_at]}
+  period_start:   {kind: date, headers: [period_start, service_period_start, line_period_start,
+                                         period_start_utc]}
+  period_end:     {kind: date, headers: [period_end, service_period_end, line_period_end,
+                                         period_end_utc]}
+  customer:       {kind: id, headers: [customer_id, customer, account_id,
+                                       customer_number, company_id]}
+  subscription:   {kind: id, headers: [subscription_id, subscription]}
+  invoice:        {kind: id, headers: [invoice_id, invoice, invoice_number]}
+  plan:           {kind: category, headers: [plan, plan_name, price_name, product, product_name,
+                                             tier, plan_tier]}
+  interval:       {kind: category, headers: [interval, billing_interval, plan_interval,
+                                             billing_period, billing_cycle, recurring_interval],
+                   numbers: {day: 0.0329, daily: 0.0329, week: 0.2308, weekly: 0.2308,
+                             month: 1, monthly: 1, quarter: 3, quarterly: 3, year: 12,
+                             yearly: 12, annual: 12, annually: 12}}
+  interval_count: {kind: count, additive: false,
+                   headers: [interval_count, plan_interval_count, billing_interval_count]}
+  unit_amount:    {kind: money, additive: false,
+                   headers: [unit_amount, plan_amount, price, unit_price, plan_price,
+                             amount_per_period]}
+  quantity:       {kind: count, additive: false, headers: [quantity, seats, licenses, units]}
+  discount_pct:   {kind: rate, headers: [discount_percent, percent_off,
+                                         coupon_percent_off, discount_rate, discount]}
+  # MRR: a level (a run-rate at a date), never summed over months; added by the product from
+  # the price, seats, discount and interval when a subscription list has none
+  mrr:            {kind: money, over_time: last,
+                   headers: [mrr, monthly_recurring_revenue, mrr_amount, mrr_usd, current_mrr]}
+  amount:         {kind: money, headers: [amount, line_amount, amount_excl_tax, subtotal,
+                                          amount_excluding_tax]}
+  tax:            {kind: money, headers: [tax, tax_amount, vat, sales_tax]}
+  line_type:      {kind: category, headers: [line_type, line_item_type, item_type, type]}
+  segment:        {kind: category, headers: [segment, customer_segment, market_segment,
+                                             company_size, size_band]}
+  country:        {kind: category, headers: [country, billing_country, customer_country]}
+  currency:       {kind: currency, headers: [currency]}
+  contact_email:  {kind: text, headers: [contact_email, email, customer_email, billing_email]}
+  # a 0/1 flag of who ever churned (no date): the share of rows flagged, never a churn rate
+  churned_flag:   {kind: number, additive: false, headers: [churned, is_churned, churn_flag]}
+  status:         {kind: status, headers: [status, subscription_status, invoice_status, state]}
+
+# Every status counts as a row; void and draft invoices are no billing (red-team R6: a canceled
+# subscription stays a counted row, its end date ends it)
+status_values:
+  ok: [active, past_due, trialing, paused, canceled, cancelled, incomplete, incomplete_expired,
+       unpaid, ended, paid, open, uncollectible]
+  cancel: [void, voided, draft, deleted]
+test_marker: '(?i)^cus_test|@example\.(?:com|org|net)$|^test(?:@|\+|$|[-_ ]?\d)|@test\.'
+test_roles: [customer, contact_email]
+
+# A customer from the subscription's (paid) start to its end; a customer holds several
+# subscriptions at once (a base plan and an add-on); a returning customer has a new one.
+spell: {entity: customer, start: created, end: ended_at, paid_from: trial_end,
+        ended: [canceled, cancelled, incomplete_expired, ended], concurrent: true,
+        month_labels: true,
+        words: {start: start, end: cancellation, unknown: end_date_unknown, plural: customers,
+                after_end: rows after the customer left}}
+snapshot_key: customer
+columns:
+  mrr: {times: [unit_amount, quantity], net_of: discount_pct, over: [interval, interval_count],
+        optional: [quantity, discount_pct, interval_count]}
+marker_fields: [trial_end, ended_at, canceled_at, cancel_at, discount_pct, tax]
+
+row_labels: {sale: subscription records, cancel: void or draft invoices}
+kind_codes: {sale: counted, return: netted, refunded: reversed, cancel: voided, test: test,
+             non_product: excluded}
+overview_groups: [segment, plan, country]
+overview_kpis: [mrr, nrr, logo_churn_rate, new_mrr, churned_mrr, billings]
+
+text:
+  rows_brief: "MRR, ARR, paying customers, ARPA, the MRR movements (new, expansion, contraction, churned, reactivation), logo churn and net and gross revenue retention are given below as computed facts: use them as they are, never recount them from rows. MRR is a monthly run-rate at a date, not revenue: never call it revenue, and never sum it over months (a month's MRR is each customer's latest value that month, added over customers). On a subscription list the `mrr` column is already normalised by the product (price × seats × (1 − discount) ÷ the billing interval in months: an annual plan's price is ÷ 12): use it, never the raw price. Trials ('trialing'), paused, unpaid and incomplete subscriptions are out of MRR and customer counts; past_due stays in. A subscription converted from a trial pays from its trial_end. canceled_at is the date a cancellation was requested, not the end: a subscription ends at ended_at (a cancel_at after the latest date is a scheduled cancellation, still paying). Who is paying is already marked in columns `df` has beyond the schema: 'in_force_now' ('yes' on each subscription in force at the latest date), 'cancellation_event_date' and 'start_event_date' (a subscription's own end and start), 'cancellation_in_window', 'end_date_unknown' ('yes' on a canceled subscription with no end date: never in force). A subscription's cancellation is not a churned customer (the customer may hold another subscription or come back): churned customers, new and reactivated customers are the computed facts (a customer whose MRR went to 0 at a month-end, from 0 with no earlier payment, from 0 after an earlier one). Net revenue retention = the MRR at the latest date of the customers paying 12 months earlier ÷ their MRR then (new customers out); gross retention caps each customer at their earlier MRR; logo churn = the share of those customers not paying now. Never multiply a monthly churn rate by 12. Count customers as distinct customer ids, never rows. A partial month is named, never annualised. Invoice lines are billings (invoiced amounts excluding tax, voids and drafts out, credit notes netted, by invoice date), never MRR."
+  grain_line: "One row is a subscription, a customer's month of MRR, or an invoice line: count customers as distinct {key}, never rows."
+  unsupported_alternatives: "I can answer with what the data has: MRR, ARR and paying customers now or by month, ARPA, new, churned and reactivated customers, the MRR movements and net and gross revenue retention over the 12 months to the latest date (movements and retention need monthly MRR snapshots), logo churn, by segment, plan or country, and billings on invoice lines. Which would help?"
+  kpis_default: its MRR, subscription and invoice columns
+  causal_removed: "{n} sentence(s) saying a price, plan, feature, support or a campaign caused customers to churn or expand were removed: from observational data without a controlled comparison that can't be shown."
+  people_nouns: "customers, accounts, logos, subscribers"
+
+kpis:
+  - name: mrr
+    label: MRR
+    unit: money
+    tile: true
+    num: [[{spell: active, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: active, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+  # ARR = 12 × MRR, a run-rate at the same date [STRIPE][CM]: never bookings or revenue
+  - name: arr
+    label: ARR
+    unit: money
+    tile: true
+    num: [[{kpi: mrr, times: 12}]]
+  - name: paying_customers
+    label: Paying customers
+    unit: count
+    unit_word: customers
+    tile: true
+    num: [[{spell: active, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: active, where: [[{role: mrr, gt: 0}]]}]]
+  # ARPA: MRR ÷ paying customers (per account, never per subscription row) [CM]
+  - name: arpa
+    label: ARPA
+    unit: money
+    num: [[{spell: active, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: active, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    den: [[{spell: active, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: active, where: [[{role: mrr, gt: 0}]]}]]
+  # The MRR bridge: month-end changes per customer, summed over the 12 months to the as-of [CM]
+  - name: new_mrr
+    label: New MRR
+    unit: money
+    tile: true
+    num: [[{spell: moves, move: new, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: moves, move: new, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+  - name: expansion_mrr
+    label: Expansion MRR
+    unit: money
+    num: [[{spell: moves, move: expansion, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+  - name: contraction_mrr
+    label: Contraction MRR
+    unit: money
+    num: [[{spell: moves, move: contraction, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+  - name: churned_mrr
+    label: Churned MRR
+    unit: money
+    tile: true
+    num: [[{spell: moves, move: churn, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: moves, move: churn, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+  - name: reactivation_mrr
+    label: Reactivation MRR
+    unit: money
+    num: [[{spell: moves, move: reactivation, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: moves, move: reactivation, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+  - name: new_customers
+    label: New customers
+    unit: count
+    unit_word: customers
+    num: [[{spell: moves, move: new, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: moves, move: new, where: [[{role: mrr, gt: 0}]]}]]
+  - name: churned_customers
+    label: Churned customers
+    unit: count
+    unit_word: customers
+    num: [[{spell: moves, move: churn, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: moves, move: churn, where: [[{role: mrr, gt: 0}]]}]]
+  - name: reactivated_customers
+    label: Reactivated customers
+    unit: count
+    unit_word: customers
+    num: [[{spell: moves, move: reactivation, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: moves, move: reactivation, where: [[{role: mrr, gt: 0}]]}]]
+  # The cohort: customers paying at the window's start (12 months before the as-of) [SC]
+  - name: opening_customers
+    label: Customers 12 months earlier
+    unit: count
+    unit_word: customers
+    num: [[{spell: opening, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: opening, where: [[{role: mrr, gt: 0}]]}]]
+  - name: opening_mrr
+    label: MRR 12 months earlier
+    unit: money
+    num: [[{spell: opening, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: opening, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+  # Logo churn: of the customers paying 12 months earlier, the share not paying now (a customer
+  # who left and came back is retained) [CM][SC]; never a monthly rate × 12
+  - name: logo_churn_rate
+    label: Logo churn (12 months)
+    unit: percent
+    tile: true
+    num: [[{spell: opening, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]},
+           {spell: retained, sign: -1, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: opening, where: [[{role: mrr, gt: 0}]]}, {spell: retained, sign: -1, where: [[{role: mrr, gt: 0}]]}]]
+    den: [[{kpi: opening_customers}]]
+  # NRR / GRR: the same customers' MRR now ÷ their MRR 12 months earlier; GRR caps each customer
+  # at their earlier MRR (never above 100%) [SC][KB]
+  - name: nrr
+    label: Net revenue retention
+    unit: percent
+    tile: true
+    num: [[{spell: retained, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    den: [[{kpi: opening_mrr}]]
+  - name: grr
+    label: Gross revenue retention
+    unit: percent
+    tile: true
+    num: [[{spell: retained, sum: mrr, capped: true, where: [[{role: mrr, gt: 0}]]}]]
+    den: [[{kpi: opening_mrr}]]
+  # (new + expansion + reactivation) ÷ (contraction + churned) [research: quick ratio]
+  - name: quick_ratio
+    label: Quick ratio
+    unit: number
+    num: [[{kpi: new_mrr}, {kpi: expansion_mrr}, {kpi: reactivation_mrr}]]
+    den: [[{kpi: contraction_mrr}, {kpi: churned_mrr}]]
+  # Billings: invoiced amounts excluding tax, voids and drafts out, credit notes netted, by
+  # invoice date [STRIPE]: never MRR, never bookings
+  - name: billings
+    label: Billings
+    unit: money
+    tile: true
+    num: [[{sum: amount, where: [[{role: invoice, not_in: []}]]}]]
+  - name: recurring_share
+    label: Recurring share of billings
+    unit: percent
+    tile: true
+    num: [[{sum: amount, where: [[{role: invoice, not_in: []}, {role: line_type, in: [subscription, recurring, plan, license]}]]}]]
+    den: [[{kpi: billings}]]
+  - name: churned_share
+    label: Share of rows flagged churned
+    unit: percent
+    num: [[{sum: churned_flag}]]
+    den: [[{nunique: customer, where: [[{role: churned_flag, not_in: []}]]}]]
+
+glossary:
+  mrr: [mrr, monthly recurring revenue, recurring revenue, monthly run rate, current mrr]
+  arr: [arr, annual recurring revenue, annualized recurring revenue, annualised recurring revenue,
+        annual run rate]
+  paying_customers: [customers, paying customers, active customers, number of customers,
+                     customer count, logos, how many customers, subscribers, active subscribers]
+  arpa: [arpa, arpu, average revenue per account, average revenue per user, average mrr per
+         customer, revenue per customer]
+  new_mrr: [new mrr, new business, new business mrr, mrr from new customers]
+  expansion_mrr: [expansion, expansion mrr, upsell, upsells, upgrades, upgrade mrr]
+  contraction_mrr: [contraction, contraction mrr, downgrades, downgrade mrr]
+  churned_mrr: [churned mrr, revenue churn, mrr churn, lost mrr, churned revenue, mrr lost]
+  reactivation_mrr: [reactivation mrr, reactivation, reactivations, win backs, winbacks,
+                     returning customers]
+  new_customers: [new customers, new logos, customers won, customers acquired]
+  churned_customers: [churned customers, customers lost, lost customers, customers churned,
+                      cancellations, how many customers churned]
+  reactivated_customers: [reactivated customers, customers who came back, returned customers]
+  logo_churn_rate: [churn rate, churn, logo churn, customer churn, customer churn rate,
+                    logo churn rate, annual churn, attrition]
+  nrr: [nrr, ndr, net revenue retention, net dollar retention, net retention, net mrr retention]
+  grr: [grr, gdr, gross revenue retention, gross dollar retention, gross retention,
+        gross mrr retention]
+  quick_ratio: [quick ratio, saas quick ratio, growth efficiency]
+  billings: [billings, invoiced, billed, invoiced amount, amount billed, invoices total]
+  recurring_share: [recurring share, share recurring, recurring billings, one time fees,
+                    setup fees]
+  churned_share: [share churned, churned flag, percent flagged churned]
+  mrr_bridge: [mrr bridge, mrr movements, mrr waterfall, mrr breakdown, what drove mrr]
+  ltv: [ltv, clv, lifetime value, customer lifetime value]
+  cac: [cac, customer acquisition cost, acquisition cost, cost per acquisition]
+  cac_payback: [payback, cac payback, payback period, months to recover cac]
+  magic_number: [magic number, sales efficiency]
+  rule_of_40: [rule of 40, rule of forty]
+  recognised_revenue: [recognized revenue, recognised revenue, gaap revenue, asc 606,
+                       deferred revenue, revenue recognition, earned revenue]
+  bookings: [bookings, rpo, remaining performance obligation, contracted revenue, tcv, acv,
+             contract value]
+  usage_mrr: [usage revenue, usage based revenue, metered revenue, overage, overages]
+  cohort_curve: [cohort retention curve, retention by cohort, retention by signup month,
+                 cohort table, cohort analysis]
+  monthly_churn_annualised: [annualized churn, annualised churn, monthly churn times 12]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+definitions:
+  mrr_bridge: "The MRR bridge splits the change in MRR over the 12 months to the latest date into new, expansion, reactivation, contraction and churned MRR, each a customer's change between consecutive month-ends: MRR then + new + expansion + reactivation − contraction − churned = MRR now. Expansion and contraction need monthly MRR snapshots; a subscription list holds today's prices only."
+  monthly_churn_annualised: "An annual churn rate is measured on the customers paying 12 months earlier (logo churn). A monthly rate is never multiplied by 12: monthly churn compounds (1 − (1 − m)^12), and the 12-month cohort figure is the one reported."
+  yoy: "Year over year compares the same 12-month window (or the asked period) a year earlier."
+unsupported:
+  ltv: "a gross margin and a stable churn rate: lifetime value is margin, not MRR, ÷ churn (a16z), and this data has no margin column, so it is not computed"
+  cac: "sales and marketing spend and the customers it acquired; a subscription file has none"
+  cac_payback: "sales and marketing spend and gross margin; a subscription file has neither"
+  magic_number: "quarterly sales and marketing spend; a subscription file has none"
+  rule_of_40: "a growth rate and a profit margin (EBITDA or free cash flow); a subscription file has no profit"
+  recognised_revenue: "the revenue schedule under ASC 606 / IFRS 15 (recognised ratably over each service period, with deferred revenue): MRR is a run-rate and billings are invoices, neither is recognised revenue"
+  bookings: "signed contracts with their total value and terms (a CRM or contracts table); MRR and billings are not bookings"
+  usage_mrr: "metered usage records; usage charges are left out of MRR here (billed separately on invoice lines)"
+  cohort_curve: "a retention curve per signup month is not computed here; the 12-month cohort (customers paying 12 months earlier, their logo churn and revenue retention now) is available"
+
+caveats:
+  read_as_domain: "Read as SaaS subscription data ({kpis}). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan ÷ 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate × 12."
+  read_as_domain_weak: "Read as SaaS subscription data because it has {roles} columns; if these are not subscriptions, the SaaS figures here don't apply."
+  repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons; it is not annualised."
+  months_lt_13: "The data covers {months} months, so a 12-month cohort isn't available for a full year before it, and month-over-month changes may be seasonal."
+role_caveats:
+  canceled_at: "canceled_at is the date a cancellation was requested, not the end: a subscription keeps paying until its ended_at (or a scheduled cancel_at)."
+  cancel_at: "A cancel_at after the latest date is a scheduled cancellation: those subscriptions are still paying and counted until they end."
+  unit_amount: "On a subscription list, MRR is computed by the product from the price, seats, discount and billing interval, at today's price: expansion, contraction and revenue retention need monthly MRR snapshots and are not computed from it."
+  invoice: "Invoice lines are billings (what was invoiced, by invoice date), not MRR: an annual invoice bills 12 months at once."
+  churned_flag: "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+
+causal_triggers: [price, prices, pricing, price increase, discount, discounts, onboarding,
+                  support, tickets, support tickets, feature, features, product, plan, plans,
+                  seats, usage, nps, csm, customer success, campaign, campaigns, outreach,
+                  contract, contracts, annual plan, sales team]
+
+never_say:
+  - {pattern: '\b(?:MRR|ARR)\s+(?:revenue|in revenue)\b|\b(?:MRR|ARR|monthly recurring revenue)\b[^.]{0,40}\b(?:recogni[sz]ed|earned|GAAP)\b',
+     reason: "calls a run-rate revenue: MRR and ARR are not recognised revenue (ASC 606)"}
+  - {pattern: '\bmonthly\s+(?:logo\s+|customer\s+|revenue\s+)?churn[^.]{0,60}\b(?:×|x|times|multiplied by)\s*12\b|\b(?:annual(?:i[sz]ed)?|yearly)\s+(?:logo\s+|customer\s+)?churn[^.]{0,40}\b(?:×|x|times|multiplied by)\s*12\b',
+     reason: "annualises churn by × 12: monthly churn compounds; annual churn is measured on the 12-month cohort"}
+  - {pattern: '\b(?:LTV|CLV|lifetime value|CAC|payback(?: period)?|magic number|rule of 40)\s+(?:is|of|was|=|at|stands at)\s+[$\d]',
+     reason: "a cost or margin metric this data can't compute (no cost, margin or sales and marketing spend)"}
+  - {pattern: '\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|above (?:the )?benchmark|below (?:the )?benchmark|industry[- ]leading)\b[^.]{0,40}\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b|\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b[^.]{0,40}\b(?:is|looks|seems)\s+(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile)\b',
+     reason: "a benchmark verdict: benchmarks differ by population (ChartMogul's median NRR 82%, SaaS Capital's 101%); quote one with its source, never as a grade"}
+  - {pattern: '\bbookings\s+(?:of|were|was|totall?ed|reached)\b',
+     reason: "calls billings or MRR bookings: bookings are signed contract values this data doesn't have"}
+
+first_questions:
+  - {q: "What are MRR and ARR now, and how has MRR moved by month?", needs: [mrr]}
+  - {q: "What drove MRR over the last 12 months: new, expansion, contraction, churn?", needs: [new_mrr, expansion_mrr]}
+  - {q: "What are net and gross revenue retention, by segment?", needs: [nrr, segment]}
+  - {q: "What is logo churn over the last 12 months, and how many customers churned by month?", needs: [logo_churn_rate]}
+  - {q: "What is ARPA by plan?", needs: [arpa, plan]}
+  - {q: "How many customers did we win, lose and win back?", needs: [new_customers, reactivated_customers]}
+  - {q: "What were billings by month, and how much was recurring?", needs: [billings]}

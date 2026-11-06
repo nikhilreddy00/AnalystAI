@@ -1,0 +1,11 @@
+id: intake-saas-12
+category: clear
+pipeline: production
+source:
+  dataset: saas_mrr_snapshots
+  seed: 1
+overview_done: true
+question: "What is our customer lifetime value?"
+expect:
+  ask: true
+rationale: "LTV needs a gross margin: unsupported. Ask."

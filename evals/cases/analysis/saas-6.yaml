@@ -1,0 +1,29 @@
+id: saas-6
+domain: saas
+category: segment
+pipeline: production
+dataset:
+  name: saas_subscriptions
+  seed: 1
+question: What is our MRR by segment?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - mrr
+  segments:
+  - segment
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: segment
+  truth_key: mrr_by_segment
+  abs_tol: 1.0
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 6: MRR at the as-of (29 Oct 2026) from the product''s normalised mrr column (annual ÷ 12, seats,
+  discount); trials, paused, incomplete, test accounts and EUR rows out; past_due in; canceled_at is no end.'

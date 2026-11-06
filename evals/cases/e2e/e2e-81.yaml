@@ -1,0 +1,25 @@
+id: e2e-81
+domain: saas
+source: postgres
+pg_schema: saas_live
+dataset:
+  name: saas_mrr_snapshots
+  seed: 1
+question: What is our MRR and how many paying customers do we have?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: mrr
+  rel_tol: 0.001
+- kind: number_in_answer
+  truth_key: paying_customers
+  rel_tol: 0.001
+- kind: must_not_number
+  truth_key: mrr_summed_all_months
+  rel_tol: 0.01
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Postgres table in a non-default schema (saas_live.e2e_...): MRR $562,608.85 at 31 Oct 2026, 539
+  customers; MRR is never summed over the 24 months.'

@@ -1,0 +1,11 @@
+id: intake-saas-11
+category: clear
+pipeline: production
+source:
+  dataset: saas_subscriptions
+  seed: 1
+overview_done: true
+question: "How much expansion MRR did we get last year?"
+expect:
+  ask: true
+rationale: "A subscription list holds today's prices: expansion is unsupported here. Ask."

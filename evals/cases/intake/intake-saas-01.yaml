@@ -1,0 +1,17 @@
+id: intake-saas-01
+category: clear
+pipeline: production
+source:
+  dataset: saas_subscriptions
+  seed: 1
+overview_done: true
+question: "What is our MRR?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: mrr
+rationale: "MRR at the as-of, from the normalised column."

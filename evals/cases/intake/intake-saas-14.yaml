@@ -1,0 +1,11 @@
+id: intake-saas-14
+category: clear
+pipeline: production
+source:
+  dataset: saas_mrr_snapshots
+  seed: 1
+overview_done: true
+question: "Are we meeting the rule of 40?"
+expect:
+  ask: true
+rationale: "Rule of 40 needs a profit margin: unsupported. Ask."

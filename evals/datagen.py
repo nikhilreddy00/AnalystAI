@@ -2460,6 +2460,408 @@ def make_hr_snapshots(seed: int) -> tuple[pd.DataFrame, dict]:
     return df, truth
 
 
+# ── Phase 5.7 Domain 6: SaaS / subscriptions (docs/research/2026-11-05-saas.md) ───────────────
+# Three shapes: a Stripe subscription list, a ChartMogul MRR export (one row per customer per
+# month, labelled on the 1st) and Stripe invoice lines. Truth is computed from the frame alone
+# by the rules below, never by domain_pack; every trap is asserted to move its answer.
+
+SAAS_TODAY = pd.Timestamp("2026-11-01")   # the extract date (evals pin ANALYSTAI_TODAY to it)
+_SAAS_PRICE = {"Starter": 49.0, "Growth": 199.0, "Scale": 799.0, "Analytics add-on": 99.0}
+_SAAS_MONTHS = {"month": 1, "year": 12, "week": 12 / 52}
+_SAAS_OUT = {"trialing", "paused", "incomplete", "incomplete_expired", "unpaid"}
+_SAAS_PII = ["contact_email"]
+
+
+def _month_points(lo: pd.Timestamp, hi: pd.Timestamp) -> list[pd.Timestamp]:
+    """lo, the month-ends after it up to hi, and hi (the product's window points)."""
+    ends = [min(m.end_time.normalize(), hi) for m in pd.period_range(lo.to_period("M") + 1, hi.to_period("M"), freq="M")]
+    return sorted({lo, *ends, hi})
+
+
+def _ledger_truth(values: pd.DataFrame, lo: pd.Timestamp) -> dict:
+    """Moves and cohort retention from a customer × date value frame (0 = not paying); moves are
+    summed over consecutive pairs whose later date is after lo."""
+    cols = list(values.columns)
+    out = {f"{k}_{u}": 0.0 for k in ("new", "expansion", "contraction", "churn", "reactivation")
+           for u in ("mrr", "n")}
+    for a, b in zip(cols, cols[1:]):
+        x, y = values[a], values[b]
+        prior = (values.loc[:, :a] > 0).any(axis=1)   # paid at some point up to a
+        if b <= lo:
+            continue
+        moves = {"new": ((x == 0) & (y > 0) & ~prior, y), "reactivation": ((x == 0) & (y > 0) & prior, y),
+                 "expansion": ((x > 0) & (y > x), y - x), "contraction": ((y > 0) & (y < x), x - y),
+                 "churn": ((x > 0) & (y == 0), x)}
+        for k, (m, amt) in moves.items():
+            out[f"{k}_mrr"] += float(amt[m].sum())
+            out[f"{k}_n"] += int(m.sum())
+    start, end = values[lo], values[cols[-1]]
+    cohort = start > 0
+    out.update(opening_mrr=float(start[cohort].sum()), opening_customers=int(cohort.sum()),
+               nrr=float(end[cohort].sum() / start[cohort].sum()),
+               grr=float(end[cohort].clip(upper=start[cohort]).sum() / start[cohort].sum()),
+               logo_churn_rate=float((end[cohort] == 0).mean()),
+               mrr=float(end.sum()), paying_customers=int((end > 0).sum()))
+    return out
+
+
+def _subs_values(df: pd.DataFrame, points, *, mrr_col="mrr_true", start="paid_start", end="ended_at",
+                 keep=None) -> pd.DataFrame:
+    """Each customer's MRR at each point from subscription rows: in force when started by t,
+    its end blank or after t, and never a canceled row with no end date."""
+    d = df if keep is None else df[keep]
+    s, e = pd.to_datetime(d[start]), pd.to_datetime(d[end])
+    undated = d["status"].eq("canceled") & e.isna()
+    cols = {}
+    for t in points:
+        ok = (s <= t) & (e.isna() | (e > t)) & ~undated
+        cols[t] = d.loc[ok].groupby("customer_id")[mrr_col].sum()
+    return pd.DataFrame(cols).reindex(columns=points).fillna(0.0)
+
+
+def make_saas_subscriptions(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A Stripe subscription export: one row per subscription (420 customers, ~640 rows).
+
+    Traps: an annual price summed as MRR (1), seats ignored (2), the discount ignored (3),
+    trials counted (4), paused counted (5), past_due dropped (6), canceled_at (the request) read
+    as the end (7), a reactivation counted as new (8), an add-on dropped by keeping one
+    subscription per customer (9), a future cancel_at counted as churn (10), canceled with no
+    date (11), test accounts (12), the partial month (13), a EUR minority (14), rows ≠
+    customers (15)."""
+    rng = np.random.default_rng(seed)
+    T = SAAS_TODAY
+    seg_plan = {"SMB": ["Starter", "Growth"], "Mid": ["Growth"], "Enterprise": ["Scale"]}
+    rows = []
+
+    def add(cust, plan, created, *, seg, country, cur, email, interval="month", count=1,
+            qty=1, disc=None, status="active", trial_end=None, canceled_at=None, cancel_at=None,
+            ended_at=None):
+        price = _SAAS_PRICE[plan] * count if interval == "month" else _SAAS_PRICE[plan] * 12 * 0.85
+        rows.append({"customer_id": cust, "subscription_id": f"sub_{len(rows) + 1:05d}",
+                     "plan": plan, "interval": interval, "interval_count": count,
+                     "unit_amount": round(price, 2), "quantity": qty, "discount_pct": disc,
+                     "status": status, "created": created, "trial_end": trial_end,
+                     "canceled_at": canceled_at, "cancel_at": cancel_at, "ended_at": ended_at,
+                     "segment": seg, "country": country, "currency": cur, "contact_email": email})
+
+    def day(lo, hi):
+        lo, hi = pd.Timestamp(lo), pd.Timestamp(hi)
+        return lo + pd.Timedelta(days=int(rng.integers(0, max((hi - lo).days, 1))))
+
+    for i in range(420):
+        cust = f"cus_{i + 1:05d}"
+        seg = rng.choice(["SMB", "Mid", "Enterprise"], p=[0.6, 0.3, 0.1])
+        eur = rng.random() < 0.08
+        country = rng.choice(["DE", "FR"]) if eur else rng.choice(["US", "US", "US", "CA", "GB"])
+        common = dict(seg=seg, country=country, cur="EUR" if eur else "USD",
+                      email=f"billing{i + 1}@customer{i + 1}.io")
+        plan = str(rng.choice(seg_plan[seg]))
+        created = day("2023-01-01", "2026-10-28")
+        r = rng.random()
+        interval, count = ("year", 1) if r < 0.25 else ("month", 3) if r < 0.35 else ("month", 1)
+        qty = 1 if plan == "Starter" else int(rng.integers(2, 16)) if plan == "Growth" else int(rng.integers(10, 61))
+        disc = float(rng.choice([0.1, 0.2, 0.25])) if rng.random() < 0.15 else None
+        kw = dict(interval=interval, count=count, qty=qty, disc=disc, **common)
+        trial = rng.random() < 0.4
+        trial_end = created + pd.Timedelta(days=14) if trial else None
+        if trial and trial_end > T:
+            add(cust, plan, created, status="trialing", trial_end=trial_end, **kw)
+            continue
+        if trial and rng.random() < 0.25:   # never converted: no paying day at all
+            add(cust, plan, created, status="canceled", trial_end=trial_end,
+                canceled_at=trial_end - pd.Timedelta(days=2), ended_at=trial_end, **kw)
+            continue
+        paid = trial_end or created
+        status, canceled_at, cancel_at, ended_at = "active", None, None, None
+        if rng.random() < 0.32 and (T - paid).days > 45:
+            ended_at = day(paid + pd.Timedelta(days=30), T - pd.Timedelta(days=1))
+            canceled_at = ended_at - pd.Timedelta(days=int(rng.integers(3, 29)))   # 7
+            status = "canceled"
+        else:
+            u = rng.random()
+            status = "past_due" if u < 0.05 else "paused" if u < 0.08 else "active"
+            if status == "active" and rng.random() < 0.05:   # 10: cancels at its period end, later
+                cancel_at = T + pd.Timedelta(days=int(rng.integers(5, 60)))
+                canceled_at = day(T - pd.Timedelta(days=40), T - pd.Timedelta(days=1))
+        add(cust, plan, created, status=status, trial_end=trial_end, canceled_at=canceled_at,
+            cancel_at=cancel_at, ended_at=ended_at, **kw)
+        if ended_at is not None and rng.random() < 0.2:   # 8: comes back later
+            back = ended_at + pd.Timedelta(days=int(rng.integers(45, 200)))
+            if back < T - pd.Timedelta(days=5):
+                add(cust, plan, back, **kw)
+        if plan in ("Growth", "Scale") and ended_at is None and rng.random() < 0.15:   # 9
+            start = created + pd.Timedelta(days=int(rng.integers(60, 300)))
+            if start < T - pd.Timedelta(days=5):
+                end = day(start + pd.Timedelta(days=20), T - pd.Timedelta(days=1)) \
+                    if rng.random() < 0.4 and (T - start).days > 25 else None
+                add(cust, "Analytics add-on", start, status="canceled" if end else "active",
+                    ended_at=end, canceled_at=end - pd.Timedelta(days=5) if end else None,
+                    **{**kw, "interval": "month", "count": 1, "qty": 1, "disc": None})
+    for j in range(5):   # 11: canceled, no date written
+        add(f"cus_{j * 37 + 3:05d}x", "Starter", pd.Timestamp("2025-03-01") + pd.Timedelta(days=9 * j),
+            seg="SMB", country="US", cur="USD", email=f"ops{j}@nodate{j}.io", status="canceled")
+    for j in range(6):   # 12: the vendor's own test accounts
+        add(f"cus_test_{j + 1:02d}", "Growth", pd.Timestamp("2025-06-01") + pd.Timedelta(days=20 * j),
+            seg="SMB", country="US", cur="USD", email=f"qa+{j}@example.com", qty=5)
+    for j in range(6):   # failed first payments: never active
+        c = pd.Timestamp("2026-10-01") + pd.Timedelta(days=3 * j)
+        add(f"cus_{900 + j:05d}", "Starter", c, seg="SMB", country="US", cur="USD",
+            email=f"x{j}@incomplete{j}.io", status="incomplete_expired",
+            ended_at=c + pd.Timedelta(days=1))
+    df = pd.DataFrame(rows)
+    for c in ("created", "trial_end", "canceled_at", "cancel_at", "ended_at"):
+        df[c] = pd.to_datetime(df[c]).dt.strftime("%Y-%m-%d")
+    df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df, _saas_subscriptions_truth(df)
+
+
+def _saas_subscriptions_truth(df: pd.DataFrame) -> dict:
+    """Every KPI and its naive twin, from the frame alone (rules in make_saas_subscriptions)."""
+    d = df.copy()
+    months = d["interval"].map(_SAAS_MONTHS) * d["interval_count"].fillna(1)
+    d["mrr_true"] = d["unit_amount"] * d["quantity"].fillna(1) * (1 - d["discount_pct"].fillna(0)) / months
+    d["paid_start"] = pd.concat([pd.to_datetime(d["created"]), pd.to_datetime(d["trial_end"])],
+                                axis=1).max(axis=1)
+    test = d["customer_id"].str.startswith("cus_test") | d["contact_email"].str.endswith("@example.com")
+    usd = d["currency"].eq("USD")
+    keep = ~d["status"].isin(_SAAS_OUT) & ~test & usd
+    dates = pd.concat([pd.to_datetime(d[c]) for c in ("created", "ended_at", "trial_end")])
+    as_of = dates[dates <= SAAS_TODAY].max()
+    lo = as_of - pd.DateOffset(months=12)
+    first = pd.to_datetime(d["ended_at"]).min()
+    pts = sorted({*_month_points(first - pd.Timedelta(days=1), lo), *_month_points(lo, as_of)})
+    v = _subs_values(d, pts, keep=keep)
+    t = {"as_of": f"{as_of:%Y-%m-%d}", "cohort_date": f"{lo:%Y-%m-%d}", "row_count": len(d),
+         "pii_columns": _SAAS_PII, **_ledger_truth(v, lo)}
+    t["arr"] = 12 * t["mrr"]
+    t["arpa"] = t["mrr"] / t["paying_customers"]
+    t["customers_in_file"] = int(d["customer_id"].nunique())
+    t["test_customers"] = int(d.loc[test, "customer_id"].nunique())
+    t["eur_customers_paying"] = int(_subs_values(d, [as_of], keep=~d["status"].isin(_SAAS_OUT)
+                                                 & ~test & ~usd)[as_of].gt(0).sum())
+    t["scheduled_cancels"] = int(pd.to_datetime(d["cancel_at"]).gt(as_of).sum())
+    t["partial_month"] = f"{as_of:%b %Y}" if as_of != as_of + pd.offsets.MonthEnd(0) else None
+    seg_at = d[keep].groupby("customer_id")["segment"].first()
+    end = v[as_of]
+    t["mrr_by_segment"] = {k: float(x) for k, x in end.groupby(seg_at.reindex(end.index)).sum().items()}
+    s_, e_ = d["paid_start"], pd.to_datetime(d["ended_at"])
+    now_rows = keep & (s_ <= as_of) & (e_.isna() | (e_ > as_of)) & ~(d["status"].eq("canceled") & e_.isna())
+    t["mrr_by_plan"] = {k: float(x) for k, x in d[now_rows].groupby("plan")["mrr_true"].sum().items()}
+    seg_lo = d[keep].sort_values("created").groupby("customer_id")["segment"].first()
+    cohort = v[lo] > 0
+    t["logo_churn_by_segment"] = {k: float((v.loc[ids, as_of] == 0).mean()) for k, ids in
+                                  seg_lo.reindex(v.index[cohort]).groupby(seg_lo.reindex(v.index[cohort])).groups.items()}
+    # naive twins
+    active_now = keep & d["ended_at"].isna() & ~(d["status"].eq("canceled"))
+    t["mrr_annual_not_normalised"] = float((d.loc[active_now, "unit_amount"] * d.loc[active_now, "quantity"].fillna(1)
+                                            * (1 - d.loc[active_now, "discount_pct"].fillna(0))
+                                            / d.loc[active_now, "interval_count"].fillna(1)).sum())   # 1
+    t["mrr_no_quantity"] = float((d.loc[active_now, "unit_amount"] * (1 - d.loc[active_now, "discount_pct"].fillna(0))
+                                  / months[active_now]).sum())                                             # 2
+    t["mrr_no_discount"] = float((d.loc[active_now, "unit_amount"] * d.loc[active_now, "quantity"].fillna(1)
+                                  / months[active_now]).sum())                                             # 3
+    with_trials = ~d["status"].isin(_SAAS_OUT - {"trialing", "paused"}) & ~test & usd
+    t["mrr_with_trials_and_paused"] = float(_subs_values(d.assign(paid_start=d["created"]), [as_of],
+                                                         keep=with_trials)[as_of].sum())                   # 4 5
+    t["mrr_without_past_due"] = float(_subs_values(d, [as_of], keep=keep & ~d["status"].eq("past_due"))[as_of].sum())  # 6
+    v7 = _subs_values(d, pts, keep=keep, end="canceled_at")
+    t["churned_by_canceled_at"] = _ledger_truth(v7, lo)["churn_n"]                                        # 7
+    t["new_counting_reactivations"] = t["new_n"] + t["reactivation_n"]                                    # 8
+    one = d[keep].sort_values("created").groupby("customer_id").tail(1)
+    t["mrr_one_subscription_each"] = float(_subs_values(d.loc[one.index], [as_of])[as_of].sum())          # 9
+    t["churn_counting_cancel_at"] = t["churn_n"] + int((keep & pd.to_datetime(d["cancel_at"]).gt(as_of)).sum())  # 10
+    t["mrr_with_test_and_eur"] = float(_subs_values(d, [as_of], keep=~d["status"].isin(_SAAS_OUT))[as_of].sum())  # 12 14
+    t["customers_as_rows"] = len(d)                                                                       # 15
+    m = t["mrr"]
+    for k in ("mrr_annual_not_normalised", "mrr_no_quantity", "mrr_no_discount", "mrr_with_trials_and_paused",
+              "mrr_without_past_due", "mrr_one_subscription_each", "mrr_with_test_and_eur"):
+        assert abs(t[k] / m - 1) > 0.01, (k, t[k], m)
+    assert t["churned_by_canceled_at"] != t["churn_n"] or t["churn_counting_cancel_at"] != t["churn_n"]
+    assert t["reactivation_n"] >= 3 and t["scheduled_cancels"] >= 3 and t["test_customers"] == 6
+    assert t["customers_as_rows"] > 1.3 * t["paying_customers"]
+    assert (d["status"].eq("canceled") & d["ended_at"].isna()).sum() == 5                                 # 11
+    return t
+
+
+def make_saas_mrr_snapshots(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A ChartMogul-style MRR export: one row per paying customer per month, labelled on the 1st
+    (Nov 2024 .. Oct 2026). Traps: MRR summed over months (1), a missing month is a churn (2),
+    expansion and contraction (3), a big-logo churn month (4: Northwind, Mar 2026), period NRR
+    vs cohort NRR (5), uncapped GRR (6), monthly churn × 12 (7), segment movers (8), the as-of
+    read from the 1st-of-month label (9)."""
+    rng = np.random.default_rng(seed)
+    labels = pd.period_range("2024-11", "2026-10", freq="M")
+    band = {"SMB": (50, 300), "Mid": (300, 1500), "Enterprise": (1500, 8000)}
+    churn_p = {"SMB": 0.03, "Mid": 0.015, "Enterprise": 0.007}
+    state: dict[str, dict] = {}
+    gone: set[str] = set()
+    n = 0
+
+    def new(seg):
+        nonlocal n
+        n += 1
+        state[f"C{n:04d}"] = {"seg": seg, "mrr": float(rng.uniform(*band[seg])),
+                              "country": str(rng.choice(["US", "US", "GB", "DE", "CA"]))}
+
+    for _ in range(300):
+        new(str(rng.choice(list(band), p=[0.6, 0.3, 0.1])))
+    state["C9001"] = {"seg": "Enterprise", "mrr": 40_000.0, "country": "US", "name": "Northwind"}
+    movers = list(state)[:6]
+    rows = []
+    for i, m in enumerate(labels):
+        if i:
+            for c in list(state):
+                s = state[c]
+                if c == "C9001":
+                    if m == pd.Period("2026-03", "M"):
+                        gone.add(c)
+                        del state[c]
+                    continue
+                if rng.random() < churn_p[s["seg"]]:
+                    gone.add(c)
+                    del state[c]
+                    continue
+                r = rng.random()
+                if r < 0.05:
+                    s["mrr"] *= rng.uniform(1.1, 1.5)
+                elif r < 0.075:
+                    s["mrr"] *= rng.uniform(0.6, 0.9)
+            for c in [c for c in movers if c in state and m == pd.Period("2026-05", "M")]:
+                state[c]["seg"], state[c]["mrr"] = "Mid", state[c]["mrr"] * 2   # 8
+            for c in [c for c in sorted(gone) if rng.random() < 0.03 and c != "C9001"]:
+                gone.discard(c)
+                state[c] = {"seg": "SMB", "mrr": float(rng.uniform(*band["SMB"])), "country": "US"}
+            for _ in range(int(rng.integers(12, 22))):
+                new(str(rng.choice(list(band), p=[0.65, 0.28, 0.07])))
+        for c, s in state.items():
+            mrr = round(s["mrr"], 2)
+            plan = "Starter" if mrr < 300 else "Growth" if mrr < 1500 else "Scale"
+            rows.append({"month": m.start_time.strftime("%Y-%m-%d"), "customer_id": c, "mrr": mrr,
+                         "plan": plan, "segment": s["seg"], "country": s["country"]})
+    df = pd.DataFrame(rows)
+    return df, _saas_snapshots_truth(df)
+
+
+def _saas_snapshots_truth(df: pd.DataFrame) -> dict:
+    """The MRR export's KPIs: a label means its month; month-end values by customer."""
+    end_of = pd.to_datetime(df["month"]) + pd.offsets.MonthEnd(0)
+    v = df.assign(_t=end_of).pivot_table(index="customer_id", columns="_t", values="mrr",
+                                         aggfunc="sum").fillna(0.0)
+    as_of = min(end_of.max(), SAAS_TODAY)
+    lo = as_of - pd.DateOffset(months=12)
+    v = v.reindex(columns=sorted(v.columns))
+    t = {"as_of": f"{as_of:%Y-%m-%d}", "cohort_date": f"{lo:%Y-%m-%d}", "row_count": len(df),
+         "pii_columns": [], **_ledger_truth(v, lo)}
+    t["arr"] = 12 * t["mrr"]
+    last = df[end_of == end_of.max()]
+    t["mrr_by_segment_now"] = {k: float(x) for k, x in last.groupby("segment")["mrr"].sum().items()}
+    seg_lo = df[end_of == lo].set_index("customer_id")["segment"]
+    cohort = v[lo] > 0
+    t["nrr_by_segment_at_cohort"] = {
+        s: float(v.loc[ids, as_of].sum() / v.loc[ids, lo].sum())
+        for s, ids in seg_lo[cohort.reindex(seg_lo.index, fill_value=False)].groupby(seg_lo).groups.items()}
+    pairs = list(zip(v.columns, v.columns[1:]))
+    churn_by_month = {f"{b:%Y-%m}": float(v[a][(v[a] > 0) & (v[b] == 0)].sum()) for a, b in pairs}
+    t["churned_mrr_by_month"] = churn_by_month
+    big = max(churn_by_month, key=churn_by_month.get)
+    t["biggest_churn_month"] = big
+    t["northwind_share_of_big_month"] = 40_000.0 / churn_by_month[big] if big == "2026-03" else 0.0
+    rates = {f"{b:%Y-%m}": float(((v[a] > 0) & (v[b] == 0)).sum() / (v[a] > 0).sum()) for a, b in pairs if b > lo}
+    t["monthly_logo_churn_by_month"] = rates
+    t["monthly_logo_churn_avg"] = float(np.mean(list(rates.values())))
+    t["churned_mrr_by_month_window"] = {k: x for k, x in churn_by_month.items() if k in rates}
+    # naive twins
+    t["mrr_summed_all_months"] = float(df["mrr"].sum())                                         # 1
+    t["nrr_uncapped_as_grr"] = t["nrr"]                                                        # 6
+    t["nrr_period_with_new"] = float(t["mrr"] / t["opening_mrr"])                             # 5
+    t["annual_churn_monthly_x12"] = 12 * t["monthly_logo_churn_avg"]                          # 7
+    t["as_of_from_label"] = df["month"].max()                                                  # 9
+    assert t["mrr_summed_all_months"] > 15 * t["mrr"]
+    assert abs(t["nrr_period_with_new"] - t["nrr"]) > 0.03                                    # 5
+    assert t["nrr"] - t["grr"] > 0.03                                                          # 3 6
+    assert abs(t["annual_churn_monthly_x12"] - t["logo_churn_rate"]) > 0.02                   # 7
+    assert big == "2026-03" and t["northwind_share_of_big_month"] > 0.5                       # 4
+    assert t["as_of"] == "2026-10-31" and t["as_of_from_label"] == "2026-10-01"               # 9
+    return t
+
+
+def make_saas_invoices(seed: int) -> tuple[pd.DataFrame, dict]:
+    """Stripe invoice lines, Oct 2025 .. Oct 2026 (billings, never MRR). Traps: paid-only read
+    as billings (1), tax included (2), the service period start used as the date (3), voids (4),
+    an annual invoice read as a month's MRR (5), setup fees read as recurring (6)."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for i in range(240):
+        cust = f"cus_{i + 1:05d}"
+        annual = rng.random() < 0.25
+        price = float(rng.choice([49, 199, 799])) * int(rng.integers(1, 12))
+        start = pd.Timestamp("2025-10-01") + pd.DateOffset(months=int(rng.integers(0, 6)))
+        setup = rng.random() < 0.35
+        k = 0
+        period = start
+        while period <= pd.Timestamp("2026-10-01"):
+            created = period - pd.Timedelta(days=int(rng.integers(1, 6)))   # billed in advance
+            inv = f"in_{i + 1:04d}{k:03d}"
+            amount = price * 12 * 0.85 if annual else price
+            end = period + (pd.DateOffset(years=1) if annual else pd.DateOffset(months=1))
+            lines = [("subscription", amount)]
+            if setup and k == 0:
+                lines.append(("setup", 1500.0))
+            if not annual and rng.random() < 0.3:
+                lines.append(("usage", float(rng.integers(10, 200))))
+            if rng.random() < 0.04:
+                lines.append(("credit_note", -float(rng.integers(10, 100))))
+            u = rng.random()
+            status = "void" if u < 0.03 else "uncollectible" if u < 0.05 else \
+                "open" if (u < 0.12 and created > pd.Timestamp("2026-08-01")) else "paid"
+            if created > pd.Timestamp("2026-10-28"):
+                status = "draft"
+            for lt, a in lines:
+                rows.append({"invoice_id": inv, "customer_id": cust, "invoice_date": created,
+                             "line_type": lt, "amount": round(a, 2), "tax": round(a * 0.08, 2),
+                             "period_start": period, "period_end": end, "status": status,
+                             "currency": "USD"})
+            k += 1
+            period = end
+    df = pd.DataFrame(rows)
+    for c in ("invoice_date", "period_start", "period_end"):
+        df[c] = pd.to_datetime(df[c]).dt.strftime("%Y-%m-%d")
+    return df, _saas_invoices_truth(df)
+
+
+def _saas_invoices_truth(df: pd.DataFrame) -> dict:
+    """Billings: invoiced amounts ex-tax (open, paid, uncollectible), credit notes netted, by
+    invoice date; voids and drafts out."""
+    d = df.assign(_d=pd.to_datetime(df["invoice_date"]), _p=pd.to_datetime(df["period_start"]))
+    billed = d["status"].isin(["open", "paid", "uncollectible"])
+    as_of = d.loc[billed, "_d"].max()
+    m = lambda s: {f"{k}": float(x) for k, x in s.items()}   # noqa: E731
+    by_month = d[billed].groupby(d["_d"].dt.to_period("M"))["amount"].sum()
+    t = {"as_of": f"{as_of:%Y-%m-%d}", "row_count": len(d), "pii_columns": [],
+         "billings": float(d.loc[billed, "amount"].sum()),
+         "billings_by_month": m(by_month),
+         "recurring_share": float(d.loc[billed & d["line_type"].eq("subscription"), "amount"].sum()
+                                  / d.loc[billed, "amount"].sum()),
+         "credit_notes": float(d.loc[billed & d["line_type"].eq("credit_note"), "amount"].sum()),
+         "invoices": int(d.loc[billed, "invoice_id"].nunique())}
+    # naive twins
+    t["billings_paid_only"] = float(d.loc[d["status"].eq("paid"), "amount"].sum())               # 1
+    t["billings_with_tax"] = float((d.loc[billed, "amount"] + d.loc[billed, "tax"]).sum())      # 2
+    t["billings_by_period_month"] = m(d[billed].groupby(d["_p"].dt.to_period("M"))["amount"].sum())  # 3
+    t["billings_with_voids"] = float(d.loc[~d["status"].eq("draft"), "amount"].sum())           # 4
+    t["recurring_share_with_setup"] = float(d.loc[billed & d["line_type"].isin(["subscription", "setup"]), "amount"].sum()
+                                            / d.loc[billed, "amount"].sum())                    # 6
+    b = t["billings"]
+    assert abs(t["billings_paid_only"] / b - 1) > 0.02 and abs(t["billings_with_tax"] / b - 1) > 0.05
+    assert abs(t["billings_with_voids"] / b - 1) > 0.01
+    assert t["recurring_share_with_setup"] - t["recurring_share"] > 0.005
+    diff = sum(abs(t["billings_by_month"].get(k, 0) - x) for k, x in t["billings_by_period_month"].items())
+    assert diff > 0.2 * b                                                                         # 3
+    annual = d[billed & d["line_type"].eq("subscription")]
+    assert (annual["amount"] > 5_000).any()                                                       # 5
+    return t
+
+
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
@@ -2473,7 +2875,8 @@ DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mi
             "member_months": make_member_months,
             "policies": make_policies, "loss_run": make_loss_run,
             "hr_roster": make_hr_roster, "hr_roster_onerow": make_hr_roster_onerow,
-            "hr_snapshots": make_hr_snapshots}
+            "hr_snapshots": make_hr_snapshots, "saas_subscriptions": make_saas_subscriptions,
+            "saas_mrr_snapshots": make_saas_mrr_snapshots, "saas_invoices": make_saas_invoices}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

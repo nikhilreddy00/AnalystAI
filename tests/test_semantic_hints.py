@@ -33,7 +33,8 @@ def test_one_matching_table_gives_its_hints():
 
 
 def test_no_match_leaves_the_old_datasets_alone():
-    for name in ("sales", "subscriptions", "simpson", "mixed_dates"):
+    # subscriptions reads as the SaaS pack since Domain 6 (MRR is a level there)
+    for name in ("sales", "simpson", "mixed_dates"):
         c = _contract(datagen.make(name, 1)[0])
         assert not any(x.aggregation or x.unit for x in c.columns if x.name != "revenue"), name
 

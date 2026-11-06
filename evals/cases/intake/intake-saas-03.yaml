@@ -1,0 +1,18 @@
+id: intake-saas-03
+category: clear
+pipeline: production
+source:
+  dataset: saas_mrr_snapshots
+  seed: 1
+overview_done: true
+question: "What is our net dollar retention by segment?"
+expect:
+  ask: false
+  intent_any:
+  - top_n
+  - segment_compare
+  params:
+    kpi: nrr
+  columns:
+    by: segment
+rationale: "NDR is NRR (glossary)."

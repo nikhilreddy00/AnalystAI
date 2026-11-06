@@ -2022,10 +2022,11 @@ def test_a_packs_trend_has_year_over_year_when_the_same_month_last_year_is_there
     jan26, jan25 = tot[pd.Period("2026-01")], tot[pd.Period("2025-01")]
     assert t["YoY"]["pct_change"] == round((jan26 / jan25 - 1) * 100, 2)
     assert "trend:Lineitem price:YoY" in g["result"]["builtin"]
-    # no pack, no new evidence: 30 months of SaaS billing keeps MoM only
+    # 30 months of SaaS billing: a pack's evidence since Domain 6 (it read as no domain before
+    # and kept MoM only), so its YoY is built too
     s = _gen("subscriptions")
     g = _months_for(s, "billing_date", "mrr")
-    assert {t["period"] for t in g["result"]["trends"]} == {"MoM"}
+    assert {t["period"] for t in g["result"]["trends"]} == {"MoM", "YoY"}
 
 
 def test_an_order_level_field_is_never_called_missing_in_the_evidence():

@@ -1,0 +1,36 @@
+id: ins-50-saas-mrr-overview
+domain: saas
+category: straightforward
+label_note: 'A ChartMogul-style MRR export: MRR at 31 Oct 2026 (never summed over months), the bridge over the 12
+  months to it, NRR and GRR on the customers paying on 31 Oct 2025, the March 2026 drop as one Enterprise
+  customer leaving (described, never caused by price or support).'
+dataset:
+  name: saas_mrr_snapshots
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- customer
+- customers
+plan:
+  target_metrics:
+  - mrr
+  segments:
+  - segment
+  analysis_types:
+  - eda
+  - segmentation
+findings:
+- kind: segment
+  segment_column: segment
+  metric: mrr
+  aggregation: sum
+expect:
+  must_mention:
+  - retention
+  - 12 months|twelve months
+  must_not_match:
+  - \b(?:MRR|ARR)\s+(?:revenue|in revenue)\b|\brevenue\s*\((?:MRR|ARR)\)
+  - \bmonthly\s+(?:logo\s+|customer\s+)?churn[^.]{0,60}(?:×|x|times)\s*12\b
+  - (?:price|pricing|support|tickets|onboarding) (?:caused|drove|drives|led to)
+  - \b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile)\b[^.]{0,40}\b(?:NRR|churn|retention)\b
+  - net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|loss ratio|headcount|attrition

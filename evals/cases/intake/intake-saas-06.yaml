@@ -1,0 +1,17 @@
+id: intake-saas-06
+category: clear
+pipeline: production
+source:
+  dataset: saas_mrr_snapshots
+  seed: 1
+overview_done: true
+question: "How much MRR did we lose to churn?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: churned_mrr
+rationale: "Revenue churn = churned MRR (a move), never logo churn."
