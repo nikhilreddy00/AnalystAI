@@ -6,6 +6,8 @@ leaves a checks-only review that says so."""
 import asyncio
 import json
 
+import pytest
+
 import yaml
 
 from agents.quality_agent import _SYSTEM, check_claims, report_claims, run_quality_check
@@ -310,3 +312,18 @@ def test_one_sentence_rule_and_one_not_asserted_set_for_every_claim_check():
     assert guardrails.claim_causal_overreach(s, [], ["promo"]) is None
     assert guardrails.claim_profit_without_cost("Margins fell before the holiday.", False)
     assert guardrails.claim_profit_without_cost("Margin cannot be computed: there is no cost.", False) is None
+
+
+@pytest.mark.parametrize("domain, trigger", [("retail", "promotion"), ("banking", "rate cut"),
+                                             ("healthcare", "treatment"), ("insurance", "rating factor"),
+                                             ("hr", "salary"), ("saas", "support")])
+def test_an_investigation_is_no_causal_claim(domain, trigger):
+    """Review fixes: 'Investigate accounts with 7 support tickets to understand what drives
+    high-ticket months' was flagged as saying support caused a change. Asking what drives
+    something is no claim; saying it drives something still is, in every domain."""
+    from domain_pack import pack_for
+    triggers = [*pack_for(domain).causal_triggers, trigger]
+    ask = f"Investigate accounts with a {trigger} to understand what drives high months."
+    assert claim_causal_overreach(ask, [], triggers) is None
+    assert claim_causal_overreach(f"Explore which {trigger} levels drive churn.", [], triggers) is None
+    assert claim_causal_overreach(f"The {trigger} drives higher volumes.", [], triggers)

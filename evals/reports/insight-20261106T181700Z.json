@@ -1,0 +1,560 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261106T181700Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "b4a8b54",
+  "started_at": "20261106T181700Z",
+  "only": "ins-16",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0171,
+  "latency_p50_s": 14.6,
+  "latency_p95_s": 14.6,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": null,
+  "must_not": null,
+  "contradictions_named": null,
+  "hedged": 1.0,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": 1.0,
+  "pass_rate_by_category": {
+   "contradictory": 1.0
+  }
+ },
+ "runs": {
+  "ins-16-tickets-not-significant-holdout": [
+   {
+    "checks": [
+     {
+      "kind": "hedge",
+      "ok": true,
+      "detail": "hedged"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": true,
+    "output": {
+     "report": {
+      "executive_summary": "Pro and Basic accounts file nearly the same number of support tickets, and the difference could easily be chance. Pro accounts average 3.38 support tickets and Basic accounts average 3.17, a gap too small to distinguish from random variation in this dataset. With only 20 rows, all results here are uncertain and should be treated as preliminary.",
+      "technical_findings": [
+       "mean support_tickets by plan (2 groups) (n = 20; low confidence: only 20 rows)",
+       "Welch's t-test: support_tickets by plan (n = 20; low confidence: only 20 rows)",
+       "support_tickets: median 3.00, mean 3.25, range 0 to 7.00 (n = 20; low confidence: only 20 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Collect more account-month records before drawing conclusions about plan-based ticket volume differences.",
+        "reasoning": "Current sample is too small to detect a real difference even if one exists.",
+        "metric_impact": "Current sample is too small to detect a real difference even if one exists."
+       },
+       {
+        "priority": 2,
+        "action": "Investigate accounts with 7 support tickets to understand what drives high-ticket months.",
+        "reasoning": "Outliers may skew averages and mask meaningful patterns within each plan tier.",
+        "metric_impact": "Outliers may skew averages and mask meaningful patterns within each plan tier."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure. The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Does ticket volume vary by month or season, and does that pattern differ between Pro and Basic accounts?",
+       "Are a small number of accounts responsible for the highest ticket counts, and do they cluster in one plan tier?",
+       "Do accounts that file more tickets also show different renewal or churn behaviour?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Final dataset: 20 rows (started with 20). Analysis (analysis v9) computed: eda, segment, test. Descriptive statistics use the non-missing values of each column. Two-group differences are tested with Welch's t-test.",
+      "executive_view": {
+       "headline": "Pro and Basic accounts file nearly the same number of support tickets, and the difference could easily be chance.",
+       "headline_evidence_ids": [
+        "seg:plan/support_tickets",
+        "test:0"
+       ],
+       "paragraphs": [
+        {
+         "text": "Pro accounts average 3.38 support tickets and Basic accounts average 3.17, a gap too small to distinguish from random variation in this dataset.",
+         "evidence_ids": [
+          "seg:plan/support_tickets",
+          "test:0"
+         ]
+        },
+        {
+         "text": "With only 20 rows, all results here are uncertain and should be treated as preliminary.",
+         "evidence_ids": [
+          "seg:plan/support_tickets",
+          "test:0"
+         ]
+        }
+       ],
+       "findings": [
+        {
+         "text": "Pro accounts average 3.38 support tickets per account-month and Basic accounts average 3.17 \u2014 the difference is uncertain given the small sample size.",
+         "evidence_ids": [
+          "seg:plan/support_tickets"
+         ]
+        },
+        {
+         "text": "A statistical comparison of the two groups found no reliable difference; the result could easily be chance, and this is uncertain with only 20 rows.",
+         "evidence_ids": [
+          "test:0"
+         ]
+        },
+        {
+         "text": "Across all accounts, support tickets range from 0 to 7.00 with a median of 3.00, suggesting moderate spread around a low central value.",
+         "evidence_ids": [
+          "eda:support_tickets"
+         ]
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Collect more account-month records before drawing conclusions about plan-based ticket volume differences.",
+         "expected_impact": "Current sample is too small to detect a real difference even if one exists.",
+         "evidence_ids": [
+          "seg:plan/support_tickets",
+          "test:0"
+         ]
+        },
+        {
+         "action": "Investigate accounts with 7 support tickets to understand what drives high-ticket months.",
+         "expected_impact": "Outliers may skew averages and mask meaningful patterns within each plan tier.",
+         "evidence_ids": [
+          "eda:support_tickets"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Final dataset: 20 rows (started with 20). Analysis (analysis v9) computed: eda, segment, test. Descriptive statistics use the non-missing values of each column. Two-group differences are tested with Welch's t-test.",
+       "statistical_notes": [
+        "mean support_tickets by plan (2 groups) (n = 20; low confidence: only 20 rows)",
+        "Welch's t-test: support_tickets by plan (n = 20; low confidence: only 20 rows)",
+        "support_tickets: median 3.00, mean 3.25, range 0 to 7.00 (n = 20; low confidence: only 20 rows)"
+       ],
+       "caveats": [
+        "Only 20 rows cover 28 months, so most months have very few accounts represented \u2014 all findings are uncertain.",
+        "The comparison covers account-months, not unique accounts; a single account filing many tickets in multiple months could distort plan-level averages.",
+        "No information is available on account tenure, usage level, or other factors that might move together with ticket volume.",
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "mean support_tickets by plan (2 groups): low confidence (only 20 rows)",
+        "Welch's t-test: support_tickets by plan: low confidence (only 20 rows)",
+        "support_tickets: median 3.00, mean 3.25, range 0 to 7.00: low confidence (only 20 rows)",
+        "billing_date: Parsed as dates."
+       ],
+       "code_references": [
+        "df.groupby('plan')['support_tickets'].mean()",
+        "np.histogram(df['support_tickets'].dropna())",
+        "df.groupby('plan')['churned'].mean() * 100"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-06T18:17:15.333925Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Do Pro accounts file more support tickets than Basic ones?",
+      "columns": [
+       "account_id",
+       "billing_date",
+       "plan",
+       "mrr",
+       "seats",
+       "churned",
+       "support_tickets"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:plan/support_tickets",
+       "test:0",
+       "eda:support_tickets"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 20 \u2192 20 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 20, \"rows_after\": 20, \"decisions\": [[\"billing_date\", \"type_coerce\", 20, 0]]}",
+        "row_count": 20,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "billing_date: Parsed as dates."
+        ]
+       },
+       {
+        "id": "seg:plan/support_tickets",
+        "kind": "segment",
+        "claim": "mean support_tickets by plan (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"plan\", \"metric_column\": \"support_tickets\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Basic\", \"value\": 3.1667}, {\"name\": \"Pro\", \"value\": 3.375}]}",
+        "row_count": 20,
+        "confidence": "low",
+        "confidence_reason": "only 20 rows",
+        "assumptions": []
+       },
+       {
+        "id": "test:0",
+        "kind": "test",
+        "claim": "Welch's t-test: support_tickets by plan",
+        "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": -0.263499375, \"p_value\": 0.7955575984, \"interpretation\": \"support_tickets by plan\"}",
+        "row_count": 20,
+        "confidence": "low",
+        "confidence_reason": "only 20 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:support_tickets",
+        "kind": "eda",
+        "claim": "support_tickets: median 3.00, mean 3.25, range 0 to 7.00",
+        "result_excerpt": "{\"mean\": 3.25, \"std\": 1.713, \"min\": 0.0, \"max\": 7.0, \"median\": 3.0, \"count\": 20.0}",
+        "row_count": 20,
+        "confidence": "low",
+        "confidence_reason": "only 20 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       5
+      ],
+      "date_last": [
+       2026,
+       8
+      ],
+      "n_months": 28,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Final dataset: 20 rows (started with 20).",
+      "chart_titles": [
+       "Average support tickets by plan: Pro highest (3.38), Basic lowest (3.17)",
+       "support tickets distribution",
+       "Churn Rate by plan \u2014 Pro Highest at 12.5%",
+       "mrr distribution by churned",
+       "seats distribution by churned",
+       "Total mrr by month"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "support_tickets": {
+          "mean": 3.25,
+          "std": 1.713,
+          "min": 0.0,
+          "max": 7.0,
+          "median": 3.0,
+          "count": 20.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "plan",
+          "metric_column": "support_tickets",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Basic",
+            "value": 3.1667
+           },
+           {
+            "name": "Pro",
+            "value": 3.375
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [
+         {
+          "test_name": "Welch's t-test",
+          "statistic": -0.26349937504524307,
+          "p_value": 0.7955575984114164,
+          "interpretation": "support_tickets by plan"
+         }
+        ],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "account_id": 0.0,
+         "billing_date": 0.0,
+         "plan": 0.0,
+         "mrr": 0.0,
+         "seats": 0.0,
+         "churned": 0.0,
+         "support_tickets": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Total Account-Months",
+          "value": "20",
+          "context": "20 account-month records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 20 rows after cleaning."
+         },
+         {
+          "label": "Churn Rate",
+          "value": "5.0%",
+          "context": "1 of 20 account-months churned",
+          "recipe": {
+           "kind": "target_rate",
+           "column": "churned",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Share of rows where churned is the positive value."
+         },
+         {
+          "label": "Avg mrr",
+          "value": "90.91",
+          "context": "Range 40.37 \u2013 167.01",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "mrr",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "number",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of mrr over its non-missing rows."
+         },
+         {
+          "label": "Top support tickets",
+          "value": "2",
+          "context": "30.0% of account-months",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "support_tickets",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of support_tickets, and its share of rows."
+         },
+         {
+          "label": "Churn Rate by support tickets",
+          "value": "20.0% vs 0.0%",
+          "context": "4: 20.0% vs 7: 0.0%",
+          "recipe": {
+           "kind": "comparison_split",
+           "column": null,
+           "kpi": null,
+           "target_column": "churned",
+           "segment_column": "support_tickets",
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "churned rate in the highest and lowest support_tickets group (the column that separates it most, by chi-square)."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 20 \u2192 20 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 20, \"rows_after\": 20, \"decisions\": [[\"billing_date\", \"type_coerce\", 20, 0]]}",
+         "row_count": 20,
+         "assumptions": [
+          "billing_date: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "mean support_tickets by plan (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"plan\", \"metric_column\": \"support_tickets\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Basic\", \"value\": 3.1667}, {\"name\": \"Pro\", \"value\": 3.375}]}",
+         "row_count": 20,
+         "assumptions": [],
+         "confidence_reason": "only 20 rows"
+        },
+        {
+         "claim": "Welch's t-test: support_tickets by plan",
+         "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": -0.263499375, \"p_value\": 0.7955575984, \"interpretation\": \"support_tickets by plan\"}",
+         "row_count": 20,
+         "assumptions": [],
+         "confidence_reason": "only 20 rows"
+        },
+        {
+         "claim": "support_tickets: median 3.00, mean 3.25, range 0 to 7.00",
+         "result_excerpt": "{\"mean\": 3.25, \"std\": 1.713, \"min\": 0.0, \"max\": 7.0, \"median\": 3.0, \"count\": 20.0}",
+         "row_count": 20,
+         "assumptions": [],
+         "confidence_reason": "only 20 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "billing_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 20,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 20,
+        "rows_after": 20,
+        "columns_coerced": [
+         "billing_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Final dataset: 20 rows (started with 20).",
+        "anomaly_report": {
+         "flags": [],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr",
+          "seats",
+          "support_tickets"
+         ],
+         "skipped_columns": {
+          "account_id": "id column",
+          "billing_date": "datetime column",
+          "plan": "binary column (only 2 values)",
+          "churned": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "billing_date": [
+          "2024-05-01",
+          "2026-08-01",
+          28
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": []
+       },
+       [
+        "Average support tickets by plan: Pro highest (3.38), Basic lowest (3.17)",
+        "support tickets distribution",
+        "Churn Rate by plan \u2014 Pro Highest at 12.5%",
+        "mrr distribution by churned",
+        "seats distribution by churned",
+        "Total mrr by month"
+       ],
+       [
+        20,
+        7,
+        28
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+       ]
+      ]
+     }
+    },
+    "latency_s": 14.6,
+    "cost_usd": 0.01713,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"Pro and Basic accounts file nearly the same number of support tickets, and the difference could easily be chance.\",\n    \"evidence\": [\"seg:plan/support_tickets\", \"test:0\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Pro accounts average 3.38 support tickets and Basic accounts average 3.17, a gap too small to distinguish from random variation in this dataset.\",\n      \"evidence\": [\"seg:plan/support_tickets\", \"test:0\"]\n    },\n    {\n      \"text\": \"With only 20 rows, all results here are uncertain and should be treated as preliminary.\",\n      \"evidence\": [\"seg:plan/support_tickets\", \"test:0\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Pro accounts average 3.38 support tickets per account-month and Basic accounts average 3.17 \u2014 the difference is uncertain given the small sample size.\",\n      \"evidence\": [\"seg:plan/support_tickets\"]\n    },\n    {\n      \"text\": \"A statistical comparison of the two groups found no reliable difference; the result could easily be chance, and this is uncertain with only 20 rows.\",\n      \"evidence\": [\"test:0\"]\n    },\n    {\n      \"text\": \"Across all accounts, support tickets range from 0 to 7.00 with a median of 3.00, suggesting moderate spread around a low central value.\",\n      \"evidence\": [\"eda:support_tickets\"]\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Collect more account-month records before drawing conclusions about plan-based ticket volume differences.\",\n      \"impact\": \"Current sample is too small to detect a real difference even if one exists.\",\n      \"evidence\": [\"seg:plan/support_tickets\", \"test:0\"]\n    },\n    {\n      \"action\": \"Investigate accounts with 7 support tickets to understand what drives high-ticket months.\",\n      \"impact\": \"Outliers may skew averages and mask meaningful patterns within each plan tier.\",\n      \"evidence\": [\"eda:support_tickets\"]\n    }\n  ],\n  \"caveats\": [\n    \"Only 20 rows cover 28 months, so most months have very few accounts represented \u2014 all findings are uncertain.\",\n    \"The comparison covers account-months, not unique accounts; a single account filing many tickets in multiple months could distort plan-level averages.\",\n    \"No information is available on account tenure, usage level, or other factors that might move together with ticket volume.\"\n  ],\n  \"questions\": [\n    \"Does ticket volume vary by month or season, and does that pattern differ between Pro and Basic accounts?\",\n    \"Are a small number of accounts responsible for the highest ticket counts, and do they cluster in one plan tier?\",\n    \"Do accounts that file more tickets also show different renewal or churn behaviour?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}
