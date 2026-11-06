@@ -656,6 +656,17 @@ def _panel(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> bool:
     return len(pairs) > 0 and not pairs.duplicated().any() and pairs.groupby(key).size().median() >= 3
 
 
+def _snapshot_dates(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> bool:
+    """False when a spell pack's snapshot role column is no snapshot date: the file has the
+    spell's start (a subscription list) and its entities don't repeat over the column's dates
+    (a next-billing date per subscription). An MRR export or HR snapshots repeat, or have no start."""
+    snap = snapshot_role(pack) if pack.spell else None
+    if not (snap in roles and pack.spell.start in roles and pack.spell.entity in roles):
+        return True
+    pairs = df[[roles[pack.spell.entity], roles[snap]]].dropna().drop_duplicates()
+    return len(pairs) > 0 and pairs.groupby(roles[pack.spell.entity]).size().median() >= 2
+
+
 def _matches(alts: list[dict[str, list[str]]], roles: dict[str, str]) -> bool:
     return any(all(any(x in roles for x in group) for group in alt.values()) for alt in alts)
 
@@ -685,6 +696,8 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                 if col is not None:
                     roles[role] = col
                     break
+        if not _snapshot_dates(df, pack, roles):   # a list's next billing date: not a snapshot
+            roles.pop(snapshot_role(pack))
         if _matches(pack.strong, roles) or _panel(df, pack, roles):
             found.append((pack.domain, roles, "strong"))
         elif _matches(pack.signals, roles):

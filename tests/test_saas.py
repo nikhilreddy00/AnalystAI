@@ -543,3 +543,30 @@ def test_month_labels_are_judged_once_for_the_as_of_and_the_first_known_month():
     assert dp.spell_as_of(pack, mixed, roles) == pd.Timestamp("2026-10-15")
     assert dp.first_known(pack, mixed, roles) == first
     assert dp.first_known(pack, df, roles) == first + pd.offsets.MonthEnd(0)
+
+
+def test_a_next_billing_date_never_makes_a_subscription_list_snapshots(monkeypatch):
+    """Review: a list with a `billing_date` column (each subscription's next bill) was read as
+    monthly snapshots: MRR $476k for $869k, logo churn 100%. The snapshot role needs the entity
+    to repeat over its dates when the file has the spell's start."""
+    import numpy as np
+
+    from tests import test_oracle
+
+    def next_bill(raw):
+        days = pd.to_timedelta(np.arange(len(raw)) % 28, unit="D")
+        return raw.assign(billing_date=(pd.Timestamp("2026-11-01") + days).strftime("%Y-%m-%d"))
+    monkeypatch.setitem(test_oracle.TRANSFORMS, "next_bill", next_bill)
+    _, df, contract, truth = test_oracle._built("saas_subscriptions", transform="next_bill")
+    pack = dp.pack_for(contract.domain)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    assert "month" not in roles
+    for k in ("mrr", "logo_churn_rate"):
+        assert dp.compute_kpi(df, roles, pack, k) == pytest.approx(truth[k], rel=1e-9), k
+
+
+def test_an_mrr_export_keeps_its_billing_date_as_the_snapshot_month():
+    """reg-subscriptions: account × billing_date MRR rows are snapshots (the entity repeats)."""
+    from evals import datagen
+    raw, _ = datagen.make("subscriptions", 7)
+    assert dp.detect(raw, {"billing_date"})[1].get("month") == "billing_date"
