@@ -322,9 +322,10 @@ caveats:
   partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons; it is not annualised."
   months_lt_13: "The data covers {months} months, so a 12-month cohort isn't available for a full year before it, and month-over-month changes may be seasonal."
 role_caveats:
-  canceled_at: "canceled_at is the date a cancellation was requested, not the end: a subscription keeps paying until its ended_at (or a scheduled cancel_at)."
-  cancel_at: "A cancel_at after the latest date is a scheduled cancellation: those subscriptions are still paying and counted until they end."
-  unit_amount: "On a subscription list, MRR is computed by the product from the price, seats, discount and billing interval, at today's price: expansion, contraction and revenue retention need monthly MRR snapshots and are not computed from it."
+  # plain words, never column names: the executive summary quotes these (insight gate ins-49)
+  canceled_at: "The cancellation date in this export is when a customer asked to cancel, not when the subscription ended: a subscription keeps paying until its end date (or a scheduled cancellation date)."
+  cancel_at: "Some subscriptions are scheduled to cancel after the latest date: they are still paying and are counted until they end."
+  unit_amount: "On a subscription list, MRR is computed by the product from each subscription's price, seats, discount and billing interval, at today's price: expansion, contraction and revenue retention need monthly MRR snapshots and are not computed from it."
   invoice: "Invoice lines are billings (what was invoiced, by invoice date), not MRR: an annual invoice bills 12 months at once."
   churned_flag: "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
 

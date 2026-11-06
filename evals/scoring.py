@@ -1057,7 +1057,8 @@ _HEDGE = re.compile(r"\b(?:uncertain|may|might|could|not (?:statistically )?sign
                     r"small sample|only \d+|few|limited|tentative|inconclusive|not enough|"
                     r"too (?:few|small)|unclear|caution|preliminary|not reliable|unreliable|"
                     r"no (?:clear|meaningful|real)|indicative|(?:not (?:yet )?)?conclusive|"
-                    r"borderline|close to|directional)\b", re.I)
+                    r"borderline|close to|directional|no conclusion|until more data|"
+                    r"consistent with chance)\b", re.I)
 
 
 def _date_cols(df: pd.DataFrame, contract=None) -> list[str]:

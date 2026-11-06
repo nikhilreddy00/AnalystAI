@@ -314,3 +314,13 @@ def test_shared_code_never_says_a_spells_hr_words():
     assert {"start_event_date", "cancellation_event_date", "cancellation_in_window"} <= set(framed)
     assert not any(w in c for c in framed.columns for w in ("hire", "exit"))
     assert any("subscribers" in s for s in dp.spell_story(pack, _roster(), ROLES))
+
+
+def test_no_pack_caveat_names_a_column():
+    """Domain 6 insight gate (ins-49, a hard-rule violation): a role caveat said 'canceled_at',
+    the executive summary quoted it, and executive_no_jargon failed. Caveats reach the report:
+    plain words only, every pack."""
+    import domain_pack as dp
+    bad = [(p.domain, k) for p in dp.load_packs() for k, t in [*p.role_caveats.items(), *p.caveats.items()]
+           if re.search(r"(?<![{\w])[a-z]+_[a-z_]+\b(?![}])", t)]
+    assert not bad, f"write caveats in plain words, never a column name: {bad}"

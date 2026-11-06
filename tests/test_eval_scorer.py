@@ -541,3 +541,12 @@ def test_false_findings_know_month_groups_dates_with_colons_and_parts_of_a_level
     part = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="sum",
                          results=[{"name": "SMB", "value": 1234.5}])
     assert ff(snaps, part)["verifiable"] == 0
+
+
+def test_a_withheld_conclusion_is_a_hedge():
+    """Domain 6 insight gate, ins-16 (rescored at \$0): 'No conclusion about which plan drives
+    more tickets can be drawn until more data…' was scored as stated without a qualifier."""
+    from evals.scoring import _HEDGE
+    assert _HEDGE.search("No conclusion about which plan drives more tickets can be drawn until more data")
+    assert _HEDGE.search("The gap is consistent with chance, so neither plan leads.")
+    assert not _HEDGE.search("Enterprise plans generate more tickets than Basic plans.")
