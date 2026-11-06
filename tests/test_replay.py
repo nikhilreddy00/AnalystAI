@@ -73,7 +73,23 @@ async def test_a_recorded_run_replays_to_the_same_output(recorded_llm, monkeypat
 
 # A post-model step changed on purpose: (report, case) → why. Every other stored run must replay
 # to its stored output (that is the $0 regression check over every old case).
+_SAAS_AUDIT1 = ("Domain 6 audit 1: the SaaS pack's caveat (a one-month customer is in no month-end "
+                "figure), the ledger story in generic words and the cohort window words changed the "
+                "deterministic text after the model")
 CHANGED = {
+    ("insight-20261106T012454Z.json", "ins-04-subs-overview"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-08-plan-revenue"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-13-mom-vs-yoy"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-16-tickets-not-significant-holdout"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-19-stale-memory-holdout"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-29-multi-year-holdout"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-38-tickets-null"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-49-saas-subscriptions-overview"): _SAAS_AUDIT1,
+    ("insight-20261106T012454Z.json", "ins-50-saas-mrr-overview"): _SAAS_AUDIT1,
+    ("insight-20261106T012659Z.json", "ins-16-tickets-not-significant-holdout"): _SAAS_AUDIT1,
+    ("insight-20261106T012659Z.json", "ins-49-saas-subscriptions-overview"): _SAAS_AUDIT1,
+    ("insight-20261106T012659Z-rescored.json", "ins-16-tickets-not-significant-holdout"): _SAAS_AUDIT1,
+    ("insight-20261106T012659Z-rescored.json", "ins-49-saas-subscriptions-overview"): _SAAS_AUDIT1,
     ("insight-20261104T214949Z.json", "ins-48-hr-snapshots-overview"):
         "Domain 5 audit 1: the cleaning audit carries the file's story (domain_pack.spell_story: "
         "year-earlier rates, peak to now, people vs rows), the insight's computed facts",

@@ -212,3 +212,68 @@ def test_a_question_naming_two_kpis_gets_both():
     text, _ = answer("saas_invoices", "segment_compare", "What were our total billings, by line type?",
                      kpi="billings", group_by="line_type")
     assert "$5,931,219.00" in text
+
+
+def test_a_rates_top_and_bottom_are_the_same_customers():
+    """Audit pass 1 (Standards M1): GRR's top kept every customer with MRR, its bottom only paying
+    statuses: a customer paused at the opening and active now made GRR 600%. One paying
+    population (saas.yaml's anchor); GRR never passes 100%."""
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    d = df.assign(status="active")
+    lo = d["month"] == d["month"].max() - pd.DateOffset(months=12)
+    d.loc[lo & (d["customer_id"] == d.loc[lo, "customer_id"].iloc[0]), "status"] = "paused"
+    r = {**roles, "status": "status"}
+    assert dp.compute_kpi(d, r, pack, "grr") <= 1.0
+    for k in ("nrr", "grr", "logo_churn_rate"):   # the first alternative, top and bottom
+        kpi = pack.kpi(k)
+        terms = [*kpi.num[0], *(pack.kpi(t.kpi).num[0][0] for t in kpi.den[0] if t.kpi)]
+        assert len({str(t.where) for t in terms}) == 1, k
+
+
+def test_a_group_with_only_other_currency_rows_is_no_zero_group():
+    """Audit pass 1 (expert M1): 'MRR by country: FR at $0.00' (FR is billed in euros, left out
+    as another currency, never \$0)."""
+    df, _, pack, roles, _ = _setup("saas_subscriptions")
+    by = dp.compute_kpi(df, roles, pack, "mrr", by=roles["country"])
+    assert "FR" not in by.index and "DE" not in by.index and (by > 0).all()
+
+
+def test_a_cohort_rate_over_an_asked_period_is_the_12_month_cohort_ending_there():
+    """Audit pass 1 (expert M3): NRR for Jan-Jun 2026 was the 6-month cohort (90.8%) labelled
+    '12 months'; truth for the 12-month cohort ending 30 Jun 2026: 89.27%."""
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    w = (pd.Timestamp("2026-01-01"), pd.Timestamp("2026-06-30"))
+    v = dp.compute_kpi(df, roles, pack, "nrr", window=w)
+    snaps = datagen.make("saas_mrr_snapshots", 1)[0]
+    lo, hi = snaps[snaps["month"] == "2025-06-01"], snaps[snaps["month"] == "2026-06-01"]
+    truth = hi[hi["customer_id"].isin(lo["customer_id"])]["mrr"].sum() / lo["mrr"].sum()
+    assert v == pytest.approx(truth)
+    assert dp.window_words(pack, df, roles, "nrr", w) == "12-month cohort to 30 Jun 2026"
+
+
+def test_the_mrr_bridge_is_answered_where_the_data_holds_it():
+    """Audit pass 1 (expert M4): 'MRR bridge' was refused on the MRR export, whose facts hold it;
+    the partial month of a spell flow is never the headline (expert M2)."""
+    from tests.test_oracle import answer
+    _, _, _, _, t = _setup("saas_mrr_snapshots")
+    text, _ = answer("saas_mrr_snapshots", "top_n", "MRR bridge", kpi="mrr_bridge")
+    assert text.startswith("MRR bridge") and f"${t['mrr']:,.2f}" in text and f"${t['expansion_mrr']:,.2f}" in text
+    text, _ = answer("saas_subscriptions", "time_series", "Churned MRR by month", kpi="churned_mrr",
+                     frequency="M")
+    assert text.split(";")[0].find("latest 2026-09") > 0 and "2026-10 so far" in text
+
+
+def test_stripes_percent_off_reaches_mrr():
+    """Spec M2: a percent_off column (0-100) got no role (a rate kind wants 0-1): MRR ignored the
+    discount with no note."""
+    raw = datagen.make("saas_subscriptions", 1)[0]
+    d = raw.rename(columns={"discount_pct": "percent_off"}).assign(
+        percent_off=lambda x: x["percent_off"] * 100)
+    contract = __import__("connectors.csv_connector", fromlist=["x"]).CSVConnector(
+        __import__("orchestrator.state", fromlist=["x"]).ConnectorConfig(type="csv")).build_data_contract(d)
+    from agents.ingestion_agent import add_pack_columns
+    out, c, _ = add_pack_columns(d, contract, "csv")
+    assert c.roles.get("discount_pct") == "percent_off"
+    row = out[out["percent_off"] > 0].iloc[0]
+    months = {"month": 1, "year": 12}[row["interval"]] * row["interval_count"]
+    assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["percent_off"] / 100) / months)

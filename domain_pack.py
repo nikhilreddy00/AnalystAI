@@ -8,13 +8,14 @@ domain is a YAML file, never an agent edit. An invalid pack stops the API and th
 from __future__ import annotations
 
 import re
+import threading
 from functools import cache
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, StrictFloat, StrictInt, model_validator
 
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
@@ -213,7 +214,7 @@ class Term(_Strict):
     sign: Literal[1, -1] = 1
     optional: bool = False        # a missing role drops this term (and a blank value counts 0)
     net_of: str | None = None     # a rate role: each row's value × (1 − rate) (a 25% line discount)
-    times: float = 1              # a constant multiplier: ARR = 12 × MRR (a run-rate)
+    times: StrictInt | StrictFloat = 1   # a constant multiplier: ARR = 12 × MRR (never '12')
     # Only rows meeting one of these groups (each group: all its conditions): NPL = 90+ days
     # past due OR non-accrual, never counted twice.
     where: list[list[Cond]] = Field(default_factory=list)
@@ -933,7 +934,29 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
     months = len(pts)
     if kpi.state:
         return f"as of {as_of:%-d %b %Y}"
+    if any(t.spell in ("opening", "retained") for t in spell_terms(pack, name)):
+        return f"12-month cohort to {as_of:%-d %b %Y}"   # whatever period is asked
     return f"{months} month{'s' * (months != 1)} to {as_of:%-d %b %Y}"
+
+
+MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
+
+
+def ledger_kpi(pack: Pack, roles: dict[str, str], spell: str, move: str | None = None,
+               unit: str = "money") -> KPI | None:
+    """THE KPI made of one ledger term (new MRR = moves/new; churned customers = moves/churn as a
+    count; opening MRR = opening) the data can compute: the story and the facts read it."""
+    return next((k for k in pack.kpis if computable(pack, k.name, roles) and k.den is None
+                 and k.unit == unit and len(alt := k.num[0]) == 1 and alt[0].spell == spell
+                 and alt[0].move == move), None)
+
+
+def stock_kpi(pack: Pack, roles: dict[str, str], unit: str | None = None) -> KPI | None:
+    """THE stock tile: the first tile that is a state made of spell terms the data can compute
+    (headcount, MRR); `unit` narrows it to a count (who is in force) or a money one (audit pass 1:
+    the choice was copied six times)."""
+    return next((k for k in pack.kpis if k.tile and k.state and (unit is None or k.unit == unit)
+                 and spell_terms(pack, k.name) and computable(pack, k.name, roles)), None)
 
 
 def spell_terms(pack: Pack, name: str) -> list[Term]:
@@ -960,8 +983,7 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     failures): the as-of, the window, the month-end counts, their mean, and what is dated after
     the as-of."""
     s = pack.spell
-    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
-                  and computable(pack, k.name, roles)), None)
+    stock = stock_kpi(pack, roles)
     mean = next((k for k in pack.kpis if any(t.spell == "average" for alt in k.num for t in alt)
                  and computable(pack, k.name, roles)), None)
     w = spell_window(pack, df, roles)
@@ -1000,28 +1022,18 @@ def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
     runs): each money move by month, the paying count at each month-end and the monthly churn
     (churned at a month-end ÷ in force at the one before), each cohort rate tile by the first
     two overview groups. Only for KPIs made of ledger terms (no other pack has them)."""
-    def ledger(k: KPI) -> bool:
-        return computable(pack, k.name, roles) and all(
-            t.spell in ("opening", "retained", "moves") for alt in [*k.num[:1], *(k.den or [])[:1]]
-            for t in (alt if alt is not k.den else alt) if not t.kpi) and any(
-            t.spell in ("opening", "retained", "moves") or (t.kpi and pack.kpi(t.kpi).num[0][0].spell
-                                                          in ("opening", "retained", "moves"))
-            for t in k.num[0])
     out: list[str] = []
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
     # months that start inside the window (a 29 Oct as-of: Nov … Oct, never the 2-day sliver
     # of the October before shown as a whole month); `upto` also the month-end before them
     months = lambda s: [p for p in s.index if p.start_time.normalize() > lo]   # noqa: E731
     upto = lambda s: [p for p in s.index if (p + 1).start_time.normalize() > lo]   # noqa: E731
-    for k in (k for k in pack.kpis if ledger(k) and k.unit in ("money", "count") and k.den is None
-              and len(k.num[0]) == 1 and k.num[0][0].spell == "moves"):
+    for k in (k for u in ("money", "count") for m in MOVES if (k := ledger_kpi(pack, roles, "moves", m, u))):
         if (s := compute_kpi(frame, roles, pack, k.name, by="_period", full=df)) is not None:
             out.append(f"{k.label} by month (12 months to {as_of:%-d %b %Y}): " + ", ".join(
                 f"{p} {_amount(pack, df, roles, k, s[p])}" for p in months(s)) + ".")
-    heads = next((k for k in pack.kpis if k.tile and k.state and k.unit == "count"
-                  and spell_terms(pack, k.name) and computable(pack, k.name, roles)), None)
-    lost = next((k for k in pack.kpis if ledger(k) and k.unit == "count" and len(k.num[0]) == 1
-                 and k.num[0][0].spell == "moves" and k.num[0][0].move == "churn"), None)
+    heads = stock_kpi(pack, roles, "count")
+    lost = ledger_kpi(pack, roles, "moves", "churn", "count")
     if heads and lost:
         n = compute_kpi(frame, roles, pack, heads.name, by="_period", full=df)
         c = compute_kpi(frame, roles, pack, lost.name, by="_period", full=df)
@@ -1032,7 +1044,8 @@ def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             out.append(f"Monthly churn ({lost.phrase} at a month-end ÷ {heads.phrase} at the month-end "
                        "before; never × 12 into an annual rate): " + ", ".join(
                            f"{p} {v:.2%}" for p, v in rate.items()) + ".")
-    for k in (k for k in pack.kpis if k.tile and k.unit == "percent" and ledger(k)):
+    for k in (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
+              and any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))):
         for g in [g for g in pack.overview_groups if g in roles][:2]:
             if (by := compute_kpi(df, roles, pack, k.name, by=roles[g])) is not None and len(by) <= 15:
                 out.append(f"{k.label} by {roles[g]} (each group's own cohort, placed by its row on "
@@ -1051,8 +1064,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         return []
     lo, as_of, pts = w
     out: list[str] = []
-    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
-                  and computable(pack, k.name, roles)), None)
+    stock = stock_kpi(pack, roles)
     ends = next((k for k in pack.kpis if k.tile and k.unit == "count" and computable(pack, k.name, roles)
                  and [t.spell for t in used_terms(pack, k, roles)] == ["ends"]), None)
     back = (None, as_of - pd.DateOffset(years=1))   # the default window a year earlier (12 points)
@@ -1090,8 +1102,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             out.append(line + ".")
     out += _ledger_story(pack, df, roles, lo, as_of)
     col = _person_col(pack, roles)
-    heads = next((k for k in pack.kpis if k.tile and k.state and k.unit == "count"
-                  and spell_terms(pack, k.name) and computable(pack, k.name, roles)), None)
+    heads = stock_kpi(pack, roles, "count")
     if col:
         people = df[col].nunique()
         now_n = compute_kpi(df, roles, pack, heads.name) if heads else None
@@ -1112,15 +1123,11 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
     churned-customer count beside the cohort rate (they differ: new and returning customers'
     churns are in the count only), and the largest month of churned value against a usual
     month, with its largest single entity's share and group. No line without its KPIs."""
-    def one(spell, move=None, money=True):
-        return next((k for k in pack.kpis if computable(pack, k.name, roles) and k.den is None
-                     and (k.unit == "money") == money and len(alts := k.num[0]) == 1
-                     and alts[0].spell == spell and alts[0].move == move), None)
     out: list[str] = []
-    stock = next((k for k in pack.kpis if k.tile and k.state and k.unit == "money"
-                  and spell_terms(pack, k.name) and computable(pack, k.name, roles)), None)
-    parts = {m: one("moves", m) for m in ("new", "expansion", "reactivation", "contraction", "churn")}
-    opening = one("opening")
+    stock = stock_kpi(pack, roles, "money")
+    parts = {m: ledger_kpi(pack, roles, "moves", m) for m in ("new", "expansion", "reactivation",
+                                                              "contraction", "churn")}
+    opening = ledger_kpi(pack, roles, "opening")
     say = lambda k, v: _amount(pack, df, roles, k, v)   # noqa: E731
     if stock and opening and parts["new"] and parts["churn"]:
         val = {m: compute_kpi(df, roles, pack, k.name) for m, k in parts.items() if k}
@@ -1132,14 +1139,14 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
                        f"{lo:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
                        + ("" if parts["expansion"] else f" Expansion and contraction are not in "
                           f"this file (no {pack.spell.words.plural}' monthly values)."))
-    lost, rate = one("moves", "churn", money=False), next(
+    lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
         (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
          and any(t.spell == "retained" and t.sum is None for alt in k.num for t in alt)), None)
     if lost and rate and (n := compute_kpi(df, roles, pack, lost.name)) is not None:
-        out.append(f"{n:,.0f} {pack.spell.words.plural} stopped paying at a month-end in the window "
-                   f"({lost.phrase}); {rate.phrase} counts only those paying on {lo:%-d %b %Y} who "
-                   "are not paying now, so the two differ: churns of customers who joined in the "
-                   "window or came back are in the count only.")
+        who = pack.spell.words.plural
+        out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
+                   f"counts only the {who} in force on {lo:%-d %b %Y} who are not in force now, so "
+                   f"the two differ: {who} who joined in the window or came back are in the count only.")
     if (k := parts["churn"]) is not None:
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
         e = compute_kpi(frame, roles, pack, k.name, by="_period", full=df)
@@ -1167,20 +1174,25 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
 # Keyed on the frame's identity, held weakly (dies with the frame); a frame changed in place
 # after a call would be stale (nothing here mutates a frame it passes in).
 _MEMO: dict[int, tuple] = {}
+_MEMO_LOCK = threading.Lock()   # runs build dashboards in threads (asyncio.to_thread)
 
 
 def _memo(whole: pd.DataFrame, key: tuple, fn):
     import weakref
-    for k in [k for k, (ref, _) in _MEMO.items() if ref() is None]:
-        del _MEMO[k]
-    ref, memo = _MEMO.get(id(whole), (None, None))
-    if ref is None or ref() is not whole:
-        memo = {}
-        _MEMO[id(whole)] = (weakref.ref(whole), memo)
     key = (*key, len(whole))
-    if key not in memo:
-        memo[key] = fn()
-    return memo[key]
+    with _MEMO_LOCK:
+        for k in [k for k, (ref, _) in _MEMO.items() if ref() is None]:
+            del _MEMO[k]
+        ref, memo = _MEMO.get(id(whole), (None, None))
+        if ref is None or ref() is not whole:
+            memo = {}
+            _MEMO[id(whole)] = (weakref.ref(whole), memo)
+        if key in memo:
+            return memo[key]
+    value = fn()   # outside the lock: two threads may both compute it once, never wrongly
+    with _MEMO_LOCK:
+        memo[key] = value
+    return value
 
 
 def _spell_key(pack: Pack, roles: dict[str, str]) -> tuple:
@@ -1342,6 +1354,8 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     else:   # the groups its population has (never 'Contractor: 0' for an employees' KPI)
         axis = None
         pop = df[_meets(df, roles, w)] if by and (w := _population(pack, term.where)) else df
+        # and rows of the KPI's kinds: a country billed only in euros is no '$0' group (audit 1)
+        pop = pop[allk.reindex(pop.index).isin(ok).to_numpy()] if by else pop
         groups = pd.unique(pop[by].dropna()) if by else None
 
     if term.spell in ("opening", "retained", "moves"):
@@ -1409,8 +1423,8 @@ def _ledger(whole, roles, pack, term: Term, allk, ok, points, part, by):
         if by:
             grp[t] = rows[by].groupby(rows[ent]).first()
     values = pd.DataFrame(vals, columns=points).fillna(0.0).clip(lower=0)
-    return (values, pd.DataFrame(inside, columns=points).reindex(values.index).fillna(False)
-            .astype(bool), pd.DataFrame(grp, columns=points).reindex(values.index) if by else None)
+    return (values, pd.DataFrame(inside, columns=points).reindex(values.index).eq(True),
+            pd.DataFrame(grp, columns=points).reindex(values.index) if by else None)
 
 
 def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, first, axis, groups):
@@ -1431,7 +1445,9 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
         points = sorted({*history, lo, as_of})
     else:
         ends = [min(p.end_time.normalize(), as_of) for p in axis] if axis is not None else [as_of]
-        starts = [e - pd.DateOffset(months=12) for e in ends] if axis is not None else [lo]
+        # always the 12-month cohort ending there, an asked period's end included (audit 1: a
+        # 6-month period made a 6-month 'Logo churn (12 months)')
+        starts = [e - pd.DateOffset(months=12) for e in ends]
         points = sorted({*ends, *starts})
     points = [t for t in points if t <= as_of]
     by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
@@ -1465,7 +1481,11 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
             per = {}
             for b, n in out.items():
                 per[pd.Period(b, freq=axis.freq)] = per.get(pd.Period(b, freq=axis.freq), 0.0) + n
-            return pd.Series(per, dtype=float).reindex(axis, fill_value=0.0)
+            series = pd.Series(per, dtype=float).reindex(axis, fill_value=0.0)
+            if _snapshot_column(pack, roles):   # snapshots: the first period has no month before
+                # it in the data, so its moves are unknown, never a \$0 (audit 1)
+                series[series.index <= pd.Period(first, freq=axis.freq)] = float("nan")
+            return series
         inside_window = [b for b in out if b > lo]
         if by:
             return sum((out[b] for b in inside_window), pd.Series(0.0, index=groups)) \
@@ -1484,7 +1504,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
     if axis is not None:
         return pd.Series({p: cohort(s_, e) if s_ >= first - pd.Timedelta(days=1) else float("nan")
                           for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
-    value = cohort(lo, as_of)
+    value = cohort(as_of - pd.DateOffset(months=12), as_of)
     return None if isinstance(value, float) and pd.isna(value) else value
 
 
@@ -2361,8 +2381,9 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
         out = pd.Series(1.0, index=df.index)
         for x in f.times:
             out = out * value(x, 1.0)
-        if f.net_of:
-            out = out * (1 - value(f.net_of, 0.0))
+        if f.net_of:   # a rate: 0.2, or Stripe's percent_off 20 (any value over 1: percent)
+            rate = value(f.net_of, 0.0)
+            out = out * (1 - (rate / 100 if (rate > 1).any() else rate))
         for x in f.over:
             out = out / value(x, 1.0)
         for x in (x for x in f.over if pack.roles[x].numbers and x in roles):
@@ -2445,8 +2466,7 @@ def stock_population(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.
     on HR; trials, paused out on SaaS), its row kinds and the main currency (Domain 6 smoke: test
     accounts and EUR subscriptions were marked in force, the tile leaves them out). A rate's
     events, the in-force marker and a level by group read the same people."""
-    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
-                  and computable(pack, k.name, roles)), None)
+    stock = stock_kpi(pack, roles)
     if stock is None:
         return pd.Series(True, index=df.index)
     where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), [])

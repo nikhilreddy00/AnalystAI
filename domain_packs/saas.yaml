@@ -66,7 +66,8 @@ roles:
                    headers: [unit_amount, plan_amount, price, unit_price, plan_price,
                              amount_per_period]}
   quantity:       {kind: count, additive: false, headers: [quantity, seats, licenses, units]}
-  discount_pct:   {kind: rate, headers: [discount_percent, percent_off,
+  # a rate (0.2) or Stripe's percent_off (20): the MRR formula reads either (over 1: percent)
+  discount_pct:   {kind: number, additive: false, headers: [discount_percent, percent_off,
                                          coupon_percent_off, discount_rate, discount]}
   # MRR: a level (a run-rate at a date), never summed over months; added by the product from
   # the price, seats, discount and interval when a subscription list has none
@@ -123,12 +124,15 @@ text:
   people_nouns: "customers, accounts, logos, subscribers"
 
 kpis:
+  # THE paying population (one YAML anchor, every term: a rate's top and bottom are the same
+  # customers; audit pass 1: GRR read 600% when they differed): paying statuses and MRR > 0;
+  # without a status column (an MRR export), MRR > 0
   - name: mrr
     label: MRR
     unit: money
     tile: true
-    num: [[{spell: active, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: active, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: active, sum: mrr, where: &paying [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
+          [{spell: active, sum: mrr, where: &positive [[{role: mrr, gt: 0}]]}]]
   # ARR = 12 × MRR, a run-rate at the same date [STRIPE][CM]: never bookings or revenue
   - name: arr
     label: ARR
@@ -140,81 +144,69 @@ kpis:
     unit: count
     unit_word: customers
     tile: true
-    num: [[{spell: active, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: active, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: active, where: *paying}], [{spell: active, where: *positive}]]
   # ARPA: MRR ÷ paying customers (per account, never per subscription row) [CM]
   - name: arpa
     label: ARPA
     unit: money
-    num: [[{spell: active, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: active, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
-    den: [[{spell: active, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: active, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: active, sum: mrr, where: *paying}], [{spell: active, sum: mrr, where: *positive}]]
+    den: [[{spell: active, where: *paying}], [{spell: active, where: *positive}]]
   # The MRR bridge: month-end changes per customer, summed over the 12 months to the as-of [CM]
   - name: new_mrr
     label: New MRR
     unit: money
     tile: true
-    num: [[{spell: moves, move: new, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: moves, move: new, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: moves, move: new, sum: mrr, where: *paying}], [{spell: moves, move: new, sum: mrr, where: *positive}]]
   - name: expansion_mrr
     label: Expansion MRR
     unit: money
-    num: [[{spell: moves, move: expansion, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: moves, move: expansion, sum: mrr, where: *paying}], [{spell: moves, move: expansion, sum: mrr, where: *positive}]]
   - name: contraction_mrr
     label: Contraction MRR
     unit: money
-    num: [[{spell: moves, move: contraction, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: moves, move: contraction, sum: mrr, where: *paying}], [{spell: moves, move: contraction, sum: mrr, where: *positive}]]
   - name: churned_mrr
     label: Churned MRR
     unit: money
     tile: true
-    num: [[{spell: moves, move: churn, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: moves, move: churn, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: moves, move: churn, sum: mrr, where: *paying}], [{spell: moves, move: churn, sum: mrr, where: *positive}]]
   - name: reactivation_mrr
     label: Reactivation MRR
     unit: money
-    num: [[{spell: moves, move: reactivation, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: moves, move: reactivation, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: moves, move: reactivation, sum: mrr, where: *paying}], [{spell: moves, move: reactivation, sum: mrr, where: *positive}]]
   - name: new_customers
     label: New customers
     unit: count
     unit_word: customers
-    num: [[{spell: moves, move: new, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: moves, move: new, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: moves, move: new, where: *paying}], [{spell: moves, move: new, where: *positive}]]
   - name: churned_customers
     label: Churned customers
     unit: count
     unit_word: customers
-    num: [[{spell: moves, move: churn, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: moves, move: churn, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: moves, move: churn, where: *paying}], [{spell: moves, move: churn, where: *positive}]]
   - name: reactivated_customers
     label: Reactivated customers
     unit: count
     unit_word: customers
-    num: [[{spell: moves, move: reactivation, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: moves, move: reactivation, where: [[{role: mrr, gt: 0}]]}]]
-  # The cohort: customers paying at the window's start (12 months before the as-of) [SC]
+    num: [[{spell: moves, move: reactivation, where: *paying}], [{spell: moves, move: reactivation, where: *positive}]]
+  # The cohort: customers paying 12 months before the as-of (or before the asked period's end) [SC]
   - name: opening_customers
     label: Customers 12 months earlier
     unit: count
     unit_word: customers
-    num: [[{spell: opening, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: opening, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: opening, where: *paying}], [{spell: opening, where: *positive}]]
   - name: opening_mrr
     label: MRR 12 months earlier
     unit: money
-    num: [[{spell: opening, sum: mrr, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: opening, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: opening, sum: mrr, where: *paying}], [{spell: opening, sum: mrr, where: *positive}]]
   # Logo churn: of the customers paying 12 months earlier, the share not paying now (a customer
   # who left and came back is retained) [CM][SC]; never a monthly rate × 12
   - name: logo_churn_rate
     label: Logo churn (12 months)
     unit: percent
     tile: true
-    num: [[{spell: opening, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]},
-           {spell: retained, sign: -1, where: [[{role: status, not_in: [trialing, paused, incomplete, incomplete_expired, unpaid]}, {role: mrr, gt: 0}]]}],
-          [{spell: opening, where: [[{role: mrr, gt: 0}]]}, {spell: retained, sign: -1, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: opening, where: *paying}, {spell: retained, sign: -1, where: *paying}],
+          [{spell: opening, where: *positive}, {spell: retained, sign: -1, where: *positive}]]
     den: [[{kpi: opening_customers}]]
   # NRR / GRR: the same customers' MRR now ÷ their MRR 12 months earlier; GRR caps each customer
   # at their earlier MRR (never above 100%) [SC][KB]
@@ -222,13 +214,14 @@ kpis:
     label: Net revenue retention
     unit: percent
     tile: true
-    num: [[{spell: retained, sum: mrr, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: retained, sum: mrr, where: *paying}], [{spell: retained, sum: mrr, where: *positive}]]
     den: [[{kpi: opening_mrr}]]
   - name: grr
     label: Gross revenue retention
     unit: percent
     tile: true
-    num: [[{spell: retained, sum: mrr, capped: true, where: [[{role: mrr, gt: 0}]]}]]
+    num: [[{spell: retained, sum: mrr, capped: true, where: *paying}],
+          [{spell: retained, sum: mrr, capped: true, where: *positive}]]
     den: [[{kpi: opening_mrr}]]
   # (new + expansion + reactivation) ÷ (contraction + churned) [research: quick ratio]
   - name: quick_ratio
@@ -249,11 +242,6 @@ kpis:
     tile: true
     num: [[{sum: amount, where: [[{role: invoice, not_in: []}, {role: line_type, in: [subscription, recurring, plan, license]}]]}]]
     den: [[{kpi: billings}]]
-  - name: churned_share
-    label: Share of rows flagged churned
-    unit: percent
-    num: [[{sum: churned_flag}]]
-    den: [[{nunique: customer, where: [[{role: churned_flag, not_in: []}]]}]]
 
 glossary:
   mrr: [mrr, monthly recurring revenue, recurring revenue, monthly run rate, current mrr]
@@ -273,7 +261,7 @@ glossary:
                      returning customers]
   new_customers: [new customers, new logos, customers won, customers acquired]
   churned_customers: [churned customers, customers lost, lost customers, customers churned,
-                      cancellations, how many customers churned]
+                      how many customers churned]
   reactivated_customers: [reactivated customers, customers who came back, returned customers]
   logo_churn_rate: [churn rate, churn, logo churn, customer churn, customer churn rate,
                     logo churn rate, annual churn, attrition]
@@ -284,7 +272,6 @@ glossary:
   billings: [billings, invoiced, billed, invoiced amount, amount billed, invoices total]
   recurring_share: [recurring share, share recurring, recurring billings, one time fees,
                     setup fees]
-  churned_share: [share churned, churned flag, percent flagged churned]
   mrr_bridge: [mrr bridge, mrr movements, mrr waterfall, mrr breakdown, what drove mrr]
   ltv: [ltv, clv, lifetime value, customer lifetime value]
   cac: [cac, customer acquisition cost, acquisition cost, cost per acquisition]
@@ -299,6 +286,8 @@ glossary:
   cohort_curve: [cohort retention curve, retention by cohort, retention by signup month,
                  cohort table, cohort analysis]
   monthly_churn_annualised: [annualized churn, annualised churn, monthly churn times 12]
+  fx: [fx, exchange rate, currency conversion, constant currency, in euros, converted to usd]
+  pause_history: [paused history, when were they paused, pause history, paused last year]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
 definitions:
   mrr_bridge: "The MRR bridge splits the change in MRR over the 12 months to the latest date into new, expansion, reactivation, contraction and churned MRR, each a customer's change between consecutive month-ends: MRR then + new + expansion + reactivation − contraction − churned = MRR now. Expansion and contraction need monthly MRR snapshots; a subscription list holds today's prices only."
@@ -313,10 +302,12 @@ unsupported:
   recognised_revenue: "the revenue schedule under ASC 606 / IFRS 15 (recognised ratably over each service period, with deferred revenue): MRR is a run-rate and billings are invoices, neither is recognised revenue"
   bookings: "signed contracts with their total value and terms (a CRM or contracts table); MRR and billings are not bookings"
   usage_mrr: "metered usage records; usage charges are left out of MRR here (billed separately on invoice lines)"
+  fx: "exchange rates for each month: MRR here is the main currency's only, other currencies are named and left out, never converted"
+  pause_history: "the dates a subscription was paused: a subscription list has its status today only, so a paused subscription is out of every month's MRR"
   cohort_curve: "a retention curve per signup month is not computed here; the 12-month cohort (customers paying 12 months earlier, their logo churn and revenue retention now) is available"
 
 caveats:
-  read_as_domain: "Read as SaaS subscription data ({kpis}). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan ÷ 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate × 12."
+  read_as_domain: "Read as SaaS subscription data ({kpis}). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan ÷ 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate × 12. A customer who starts and leaves inside one month appears in no month-end figure."
   read_as_domain_weak: "Read as SaaS subscription data because it has {roles} columns; if these are not subscriptions, the SaaS figures here don't apply."
   repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
   partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons; it is not annualised."

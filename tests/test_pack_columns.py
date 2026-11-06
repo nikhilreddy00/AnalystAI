@@ -74,3 +74,11 @@ def test_a_term_times_a_constant_is_a_run_rate_of_the_same_kind():
     raw["kpis"][-1]["num"][0][0]["times"] = "1/12"
     with pytest.raises(ValueError):
         Pack.model_validate(raw)
+
+
+def test_a_percent_off_in_percent_is_read_as_a_rate(pack):
+    """Audit pass 1 (Spec M2): Stripe's percent_off is 0-100; 20 means 20%, never 2,000%."""
+    df = pd.DataFrame({"unit_id": ["a", "b"], "rent": [100.0, 100.0], "rebate": [20, None],
+                       "term": ["monthly", "monthly"]})
+    out, _ = pack_columns(df, pack, {r: r for r in df.columns})
+    assert out["monthly_rent"].tolist() == [80.0, 100.0]
