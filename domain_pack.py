@@ -1154,15 +1154,19 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
                 terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
                              f"this file) {say(stock, abs(rest))}")
             begin = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
-            span = round((as_of - begin).days / 30.44)
-            out.append(f"{stock.label} bridge, {span} months to {as_of:%-d %b %Y}: {say(stock, start)} on "
+            span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
+            if not span or begin >= as_of:
+                return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
+            out.append(f"{stock.label} bridge, {span}: {say(stock, start)} on "
                        f"{begin:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
-                       + ("" if parts["expansion"] else " Expansion and contraction (price or seat "
-                          f"changes) are not in this file (no {pack.spell.words.plural}' monthly values)."))
+                       + ("" if parts["expansion"] else " This file has no monthly values per "
+                          f"{pack.spell.words.plural[:-1] if pack.spell.words.plural.endswith('s') else pack.spell.words.plural}, "
+                          "so expansion and contraction are not split."))
     lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
         (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
          and any(t.spell == "retained" and t.sum is None for alt in k.num for t in alt)), None)
-    if lost and rate and (n := compute_kpi(df, roles, pack, lost.name)) is not None:
+    if lost and rate and (n := compute_kpi(df, roles, pack, lost.name)) is not None \
+            and compute_kpi(df, roles, pack, rate.name) is not None:   # never without its rate
         who = pack.spell.words.plural
         out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
                    f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles))):%-d %b %Y} "
@@ -2426,7 +2430,11 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
             # all whole numbers (1 = 1%); a rate (0.2) otherwise. Rows on the other scale: blank
             percent = bool(len(given)) and bool((given > 1).mean() > 0.5 or (
                 (given > 1).any() and (given == given.round()).all()))
-            wrong = (rate > 1) if not percent else ((rate > 0) & (rate < 1))
+            if len(given) and (given == 1).all():   # 1 = 100% off or 1%: no scale to read it by
+                notes.append(f"{name}: {roles[f.net_of]} holds only 1s: its scale (100% or 1%) is "
+                             "unclear, so those rows are left blank.")
+            wrong = ((rate > 1) if not percent else ((rate > 0) & (rate < 1))) | \
+                ((rate == 1) & bool(len(given) and (given == 1).all()))
             if odd := int(wrong.sum()):
                 notes.append(f"{name}: {odd:,} row{'s' * (odd != 1)} of {roles[f.net_of]} disagree "
                              f"with the column's {'percent' if percent else 'rate'} scale: left blank.")
