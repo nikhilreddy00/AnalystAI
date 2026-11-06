@@ -530,3 +530,16 @@ def test_a_mixed_groups_former_rows_alone_are_false():
     now = df[f["in_force_now"] == "yes"].groupby("plan")["mrr"].mean()
     mixed = [k for k in gone.index if k in now.index and abs(gone[k] - now[k]) > 0.01 * abs(now[k])]
     assert mixed and out["false"] == len(mixed)
+
+
+def test_month_labels_are_judged_once_for_the_as_of_and_the_first_known_month():
+    """Design review: spell_as_of read labels only when every snapshot is on the 1st, first_known
+    whenever the first one is. One mid-month snapshot: neither reads the 1st as a month's end."""
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    mixed = df.copy()
+    last = pd.to_datetime(mixed["month"]) == pd.to_datetime(mixed["month"]).max()
+    mixed.loc[last, "month"] = "2026-10-15"
+    first = dp.spell_from(pack, mixed, roles)
+    assert dp.spell_as_of(pack, mixed, roles) == pd.Timestamp("2026-10-15")
+    assert dp.first_known(pack, mixed, roles) == first
+    assert dp.first_known(pack, df, roles) == first + pd.offsets.MonthEnd(0)

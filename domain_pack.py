@@ -867,7 +867,7 @@ def _spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Time
     snap = _snapshot_column(pack, roles)
     for col in [roles.get(s.as_of) if s.as_of else None, snap]:
         if col and pd.notna(t := _day(df[col]).max()):
-            if col == snap and s.month_labels and (_day(df[col]).dropna().dt.day == 1).all():
+            if col == snap and _month_labelled(pack, df, roles):
                 return min(t + pd.offsets.MonthEnd(0), today())
             return t
     dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end, s.paid_from) if r in roles]
@@ -942,12 +942,12 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
         return f"as of {as_of:%-d %b %Y}"
     spells = {t.spell for t in spell_terms(pack, name)}
     if "moves" in spells:   # moves start after the first known state (pass 6: a month too many)
-        known = first_known(pack, roles, spell_from(pack, df, roles))
+        known = first_known(pack, df, roles)
         months = sum(p > known for p in pts)
         if months < 1:
             return ""
     if spells & {"opening", "retained"}:   # whatever period is asked: the cohort ending there
-        start = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
+        start = cohort_start(as_of, first_known(pack, df, roles))
         if spells == {"opening"}:   # a level at the cohort's start (Opening MRR)
             return f"on {start:%-d %b %Y}"
         n = round((as_of - start).days / 30.44)
@@ -1090,8 +1090,8 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             continue
         now = compute_kpi(df, roles, pack, k.name)
         cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))
-        whole_year = not cohort or (back[1] - pd.DateOffset(months=12)).to_period("M") >= first_known(
-            pack, roles, spell_from(pack, df, roles)).to_period("M")   # an 11-month cohort is no 12
+        known = first_known(pack, df, roles).to_period("M")   # an 11-month cohort is no 12
+        whole_year = not cohort or (back[1] - pd.DateOffset(months=12)).to_period("M") >= known
         then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok and whole_year else None
         if now is not None:
             out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
@@ -1158,7 +1158,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
                 terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
                              f"this file) {say(stock, abs(rest))}")
-            begin = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
+            begin = cohort_start(as_of, first_known(pack, df, roles))
             span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
             if not span or begin >= as_of:
                 return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
@@ -1174,7 +1174,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             and compute_kpi(df, roles, pack, rate.name) is not None:   # never without its rate
         who = pack.spell.words.plural
         out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
-                   f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles))):%-d %b %Y} "
+                   f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, df, roles)):%-d %b %Y} "
                    "who are not in force now, so "
                    f"the two differ: {who} who joined in the window or came back are in the count only.")
     if (k := parts["churn"]) is not None:
@@ -1431,13 +1431,21 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     return sum(vals) / len(pts)
 
 
-def first_known(pack: Pack, roles: dict[str, str], first: pd.Timestamp) -> pd.Timestamp:
-    """THE first date the data knows each entity's state: snapshots, the first snapshot (a month
-    label on the 1st: that month's end, as spell_as_of reads it); spells, the day before the first
-    date (in force by start dates). The ledger's opening and moves start there at the earliest."""
+def _month_labelled(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> bool:
+    """THE month-label test: the pack reads labels and every snapshot is on a 1st (one mid-month
+    date: the dates are real days)."""
+    snap = _snapshot_column(pack, roles)
+    return bool(snap and pack.spell.month_labels and (_day(df[snap]).dropna().dt.day == 1).all())
+
+
+def first_known(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timestamp:
+    """THE first date the data knows each entity's state: snapshots, the first snapshot (month
+    labels: that month's end, as spell_as_of reads them); spells, the day before the first date
+    (in force by start dates). The ledger's opening and moves start there at the earliest."""
+    first = spell_from(pack, df, roles)
     if not _snapshot_column(pack, roles):
         return first - pd.Timedelta(days=1)
-    return first + pd.offsets.MonthEnd(0) if pack.spell.month_labels and first.day == 1 else first
+    return first + pd.offsets.MonthEnd(0) if _month_labelled(pack, df, roles) else first
 
 
 def cohort_start(as_of, known):
@@ -1480,7 +1488,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
     its new segment. Opening / retained: the cohort in force at the window's start (by period:
     12 months before each period's end), placed by its row then; retained values it at the end
     (an entity back after a churn is retained). A start or end before the data counts 0."""
-    known = first_known(pack, roles, first)
+    known = first_known(pack, whole, roles)
     lo = max(lo, known)   # moves never start before the data knows a state (an asked window of
     # 20 months keeps its 20: pass 3); the 12-month cohort is the opening's own rule
 
