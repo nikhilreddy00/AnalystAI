@@ -14,5 +14,13 @@ roles:
   - category
   support_tickets: metric
 pii: {}
-label_note: 'An existing eval dataset: roles every other suite depends on must not regress.'
-expect_domain: null
+label_note: 'An existing eval dataset: roles every other suite depends on must not regress. Domain 6: it reads
+  as the SaaS pack (MRR snapshots labelled on the 1st, a churned flag).'
+expect_domain: saas
+expect_roles:
+  month: billing_date
+  customer: account_id
+  plan: plan
+  quantity: seats
+  mrr: mrr
+  churned_flag: churned

@@ -24,7 +24,6 @@ from pydantic import BaseModel
 from agents.errors import GuardrailViolation, SandboxError
 from agents.utils import display_values, pii_columns, safe_column_name, strip_markdown_fences
 from domain_pack import (
-    SPELL_EVENT_COLUMNS,
     protected_groups,
     spell_facts,
     runout_months,
@@ -222,7 +221,7 @@ def model_frame(df: pd.DataFrame, contract: DataContract) -> tuple[pd.DataFrame,
     against it (CODING_STANDARDS: adapters take the production path)."""
     framed, col = with_row_kind(df, contract)
     framed, added = with_derived(framed, contract)
-    events = [c for c in SPELL_EVENT_COLUMNS if c in framed.columns and c not in df.columns]
+    events = [c for c in framed.columns if c not in df.columns and c not in (col, *added)]
     return framed, [*([col] if col else []), *added, *events]
 
 
@@ -239,7 +238,8 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     Merged into the sandbox's `raw` result as before: a target's MoM (and YoY on a pack's data)
     replaces the model's; target-pair r and the joint breakdown fill gaps; a level by segment
     replaces only the model's totals and means of it. Ids go to raw['builtin'] (evidence)."""
-    from agents.utils import (LevelUnavailable, aggregate, effective_agg, latest_rows, pct_change, ranked, time_axis, weekly_cadence)
+    from agents.utils import (LevelUnavailable, aggregate, cut_partial, effective_agg, latest_rows, pct_change, ranked,
+                              time_axis, weekly_cadence)
     from domain_pack import entity_rows, rows_for
     types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
     names = set(df.columns)
@@ -321,7 +321,14 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
             # every segment compares the same months as the whole file (never its own last two,
             # which can be a stale pair); a flow's month with no rows is 0
             last = overall.index[-1]
-            pairs = [("MoM", overall.index[-2]), ("YoY", last - 12 if yoy else None)]
+            # a first month the data covers only part of (invoices from 26 Sep) is no month to
+            # compare with: utils.cut_partial, the one rule (Domain 6 live run: '+109% YoY'
+            # against five days of September)
+            dated = pd.to_datetime(rows[time_axis(contract, c, df)], format="mixed", errors="coerce")
+            kept, _ = cut_partial(overall, dated, "M")
+            partial_first = overall.index[0] if len(kept) and kept.index[0] != overall.index[0] else None
+            pairs = [(k, p_) for k, p_ in (("MoM", overall.index[-2]), ("YoY", last - 12 if yoy else None))
+                     if p_ != partial_first]
             jobs = [(None, overall, rows)]
             if segs:   # the 10 largest groups, ties by name (the same on every machine)
                 for v in ranked(df[segs[0]].value_counts()).head(10).index:
@@ -894,6 +901,8 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(df_parquet))
             await asyncio.to_thread(standard_stats, raw, frame, contract, session.task_plan)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
+            if dropped := drop_formula_correlations(findings, contract):
+                raw["assumptions"] = [dropped, *(raw.get("assumptions") or [])]
             levels = any(c.aggregation in ("last", "first") for c in contract.columns)
             if (levels or defaults_pack(contract)) and (fixed := await asyncio.to_thread(
                     lambda: repair_breakdowns(findings, pd.read_parquet(io.BytesIO(df_parquet)),
@@ -1001,6 +1010,34 @@ def _repair_label(note: str) -> str:
             else "breakdown_recomputed" if " recomputed: " in note else "level_recomputed")
 
 
+def drop_formula_correlations(f: AnalysisFindings, contract: DataContract) -> str:
+    """Drop a correlation of a column the product computed with one of its own inputs (MRR and
+    seats): equal by construction, never a finding. Returns the note ('' when none)."""
+    from domain_pack import formula_pairs
+    pairs = formula_pairs(contract)
+    gone = [k for k in f.correlations if frozenset(k.split("__")) in pairs]
+    for k in gone:
+        del f.correlations[k]
+    return (f"Not reported: {', '.join(k.replace('__', ' with ') for k in gone)}, computed one from "
+            "the other (the product's formula)") if gone else ""
+
+
+def _a_part_of(s, totals: pd.Series) -> bool:
+    """A breakdown of a level whose values sit below the level itself in some group (churned or
+    new MRR by month, a change): another meaning, the model's own, never replaced by the level
+    (lesson 13; Domain 6 smoke saas-8). A level summed over snapshots is at least the level."""
+    def key(k) -> str:
+        k = "|".join(map(str, k)) if isinstance(k, tuple) else str(k)
+        try:   # a date names its day however it is written ('2025-11-01', '2025-11-01 00:00:00')
+            return f"{pd.Timestamp(k):%Y-%m-%d}" if any(ch.isdigit() for ch in k) and "-" in k else k
+        except (ValueError, TypeError):
+            return k
+    level = {key(k): float(v) for k, v in totals.items()}
+    got = {key(r.get("name")): r.get("value") for r in s.results if isinstance(r, dict)}
+    return any(isinstance(v, (int, float)) and k in level and abs(v) < 0.98 * abs(level[k])
+               for k, v in got.items())
+
+
 def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
                       timeframe: str | None = None, builtin: set[str] = frozenset()) -> list[str]:
     """The model's breakdowns, recomputed where its code read the wrong rows (plan v2 B2: the
@@ -1061,6 +1098,8 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
                 f.segments.remove(s)
                 notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
                 continue
+            if _a_part_of(s, totals):
+                continue
             s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                           "value": round(float(v), 4)} for k, v in totals.items()]
             s.aggregation = hint.aggregation
@@ -1077,6 +1116,8 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
         except (LevelUnavailable, KeyError):
             f.segments.remove(s)
             notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
+            continue
+        if _a_part_of(s, totals):
             continue
         s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                       "value": round(float(v), 4)} for k, v in totals.items()]

@@ -8,13 +8,14 @@ domain is a YAML file, never an agent edit. An invalid pack stops the API and th
 from __future__ import annotations
 
 import re
+import threading
 from functools import cache
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, StrictFloat, StrictInt, model_validator
 
 PACKS = Path(__file__).parent / "domain_packs"
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
@@ -70,6 +71,8 @@ class Role(_Strict):
     # "last": a level (a balance): adds across the snapshot_key's entities at one date, never
     # across dates; each entity's latest snapshot per period (the ColumnInfo level hint).
     over_time: Literal["sum", "last"] = "sum"
+    # A category's numeric meaning in a formula (Pack.columns): a billing interval in months
+    numbers: dict[str, float] = Field(default_factory=dict)
 
 
 class Cond(_Strict):
@@ -131,6 +134,17 @@ class NeverSay(_Strict):
     reason: str
 
 
+class Formula(_Strict):
+    """A column the product adds to the data (Pack.columns): the product of `times`, net of the
+    `net_of` rate, divided by the product of `over` (a subscription's MRR: price × seats ×
+    (1 − discount) ÷ (interval months × interval count)). An `optional` role the data lacks, or
+    a blank value of one, counts 1 (a rate: 0)."""
+    times: list[str]
+    over: list[str] = Field(default_factory=list)
+    net_of: str | None = None
+    optional: list[str] = Field(default_factory=list)
+
+
 class Within(_Strict):
     """Rows followed by another row of the same entity starting (0, days] after this row's end
     (a 30-day readmission). Follow-ups are found anywhere in the data and must meet `follow`;
@@ -142,6 +156,17 @@ class Within(_Strict):
     days: int = Field(gt=0)
     follow: list[list[Cond]] = Field(default_factory=list)
     base: bool = False
+
+
+class SpellWords(_Strict):
+    """A spell's own words, for the frame columns the model's code reads and the sentences the
+    product writes: HR's hire / exit / people, a subscription's start / cancellation / customers.
+    Shared code never names them (tests/test_one_definition.py)."""
+    start: str = "start"
+    end: str = "end"
+    unknown: str = "end_date_unknown"   # the column marking an ended status with no end date
+    plural: str = "entities"            # who the entities are ('885 people', '412 customers')
+    after_end: str = "rows after the end"   # an exit record's gloss on snapshots
 
 
 class Spell(_Strict):
@@ -156,6 +181,16 @@ class Spell(_Strict):
     end: str
     ended: list[str] = Field(default_factory=list)
     as_of: str | None = None
+    words: SpellWords = Field(default_factory=SpellWords)
+    # An entity holds several spells at once (a base plan and an add-on): every one in force
+    # counts, summed for a role; otherwise only its latest spell started by t (a rehire)
+    concurrent: bool = False
+    # Snapshots labelled by month on its 1st ('2026-10-01' = October, an MRR export): the as-of
+    # is the labelled month's end (clipped to today) when every snapshot date is a 1st
+    month_labels: bool = False
+    # A later date the spell counts from when filled (a trial's end: a subscription converted
+    # from a trial pays from then, not from its start; red-team R3)
+    paid_from: str | None = None
 
 
 class Term(_Strict):
@@ -169,11 +204,17 @@ class Term(_Strict):
     nunique: str | None = None
     kpi: str | None = None
     within: Within | None = None
-    spell: Literal["active", "average", "starts", "ends"] | None = None
+    spell: Literal["active", "average", "starts", "ends", "opening", "retained", "moves"] | None = None
+    # the ledger's terms (Domain 6): `opening` = the entities in force at the window's start (a
+    # cohort; with `sum`, their value), `retained` = that cohort's value at its end (`capped`: no
+    # entity above its opening value: GRR), `moves` = the month-end changes of one kind summed
+    move: Literal["new", "expansion", "contraction", "churn", "reactivation"] | None = None
+    capped: bool = False
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] | None = None
     sign: Literal[1, -1] = 1
     optional: bool = False        # a missing role drops this term (and a blank value counts 0)
     net_of: str | None = None     # a rate role: each row's value × (1 − rate) (a 25% line discount)
+    times: StrictInt | StrictFloat = 1   # a constant multiplier: ARR = 12 × MRR (never '12')
     # Only rows meeting one of these groups (each group: all its conditions): NPL = 90+ days
     # past due OR non-accrual, never counted twice.
     where: list[list[Cond]] = Field(default_factory=list)
@@ -183,9 +224,14 @@ class Term(_Strict):
 
     @model_validator(mode="after")
     def _one(self) -> Term:
+        if (self.move is not None) != (self.spell == "moves"):
+            raise ValueError("`move` goes with `spell: moves` (which change it sums)")
+        if self.capped and self.spell != "retained":
+            raise ValueError("`capped` is a retained term's (GRR)")
         if self.spell is not None:
-            if self.spell != "active" and self.sum is not None:
-                raise ValueError("a spell term sums a role only for `active` (at a date)")
+            if self.spell in ("average", "starts", "ends") and self.sum is not None:
+                raise ValueError("a spell term sums a role only at dates (active, opening, "
+                                 "retained) or over moves")
             if any(x is not None for x in (self.sum_abs, self.nunique, self.kpi, self.within)):
                 raise ValueError("a spell term counts its entities (or sums one role): no "
                                  "sum_abs, nunique, kpi or within")
@@ -203,8 +249,8 @@ class Term(_Strict):
             expr, str) else [expr[0], expr[2]]
         if w := self.within:
             own = [w.entity, w.start, w.end, *(c.role for g in w.follow for c in g)]
-        if self.spell:   # the entity only: snapshots need no start or end column
-            own = [*self._spell_roles[:1], *own]
+        if self.spell:   # the entity only: snapshots need no start or end column (a ledger's
+            own = [*self._spell_roles, *own]   # history terms also need the snapshot date)
         return list(dict.fromkeys([*own, *([self.net_of] if self.net_of else []),
                                    *(c.role for g in self.where for c in g)]))
 
@@ -226,12 +272,15 @@ class KPI(_Strict):
     # a role whose values the KPI never adds across (exposure units differ by line): computed
     # within one value only; asked without a group, answered by this role
     per: str | None = None
+    # set by Pack._check: every numerator term is a state KPI (ARR = 12 × MRR is as of a date)
+    _of_state: bool = PrivateAttr(default=False)
 
     @property
     def state(self) -> bool:
         """A state at a date (a balance, a headcount), never a flow over the period: THE test
         (`at: latest`, or a spell's entities in force)."""
-        return self.at == "latest" or any(t.spell == "active" for alt in self.num for t in alt)
+        return self.at == "latest" or any(t.spell == "active" for alt in self.num for t in alt) \
+            or self._of_state
 
     def written(self, value: str) -> str:
         """A formatted value with its unit word: THE way a KPI's number is written."""
@@ -322,6 +371,10 @@ class Pack(_Strict):
     # frame gets it as a column named after the role's first header, so the model never invents
     # one ("LOS (derived)" was rejected as an unknown column)
     derived: dict[str, list[str]] = Field(default_factory=dict)
+    # A role the product adds to the data at ingestion when the data lacks it (a subscription
+    # list's MRR from its price, seats, discount and interval): one column every reader reads
+    # (KPIs, charts, filters, the model), never a formula repeated per KPI
+    columns: dict[str, Formula] = Field(default_factory=dict)
     # A version chain (a claim line adjudicated, replaced, voided): the rows sharing these roles'
     # values, ordered by `version_order`; only the last counts, earlier ones are non_product, and
     # a chain whose last row carries a `version_void` value is cancelled (every row)
@@ -413,7 +466,8 @@ class Pack(_Strict):
                 *self.role_caveats, *self.protected_roles, *(k.per for k in self.kpis if k.per),
                 *([self.person_key] if self.person_key else []),
                 *([self.spell.entity, self.spell.start, self.spell.end,
-                   *([self.spell.as_of] if self.spell.as_of else [])] if self.spell else []),
+                   *([self.spell.as_of] if self.spell.as_of else []),
+                   *([self.spell.paid_from] if self.spell.paid_from else [])] if self.spell else []),
                 *([self.average_per] if self.average_per else []), *(r for g in self.paired_fields for r in g),
                 *([*self.running_balance.levels, *self.running_balance.plus, *self.running_balance.minus]
                   if self.running_balance else []),
@@ -426,6 +480,10 @@ class Pack(_Strict):
             if r not in self.roles or len(expr) != 3 or expr[1] not in ("*", "-", "days") \
                     or expr[0] not in self.roles or expr[2] not in self.roles:
                 errors.append(f"derived {r}: a role and [role, '*', '-' or 'days', role]")
+        for r, f in self.columns.items():
+            errors += [f"columns {r}: unknown role {x}" for x in
+                       [r, *f.times, *f.over, *([f.net_of] if f.net_of else []), *f.optional]
+                       if x not in self.roles]
         if bool(self.version_key) != bool(self.version_order):
             errors.append("version_key and version_order go together")
         if self.line_weight and (len(self.line_weight) != 3 or self.line_weight[1] not in ("*", "-")):
@@ -472,13 +530,24 @@ class Pack(_Strict):
                    for q in self.first_questions if isinstance(q, dict)
                    for need in q.get("needs", []) for n in need.split("|")   # "sku|product": either
                    if n not in names and n not in self.roles and n not in ROW_KINDS and n != "year"]
-        for k in self.kpis:
+        for k in self.kpis:   # in order: a KPI refers to KPIs written before it
+            # ponytail: a ratio of state KPIs isn't marked (banking's avg_balance is a logged
+            # follow-up with its own re-measure); a ratio of spell terms is a state already
+            k._of_state = k.den is None and all(
+                t.kpi and t.kpi in names and self.kpi(t.kpi) and self.kpi(t.kpi).state
+                for alt in k.num for t in alt)
             for alt in [*k.num, *(k.den or [])]:
                 for t in alt:
                     if t.spell and not self.spell:
                         errors.append(f"kpi {k.name}: a spell term needs the pack's spell")
                     elif t.spell:
-                        t._spell_roles = [self.spell.entity]
+                        # a value's history (expansion, retention) exists only on dated snapshots:
+                        # a subscription list holds today's price at both ends (red-team R4)
+                        history = t.move in ("expansion", "contraction") or t.spell == "retained" \
+                            and t.sum is not None
+                        t._spell_roles = [self.spell.entity, *(
+                            [self.date_role] if history and self.date_role not in
+                            (self.spell.start, self.spell.end) else [])]
                         if k.at == "latest":
                             errors.append(f"kpi {k.name}: at latest and a spell term are two "
                                           "state rules")
@@ -769,11 +838,17 @@ SPELL_YEARS = 10
 SPELL_PERIODS = 520
 
 
-def _snapshot_column(pack: Pack, roles: dict[str, str]) -> str | None:
-    """A spell's snapshot date column (the pack's date role, when it is neither the start nor the
-    end and the data has it): rows are then dated snapshots, not spells."""
+def snapshot_role(pack: Pack) -> str | None:
+    """THE spell's snapshot date role: the pack's date role when it is neither the start nor the
+    end (an MRR export's month, HR's snapshot date)."""
     s = pack.spell
-    return roles.get(pack.date_role) if s and pack.date_role not in (s.start, s.end) else None
+    return pack.date_role if s and pack.date_role not in (s.start, s.end) else None
+
+
+def _snapshot_column(pack: Pack, roles: dict[str, str]) -> str | None:
+    """A spell's snapshot date column (snapshot_role, when the data has it): rows are then dated
+    snapshots, not spells."""
+    return roles.get(snapshot_role(pack)) if snapshot_role(pack) else None
 
 
 def spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timestamp | None:
@@ -781,11 +856,22 @@ def spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Times
     the latest start or end date not after today (a notice period's exit, a pre-boarded hire:
     not yet). Always judged on all rows (a filter never moves it)."""
     from agents.utils import today
+    return _memo(df, ("as_of", *_spell_key(pack, roles), today()),
+                 lambda: _spell_as_of(pack, df, roles))
+
+
+def _spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timestamp | None:
+    """spell_as_of's rule, uncached."""
+    from agents.utils import today
     s = pack.spell
-    for col in [roles.get(s.as_of) if s.as_of else None, _snapshot_column(pack, roles)]:
+    snap = _snapshot_column(pack, roles)
+    for col in [roles.get(s.as_of) if s.as_of else None, snap]:
         if col and pd.notna(t := _day(df[col]).max()):
+            if col == snap and s.month_labels and (_day(df[col]).dropna().dt.day == 1).all():
+                return min(t + pd.offsets.MonthEnd(0), today())
             return t
-    dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end) if r in roles] or [pd.Series(dtype="datetime64[ns]")])
+    dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end, s.paid_from) if r in roles]
+                      or [pd.Series(dtype="datetime64[ns]")])
     dates = dates[dates <= today()]
     return dates.max() if dates.notna().any() else None
 
@@ -854,7 +940,39 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
     months = len(pts)
     if kpi.state:
         return f"as of {as_of:%-d %b %Y}"
+    spells = {t.spell for t in spell_terms(pack, name)}
+    if "moves" in spells:   # moves start after the first known state (pass 6: a month too many)
+        known = first_known(pack, roles, spell_from(pack, df, roles))
+        months = sum(p > known for p in pts)
+        if months < 1:
+            return ""
+    if spells & {"opening", "retained"}:   # whatever period is asked: the cohort ending there
+        start = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
+        if spells == {"opening"}:   # a level at the cohort's start (Opening MRR)
+            return f"on {start:%-d %b %Y}"
+        n = round((as_of - start).days / 30.44)
+        return f"{n}-month cohort to {as_of:%-d %b %Y}" if n >= 1 else ""
     return f"{months} month{'s' * (months != 1)} to {as_of:%-d %b %Y}"
+
+
+MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
+
+
+def ledger_kpi(pack: Pack, roles: dict[str, str], spell: str, move: str | None = None,
+               unit: str = "money") -> KPI | None:
+    """THE KPI made of one ledger term (new MRR = moves/new; churned customers = moves/churn as a
+    count; opening MRR = opening) the data can compute: the story and the facts read it."""
+    return next((k for k in pack.kpis if computable(pack, k.name, roles) and k.den is None
+                 and k.unit == unit and len(alt := k.num[0]) == 1 and alt[0].spell == spell
+                 and alt[0].move == move), None)
+
+
+def stock_kpi(pack: Pack, roles: dict[str, str], unit: str | None = None) -> KPI | None:
+    """THE stock tile: the first tile that is a state made of spell terms the data can compute
+    (headcount, MRR); `unit` narrows it to a count (who is in force) or a money one (audit pass 1:
+    the choice was copied six times)."""
+    return next((k for k in pack.kpis if k.tile and k.state and (unit is None or k.unit == unit)
+                 and spell_terms(pack, k.name) and computable(pack, k.name, roles)), None)
 
 
 def spell_terms(pack: Pack, name: str) -> list[Term]:
@@ -866,14 +984,22 @@ def spell_terms(pack: Pack, name: str) -> list[Term]:
     return out
 
 
+def _amount(pack: Pack, df: pd.DataFrame, roles: dict[str, str], kpi: KPI, v: float) -> str:
+    """A spell fact's number in its KPI's unit: money with the main currency ('$851,102'), a
+    count or number as before ('885')."""
+    if kpi.unit == "money":
+        from agents.visualization_agent import _format_currency
+        return _format_currency(v, main_currency(df, roles)[1])
+    return f"{v:,.0f}"
+
+
 def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str]:
     """The product's own spell numbers for a model to divide by, never rebuild (Domain 5
     red-team B6: the model re-deriving a row rule was the one root cause of Domain 4's analysis
     failures): the as-of, the window, the month-end counts, their mean, and what is dated after
     the as-of."""
     s = pack.spell
-    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
-                  and computable(pack, k.name, roles)), None)
+    stock = stock_kpi(pack, roles)
     mean = next((k for k in pack.kpis if any(t.spell == "average" for alt in k.num for t in alt)
                  and computable(pack, k.name, roles)), None)
     w = spell_window(pack, df, roles)
@@ -883,7 +1009,7 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     months = len(pts)
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
     series = compute_kpi(frame, roles, pack, stock.name, by="_period", full=df)
-    shown = ", ".join(f"{t:%b %Y} {series.get(t.to_period('M')):,.0f}" for t in pts
+    shown = ", ".join(f"{t:%b %Y} {_amount(pack, df, roles, stock, series.get(t.to_period('M')))}" for t in pts
                       if series is not None and pd.notna(series.get(t.to_period("M"))))
     lines = [f"As of {as_of:%-d %b %Y}: the window is the {months} months "
              f"{(lo + pd.Timedelta(days=1)):%-d %b %Y} – {as_of:%-d %b %Y}."]
@@ -903,7 +1029,44 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             if by is not None and len(by) <= 15:
                 lines.append(f"{mean.label} by {roles[g]} (a group's rate divides by its own): "
                              + ", ".join(f"{k} {x:,.1f}" for k, x in by.items()) + ".")
-    return lines + spell_story(pack, df, roles)
+    return lines + _ledger_facts(pack, df, roles, lo, as_of) + spell_story(pack, df, roles)
+
+
+def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of) -> list[str]:
+    """The ledger's numbers by month and by group, for a model to quote, never rebuild (Domain 6
+    analysis gate: re-deriving a cohort by segment or a month's churn went wrong in 4 of 33
+    runs): each money move by month, the paying count at each month-end and the monthly churn
+    (churned at a month-end ÷ in force at the one before), each cohort rate tile by the first
+    two overview groups. Only for KPIs made of ledger terms (no other pack has them)."""
+    out: list[str] = []
+    frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+    # months that start inside the window (a 29 Oct as-of: Nov … Oct, never the 2-day sliver
+    # of the October before shown as a whole month); `upto` also the month-end before them
+    months = lambda s: [p for p in s.index if p.start_time.normalize() > lo]   # noqa: E731
+    upto = lambda s: [p for p in s.index if (p + 1).start_time.normalize() > lo]   # noqa: E731
+    for k in (k for u in ("money", "count") for m in MOVES if (k := ledger_kpi(pack, roles, "moves", m, u))):
+        if (s := compute_kpi(frame, roles, pack, k.name, by="_period", full=df)) is not None:
+            out.append(f"{k.label} by month (12 months to {as_of:%-d %b %Y}): " + ", ".join(
+                f"{p} {_amount(pack, df, roles, k, s[p])}" for p in months(s)) + ".")
+    heads = stock_kpi(pack, roles, "count")
+    lost = ledger_kpi(pack, roles, "moves", "churn", "count")
+    if heads and lost:
+        n = compute_kpi(frame, roles, pack, heads.name, by="_period", full=df)
+        c = compute_kpi(frame, roles, pack, lost.name, by="_period", full=df)
+        if n is not None and c is not None:
+            out.append(f"{heads.label} at each month-end: " + ", ".join(
+                f"{p} {n[p]:,.0f}" for p in upto(n)) + ".")
+            rate = {p: c.get(p, 0) / n[p - 1] for p in months(n) if (p - 1) in n.index and n[p - 1]}
+            out.append(f"Monthly churn ({lost.phrase} at a month-end ÷ {heads.phrase} at the month-end "
+                       "before; never × 12 into an annual rate): " + ", ".join(
+                           f"{p} {v:.2%}" for p, v in rate.items()) + ".")
+    for k in (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
+              and any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))):
+        for g in [g for g in pack.overview_groups if g in roles][:2]:
+            if (by := compute_kpi(df, roles, pack, k.name, by=roles[g])) is not None and len(by) <= 15:
+                out.append(f"{k.label} by {roles[g]} (each group's own cohort, placed by its row on "
+                           f"{lo:%-d %b %Y}): " + ", ".join(f"{x} {v:.1%}" for x, v in by.items()) + ".")
+    return out
 
 
 def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str]:
@@ -917,8 +1080,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         return []
     lo, as_of, pts = w
     out: list[str] = []
-    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
-                  and computable(pack, k.name, roles)), None)
+    stock = stock_kpi(pack, roles)
     ends = next((k for k in pack.kpis if k.tile and k.unit == "count" and computable(pack, k.name, roles)
                  and [t.spell for t in used_terms(pack, k, roles)] == ["ends"]), None)
     back = (None, as_of - pd.DateOffset(years=1))   # the default window a year earlier (12 points)
@@ -927,7 +1089,10 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         if not (k.tile and k.unit == "percent" and spell_terms(pack, k.name) and computable(pack, k.name, roles)):
             continue
         now = compute_kpi(df, roles, pack, k.name)
-        then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok else None
+        cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))
+        whole_year = not cohort or (back[1] - pd.DateOffset(months=12)).to_period("M") >= first_known(
+            pack, roles, spell_from(pack, df, roles)).to_period("M")   # an 11-month cohort is no 12
+        then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok and whole_year else None
         if now is not None:
             out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
                 f"; a year earlier ({window_words(pack, df, roles, k.name, back)}): {then:.1%}, "
@@ -939,7 +1104,8 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         if len(inside) > 1 and inside.idxmax() != inside.index[-1] \
                 and inside.iloc[-1] <= 0.95 * inside.max():   # a material fall only (5%+)
             peak, now = inside.max(), inside.iloc[-1]
-            out.append(f"{stock.label} peaked at {peak:,.0f} ({inside.idxmax().strftime('%b %Y')}) and is {now:,.0f} "
+            out.append(f"{stock.label} peaked at {_amount(pack, df, roles, stock, peak)} "
+                       f"({inside.idxmax().strftime('%b %Y')}) and is {_amount(pack, df, roles, stock, now)} "
                        f"at {as_of:%-d %b %Y} ({(now / peak - 1) * 100:+.1f}%).")
     if ends is not None and (e := compute_kpi(frame, roles, pack, ends.name, by="_period", full=df)) is not None \
             and len(e) >= 6:
@@ -953,11 +1119,13 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
                     and len(g) and g.max() >= 0.5 * e[top]:
                 line += f", {g.max():,.0f} of them in {g.idxmax()} ({group})"
             out.append(line + ".")
+    out += _ledger_story(pack, df, roles, lo, as_of)
     col = _person_col(pack, roles)
+    heads = stock_kpi(pack, roles, "count")
     if col:
         people = df[col].nunique()
-        now_n = compute_kpi(df, roles, pack, stock.name) if stock else None
-        out.append(f"{len(df):,} rows are {people:,} people ({int((df[col].value_counts() > 1).sum()):,} with "
+        now_n = compute_kpi(df, roles, pack, heads.name) if heads else None
+        out.append(f"{len(df):,} rows are {people:,} {pack.spell.words.plural} ({int((df[col].value_counts() > 1).sum()):,} with "
                    "more than one row)" + (f"; {now_n:,.0f} in force at {as_of:%-d %b %Y}" if now_n else "")
                    + ".")
     if later := not_counted_yet(pack, df, roles, as_of):
@@ -968,26 +1136,132 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     return out
 
 
+def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of) -> list[str]:
+    """The ledger's facts (Domain 6 S9), from the pack's KPIs of one moves or opening term each:
+    the bridge (opening + new + expansion + reactivation − contraction − churned = now), the
+    churned-customer count beside the cohort rate (they differ: new and returning customers'
+    churns are in the count only), and the largest month of churned value against a usual
+    month, with its largest single entity's share and group. No line without its KPIs."""
+    out: list[str] = []
+    stock = stock_kpi(pack, roles, "money")
+    parts = {m: ledger_kpi(pack, roles, "moves", m) for m in ("new", "expansion", "reactivation",
+                                                              "contraction", "churn")}
+    opening = ledger_kpi(pack, roles, "opening")
+    say = lambda k, v: _amount(pack, df, roles, k, v)   # noqa: E731
+    if stock and opening and parts["new"] and parts["churn"]:
+        val = {m: compute_kpi(df, roles, pack, k.name) for m, k in parts.items() if k}
+        start, now = compute_kpi(df, roles, pack, opening.name), compute_kpi(df, roles, pack, stock.name)
+        if start is not None and now is not None and None not in val.values():
+            terms = [f"+ {k.phrase} {say(k, val[m])}" if m not in ("contraction", "churn")
+                     else f"− {k.phrase} {say(k, val[m])}" for m, k in parts.items() if k]
+            rest = now - start - sum(v if m not in ("contraction", "churn") else -v for m, v in val.items())
+            if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
+                terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
+                             f"this file) {say(stock, abs(rest))}")
+            begin = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
+            span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
+            if not span or begin >= as_of:
+                return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
+            out.append(f"{stock.label} bridge, {span}: {say(stock, start)} on "
+                       f"{begin:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
+                       + ("" if parts["expansion"] else " This file has no monthly values per "
+                          f"{pack.spell.words.plural[:-1] if pack.spell.words.plural.endswith('s') else pack.spell.words.plural}, "
+                          "so expansion and contraction are not split."))
+    lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
+        (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
+         and any(t.spell == "retained" and t.sum is None for alt in k.num for t in alt)), None)
+    if lost and rate and (n := compute_kpi(df, roles, pack, lost.name)) is not None \
+            and compute_kpi(df, roles, pack, rate.name) is not None:   # never without its rate
+        who = pack.spell.words.plural
+        out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
+                   f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles))):%-d %b %Y} "
+                   "who are not in force now, so "
+                   f"the two differ: {who} who joined in the window or came back are in the count only.")
+    if (k := parts["churn"]) is not None:
+        frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+        e = compute_kpi(frame, roles, pack, k.name, by="_period", full=df)
+        e = e[[p for p in e.index if p.end_time.normalize() > lo]] if e is not None else None
+        if e is not None and len(e) >= 6 and e.max() > 0:
+            top, usual = e.idxmax(), float(e.drop(e.idxmax()).median())
+            if e[top] >= 2.5 * max(usual, 1):
+                line = (f"The largest month of {k.phrase}: {top.strftime('%b %Y')} with "
+                        f"{say(k, e[top])} (a usual month: {say(k, usual)})")
+                ent, prev = roles[pack.spell.entity], (top - 1).end_time.normalize()
+                rows = _in_force(df, roles, pack, prev)
+                gone = rows[~rows[ent].isin(_in_force(df, roles, pack, top.end_time.normalize())[ent])]
+                if len(gone) and (m := _column(gone, roles, k.num[0][0].sum)).notna().any():
+                    big = m.groupby(gone[ent]).sum()
+                    line += f", {big.max() / e[top]:.0%} of it one {ent}"
+                    group = next((roles[g] for g in pack.overview_groups if g in roles), None)
+                    if group:
+                        line += f" in {gone.loc[gone[ent] == big.idxmax(), group].iloc[0]} ({group})"
+                out.append(line + ".")
+    return out
+
+
+# ponytail: per-frame memo of the spell rules a dashboard asks again and again (_in_force for
+# each month-end of each ledger KPI, the as-of: 146 + 96 calls, ~4 s on a 10k-row MRR export).
+# Keyed on the frame's identity, held weakly (dies with the frame); a frame changed in place
+# after a call would be stale (nothing here mutates a frame it passes in).
+_MEMO: dict[int, tuple] = {}
+_MEMO_LOCK = threading.Lock()   # runs build dashboards in threads (asyncio.to_thread)
+
+
+def _memo(whole: pd.DataFrame, key: tuple, fn):
+    import weakref
+    key = (*key, len(whole))
+    with _MEMO_LOCK:
+        for k in [k for k, (ref, _) in _MEMO.items() if ref() is None]:
+            del _MEMO[k]
+        ref, memo = _MEMO.get(id(whole), (None, None))
+        if ref is None or ref() is not whole:
+            memo = {}
+            _MEMO[id(whole)] = (weakref.ref(whole), memo)
+        if key in memo:
+            return memo[key]
+    value = fn()   # outside the lock: two threads may both compute it once, never wrongly
+    with _MEMO_LOCK:
+        memo[key] = value
+    return value
+
+
+def _spell_key(pack: Pack, roles: dict[str, str]) -> tuple:
+    return pack.domain, pack.date_role, pack.spell.model_dump_json(), tuple(sorted(roles.items()))
+
+
 def _in_force(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t: pd.Timestamp) -> pd.DataFrame:
     """THE state rule: each entity's row at `t` if it is in force then. Snapshots: its latest
     snapshot on or before t (agents.utils.snapshot_rows: absent from the newest snapshot = gone);
     spells: its latest spell started by t. Either way out when its end is on or before t, or its
     status says ended with no end date."""
+    idx = _memo(whole, ("in_force", *_spell_key(pack, roles), pd.Timestamp(t)),
+                lambda: _in_force_at(whole, roles, pack, t).index)
+    return whole.loc[idx]
+
+
+def _in_force_at(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t) -> pd.DataFrame:
+    """_in_force's rule, uncached."""
     s, snap = pack.spell, _snapshot_column(pack, roles)
     ent = roles[s.entity]
     if snap:
         from agents.utils import snapshot_rows
-        rows = snapshot_rows(whole[_day(whole[snap]) <= t], [ent], snap)
+        upto = whole[_day(whole[snap]) <= t]
+        rows = snapshot_rows(upto, [ent], snap)
+        if s.concurrent:   # every row of that snapshot (an export with one row per subscription)
+            chosen = pd.MultiIndex.from_arrays([rows[ent], _day(rows[snap])])
+            rows = upto[pd.MultiIndex.from_arrays([upto[ent], _day(upto[snap])]).isin(chosen)]
     else:
-        start = _day(whole[roles[s.start]])
-        rows = whole.loc[start[start <= t].sort_values(kind="stable").index].groupby(ent).tail(1)
+        start = _started(whole, roles, pack)
+        rows = whole.loc[start[start <= t].sort_values(kind="stable").index]
+        if not s.concurrent:
+            rows = rows.groupby(ent).tail(1)
     return rows[~_ended(rows, roles, pack, t)]
 
 
 def _ended(rows: pd.DataFrame, roles: dict[str, str], pack: Pack, t) -> pd.Series:
     """THE ended test of a spell's row at `t` (a date, or each row's own date): its end on or
     before t, or an `ended` status with no end date (over at an unknown date). _in_force and
-    exit_records both read it."""
+    ended_records both read it."""
     s = pack.spell
     end = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
     return (end.notna() & (end <= t)) | _ended_undated(rows, roles, pack)
@@ -998,8 +1272,10 @@ def not_counted_yet(pack: Pack, df: pd.DataFrame, roles: dict[str, str], as_of) 
     still in force / not yet started, so not counted yet. The file's story and every spell
     answer say it."""
     s = pack.spell
-    later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end) if r in roles)
-    return f"{later:,} start or end dates fall after {as_of:%-d %b %Y}: not counted yet." if later else ""
+    later = sum(int((_day(df[roles[r]]) > as_of).sum()) for r in (s.start, s.end, s.paid_from)
+                if r in roles)
+    return (f"{later:,} start or end date{'s fall' if later != 1 else ' falls'} after "
+            f"{as_of:%-d %b %Y}: not counted yet.") if later else ""
 
 
 def _ended_undated(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
@@ -1010,6 +1286,16 @@ def _ended_undated(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.
         return pd.Series(False, index=rows.index)
     end = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
     return words(rows[roles["status"]]).isin(set(words(pd.Series(s.ended)))) & end.isna()
+
+
+def _started(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
+    """THE date a spell row counts from: its start, or its `paid_from` when later (a converted
+    trial pays from the trial's end). _in_force, the start events and the population read it."""
+    s = pack.spell
+    start = _day(rows[roles[s.start]])
+    if s.paid_from in roles:
+        start = pd.concat([start, _day(rows[roles[s.paid_from]])], axis=1).max(axis=1)
+    return start
 
 
 def has_spell(pack: Pack | None, roles: dict[str, str]) -> bool:
@@ -1046,7 +1332,7 @@ def _spell_events(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, which:
         col = roles.get(s.start if which == "starts" else s.end)
         if col is None:
             return whole.iloc[:0], pd.Series(dtype="datetime64[ns]")
-        when = _day(whole[col])
+        when = _started(whole, roles, pack) if which == "starts" else _day(whole[col])
         rows = whole[when.notna()]
         rows = rows[~pd.DataFrame({"e": rows[ent].astype(str), "t": when[rows.index]}).duplicated()]
         when = when[rows.index]
@@ -1098,7 +1384,13 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     else:   # the groups its population has (never 'Contractor: 0' for an employees' KPI)
         axis = None
         pop = df[_meets(df, roles, w)] if by and (w := _population(pack, term.where)) else df
+        # and rows of the KPI's kinds: a country billed only in euros is no '$0' group (audit 1)
+        pop = pop[allk.reindex(pop.index).isin(ok).to_numpy()] if by else pop
         groups = pd.unique(pop[by].dropna()) if by else None
+
+    if term.spell in ("opening", "retained", "moves"):
+        return _ledger_term(df, whole, roles, pack, term, allk, ok, by, lo, as_of, first,
+                            axis if periodic else None, groups)
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
@@ -1137,6 +1429,132 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     if by:
         return (pd.concat(vals, axis=1).fillna(0).sum(axis=1) / len(pts)).reindex(groups, fill_value=0)
     return sum(vals) / len(pts)
+
+
+def first_known(pack: Pack, roles: dict[str, str], first: pd.Timestamp) -> pd.Timestamp:
+    """THE first date the data knows each entity's state: snapshots, the first snapshot (a month
+    label on the 1st: that month's end, as spell_as_of reads it); spells, the day before the first
+    date (in force by start dates). The ledger's opening and moves start there at the earliest."""
+    if not _snapshot_column(pack, roles):
+        return first - pd.Timedelta(days=1)
+    return first + pd.offsets.MonthEnd(0) if pack.spell.month_labels and first.day == 1 else first
+
+
+def cohort_start(as_of, known):
+    """THE start of a cohort KPI's window: 12 months before its end, or the data's first known
+    state when it covers less: the opening is a real value, never a 0 before the data."""
+    return max(as_of - pd.DateOffset(months=12), known)
+
+
+def _ledger(whole, roles, pack, term: Term, allk, ok, points, part, by):
+    """THE ledger: (values, in the part, group), each an entity × date frame. An entity's value
+    at t is its rows in force at t (on ALL rows: _in_force) of the KPI's kinds meeting `where`,
+    the term's role summed (concurrent spells add up) or 1 for a count (the entity is there,
+    however many of its spells are); 0 when none. `in part`:
+    one of those rows is in `part` (a filter); `group`: the `by` value of its first row."""
+    ent = roles[pack.spell.entity]
+    vals, inside, grp = {}, {}, {}
+    for t in points:
+        rows = _in_force(whole, roles, pack, t)
+        m = allk.reindex(rows.index).isin(ok).to_numpy()
+        if term.where:
+            m = m & _meets(rows, roles, term.where).to_numpy()
+        rows = rows[m]
+        if term.sum is not None:
+            vals[t] = _column(rows, roles, term.sum).groupby(rows[ent]).sum()
+        else:   # a count: the entity is there (two concurrent subscriptions are one customer)
+            vals[t] = pd.Series(1.0, index=pd.unique(rows[ent]))
+        inside[t] = pd.Series(rows.index.isin(part), index=rows.index).groupby(rows[ent]).any()
+        if by:
+            grp[t] = rows[by].groupby(rows[ent]).first()
+    values = pd.DataFrame(vals, columns=points).fillna(0.0).clip(lower=0)
+    return (values, pd.DataFrame(inside, columns=points).reindex(values.index).eq(True),
+            pd.DataFrame(grp, columns=points).reindex(values.index) if by else None)
+
+
+def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, first, axis, groups):
+    """An opening / retained / moves term from the ledger. Moves: each pair of consecutive
+    month-ends classes each entity's change (0→x new, or reactivation when it was in force at an
+    earlier month-end; up expansion; down contraction; x→0 churn), counted where its later row
+    is (a churn: its earlier row), so a segment's bridge adds up and a mover's growth counts in
+    its new segment. Opening / retained: the cohort in force at the window's start (by period:
+    12 months before each period's end), placed by its row then; retained values it at the end
+    (an entity back after a churn is retained). A start or end before the data counts 0."""
+    known = first_known(pack, roles, first)
+    lo = max(lo, known)   # moves never start before the data knows a state (an asked window of
+    # 20 months keeps its 20: pass 3); the 12-month cohort is the opening's own rule
+
+    # from the month-end before the first period, so the first period's moves have a start
+    before = (first.to_period("M") - 1).end_time.normalize()
+    history = [before, *(t for t in _month_ends(before, as_of) if t <= as_of)]
+    if term.spell == "moves":
+        points = sorted({*history, lo, as_of})
+    else:
+        ends = [min(p.end_time.normalize(), as_of) for p in axis] if axis is not None else [as_of]
+        # always the 12-month cohort ending there, an asked period's end included (audit 1: a
+        # 6-month period made a 6-month 'Logo churn (12 months)')
+        starts = [e - pd.DateOffset(months=12) for e in ends] if axis is not None \
+            else [cohort_start(as_of, known)]
+        points = sorted({*ends, *starts})
+    points = [t for t in points if t <= as_of]
+    by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
+    v, inside, g = _ledger(whole, roles, pack, term, allk, ok, points, df.index, by)
+
+    def total(x: pd.Series, at, key=None):
+        """x summed over the entities in the part at `at` (by group or one number)."""
+        keep = inside[at]
+        x = x[keep & (x != 0)]
+        if by:
+            return x.groupby(g.loc[x.index, at]).sum().reindex(groups, fill_value=0)
+        return float(x.sum())
+
+    if term.spell == "moves":
+        prev_ever = (v > 0).cummax(axis=1).shift(1, axis=1, fill_value=False)
+        out = {}
+        for a, b in zip(points, points[1:]):
+            x, y = v[a], v[b]
+            kind = term.move
+            amount = {"new": (x == 0) & (y > 0) & ~prev_ever[a],
+                      "reactivation": (x == 0) & (y > 0) & prev_ever[a],
+                      "expansion": (x > 0) & (y > x), "contraction": (y > 0) & (y < x),
+                      "churn": (x > 0) & (y == 0)}[kind]
+            if term.sum is None:
+                delta = amount.astype(float)
+            else:
+                delta = {"new": y, "reactivation": y, "expansion": y - x, "contraction": x - y,
+                         "churn": x}[kind].where(amount, 0.0)
+            out[b] = total(delta, a if kind == "churn" else b)
+        if axis is not None:
+            per = {}
+            for b, n in out.items():
+                per[pd.Period(b, freq=axis.freq)] = per.get(pd.Period(b, freq=axis.freq), 0.0) + n
+            series = pd.Series(per, dtype=float).reindex(axis, fill_value=0.0)
+            if _snapshot_column(pack, roles):   # snapshots: the first period has no month before
+                # it in the data, so its moves are unknown, never a \$0 (audit 1)
+                series[series.index <= pd.Period(first, freq=axis.freq)] = float("nan")
+            return series
+        inside_window = [b for b in out if b > lo]
+        if not inside_window:   # no month of moves (one month of data): unknown, never $0 (pass 7)
+            return None
+        if by:
+            return sum((out[b] for b in inside_window), pd.Series(0.0, index=groups)) \
+                if inside_window else pd.Series(0.0, index=groups)
+        return float(sum(out[b] for b in inside_window))
+
+    def cohort(start, end):
+        if start not in v.columns or end not in v.columns or start >= end:
+            return float("nan")   # a window after the data (a date filter past the as-of)
+        base = v[start]
+        if term.spell == "opening":
+            return total(base, start)
+        later = v[end].where(base > 0, 0.0)
+        return total(later.clip(upper=base) if term.capped else later, start)
+
+    if axis is not None:
+        return pd.Series({p: cohort(s_, e) if s_.to_period("M") >= known.to_period("M") else float("nan")
+                          for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
+    value = cohort(cohort_start(as_of, known), as_of)
+    return None if isinstance(value, float) and pd.isna(value) else value
 
 
 def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> bool:
@@ -1248,7 +1666,7 @@ def _side(df, kinds, roles, pack, kpi, alternatives, by):
             v = _term(df, kinds, roles, pack, kpi, t, by)
             if v is None:
                 break
-            v = v * t.sign
+            v = v * t.sign * t.times
             total = v if total is None else (total.add(v, fill_value=0) if by else total + v)
         else:
             if total is not None:
@@ -1310,6 +1728,9 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         else row_kinds(df, roles, pack)
     if not (by and by == roles.get("currency")):
         kinds = kinds.where(keep, "other_currency")
+        if whole is not None:   # the whole data's kinds too: a spell's entity is chosen on them
+            # (Domain 6: a month's MRR counted the EUR subscriptions the tile leaves out)
+            whole = whole.where(main_currency(full, roles)[0], "other_currency")
     whole = kinds if whole is None else whole
     kinds.attrs["present"] = set(whole.unique())
     kinds.attrs["frame"] = df if full is None else full
@@ -1380,12 +1801,12 @@ def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool
         if state:
             rows = _in_force(whole, roles, pack, as_of)
         else:   # in force at some point of (lo, as_of]: started by its end, not ended by its start
-            snap, s = _snapshot_column(pack, roles), pack.spell
+            snap = _snapshot_column(pack, roles)
             if snap:
                 t = _day(whole[snap])
                 rows = whole[(t > lo) & (t <= as_of)]
             else:
-                rows = whole[(_day(whole[roles[s.start]]) <= as_of) & ~_ended(whole, roles, pack, lo)]
+                rows = whole[(_started(whole, roles, pack) <= as_of) & ~_ended(whole, roles, pack, lo)]
         rows = rows.loc[rows.index.intersection(part.index)]
         if where:   # the KPI's own population (a contractor is no employee in a group of 10)
             rows = rows[_meets(rows, roles, where)]
@@ -1541,7 +1962,8 @@ def additive(pack: Pack, name: str) -> bool:
     does not: a month's customers are not 4 weeks of customers."""
     kpi = pack.kpi(name)
     # spell events (hires, exits) add up over weeks; people in force and their average do not
-    return kpi.den is None and all(not t.nunique and t.spell not in ("active", "average")
+    return kpi.den is None and all(not t.nunique and t.spell not in ("active", "average", "opening",
+                                                                     "retained")
                                    and (not t.kpi or additive(pack, t.kpi))
                                    for alt in kpi.num for t in alt)
 
@@ -1598,8 +2020,9 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     def term(t: Term) -> str:
         if t.kpi:
             how = describe_kpi(pack, t.kpi, roles, present).rstrip(".")
-            return pack.kpi(t.kpi).phrase + (f" ({how[:1].lower() + how[1:]})" if parts and kpi.den
-                                             is not None and spell_terms(pack, t.kpi) else "")
+            return (f"{t.times:g} × " if t.times != 1 else "") + pack.kpi(t.kpi).phrase + (
+                f" ({how[:1].lower() + how[1:]})" if parts and kpi.den is not None
+                and spell_terms(pack, t.kpi) else "")
         if t.nunique:
             return f"distinct {roles[t.nunique]}" + (f" where {where(t.where)}" if t.where else "")
         if t.spell:
@@ -1612,9 +2035,18 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                     "average": f"the mean of the month-end counts of distinct {ent} in force "
                                f"({at}, {gone})",
                     "starts": f"spells starting in the period (by {roles.get(sp.start, 'first snapshot')})",
-                    "ends": f"exits in the period (events: by {roles.get(sp.end, sp.end)}"
+                    "opening": f"distinct {ent} in force 12 months before the date ({at}, {gone})",
+                    "retained": f"same {ent} (in force 12 months before) at the date"
+                                + (", each capped at its value then" if t.capped else ""),
+                    "moves": f"{t.move} moves: each {ent} whose value went "
+                             + {"new": "from 0 (never in force before) to above 0",
+                                "reactivation": "from 0 back above 0 (in force before)",
+                                "expansion": "up", "contraction": "down (not to 0)",
+                                "churn": "to 0"}.get(t.move or "", "")
+                             + " between consecutive month-ends in the period",
+                    "ends": f"{sp.words.end}s in the period (events: by {roles.get(sp.end, sp.end)}"
                             + (", or the first snapshot an entity is missing from" if snap else "")
-                            + f"; a returning {ent}'s exits count separately)"}[t.spell]
+                            + f"; a returning {ent}'s {sp.words.end}s count separately)"}[t.spell]
             if t.sum is not None:
                 text = f"sum of {roles[t.sum] if isinstance(t.sum, str) else t.sum} over the " + text
             return text + (f" where {where(t.where)}" if t.where else "")
@@ -1664,6 +2096,19 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
         text += f"; over {' and '.join(pack.label(k) for k in kpi.rows)}"
         text += f" ({', '.join(left_out)} left out)" if left_out else ""
     return text[0].upper() + text[1:] + "."
+
+
+def named_kpis(pack: Pack, contract, message: str) -> list[str]:
+    """THE KPIs a question names, in its order: a glossary word, unless it is a column's own name
+    and not the KPI's ("average revenue" with a revenue column is that column), or the pack's
+    `consumed` words. Intake fills the KPI from it; a question naming two ('MRR and paying
+    customers', 'NRR and GRR') is answered for each (targeted_analysis_agent)."""
+    by_name = {normalize_header(c): r for r, c in contract.roles.items()}
+    own = {normalize_header(x.name) for x in contract.columns}
+    return [c for c, w in glossary_hits(pack, message, []) if pack.kpi(c)
+            and (normalize_header(w) not in own
+                 or (normalize_header(w) in {c, normalize_header(pack.kpi(c).label)}
+                     and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
 
 
 def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
@@ -1953,6 +2398,90 @@ def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
                                           if c in df.columns}))
 
 
+def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
+                 ) -> tuple[pd.DataFrame, list[str]]:
+    """(the data with each Pack.columns role it lacks, a note per row left blank). Raw values are
+    parsed as cleaning parses numbers ('1,200'); a category reads its Role.numbers (an unknown
+    one leaves the row blank, said). Needs every non-optional role; the user's own column of
+    that role is never replaced."""
+    from agents.data_cleaning import try_numeric_conversion
+    if pack is None:
+        return df, []
+    notes: list[str] = []
+    for r, f in pack.columns.items():
+        name = pack.roles[r].headers[0]
+        needed = [x for x in [*f.times, *f.over, *([f.net_of] if f.net_of else [])]
+                  if x not in f.optional]
+        if r in roles or name in df.columns or any(x not in roles for x in needed):
+            continue
+
+        def value(role: str, blank: float) -> pd.Series:
+            if role not in roles:
+                return pd.Series(blank, index=df.index)
+            s, nums = df[roles[role]], pack.roles[role].numbers
+            if nums:
+                v = words(s).map({k.casefold(): x for k, x in nums.items()})
+            else:
+                parsed = try_numeric_conversion(s.astype(str).where(s.notna())) \
+                    if pd.api.types.is_string_dtype(s) else None
+                v = pd.to_numeric(parsed[0] if parsed else s, errors="coerce")
+            return v.fillna(blank) if role in f.optional else v
+
+        out = pd.Series(1.0, index=df.index)
+        for x in f.times:
+            out = out * value(x, 1.0)
+        if f.net_of:   # a rate: 0.2, or Stripe's percent_off 20 (any value over 1: percent)
+            rate = value(f.net_of, 0.0)
+            given = rate[rate > 0]
+            # percent (Stripe's 20 or 12.5 = 20%, 12.5%): most values over 1, or some over 1 and
+            # all whole numbers (1 = 1%); a rate (0.2) otherwise. Rows on the other scale: blank
+            percent = bool(len(given)) and bool((given > 1).mean() > 0.5 or (
+                (given > 1).any() and (given == given.round()).all()))
+            ones = bool(len(given)) and bool((given == 1).all())
+            if ones:   # 1 = 100% off or 1%: no scale to read it by
+                notes.append(f"{name}: {roles[f.net_of]} holds only 1s: its scale (100% or 1%) is "
+                             "unclear, so those rows are left blank.")
+            wrong = (rate == 1) if ones else (rate > 1) if not percent else ((rate > 0) & (rate < 1))
+            if (odd := int(wrong.sum())) and not ones:
+                notes.append(f"{name}: {odd:,} row{'s' * (odd != 1)} of {roles[f.net_of]} disagree "
+                             f"with the column's {'percent' if percent else 'rate'} scale: left blank.")
+            if odd:
+                out = out.where(~wrong)
+            out = out * (1 - (rate / 100 if percent else rate))
+        for x in f.over:
+            out = out / value(x, 1.0)
+        for x in (x for x in f.over if pack.roles[x].numbers and x in roles):
+            unknown = df[roles[x]].notna() & value(x, 1.0).isna()
+            if n := int(unknown.sum()):
+                seen = ", ".join(sorted(map(str, df.loc[unknown, roles[x]].unique()))[:3])
+                notes.append(f"{name}: {n:,} row{'s' * (n != 1)} {'have' if n != 1 else 'has'} a "
+                             f"{roles[x]} the formula doesn't know ({seen}): left blank.")
+        df = df.assign(**{name: out})
+    return df, notes
+
+
+PACK_COLUMN_NOTE = "Added by the product from the {domain} pack's formula: {names}."
+
+
+def formula_pairs(contract) -> set[frozenset]:
+    """{column the product added, one of its formula's inputs} pairs: they move together by
+    construction (MRR is computed from seats), so a correlation of them is no finding (Domain 6
+    live run: 'revenue growth is tightly linked to adding seats')."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    notes = (contract.source_evidence.assumptions if contract is not None and contract.source_evidence
+             else [])
+    head = PACK_COLUMN_NOTE.split("{names}")[0].format(domain=pack.domain) if pack else None
+    added = {n.strip() for a in notes if head and a.startswith(head)
+             for n in a[len(head):].rstrip(".").split(",")}
+    out = set()
+    for r, f in (pack.columns.items() if pack else []):
+        col = contract.roles.get(r)
+        if col in added:
+            out |= {frozenset((col, contract.roles[x])) for x in [*f.times, *f.over,
+                    *([f.net_of] if f.net_of else [])] if x in contract.roles}
+    return out
+
+
 def with_derived(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, list[str]]:
     """The frame with each derivable role the data lacks (Pack.derived) as a column named after
     the role's first header (length_of_stay = discharge − admit in days), and the names added.
@@ -1988,44 +2517,66 @@ def with_row_kind(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, str | None]
     return with_spell_events(out, pack, roles), name
 
 
-SPELL_EVENT_COLUMNS = ("hire_event_date", "exit_event_date", "exit_in_window", "in_force_now",
-                       "left_date_unknown")
+def spell_event_columns(pack: Pack) -> tuple[str, str, str, str, str]:
+    """THE names of the spell markers in the model's frame, from the pack's words: (start event
+    date, end event date, end in window, in force now, ended with no date)."""
+    w = pack.spell.words
+    return (f"{w.start}_event_date", f"{w.end}_event_date", f"{w.end}_in_window", "in_force_now",
+            w.unknown)
+
+
+def stock_population(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
+    """THE rows the stock tile (headcount, MRR) counts, as a mask: its `where` (contractors out
+    on HR; trials, paused out on SaaS), its row kinds and the main currency (Domain 6 smoke: test
+    accounts and EUR subscriptions were marked in force, the tile leaves them out). A rate's
+    events, the in-force marker and a level by group read the same people."""
+    stock = stock_kpi(pack, roles)
+    if stock is None:
+        return pd.Series(True, index=df.index)
+    where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), [])
+    counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
+    return counted & row_kinds(df, roles, pack).isin(stock.rows) & main_currency(df, roles)[0]
+
+
+def in_force_counted(df: pd.DataFrame, roles: dict[str, str], pack: Pack, as_of) -> pd.Index:
+    """THE rows in force at `as_of` that the stock tile counts: the model's in_force_now marker
+    and a level by group (MRR or pay by segment, utils._in_force_rows) read this, never their
+    own copy (Domain 6 insight gate: MRR by segment added trials, test accounts and EUR)."""
+    now = _in_force(df, roles, pack, as_of).index
+    return now[stock_population(df, roles, pack).loc[now].to_numpy()]
 
 
 def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd.DataFrame:
     """On spell data, the product's own events as columns for code the model writes: each
     spell's first row carries its hire (start) date, its last row its exit date (the end date,
     or on snapshots the first snapshot the person is missing from), up to the as-of; blank on
-    every other row. Counting a window's exits is then counting rows with an exit_event_date in
+    every other row. Counting a window's exits is then counting rows with an end event date in
     it, by the row's own department (where the person left from): the model never re-derives a
     vanished leaver (Domain 5 smoke: it counted only dated exits, 20 of 49)."""
-    if not has_spell(pack, roles) or any(c in df.columns for c in SPELL_EVENT_COLUMNS):
+    if not has_spell(pack, roles):
+        return df
+    start_col, end_col, window_col, now_col, unknown_col = names = spell_event_columns(pack)
+    if any(c in df.columns for c in names):
         return df
     w = spell_window(pack, df, roles)
     if w is None:
         return df
     as_of = w[1]
-    # the people the headcount counts (its `where`: contractors out on HR), so a rate's events
-    # and its denominator are one population
-    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
-                  and computable(pack, k.name, roles)), None)
-    where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), []) if stock else []
-    counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
+    counted = stock_population(df, roles, pack)
     out = df.copy()
     lo = w[0]
-    for col, which in zip(SPELL_EVENT_COLUMNS[:2], ("starts", "ends")):
+    for col, which in ((start_col, "starts"), (end_col, "ends")):
         rows, when = _spell_events(df, roles, pack, which, as_of)
         rows, when = rows[counted.loc[rows.index]], when[counted.loc[rows.index]]
         out[col] = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
         out.loc[rows.index, col] = when.astype("datetime64[ns]")
         if which == "ends":   # the window the facts name (12 months to the as-of): marked, so a
             # model never forgets to filter it (Domain 5 gate: hr-1 counted every exit ever)
-            out["exit_in_window"] = (out[col] > lo).map({True: "yes", False: ""})
+            out[window_col] = (out[col] > lo).map({True: "yes", False: ""})
         out[col] = out[col].dt.strftime("%Y-%m-%d")
-    out["left_date_unknown"] = _ended_undated(df, roles, pack).map({True: "yes", False: ""})
-    now = _in_force(df, roles, pack, as_of)
-    out["in_force_now"] = ""
-    out.loc[now.index[counted.loc[now.index].to_numpy()], "in_force_now"] = "yes"
+    out[unknown_col] = _ended_undated(df, roles, pack).map({True: "yes", False: ""})
+    out[now_col] = ""
+    out.loc[in_force_counted(df, roles, pack, as_of), now_col] = "yes"
     return out
 
 
@@ -2045,11 +2596,12 @@ def rows_for(df: pd.DataFrame, contract, column: str,
     row, no note."""
     pack = defaults_pack(contract)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
-    if role and pack.roles[role].over_time == "last" and (gone := exit_records(df, contract)).any():
+    if role and pack.roles[role].over_time == "last" and (gone := ended_records(df, contract)).any():
         # a spell's snapshot row past its end (its exit record) holds no one: its level is
         # blank, so latest_rows never averages a leaver in (Domain 5 gate: hr-8)
         return df.assign(**{column: df[column].where(~gone)}), \
-            f"{int(gone.sum()):,} exit records (rows after a person left) hold no {column}."
+            f"{int(gone.sum()):,} {pack.spell.words.end} records ({pack.spell.words.after_end}) " \
+            f"hold no {column}."
     if not (role and counted(pack, role)):
         return df, ""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
@@ -2070,7 +2622,7 @@ def rows_for(df: pd.DataFrame, contract, column: str,
                               n=f"{int((~kept).sum()):,}")
 
 
-def exit_records(df: pd.DataFrame, contract) -> pd.Series:
+def ended_records(df: pd.DataFrame, contract) -> pd.Series:
     """True on a spell's snapshot rows that record its end: dated on or after its end date, or
     with an `ended` status and no end date (the state rule _in_force applies); all False
     elsewhere (rosters, packs without a spell)."""

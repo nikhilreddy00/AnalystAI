@@ -1,0 +1,18 @@
+id: intake-saas-07
+category: clear
+pipeline: production
+source:
+  dataset: saas_subscriptions
+  seed: 1
+overview_done: true
+question: "What is ARPU by plan?"
+expect:
+  ask: false
+  intent_any:
+  - top_n
+  - segment_compare
+  params:
+    kpi: arpa
+  columns:
+    by: plan
+rationale: "ARPU maps to ARPA (per account)."

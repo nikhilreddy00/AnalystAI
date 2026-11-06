@@ -32,3 +32,16 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   match (a protected attribute: described, never a rating recommendation).
 - **Marker field** — a column filled only on the rows it applies to (a catastrophe event code):
   its blanks mean none, the file's layout, never missing values.
+- **Ledger** — each entity's value at each month-end (its rows in force then, a role summed, or
+  1 for being there), built on all rows and kept where a filter's part holds the chosen row. MRR
+  movements and cohort retention are read from it, never from row sums (Domain 6, 2026-11-05).
+- **Move** — one entity's change between two consecutive month-ends, of one kind: new (from 0,
+  never in force before), reactivation (from 0, in force before), expansion, contraction, churn
+  (to 0). Counted where its later row is (a churn: its earlier row).
+- **Opening cohort** — the entities in force at a window's start (12 months before the as-of, or
+  before each period's end); retention follows the same entities to the end.
+- **Month label** — a snapshot date written on the month's 1st that names the whole month (an
+  MRR export's `2026-10-01` is October): the as-of is that month's end.
+- **Pack column** — a column the product adds to the data at ingestion from a pack formula (a
+  subscription list's MRR from price, seats, discount and interval), read by every agent like
+  an uploaded column, and named in the source notes.

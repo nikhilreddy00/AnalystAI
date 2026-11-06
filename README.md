@@ -252,7 +252,15 @@ the 12 months to the latest date, contractors out, retirements separate, a parti
 annualised; groups of fewer than 11 people by gender, ethnicity or pay never shown; no
 individual flight-risk scores, adjusted pay gap or compliance verdicts; 10 analysis cases k=3,
 7 E2E cases (incl. Excel, JSON and Postgres sources), 12 intake cases;
-`docs/baselines/phase5_7_hr.md`).
+`docs/baselines/phase5_7_hr.md`);
+**SaaS** (subscription analytics: MRR as a run-rate at month-ends, never revenue and never summed
+over months, built from a subscription list's price, seats, discount and billing interval when
+the export has none; ARR, paying customers, ARPA; the MRR bridge and net and gross revenue
+retention on the customers paying 12 months earlier, from monthly MRR snapshots; logo churn on
+the 12-month cohort, never a monthly rate × 12; trials, paused and test accounts out; billings on
+invoice lines, never MRR; no LTV, CAC payback or benchmark verdicts; 11 analysis cases k=3, 7 E2E
+cases (CSV, Excel, JSON, Postgres in a non-default schema), 14 intake cases;
+`docs/baselines/phase5_7_saas.md`).
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one

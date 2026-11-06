@@ -4,7 +4,7 @@ id: q-47-hr-roster-overview
 insight_case: ins-47-hr-roster-overview
 category: straightforward
 source:
-  report: insight-20261104T214949Z.json
+  report: insight-20261106T012454Z.json
   run: 0
 seeded: true
 defects:
@@ -26,16 +26,14 @@ defects:
   label: privacy
   text: Only 2 women in Legal left this year, both from the same team.
 - op: replace
-  i: 6
+  i: 5
   kind: certainty
   label: overstated
   text: Ten Support employees are flight risks and should be put on retention plans now.
-natural:
-- i: 8
-  kind: number
-  label: contradicted
+natural: []
 label_note: 'Seeded over the claims the pre-fix report carried a 6-person department''s pay in (now suppressed
   upstream): a causal pay claim, a partial year annualised (31.4%), a small protected cell, an individual
   prediction. Natural (Domain 5 senior audit): the stored action cites Support''s average over every row,
   leavers included ($62,996); pay by department is current staff''s ($61,678), so the check flags it as
   ungrounded.'
+# Domain 6: re-pointed at the Domain 6 insight gate's report (its evidence gained the citeable story, clean:story); the old natural defect named the old report's own claim.

@@ -28,6 +28,25 @@ MAX_ROWS = 10_000
 LOAD_MAX_ROWS = 50_000   # a named table is loaded whole up to this; past it, the load says so
 TIMEOUT_S = 15
 _DIALECTS = {"postgresql": "postgres", "sqlite": "sqlite"}
+# A database's own catalogs, never a user's tables (Postgres, MySQL for Phase 5.8)
+SYSTEM_SCHEMAS = {"information_schema", "pg_catalog", "pg_toast", "mysql", "sys",
+                  "performance_schema"}
+
+
+def _tables(engine) -> dict[str, tuple[str | None, str]]:
+    """THE tables a connection offers: {name: (schema, table)}. The default schema's tables by
+    their bare name, every other user schema's as `schema.table` (Domain 5 minor: `hr_live.roster`
+    was refused). schema_context and load both read it; a name must be in it to be queried."""
+    inspector = inspect(engine)
+    default = inspector.default_schema_name
+    out: dict[str, tuple[str | None, str]] = {}
+    for schema in [s for s in inspector.get_schema_names() if s not in SYSTEM_SCHEMAS
+                   and not s.startswith("pg_temp") and not s.startswith("pg_toast")]:
+        for table in inspector.get_table_names(schema=schema):
+            out[f"{schema}.{table}"] = (schema, table)
+            if schema == default:
+                out[table] = (None, table)
+    return out
 
 
 def sql_dialect(engine) -> str | None:
@@ -102,13 +121,14 @@ class SQLConnector(DataConnector):
     def schema_context(self, engine) -> str:
         """Introspected tables and columns, for when no semantic layer is configured."""
         inspector = inspect(engine)
-        parts = []
-        for schema in [s for s in inspector.get_schema_names()
-                       if s not in ("information_schema", "pg_catalog")]:
-            for table in inspector.get_table_names(schema=schema)[:20]:   # cap prompt size
-                cols = inspector.get_columns(table, schema=schema)
-                col_desc = ", ".join(f"{c['name']} ({c['type']})" for c in cols)
-                parts.append(f"Table `{schema}.{table}`: {col_desc}")
+        default, parts, per_schema = inspector.default_schema_name, [], {}
+        for schema, table in dict.fromkeys((s or default, t) for s, t in _tables(engine).values()):
+            if per_schema.setdefault(schema, 0) >= 20:   # cap prompt size
+                continue
+            per_schema[schema] += 1
+            cols = inspector.get_columns(table, schema=schema)
+            col_desc = ", ".join(f"{c['name']} ({c['type']})" for c in cols)
+            parts.append(f"Table `{schema}.{table}`: {col_desc}")
         return "\n".join(parts)
 
     async def query(self, sql: str, max_rows: int = MAX_ROWS) -> QueryResult:
@@ -125,18 +145,21 @@ class SQLConnector(DataConnector):
             raise ValueError("table_name is required for SQL connector direct load")
 
         # BUG-02: Validate table name against DB inspector to prevent SQL injection
-        valid_tables = await asyncio.to_thread(lambda: inspect(engine).get_table_names())
+        valid_tables = await asyncio.to_thread(_tables, engine)
         if table not in valid_tables:
             raise ValueError(
-                f"Table '{table}' does not exist. Available tables: {valid_tables[:20]}"
+                f"Table '{table}' does not exist. Available tables: {list(valid_tables)[:20]}"
             )
+        schema, name = valid_tables[table]
+        quote = engine.dialect.identifier_preparer.quote_identifier
+        qualified = f"{quote(schema)}.{quote(name)}" if schema else quote(name)
         # The same read-only, timed path as a question (the name was checked just above).
-        res = await asyncio.to_thread(run_readonly, engine, f'SELECT * FROM "{table}"',
+        res = await asyncio.to_thread(run_readonly, engine, f"SELECT * FROM {qualified}",
                                       LOAD_MAX_ROWS)
         if res.truncated:
             try:
                 count = await asyncio.to_thread(run_readonly, engine,
-                                                f'SELECT COUNT(*) FROM "{table}"', 1)
+                                                f"SELECT COUNT(*) FROM {qualified}", 1)
                 total = int(count.rows[0][0])
             except SQLAlchemyError:   # a count past the timeout: "the source has more" still holds
                 total = None

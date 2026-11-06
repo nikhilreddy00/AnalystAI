@@ -1,0 +1,17 @@
+id: intake-saas-04
+category: clear
+pipeline: production
+source:
+  dataset: saas_mrr_snapshots
+  seed: 1
+overview_done: true
+question: "What's our gross revenue retention?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: grr
+rationale: "GRR, capped per customer."

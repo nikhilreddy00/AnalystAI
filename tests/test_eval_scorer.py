@@ -510,3 +510,117 @@ def test_a_group_named_with_a_qualifier_is_its_group_never_another():
     assert not check_segment_value_truth(f({"2025": 0.23, "20261": 0.26}), truth, "exit_event_date", "r")[0]
     assert not check_segment_value_truth(f({"2025": 0.23, "2026 H1": 0.26, "2026 H2": 0.26}),
                                          truth, "exit_event_date", "r")[0]
+
+
+def test_false_findings_know_month_groups_dates_with_colons_and_parts_of_a_level():
+    """Domain 6 analysis gate, rescored at \$0 (lesson 17): right values were 'false' because the
+    scorer grouped a date by day when the agent grouped by month ('2025-09'), split a date group
+    '2024-11-01 00:00:00|SMB' at its colons, and checked a part of a level (churned MRR filed as
+    sum mrr) as the level's plain total."""
+    import pandas as pd
+
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+
+    def ff(df, seg):
+        return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    inv = datagen.make("saas_invoices", 1)[0]
+    m = pd.to_datetime(inv["invoice_date"]).dt.to_period("M").astype(str)
+    by = inv.assign(_m=m).groupby("_m")["amount"].sum()
+    seg = SegmentResult(segment_column="invoice_date", metric_column="amount", aggregation="sum",
+                        results=[{"name": k, "value": float(v)} for k, v in by.items()])
+    assert ff(inv, seg)["false"] == 0
+    snaps = datagen.make("saas_mrr_snapshots", 1)[0]
+    snaps["month"] = pd.to_datetime(snaps["month"])   # as cleaning hands it on
+    lvl = snaps.groupby(["month", "segment"])["mrr"].sum().head(3)
+    seg = SegmentResult(segment_column="month|segment", metric_column="mrr", aggregation="last",
+                        results=[{"name": f"{pd.Timestamp(a)}|{b}", "value": float(v)} for (a, b), v in lvl.items()])
+    assert ff(snaps, seg)["false"] == 0
+    part = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="sum",
+                         results=[{"name": "SMB", "value": 1234.5}])
+    assert ff(snaps, part)["verifiable"] == 0
+
+
+def test_a_withheld_conclusion_is_a_hedge():
+    """Domain 6 insight gate, ins-16 (rescored at \$0): 'No conclusion about which plan drives
+    more tickets can be drawn until more data…' was scored as stated without a qualifier."""
+    from evals.scoring import _HEDGE
+    assert _HEDGE.search("No conclusion about which plan drives more tickets can be drawn until more data")
+    assert _HEDGE.search("The gap is consistent with chance, so neither plan leads.")
+    assert not _HEDGE.search("Enterprise plans generate more tickets than Basic plans.")
+
+
+def test_a_levels_count_and_mean_on_a_spell_list_are_per_customer():
+    """Final re-measure, rescored at \$0: saas-6's paying customers by segment (152/77/22) and ARPA
+    (MRR ÷ customers) were 'false': the scorer knew rows only (lesson 17)."""
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from tests.test_saas import _setup
+    from agents.analysis_agent import model_frame
+    df, contract, *_ = _setup("saas_subscriptions")
+    f, _ = model_frame(df, contract)
+    now = f[f["in_force_now"] == "yes"]
+    n = now.groupby("segment")["customer_id"].nunique()
+    arpa = now.groupby("segment")["mrr"].sum() / n
+    segs = [SegmentResult(segment_column="segment", metric_column="mrr", aggregation=a,
+                          results=[{"name": k, "value": float(v)} for k, v in s.items()])
+            for a, s in (("count", n), ("mean", arpa))]
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=segs,
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert out["false"] == 0 and out["verifiable"] == 6
+
+
+def test_a_level_on_spell_data_read_over_every_row_is_false():
+    """Audit pass 7: readings over all 479 subscription rows (cancelled ones too) passed."""
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from tests.test_saas import _setup
+    df, contract, *_ = _setup("saas_subscriptions")
+    allrows = df.groupby("segment")["mrr"].count()   # 'customers' counted as every row
+    seg = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="count",
+                        results=[{"name": k, "value": float(v)} for k, v in allrows.items()])
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert out["false"] == 3
+
+
+def test_a_churned_customers_mean_by_month_is_checked_both_ways():
+    """Final re-measure saas-8: mean churned MRR per churned customer by month equals truth and is
+    accepted; the same values x1.07 are false."""
+    import pandas as pd
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df = datagen.make("saas_mrr_snapshots", 1)[0]
+    df["month"] = pd.to_datetime(df["month"])
+    end = df["month"] + pd.offsets.MonthEnd(0)
+    v = df.assign(_t=end).pivot_table(index="customer_id", columns="_t", values="mrr", aggfunc="sum").fillna(0)
+    c = sorted(v.columns)
+    right = {f"{b:%Y-%m}": v.loc[(v[a] > 0) & (v[b] == 0), a].mean() for a, b in zip(c[-4:], c[-3:])}
+
+    def ff(k):
+        seg = SegmentResult(segment_column="month", metric_column="mrr", aggregation="mean",
+                            results=[{"name": n, "value": float(x) * k} for n, x in right.items()])
+        return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert ff(1.0)["false"] == 0 and ff(1.07)["false"] == 3
+
+
+def test_an_in_force_mean_by_month_is_accepted():
+    """Audit pass 10: on hr_roster, current staff's mean salary by hire month was false in 110 of
+    135 months (the in-force/former split keyed on raw dates, not the breakdown's months)."""
+    import pandas as pd
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from tests.test_oracle import _built
+    from agents.utils import level_rows
+    _, df, contract, _ = _built("hr_roster")
+    now = level_rows(df, "Annual_Salary", contract)
+    m = now.assign(_m=pd.to_datetime(now["Hire_Date"]).dt.to_period("M").astype(str)).groupby("_m")["Annual_Salary"].mean()
+    seg = SegmentResult(segment_column="Hire_Date", metric_column="Annual_Salary", aggregation="mean",
+                        results=[{"name": k, "value": float(v)} for k, v in m.items()])
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert out["false"] == 0 and out["verifiable"] == len(m)

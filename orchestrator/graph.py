@@ -32,6 +32,7 @@ from langgraph.types import interrupt
 
 from agents.analysis_agent import run_analysis_agent
 from agents.cleaning_agent import build_evidence as build_cleaning_evidence
+from agents.cleaning_agent import build_story_evidence
 from agents.cleaning_agent import run_cleaning_agent
 from agents.ingestion_agent import (
     looks_like_patient_data,
@@ -381,6 +382,8 @@ async def analysis_node(state: AgentState) -> dict:
     try:
         findings = await run_analysis_agent(session, get_client())
         if session.cleaning_audit:
+            if story := build_story_evidence(session.cleaning_audit):
+                findings.evidence.insert(0, story)
             findings.evidence.insert(0, build_cleaning_evidence(session.cleaning_audit))
         if session.data_contract and session.data_contract.source_query:
             findings.evidence.insert(0, session.data_contract.source_query)   # where rows came from

@@ -1,0 +1,33 @@
+id: e2e-79
+domain: saas
+source: xlsx
+dataset:
+  name: saas_mrr_snapshots
+  seed: 1
+question: What is our net revenue retention and gross revenue retention?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: nrr
+  rel_tol: 0.002
+  scales: &pct
+  - - 1
+    - null
+  - - 100
+    - '%'
+- kind: number_in_answer
+  truth_key: grr
+  rel_tol: 0.002
+  scales: *pct
+- kind: must_not_number
+  truth_key: nrr_period_with_new
+  rel_tol: 0.005
+  scales:
+  - - 100
+    - '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Excel MRR export: NRR 91.1% and GRR 77.2% on the customers paying on 31 Oct 2025, never MRR now ÷ then
+  (136%, new customers in).'

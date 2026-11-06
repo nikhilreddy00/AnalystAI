@@ -2956,12 +2956,23 @@ def filter_options(df: pd.DataFrame, contract: DataContract | None) -> dict:
         n = n[np.isfinite(n)]   # an infinite value is no slider end (and no valid JSON)
         if len(n):
             options.append({"column": col, "control": "range", "min": float(n.min()), "max": float(n.max())})
+    as_of = _spell_as_of(shown, contract)
     for col in roles.get("datetime_cols", []):
         t = pd.to_datetime(shown[col], format="mixed", errors="coerce").dropna()
-        if len(t):
+        # on spell data a date range is a window ending at the as-of: one wholly after it (a
+        # scheduled cancellation's dates) can show nothing, so it is not offered (Domain 6)
+        if len(t) and not (as_of is not None and t.min() > as_of):
             options.append({"column": col, "control": "dates", "from": f"{t.min():%Y-%m-%d}",
                             "to": f"{t.max():%Y-%m-%d}"})
     return {"row_count": int(len(shown)), "column_roles": roles, "options": options}
+
+
+def _spell_as_of(df: pd.DataFrame, contract: DataContract | None):
+    """The spell as-of of data a pack reads as spells, else None."""
+    from domain_pack import has_spell, pack_for, spell_as_of
+    pack = pack_for(contract.domain) if contract is not None else None
+    roles = {r: c for r, c in (contract.roles.items() if contract else []) if c in df.columns}
+    return spell_as_of(pack, df, roles) if pack and has_spell(pack, roles) else None
 
 
 def _chart_key(c: ChartConfig):

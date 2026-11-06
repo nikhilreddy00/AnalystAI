@@ -200,3 +200,58 @@ def test_an_asked_window_from_mid_month_keeps_that_months_end(pack):
     assert pts[0] == pd.Timestamp("2026-03-31") and pts[-1] == pd.Timestamp("2026-06-30") and len(pts) == 4
     _, _, full = spell_window(pack, _roster(), ROLES)
     assert len(full) == 12   # the default 12-month window keeps its 12 month-ends
+
+
+def test_concurrent_spells_of_one_entity_all_count_when_the_pack_says_so(pack):
+    """Domain 6 S3 (red-team R1): a customer with a base plan and a newer add-on cancelled since
+    was out of force (its latest spell had ended), losing the base plan's seats. With
+    `concurrent: true` every spell in force counts (counts stay distinct entities); HR's rehires
+    never overlap, so its rule (the latest spell) is unchanged."""
+    raw = yaml.safe_load(SUBS)
+    raw["spell"]["concurrent"] = True
+    both = Pack.model_validate(raw)
+    df = pd.DataFrame([("C1", "2025-01-01", "", "pro", "paid", 5, "active"),
+                       ("C1", "2026-03-01", "2026-06-01", "pro", "paid", 2, "cancelled"),
+                       ("C2", "2025-01-01", "", "pro", "paid", 1, "active"),
+                       ("C2", "2025-06-01", "", "pro", "paid", 3, "active")],
+                      columns=["subscriber_id", "start_date", "cancel_date", "plan", "kind",
+                               "seats", "status"])
+    assert compute_kpi(df, ROLES, both, "active") == 2 and compute_kpi(df, ROLES, both, "seats") == 9
+    assert compute_kpi(df, ROLES, pack, "seats") == 3   # the latest spell only: C1 out, C2's add-on
+
+
+def test_month_labels_on_the_first_mean_the_month(pack, monkeypatch):
+    """Domain 6 S5 (red-team R17): an MRR export labels October '2026-10-01'; read as a date,
+    every figure was 'as of 1 Oct' and the window a month short. With month_labels the as-of
+    is the labelled month's end (clipped to today); unset, the dates stay as written."""
+    monkeypatch.setenv("ANALYSTAI_TODAY", "2026-11-05")
+    raw = yaml.safe_load(SUBS)
+    snaps = pd.DataFrame({"snapshot_date": ["2026-09-01", "2026-10-01", "2026-11-01"],
+                          "subscriber_id": ["S1"] * 3, "start_date": ["2025-01-01"] * 3,
+                          "cancel_date": [""] * 3, "kind": ["paid"] * 3, "status": ["active"] * 3})
+    roles = {**{k: v for k, v in ROLES.items() if k in snaps}, "snapshot_date": "snapshot_date"}
+    assert spell_as_of(Pack.model_validate(raw), snaps, roles) == pd.Timestamp("2026-11-01")
+    raw["spell"]["month_labels"] = True
+    labelled = Pack.model_validate(raw)
+    assert spell_as_of(labelled, snaps, roles) == pd.Timestamp("2026-11-05")   # Nov, to today
+    assert spell_as_of(labelled, snaps.iloc[:2], roles) == pd.Timestamp("2026-10-31")
+    mid = snaps.assign(snapshot_date=["2026-09-15", "2026-10-01", "2026-10-31"])
+    assert spell_as_of(labelled, mid, roles) == pd.Timestamp("2026-10-31")   # not labels: as written
+
+
+def test_a_converted_trial_counts_from_its_trial_end(pack):
+    """Red-team R3: a subscription converted from a trial pays from the trial's end; counted
+    from its start, a December trial was a paying subscriber at 31 Dec."""
+    raw = yaml.safe_load(SUBS)
+    raw["roles"]["trial_end"] = {"kind": "date", "headers": ["trial_end"]}
+    raw["spell"]["paid_from"] = "trial_end"
+    paid = Pack.model_validate(raw)
+    df = pd.DataFrame([("T1", "2025-12-20", "", "2026-01-03", "paid", 1, "active"),
+                       ("T2", "2025-12-01", "", "", "paid", 1, "active")],
+                      columns=["subscriber_id", "start_date", "cancel_date", "trial_end", "kind",
+                               "seats", "status"])
+    roles = {**{k: v for k, v in ROLES.items() if k in df}, "trial_end": "trial_end"}
+    frame = df.assign(_p=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+    by = compute_kpi(frame, roles, paid, "active", by="_p", full=df)
+    assert by[pd.Period("2025-12", "M")] == 1 and by[pd.Period("2026-01", "M")] == 2
+    assert compute_kpi(frame, roles, pack, "active", by="_p", full=df)[pd.Period("2025-12", "M")] == 2

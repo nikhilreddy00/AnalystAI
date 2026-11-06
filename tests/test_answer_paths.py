@@ -88,11 +88,23 @@ def test_a_stock_reconciles_with_its_flows_every_month(name):
     if not pack.spell:
         return
     roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    frame = clean.assign(_period=pd.Series(pd.NaT, index=clean.index).astype("period[M]"))
+    moves = {m: next((k.name for k in pack.kpis if k.unit == "count" and k.num[-1][0].spell == "moves"
+                      and k.num[-1][0].move == m), None) for m in ("new", "reactivation", "churn")}
+    if all(moves.values()):   # a ledger pack (Domain 6): paying now − then = new + back − churned
+        stock = next(k.name for k in pack.kpis if k.state and k.unit == "count")
+        act = domain_pack.compute_kpi(frame, roles, pack, stock, by="_period", full=clean)
+        if act is None:   # data it can't read as spells (invoice lines)
+            return
+        n, r, c = (domain_pack.compute_kpi(frame, roles, pack, moves[m], by="_period", full=clean)
+                   .reindex(act.index, fill_value=0) for m in moves)
+        gap = (act - act.shift(1) - n - r + c).iloc[1:]
+        assert (gap.abs() < 1e-9).all(), (name, gap[gap != 0].to_dict())
+        return
     stock = next((k.name for k in pack.kpis if [t.spell for alt in k.num[-1:] for t in alt] == ["active"]
                   and k.num[-1][0].sum is None), None)
     flows = [next(k.name for k in pack.kpis if k.num[-1][0].spell == s and not k.num[-1][0].where)
              for s in ("starts", "ends")]
-    frame = clean.assign(_period=pd.Series(pd.NaT, index=clean.index).astype("period[M]"))
     act, st, en = (domain_pack.compute_kpi(frame, roles, pack, k, by="_period", full=clean)
                    for k in (stock, *flows))
     st, en = st.reindex(act.index, fill_value=0), en.reindex(act.index, fill_value=0)

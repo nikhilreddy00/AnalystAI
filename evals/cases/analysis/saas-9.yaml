@@ -1,0 +1,33 @@
+id: saas-9
+domain: saas
+category: trend
+pipeline: production
+dataset:
+  name: saas_invoices
+  seed: 1
+question: What were our billings by month?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - amount
+  segments: []
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment:
+  - invoice_date
+  - month
+  - Month
+  - invoice_month
+  - period
+  truth_key: billings_by_month
+  abs_tol: 1.0
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 6: billings = invoiced amounts excluding tax (open, paid, uncollectible), voids and drafts out,
+  credit notes netted, by invoice date (billed a few days before the service period starts).'

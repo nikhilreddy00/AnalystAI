@@ -28,7 +28,8 @@ from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
 from connectors.base import _looks_like_dates, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
-from domain_pack import as_text, layout_columns, one_series, pack_for, version_roles, words
+from domain_pack import (PACK_COLUMN_NOTE, as_text, layout_columns, one_series, pack_columns,
+                         pack_for, version_roles, words)
 from semantic_layer import column_hints
 from guardrails import (
     AGE_CAP,
@@ -586,6 +587,22 @@ def phi_plan(df: pd.DataFrame, contract: DataContract) -> tuple[list[str], list[
     return withheld, ids
 
 
+def add_pack_columns(df: pd.DataFrame, contract: DataContract, source_type: ConnectorType,
+                     info: dict | None = None) -> tuple[pd.DataFrame, DataContract, dict | None]:
+    """(frame, contract, info) with any column the pack adds (Pack.columns: a subscription
+    list's MRR from its price, seats, discount and interval), the contract rebuilt so its role is
+    read like any uploaded column and the source notes saying so. prepare_frame runs it first;
+    an eval harness that skips prepare_frame runs it (CODING_STANDARDS: the production path)."""
+    pack = pack_for(contract.domain)
+    added, notes = pack_columns(df, pack, {r: c for r, c in contract.roles.items() if c in df.columns})
+    if added.shape[1] == df.shape[1]:
+        return df, contract, info
+    new = [c for c in added.columns if c not in df.columns]
+    info = {**(info or {}), "notes": [*(info or {}).get("notes", []), *notes,
+                                      PACK_COLUMN_NOTE.format(domain=pack.domain, names=", ".join(new))]}
+    return added, build_contract(added, source_type, info), info
+
+
 def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: ConnectorType,
                   info: dict | None = None, scope: str = "") -> tuple[pd.DataFrame, DataContract]:
     """The frame every agent works on. For patient data (`contract.phi`) a PHI-protected copy,
@@ -597,7 +614,9 @@ def prepare_frame(df: pd.DataFrame, contract: DataContract, source_type: Connect
     - withheld: personal columns and every other text column (names under any header, notes).
     The contract is rebuilt from the copy and carries each step as an audited decision. Other
     data passes unchanged. Not HIPAA de-identification: exact admit/discharge dates stay, and
-    ponytail: two-way and month × group cells can still be < 11 (stated in the README)."""
+    ponytail: two-way and month × group cells can still be < 11 (stated in the README).
+    First, any column the pack adds (add_pack_columns)."""
+    df, contract, info = add_pack_columns(df, contract, source_type, info)
     if not contract.phi:
         return df, contract
     decisions: list[CleaningDecision] = []

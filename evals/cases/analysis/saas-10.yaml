@@ -1,0 +1,30 @@
+id: saas-10
+domain: saas
+category: ratio
+pipeline: production
+dataset:
+  name: saas_subscriptions
+  seed: 1
+question: What share of customers did we lose over the last 12 months, by segment?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - mrr
+  segments:
+  - segment
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: segment
+  truth_key: logo_churn_by_segment
+  abs_tol: 0.01
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 6: logo churn of the customers paying on 29 Oct 2025 (by their segment), ended by ended_at
+  (canceled_at is the request); a customer who came back is retained.'

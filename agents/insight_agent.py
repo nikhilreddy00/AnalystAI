@@ -244,7 +244,13 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
         facts.append(counted)
     elif narrative:
         facts.append(f"One row is one {narrative.entity_singular}.")
-    facts += audit.spell_story if audit else []   # the file's story, in the product's numbers
+    layout = sorted({d.column for d in (audit.decisions if audit else []) if d.strategy in LAYOUT_STRATEGIES})
+    if layout:   # never "missing" (Domain 6 live run: a discount filled where one applies was
+        # called '48 of 479 rows, uncertain'; Domain 5: contractors' blank pay called missing)
+        facts.append(f"Filled only on the rows they apply to, so their blanks mean none, never missing "
+                     f"data or a coverage gap: {', '.join(layout)}.")
+    if audit and audit.spell_story:   # the file's story, in the product's numbers
+        facts += ["The file's story (cite evidence clean:story for these):", *audit.spell_story]
     first = last = None
     months = 0
     if span := _date_span(session):

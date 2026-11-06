@@ -4,8 +4,9 @@ id: q-38-tickets-null
 insight_case: ins-38-tickets-null
 category: null_result
 source:
-  report: insight-20261029T162956Z-rescored-judged.json
+  report: insight-20261106T012454Z.json
   run: 0
 seeded: false
 defects: []
 natural: []
+# Domain 6: re-pointed at the Domain 6 insight gate's report (the subscriptions file reads as SaaS: its evidence gained the citeable story); old natural labels named the old report's claims.

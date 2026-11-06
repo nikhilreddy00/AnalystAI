@@ -1,0 +1,17 @@
+id: intake-saas-02
+category: clear
+pipeline: production
+source:
+  dataset: saas_subscriptions
+  seed: 1
+overview_done: true
+question: "What's our ARR?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: arr
+rationale: "ARR = 12 x MRR, its own KPI."

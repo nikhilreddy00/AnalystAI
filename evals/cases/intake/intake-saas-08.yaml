@@ -1,0 +1,15 @@
+id: intake-saas-08
+category: clear
+pipeline: production
+source:
+  dataset: saas_mrr_snapshots
+  seed: 1
+overview_done: true
+question: "How much expansion MRR did we get each month?"
+expect:
+  ask: false
+  intent_any:
+  - time_series
+  params:
+    kpi: expansion_mrr
+rationale: "Expansion by month on snapshots."

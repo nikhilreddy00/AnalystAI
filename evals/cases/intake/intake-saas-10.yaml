@@ -1,0 +1,15 @@
+id: intake-saas-10
+category: clear
+pipeline: production
+source:
+  dataset: saas_invoices
+  seed: 1
+overview_done: true
+question: "What were billings by month?"
+expect:
+  ask: false
+  intent_any:
+  - time_series
+  params:
+    kpi: billings
+rationale: "Billings by invoice date, never MRR."

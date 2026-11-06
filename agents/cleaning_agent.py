@@ -662,6 +662,20 @@ def _build_summary(decisions: list[CleaningDecision], outliers: list[str], high_
 LAYOUT_STRATEGIES = ("order_level", "paired", "conditional", "marker")
 
 
+def build_story_evidence(audit: CleaningAudit) -> Evidence | None:
+    """The file's story (domain_pack.spell_story: the bridge, the rates now and a year earlier,
+    the largest month of churn) as one citeable item, so a claim quoting it cites what holds it
+    (Domain 6 live run: two right claims cited segments and were flagged unsupported)."""
+    if not audit.spell_story:
+        return None
+    return Evidence(
+        id="clean:story", kind="cleaning", claim="The file's story in the product's own numbers: "
+        + " ".join(audit.spell_story), code=f"# {CLEANING_CARD.name} {CLEANING_CARD.version}: "
+        "domain_pack.spell_story", result_excerpt=json.dumps(audit.spell_story)[:2000],
+        row_count=audit.rows_after, confidence="high",
+        confidence_reason="computed by the product's spell rules, never by a model")
+
+
 def build_evidence(audit: CleaningAudit) -> Evidence:
     """One Evidence item for what cleaning changed, from the audit only: counts and the
     decisions' reasons, no cell values beyond masked labels."""

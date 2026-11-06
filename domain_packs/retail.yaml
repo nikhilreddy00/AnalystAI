@@ -30,7 +30,8 @@ exclude_headers: [[patient], [mrn], [prescription], [prescriber], [rx], [cpt], [
                   [claim, id], [claim, number], [claim, "no"], [policy, id], [policy, number],
                   [policy, "no"], [meter, id], [meter, reading], [deal, id], [deal, stage],
                   [deal, name], [stock, symbol], [ticker, symbol], [earned, premium],
-                  [written, premium], ["on", hand], [shipment, id], [purchase, order]]
+                  [written, premium], ["on", hand], [shipment, id], [purchase, order],
+                  [mrr], [subscription, id], [subscription, status], [trial, end]]
 # Words that veto only together, each in any header (PO # beside a Vendor: a purchase order).
 exclude_pairs: [[po, vendor], [po, supplier], [deal, stage], [opportunity, stage]]
 week_ends: SAT

@@ -1,0 +1,39 @@
+id: e2e-78
+domain: saas
+dataset:
+  name: saas_subscriptions
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: mrr
+  rel_tol: 0.001
+- kind: must_not_number
+  truth_key: mrr_annual_not_normalised
+  rel_tol: 0.01
+  scope: report
+- kind: must_not_number
+  truth_key: mrr_with_trials_and_paused
+  rel_tol: 0.002
+  scope: report
+- kind: must_not_match
+  pattern: \b(?:MRR|ARR)\s+(?:revenue|in revenue)\b|\bLTV\s+(?:is|of|was)\b|\b(?:healthy|best[- ]in[- ]class|world[- ]class)\b[^.]{0,40}\b(?:NRR|churn|retention)\b
+  scope: report
+- kind: must_not_match
+  pattern: net sales|order value|basket|\bSKU|outstanding balance|\bNPL\b|readmission|loss ratio|headcount|attrition
+  scope: report
+- kind: must_not_match
+  pattern: 479 (customers|accounts|subscribers|logos)
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Stripe subscription list: MRR $869,234.95 as of 29 Oct 2026 (annual ÷ 12, seats, discount; trials,
+  paused, test, EUR out), 251 paying customers (never the 479 rows); no revenue, LTV or benchmark verdicts.'

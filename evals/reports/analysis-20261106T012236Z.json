@@ -1,0 +1,1276 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261106T012236Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "0aa6e4e",
+  "started_at": "20261106T012236Z",
+  "only": "saas-10,saas-11",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 2,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0335,
+  "latency_p50_s": 29.27,
+  "latency_p95_s": 32.07,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 36,
+  "by_domain": {
+   "saas": {
+    "cases": 2,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 2,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 2,
+    "model_dependent_cases": 2,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 36,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 36
+    }
+   }
+  }
+ },
+ "runs": {
+  "saas-10": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (customer_id)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 437,
+    "output": {
+     "eda_summary": {
+      "interval_count": {
+       "mean": 1.1962,
+       "std": 0.5956,
+       "min": 1.0,
+       "max": 3.0,
+       "median": 1.0,
+       "count": 479
+      },
+      "unit_amount": {
+       "mean": 616.2476,
+       "std": 1085.3259,
+       "min": 49.0,
+       "max": 8149.8,
+       "median": 199.0,
+       "count": 479
+      },
+      "quantity": {
+       "mean": 7.9791,
+       "std": 10.4196,
+       "min": 1.0,
+       "max": 60.0,
+       "median": 5.0,
+       "count": 479
+      },
+      "discount_pct": {
+       "mean": 0.1833,
+       "std": 0.063,
+       "min": 0.1,
+       "max": 0.25,
+       "median": 0.2,
+       "count": 48
+      },
+      "mrr": {
+       "mean": 3160.7304,
+       "std": 8056.6165,
+       "min": 31.2375,
+       "max": 47940.0,
+       "median": 845.75,
+       "count": 479
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "segment",
+       "metric_column": "customer_id",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "SMB",
+         "value": 0.208
+        },
+        {
+         "name": "Mid",
+         "value": 0.149
+        },
+        {
+         "name": "Enterprise",
+         "value": 0.19
+        }
+       ],
+       "label": "logo_churn_12m"
+      },
+      {
+       "segment_column": "segment",
+       "metric_column": "mrr",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 631048.45
+        },
+        {
+         "name": "Mid",
+         "value": 112997.16
+        },
+        {
+         "name": "SMB",
+         "value": 125189.33
+        }
+       ],
+       "label": "current_mrr"
+      },
+      {
+       "segment_column": "segment",
+       "metric_column": "customer_id",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 22.0
+        },
+        {
+         "name": "Mid",
+         "value": 77.0
+        },
+        {
+         "name": "SMB",
+         "value": 152.0
+        }
+       ],
+       "label": "paying_customers_now"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "interval_count": [
+       {
+        "label": "(0.998, 2.0]",
+        "count": 432
+       },
+       {
+        "label": "(2.0, 3.0]",
+        "count": 47
+       }
+      ],
+      "unit_amount": [
+       {
+        "label": "(40.899, 859.08]",
+        "count": 402
+       },
+       {
+        "label": "(1669.16, 2479.24]",
+        "count": 71
+       },
+       {
+        "label": "(7339.72, 8149.8]",
+        "count": 6
+       }
+      ],
+      "quantity": [
+       {
+        "label": "(0.941, 6.9]",
+        "count": 283
+       },
+       {
+        "label": "(6.9, 12.8]",
+        "count": 104
+       },
+       {
+        "label": "(12.8, 18.7]",
+        "count": 59
+       },
+       {
+        "label": "(18.7, 24.6]",
+        "count": 3
+       },
+       {
+        "label": "(24.6, 30.5]",
+        "count": 3
+       },
+       {
+        "label": "(30.5, 36.4]",
+        "count": 6
+       },
+       {
+        "label": "(36.4, 42.3]",
+        "count": 5
+       },
+       {
+        "label": "(42.3, 48.2]",
+        "count": 7
+       },
+       {
+        "label": "(48.2, 54.1]",
+        "count": 5
+       },
+       {
+        "label": "(54.1, 60.0]",
+        "count": 4
+       }
+      ],
+      "discount_pct": [
+       {
+        "label": "(0.0999, 0.15]",
+        "count": 16
+       },
+       {
+        "label": "(0.15, 0.2]",
+        "count": 16
+       },
+       {
+        "label": "(0.2, 0.25]",
+        "count": 16
+       }
+      ],
+      "mrr": [
+       {
+        "label": "(-16.671, 4822.114]",
+        "count": 441
+       },
+       {
+        "label": "(4822.114, 9612.99]",
+        "count": 2
+       },
+       {
+        "label": "(9612.99, 14403.866]",
+        "count": 3
+       },
+       {
+        "label": "(14403.866, 19194.742]",
+        "count": 3
+       },
+       {
+        "label": "(19194.742, 23985.619]",
+        "count": 4
+       },
+       {
+        "label": "(23985.619, 28776.495]",
+        "count": 7
+       },
+       {
+        "label": "(28776.495, 33567.371]",
+        "count": 6
+       },
+       {
+        "label": "(33567.371, 38358.248]",
+        "count": 7
+       },
+       {
+        "label": "(38358.248, 43149.124]",
+        "count": 2
+       },
+       {
+        "label": "(43149.124, 47940.0]",
+        "count": 4
+       }
+      ],
+      "plan": [
+       {
+        "label": "Growth",
+        "count": 275
+       },
+       {
+        "label": "Starter",
+        "count": 144
+       },
+       {
+        "label": "Scale",
+        "count": 38
+       },
+       {
+        "label": "Analytics add-on",
+        "count": 22
+       }
+      ],
+      "interval": [
+       {
+        "label": "month",
+        "count": 372
+       },
+       {
+        "label": "year",
+        "count": 107
+       }
+      ],
+      "status": [
+       {
+        "label": "active",
+        "count": 270
+       },
+       {
+        "label": "canceled",
+        "count": 176
+       },
+       {
+        "label": "past_due",
+        "count": 16
+       },
+       {
+        "label": "paused",
+        "count": 10
+       },
+       {
+        "label": "incomplete_expired",
+        "count": 6
+       },
+       {
+        "label": "trialing",
+        "count": 1
+       }
+      ],
+      "segment": [
+       {
+        "label": "SMB",
+        "count": 295
+       },
+       {
+        "label": "Mid",
+        "count": 143
+       },
+       {
+        "label": "Enterprise",
+        "count": 41
+       }
+      ],
+      "country": [
+       {
+        "label": "US",
+        "count": 270
+       },
+       {
+        "label": "GB",
+        "count": 92
+       },
+       {
+        "label": "CA",
+        "count": 87
+       },
+       {
+        "label": "FR",
+        "count": 18
+       },
+       {
+        "label": "DE",
+        "count": 12
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'interval_count' in df.columns and pd.api.types.is_numeric_dtype(df['interval_count']):\n        _s = df['interval_count'].dropna()\n        if len(_s) > 0 and 'interval_count' not in result['eda_summary']:\n            result['eda_summary']['interval_count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'unit_amount' in df.columns and pd.api.types.is_numeric_dtype(df['unit_amount']):\n        _s = df['unit_amount'].dropna()\n        if len(_s) > 0 and 'unit_amount' not in result['eda_summary']:\n            result['eda_summary']['unit_amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'quantity' in df.columns and pd.api.types.is_numeric_dtype(df['quantity']):\n        _s = df['quantity'].dropna()\n        if len(_s) > 0 and 'quantity' not in result['eda_summary']:\n            result['eda_summary']['quantity'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'discount_pct' in df.columns and pd.api.types.is_numeric_dtype(df['discount_pct']):\n        _s = df['discount_pct'].dropna()\n        if len(_s) > 0 and 'discount_pct' not in result['eda_summary']:\n            result['eda_summary']['discount_pct'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _s = df['mrr'].dropna()\n        if len(_s) > 0 and 'mrr' not in result['eda_summary']:\n            result['eda_summary']['mrr'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'interval_count' in df.columns and pd.api.types.is_numeric_dtype(df['interval_count']):\n        _col_data = df['interval_count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['interval_count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'unit_amount' in df.columns and pd.api.types.is_numeric_dtype(df['unit_amount']):\n        _col_data = df['unit_amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['unit_amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'quantity' in df.columns and pd.api.types.is_numeric_dtype(df['quantity']):\n        _col_data = df['quantity'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['quantity'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'discount_pct' in df.columns and pd.api.types.is_numeric_dtype(df['discount_pct']):\n        _col_data = df['discount_pct'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['discount_pct'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _col_data = df['mrr'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['mrr'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'plan' in df.columns:\n        _vc = df['plan'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['plan'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'interval' in df.columns:\n        _vc = df['interval'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['interval'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'status' in df.columns:\n        _vc = df['status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'segment' in df.columns:\n        _vc = df['segment'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['segment'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'country' in df.columns:\n        _vc = df['country'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['country'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "customer_id": "cus_00269",
+       "subscription_id": "sub_00294",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 2,
+       "discount_pct": null,
+       "status": "canceled",
+       "created": "2024-06-09",
+       "trial_end": null,
+       "canceled_at": "2025-03-06",
+       "cancel_at": null,
+       "ended_at": "2025-04-02",
+       "segment": "SMB",
+       "country": "US",
+       "currency": "USD",
+       "contact_email": "billing269@customer269.io",
+       "mrr": 398.0,
+       "row_kind": "counted",
+       "start_event_date": "2024-06-09",
+       "cancellation_event_date": "2025-04-02",
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "customer_id": "cus_00259",
+       "subscription_id": "sub_00284",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 10,
+       "discount_pct": null,
+       "status": "active",
+       "created": "2023-07-24",
+       "trial_end": "2023-08-07",
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "SMB",
+       "country": "GB",
+       "currency": "USD",
+       "contact_email": "billing259@customer259.io",
+       "mrr": 1990.0,
+       "row_kind": "counted",
+       "start_event_date": "2023-08-07",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      },
+      {
+       "customer_id": "cus_00031",
+       "subscription_id": "sub_00035",
+       "plan": "Growth",
+       "interval": "year",
+       "interval_count": 1,
+       "unit_amount": 2029.8,
+       "quantity": 14,
+       "discount_pct": 0.1,
+       "status": "active",
+       "created": "2024-06-22",
+       "trial_end": null,
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "Mid",
+       "country": "US",
+       "currency": "USD",
+       "contact_email": "billing31@customer31.io",
+       "mrr": 2131.29,
+       "row_kind": "counted",
+       "start_event_date": "2024-06-22",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      },
+      {
+       "customer_id": "cus_00346",
+       "subscription_id": "sub_00381",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 9,
+       "discount_pct": null,
+       "status": "active",
+       "created": "2025-07-13",
+       "trial_end": null,
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "Mid",
+       "country": "GB",
+       "currency": "USD",
+       "contact_email": "billing346@customer346.io",
+       "mrr": 1791.0,
+       "row_kind": "counted",
+       "start_event_date": "2025-07-13",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      },
+      {
+       "customer_id": "cus_00392",
+       "subscription_id": "sub_00431",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 6,
+       "discount_pct": null,
+       "status": "active",
+       "created": "2025-10-28",
+       "trial_end": null,
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "Mid",
+       "country": "GB",
+       "currency": "USD",
+       "contact_email": "billing392@customer392.io",
+       "mrr": 1194.0,
+       "row_kind": "counted",
+       "start_event_date": "2025-10-28",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      }
+     ],
+     "dtypes_summary": {
+      "customer_id": "object",
+      "subscription_id": "object",
+      "plan": "object",
+      "interval": "object",
+      "interval_count": "int64",
+      "unit_amount": "float64",
+      "quantity": "int64",
+      "discount_pct": "float64",
+      "status": "object",
+      "created": "object",
+      "trial_end": "object",
+      "canceled_at": "object",
+      "cancel_at": "object",
+      "ended_at": "object",
+      "segment": "object",
+      "country": "object",
+      "currency": "object",
+      "contact_email": "object",
+      "mrr": "float64",
+      "row_kind": "object",
+      "start_event_date": "object",
+      "cancellation_event_date": "object",
+      "cancellation_in_window": "object",
+      "end_date_unknown": "object",
+      "in_force_now": "object"
+     },
+     "missing_pct": {
+      "customer_id": 0.0,
+      "subscription_id": 0.0,
+      "plan": 0.0,
+      "interval": 0.0,
+      "interval_count": 0.0,
+      "unit_amount": 0.0,
+      "quantity": 0.0,
+      "discount_pct": 89.98,
+      "status": 0.0,
+      "created": 0.0,
+      "trial_end": 61.59,
+      "canceled_at": 61.8,
+      "cancel_at": 97.49,
+      "ended_at": 63.05,
+      "segment": 0.0,
+      "country": 0.0,
+      "currency": 0.0,
+      "contact_email": 0.0,
+      "mrr": 0.0,
+      "row_kind": 0.0,
+      "start_event_date": 11.06,
+      "cancellation_event_date": 66.39,
+      "cancellation_in_window": 80.58,
+      "end_date_unknown": 98.96,
+      "in_force_now": 45.72
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:segment/customer_id:ratio:logo_churn_12m",
+       "kind": "segment",
+       "claim": "logo_churn_12m (from customer_id) by segment (3 groups)",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"customer_id\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"SMB\", \"value\": 0.208}, {\"name\": \"Mid\", \"value\": 0.149}, {\"name\": \"Enterprise\", \"value\": 0.19}], \"label\": \"logo_churn_12m\"}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": [
+        "Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.",
+        "Paying customers now are distinct customer_ids on in_force_now rows."
+       ]
+      },
+      {
+       "id": "seg:segment/mrr:sum",
+       "kind": "segment",
+       "claim": "sum mrr by segment (3 groups)",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Enterprise\", \"value\": 631048.45}, {\"name\": \"Mid\", \"value\": 112997.16}, {\"name\": \"SMB\", \"value\": 125189.33}], \"label\": \"current_mrr\"}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": [
+        "Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort."
+       ]
+      },
+      {
+       "id": "seg:segment/customer_id:count",
+       "kind": "segment",
+       "claim": "count customer_id by segment (3 groups)",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"customer_id\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Enterprise\", \"value\": 22.0}, {\"name\": \"Mid\", \"value\": 77.0}, {\"name\": \"SMB\", \"value\": 152.0}], \"label\": \"paying_customers_now\"}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": [
+        "Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.",
+        "Paying customers now are distinct customer_ids on in_force_now rows."
+       ]
+      },
+      {
+       "id": "eda:interval_count",
+       "kind": "eda",
+       "claim": "interval_count: median 1.00, mean 1.20, range 1.00 to 3.00",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"mean\": 1.1962, \"std\": 0.5956, \"min\": 1.0, \"max\": 3.0, \"median\": 1.0, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:unit_amount",
+       "kind": "eda",
+       "claim": "unit_amount: median 199.00, mean 616.25, range 49.00 to 8,149.80",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"mean\": 616.2476, \"std\": 1085.3259, \"min\": 49.0, \"max\": 8149.8, \"median\": 199.0, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:quantity",
+       "kind": "eda",
+       "claim": "quantity: median 5.00, mean 7.98, range 1.00 to 60.00",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"mean\": 7.9791, \"std\": 10.4196, \"min\": 1.0, \"max\": 60.0, \"median\": 5.0, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:discount_pct",
+       "kind": "eda",
+       "claim": "discount_pct: median 0.2, mean 0.1833, range 0.1 to 0.25",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"mean\": 0.1833, \"std\": 0.063, \"min\": 0.1, \"max\": 0.25, \"median\": 0.2, \"count\": 48}",
+       "row_count": 48,
+       "confidence": "high",
+       "confidence_reason": "48 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:mrr",
+       "kind": "eda",
+       "claim": "mrr: median 845.75, mean 3,160.73, range 31.24 to 47,940.00",
+       "code": "try:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]",
+       "result_excerpt": "{\"mean\": 3160.7304, \"std\": 8056.6165, \"min\": 31.2375, \"max\": 47940.0, \"median\": 845.75, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "saas",
+    "latency_s": 26.15,
+    "cost_usd": 0.02993,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    logo_churn_by_segment = {\n        \"SMB\": 20.8 / 100,\n        \"Mid\": 14.9 / 100,\n        \"Enterprise\": 19.0 / 100,\n    }\n\n    churn_results = [\n        {\"name\": seg, \"value\": round(rate, 4)}\n        for seg, rate in logo_churn_by_segment.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"logo_churn_12m\",\n        \"results\": churn_results,\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    mrr_by_segment = (\n        active_df.groupby(\"segment\")[\"mrr\"].sum().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"current_mrr\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": round(float(row[\"mrr\"]), 2)}\n            for _, row in mrr_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\ntry:\n    active_df2 = df[(df[\"row_kind\"] != \"test\") & (df[\"currency\"] == \"USD\") & (df[\"in_force_now\"] == \"yes\")]\n    cust_by_segment = (\n        active_df2.groupby(\"segment\")[\"customer_id\"].nunique().reset_index()\n    )\n    result[\"segments\"].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_now\",\n        \"results\": [\n            {\"name\": str(row[\"segment\"]), \"value\": float(row[\"customer_id\"])}\n            for _, row in cust_by_segment.iterrows()\n        ],\n    })\nexcept Exception:\n    pass\n\nresult[\"assumptions\"] = [\n    \"Logo churn by segment uses precomputed facts: share of customers paying on 29 Oct 2025 who are not paying on 29 Oct 2026, per segment cohort.\",\n    \"Only USD rows with row_kind != 'test' and in_force_now == 'yes' are used for current MRR and customer counts.\",\n    \"Logo churn values are fractions (e.g. 0.208 = 20.8%).\",\n    \"Paying customers now are distinct customer_ids on in_force_now rows.\",\n    \"Expansion/contraction MRR movements are not available in this file.\",\n]\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "saas-11": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (customer_id)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 6,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "mrr": {
+       "mean": 1013.1915,
+       "std": 2370.1159,
+       "min": 35.82,
+       "max": 40000.0,
+       "median": 273.72,
+       "count": 10117
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "month",
+       "metric_column": "customer_id",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "2025-11",
+         "value": 0.0164
+        },
+        {
+         "name": "2025-12",
+         "value": 0.023
+        },
+        {
+         "name": "2026-01",
+         "value": 0.0205
+        },
+        {
+         "name": "2026-02",
+         "value": 0.0243
+        },
+        {
+         "name": "2026-03",
+         "value": 0.0302
+        },
+        {
+         "name": "2026-04",
+         "value": 0.0323
+        },
+        {
+         "name": "2026-05",
+         "value": 0.0277
+        },
+        {
+         "name": "2026-06",
+         "value": 0.0191
+        },
+        {
+         "name": "2026-07",
+         "value": 0.0225
+        },
+        {
+         "name": "2026-08",
+         "value": 0.0261
+        },
+        {
+         "name": "2026-09",
+         "value": 0.0195
+        },
+        {
+         "name": "2026-10",
+         "value": 0.017
+        }
+       ],
+       "label": "monthly_logo_churn_rate"
+      },
+      {
+       "segment_column": "month",
+       "metric_column": "customer_id",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "2025-11",
+         "value": 7.0
+        },
+        {
+         "name": "2025-12",
+         "value": 10.0
+        },
+        {
+         "name": "2026-01",
+         "value": 9.0
+        },
+        {
+         "name": "2026-02",
+         "value": 11.0
+        },
+        {
+         "name": "2026-03",
+         "value": 14.0
+        },
+        {
+         "name": "2026-04",
+         "value": 15.0
+        },
+        {
+         "name": "2026-05",
+         "value": 13.0
+        },
+        {
+         "name": "2026-06",
+         "value": 9.0
+        },
+        {
+         "name": "2026-07",
+         "value": 11.0
+        },
+        {
+         "name": "2026-08",
+         "value": 13.0
+        },
+        {
+         "name": "2026-09",
+         "value": 10.0
+        },
+        {
+         "name": "2026-10",
+         "value": 9.0
+        }
+       ],
+       "label": "churned_customers"
+      },
+      {
+       "segment_column": "month",
+       "metric_column": "customer_id",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "2025-11",
+         "value": 427.0
+        },
+        {
+         "name": "2025-12",
+         "value": 434.0
+        },
+        {
+         "name": "2026-01",
+         "value": 438.0
+        },
+        {
+         "name": "2026-02",
+         "value": 453.0
+        },
+        {
+         "name": "2026-03",
+         "value": 463.0
+        },
+        {
+         "name": "2026-04",
+         "value": 465.0
+        },
+        {
+         "name": "2026-05",
+         "value": 469.0
+        },
+        {
+         "name": "2026-06",
+         "value": 471.0
+        },
+        {
+         "name": "2026-07",
+         "value": 488.0
+        },
+        {
+         "name": "2026-08",
+         "value": 498.0
+        },
+        {
+         "name": "2026-09",
+         "value": 513.0
+        },
+        {
+         "name": "2026-10",
+         "value": 528.0
+        }
+       ],
+       "label": "paying_customers_prior_month"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [
+      {
+       "test_name": "monthly_churn_rate_summary",
+       "statistic": 0.0232,
+       "p_value": null,
+       "interpretation": "Average monthly logo churn rate over 12 months: 0.0232. Peak: 2026-04 at 0.0323 (driven by large Enterprise churn in Mar 2026). Lowest: 2025-11 at 0.0164."
+      }
+     ],
+     "forecast_points": [],
+     "distributions": {
+      "mrr": [
+       {
+        "label": "(-4.144, 4032.238]",
+        "count": 9433
+       },
+       {
+        "label": "(4032.238, 8028.656]",
+        "count": 556
+       },
+       {
+        "label": "(8028.656, 12025.074]",
+        "count": 92
+       },
+       {
+        "label": "(12025.074, 16021.492]",
+        "count": 18
+       },
+       {
+        "label": "(16021.492, 20017.91]",
+        "count": 2
+       },
+       {
+        "label": "(36003.582, 40000.0]",
+        "count": 16
+       }
+      ],
+      "plan": [
+       {
+        "label": "Starter",
+        "count": 5449
+       },
+       {
+        "label": "Growth",
+        "count": 3415
+       },
+       {
+        "label": "Scale",
+        "count": 1253
+       }
+      ],
+      "segment": [
+       {
+        "label": "SMB",
+        "count": 5795
+       },
+       {
+        "label": "Mid",
+        "count": 3296
+       },
+       {
+        "label": "Enterprise",
+        "count": 1026
+       }
+      ],
+      "country": [
+       {
+        "label": "US",
+        "count": 4297
+       },
+       {
+        "label": "GB",
+        "count": 2001
+       },
+       {
+        "label": "DE",
+        "count": 1938
+       },
+       {
+        "label": "CA",
+        "count": 1881
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    monthly_churn_facts = {\n        \"2025-11\": 0.0164,\n        \"2025-12\": 0.0230,\n        \"2026-01\": 0.0205,\n        \"2026-02\": 0.0243,\n        \"2026-03\": 0.0302,\n        \"2026-04\": 0.0323,\n        \"2026-05\": 0.0277,\n        \"2026-06\": 0.0191,\n        \"2026-07\": 0.0225,\n        \"2026-08\": 0.0261,\n        \"2026-09\": 0.0195,\n        \"2026-10\": 0.0170,\n    }\n\n    churned_customers_facts = {\n        \"2025-11\": 7,\n        \"2025-12\": 10,\n        \"2026-01\": 9,\n        \"2026-02\": 11,\n        \"2026-03\": 14,\n        \"2026-04\": 15,\n        \"2026-05\": 13,\n        \"2026-06\": 9,\n        \"2026-07\": 11,\n        \"2026-08\": 13,\n        \"2026-09\": 10,\n        \"2026-10\": 9,\n    }\n\n    paying_customers_prior = {\n        \"2025-11\": 427,\n        \"2025-12\": 434,\n        \"2026-01\": 438,\n        \"2026-02\": 453,\n        \"2026-03\": 463,\n        \"2026-04\": 465,\n        \"2026-05\": 469,\n        \"2026-06\": 471,\n        \"2026-07\": 488,\n        \"2026-08\": 498,\n        \"2026-09\": 513,\n        \"2026-10\": 528,\n    }\n\n    churn_rate_results = [\n        {\"name\": period, \"value\": round(rate, 4)}\n        for period, rate in monthly_churn_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"monthly_logo_churn_rate\",\n        \"results\": churn_rate_results,\n    })\n\n    churned_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in churned_customers_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"churned_customers\",\n        \"results\": churned_results,\n    })\n\n    paying_prior_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in paying_customers_prior.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_prior_month\",\n        \"results\": paying_prior_results,\n    })\n\n    rates = list(monthly_churn_facts.values())\n    avg_rate = sum(rates) / len(rates)\n    max_period = max(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    min_period = min(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    max_rate = monthly_churn_facts[max_period]\n    min_rate = monthly_churn_facts[min_period]\n\n    result[\"statistical_tests\"].append({\n        \"test_name\": \"monthly_churn_rate_summary\",\n        \"statistic\": round(avg_rate, 4),\n        \"p_value\": None,\n        \"interpretation\": (\n            f\"Average monthly logo churn rate over 12 months: {avg_rate:.4f}. \"\n            f\"Peak: {max_period} at {max_rate:.4f} (driven by large Enterprise churn in Mar 2026). \"\n            f\"Lowest: {min_period} at {min_rate:.4f}.\"\n        ),\n    })\n\n    result[\"assumptions\"].append(\n        \"Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.\"\n    )\n    result[\"assumptions\"].append(\n        \"Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.\"\n    )\n    result[\"assumptions\"].append(\n        \"Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules.\"\n    )\n\nexcept Exception as e:\n    result[\"assumptions\"].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _s = df['mrr'].dropna()\n        if len(_s) > 0 and 'mrr' not in result['eda_summary']:\n            result['eda_summary']['mrr'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _col_data = df['mrr'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['mrr'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'plan' in df.columns:\n        _vc = df['plan'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['plan'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'segment' in df.columns:\n        _vc = df['segment'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['segment'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'country' in df.columns:\n        _vc = df['country'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['country'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0001",
+       "mrr": 287.62,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0002",
+       "mrr": 3526.9,
+       "plan": "Scale",
+       "segment": "Enterprise",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0003",
+       "mrr": 256.93,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0004",
+       "mrr": 56.89,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "GB",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0005",
+       "mrr": 945.77,
+       "plan": "Growth",
+       "segment": "Mid",
+       "country": "CA",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      }
+     ],
+     "dtypes_summary": {
+      "month": "object",
+      "customer_id": "object",
+      "mrr": "float64",
+      "plan": "object",
+      "segment": "object",
+      "country": "object",
+      "row_kind": "object",
+      "start_event_date": "object",
+      "cancellation_event_date": "object",
+      "cancellation_in_window": "object",
+      "end_date_unknown": "float64",
+      "in_force_now": "object"
+     },
+     "missing_pct": {
+      "month": 0.0,
+      "customer_id": 0.0,
+      "mrr": 0.0,
+      "plan": 0.0,
+      "segment": 0.0,
+      "country": 0.0,
+      "row_kind": 0.0,
+      "start_event_date": 96.12,
+      "cancellation_event_date": 98.47,
+      "cancellation_in_window": 98.92,
+      "end_date_unknown": 100.0,
+      "in_force_now": 94.67
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:month/customer_id:ratio:monthly_logo_churn_rate",
+       "kind": "segment",
+       "claim": "monthly_logo_churn_rate (from customer_id) by month (12 groups)",
+       "code": "try:\n    monthly_churn_facts = {\n        \"2025-11\": 0.0164,\n        \"2025-12\": 0.0230,\n        \"2026-01\": 0.0205,\n        \"2026-02\": 0.0243,\n        \"2026-03\": 0.0302,\n        \"2026-04\": 0.0323,\n        \"2026-05\": 0.0277,\n        \"2026-06\": 0.0191,\n        \"2026-07\": 0.0225,\n        \"2026-08\": 0.0261,\n        \"2026-09\": 0.0195,\n        \"2026-10\": 0.0170,\n    }\n\n    churned_customers_facts = {\n        \"2025-11\": 7,\n        \"2025-12\": 10,\n        \"2026-01\": 9,\n        \"2026-02\": 11,\n        \"2026-03\": 14,\n        \"2026-04\": 15,\n        \"2026-05\": 13,\n        \"2026-06\": 9,\n        \"2026-07\": 11,\n        \"2026-08\": 13,\n        \"2026-09\": 10,\n        \"2026-10\": 9,\n    }\n\n    paying_customers_prior = {\n        \"2025-11\": 427,\n        \"2025-12\": 434,\n        \"2026-01\": 438,\n        \"2026-02\": 453,\n        \"2026-03\": 463,\n        \"2026-04\": 465,\n        \"2026-05\": 469,\n        \"2026-06\": 471,\n        \"2026-07\": 488,\n        \"2026-08\": 498,\n        \"2026-09\": 513,\n        \"2026-10\": 528,\n    }\n\n    churn_rate_results = [\n        {\"name\": period, \"value\": round(rate, 4)}\n        for period, rate in monthly_churn_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"monthly_logo_churn_rate\",\n        \"results\": churn_rate_results,\n    })\n\n    churned_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in churned_customers_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"churned_customers\",\n        \"results\": churned_results,\n    })\n\n    paying_prior_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in paying_customers_prior.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_prior_month\",\n        \"results\": paying_prior_results,\n    })\n\n    rates = list(monthly_churn_facts.values())\n    avg_rate = sum(rates) / len(rates)\n    max_period = max(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    min_period = min(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    max_rate = monthly_churn_facts[max_period]\n    min_rate = monthly_churn_facts[min_period]\n\n    result[\"statistical_tests\"].append({\n        \"test_name\": \"monthly_churn_rate_summary\",\n        \"statistic\": round(avg_rate, 4),\n        \"p_value\": None,\n        \"interpretation\": (\n            f\"Average monthly logo churn rate over 12 months: {avg_rate:.4f}. \"\n            f\"Peak: {max_period} at {max_rate:.4f} (driven by large Enterprise churn in Mar 2026). \"\n            f\"Lowest: {min_period} at {min_rate:.4f}.\"\n        ),\n    })\n\n    result[\"assumptions\"].append(\n        \"Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.\"\n    )\n    result[\"assumptions\"].append(\n        \"Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.\"\n    )\n    result[\"assumptions\"].append(\n        \"Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules.\"\n    )\n\nexcept Exception as e:\n    result[\"assumptions\"].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"month\", \"metric_column\": \"customer_id\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"2025-11\", \"value\": 0.0164}, {\"name\": \"2025-12\", \"value\": 0.023}, {\"name\": \"2026-01\", \"value\": 0.0205}, {\"name\": \"2026-02\", \"value\": 0.0243}, {\"name\": \"2026-03\", \"value\": 0.0302}, {\"name\": \"2026-04\", \"value\": 0.0323}, {\"name\": \"2026-05\", \"value\": 0.0277}, {\"name\": \"2026-06\", \"value\": 0.0191}, {\"name\": \"2026-07\", \"value\": 0.0225}, {\"name\": \"2026-08\", \"value\": 0.0261}, {\"name\": \"2026-09\", \"valu",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.",
+        "Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.",
+        "Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules."
+       ]
+      },
+      {
+       "id": "seg:month/customer_id:count",
+       "kind": "segment",
+       "claim": "count customer_id by month (12 groups)",
+       "code": "try:\n    monthly_churn_facts = {\n        \"2025-11\": 0.0164,\n        \"2025-12\": 0.0230,\n        \"2026-01\": 0.0205,\n        \"2026-02\": 0.0243,\n        \"2026-03\": 0.0302,\n        \"2026-04\": 0.0323,\n        \"2026-05\": 0.0277,\n        \"2026-06\": 0.0191,\n        \"2026-07\": 0.0225,\n        \"2026-08\": 0.0261,\n        \"2026-09\": 0.0195,\n        \"2026-10\": 0.0170,\n    }\n\n    churned_customers_facts = {\n        \"2025-11\": 7,\n        \"2025-12\": 10,\n        \"2026-01\": 9,\n        \"2026-02\": 11,\n        \"2026-03\": 14,\n        \"2026-04\": 15,\n        \"2026-05\": 13,\n        \"2026-06\": 9,\n        \"2026-07\": 11,\n        \"2026-08\": 13,\n        \"2026-09\": 10,\n        \"2026-10\": 9,\n    }\n\n    paying_customers_prior = {\n        \"2025-11\": 427,\n        \"2025-12\": 434,\n        \"2026-01\": 438,\n        \"2026-02\": 453,\n        \"2026-03\": 463,\n        \"2026-04\": 465,\n        \"2026-05\": 469,\n        \"2026-06\": 471,\n        \"2026-07\": 488,\n        \"2026-08\": 498,\n        \"2026-09\": 513,\n        \"2026-10\": 528,\n    }\n\n    churn_rate_results = [\n        {\"name\": period, \"value\": round(rate, 4)}\n        for period, rate in monthly_churn_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"monthly_logo_churn_rate\",\n        \"results\": churn_rate_results,\n    })\n\n    churned_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in churned_customers_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"churned_customers\",\n        \"results\": churned_results,\n    })\n\n    paying_prior_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in paying_customers_prior.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_prior_month\",\n        \"results\": paying_prior_results,\n    })\n\n    rates = list(monthly_churn_facts.values())\n    avg_rate = sum(rates) / len(rates)\n    max_period = max(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    min_period = min(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    max_rate = monthly_churn_facts[max_period]\n    min_rate = monthly_churn_facts[min_period]\n\n    result[\"statistical_tests\"].append({\n        \"test_name\": \"monthly_churn_rate_summary\",\n        \"statistic\": round(avg_rate, 4),\n        \"p_value\": None,\n        \"interpretation\": (\n            f\"Average monthly logo churn rate over 12 months: {avg_rate:.4f}. \"\n            f\"Peak: {max_period} at {max_rate:.4f} (driven by large Enterprise churn in Mar 2026). \"\n            f\"Lowest: {min_period} at {min_rate:.4f}.\"\n        ),\n    })\n\n    result[\"assumptions\"].append(\n        \"Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.\"\n    )\n    result[\"assumptions\"].append(\n        \"Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.\"\n    )\n    result[\"assumptions\"].append(\n        \"Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules.\"\n    )\n\nexcept Exception as e:\n    result[\"assumptions\"].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"month\", \"metric_column\": \"customer_id\", \"aggregation\": \"count\", \"results\": [{\"name\": \"2025-11\", \"value\": 7.0}, {\"name\": \"2025-12\", \"value\": 10.0}, {\"name\": \"2026-01\", \"value\": 9.0}, {\"name\": \"2026-02\", \"value\": 11.0}, {\"name\": \"2026-03\", \"value\": 14.0}, {\"name\": \"2026-04\", \"value\": 15.0}, {\"name\": \"2026-05\", \"value\": 13.0}, {\"name\": \"2026-06\", \"value\": 9.0}, {\"name\": \"2026-07\", \"value\": 11.0}, {\"name\": \"2026-08\", \"value\": 13.0}, {\"name\": \"2026-09\", \"value\": 10.0}, {\"name\": \"2",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.",
+        "Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.",
+        "Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules."
+       ]
+      },
+      {
+       "id": "seg:month/customer_id:count",
+       "kind": "segment",
+       "claim": "count customer_id by month (12 groups)",
+       "code": "try:\n    monthly_churn_facts = {\n        \"2025-11\": 0.0164,\n        \"2025-12\": 0.0230,\n        \"2026-01\": 0.0205,\n        \"2026-02\": 0.0243,\n        \"2026-03\": 0.0302,\n        \"2026-04\": 0.0323,\n        \"2026-05\": 0.0277,\n        \"2026-06\": 0.0191,\n        \"2026-07\": 0.0225,\n        \"2026-08\": 0.0261,\n        \"2026-09\": 0.0195,\n        \"2026-10\": 0.0170,\n    }\n\n    churned_customers_facts = {\n        \"2025-11\": 7,\n        \"2025-12\": 10,\n        \"2026-01\": 9,\n        \"2026-02\": 11,\n        \"2026-03\": 14,\n        \"2026-04\": 15,\n        \"2026-05\": 13,\n        \"2026-06\": 9,\n        \"2026-07\": 11,\n        \"2026-08\": 13,\n        \"2026-09\": 10,\n        \"2026-10\": 9,\n    }\n\n    paying_customers_prior = {\n        \"2025-11\": 427,\n        \"2025-12\": 434,\n        \"2026-01\": 438,\n        \"2026-02\": 453,\n        \"2026-03\": 463,\n        \"2026-04\": 465,\n        \"2026-05\": 469,\n        \"2026-06\": 471,\n        \"2026-07\": 488,\n        \"2026-08\": 498,\n        \"2026-09\": 513,\n        \"2026-10\": 528,\n    }\n\n    churn_rate_results = [\n        {\"name\": period, \"value\": round(rate, 4)}\n        for period, rate in monthly_churn_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"monthly_logo_churn_rate\",\n        \"results\": churn_rate_results,\n    })\n\n    churned_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in churned_customers_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"churned_customers\",\n        \"results\": churned_results,\n    })\n\n    paying_prior_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in paying_customers_prior.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_prior_month\",\n        \"results\": paying_prior_results,\n    })\n\n    rates = list(monthly_churn_facts.values())\n    avg_rate = sum(rates) / len(rates)\n    max_period = max(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    min_period = min(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    max_rate = monthly_churn_facts[max_period]\n    min_rate = monthly_churn_facts[min_period]\n\n    result[\"statistical_tests\"].append({\n        \"test_name\": \"monthly_churn_rate_summary\",\n        \"statistic\": round(avg_rate, 4),\n        \"p_value\": None,\n        \"interpretation\": (\n            f\"Average monthly logo churn rate over 12 months: {avg_rate:.4f}. \"\n            f\"Peak: {max_period} at {max_rate:.4f} (driven by large Enterprise churn in Mar 2026). \"\n            f\"Lowest: {min_period} at {min_rate:.4f}.\"\n        ),\n    })\n\n    result[\"assumptions\"].append(\n        \"Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.\"\n    )\n    result[\"assumptions\"].append(\n        \"Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.\"\n    )\n    result[\"assumptions\"].append(\n        \"Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules.\"\n    )\n\nexcept Exception as e:\n    result[\"assumptions\"].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"month\", \"metric_column\": \"customer_id\", \"aggregation\": \"count\", \"results\": [{\"name\": \"2025-11\", \"value\": 427.0}, {\"name\": \"2025-12\", \"value\": 434.0}, {\"name\": \"2026-01\", \"value\": 438.0}, {\"name\": \"2026-02\", \"value\": 453.0}, {\"name\": \"2026-03\", \"value\": 463.0}, {\"name\": \"2026-04\", \"value\": 465.0}, {\"name\": \"2026-05\", \"value\": 469.0}, {\"name\": \"2026-06\", \"value\": 471.0}, {\"name\": \"2026-07\", \"value\": 488.0}, {\"name\": \"2026-08\", \"value\": 498.0}, {\"name\": \"2026-09\", \"value\": 513.0",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.",
+        "Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.",
+        "Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules."
+       ]
+      },
+      {
+       "id": "test:0",
+       "kind": "test",
+       "claim": "monthly_churn_rate_summary: Average monthly logo churn rate over 12 months: 0.0232. Peak: 2026-04 at 0.0323 (driven by large Enterprise churn in Mar 2026). Lowest: 2025-11 at 0.0164.",
+       "code": "try:\n    monthly_churn_facts = {\n        \"2025-11\": 0.0164,\n        \"2025-12\": 0.0230,\n        \"2026-01\": 0.0205,\n        \"2026-02\": 0.0243,\n        \"2026-03\": 0.0302,\n        \"2026-04\": 0.0323,\n        \"2026-05\": 0.0277,\n        \"2026-06\": 0.0191,\n        \"2026-07\": 0.0225,\n        \"2026-08\": 0.0261,\n        \"2026-09\": 0.0195,\n        \"2026-10\": 0.0170,\n    }\n\n    churned_customers_facts = {\n        \"2025-11\": 7,\n        \"2025-12\": 10,\n        \"2026-01\": 9,\n        \"2026-02\": 11,\n        \"2026-03\": 14,\n        \"2026-04\": 15,\n        \"2026-05\": 13,\n        \"2026-06\": 9,\n        \"2026-07\": 11,\n        \"2026-08\": 13,\n        \"2026-09\": 10,\n        \"2026-10\": 9,\n    }\n\n    paying_customers_prior = {\n        \"2025-11\": 427,\n        \"2025-12\": 434,\n        \"2026-01\": 438,\n        \"2026-02\": 453,\n        \"2026-03\": 463,\n        \"2026-04\": 465,\n        \"2026-05\": 469,\n        \"2026-06\": 471,\n        \"2026-07\": 488,\n        \"2026-08\": 498,\n        \"2026-09\": 513,\n        \"2026-10\": 528,\n    }\n\n    churn_rate_results = [\n        {\"name\": period, \"value\": round(rate, 4)}\n        for period, rate in monthly_churn_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"monthly_logo_churn_rate\",\n        \"results\": churn_rate_results,\n    })\n\n    churned_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in churned_customers_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"churned_customers\",\n        \"results\": churned_results,\n    })\n\n    paying_prior_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in paying_customers_prior.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_prior_month\",\n        \"results\": paying_prior_results,\n    })\n\n    rates = list(monthly_churn_facts.values())\n    avg_rate = sum(rates) / len(rates)\n    max_period = max(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    min_period = min(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    max_rate = monthly_churn_facts[max_period]\n    min_rate = monthly_churn_facts[min_period]\n\n    result[\"statistical_tests\"].append({\n        \"test_name\": \"monthly_churn_rate_summary\",\n        \"statistic\": round(avg_rate, 4),\n        \"p_value\": None,\n        \"interpretation\": (\n            f\"Average monthly logo churn rate over 12 months: {avg_rate:.4f}. \"\n            f\"Peak: {max_period} at {max_rate:.4f} (driven by large Enterprise churn in Mar 2026). \"\n            f\"Lowest: {min_period} at {min_rate:.4f}.\"\n        ),\n    })\n\n    result[\"assumptions\"].append(\n        \"Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.\"\n    )\n    result[\"assumptions\"].append(\n        \"Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.\"\n    )\n    result[\"assumptions\"].append(\n        \"Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules.\"\n    )\n\nexcept Exception as e:\n    result[\"assumptions\"].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"test_name\": \"monthly_churn_rate_summary\", \"statistic\": 0.0232, \"p_value\": null, \"interpretation\": \"Average monthly logo churn rate over 12 months: 0.0232. Peak: 2026-04 at 0.0323 (driven by large Enterprise churn in Mar 2026). Lowest: 2025-11 at 0.0164.\"}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.",
+        "Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.",
+        "Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules."
+       ]
+      },
+      {
+       "id": "eda:mrr",
+       "kind": "eda",
+       "claim": "mrr: median 273.72, mean 1,013.19, range 35.82 to 40,000.00",
+       "code": "try:\n    monthly_churn_facts = {\n        \"2025-11\": 0.0164,\n        \"2025-12\": 0.0230,\n        \"2026-01\": 0.0205,\n        \"2026-02\": 0.0243,\n        \"2026-03\": 0.0302,\n        \"2026-04\": 0.0323,\n        \"2026-05\": 0.0277,\n        \"2026-06\": 0.0191,\n        \"2026-07\": 0.0225,\n        \"2026-08\": 0.0261,\n        \"2026-09\": 0.0195,\n        \"2026-10\": 0.0170,\n    }\n\n    churned_customers_facts = {\n        \"2025-11\": 7,\n        \"2025-12\": 10,\n        \"2026-01\": 9,\n        \"2026-02\": 11,\n        \"2026-03\": 14,\n        \"2026-04\": 15,\n        \"2026-05\": 13,\n        \"2026-06\": 9,\n        \"2026-07\": 11,\n        \"2026-08\": 13,\n        \"2026-09\": 10,\n        \"2026-10\": 9,\n    }\n\n    paying_customers_prior = {\n        \"2025-11\": 427,\n        \"2025-12\": 434,\n        \"2026-01\": 438,\n        \"2026-02\": 453,\n        \"2026-03\": 463,\n        \"2026-04\": 465,\n        \"2026-05\": 469,\n        \"2026-06\": 471,\n        \"2026-07\": 488,\n        \"2026-08\": 498,\n        \"2026-09\": 513,\n        \"2026-10\": 528,\n    }\n\n    churn_rate_results = [\n        {\"name\": period, \"value\": round(rate, 4)}\n        for period, rate in monthly_churn_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"monthly_logo_churn_rate\",\n        \"results\": churn_rate_results,\n    })\n\n    churned_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in churned_customers_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"churned_customers\",\n        \"results\": churned_results,\n    })\n\n    paying_prior_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in paying_customers_prior.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_prior_month\",\n        \"results\": paying_prior_results,\n    })\n\n    rates = list(monthly_churn_facts.values())\n    avg_rate = sum(rates) / len(rates)\n    max_period = max(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    min_period = min(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    max_rate = monthly_churn_facts[max_period]\n    min_rate = monthly_churn_facts[min_period]\n\n    result[\"statistical_tests\"].append({\n        \"test_name\": \"monthly_churn_rate_summary\",\n        \"statistic\": round(avg_rate, 4),\n        \"p_value\": None,\n        \"interpretation\": (\n            f\"Average monthly logo churn rate over 12 months: {avg_rate:.4f}. \"\n            f\"Peak: {max_period} at {max_rate:.4f} (driven by large Enterprise churn in Mar 2026). \"\n            f\"Lowest: {min_period} at {min_rate:.4f}.\"\n        ),\n    })\n\n    result[\"assumptions\"].append(\n        \"Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.\"\n    )\n    result[\"assumptions\"].append(\n        \"Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.\"\n    )\n    result[\"assumptions\"].append(\n        \"Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules.\"\n    )\n\nexcept Exception as e:\n    result[\"assumptions\"].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1013.1915, \"std\": 2370.1159, \"min\": 35.82, \"max\": 40000.0, \"median\": 273.72, \"count\": 10117}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "saas",
+    "latency_s": 32.38,
+    "cost_usd": 0.037,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    monthly_churn_facts = {\n        \"2025-11\": 0.0164,\n        \"2025-12\": 0.0230,\n        \"2026-01\": 0.0205,\n        \"2026-02\": 0.0243,\n        \"2026-03\": 0.0302,\n        \"2026-04\": 0.0323,\n        \"2026-05\": 0.0277,\n        \"2026-06\": 0.0191,\n        \"2026-07\": 0.0225,\n        \"2026-08\": 0.0261,\n        \"2026-09\": 0.0195,\n        \"2026-10\": 0.0170,\n    }\n\n    churned_customers_facts = {\n        \"2025-11\": 7,\n        \"2025-12\": 10,\n        \"2026-01\": 9,\n        \"2026-02\": 11,\n        \"2026-03\": 14,\n        \"2026-04\": 15,\n        \"2026-05\": 13,\n        \"2026-06\": 9,\n        \"2026-07\": 11,\n        \"2026-08\": 13,\n        \"2026-09\": 10,\n        \"2026-10\": 9,\n    }\n\n    paying_customers_prior = {\n        \"2025-11\": 427,\n        \"2025-12\": 434,\n        \"2026-01\": 438,\n        \"2026-02\": 453,\n        \"2026-03\": 463,\n        \"2026-04\": 465,\n        \"2026-05\": 469,\n        \"2026-06\": 471,\n        \"2026-07\": 488,\n        \"2026-08\": 498,\n        \"2026-09\": 513,\n        \"2026-10\": 528,\n    }\n\n    churn_rate_results = [\n        {\"name\": period, \"value\": round(rate, 4)}\n        for period, rate in monthly_churn_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"monthly_logo_churn_rate\",\n        \"results\": churn_rate_results,\n    })\n\n    churned_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in churned_customers_facts.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"churned_customers\",\n        \"results\": churned_results,\n    })\n\n    paying_prior_results = [\n        {\"name\": period, \"value\": float(count)}\n        for period, count in paying_customers_prior.items()\n    ]\n\n    result[\"segments\"].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_prior_month\",\n        \"results\": paying_prior_results,\n    })\n\n    rates = list(monthly_churn_facts.values())\n    avg_rate = sum(rates) / len(rates)\n    max_period = max(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    min_period = min(monthly_churn_facts, key=lambda k: monthly_churn_facts[k])\n    max_rate = monthly_churn_facts[max_period]\n    min_rate = monthly_churn_facts[min_period]\n\n    result[\"statistical_tests\"].append({\n        \"test_name\": \"monthly_churn_rate_summary\",\n        \"statistic\": round(avg_rate, 4),\n        \"p_value\": None,\n        \"interpretation\": (\n            f\"Average monthly logo churn rate over 12 months: {avg_rate:.4f}. \"\n            f\"Peak: {max_period} at {max_rate:.4f} (driven by large Enterprise churn in Mar 2026). \"\n            f\"Lowest: {min_period} at {min_rate:.4f}.\"\n        ),\n    })\n\n    result[\"assumptions\"].append(\n        \"Monthly churn rate = churned customers at month-end \u00f7 paying customers at prior month-end; sourced from domain facts, never recomputed from rows.\"\n    )\n    result[\"assumptions\"].append(\n        \"Mar 2026 peak churn rate (0.0302) reflects 14 churned customers; churned MRR that month was dominated by one Enterprise customer.\"\n    )\n    result[\"assumptions\"].append(\n        \"Rates are monthly, not annualised; multiplying by 12 would be incorrect per domain rules.\"\n    )\n\nexcept Exception as e:\n    result[\"assumptions\"].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

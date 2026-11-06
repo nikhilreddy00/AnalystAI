@@ -30,9 +30,11 @@ from orchestrator.state import (
 
 DOMAINS = ("bank_balances", "encounters", "claims", "employees", "saas_accounts",
            "sensor_readings", "shipments", "retail_lines", "store_weeks", "b2b_invoices",
-           "policies", "loss_run", "hr_roster", "hr_roster_onerow", "hr_snapshots")
+           "policies", "loss_run", "hr_roster", "hr_roster_onerow", "hr_snapshots",
+           "saas_subscriptions", "saas_mrr_snapshots", "saas_invoices")
 MAX_ROWS = {"loss_run": 50_000,   # a loss run lists every claimant at each of 16 valuations
-            "hr_snapshots": 9_000}   # ~350 people at each of 24 month-ends
+            "hr_snapshots": 9_000,   # ~350 people at each of 24 month-ends
+            "saas_mrr_snapshots": 12_000}   # ~420 paying customers at each of 24 month labels
 
 
 def _findings(**kw) -> AnalysisFindings:

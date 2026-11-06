@@ -1,0 +1,1695 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261106T003211Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "a196c4b",
+  "started_at": "20261106T003211Z",
+  "only": "saas-5,saas-6,saas-8",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 3,
+  "runs": 3,
+  "pass_rate": 0.3333,
+  "case_majority_pass_rate": 0.3333,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 4,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0327,
+  "latency_p50_s": 42.17,
+  "latency_p95_s": 46.97,
+  "numeric_accuracy": 0.3333,
+  "insight_recall": 0.3333,
+  "false_finding_rate": 0.0366,
+  "verifiable_claims": 82,
+  "by_domain": {
+   "saas": {
+    "cases": 3,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 0.3333,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 4,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 1,
+    "model_dependent_cases": 3,
+    "numeric_accuracy": 0.3333,
+    "insight_recall": 0.3333,
+    "false_finding_rate": 0.0366,
+    "verifiable_claims": 82,
+    "model_dependent_quality": {
+     "numeric_accuracy": 0.3333,
+     "insight_recall": 0.3333,
+     "false_finding_rate": 0.0366,
+     "verifiable_claims": 82
+    }
+   }
+  }
+ },
+ "runs": {
+  "saas-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (mrr)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 9,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "mrr": {
+       "mean": 1013.1915,
+       "std": 2370.1159,
+       "min": 35.82,
+       "max": 40000.0,
+       "median": 273.72,
+       "count": 10117
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "segment",
+       "metric_column": "mrr",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 0.9303
+        },
+        {
+         "name": "Mid",
+         "value": 0.8924
+        },
+        {
+         "name": "SMB",
+         "value": 0.8545
+        }
+       ],
+       "label": "net_revenue_retention"
+      },
+      {
+       "segment_column": "segment",
+       "metric_column": "mrr",
+       "aggregation": "last",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 322230.94
+        },
+        {
+         "name": "Mid",
+         "value": 179558.89
+        },
+        {
+         "name": "SMB",
+         "value": 60819.02
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "segment",
+       "metric_column": "mrr",
+       "aggregation": "mean",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 5754.1239
+        },
+        {
+         "name": "Mid",
+         "value": 981.1961
+        },
+        {
+         "name": "SMB",
+         "value": 202.7301
+        }
+       ],
+       "label": null
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "mrr": [
+       {
+        "label": "(-4.144, 4032.238]",
+        "count": 9433
+       },
+       {
+        "label": "(4032.238, 8028.656]",
+        "count": 556
+       },
+       {
+        "label": "(8028.656, 12025.074]",
+        "count": 92
+       },
+       {
+        "label": "(12025.074, 16021.492]",
+        "count": 18
+       },
+       {
+        "label": "(16021.492, 20017.91]",
+        "count": 2
+       },
+       {
+        "label": "(36003.582, 40000.0]",
+        "count": 16
+       }
+      ],
+      "plan": [
+       {
+        "label": "Starter",
+        "count": 5449
+       },
+       {
+        "label": "Growth",
+        "count": 3415
+       },
+       {
+        "label": "Scale",
+        "count": 1253
+       }
+      ],
+      "segment": [
+       {
+        "label": "SMB",
+        "count": 5795
+       },
+       {
+        "label": "Mid",
+        "count": 3296
+       },
+       {
+        "label": "Enterprise",
+        "count": 1026
+       }
+      ],
+      "country": [
+       {
+        "label": "US",
+        "count": 4297
+       },
+       {
+        "label": "GB",
+        "count": 2001
+       },
+       {
+        "label": "DE",
+        "count": 1938
+       },
+       {
+        "label": "CA",
+        "count": 1881
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    # Domain facts for NRR by segment\n    # NRR overall (12 months to 31 Oct 2026) = 91.1% per domain pack\n    # We need to compute NRR by segment using the data\n\n    df['month_dt'] = pd.to_datetime(df['month'])\n\n    # Identify the latest month and the month 12 months prior\n    latest_month = df['month_dt'].max()\n    # 12 months earlier: Oct 2025 (31 Oct 2025 baseline)\n    # The window is Nov 2025 \u2013 Oct 2026\n    # Baseline: customers paying at end of Oct 2025\n    # Current: their MRR at end of Oct 2026\n\n    # Get each customer's MRR at Oct 2025 (baseline)\n    oct_2025 = df[df['month_dt'] == pd.Timestamp('2025-10-01')].copy()\n    oct_2026 = df[df['month_dt'] == pd.Timestamp('2026-10-01')].copy()\n\n    # If those exact months exist, use them; otherwise find closest\n    available_months = sorted(df['month_dt'].unique())\n\n    # Find Oct 2025 and Oct 2026 snapshots\n    baseline_months = [m for m in available_months if m.year == 2025 and m.month == 10]\n    current_months = [m for m in available_months if m.year == 2026 and m.month == 10]\n\n    if baseline_months and current_months:\n        baseline_month = baseline_months[0]\n        current_month = current_months[0]\n\n        baseline_df = df[df['month_dt'] == baseline_month][['customer_id', 'mrr', 'segment']].copy()\n        current_df = df[df['month_dt'] == current_month][['customer_id', 'mrr', 'segment']].copy()\n\n        # Deduplicate: last value per customer per month\n        baseline_df = baseline_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n        current_df = current_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n\n        # NRR: only customers paying at baseline (mrr > 0)\n        baseline_paying = baseline_df[baseline_df['mrr'] > 0].copy()\n\n        # Merge with current MRR (0 if churned)\n        merged = baseline_paying.merge(\n            current_df[['customer_id', 'mrr']].rename(columns={'mrr': 'mrr_current'}),\n            on='customer_id', how='left'\n        )\n        merged['mrr_current'] = merged['mrr_current'].fillna(0.0)\n\n        # NRR by segment\n        seg_nrr = []\n        for seg, grp in merged.groupby('segment'):\n            baseline_total = grp['mrr'].sum()\n            current_total = grp['mrr_current'].sum()\n            nrr = current_total / baseline_total if baseline_total > 0 else np.nan\n            seg_nrr.append({'name': str(seg), 'value': round(nrr, 4)})\n\n        # Overall NRR from data (for reference)\n        overall_baseline = merged['mrr'].sum()\n        overall_current = merged['mrr_current'].sum()\n        overall_nrr = overall_current / overall_baseline if overall_baseline > 0 else np.nan\n\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'ratio',\n            'label': 'net_revenue_retention',\n            'results': seg_nrr\n        })\n\n        # Also provide baseline MRR by segment for context\n        baseline_by_seg = baseline_paying.groupby('segment')['mrr'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'baseline_mrr_oct2025',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr'], 2)} for _, r in baseline_by_seg.iterrows()]\n        })\n\n        # Current MRR by segment (for baseline customers only)\n        current_by_seg = merged.groupby('segment')['mrr_current'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'current_mrr_oct2026_baseline_cohort',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr_current'], 2)} for _, r in current_by_seg.iterrows()]\n        })\n\n        nrr_overall_computed = round(overall_nrr, 4)\n        result['assumptions'].append(\n            f\"NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR={nrr_overall_computed} vs domain fact 0.911\"\n        )\n        result['assumptions'].append(\n            \"Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication\"\n        )\n        result['assumptions'].append(\n            \"Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition\"\n        )\n    else:\n        result['assumptions'].append(\n            \"Oct 2025 or Oct 2026 snapshot not found in data; NRR by segment could not be computed from rows\"\n        )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _s = df['mrr'].dropna()\n        if len(_s) > 0 and 'mrr' not in result['eda_summary']:\n            result['eda_summary']['mrr'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _col_data = df['mrr'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['mrr'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'plan' in df.columns:\n        _vc = df['plan'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['plan'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'segment' in df.columns:\n        _vc = df['segment'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['segment'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'country' in df.columns:\n        _vc = df['country'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['country'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0001",
+       "mrr": 287.62,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null,
+       "month_dt": "2024-11-01 00:00:00"
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0002",
+       "mrr": 3526.9,
+       "plan": "Scale",
+       "segment": "Enterprise",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null,
+       "month_dt": "2024-11-01 00:00:00"
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0003",
+       "mrr": 256.93,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null,
+       "month_dt": "2024-11-01 00:00:00"
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0004",
+       "mrr": 56.89,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "GB",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null,
+       "month_dt": "2024-11-01 00:00:00"
+      },
+      {
+       "month": "2024-11-01",
+       "customer_id": "C0005",
+       "mrr": 945.77,
+       "plan": "Growth",
+       "segment": "Mid",
+       "country": "CA",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null,
+       "month_dt": "2024-11-01 00:00:00"
+      }
+     ],
+     "dtypes_summary": {
+      "month": "object",
+      "customer_id": "object",
+      "mrr": "float64",
+      "plan": "object",
+      "segment": "object",
+      "country": "object",
+      "row_kind": "object",
+      "start_event_date": "object",
+      "cancellation_event_date": "object",
+      "cancellation_in_window": "object",
+      "end_date_unknown": "float64",
+      "in_force_now": "object",
+      "month_dt": "datetime64[ns]"
+     },
+     "missing_pct": {
+      "month": 0.0,
+      "customer_id": 0.0,
+      "mrr": 0.0,
+      "plan": 0.0,
+      "segment": 0.0,
+      "country": 0.0,
+      "row_kind": 0.0,
+      "start_event_date": 96.12,
+      "cancellation_event_date": 98.47,
+      "cancellation_in_window": 98.92,
+      "end_date_unknown": 100.0,
+      "in_force_now": 94.67,
+      "month_dt": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:segment/mrr:ratio:net_revenue_retention",
+       "kind": "segment",
+       "claim": "net_revenue_retention (from mrr) by segment (3 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Domain facts for NRR by segment\n    # NRR overall (12 months to 31 Oct 2026) = 91.1% per domain pack\n    # We need to compute NRR by segment using the data\n\n    df['month_dt'] = pd.to_datetime(df['month'])\n\n    # Identify the latest month and the month 12 months prior\n    latest_month = df['month_dt'].max()\n    # 12 months earlier: Oct 2025 (31 Oct 2025 baseline)\n    # The window is Nov 2025 \u2013 Oct 2026\n    # Baseline: customers paying at end of Oct 2025\n    # Current: their MRR at end of Oct 2026\n\n    # Get each customer's MRR at Oct 2025 (baseline)\n    oct_2025 = df[df['month_dt'] == pd.Timestamp('2025-10-01')].copy()\n    oct_2026 = df[df['month_dt'] == pd.Timestamp('2026-10-01')].copy()\n\n    # If those exact months exist, use them; otherwise find closest\n    available_months = sorted(df['month_dt'].unique())\n\n    # Find Oct 2025 and Oct 2026 snapshots\n    baseline_months = [m for m in available_months if m.year == 2025 and m.month == 10]\n    current_months = [m for m in available_months if m.year == 2026 and m.month == 10]\n\n    if baseline_months and current_months:\n        baseline_month = baseline_months[0]\n        current_month = current_months[0]\n\n        baseline_df = df[df['month_dt'] == baseline_month][['customer_id', 'mrr', 'segment']].copy()\n        current_df = df[df['month_dt'] == current_month][['customer_id', 'mrr', 'segment']].copy()\n\n        # Deduplicate: last value per customer per month\n        baseline_df = baseline_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n        current_df = current_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n\n        # NRR: only customers paying at baseline (mrr > 0)\n        baseline_paying = baseline_df[baseline_df['mrr'] > 0].copy()\n\n        # Merge with current MRR (0 if churned)\n        merged = baseline_paying.merge(\n            current_df[['customer_id', 'mrr']].rename(columns={'mrr': 'mrr_current'}),\n            on='customer_id', how='left'\n        )\n        merged['mrr_current'] = merged['mrr_current'].fillna(0.0)\n\n        # NRR by segment\n        seg_nrr = []\n        for seg, grp in merged.groupby('segment'):\n            baseline_total = grp['mrr'].sum()\n            current_total = grp['mrr_current'].sum()\n            nrr = current_total / baseline_total if baseline_total > 0 else np.nan\n            seg_nrr.append({'name': str(seg), 'value': round(nrr, 4)})\n\n        # Overall NRR from data (for reference)\n        overall_baseline = merged['mrr'].sum()\n        overall_current = merged['mrr_current'].sum()\n        overall_nrr = overall_current / overall_baseline if overall_baseline > 0 else np.nan\n\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'ratio',\n            'label': 'net_revenue_retention',\n            'results': seg_nrr\n        })\n\n        # Also provide baseline MRR by segment for context\n        baseline_by_seg = baseline_paying.groupby('segment')['mrr'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'baseline_mrr_oct2025',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr'], 2)} for _, r in baseline_by_seg.iterrows()]\n        })\n\n        # Current MRR by segment (for baseline customers only)\n        current_by_seg = merged.groupby('segment')['mrr_current'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'current_mrr_oct2026_baseline_cohort',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr_current'], 2)} for _, r in current_by_seg.iterrows()]\n        })\n\n        nrr_overall_computed = round(overall_nrr, 4)\n        result['assumptions'].append(\n            f\"NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR={nrr_overall_computed} vs domain fact 0.911\"\n        )\n        result['assumptions'].append(\n            \"Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication\"\n        )\n        result['assumptions'].append(\n            \"Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition\"\n        )\n    else:\n        result['assumptions'].append(\n            \"Oct 2025 or Oct 2026 snapshot not found in data; NRR by segment could not be computed from rows\"\n        )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Enterprise\", \"value\": 0.9303}, {\"name\": \"Mid\", \"value\": 0.8924}, {\"name\": \"SMB\", \"value\": 0.8545}], \"label\": \"net_revenue_retention\"}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR=0.9105 vs domain fact 0.911",
+        "Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication",
+        "Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition"
+       ]
+      },
+      {
+       "id": "seg:segment/mrr:last",
+       "kind": "segment",
+       "claim": "last mrr by segment (3 groups)",
+       "code": "try:\n    import numpy as np\n\n    # Domain facts for NRR by segment\n    # NRR overall (12 months to 31 Oct 2026) = 91.1% per domain pack\n    # We need to compute NRR by segment using the data\n\n    df['month_dt'] = pd.to_datetime(df['month'])\n\n    # Identify the latest month and the month 12 months prior\n    latest_month = df['month_dt'].max()\n    # 12 months earlier: Oct 2025 (31 Oct 2025 baseline)\n    # The window is Nov 2025 \u2013 Oct 2026\n    # Baseline: customers paying at end of Oct 2025\n    # Current: their MRR at end of Oct 2026\n\n    # Get each customer's MRR at Oct 2025 (baseline)\n    oct_2025 = df[df['month_dt'] == pd.Timestamp('2025-10-01')].copy()\n    oct_2026 = df[df['month_dt'] == pd.Timestamp('2026-10-01')].copy()\n\n    # If those exact months exist, use them; otherwise find closest\n    available_months = sorted(df['month_dt'].unique())\n\n    # Find Oct 2025 and Oct 2026 snapshots\n    baseline_months = [m for m in available_months if m.year == 2025 and m.month == 10]\n    current_months = [m for m in available_months if m.year == 2026 and m.month == 10]\n\n    if baseline_months and current_months:\n        baseline_month = baseline_months[0]\n        current_month = current_months[0]\n\n        baseline_df = df[df['month_dt'] == baseline_month][['customer_id', 'mrr', 'segment']].copy()\n        current_df = df[df['month_dt'] == current_month][['customer_id', 'mrr', 'segment']].copy()\n\n        # Deduplicate: last value per customer per month\n        baseline_df = baseline_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n        current_df = current_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n\n        # NRR: only customers paying at baseline (mrr > 0)\n        baseline_paying = baseline_df[baseline_df['mrr'] > 0].copy()\n\n        # Merge with current MRR (0 if churned)\n        merged = baseline_paying.merge(\n            current_df[['customer_id', 'mrr']].rename(columns={'mrr': 'mrr_current'}),\n            on='customer_id', how='left'\n        )\n        merged['mrr_current'] = merged['mrr_current'].fillna(0.0)\n\n        # NRR by segment\n        seg_nrr = []\n        for seg, grp in merged.groupby('segment'):\n            baseline_total = grp['mrr'].sum()\n            current_total = grp['mrr_current'].sum()\n            nrr = current_total / baseline_total if baseline_total > 0 else np.nan\n            seg_nrr.append({'name': str(seg), 'value': round(nrr, 4)})\n\n        # Overall NRR from data (for reference)\n        overall_baseline = merged['mrr'].sum()\n        overall_current = merged['mrr_current'].sum()\n        overall_nrr = overall_current / overall_baseline if overall_baseline > 0 else np.nan\n\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'ratio',\n            'label': 'net_revenue_retention',\n            'results': seg_nrr\n        })\n\n        # Also provide baseline MRR by segment for context\n        baseline_by_seg = baseline_paying.groupby('segment')['mrr'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'baseline_mrr_oct2025',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr'], 2)} for _, r in baseline_by_seg.iterrows()]\n        })\n\n        # Current MRR by segment (for baseline customers only)\n        current_by_seg = merged.groupby('segment')['mrr_current'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'current_mrr_oct2026_baseline_cohort',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr_current'], 2)} for _, r in current_by_seg.iterrows()]\n        })\n\n        nrr_overall_computed = round(overall_nrr, 4)\n        result['assumptions'].append(\n            f\"NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR={nrr_overall_computed} vs domain fact 0.911\"\n        )\n        result['assumptions'].append(\n            \"Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication\"\n        )\n        result['assumptions'].append(\n            \"Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition\"\n        )\n    else:\n        result['assumptions'].append(\n            \"Oct 2025 or Oct 2026 snapshot not found in data; NRR by segment could not be computed from rows\"\n        )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"last\", \"results\": [{\"name\": \"Enterprise\", \"value\": 322230.94}, {\"name\": \"Mid\", \"value\": 179558.89}, {\"name\": \"SMB\", \"value\": 60819.02}]}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR=0.9105 vs domain fact 0.911",
+        "Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication",
+        "Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition"
+       ]
+      },
+      {
+       "id": "seg:segment/mrr",
+       "kind": "segment",
+       "claim": "mean mrr by segment (3 groups)",
+       "code": "# built-in statistics, computed in-process (agents/analysis_agent.standard_stats)\ndef standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: AnalysisTask) -> None:\n    \"\"\"Statistics with one right answer, computed in this process with the shared functions (plan\n    v2 R2: they were a second copy of the rules, as code text run in the sandbox, and drifted).\n    Merged into the sandbox's `raw` result as before: a target's MoM (and YoY on a pack's data)\n    replaces the model's; target-pair r and the joint breakdown fill gaps; a level by segment\n    replaces only the model's totals and means of it. Ids go to raw['builtin'] (evidence).\"\"\"\n    from agents.utils import (LevelUnavailable, aggregate, effective_agg, latest_rows, pct_change, ranked, time_axis, weekly_cadence)\n    from domain_pack import entity_rows, rows_for\n    types = {t.value if hasattr(t, \"value\") else t for t in task.analysis_types}\n    names = set(df.columns)\n    targets = [c for c in task.target_metrics if c in contract.metric_columns and c in names]\n    segs = [c for c in task.segments if c in names]\n    # a column's summary over the rows its tiles count (a claim's replaced and voided versions\n    # out, as every answer and chart): replaces the sandbox's every-row summary of that column\n    for c in (c for c in contract.metric_columns if c in names):\n        if (summary := counted_summary(df, contract, c)) is not None:\n            raw.setdefault(\"eda_summary\", {})[c] = summary\n    for key, empty in ((\"builtin\", []), (\"correlations\", {}), (\"trends\", []), (\"segments\", []),\n                       (\"assumptions\", [])):\n        raw.setdefault(key, empty)\n    level = {c.name for c in contract.columns if c.aggregation in (\"last\", \"first\")}\n\n    if types & {\"correlation\", \"hypothesis\"}:   # snapshot data: one row per entity\n        cdf = entity_rows(df, contract)\n        for i, a in enumerate(targets):\n            for b in targets[i + 1:]:\n                if f\"{a}__{b}\" in raw[\"correlations\"] or f\"{b}__{a}\" in raw[\"correlations\"]:\n                    continue\n                r = pd.to_numeric(cdf[a], errors=\"coerce\").corr(pd.to_numeric(cdf[b], errors=\"coerce\"))\n                if r == r:\n                    raw[\"correlations\"][f\"{a}__{b}\"] = round(float(r), 4)\n                    raw[\"builtin\"].append(f\"corr:{a}__{b}\")\n\n    yoy = defaults_pack(contract) is not None\n    if types & {\"trend\", \"forecasting\"} and targets:\n        replaced = (\"MoM\", \"YoY\") if yoy else (\"MoM\",)\n        raw[\"trends\"] = [t for t in raw[\"trends\"] if not (isinstance(t, dict) and t.get(\"period\")\n                         in replaced and t.get(\"column\") in targets)]\n\n        def monthly(col: str):\n            \"\"\"(rows, their month, how a month is made) for `col`, judged once on the whole file:\n            the rows its tiles count, the main currency and a mid-month export's partial last\n            month (a segment's slice never re-judges them).\"\"\"\n            date = time_axis(contract, col, df)\n            agg = effective_agg(contract, col, None) or (\n                \"mean\" if pd.to_numeric(df[col], errors=\"coerce\").dropna().between(0, 1).all() else \"sum\")\n            if not date or (agg in (\"last\", \"first\") and col not in level):\n                return None\n            rows, m = counted_months(df, contract, col, date)\n            t = pd.to_datetime(rows[date], format=\"mixed\", errors=\"coerce\")\n            weeks = t.groupby(m).nunique() if yoy and agg == \"sum\" and weekly_cadence(t) else None\n            return rows.assign(_m=m), agg, weeks\n\n        def series_of(rows: pd.DataFrame, col: str, agg: str, weeks):\n            \"\"\"Calendar-month values: a level's month-ends, a flow's totals (a rate's means); weekly\n            data: each month is its average week.\"\"\"\n            try:\n                out = aggregate(rows[rows[\"_m\"].notna()], [\"_m\"], col, agg, contract,\n                                over_time=True).sort_index()\n            except LevelUnavailable:   # a level without its account column: no built-in trend\n                return None\n            if weeks is not None:\n                out = out / weeks.reindex(out.index)\n                note = \"Weekly data: each month is compared as its average week (months have 4 or 5 week-endings).\"\n                if note not in raw[\"assumptions\"]:\n                    raw[\"assumptions\"].append(note)\n            return out.dropna()\n\n        for c in targets:\n            made = monthly(c)\n            if made is None:\n                continue\n            rows, agg, weeks = made\n            overall = series_of(rows, c, agg, weeks)\n            if overall is None or len(overall) < 2:\n                continue\n            # a measure that develops (losses at a valuation): a change between young accident\n            # months is development, not a trend; no built-in MoM / YoY, the note says why\n            if note := developing_trend(contract, df, c):\n                if (note := f\"{c}:{note}\") not in raw[\"assumptions\"]:\n                    raw[\"assumptions\"].append(note)\n                continue\n            # the data's own last month (before partial / run-out months were left out)\n            data_last = pd.to_datetime(rows[time_axis(contract, c, df)], format=\"mixed\",\n                                       errors=\"coerce\").dt.to_period(\"M\").max()\n            # every segment compares the same months as the whole file (never its own last two,\n            # which can be a stale pair); a flow's month with no rows is 0\n            last = overall.index[-1]\n            pairs = [(\"MoM\", overall.index[-2]), (\"YoY\", last - 12 if yoy else None)]\n            jobs = [(None, overall, rows)]\n            if segs:   # the 10 largest groups, ties by name (the same on every machine)\n                for v in ranked(df[segs[0]].value_counts()).head(10).index:\n                    part = rows[rows[segs[0]] == v]\n                    series = series_of(part, c, agg, weeks)\n                    if series is not None and agg == \"sum\":\n                        series = series.reindex(overall.index, fill_value=0)\n                    jobs.append((str(v), series, part))\n            for seg, series, part in jobs:\n                if series is None:\n                    continue\n                tag = f\"trend:{c}\" + (f\" ({seg})\" if seg else \"\")\n                for period, then in pairs:\n                    if then is None or then not in series.index or last not in series.index:\n                        continue\n                    pct = pct_change(series[last], series[then])\n                    if pct is None:\n                        continue\n                    pct = round(float(pct), 2)   # the direction says the stated figure\n                    n = int(part.loc[part[\"_m\"].isin([last, then]), c].notna().sum())\n                    named = {\"latest\": str(last), \"previous\": str(then)} if last != data_last else {}\n                    raw[\"trends\"].append({\"column\": c, \"period\": period, \"pct_change\": pct,\n                                          \"segment\": seg, \"n\": n, **named,\n                                          \"direction\": \"up\" if pct > 0 else \"down\" if pct < 0 else \"flat\"})\n                    raw[\"builtin\"].append(f\"{tag}:{period}\")\n\n    if \"segmentation\" in types:\n        keys = [[x] for x in segs] + ([segs[:2]] if len(segs) >= 2 else [])\n        for c in targets:\n            rows, _ = rows_for(df, contract, c)\n            if c in level:   # a level by segment: each entity's latest row (a closed or stopped\n                cur = latest_rows(rows, c, contract)   # account is out), totals and means\n                for k in keys:\n                    s_ = \"|\".join(k)\n                    raw[\"segments\"] = [x for x in raw[\"segments\"] if not (\n                        isinstance(x, dict) and x.get(\"segment_column\") == s_ and x.get(\"metric_column\") == c\n                        and str(x.get(\"aggregation\") or \"sum\").lower() in (\"sum\", \"total\", \"last\", \"first\",\n                                                                             \"mean\", \"avg\", \"average\"))]\n                    for agg, vals in ((\"last\", cur.groupby(k)[c].sum(min_count=1).dropna()),\n                                      (\"mean\", cur.groupby(k)[c].mean().dropna())):\n                        raw[\"segments\"].append({\"segment_column\": s_, \"metric_column\": c, \"aggregation\": agg,\n                                                \"results\": [{\"name\": \"|\".join(map(str, n)) if isinstance(n, tuple)\n                                                             else str(n), \"value\": round(float(v), 4)}\n                                                            for n, v in vals.items()]})\n                    raw[\"builtin\"].append(f\"seg:{s_}/{c}\")\n            elif len(segs) >= 2:   # the joint breakdown fills a gap\n                joint = \"|\".join(segs[:2])\n                if any(isinstance(x, dict) and x.get(\"segment_column\") == joint and x.get(\"metric_column\") == c\n                       for x in raw[\"segments\"]):\n                    continue\n                means = rows.groupby(segs[:2])[c].mean()\n                top = ranked(rows.groupby(segs[:2]).size()).head(20).index\n                raw[\"segments\"].append({\"segment_column\": joint, \"metric_column\": c, \"aggregation\": \"mean\",\n                                        \"results\": [{\"name\": f\"{a}|{b}\", \"value\": round(float(means[(a, b)]), 4)}\n                                                    for a, b in top]})\n                raw[\"builtin\"].append(f\"seg:{joint}/{c}\")\n    _drop_protected_cells(raw, df, contract)\n",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Enterprise\", \"value\": 5754.1239}, {\"name\": \"Mid\", \"value\": 981.1961}, {\"name\": \"SMB\", \"value\": 202.7301}]}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR=0.9105 vs domain fact 0.911",
+        "Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication",
+        "Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition"
+       ]
+      },
+      {
+       "id": "eda:mrr",
+       "kind": "eda",
+       "claim": "mrr: median 273.72, mean 1,013.19, range 35.82 to 40,000.00",
+       "code": "try:\n    import numpy as np\n\n    # Domain facts for NRR by segment\n    # NRR overall (12 months to 31 Oct 2026) = 91.1% per domain pack\n    # We need to compute NRR by segment using the data\n\n    df['month_dt'] = pd.to_datetime(df['month'])\n\n    # Identify the latest month and the month 12 months prior\n    latest_month = df['month_dt'].max()\n    # 12 months earlier: Oct 2025 (31 Oct 2025 baseline)\n    # The window is Nov 2025 \u2013 Oct 2026\n    # Baseline: customers paying at end of Oct 2025\n    # Current: their MRR at end of Oct 2026\n\n    # Get each customer's MRR at Oct 2025 (baseline)\n    oct_2025 = df[df['month_dt'] == pd.Timestamp('2025-10-01')].copy()\n    oct_2026 = df[df['month_dt'] == pd.Timestamp('2026-10-01')].copy()\n\n    # If those exact months exist, use them; otherwise find closest\n    available_months = sorted(df['month_dt'].unique())\n\n    # Find Oct 2025 and Oct 2026 snapshots\n    baseline_months = [m for m in available_months if m.year == 2025 and m.month == 10]\n    current_months = [m for m in available_months if m.year == 2026 and m.month == 10]\n\n    if baseline_months and current_months:\n        baseline_month = baseline_months[0]\n        current_month = current_months[0]\n\n        baseline_df = df[df['month_dt'] == baseline_month][['customer_id', 'mrr', 'segment']].copy()\n        current_df = df[df['month_dt'] == current_month][['customer_id', 'mrr', 'segment']].copy()\n\n        # Deduplicate: last value per customer per month\n        baseline_df = baseline_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n        current_df = current_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n\n        # NRR: only customers paying at baseline (mrr > 0)\n        baseline_paying = baseline_df[baseline_df['mrr'] > 0].copy()\n\n        # Merge with current MRR (0 if churned)\n        merged = baseline_paying.merge(\n            current_df[['customer_id', 'mrr']].rename(columns={'mrr': 'mrr_current'}),\n            on='customer_id', how='left'\n        )\n        merged['mrr_current'] = merged['mrr_current'].fillna(0.0)\n\n        # NRR by segment\n        seg_nrr = []\n        for seg, grp in merged.groupby('segment'):\n            baseline_total = grp['mrr'].sum()\n            current_total = grp['mrr_current'].sum()\n            nrr = current_total / baseline_total if baseline_total > 0 else np.nan\n            seg_nrr.append({'name': str(seg), 'value': round(nrr, 4)})\n\n        # Overall NRR from data (for reference)\n        overall_baseline = merged['mrr'].sum()\n        overall_current = merged['mrr_current'].sum()\n        overall_nrr = overall_current / overall_baseline if overall_baseline > 0 else np.nan\n\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'ratio',\n            'label': 'net_revenue_retention',\n            'results': seg_nrr\n        })\n\n        # Also provide baseline MRR by segment for context\n        baseline_by_seg = baseline_paying.groupby('segment')['mrr'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'baseline_mrr_oct2025',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr'], 2)} for _, r in baseline_by_seg.iterrows()]\n        })\n\n        # Current MRR by segment (for baseline customers only)\n        current_by_seg = merged.groupby('segment')['mrr_current'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'current_mrr_oct2026_baseline_cohort',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr_current'], 2)} for _, r in current_by_seg.iterrows()]\n        })\n\n        nrr_overall_computed = round(overall_nrr, 4)\n        result['assumptions'].append(\n            f\"NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR={nrr_overall_computed} vs domain fact 0.911\"\n        )\n        result['assumptions'].append(\n            \"Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication\"\n        )\n        result['assumptions'].append(\n            \"Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition\"\n        )\n    else:\n        result['assumptions'].append(\n            \"Oct 2025 or Oct 2026 snapshot not found in data; NRR by segment could not be computed from rows\"\n        )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1013.1915, \"std\": 2370.1159, \"min\": 35.82, \"max\": 40000.0, \"median\": 273.72, \"count\": 10117}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR=0.9105 vs domain fact 0.911",
+        "Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition"
+       ]
+      }
+     ]
+    },
+    "domain": "saas",
+    "latency_s": 42.17,
+    "cost_usd": 0.03525,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    import numpy as np\n\n    # Domain facts for NRR by segment\n    # NRR overall (12 months to 31 Oct 2026) = 91.1% per domain pack\n    # We need to compute NRR by segment using the data\n\n    df['month_dt'] = pd.to_datetime(df['month'])\n\n    # Identify the latest month and the month 12 months prior\n    latest_month = df['month_dt'].max()\n    # 12 months earlier: Oct 2025 (31 Oct 2025 baseline)\n    # The window is Nov 2025 \u2013 Oct 2026\n    # Baseline: customers paying at end of Oct 2025\n    # Current: their MRR at end of Oct 2026\n\n    # Get each customer's MRR at Oct 2025 (baseline)\n    oct_2025 = df[df['month_dt'] == pd.Timestamp('2025-10-01')].copy()\n    oct_2026 = df[df['month_dt'] == pd.Timestamp('2026-10-01')].copy()\n\n    # If those exact months exist, use them; otherwise find closest\n    available_months = sorted(df['month_dt'].unique())\n\n    # Find Oct 2025 and Oct 2026 snapshots\n    baseline_months = [m for m in available_months if m.year == 2025 and m.month == 10]\n    current_months = [m for m in available_months if m.year == 2026 and m.month == 10]\n\n    if baseline_months and current_months:\n        baseline_month = baseline_months[0]\n        current_month = current_months[0]\n\n        baseline_df = df[df['month_dt'] == baseline_month][['customer_id', 'mrr', 'segment']].copy()\n        current_df = df[df['month_dt'] == current_month][['customer_id', 'mrr', 'segment']].copy()\n\n        # Deduplicate: last value per customer per month\n        baseline_df = baseline_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n        current_df = current_df.sort_values('mrr').drop_duplicates('customer_id', keep='last')\n\n        # NRR: only customers paying at baseline (mrr > 0)\n        baseline_paying = baseline_df[baseline_df['mrr'] > 0].copy()\n\n        # Merge with current MRR (0 if churned)\n        merged = baseline_paying.merge(\n            current_df[['customer_id', 'mrr']].rename(columns={'mrr': 'mrr_current'}),\n            on='customer_id', how='left'\n        )\n        merged['mrr_current'] = merged['mrr_current'].fillna(0.0)\n\n        # NRR by segment\n        seg_nrr = []\n        for seg, grp in merged.groupby('segment'):\n            baseline_total = grp['mrr'].sum()\n            current_total = grp['mrr_current'].sum()\n            nrr = current_total / baseline_total if baseline_total > 0 else np.nan\n            seg_nrr.append({'name': str(seg), 'value': round(nrr, 4)})\n\n        # Overall NRR from data (for reference)\n        overall_baseline = merged['mrr'].sum()\n        overall_current = merged['mrr_current'].sum()\n        overall_nrr = overall_current / overall_baseline if overall_baseline > 0 else np.nan\n\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'ratio',\n            'label': 'net_revenue_retention',\n            'results': seg_nrr\n        })\n\n        # Also provide baseline MRR by segment for context\n        baseline_by_seg = baseline_paying.groupby('segment')['mrr'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'baseline_mrr_oct2025',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr'], 2)} for _, r in baseline_by_seg.iterrows()]\n        })\n\n        # Current MRR by segment (for baseline customers only)\n        current_by_seg = merged.groupby('segment')['mrr_current'].sum().reset_index()\n        result['segments'].append({\n            'segment_column': 'segment',\n            'metric_column': 'mrr',\n            'aggregation': 'sum',\n            'label': 'current_mrr_oct2026_baseline_cohort',\n            'results': [{'name': str(r['segment']), 'value': round(r['mrr_current'], 2)} for _, r in current_by_seg.iterrows()]\n        })\n\n        nrr_overall_computed = round(overall_nrr, 4)\n        result['assumptions'].append(\n            f\"NRR computed as sum(mrr_oct2026) / sum(mrr_oct2025) for customers paying at Oct 2025 baseline; overall computed NRR={nrr_overall_computed} vs domain fact 0.911\"\n        )\n        result['assumptions'].append(\n            \"Domain fact NRR=91.1% is authoritative; per-segment values are data-derived and may differ slightly due to row deduplication\"\n        )\n        result['assumptions'].append(\n            \"Customers with mrr=0 at Oct 2025 excluded from baseline cohort per NRR definition\"\n        )\n    else:\n        result['assumptions'].append(\n            \"Oct 2025 or Oct 2026 snapshot not found in data; NRR by segment could not be computed from rows\"\n        )\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "saas-6": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no segment breakdown matches mrr_by_segment (tried ['mrr', 'customer_id', 'mrr'])",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 3,
+     "verifiable": 36,
+     "details": [
+      "mean mrr[Enterprise]",
+      "mean mrr[Mid]",
+      "mean mrr[SMB]"
+     ]
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 437,
+    "output": {
+     "eda_summary": {
+      "interval_count": {
+       "mean": 1.1962,
+       "std": 0.5956,
+       "min": 1.0,
+       "max": 3.0,
+       "median": 1.0,
+       "count": 479
+      },
+      "unit_amount": {
+       "mean": 616.2476,
+       "std": 1085.3259,
+       "min": 49.0,
+       "max": 8149.8,
+       "median": 199.0,
+       "count": 479
+      },
+      "quantity": {
+       "mean": 7.9791,
+       "std": 10.4196,
+       "min": 1.0,
+       "max": 60.0,
+       "median": 5.0,
+       "count": 479
+      },
+      "discount_pct": {
+       "mean": 0.1833,
+       "std": 0.063,
+       "min": 0.1,
+       "max": 0.25,
+       "median": 0.2,
+       "count": 48
+      },
+      "mrr": {
+       "mean": 3160.7304,
+       "std": 8056.6165,
+       "min": 31.2375,
+       "max": 47940.0,
+       "median": 845.75,
+       "count": 479
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "segment",
+       "metric_column": "mrr",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 1022257.95
+        },
+        {
+         "name": "Mid",
+         "value": 195930.89
+        },
+        {
+         "name": "SMB",
+         "value": 201058.64
+        }
+       ],
+       "label": "mrr_by_segment"
+      },
+      {
+       "segment_column": "segment",
+       "metric_column": "customer_id",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 36.0
+        },
+        {
+         "name": "Mid",
+         "value": 116.0
+        },
+        {
+         "name": "SMB",
+         "value": 252.0
+        }
+       ],
+       "label": "paying_customers_by_segment"
+      },
+      {
+       "segment_column": "segment",
+       "metric_column": "mrr",
+       "aggregation": "mean",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 28396.05
+        },
+        {
+         "name": "Mid",
+         "value": 1689.06
+        },
+        {
+         "name": "SMB",
+         "value": 797.85
+        }
+       ],
+       "label": "arpa_by_segment"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "interval_count": [
+       {
+        "label": "(0.998, 2.0]",
+        "count": 432
+       },
+       {
+        "label": "(2.0, 3.0]",
+        "count": 47
+       }
+      ],
+      "unit_amount": [
+       {
+        "label": "(40.899, 859.08]",
+        "count": 402
+       },
+       {
+        "label": "(1669.16, 2479.24]",
+        "count": 71
+       },
+       {
+        "label": "(7339.72, 8149.8]",
+        "count": 6
+       }
+      ],
+      "quantity": [
+       {
+        "label": "(0.941, 6.9]",
+        "count": 283
+       },
+       {
+        "label": "(6.9, 12.8]",
+        "count": 104
+       },
+       {
+        "label": "(12.8, 18.7]",
+        "count": 59
+       },
+       {
+        "label": "(18.7, 24.6]",
+        "count": 3
+       },
+       {
+        "label": "(24.6, 30.5]",
+        "count": 3
+       },
+       {
+        "label": "(30.5, 36.4]",
+        "count": 6
+       },
+       {
+        "label": "(36.4, 42.3]",
+        "count": 5
+       },
+       {
+        "label": "(42.3, 48.2]",
+        "count": 7
+       },
+       {
+        "label": "(48.2, 54.1]",
+        "count": 5
+       },
+       {
+        "label": "(54.1, 60.0]",
+        "count": 4
+       }
+      ],
+      "discount_pct": [
+       {
+        "label": "(0.0999, 0.15]",
+        "count": 16
+       },
+       {
+        "label": "(0.15, 0.2]",
+        "count": 16
+       },
+       {
+        "label": "(0.2, 0.25]",
+        "count": 16
+       }
+      ],
+      "mrr": [
+       {
+        "label": "(-16.671, 4822.114]",
+        "count": 441
+       },
+       {
+        "label": "(4822.114, 9612.99]",
+        "count": 2
+       },
+       {
+        "label": "(9612.99, 14403.866]",
+        "count": 3
+       },
+       {
+        "label": "(14403.866, 19194.742]",
+        "count": 3
+       },
+       {
+        "label": "(19194.742, 23985.619]",
+        "count": 4
+       },
+       {
+        "label": "(23985.619, 28776.495]",
+        "count": 7
+       },
+       {
+        "label": "(28776.495, 33567.371]",
+        "count": 6
+       },
+       {
+        "label": "(33567.371, 38358.248]",
+        "count": 7
+       },
+       {
+        "label": "(38358.248, 43149.124]",
+        "count": 2
+       },
+       {
+        "label": "(43149.124, 47940.0]",
+        "count": 4
+       }
+      ],
+      "plan": [
+       {
+        "label": "Growth",
+        "count": 275
+       },
+       {
+        "label": "Starter",
+        "count": 144
+       },
+       {
+        "label": "Scale",
+        "count": 38
+       },
+       {
+        "label": "Analytics add-on",
+        "count": 22
+       }
+      ],
+      "interval": [
+       {
+        "label": "month",
+        "count": 372
+       },
+       {
+        "label": "year",
+        "count": 107
+       }
+      ],
+      "status": [
+       {
+        "label": "active",
+        "count": 270
+       },
+       {
+        "label": "canceled",
+        "count": 176
+       },
+       {
+        "label": "past_due",
+        "count": 16
+       },
+       {
+        "label": "paused",
+        "count": 10
+       },
+       {
+        "label": "incomplete_expired",
+        "count": 6
+       },
+       {
+        "label": "trialing",
+        "count": 1
+       }
+      ],
+      "segment": [
+       {
+        "label": "SMB",
+        "count": 295
+       },
+       {
+        "label": "Mid",
+        "count": 143
+       },
+       {
+        "label": "Enterprise",
+        "count": 41
+       }
+      ],
+      "country": [
+       {
+        "label": "US",
+        "count": 270
+       },
+       {
+        "label": "GB",
+        "count": 92
+       },
+       {
+        "label": "CA",
+        "count": 87
+       },
+       {
+        "label": "FR",
+        "count": 18
+       },
+       {
+        "label": "DE",
+        "count": 12
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'interval_count' in df.columns and pd.api.types.is_numeric_dtype(df['interval_count']):\n        _s = df['interval_count'].dropna()\n        if len(_s) > 0 and 'interval_count' not in result['eda_summary']:\n            result['eda_summary']['interval_count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'unit_amount' in df.columns and pd.api.types.is_numeric_dtype(df['unit_amount']):\n        _s = df['unit_amount'].dropna()\n        if len(_s) > 0 and 'unit_amount' not in result['eda_summary']:\n            result['eda_summary']['unit_amount'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'quantity' in df.columns and pd.api.types.is_numeric_dtype(df['quantity']):\n        _s = df['quantity'].dropna()\n        if len(_s) > 0 and 'quantity' not in result['eda_summary']:\n            result['eda_summary']['quantity'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'discount_pct' in df.columns and pd.api.types.is_numeric_dtype(df['discount_pct']):\n        _s = df['discount_pct'].dropna()\n        if len(_s) > 0 and 'discount_pct' not in result['eda_summary']:\n            result['eda_summary']['discount_pct'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _s = df['mrr'].dropna()\n        if len(_s) > 0 and 'mrr' not in result['eda_summary']:\n            result['eda_summary']['mrr'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'interval_count' in df.columns and pd.api.types.is_numeric_dtype(df['interval_count']):\n        _col_data = df['interval_count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['interval_count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'unit_amount' in df.columns and pd.api.types.is_numeric_dtype(df['unit_amount']):\n        _col_data = df['unit_amount'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['unit_amount'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'quantity' in df.columns and pd.api.types.is_numeric_dtype(df['quantity']):\n        _col_data = df['quantity'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['quantity'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'discount_pct' in df.columns and pd.api.types.is_numeric_dtype(df['discount_pct']):\n        _col_data = df['discount_pct'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['discount_pct'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _col_data = df['mrr'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['mrr'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'plan' in df.columns:\n        _vc = df['plan'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['plan'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'interval' in df.columns:\n        _vc = df['interval'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['interval'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'status' in df.columns:\n        _vc = df['status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'segment' in df.columns:\n        _vc = df['segment'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['segment'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'country' in df.columns:\n        _vc = df['country'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['country'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "customer_id": "cus_00269",
+       "subscription_id": "sub_00294",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 2,
+       "discount_pct": null,
+       "status": "canceled",
+       "created": "2024-06-09",
+       "trial_end": null,
+       "canceled_at": "2025-03-06",
+       "cancel_at": null,
+       "ended_at": "2025-04-02",
+       "segment": "SMB",
+       "country": "US",
+       "currency": "USD",
+       "contact_email": "billing269@customer269.io",
+       "mrr": 398.0,
+       "row_kind": "counted",
+       "start_event_date": "2024-06-09",
+       "cancellation_event_date": "2025-04-02",
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "customer_id": "cus_00259",
+       "subscription_id": "sub_00284",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 10,
+       "discount_pct": null,
+       "status": "active",
+       "created": "2023-07-24",
+       "trial_end": "2023-08-07",
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "SMB",
+       "country": "GB",
+       "currency": "USD",
+       "contact_email": "billing259@customer259.io",
+       "mrr": 1990.0,
+       "row_kind": "counted",
+       "start_event_date": "2023-08-07",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      },
+      {
+       "customer_id": "cus_00031",
+       "subscription_id": "sub_00035",
+       "plan": "Growth",
+       "interval": "year",
+       "interval_count": 1,
+       "unit_amount": 2029.8,
+       "quantity": 14,
+       "discount_pct": 0.1,
+       "status": "active",
+       "created": "2024-06-22",
+       "trial_end": null,
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "Mid",
+       "country": "US",
+       "currency": "USD",
+       "contact_email": "billing31@customer31.io",
+       "mrr": 2131.29,
+       "row_kind": "counted",
+       "start_event_date": "2024-06-22",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      },
+      {
+       "customer_id": "cus_00346",
+       "subscription_id": "sub_00381",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 9,
+       "discount_pct": null,
+       "status": "active",
+       "created": "2025-07-13",
+       "trial_end": null,
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "Mid",
+       "country": "GB",
+       "currency": "USD",
+       "contact_email": "billing346@customer346.io",
+       "mrr": 1791.0,
+       "row_kind": "counted",
+       "start_event_date": "2025-07-13",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      },
+      {
+       "customer_id": "cus_00392",
+       "subscription_id": "sub_00431",
+       "plan": "Growth",
+       "interval": "month",
+       "interval_count": 1,
+       "unit_amount": 199.0,
+       "quantity": 6,
+       "discount_pct": null,
+       "status": "active",
+       "created": "2025-10-28",
+       "trial_end": null,
+       "canceled_at": null,
+       "cancel_at": null,
+       "ended_at": null,
+       "segment": "Mid",
+       "country": "GB",
+       "currency": "USD",
+       "contact_email": "billing392@customer392.io",
+       "mrr": 1194.0,
+       "row_kind": "counted",
+       "start_event_date": "2025-10-28",
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": "yes"
+      }
+     ],
+     "dtypes_summary": {
+      "customer_id": "object",
+      "subscription_id": "object",
+      "plan": "object",
+      "interval": "object",
+      "interval_count": "int64",
+      "unit_amount": "float64",
+      "quantity": "int64",
+      "discount_pct": "float64",
+      "status": "object",
+      "created": "object",
+      "trial_end": "object",
+      "canceled_at": "object",
+      "cancel_at": "object",
+      "ended_at": "object",
+      "segment": "object",
+      "country": "object",
+      "currency": "object",
+      "contact_email": "object",
+      "mrr": "float64",
+      "row_kind": "object",
+      "start_event_date": "object",
+      "cancellation_event_date": "object",
+      "cancellation_in_window": "object",
+      "end_date_unknown": "object",
+      "in_force_now": "object"
+     },
+     "missing_pct": {
+      "customer_id": 0.0,
+      "subscription_id": 0.0,
+      "plan": 0.0,
+      "interval": 0.0,
+      "interval_count": 0.0,
+      "unit_amount": 0.0,
+      "quantity": 0.0,
+      "discount_pct": 89.98,
+      "status": 0.0,
+      "created": 0.0,
+      "trial_end": 61.59,
+      "canceled_at": 61.8,
+      "cancel_at": 97.49,
+      "ended_at": 63.05,
+      "segment": 0.0,
+      "country": 0.0,
+      "currency": 0.0,
+      "contact_email": 0.0,
+      "mrr": 0.0,
+      "row_kind": 0.0,
+      "start_event_date": 3.55,
+      "cancellation_event_date": 64.3,
+      "cancellation_in_window": 79.75,
+      "end_date_unknown": 98.96,
+      "in_force_now": 40.29
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:segment/mrr:sum",
+       "kind": "segment",
+       "claim": "sum mrr by segment (3 groups)",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Enterprise\", \"value\": 1022257.95}, {\"name\": \"Mid\", \"value\": 195930.89}, {\"name\": \"SMB\", \"value\": 201058.64}], \"label\": \"mrr_by_segment\"}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": [
+        "MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.",
+        "Customer count per segment uses distinct customer_id values.",
+        "ARPA = total segment MRR / distinct customers in segment."
+       ]
+      },
+      {
+       "id": "seg:segment/customer_id:count",
+       "kind": "segment",
+       "claim": "count customer_id by segment (3 groups)",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"customer_id\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Enterprise\", \"value\": 36.0}, {\"name\": \"Mid\", \"value\": 116.0}, {\"name\": \"SMB\", \"value\": 252.0}], \"label\": \"paying_customers_by_segment\"}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": [
+        "MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.",
+        "Customer count per segment uses distinct customer_id values.",
+        "ARPA = total segment MRR / distinct customers in segment."
+       ]
+      },
+      {
+       "id": "seg:segment/mrr",
+       "kind": "segment",
+       "claim": "mean mrr by segment (3 groups)",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Enterprise\", \"value\": 28396.05}, {\"name\": \"Mid\", \"value\": 1689.06}, {\"name\": \"SMB\", \"value\": 797.85}], \"label\": \"arpa_by_segment\"}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": [
+        "MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.",
+        "Customer count per segment uses distinct customer_id values.",
+        "ARPA = total segment MRR / distinct customers in segment."
+       ]
+      },
+      {
+       "id": "eda:interval_count",
+       "kind": "eda",
+       "claim": "interval_count: median 1.00, mean 1.20, range 1.00 to 3.00",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1.1962, \"std\": 0.5956, \"min\": 1.0, \"max\": 3.0, \"median\": 1.0, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:unit_amount",
+       "kind": "eda",
+       "claim": "unit_amount: median 199.00, mean 616.25, range 49.00 to 8,149.80",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 616.2476, \"std\": 1085.3259, \"min\": 49.0, \"max\": 8149.8, \"median\": 199.0, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:quantity",
+       "kind": "eda",
+       "claim": "quantity: median 5.00, mean 7.98, range 1.00 to 60.00",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 7.9791, \"std\": 10.4196, \"min\": 1.0, \"max\": 60.0, \"median\": 5.0, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:discount_pct",
+       "kind": "eda",
+       "claim": "discount_pct: median 0.2, mean 0.1833, range 0.1 to 0.25",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 0.1833, \"std\": 0.063, \"min\": 0.1, \"max\": 0.25, \"median\": 0.2, \"count\": 48}",
+       "row_count": 48,
+       "confidence": "high",
+       "confidence_reason": "48 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:mrr",
+       "kind": "eda",
+       "claim": "mrr: median 845.75, mean 3,160.73, range 31.24 to 47,940.00",
+       "code": "try:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 3160.7304, \"std\": 8056.6165, \"min\": 31.2375, \"max\": 47940.0, \"median\": 845.75, \"count\": 479}",
+       "row_count": 479,
+       "confidence": "high",
+       "confidence_reason": "479 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "saas",
+    "latency_s": 28.83,
+    "cost_usd": 0.02438,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    mask = (df['row_kind'].isin(['counted', 'netted'])) & (df['currency'] == 'USD')\n    df_seg = df[mask].copy()\n\n    seg_mrr = df_seg.groupby('segment')['mrr'].sum().reset_index()\n    total_mrr = seg_mrr['mrr'].sum()\n\n    seg_results = [{\"name\": str(row['segment']), \"value\": round(float(row['mrr']), 2)}\n                   for _, row in seg_mrr.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"mrr_by_segment\",\n        \"results\": seg_results\n    })\n\n    seg_count = df_seg.groupby('segment')['customer_id'].nunique().reset_index()\n    count_results = [{\"name\": str(row['segment']), \"value\": float(row['customer_id'])}\n                     for _, row in seg_count.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"customer_id\",\n        \"aggregation\": \"count\",\n        \"label\": \"paying_customers_by_segment\",\n        \"results\": count_results\n    })\n\n    seg_arpa = df_seg.groupby('segment').apply(\n        lambda g: g['mrr'].sum() / g['customer_id'].nunique() if g['customer_id'].nunique() > 0 else 0\n    ).reset_index()\n    seg_arpa.columns = ['segment', 'arpa']\n    arpa_results = [{\"name\": str(row['segment']), \"value\": round(float(row['arpa']), 2)}\n                    for _, row in seg_arpa.iterrows()]\n\n    result['segments'].append({\n        \"segment_column\": \"segment\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"mean\",\n        \"label\": \"arpa_by_segment\",\n        \"results\": arpa_results\n    })\n\n    result['assumptions'].append(\"MRR by segment uses only USD rows with row_kind in ['counted','netted']; summed per segment.\")\n    result['assumptions'].append(\"Customer count per segment uses distinct customer_id values.\")\n    result['assumptions'].append(\"ARPA = total segment MRR / distinct customers in segment.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ],
+  "saas-8": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no ['month', 'Month', 'churn_month', 'period'] breakdown matches churned_mrr_by_month_window (tried ['mrr'])",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 37,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "mrr": {
+       "mean": 1013.1915,
+       "std": 2370.1159,
+       "min": 35.82,
+       "max": 40000.0,
+       "median": 273.72,
+       "count": 10117
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "month",
+       "metric_column": "mrr",
+       "aggregation": "last",
+       "results": [
+        {
+         "name": "2024-11-01 00:00:00",
+         "value": 301898.89
+        },
+        {
+         "name": "2024-12-01 00:00:00",
+         "value": 311149.71
+        },
+        {
+         "name": "2025-01-01 00:00:00",
+         "value": 325095.34
+        },
+        {
+         "name": "2025-02-01 00:00:00",
+         "value": 339566.71
+        },
+        {
+         "name": "2025-03-01 00:00:00",
+         "value": 361342.01
+        },
+        {
+         "name": "2025-04-01 00:00:00",
+         "value": 365976.0
+        },
+        {
+         "name": "2025-05-01 00:00:00",
+         "value": 380292.74
+        },
+        {
+         "name": "2025-06-01 00:00:00",
+         "value": 379158.06
+        },
+        {
+         "name": "2025-07-01 00:00:00",
+         "value": 385369.77
+        },
+        {
+         "name": "2025-08-01 00:00:00",
+         "value": 388620.45
+        },
+        {
+         "name": "2025-09-01 00:00:00",
+         "value": 403682.24
+        },
+        {
+         "name": "2025-10-01 00:00:00",
+         "value": 412929.08
+        },
+        {
+         "name": "2025-11-01 00:00:00",
+         "value": 428405.81
+        },
+        {
+         "name": "2025-12-01 00:00:00",
+         "value": 431875.73
+        },
+        {
+         "name": "2026-01-01 00:00:00",
+         "value": 462775.41
+        },
+        {
+         "name": "2026-02-01 00:00:00",
+         "value": 485611.31
+        },
+        {
+         "name": "2026-03-01 00:00:00",
+         "value": 453588.22
+        },
+        {
+         "name": "2026-04-01 00:00:00",
+         "value": 464428.28
+        },
+        {
+         "name": "2026-05-01 00:00:00",
+         "value": 475599.1
+        },
+        {
+         "name": "2026-06-01 00:00:00",
+         "value": 509438.38
+        },
+        {
+         "name": "2026-07-01 00:00:00",
+         "value": 524448.3
+        },
+        {
+         "name": "2026-08-01 00:00:00",
+         "value": 538652.55
+        },
+        {
+         "name": "2026-09-01 00:00:00",
+         "value": 557945.91
+        },
+        {
+         "name": "2026-10-01 00:00:00",
+         "value": 562608.85
+        }
+       ],
+       "label": "churned_mrr"
+      },
+      {
+       "segment_column": "segment",
+       "metric_column": "mrr",
+       "aggregation": "last",
+       "results": [
+        {
+         "name": "Enterprise",
+         "value": 322230.94
+        },
+        {
+         "name": "Mid",
+         "value": 179558.89
+        },
+        {
+         "name": "SMB",
+         "value": 60819.02
+        }
+       ],
+       "label": "churned_mrr_12m"
+      },
+      {
+       "segment_column": "plan",
+       "metric_column": "mrr",
+       "aggregation": "last",
+       "results": [
+        {
+         "name": "Growth",
+         "value": 163148.19
+        },
+        {
+         "name": "Scale",
+         "value": 354579.72
+        },
+        {
+         "name": "Starter",
+         "value": 44880.94
+        }
+       ],
+       "label": "churned_mrr_12m"
+      },
+      {
+       "segment_column": "country",
+       "metric_column": "mrr",
+       "aggregation": "last",
+       "results": [
+        {
+         "name": "CA",
+         "value": 153767.01
+        },
+        {
+         "name": "DE",
+         "value": 114135.46
+        },
+        {
+         "name": "GB",
+         "value": 91297.93
+        },
+        {
+         "name": "US",
+         "value": 203408.45
+        }
+       ],
+       "label": "churned_mrr_12m"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "mrr": [
+       {
+        "label": "(-4.144, 4032.238]",
+        "count": 9433
+       },
+       {
+        "label": "(4032.238, 8028.656]",
+        "count": 556
+       },
+       {
+        "label": "(8028.656, 12025.074]",
+        "count": 92
+       },
+       {
+        "label": "(12025.074, 16021.492]",
+        "count": 18
+       },
+       {
+        "label": "(16021.492, 20017.91]",
+        "count": 2
+       },
+       {
+        "label": "(36003.582, 40000.0]",
+        "count": 16
+       }
+      ],
+      "plan": [
+       {
+        "label": "Starter",
+        "count": 5449
+       },
+       {
+        "label": "Growth",
+        "count": 3415
+       },
+       {
+        "label": "Scale",
+        "count": 1253
+       }
+      ],
+      "segment": [
+       {
+        "label": "SMB",
+        "count": 5795
+       },
+       {
+        "label": "Mid",
+        "count": 3296
+       },
+       {
+        "label": "Enterprise",
+        "count": 1026
+       }
+      ],
+      "country": [
+       {
+        "label": "US",
+        "count": 4297
+       },
+       {
+        "label": "GB",
+        "count": 2001
+       },
+       {
+        "label": "DE",
+        "count": 1938
+       },
+       {
+        "label": "CA",
+        "count": 1881
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    df['month'] = pd.to_datetime(df['month'])\n\n    # Filter to counted rows only, exclude test/voided/etc.\n    df_valid = df[df['row_kind'] == 'counted'].copy() if 'row_kind' in df.columns else df.copy()\n\n    # Use last 12 months window: Nov 2025 \u2013 Oct 2026\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    df_window = df_valid[(df_valid['month'] >= window_start) & (df_valid['month'] <= window_end)].copy()\n\n    # For each month-end, get each customer's MRR (last value in that month)\n    df_window['month_period'] = df_window['month'].dt.to_period('M')\n\n    # Get per-customer per-month MRR snapshot (last row per customer per month)\n    monthly_snap = (\n        df_window.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Build consecutive month pairs to detect churn (MRR > 0 then 0)\n    # Get all months in order\n    all_months = sorted(monthly_snap['month_period'].unique())\n\n    # Also need Oct 2025 as the prior month baseline\n    oct2025 = pd.Period('2025-10', freq='M')\n    df_oct = df_valid[\n        (df_valid['month'] >= pd.Timestamp('2025-10-01')) &\n        (df_valid['month'] <= pd.Timestamp('2025-10-31'))\n    ].copy()\n    df_oct['month_period'] = df_oct['month'].dt.to_period('M')\n    oct_snap = (\n        df_oct.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Combine baseline + window snapshots\n    all_snap = pd.concat([oct_snap, monthly_snap], ignore_index=True)\n    all_months_full = sorted(all_snap['month_period'].unique())\n\n    # Pivot: customer x month MRR (0 if absent)\n    pivot = all_snap.pivot_table(index='customer_id', columns='month_period', values='mrr', aggfunc='last').fillna(0)\n\n    # For each window month (Nov 2025 \u2013 Oct 2026), compute churned MRR:\n    # churned MRR in month M = sum of MRR in month M-1 for customers whose MRR in M is 0\n    # and MRR in M-1 > 0\n\n    window_months = [m for m in all_months_full if pd.Period('2025-11', freq='M') <= m <= pd.Period('2026-10', freq='M')]\n\n    churned_mrr_by_month = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            churned_mrr_by_month.append({\"name\": str(m), \"value\": 0.0})\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        # Churned: had MRR > 0 last month, now 0\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_mrr = float(prev_mrr[churned_mask].sum())\n        churned_mrr_by_month.append({\"name\": str(m), \"value\": round(churned_mrr, 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"churned_mrr\",\n        \"results\": churned_mrr_by_month\n    })\n\n    # Also break down churned MRR by segment for the full 12-month window\n    # Identify churned customer-months with their segment\n    churned_records = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_customers = prev_mrr[churned_mask].reset_index()\n        churned_customers.columns = ['customer_id', 'churned_mrr']\n        churned_customers['month_period'] = m\n        churned_records.append(churned_customers)\n\n    if churned_records:\n        churned_df = pd.concat(churned_records, ignore_index=True)\n\n        # Merge segment info from last known row per customer in window\n        seg_info = (\n            monthly_snap.sort_values('month')\n            .groupby('customer_id')[['segment', 'plan', 'country']]\n            .last()\n            .reset_index()\n        )\n        churned_df = churned_df.merge(seg_info, on='customer_id', how='left')\n\n        # By segment\n        for seg_col in ['segment', 'plan', 'country']:\n            seg_agg = (\n                churned_df.groupby(seg_col)['churned_mrr']\n                .sum()\n                .sort_values(ascending=False)\n                .head(10)\n                .reset_index()\n            )\n            seg_results = [{\"name\": str(row[seg_col]), \"value\": round(row['churned_mrr'], 2)} for _, row in seg_agg.iterrows()]\n            result['segments'].append({\n                \"segment_column\": seg_col,\n                \"metric_column\": \"mrr\",\n                \"aggregation\": \"sum\",\n                \"label\": \"churned_mrr_12m\",\n                \"results\": seg_results\n            })\n\n    result['assumptions'].append(\"Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M.\")\n    result['assumptions'].append(\"Window: Nov 2025 \u2013 Oct 2026; Oct 2025 used as baseline for Nov 2025 churn.\")\n    result['assumptions'].append(\"Only 'counted' row_kind rows used; per-customer last MRR value taken each month.\")\n    result['assumptions'].append(\"Segment labels taken from each customer's last record in the window.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _s = df['mrr'].dropna()\n        if len(_s) > 0 and 'mrr' not in result['eda_summary']:\n            result['eda_summary']['mrr'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'mrr' in df.columns and pd.api.types.is_numeric_dtype(df['mrr']):\n        _col_data = df['mrr'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['mrr'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'plan' in df.columns:\n        _vc = df['plan'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['plan'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'segment' in df.columns:\n        _vc = df['segment'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['segment'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'country' in df.columns:\n        _vc = df['country'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['country'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "month": "2024-11-01 00:00:00",
+       "customer_id": "C0001",
+       "mrr": 287.62,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01 00:00:00",
+       "customer_id": "C0002",
+       "mrr": 3526.9,
+       "plan": "Scale",
+       "segment": "Enterprise",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01 00:00:00",
+       "customer_id": "C0003",
+       "mrr": 256.93,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "US",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01 00:00:00",
+       "customer_id": "C0004",
+       "mrr": 56.89,
+       "plan": "Starter",
+       "segment": "SMB",
+       "country": "GB",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      },
+      {
+       "month": "2024-11-01 00:00:00",
+       "customer_id": "C0005",
+       "mrr": 945.77,
+       "plan": "Growth",
+       "segment": "Mid",
+       "country": "CA",
+       "row_kind": "counted",
+       "start_event_date": null,
+       "cancellation_event_date": null,
+       "cancellation_in_window": null,
+       "end_date_unknown": null,
+       "in_force_now": null
+      }
+     ],
+     "dtypes_summary": {
+      "month": "datetime64[ns]",
+      "customer_id": "object",
+      "mrr": "float64",
+      "plan": "object",
+      "segment": "object",
+      "country": "object",
+      "row_kind": "object",
+      "start_event_date": "object",
+      "cancellation_event_date": "object",
+      "cancellation_in_window": "object",
+      "end_date_unknown": "float64",
+      "in_force_now": "object"
+     },
+     "missing_pct": {
+      "month": 0.0,
+      "customer_id": 0.0,
+      "mrr": 0.0,
+      "plan": 0.0,
+      "segment": 0.0,
+      "country": 0.0,
+      "row_kind": 0.0,
+      "start_event_date": 96.12,
+      "cancellation_event_date": 98.47,
+      "cancellation_in_window": 98.92,
+      "end_date_unknown": 100.0,
+      "in_force_now": 94.67
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:month/mrr:last",
+       "kind": "segment",
+       "claim": "last mrr by month (24 groups)",
+       "code": "try:\n    import numpy as np\n\n    df['month'] = pd.to_datetime(df['month'])\n\n    # Filter to counted rows only, exclude test/voided/etc.\n    df_valid = df[df['row_kind'] == 'counted'].copy() if 'row_kind' in df.columns else df.copy()\n\n    # Use last 12 months window: Nov 2025 \u2013 Oct 2026\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    df_window = df_valid[(df_valid['month'] >= window_start) & (df_valid['month'] <= window_end)].copy()\n\n    # For each month-end, get each customer's MRR (last value in that month)\n    df_window['month_period'] = df_window['month'].dt.to_period('M')\n\n    # Get per-customer per-month MRR snapshot (last row per customer per month)\n    monthly_snap = (\n        df_window.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Build consecutive month pairs to detect churn (MRR > 0 then 0)\n    # Get all months in order\n    all_months = sorted(monthly_snap['month_period'].unique())\n\n    # Also need Oct 2025 as the prior month baseline\n    oct2025 = pd.Period('2025-10', freq='M')\n    df_oct = df_valid[\n        (df_valid['month'] >= pd.Timestamp('2025-10-01')) &\n        (df_valid['month'] <= pd.Timestamp('2025-10-31'))\n    ].copy()\n    df_oct['month_period'] = df_oct['month'].dt.to_period('M')\n    oct_snap = (\n        df_oct.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Combine baseline + window snapshots\n    all_snap = pd.concat([oct_snap, monthly_snap], ignore_index=True)\n    all_months_full = sorted(all_snap['month_period'].unique())\n\n    # Pivot: customer x month MRR (0 if absent)\n    pivot = all_snap.pivot_table(index='customer_id', columns='month_period', values='mrr', aggfunc='last').fillna(0)\n\n    # For each window month (Nov 2025 \u2013 Oct 2026), compute churned MRR:\n    # churned MRR in month M = sum of MRR in month M-1 for customers whose MRR in M is 0\n    # and MRR in M-1 > 0\n\n    window_months = [m for m in all_months_full if pd.Period('2025-11', freq='M') <= m <= pd.Period('2026-10', freq='M')]\n\n    churned_mrr_by_month = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            churned_mrr_by_month.append({\"name\": str(m), \"value\": 0.0})\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        # Churned: had MRR > 0 last month, now 0\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_mrr = float(prev_mrr[churned_mask].sum())\n        churned_mrr_by_month.append({\"name\": str(m), \"value\": round(churned_mrr, 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"churned_mrr\",\n        \"results\": churned_mrr_by_month\n    })\n\n    # Also break down churned MRR by segment for the full 12-month window\n    # Identify churned customer-months with their segment\n    churned_records = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_customers = prev_mrr[churned_mask].reset_index()\n        churned_customers.columns = ['customer_id', 'churned_mrr']\n        churned_customers['month_period'] = m\n        churned_records.append(churned_customers)\n\n    if churned_records:\n        churned_df = pd.concat(churned_records, ignore_index=True)\n\n        # Merge segment info from last known row per customer in window\n        seg_info = (\n            monthly_snap.sort_values('month')\n            .groupby('customer_id')[['segment', 'plan', 'country']]\n            .last()\n            .reset_index()\n        )\n        churned_df = churned_df.merge(seg_info, on='customer_id', how='left')\n\n        # By segment\n        for seg_col in ['segment', 'plan', 'country']:\n            seg_agg = (\n                churned_df.groupby(seg_col)['churned_mrr']\n                .sum()\n                .sort_values(ascending=False)\n                .head(10)\n                .reset_index()\n            )\n            seg_results = [{\"name\": str(row[seg_col]), \"value\": round(row['churned_mrr'], 2)} for _, row in seg_agg.iterrows()]\n            result['segments'].append({\n                \"segment_column\": seg_col,\n                \"metric_column\": \"mrr\",\n                \"aggregation\": \"sum\",\n                \"label\": \"churned_mrr_12m\",\n                \"results\": seg_results\n            })\n\n    result['assumptions'].append(\"Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M.\")\n    result['assumptions'].append(\"Window: Nov 2025 \u2013 Oct 2026; Oct 2025 used as baseline for Nov 2025 churn.\")\n    result['assumptions'].append(\"Only 'counted' row_kind rows used; per-customer last MRR value taken each month.\")\n    result['assumptions'].append(\"Segment labels taken from each customer's last record in the window.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"month\", \"metric_column\": \"mrr\", \"aggregation\": \"last\", \"results\": [{\"name\": \"2024-11-01 00:00:00\", \"value\": 301898.89}, {\"name\": \"2024-12-01 00:00:00\", \"value\": 311149.71}, {\"name\": \"2025-01-01 00:00:00\", \"value\": 325095.34}, {\"name\": \"2025-02-01 00:00:00\", \"value\": 339566.71}, {\"name\": \"2025-03-01 00:00:00\", \"value\": 361342.01}, {\"name\": \"2025-04-01 00:00:00\", \"value\": 365976.0}, {\"name\": \"2025-05-01 00:00:00\", \"value\": 380292.74}, {\"name\": \"2025-06-01 00:00:00\", \"value\": 37",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "mrr by month recomputed per snapshot",
+        "mrr by segment recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by plan recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by country recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M."
+       ]
+      },
+      {
+       "id": "seg:segment/mrr:last",
+       "kind": "segment",
+       "claim": "last mrr by segment (3 groups)",
+       "code": "try:\n    import numpy as np\n\n    df['month'] = pd.to_datetime(df['month'])\n\n    # Filter to counted rows only, exclude test/voided/etc.\n    df_valid = df[df['row_kind'] == 'counted'].copy() if 'row_kind' in df.columns else df.copy()\n\n    # Use last 12 months window: Nov 2025 \u2013 Oct 2026\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    df_window = df_valid[(df_valid['month'] >= window_start) & (df_valid['month'] <= window_end)].copy()\n\n    # For each month-end, get each customer's MRR (last value in that month)\n    df_window['month_period'] = df_window['month'].dt.to_period('M')\n\n    # Get per-customer per-month MRR snapshot (last row per customer per month)\n    monthly_snap = (\n        df_window.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Build consecutive month pairs to detect churn (MRR > 0 then 0)\n    # Get all months in order\n    all_months = sorted(monthly_snap['month_period'].unique())\n\n    # Also need Oct 2025 as the prior month baseline\n    oct2025 = pd.Period('2025-10', freq='M')\n    df_oct = df_valid[\n        (df_valid['month'] >= pd.Timestamp('2025-10-01')) &\n        (df_valid['month'] <= pd.Timestamp('2025-10-31'))\n    ].copy()\n    df_oct['month_period'] = df_oct['month'].dt.to_period('M')\n    oct_snap = (\n        df_oct.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Combine baseline + window snapshots\n    all_snap = pd.concat([oct_snap, monthly_snap], ignore_index=True)\n    all_months_full = sorted(all_snap['month_period'].unique())\n\n    # Pivot: customer x month MRR (0 if absent)\n    pivot = all_snap.pivot_table(index='customer_id', columns='month_period', values='mrr', aggfunc='last').fillna(0)\n\n    # For each window month (Nov 2025 \u2013 Oct 2026), compute churned MRR:\n    # churned MRR in month M = sum of MRR in month M-1 for customers whose MRR in M is 0\n    # and MRR in M-1 > 0\n\n    window_months = [m for m in all_months_full if pd.Period('2025-11', freq='M') <= m <= pd.Period('2026-10', freq='M')]\n\n    churned_mrr_by_month = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            churned_mrr_by_month.append({\"name\": str(m), \"value\": 0.0})\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        # Churned: had MRR > 0 last month, now 0\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_mrr = float(prev_mrr[churned_mask].sum())\n        churned_mrr_by_month.append({\"name\": str(m), \"value\": round(churned_mrr, 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"churned_mrr\",\n        \"results\": churned_mrr_by_month\n    })\n\n    # Also break down churned MRR by segment for the full 12-month window\n    # Identify churned customer-months with their segment\n    churned_records = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_customers = prev_mrr[churned_mask].reset_index()\n        churned_customers.columns = ['customer_id', 'churned_mrr']\n        churned_customers['month_period'] = m\n        churned_records.append(churned_customers)\n\n    if churned_records:\n        churned_df = pd.concat(churned_records, ignore_index=True)\n\n        # Merge segment info from last known row per customer in window\n        seg_info = (\n            monthly_snap.sort_values('month')\n            .groupby('customer_id')[['segment', 'plan', 'country']]\n            .last()\n            .reset_index()\n        )\n        churned_df = churned_df.merge(seg_info, on='customer_id', how='left')\n\n        # By segment\n        for seg_col in ['segment', 'plan', 'country']:\n            seg_agg = (\n                churned_df.groupby(seg_col)['churned_mrr']\n                .sum()\n                .sort_values(ascending=False)\n                .head(10)\n                .reset_index()\n            )\n            seg_results = [{\"name\": str(row[seg_col]), \"value\": round(row['churned_mrr'], 2)} for _, row in seg_agg.iterrows()]\n            result['segments'].append({\n                \"segment_column\": seg_col,\n                \"metric_column\": \"mrr\",\n                \"aggregation\": \"sum\",\n                \"label\": \"churned_mrr_12m\",\n                \"results\": seg_results\n            })\n\n    result['assumptions'].append(\"Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M.\")\n    result['assumptions'].append(\"Window: Nov 2025 \u2013 Oct 2026; Oct 2025 used as baseline for Nov 2025 churn.\")\n    result['assumptions'].append(\"Only 'counted' row_kind rows used; per-customer last MRR value taken each month.\")\n    result['assumptions'].append(\"Segment labels taken from each customer's last record in the window.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"last\", \"results\": [{\"name\": \"Enterprise\", \"value\": 322230.94}, {\"name\": \"Mid\", \"value\": 179558.89}, {\"name\": \"SMB\", \"value\": 60819.02}], \"label\": \"churned_mrr_12m\"}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "mrr by month recomputed per snapshot",
+        "mrr by segment recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by plan recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by country recomputed as the latest total (each customer_id's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "seg:plan/mrr:last",
+       "kind": "segment",
+       "claim": "last mrr by plan (3 groups)",
+       "code": "try:\n    import numpy as np\n\n    df['month'] = pd.to_datetime(df['month'])\n\n    # Filter to counted rows only, exclude test/voided/etc.\n    df_valid = df[df['row_kind'] == 'counted'].copy() if 'row_kind' in df.columns else df.copy()\n\n    # Use last 12 months window: Nov 2025 \u2013 Oct 2026\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    df_window = df_valid[(df_valid['month'] >= window_start) & (df_valid['month'] <= window_end)].copy()\n\n    # For each month-end, get each customer's MRR (last value in that month)\n    df_window['month_period'] = df_window['month'].dt.to_period('M')\n\n    # Get per-customer per-month MRR snapshot (last row per customer per month)\n    monthly_snap = (\n        df_window.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Build consecutive month pairs to detect churn (MRR > 0 then 0)\n    # Get all months in order\n    all_months = sorted(monthly_snap['month_period'].unique())\n\n    # Also need Oct 2025 as the prior month baseline\n    oct2025 = pd.Period('2025-10', freq='M')\n    df_oct = df_valid[\n        (df_valid['month'] >= pd.Timestamp('2025-10-01')) &\n        (df_valid['month'] <= pd.Timestamp('2025-10-31'))\n    ].copy()\n    df_oct['month_period'] = df_oct['month'].dt.to_period('M')\n    oct_snap = (\n        df_oct.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Combine baseline + window snapshots\n    all_snap = pd.concat([oct_snap, monthly_snap], ignore_index=True)\n    all_months_full = sorted(all_snap['month_period'].unique())\n\n    # Pivot: customer x month MRR (0 if absent)\n    pivot = all_snap.pivot_table(index='customer_id', columns='month_period', values='mrr', aggfunc='last').fillna(0)\n\n    # For each window month (Nov 2025 \u2013 Oct 2026), compute churned MRR:\n    # churned MRR in month M = sum of MRR in month M-1 for customers whose MRR in M is 0\n    # and MRR in M-1 > 0\n\n    window_months = [m for m in all_months_full if pd.Period('2025-11', freq='M') <= m <= pd.Period('2026-10', freq='M')]\n\n    churned_mrr_by_month = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            churned_mrr_by_month.append({\"name\": str(m), \"value\": 0.0})\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        # Churned: had MRR > 0 last month, now 0\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_mrr = float(prev_mrr[churned_mask].sum())\n        churned_mrr_by_month.append({\"name\": str(m), \"value\": round(churned_mrr, 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"churned_mrr\",\n        \"results\": churned_mrr_by_month\n    })\n\n    # Also break down churned MRR by segment for the full 12-month window\n    # Identify churned customer-months with their segment\n    churned_records = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_customers = prev_mrr[churned_mask].reset_index()\n        churned_customers.columns = ['customer_id', 'churned_mrr']\n        churned_customers['month_period'] = m\n        churned_records.append(churned_customers)\n\n    if churned_records:\n        churned_df = pd.concat(churned_records, ignore_index=True)\n\n        # Merge segment info from last known row per customer in window\n        seg_info = (\n            monthly_snap.sort_values('month')\n            .groupby('customer_id')[['segment', 'plan', 'country']]\n            .last()\n            .reset_index()\n        )\n        churned_df = churned_df.merge(seg_info, on='customer_id', how='left')\n\n        # By segment\n        for seg_col in ['segment', 'plan', 'country']:\n            seg_agg = (\n                churned_df.groupby(seg_col)['churned_mrr']\n                .sum()\n                .sort_values(ascending=False)\n                .head(10)\n                .reset_index()\n            )\n            seg_results = [{\"name\": str(row[seg_col]), \"value\": round(row['churned_mrr'], 2)} for _, row in seg_agg.iterrows()]\n            result['segments'].append({\n                \"segment_column\": seg_col,\n                \"metric_column\": \"mrr\",\n                \"aggregation\": \"sum\",\n                \"label\": \"churned_mrr_12m\",\n                \"results\": seg_results\n            })\n\n    result['assumptions'].append(\"Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M.\")\n    result['assumptions'].append(\"Window: Nov 2025 \u2013 Oct 2026; Oct 2025 used as baseline for Nov 2025 churn.\")\n    result['assumptions'].append(\"Only 'counted' row_kind rows used; per-customer last MRR value taken each month.\")\n    result['assumptions'].append(\"Segment labels taken from each customer's last record in the window.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"plan\", \"metric_column\": \"mrr\", \"aggregation\": \"last\", \"results\": [{\"name\": \"Growth\", \"value\": 163148.19}, {\"name\": \"Scale\", \"value\": 354579.72}, {\"name\": \"Starter\", \"value\": 44880.94}], \"label\": \"churned_mrr_12m\"}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "mrr by month recomputed per snapshot",
+        "mrr by segment recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by plan recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by country recomputed as the latest total (each customer_id's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "seg:country/mrr:last",
+       "kind": "segment",
+       "claim": "last mrr by country (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    df['month'] = pd.to_datetime(df['month'])\n\n    # Filter to counted rows only, exclude test/voided/etc.\n    df_valid = df[df['row_kind'] == 'counted'].copy() if 'row_kind' in df.columns else df.copy()\n\n    # Use last 12 months window: Nov 2025 \u2013 Oct 2026\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    df_window = df_valid[(df_valid['month'] >= window_start) & (df_valid['month'] <= window_end)].copy()\n\n    # For each month-end, get each customer's MRR (last value in that month)\n    df_window['month_period'] = df_window['month'].dt.to_period('M')\n\n    # Get per-customer per-month MRR snapshot (last row per customer per month)\n    monthly_snap = (\n        df_window.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Build consecutive month pairs to detect churn (MRR > 0 then 0)\n    # Get all months in order\n    all_months = sorted(monthly_snap['month_period'].unique())\n\n    # Also need Oct 2025 as the prior month baseline\n    oct2025 = pd.Period('2025-10', freq='M')\n    df_oct = df_valid[\n        (df_valid['month'] >= pd.Timestamp('2025-10-01')) &\n        (df_valid['month'] <= pd.Timestamp('2025-10-31'))\n    ].copy()\n    df_oct['month_period'] = df_oct['month'].dt.to_period('M')\n    oct_snap = (\n        df_oct.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Combine baseline + window snapshots\n    all_snap = pd.concat([oct_snap, monthly_snap], ignore_index=True)\n    all_months_full = sorted(all_snap['month_period'].unique())\n\n    # Pivot: customer x month MRR (0 if absent)\n    pivot = all_snap.pivot_table(index='customer_id', columns='month_period', values='mrr', aggfunc='last').fillna(0)\n\n    # For each window month (Nov 2025 \u2013 Oct 2026), compute churned MRR:\n    # churned MRR in month M = sum of MRR in month M-1 for customers whose MRR in M is 0\n    # and MRR in M-1 > 0\n\n    window_months = [m for m in all_months_full if pd.Period('2025-11', freq='M') <= m <= pd.Period('2026-10', freq='M')]\n\n    churned_mrr_by_month = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            churned_mrr_by_month.append({\"name\": str(m), \"value\": 0.0})\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        # Churned: had MRR > 0 last month, now 0\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_mrr = float(prev_mrr[churned_mask].sum())\n        churned_mrr_by_month.append({\"name\": str(m), \"value\": round(churned_mrr, 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"churned_mrr\",\n        \"results\": churned_mrr_by_month\n    })\n\n    # Also break down churned MRR by segment for the full 12-month window\n    # Identify churned customer-months with their segment\n    churned_records = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_customers = prev_mrr[churned_mask].reset_index()\n        churned_customers.columns = ['customer_id', 'churned_mrr']\n        churned_customers['month_period'] = m\n        churned_records.append(churned_customers)\n\n    if churned_records:\n        churned_df = pd.concat(churned_records, ignore_index=True)\n\n        # Merge segment info from last known row per customer in window\n        seg_info = (\n            monthly_snap.sort_values('month')\n            .groupby('customer_id')[['segment', 'plan', 'country']]\n            .last()\n            .reset_index()\n        )\n        churned_df = churned_df.merge(seg_info, on='customer_id', how='left')\n\n        # By segment\n        for seg_col in ['segment', 'plan', 'country']:\n            seg_agg = (\n                churned_df.groupby(seg_col)['churned_mrr']\n                .sum()\n                .sort_values(ascending=False)\n                .head(10)\n                .reset_index()\n            )\n            seg_results = [{\"name\": str(row[seg_col]), \"value\": round(row['churned_mrr'], 2)} for _, row in seg_agg.iterrows()]\n            result['segments'].append({\n                \"segment_column\": seg_col,\n                \"metric_column\": \"mrr\",\n                \"aggregation\": \"sum\",\n                \"label\": \"churned_mrr_12m\",\n                \"results\": seg_results\n            })\n\n    result['assumptions'].append(\"Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M.\")\n    result['assumptions'].append(\"Window: Nov 2025 \u2013 Oct 2026; Oct 2025 used as baseline for Nov 2025 churn.\")\n    result['assumptions'].append(\"Only 'counted' row_kind rows used; per-customer last MRR value taken each month.\")\n    result['assumptions'].append(\"Segment labels taken from each customer's last record in the window.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"country\", \"metric_column\": \"mrr\", \"aggregation\": \"last\", \"results\": [{\"name\": \"CA\", \"value\": 153767.01}, {\"name\": \"DE\", \"value\": 114135.46}, {\"name\": \"GB\", \"value\": 91297.93}, {\"name\": \"US\", \"value\": 203408.45}], \"label\": \"churned_mrr_12m\"}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "mrr by month recomputed per snapshot",
+        "mrr by segment recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by plan recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by country recomputed as the latest total (each customer_id's latest value), not a sum of every row"
+       ]
+      },
+      {
+       "id": "eda:mrr",
+       "kind": "eda",
+       "claim": "mrr: median 273.72, mean 1,013.19, range 35.82 to 40,000.00",
+       "code": "try:\n    import numpy as np\n\n    df['month'] = pd.to_datetime(df['month'])\n\n    # Filter to counted rows only, exclude test/voided/etc.\n    df_valid = df[df['row_kind'] == 'counted'].copy() if 'row_kind' in df.columns else df.copy()\n\n    # Use last 12 months window: Nov 2025 \u2013 Oct 2026\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    df_window = df_valid[(df_valid['month'] >= window_start) & (df_valid['month'] <= window_end)].copy()\n\n    # For each month-end, get each customer's MRR (last value in that month)\n    df_window['month_period'] = df_window['month'].dt.to_period('M')\n\n    # Get per-customer per-month MRR snapshot (last row per customer per month)\n    monthly_snap = (\n        df_window.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Build consecutive month pairs to detect churn (MRR > 0 then 0)\n    # Get all months in order\n    all_months = sorted(monthly_snap['month_period'].unique())\n\n    # Also need Oct 2025 as the prior month baseline\n    oct2025 = pd.Period('2025-10', freq='M')\n    df_oct = df_valid[\n        (df_valid['month'] >= pd.Timestamp('2025-10-01')) &\n        (df_valid['month'] <= pd.Timestamp('2025-10-31'))\n    ].copy()\n    df_oct['month_period'] = df_oct['month'].dt.to_period('M')\n    oct_snap = (\n        df_oct.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Combine baseline + window snapshots\n    all_snap = pd.concat([oct_snap, monthly_snap], ignore_index=True)\n    all_months_full = sorted(all_snap['month_period'].unique())\n\n    # Pivot: customer x month MRR (0 if absent)\n    pivot = all_snap.pivot_table(index='customer_id', columns='month_period', values='mrr', aggfunc='last').fillna(0)\n\n    # For each window month (Nov 2025 \u2013 Oct 2026), compute churned MRR:\n    # churned MRR in month M = sum of MRR in month M-1 for customers whose MRR in M is 0\n    # and MRR in M-1 > 0\n\n    window_months = [m for m in all_months_full if pd.Period('2025-11', freq='M') <= m <= pd.Period('2026-10', freq='M')]\n\n    churned_mrr_by_month = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            churned_mrr_by_month.append({\"name\": str(m), \"value\": 0.0})\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        # Churned: had MRR > 0 last month, now 0\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_mrr = float(prev_mrr[churned_mask].sum())\n        churned_mrr_by_month.append({\"name\": str(m), \"value\": round(churned_mrr, 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"churned_mrr\",\n        \"results\": churned_mrr_by_month\n    })\n\n    # Also break down churned MRR by segment for the full 12-month window\n    # Identify churned customer-months with their segment\n    churned_records = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_customers = prev_mrr[churned_mask].reset_index()\n        churned_customers.columns = ['customer_id', 'churned_mrr']\n        churned_customers['month_period'] = m\n        churned_records.append(churned_customers)\n\n    if churned_records:\n        churned_df = pd.concat(churned_records, ignore_index=True)\n\n        # Merge segment info from last known row per customer in window\n        seg_info = (\n            monthly_snap.sort_values('month')\n            .groupby('customer_id')[['segment', 'plan', 'country']]\n            .last()\n            .reset_index()\n        )\n        churned_df = churned_df.merge(seg_info, on='customer_id', how='left')\n\n        # By segment\n        for seg_col in ['segment', 'plan', 'country']:\n            seg_agg = (\n                churned_df.groupby(seg_col)['churned_mrr']\n                .sum()\n                .sort_values(ascending=False)\n                .head(10)\n                .reset_index()\n            )\n            seg_results = [{\"name\": str(row[seg_col]), \"value\": round(row['churned_mrr'], 2)} for _, row in seg_agg.iterrows()]\n            result['segments'].append({\n                \"segment_column\": seg_col,\n                \"metric_column\": \"mrr\",\n                \"aggregation\": \"sum\",\n                \"label\": \"churned_mrr_12m\",\n                \"results\": seg_results\n            })\n\n    result['assumptions'].append(\"Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M.\")\n    result['assumptions'].append(\"Window: Nov 2025 \u2013 Oct 2026; Oct 2025 used as baseline for Nov 2025 churn.\")\n    result['assumptions'].append(\"Only 'counted' row_kind rows used; per-customer last MRR value taken each month.\")\n    result['assumptions'].append(\"Segment labels taken from each customer's last record in the window.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1013.1915, \"std\": 2370.1159, \"min\": 35.82, \"max\": 40000.0, \"median\": 273.72, \"count\": 10117}",
+       "row_count": 10117,
+       "confidence": "high",
+       "confidence_reason": "10117 rows",
+       "assumptions": [
+        "mrr by month recomputed per snapshot",
+        "mrr by segment recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by plan recomputed as the latest total (each customer_id's latest value), not a sum of every row",
+        "mrr by country recomputed as the latest total (each customer_id's latest value), not a sum of every row"
+       ]
+      }
+     ]
+    },
+    "domain": "saas",
+    "latency_s": 47.5,
+    "cost_usd": 0.03845,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [
+     "level_recomputed",
+     "level_recomputed",
+     "level_recomputed",
+     "level_recomputed"
+    ],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    import numpy as np\n\n    df['month'] = pd.to_datetime(df['month'])\n\n    # Filter to counted rows only, exclude test/voided/etc.\n    df_valid = df[df['row_kind'] == 'counted'].copy() if 'row_kind' in df.columns else df.copy()\n\n    # Use last 12 months window: Nov 2025 \u2013 Oct 2026\n    window_start = pd.Timestamp('2025-11-01')\n    window_end = pd.Timestamp('2026-10-31')\n    df_window = df_valid[(df_valid['month'] >= window_start) & (df_valid['month'] <= window_end)].copy()\n\n    # For each month-end, get each customer's MRR (last value in that month)\n    df_window['month_period'] = df_window['month'].dt.to_period('M')\n\n    # Get per-customer per-month MRR snapshot (last row per customer per month)\n    monthly_snap = (\n        df_window.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Build consecutive month pairs to detect churn (MRR > 0 then 0)\n    # Get all months in order\n    all_months = sorted(monthly_snap['month_period'].unique())\n\n    # Also need Oct 2025 as the prior month baseline\n    oct2025 = pd.Period('2025-10', freq='M')\n    df_oct = df_valid[\n        (df_valid['month'] >= pd.Timestamp('2025-10-01')) &\n        (df_valid['month'] <= pd.Timestamp('2025-10-31'))\n    ].copy()\n    df_oct['month_period'] = df_oct['month'].dt.to_period('M')\n    oct_snap = (\n        df_oct.sort_values('month')\n        .groupby(['month_period', 'customer_id'], as_index=False)\n        .last()\n    )\n\n    # Combine baseline + window snapshots\n    all_snap = pd.concat([oct_snap, monthly_snap], ignore_index=True)\n    all_months_full = sorted(all_snap['month_period'].unique())\n\n    # Pivot: customer x month MRR (0 if absent)\n    pivot = all_snap.pivot_table(index='customer_id', columns='month_period', values='mrr', aggfunc='last').fillna(0)\n\n    # For each window month (Nov 2025 \u2013 Oct 2026), compute churned MRR:\n    # churned MRR in month M = sum of MRR in month M-1 for customers whose MRR in M is 0\n    # and MRR in M-1 > 0\n\n    window_months = [m for m in all_months_full if pd.Period('2025-11', freq='M') <= m <= pd.Period('2026-10', freq='M')]\n\n    churned_mrr_by_month = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            churned_mrr_by_month.append({\"name\": str(m), \"value\": 0.0})\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        # Churned: had MRR > 0 last month, now 0\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_mrr = float(prev_mrr[churned_mask].sum())\n        churned_mrr_by_month.append({\"name\": str(m), \"value\": round(churned_mrr, 2)})\n\n    result['segments'].append({\n        \"segment_column\": \"month\",\n        \"metric_column\": \"mrr\",\n        \"aggregation\": \"sum\",\n        \"label\": \"churned_mrr\",\n        \"results\": churned_mrr_by_month\n    })\n\n    # Also break down churned MRR by segment for the full 12-month window\n    # Identify churned customer-months with their segment\n    churned_records = []\n    for m in window_months:\n        prev_m = m - 1\n        if prev_m not in pivot.columns or m not in pivot.columns:\n            continue\n        prev_mrr = pivot[prev_m]\n        curr_mrr = pivot[m]\n        churned_mask = (prev_mrr > 0) & (curr_mrr == 0)\n        churned_customers = prev_mrr[churned_mask].reset_index()\n        churned_customers.columns = ['customer_id', 'churned_mrr']\n        churned_customers['month_period'] = m\n        churned_records.append(churned_customers)\n\n    if churned_records:\n        churned_df = pd.concat(churned_records, ignore_index=True)\n\n        # Merge segment info from last known row per customer in window\n        seg_info = (\n            monthly_snap.sort_values('month')\n            .groupby('customer_id')[['segment', 'plan', 'country']]\n            .last()\n            .reset_index()\n        )\n        churned_df = churned_df.merge(seg_info, on='customer_id', how='left')\n\n        # By segment\n        for seg_col in ['segment', 'plan', 'country']:\n            seg_agg = (\n                churned_df.groupby(seg_col)['churned_mrr']\n                .sum()\n                .sort_values(ascending=False)\n                .head(10)\n                .reset_index()\n            )\n            seg_results = [{\"name\": str(row[seg_col]), \"value\": round(row['churned_mrr'], 2)} for _, row in seg_agg.iterrows()]\n            result['segments'].append({\n                \"segment_column\": seg_col,\n                \"metric_column\": \"mrr\",\n                \"aggregation\": \"sum\",\n                \"label\": \"churned_mrr_12m\",\n                \"results\": seg_results\n            })\n\n    result['assumptions'].append(\"Churned MRR in month M = sum of prior-month MRR for customers whose MRR dropped to 0 in M.\")\n    result['assumptions'].append(\"Window: Nov 2025 \u2013 Oct 2026; Oct 2025 used as baseline for Nov 2025 churn.\")\n    result['assumptions'].append(\"Only 'counted' row_kind rows used; per-customer last MRR value taken each month.\")\n    result['assumptions'].append(\"Segment labels taken from each customer's last record in the window.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

@@ -108,8 +108,11 @@ def test_a_model_finding_that_sums_a_level_is_recomputed_not_failed():
     from agents.analysis_agent import repair_breakdowns
     from orchestrator.state import SegmentResult
     df, _ = datagen.make("bank_balances", 1)
+    # the bug: the balance summed over every weekly snapshot (a part of the level, a change by
+    # segment, is the model's own meaning since Domain 6 and kept: tests/test_saas.py)
+    summed = df.groupby("segment").balance.sum()
     seg = SegmentResult(segment_column="segment", metric_column="balance", aggregation="sum",
-                        results=[{"name": "business", "value": 1.0}])
+                        results=[{"name": k, "value": float(v)} for k, v in summed.items()])
     f = _findings(segments=[seg])
     notes = repair_breakdowns(f, df, _bank_contract())
     latest = df[df.snapshot_date == df.snapshot_date.max()].groupby("segment").balance.sum()

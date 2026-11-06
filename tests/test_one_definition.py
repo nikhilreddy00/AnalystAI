@@ -294,3 +294,34 @@ def test_a_spells_ended_statuses_are_read_once():
     as_of = dp.spell_as_of(pack, df, roles)
     assert marked.sum() == 5 and not marked[dp._in_force(df, roles, pack, as_of).index].any()
     assert any(f"{int(marked.sum())} rows have an ended status" in s for s in dp.spell_story(pack, df, roles))
+
+
+def test_shared_code_never_says_a_spells_hr_words():
+    """Domain 6 (S0): the spell markers and sentences were HR's own words in shared code
+    (hire_event_date, 'exit records', 'rows are N people'), so a subscription book read 'exits'.
+    The pack names them (Spell.words); shared code reads spell_event_columns and the words."""
+    hits = _hits(r"hire_event|exit_event|exit_in_window|left_date_unknown|exit records|"
+                 r"rows are \{people:,\} people|\bexits in the period|"
+                 r"stopped paying|not paying now|those paying|churns of customers")   # SaaS's (audit 1)
+    assert not hits, f"say a spell's words through pack.spell.words: {hits}"
+    import yaml
+
+    import domain_pack as dp
+    from tests.test_spell import SUBS, ROLES, _roster
+    pack = dp.Pack.model_validate({**yaml.safe_load(SUBS), "spell": {
+        **yaml.safe_load(SUBS)["spell"], "words": {"start": "start", "end": "cancellation",
+                                                   "plural": "subscribers"}}})
+    framed = dp.with_spell_events(_roster(), pack, ROLES)
+    assert {"start_event_date", "cancellation_event_date", "cancellation_in_window"} <= set(framed)
+    assert not any(w in c for c in framed.columns for w in ("hire", "exit"))
+    assert any("subscribers" in s for s in dp.spell_story(pack, _roster(), ROLES))
+
+
+def test_no_pack_caveat_names_a_column():
+    """Domain 6 insight gate (ins-49, a hard-rule violation): a role caveat said 'canceled_at',
+    the executive summary quoted it, and executive_no_jargon failed. Caveats reach the report:
+    plain words only, every pack."""
+    import domain_pack as dp
+    bad = [(p.domain, k) for p in dp.load_packs() for k, t in [*p.role_caveats.items(), *p.caveats.items()]
+           if re.search(r"(?<![{\w])[a-z]+_[a-z_]+\b(?![}])", t)]
+    assert not bad, f"write caveats in plain words, never a column name: {bad}"

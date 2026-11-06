@@ -61,6 +61,9 @@ from domain_pack import (
     spell_terms,
     has_spell,
     not_counted_yet,
+    spell_as_of,
+    spell_story,
+    snapshot_role,
     spell_window,
     window_words,
     runout_months,
@@ -80,6 +83,7 @@ from domain_pack import (
     describe_kpi,
     main_currency,
     money_columns,
+    named_kpis,
     pay_columns,
     pack_caveats,
     pack_for,
@@ -141,6 +145,15 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
             params.kpi in pack.unsupported or params.kpi in pack.definitions):
         # a concept with no KPI (NIM, roll rate): its own words, never another column's figure
         name = pack.name_of(params.kpi)   # 'Net interest margin', never 'nim'
+        roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+        story = [ln for ln in (spell_story(pack, df, roles) if has_spell(pack, roles) else [])
+                 if ln.lower().startswith(tuple(w.lower() for w in pack.glossary.get(params.kpi, [])))]
+        scoped = params.group_by or params.segment_column or params.segment_value \
+            or params.period_start or params.period_end
+        if story and params.kpi in pack.definitions and not scoped:   # the product computes it as one line (the
+            # MRR bridge on monthly snapshots; audit 1: refused there)
+            return TargetedResponse(intent=intent, answer_text=" ".join(story) + " "
+                                    + pack.definitions[params.kpi], chart_configs=[], table_data=[])
         why = (f"{name} needs {pack.unsupported[params.kpi]}." if params.kpi in pack.unsupported
                else f"This isn't one figure here. {pack.definitions[params.kpi]}")
         return _unanswerable(intent, why, [pack.say("unsupported_alternatives")])
@@ -175,6 +188,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if handler is handle_kpi:
         extra = {"full": full, "intent": intent}
     response = handler(df, params, contract, ctx=ctx, **extra)
+    if handler is handle_kpi and response.answer_text and not response.unanswerable_reason:
+        response.answer_text += _also_named(full, params, contract, pack, session.task_plan.raw_query)
     if period and handler is not handle_kpi:
         response.answer_text += f" Period: {period}."
     response.chart_configs = finalize_charts(response.chart_configs, ctx)
@@ -182,6 +197,34 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract, pack, question: str) -> str:
+    """The other KPIs the question names ('What is our MRR and how many paying customers?'),
+    each overall, in its own words: an answer gives every figure asked for (Domain 6 E2E gate:
+    one of two was given). domain_pack.named_kpis decides which, as intake does."""
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    out = []
+    group = params.group_by or params.segment_column
+    if group and additive(pack, params.kpi) and _TOTAL_WORDS.search(question or "") and \
+            (v := compute_kpi(df, roles, pack, params.kpi)) is not None:   # 'total billings, by type'
+        k = pack.kpi(params.kpi)
+        _, currency, _ = main_currency(df, roles)
+        kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
+        out.append(f"{k.label} in total: {k.written(_format_value(v, kind, currency if kind == 'currency' else None))}.")
+    for name in named_kpis(pack, contract, question or ""):
+        if name == params.kpi or not computable(pack, name, roles):
+            continue
+        k = pack.kpi(name)
+        v = compute_kpi(df, roles, pack, name)
+        if v is None:
+            continue
+        _, currency, _ = main_currency(df, roles)
+        kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
+        when = window_words(pack, df, roles, name)
+        out.append(f"{k.label}{f' ({when})' if when else ''}: "
+                   f"{k.written(_format_value(v, kind, currency if kind == 'currency' else None))}.")
+    return (" Also asked: " + " ".join(out)) if out else ""
+
 
 _TOTAL_WORDS = re.compile(r"\b(?:total|sum|summed|combined|altogether|overall amount|payroll|"
                           r"bed[- ]?days|how much)\b", re.I)
@@ -936,7 +979,16 @@ def _missing(pack, kpi: str, roles: dict) -> str:
     def lacks(alt) -> list[str]:
         need = {r for t in alt if not t.optional and not t.kpi for r in t.roles()} - set(roles)
         need |= {t.kpi for t in alt if t.kpi and not computable(pack, t.kpi, roles)}
-        return sorted(n.replace("_", " ") for n in need)
+        snap = snapshot_role(pack)
+        # a spell's snapshot date: a history of each entity's value (audit 1: 'needs month')
+        def said(n: str) -> str:
+            if n == snap:
+                return f"dated snapshots of each value (a {n.replace('_', ' ')} column)"
+            if f := pack.columns.get(n):   # a column the product builds: what it builds it from
+                inputs = [x for x in [*f.times, *f.over] if x not in f.optional]
+                return f"{n.replace('_', ' ')} (or " + " and ".join(x.replace("_", " ") for x in inputs) + ")"
+            return n.replace("_", " ")
+        return sorted(said(n) for n in need)
 
     sides = []
     for alts in (k.num, k.den or []):
@@ -1241,7 +1293,16 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         uncut = series
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
-        if spelled and freq != "Y" and kind == "percent":   # a month's rate is a month's
+        if spelled and flow and len(whole) and (as_of := spell_as_of(pack, all_rows, roles)) is not None \
+                and whole.index[-1].end_time.normalize() > as_of:   # a spell's flow to a mid-month
+            # as-of (data to 29 Oct): October's flows are partial (audit 1: '+98,899% year over year')
+            note += (f" The last period ({whole.index[-1]}) is left out: it is covered only to "
+                     f"{as_of:%d %b %Y}.")
+            whole = whole.iloc[:-1]
+        cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, kpi.name))
+        if spelled and freq != "Y" and kind == "percent" and cohort:   # NRR at each month-end
+            unit = f"{unit} (each point the 12-month cohort ending that period)"
+        elif spelled and freq != "Y" and kind == "percent":   # a month's rate is a month's
             unit = f"{unit} ({ {'W': 'weekly', 'M': 'monthly', 'Q': 'quarterly'}[freq]} rates, not annualised)"
         if develops:   # every period shown, the young ones named: never a partial cut or a trend
             if len(whole) < len(series) and series.index[-1] not in whole.index:   # say its coverage

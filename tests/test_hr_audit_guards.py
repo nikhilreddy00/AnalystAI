@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 import domain_pack
-from domain_pack import compute_kpi, detect, exit_records, pack_for
+from domain_pack import compute_kpi, detect, ended_records, pack_for
 from tests.test_oracle import _built
 
 
@@ -41,14 +41,14 @@ def test_a_roster_and_its_month_end_snapshots_give_the_same_headcount_every_mont
     assert a.to_dict() == b.to_dict()
 
 
-def test_exit_records_and_in_force_are_one_rule():
+def test_ended_records_and_in_force_are_one_rule():
     """Guard (d): on the newest snapshot, the people in force are exactly those listed there
     whose row is no exit record (one ended test, domain_pack._ended, read by both)."""
     _, snaps, contract, _ = _built("hr_snapshots")
     pack, roles = pack_for("hr"), _roles(contract, snaps)
     as_of = domain_pack.spell_as_of(pack, snaps, roles)
     newest = snaps[pd.to_datetime(snaps["Snapshot_Date"]) == as_of]
-    listed = set(newest.loc[~exit_records(newest, contract), "Emp_ID"])
+    listed = set(newest.loc[~ended_records(newest, contract), "Emp_ID"])
     in_force = set(domain_pack._in_force(snaps, roles, pack, as_of)["Emp_ID"])
     assert listed == in_force and len(listed) > 300
 

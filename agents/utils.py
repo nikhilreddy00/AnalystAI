@@ -193,7 +193,7 @@ def time_axis(contract, metric: str | None = None, df=None) -> str | None:
     names one, else the domain pack's time role (a stay's discharge, a claim's service date),
     else the data's first time axis (never a birth date). One rule for charts, answers and the
     built-in trend."""
-    from domain_pack import pack_for
+    from domain_pack import has_spell, pack_for
     hint = column_hint(contract, metric) if metric else None
     cands = [hint.aggregation_time] if hint and hint.aggregation_time else []
     pack = pack_for(contract.domain) if contract is not None else None
@@ -203,9 +203,11 @@ def time_axis(contract, metric: str | None = None, df=None) -> str | None:
     # a personal date (birth) is never a timeline: one person's pay on a birth-month axis
     cands = [c for c in cands if c not in set(contract.pii_columns if contract is not None else [])]
     if pack and pack.spell and not (pack.date_role not in (pack.spell.start, pack.spell.end)
-                                    and contract.roles.get(pack.date_role)):
+                                    and contract.roles.get(pack.date_role)) \
+            and has_spell(pack, contract.roles):
         # a roster's dates are events (a hire, an exit), never a timeline: a trend "by hire
-        # month" is a cohort, and its latest month can be a future hire (Domain 5 smoke)
+        # month" is a cohort, and its latest month can be a future hire (Domain 5 smoke). Data
+        # this pack can't read as spells (a SaaS invoice file) keeps its dates as timelines
         events = {contract.roles.get(r) for r in pack.roles if pack.roles[r].kind == "date"}
         cands = [c for c in cands if c not in events]
     return next((c for c in cands if c and (df is None or c in df.columns)), None)
@@ -317,14 +319,14 @@ def level_rows(df, column: str, contract):
 def _in_force_rows(df, column: str, contract):
     """On a spell roster, a level (salary, FTE) is the people in force's: a total or an average
     of pay by department never adds leavers' pay (the KPIs' rule: domain_pack._in_force)."""
-    from domain_pack import _in_force, _snapshot_column, defaults_pack, has_spell, spell_as_of
+    from domain_pack import _snapshot_column, defaults_pack, has_spell, in_force_counted, spell_as_of
     pack = defaults_pack(contract)
     roles = {r: c for r, c in (contract.roles if pack else {}).items() if c in df.columns}
     role = next((r for r, c in roles.items() if c == column), None)
     if not role or not has_spell(pack, roles) or _snapshot_column(pack, roles) \
             or pack.roles[role].over_time != "last" or (as_of := spell_as_of(pack, df, roles)) is None:
         return df
-    return df.loc[_in_force(df, roles, pack, as_of).index]
+    return df.loc[in_force_counted(df, roles, pack, as_of)]
 
 
 def latest_rows(df, column: str, contract):

@@ -101,7 +101,18 @@ DEPTH = {"retail": ["analysis-20261102T002211Z.json",           # 7 retail cases
                 "insight-20261104T214949Z.json",                # 2 HR overviews
                 "quality-20261104T215807Z.json",                # 2 seeded HR reports (critic)
                 "analysis-20261105T180055Z-rescored.json",      # hr-1..10 k=3 after 9 audit passes
-                "e2e-20261105T181554Z.json"]}                   # 7 HR E2E cases after the audits
+                "e2e-20261105T181554Z.json"],
+         "saas": ["analysis-20261106T011019Z-rescored.json",   # 11 SaaS cases k=3 (gate)
+                  "analysis-20261106T012236Z.json",            # saas-10/11 after the ledger facts
+                  "analysis-20261106T033628Z-rescored.json",   # saas-5..11 k=3, final re-measure
+                  "intake-20261106T012317Z.json",              # 14 SaaS intake cases, k=1
+                  "intake-20261106T012432Z.json",              # intake-saas-06 k=3 after its fix
+                  "insight-20261106T012454Z.json",             # 14 overviews (SaaS + changed contexts)
+                  "insight-20261106T012659Z-rescored.json",    # ins-49 / ins-16 k=3 after their fixes
+                  "quality-20261106T013817Z.json",             # 2 seeded SaaS reports + HR's 2
+                  "quality-20261106T013925Z.json",             # HR's 2 re-pointed
+                  "e2e-20261106T014002Z.json",                 # 8 E2E cases k=1 (SaaS + cross-domain)
+                  "e2e-20261106T033857Z.json"]}                   # 7 HR E2E cases after the audits
 
 
 def _listed(text: str) -> set[str]:

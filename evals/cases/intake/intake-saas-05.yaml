@@ -1,0 +1,18 @@
+id: intake-saas-05
+category: clear
+pipeline: production
+source:
+  dataset: saas_subscriptions
+  seed: 1
+overview_done: true
+question: "What's our customer churn rate by segment?"
+expect:
+  ask: false
+  intent_any:
+  - top_n
+  - segment_compare
+  params:
+    kpi: logo_churn_rate
+  columns:
+    by: segment
+rationale: "Customer churn = logo churn, the 12-month cohort."

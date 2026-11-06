@@ -27,8 +27,7 @@ from domain_pack import (
     describe_kpi,
     first_questions,
     glossary_hits,
-    kpi_roles,
-    normalize_header,
+    named_kpis,
     pack_for,
 )
 from guardrails import (
@@ -193,14 +192,10 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
     # words that are a column's own name are the column ("average revenue" in a file with a
     # revenue column is that column's mean), unless they are the KPI's own name and the column one
     # of its roles ("net sales" with a Net Sales revenue column: the KPI, periods and yoy included)
-    by_name = {normalize_header(c): r for r, c in contract.roles.items()}
-    own = {normalize_header(x.name) for x in contract.columns}
-    kpis = [c for c, w in glossary_hits(pack, message, []) if pack.kpi(c)
-            and (normalize_header(w) not in own
-                 or (normalize_header(w) in {c, normalize_header(pack.kpi(c).label)}
-                     and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
-    # a phrase that isn't the KPI ("sales tax") is the pack's `consumed`, never a KPI hit
-    if not params.get("kpi") and len(kpis) == 1:
+    kpis = named_kpis(pack, contract, message)
+    # a phrase that isn't the KPI ("sales tax") is the pack's `consumed`, never a KPI hit; with
+    # two named ('NRR and GRR'), the first, and the answer gives the others too
+    if not params.get("kpi") and kpis:
         params["kpi"] = kpis[0]
     for f in ("period_start", "period_end"):   # 2025-03-31, or a whole month / year: 2025-03, 2025
         if params.get(f):
