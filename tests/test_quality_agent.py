@@ -327,3 +327,15 @@ def test_an_investigation_is_no_causal_claim(domain, trigger):
     assert claim_causal_overreach(ask, [], triggers) is None
     assert claim_causal_overreach(f"Explore which {trigger} levels drive churn.", [], triggers) is None
     assert claim_causal_overreach(f"The {trigger} drives higher volumes.", [], triggers)
+
+
+@pytest.mark.parametrize("claim", [
+    "The discount drove sales up 20%; explore more SKUs next quarter.",
+    "Support tickets drive churn, and we will investigate further.",
+    "To understand churn: the price increase caused customers to leave.",
+    "Our findings help us understand that price drives churn."])
+def test_an_investigation_word_never_hides_a_claim_in_the_same_sentence(claim):
+    """Audit after PR #1: the not-asserted set skipped any sentence holding 'explore' or
+    'understand'. Only an investigation that asks (what / why / how / which / whether …) is no
+    claim; a claim beside such a word is still one."""
+    assert claim_causal_overreach(claim, [], ["discount", "support", "price", "price increase"])

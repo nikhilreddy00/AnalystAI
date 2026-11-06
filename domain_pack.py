@@ -2461,6 +2461,10 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
         if r in roles or name in df.columns or any(x not in roles for x in needed):
             continue
 
+        def missing(role: str) -> pd.Series:   # blank or only spaces: no value given
+            s = df[roles[role]]
+            return s.isna() | (s.astype(str).str.strip() == "")
+
         def value(role: str, blank: float) -> pd.Series:
             if role not in roles:
                 return pd.Series(blank, index=df.index)
@@ -2471,7 +2475,8 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
                 parsed = try_numeric_conversion(s.astype(str).where(s.notna())) \
                     if pd.api.types.is_string_dtype(s) else None
                 v = pd.to_numeric(parsed[0] if parsed else s, errors="coerce")
-            return v.fillna(blank) if role in f.optional else v
+            # an optional role's blank takes its default; an unreadable value never does
+            return v.mask(missing(role), blank) if role in f.optional else v
 
         out = pd.Series(1.0, index=df.index)
         for x in f.times:
@@ -2496,11 +2501,12 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
             out = out * (1 - (rate / 100 if percent else rate))
         for x in f.over:
             out = out / value(x, 1.0)
-        for x in needed:   # every required input: its blank rows, then its unreadable ones
-            raw = df[roles[x]].where(df[roles[x]].astype(str).str.strip() != "")
-            for bad, what in ((raw.isna(), f"no {roles[x]}"),
+        inputs = [x for x in [*f.times, *f.over, *([f.net_of] if f.net_of else [])] if x in roles]
+        for x in inputs:   # every input: a required one's blank rows, then any unreadable ones
+            raw = df[roles[x]].mask(missing(x))
+            for bad, what in ((raw.isna() & (x not in f.optional), f"no {roles[x]}"),
                               (raw.notna() & value(x, 1.0).isna(),
-                               f"a {roles[x]} value the formula doesn't know")):
+                               f"a value of {roles[x]} the formula doesn't know")):
                 if n := int(bad.sum()):
                     seen = "" if raw[bad].isna().all() else \
                         f" ({', '.join(sorted(map(str, raw[bad].unique()))[:3])})"
