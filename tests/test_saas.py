@@ -570,3 +570,16 @@ def test_an_mrr_export_keeps_its_billing_date_as_the_snapshot_month():
     from evals import datagen
     raw, _ = datagen.make("subscriptions", 7)
     assert dp.detect(raw, {"billing_date"})[1].get("month") == "billing_date"
+
+
+@pytest.mark.parametrize("name", ["saas_subscriptions", "saas_mrr_snapshots", "hr_roster", "hr_snapshots"])
+def test_a_duplicate_row_index_gives_the_same_spell_kpis(name):
+    """Review: _in_force memoised row labels, so a frame with a repeated index crashed
+    ('cannot reindex on an axis with duplicate labels') or counted rows twice."""
+    df, _, pack, roles, _ = _setup(name)
+    dup = df.copy()
+    dup.index = dup.index % (len(dup) // 3)
+    for k in (k.name for k in pack.kpis if dp.spell_terms(pack, k.name) and dp.computable(pack, k.name, roles)):
+        assert dp.compute_kpi(dup, roles, pack, k) == dp.compute_kpi(df, roles, pack, k), k
+    with pytest.raises(ValueError, match="unique row labels"):
+        dp.compute_kpi(dup.head(50), roles, pack, "mrr" if "saas" in name else pack.kpis[0].name, full=dup)

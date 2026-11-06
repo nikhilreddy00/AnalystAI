@@ -1732,7 +1732,13 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     filter, a named value): a protected one makes it a protected group. `window` (lo, hi): an
     asked period for a spell KPI,
     which clips its window and as-of instead of cutting rows (rows dated in Q3 are the people
-    hired in Q3, not the people employed then)."""
+    hired in Q3, not the people employed then).
+    Rows are named by index label (a filter's part maps to the whole by it): a repeated label on
+    the whole data is renumbered; on a part of it the mapping is lost, so it is refused."""
+    if not df.index.is_unique or (full is not None and not full.index.is_unique):
+        if full is not None:
+            raise ValueError("compute_kpi: a part and its whole need unique row labels")
+        df = df.reset_index(drop=True)
     kpi = pack.kpi(name)
     if kpi is None or df.empty:
         return None
