@@ -160,7 +160,7 @@ class Within(_Strict):
 
 class SpellWords(_Strict):
     """A spell's own words, for the frame columns the model's code reads and the sentences the
-    product writes: HR's hire / exit / people, a subscription's start / cancellation / customers.
+    product writes: HR's hire / exit / people, a subscription's start / end / customers.
     Shared code never names them (tests/test_one_definition.py)."""
     start: str = "start"
     end: str = "end"
@@ -171,7 +171,7 @@ class SpellWords(_Strict):
 
 class Spell(_Strict):
     """Entities in force between two dates: an employee from hire to termination, a subscriber
-    from start to cancellation. Rows are spells (a returning entity has a row per spell) or dated
+    from start to end. Rows are spells (a returning entity has a row per spell) or dated
     snapshots (the pack's date role, when it is neither `start` nor `end`). A blank `end` is open;
     a status in `ended` with a blank `end` is over at an unknown date (never in force). `as_of`:
     a report-date role (the extract's own date), else the latest snapshot or start/end date not

@@ -84,7 +84,7 @@ def test_the_spell_columns_say_saas_words():
     from agents.analysis_agent import model_frame
     df, contract, *_ = _setup("saas_subscriptions")
     _, extra = model_frame(df, contract)
-    assert {"start_event_date", "cancellation_event_date", "in_force_now", "end_date_unknown"} <= set(extra)
+    assert {"start_event_date", "end_event_date", "in_force_now", "end_date_unknown"} <= set(extra)
     assert not any(w in c for c in extra for w in ("hire", "exit", "left"))
 
 
