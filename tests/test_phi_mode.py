@@ -391,3 +391,14 @@ def test_csv_keeps_leading_zero_codes_as_text():
 def test_policyholders_are_people():
     df = pd.DataFrame({"policyholder": ["Ana Ito", "Ben Moss"] * 10, "premium": range(20)})
     assert _contract(df).pii_columns == ["policyholder"]
+
+
+def test_a_pseudonym_is_never_read_as_personal_data():
+    """Shuffled-order CI found it (2026-11-06): a pseudonym's 16 hex characters were sometimes all
+    digits ('ID-0744743393074055'), and the PII scan read them as a card or phone number, so the
+    guard tokenized a pseudonym (and the test failed only for some keys). A pseudonym holds no
+    personal data; a real number beside one still does."""
+    from guardrails import pii_strings
+    assert pii_strings("ID-0744743393074055") == []
+    assert pii_strings("visit ID-4111111111111111 by patient") == []
+    assert pii_strings("ID-0744743393074055 call 555-201-3344") == ["555-201-3344"]

@@ -29,8 +29,15 @@ _worker_database()
 
 
 def pytest_collection_modifyitems(config, items):
-    """CI_SHARD=i/n (CI's backend matrix): this job runs every n-th test from the i-th. By test,
+    """TEST_ORDER_SEED=<n>: the tests in a shuffled order (CI's nightly job): a test that passes
+    only after another one created its state fails here first (retro 2026-11-06: the purge-table
+    test). The same seed in every xdist worker, so they agree on the order.
+    CI_SHARD=i/n (CI's backend matrix): this job runs every n-th test from the i-th. By test,
     not by file: the slow cross-domain tests are spread over many files."""
+    if seed := os.environ.get("TEST_ORDER_SEED"):
+        import random
+        random.Random(seed).shuffle(items)
+        print(f"test order shuffled, TEST_ORDER_SEED={seed}")
     if not (shard := os.environ.get("CI_SHARD")):
         return
     i, n = map(int, shard.split("/"))

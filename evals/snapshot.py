@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
 import json
 from pathlib import Path
 
@@ -210,6 +211,33 @@ def diff(a: dict, b: dict) -> dict:
 
 GOLDEN = Path(__file__).parent / "snapshots" / "golden.json"
 
+
+def text_changes(a, b, path: str = "") -> list[tuple[tuple[str, str], str]]:
+    """Each distinct text change between two unhashed snapshots, once, with ~30 characters of
+    context: 'is this diff only the label I renamed?' read in one screen."""
+    import difflib
+    if isinstance(a, dict) and isinstance(b, dict):
+        return [x for k in sorted(set(a) | set(b)) for x in text_changes(a.get(k), b.get(k), f"{path}/{k}")]
+    sa, sb = (x if isinstance(x, str) else json.dumps(x, sort_keys=True, default=str) for x in (a, b))
+    if sa == sb:
+        return []
+    import re
+    ta, tb = re.split(r"(\W)", sa), re.split(r"(\W)", sb)   # by word: one rename, one change
+    ops = difflib.SequenceMatcher(None, ta, tb, autojunk=False).get_opcodes()
+    show = lambda t, i, j: "".join(t[max(i - 8, 0):i]) + "[" + "".join(t[i:j]) + "]" + "".join(t[j:j + 8])  # noqa: E731
+    return [(("".join(ta[i:j]), "".join(tb[k:m])), f"{path} | {show(ta, i, j)!r} -> {show(tb, k, m)!r}")
+            for op, i, j, k, m in ops if op != "equal"]
+
+
+def _raw_in(tree: Path, out: Path) -> None:
+    import subprocess
+    import sys
+    # the hash patched out from outside: works on a ref older than SNAPSHOT_RAW
+    code = ("import asyncio, json, sys; from evals import snapshot as s; s._sha = lambda t: t; "
+            "open(sys.argv[1], 'w').write(json.dumps(asyncio.run(s.snapshot()), default=str))")
+    subprocess.run([sys.executable, "-c", code, str(out)], cwd=tree, check=True,
+                   env={**os.environ, "PYTHONPATH": str(tree)}, stdout=subprocess.DEVNULL)
+
 def main(argv: list[str] | None = None) -> None:
     """pin (only at a domain's end, its changes listed in its review note) | diff A B | write
     PATH. Subcommands, never a bare path: `--help` once wrote a 443 KB file named '--help'."""
@@ -221,7 +249,30 @@ def main(argv: list[str] | None = None) -> None:
     d.add_argument("a")
     d.add_argument("b")
     sub.add_parser("write", help="write a snapshot to a path").add_argument("path")
+    sub.add_parser("text", help="each text change against a ref, unhashed (a rename: only it)"
+                   ).add_argument("ref", nargs="?", default="HEAD")
     args = ap.parse_args(argv)
+    if args.cmd == "text":
+        import subprocess
+        import tempfile
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmp:
+            wt = Path(tmp) / "base"
+            subprocess.run(["git", "-C", str(root), "worktree", "add", "--detach", str(wt), args.ref],
+                           check=True, capture_output=True)
+            try:
+                _raw_in(wt, Path(tmp) / "a.json")
+                _raw_in(root, Path(tmp) / "b.json")
+                a, b = (json.loads((Path(tmp) / f).read_text()) for f in ("a.json", "b.json"))
+            finally:
+                subprocess.run(["git", "-C", str(root), "worktree", "remove", "--force", str(wt)])
+        seen: set[tuple[str, str]] = set()
+        for core, line in text_changes(a, b):   # one change, once (its context windows differ)
+            if core not in seen:
+                seen.add(core)
+                print(line)
+        print(f"{len(seen)} distinct change(s) against {args.ref}")
+        return
     if args.cmd == "diff":
         load = lambda p: json.loads(Path(p).read_text())   # noqa: E731
         print(json.dumps(diff(load(args.a), load(args.b)), indent=1))

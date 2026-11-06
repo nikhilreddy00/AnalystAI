@@ -55,6 +55,7 @@ from scipy import stats
 
 from guardrails import rankable
 from domain_pack import (
+    WINDOW_MONTHS,
     kpi_roles,
     protected_value,
     spell_covered,
@@ -1301,7 +1302,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             whole = whole.iloc[:-1]
         cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, kpi.name))
         if spelled and freq != "Y" and kind == "percent" and cohort:   # NRR at each month-end
-            unit = f"{unit} (each point the 12-month cohort ending that period)"
+            unit = f"{unit} (each point the cohort of up to {WINDOW_MONTHS} months ending that period)"
         elif spelled and freq != "Y" and kind == "percent":   # a month's rate is a month's
             unit = f"{unit} ({ {'W': 'weekly', 'M': 'monthly', 'Q': 'quarterly'}[freq]} rates, not annualised)"
         if develops:   # every period shown, the young ones named: never a partial cut or a trend

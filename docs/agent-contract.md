@@ -232,3 +232,20 @@ Cost history (moved from CLAUDE.md, 2026-11-03): Phase 4 cost $15.44 (two checke
 - the SSE protocol in CLAUDE.md is up to date;
 - traces contain no prompt or data text;
 - any scorer change is listed in the review note.
+
+## Running evals
+
+(Moved from CLAUDE.md, 2026-11-06.)
+
+- **Eval budget (real money, the user's prepaid credits)**: iterate with `--only <case> --k 1`; one full k=3
+  run per suite per PR, at the end; **E2E gate = k=1, then k=3 only on failing cases** (user's choice,
+  2026-10-28; a failure must be diagnosed, a pass on retry is not a diagnosis). `--max-usd` (default $2)
+  refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
+  user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
+  Per-phase costs and what drove them: `docs/agent-contract.md` → "Eval cost playbook". **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+- **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
+  URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
+  PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,
+  `pg_ctl -D <dir> -o "-p 54329 -c unix_socket_directories='' -c listen_addresses=localhost" start`, `createdb -h localhost -p 54329 -U postgres analystai_eval`. Cases: `evals/cases/sql/` (golden SQL never goes
+  in a layer's `verified_queries` or a prompt — a test checks)
+- **Evals**: `uv run python -m evals.run {analysis|e2e|sql|intake|visualization|cleaning|insight|quality|ingestion} --k 3 [--compare <prev.json>] [--exclude holdout]`; a scorer fix is re-scored for $0 with `python -m evals.run rescore <report.json>` (never re-run for it) — real API spend; cases in `evals/cases/`, reports in `evals/reports/`, baseline in `docs/baselines/phase1.md`. CI (`.github/workflows/ci.yml`) runs ruff/pytest/tsc on push; evals only on manual dispatch

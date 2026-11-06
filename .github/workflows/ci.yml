@@ -6,6 +6,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # nightly: the same suite in a shuffled order (TEST_ORDER_SEED, tests/conftest.py), so a test
+  # that passes only after another one created its state fails here before it fails a PR
+  schedule:
+    - cron: "17 7 * * *"
   workflow_dispatch:
     inputs:
       eval_suite:
@@ -44,6 +48,7 @@ jobs:
     env:
       TEST_PG_URL: postgresql+psycopg://postgres:postgres@localhost:5432/analystai_eval
       CI_SHARD: ${{ matrix.shard }}/4
+      TEST_ORDER_SEED: ${{ github.event_name == 'schedule' && github.run_id || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

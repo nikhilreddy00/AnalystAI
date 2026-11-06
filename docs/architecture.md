@@ -172,3 +172,61 @@ done              → {type: "done"}  // ends a run (a retry can add more after 
 provenance        → {type: "provenance", model, fast_model, cards}  // Phase 5.6b: first, on a fresh start
 usage             → {type: "usage", calls: [{agent, prompt_version, model, tokens…, cost_usd}]}  // per node; the UI ignores both
 ```
+
+## Runtime internals
+
+(Moved from CLAUDE.md, 2026-11-06: reference for one branch of the work, not every turn.)
+
+### Quality Check Retry Loop (FEAT-02)
+After `insight_node`, the graph routes to either `error_node` (if `session.error_message` is set) or `quality_check_node`. The quality check inspects the report for missing/short summary, missing technical findings, or missing charts. If issues are found AND `session.quality_check_attempts < 2`, it clears the analysis state and routes back to `analysis` for one retry; the retry budget is reset to 0 at the start of every graph run inside `ingestion_node`. The node is the single source of truth for the retry decision — `route_after_quality_check` only translates "did the node clear `insight_report`?" into `analysis` vs `end`. On the commit path the node runs the review (`agents/quality_agent.py`): code checks every claim against the evidence it cites on every full run; on the first run a Haiku critic (+ a verification pass) labels what the checks can't; the report itself is never changed (flags are shown next to their claims); then it flips `overview_done`.
+
+### Errors (Phase 2)
+Agents raise typed `AgentError` subclasses (`agents/errors.py`); graph nodes route every failure through `_fail()`, which puts `exc.user_message` into `session.error_message` → `error_node` → SSE `error`. Never return empty output on failure, and never `except ...: pass` in `orchestrator/` (a test enforces it). `targeted_analysis` / `drill_down` failures also route to `error_node`.
+
+### Multi-Turn Resume
+When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps directly from ingestion to analysis. The DataFrame is re-loaded from the connector (not stored in DB).
+
+### Durable Runs (Phase 5.6a, ADR-0006)
+`POST /chat` stores a run (`memory/run_store.py`: `runs` is also the queue, `FOR UPDATE SKIP
+LOCKED`) and returns `{run_id, session_id, status}`. A worker (`python -m worker`; development
+also runs one inside the API) executes it with `orchestrator/runner.py`. The graph is
+checkpointed after every node (`durability="sync"`, thread id = **run id**, encrypted on
+Postgres), so a crash resumes at the last finished node. Lease/heartbeat are fenced by `attempt`
+(only goes up); `crashes` is the reaper's budget (3). One active run per session (the store
+enforces it); only the latest run of a session can be retried. Cancel and "retry from
+where it failed" are `POST /runs/{id}/cancel|retry`.
+- **State holds no queue, stores or DataFrame**: those live in `graph.RunEnv` (a ContextVar; tests
+  get one from the `run_env` fixture). The state names the frame by `frame_ref`; a resume reloads
+  it and checks the hash (a change fails the run). The runner seeds `pii_values` on every (re)start.
+- Every SSE event goes to `run_events` before its node's checkpoint; `GET /runs/{id}/events`
+  replays after `Last-Event-ID`. Audit B4: production API and the worker refuse to start without
+  Postgres; dev falls back to memory and `/health` says `persistent: false` (UI: "Not saved").
+
+### Workspace (Phase 5.6b, ADR-0007)
+- **One dataset per thread.** Uploads are dataset versions (`datasets`, `dataset_versions`): same
+  bytes → that version, same name + columns → new version, else a new dataset; live sources are
+  one dataset per connection, no versions. `POST /chat` names data by `dataset_version_id` /
+  `dataset_id` (never a file path); other data on an existing thread is a 409.
+- **A report is its run's own report events** (`run_store.report_events`, segmented as the UI
+  does), sealed in `runs.report_sha256` at every terminal transition; never rebuilt from the
+  session. Provenance = the run's `provenance` + `usage` events (`llm.client.run_meter`).
+  `/api/sessions/{id}/thread` returns them; the UI replays them through `handle()`.
+- **Only `POST /chat` creates a thread** (`session_store.create`); `save` is update-only and a
+  no-op on a deleted thread. Seed tests with `create`.
+- **Deletion = tombstone + purge** (`memory/retention.py`, in the worker loop): every table with
+  user data is in `PURGE_TABLES` (a test checks); `RETENTION_DAYS` (0 = forever).
+
+### Human Approval Gates
+- **Clarification**: intake detects ambiguous query → `human_approval` node → SSE `approval_required` event
+- **High null**: cleaning finds >40% null columns → `human_approval` node → modal in frontend;
+  the answer reaches `cleaning_node` (Continue = keep as missing, Drop = `drop_column`, Cancel = stop)
+- Both are persisted `interrupt()`s: the run waits (`waiting_approval`) across restarts; the
+  answer (`POST /chat` with `is_approval`) resumes the same run → intake or cleaning
+  (`route_after_approval`). `rerun_overview` is a UI choice: the run ends, the UI asks again.
+
+### Data Flow Through the System
+
+1. **DataFrame is NEVER stored in the database** (nor in a checkpoint: a test checks). Agents read it as parquet bytes from `session.__dict__["_df_parquet"]` (a transient attribute, not a Pydantic field).
+2. In `graph.py`, nodes keep it in `run_env.frame` (in memory, per run) and put it on the session for the agent; the checkpointed state only names it (`frame_ref`).
+3. For E2B, parquet is converted to CSV locally (`_parquet_to_csv_bytes`) because E2B's Python env lacks pyarrow.
+4. The final `analysis_node` discards `_df_parquet` — it's not needed after analysis.

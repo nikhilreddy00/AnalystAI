@@ -343,3 +343,23 @@ def test_one_repeat_test_for_dated_rows():
     """Review: _snapshot_dates copied _panel's 'dates per entity' median. domain_pack._dates_each
     is the one; a second `.size().median()` in shared code is a second definition."""
     assert len(_hits(r"\.size\(\)\.median\(\)")) == 1, _hits(r"\.size\(\)\.median\(\)")
+
+
+def test_no_shared_sentence_writes_the_window_span():
+    """Retro 2026-11-06: 'Logo churn (12 months)' was fixed in the labels, then the audit found
+    '12-month cohort' in a targeted template and '(12 months to …)' in the ledger facts, wrong on
+    shorter data. The span has one owner (domain_pack.WINDOW_MONTHS, window_words): no string a
+    shared module writes names it. Comments and docstrings may."""
+    import ast
+    span = re.compile(r"\b(?:12|twelve)[- ]months?\b", re.I)
+    bad = []
+    for p in SHARED:
+        tree = ast.parse(p.read_text())
+        docs = {id(n.body[0].value) for n in ast.walk(tree)
+                if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n.body and isinstance(n.body[0], ast.Expr)
+                and isinstance(n.body[0].value, ast.Constant)}
+        bad += [f"{p.name}:{n.lineno}" for n in ast.walk(tree)
+                if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                and id(n) not in docs and span.search(n.value)]
+    assert not bad, bad

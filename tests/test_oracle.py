@@ -25,9 +25,19 @@ LIVE = {"strict": True}
 
 # ── Adapters: one per consumer, each the production entry point ──────────────────────────────
 
-@cache
 def _built(name: str, seed: int = 1, transform: str = ""):
-    """(session, cleaned frame, contract, truth) through the production reader and cleaning."""
+    """(session, cleaned frame, contract, truth) through the production reader and cleaning: each
+    caller its own copy (shuffled-order CI, 2026-11-06: a test wrote a pre-boarded hire into the
+    cached session and a later test's headcount answer counted it)."""
+    import copy
+    s, clean, contract, truth = _built_once(name, seed, transform)
+    own = s.model_copy(deep=True)
+    own.__dict__["_df_parquet"] = s.__dict__["_df_parquet"]   # bytes: immutable, shared safely
+    return own, clean.copy(), contract.model_copy(deep=True), copy.deepcopy(truth)
+
+
+@cache
+def _built_once(name: str, seed: int = 1, transform: str = ""):
     from agents.cleaning_agent import run_cleaning_agent
     from agents.ingestion_agent import prepare_frame
     from connectors.csv_connector import CSVConnector, _read_bytes
@@ -256,6 +266,23 @@ def test_header_spellings_change_no_number():
     assert tiles("loan_tape") == tiles("loan_tape", transform="synonyms")
 
 
+@pytest.mark.parametrize("name", ["hr_roster", "saas_subscriptions", "loan_tape", "retail_lines", "policies"])
+def test_a_next_billing_date_column_changes_no_number(name):
+    """Retro 2026-11-06 (a fix tested on its example only): a date column another meaning shares
+    (a subscription's next bill) turned a list into snapshots. An extra column of that kind
+    changes no tile, on any pack."""
+    assert tiles(name) == tiles(name, transform="next_bill")
+
+
+@pytest.mark.parametrize("name", ["hr_snapshots", "saas_mrr_snapshots", "bank_balances"])
+def test_one_snapshot_is_still_read_as_snapshots(name):
+    """Retro 2026-11-06: the first next-bill fix dropped the snapshot role of a one-snapshot
+    extract. Its latest snapshot alone keeps every role (the reading), on every snapshot pack."""
+    _, _, full, _ = _built(name)
+    _, _, one, _ = _built(name, transform="one_snapshot")
+    assert one.domain == full.domain and one.roles == full.roles
+
+
 # ── Transforms (metamorphic relations) ────────────────────────────────────────────────────────
 
 def _shuffle(df: pd.DataFrame) -> pd.DataFrame:
@@ -287,8 +314,22 @@ def _presigned(raw: pd.DataFrame) -> pd.DataFrame:
     return raw.assign(Amount=raw["Amount"].where(raw["Dr/Cr"] != "D", -raw["Amount"]))
 
 
+def _next_bill(df: pd.DataFrame) -> pd.DataFrame:
+    """A next-billing date per row, any day of the coming month (a list's own date, no snapshot);
+    a function of the row, so an exact duplicate stays one (retail's 48 repeated lines)."""
+    days = pd.to_timedelta(pd.util.hash_pandas_object(df, index=False).to_numpy() % 28, unit="D")
+    return df.assign(billing_date=(pd.Timestamp("2026-11-01") + days).strftime("%Y-%m-%d"))
+
+
+def _one_snapshot(df: pd.DataFrame) -> pd.DataFrame:
+    """Only the latest snapshot date (a one-month extract): the column whose name says snapshot,
+    as of or month."""
+    col = next(c for c in df.columns if any(w in c.lower() for w in ("snapshot", "as of", "month")))
+    return df[df[col] == df[col].max()].reset_index(drop=True)
+
+
 TRANSFORMS = {"shuffle": _shuffle, "overlap": _overlap, "synonyms": _synonyms, "canonical": _canonical,
-              "presigned": _presigned}
+              "presigned": _presigned, "next_bill": _next_bill, "one_snapshot": _one_snapshot}
 
 
 def builtin_on(built, targets: list[str], segments: list[str]) -> dict:
