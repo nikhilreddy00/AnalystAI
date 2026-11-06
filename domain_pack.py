@@ -2477,12 +2477,16 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
             out = out * (1 - (rate / 100 if percent else rate))
         for x in f.over:
             out = out / value(x, 1.0)
-        for x in (x for x in f.over if pack.roles[x].numbers and x in roles):
-            unknown = df[roles[x]].notna() & value(x, 1.0).isna()
-            if n := int(unknown.sum()):
-                seen = ", ".join(sorted(map(str, df.loc[unknown, roles[x]].unique()))[:3])
-                notes.append(f"{name}: {n:,} row{'s' * (n != 1)} {'have' if n != 1 else 'has'} a "
-                             f"{roles[x]} the formula doesn't know ({seen}): left blank.")
+        for x in needed:   # every required input: its blank rows, then its unreadable ones
+            raw = df[roles[x]].where(df[roles[x]].astype(str).str.strip() != "")
+            for bad, what in ((raw.isna(), f"no {roles[x]}"),
+                              (raw.notna() & value(x, 1.0).isna(),
+                               f"a {roles[x]} value the formula doesn't know")):
+                if n := int(bad.sum()):
+                    seen = "" if raw[bad].isna().all() else \
+                        f" ({', '.join(sorted(map(str, raw[bad].unique()))[:3])})"
+                    notes.append(f"{name}: {n:,} row{'s' * (n != 1)} {'have' if n != 1 else 'has'} "
+                                 f"{what}{seen}: left blank.")
         df = df.assign(**{name: out})
     return df, notes
 
