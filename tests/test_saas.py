@@ -191,3 +191,11 @@ def test_the_ledger_facts_give_the_model_its_numbers_by_month_and_by_group():
     facts = " ".join(dp.spell_facts(pack, df, roles))
     for k, v in t["logo_churn_by_segment"].items():
         assert f"{k} {v:.1%}" in facts, k
+
+
+def test_a_level_by_group_reads_the_stock_tiles_rows():
+    """Insight gate (ins-49): MRR by segment from the column path added trials, paused, test
+    accounts and EUR subscriptions (Mid $121k, truth $113k). One rule: in_force_counted."""
+    from agents.utils import aggregate
+    df, contract, pack, roles, t = _setup("saas_subscriptions")
+    assert aggregate(df, "segment", "mrr", "sum", contract).to_dict() == pytest.approx(t["mrr_by_segment"])

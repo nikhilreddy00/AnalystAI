@@ -319,14 +319,14 @@ def level_rows(df, column: str, contract):
 def _in_force_rows(df, column: str, contract):
     """On a spell roster, a level (salary, FTE) is the people in force's: a total or an average
     of pay by department never adds leavers' pay (the KPIs' rule: domain_pack._in_force)."""
-    from domain_pack import _in_force, _snapshot_column, defaults_pack, has_spell, spell_as_of
+    from domain_pack import _snapshot_column, defaults_pack, has_spell, in_force_counted, spell_as_of
     pack = defaults_pack(contract)
     roles = {r: c for r, c in (contract.roles if pack else {}).items() if c in df.columns}
     role = next((r for r, c in roles.items() if c == column), None)
     if not role or not has_spell(pack, roles) or _snapshot_column(pack, roles) \
             or pack.roles[role].over_time != "last" or (as_of := spell_as_of(pack, df, roles)) is None:
         return df
-    return df.loc[_in_force(df, roles, pack, as_of).index]
+    return df.loc[in_force_counted(df, roles, pack, as_of)]
 
 
 def latest_rows(df, column: str, contract):

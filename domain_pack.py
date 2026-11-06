@@ -2427,6 +2427,28 @@ def spell_event_columns(pack: Pack) -> tuple[str, str, str, str, str]:
             w.unknown)
 
 
+def stock_population(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
+    """THE rows the stock tile (headcount, MRR) counts, as a mask: its `where` (contractors out
+    on HR; trials, paused out on SaaS), its row kinds and the main currency (Domain 6 smoke: test
+    accounts and EUR subscriptions were marked in force, the tile leaves them out). A rate's
+    events, the in-force marker and a level by group read the same people."""
+    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
+                  and computable(pack, k.name, roles)), None)
+    if stock is None:
+        return pd.Series(True, index=df.index)
+    where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), [])
+    counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
+    return counted & row_kinds(df, roles, pack).isin(stock.rows) & main_currency(df, roles)[0]
+
+
+def in_force_counted(df: pd.DataFrame, roles: dict[str, str], pack: Pack, as_of) -> pd.Index:
+    """THE rows in force at `as_of` that the stock tile counts: the model's in_force_now marker
+    and a level by group (MRR or pay by segment, utils._in_force_rows) read this, never their
+    own copy (Domain 6 insight gate: MRR by segment added trials, test accounts and EUR)."""
+    now = _in_force(df, roles, pack, as_of).index
+    return now[stock_population(df, roles, pack).loc[now].to_numpy()]
+
+
 def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd.DataFrame:
     """On spell data, the product's own events as columns for code the model writes: each
     spell's first row carries its hire (start) date, its last row its exit date (the end date,
@@ -2443,15 +2465,7 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
     if w is None:
         return df
     as_of = w[1]
-    # the people the headcount counts (its `where`: contractors out on HR), so a rate's events
-    # and its denominator are one population
-    stock = next((k for k in pack.kpis if k.tile and k.state and spell_terms(pack, k.name)
-                  and computable(pack, k.name, roles)), None)
-    where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), []) if stock else []
-    counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
-    if stock is not None:   # and the tile's own rows: its row kinds, the main currency (Domain 6
-        # smoke: test accounts and EUR subscriptions were marked in force, the tile leaves them out)
-        counted &= row_kinds(df, roles, pack).isin(stock.rows) & main_currency(df, roles)[0]
+    counted = stock_population(df, roles, pack)
     out = df.copy()
     lo = w[0]
     for col, which in ((start_col, "starts"), (end_col, "ends")):
@@ -2464,9 +2478,8 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
             out[window_col] = (out[col] > lo).map({True: "yes", False: ""})
         out[col] = out[col].dt.strftime("%Y-%m-%d")
     out[unknown_col] = _ended_undated(df, roles, pack).map({True: "yes", False: ""})
-    now = _in_force(df, roles, pack, as_of)
     out[now_col] = ""
-    out.loc[now.index[counted.loc[now.index].to_numpy()], now_col] = "yes"
+    out.loc[in_force_counted(df, roles, pack, as_of), now_col] = "yes"
     return out
 
 

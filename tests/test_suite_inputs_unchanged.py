@@ -19,13 +19,16 @@ _SAAS = ("Domain 6: the dataset reads as the SaaS pack (strong: customer + MRR, 
          "on the 1st): MRR is a level at month-ends, pack tiles, the spell facts and story")
 _ONE = ("Domain 6: grammar in the shared not-counted-yet sentence ('1 start or end date falls'), "
         "the only difference (scripts/domain_diff.py)")
+_STOCK = ("Domain 6: a level by group reads the stock tile's own rows (in_force_counted): FTE by "
+          "department now leaves contractors out, equal to the FTE tile by department (was 245.9 vs "
+          "238.9 for Engineering)")
 _LAYOUT = ("Domain 6: the insight facts name the columns whose blanks are the file's layout "
            "(marker, conditional, paired, order-level): never 'missing' (a logged HR minor too)")
 _STORY = ("Domain 6: the file's story is introduced as citeable evidence (clean:story); a live "
           "run's right claims citing segments were flagged unsupported")
 CHANGES: dict[str, dict[str, str]] = {
     "deterministic": {"saas_accounts-1": _SAAS, "saas_accounts-2": _SAAS, "saas_accounts-3": _SAAS,
-                      "hr_snapshots-1": _ONE},
+                      "hr_snapshots-1": _ONE, "hr_roster-1": _STOCK, "hr_roster_onerow-1": _STOCK},
     "analysis": {f"saas-{i}": _SAAS for i in range(1, 5)},
     "insight": {**{c: _SAAS for c in ("ins-04-subs-overview", "ins-08-plan-revenue",
                                       "ins-13-mom-vs-yoy", "ins-16-tickets-not-significant-holdout",
