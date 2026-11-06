@@ -336,13 +336,14 @@ causal_triggers: [price, prices, pricing, price increase, discount, discounts, o
 
 never_say:
   - {pattern: '\b(?:MRR|ARR)\s+(?:revenue|in revenue)\b|\b(?:MRR|ARR|monthly recurring revenue)\b[^.]{0,40}\b(?:recogni[sz]ed|earned|GAAP)\b',
-     reason: "calls a run-rate revenue: MRR and ARR are not recognised revenue (ASC 606)"}
+     reason: "calls a run-rate revenue: MRR and ARR are not recognised revenue under the revenue-recognition standard"}
   - {pattern: '\bmonthly\s+(?:logo\s+|customer\s+|revenue\s+)?churn[^.]{0,60}\b(?:×|x|times|multiplied by)\s*12\b|\b(?:annual(?:i[sz]ed)?|yearly)\s+(?:logo\s+|customer\s+)?churn[^.]{0,40}\b(?:×|x|times|multiplied by)\s*12\b',
      reason: "annualises churn by × 12: monthly churn compounds; annual churn is measured on the 12-month cohort"}
   - {pattern: '\b(?:LTV|CLV|lifetime value|CAC|payback(?: period)?|magic number|rule of 40)\s+(?:is|of|was|=|at|stands at)\s+[$\d]',
      reason: "a cost or margin metric this data can't compute (no cost, margin or sales and marketing spend)"}
-  - {pattern: '\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|above (?:the )?benchmark|below (?:the )?benchmark|industry[- ]leading)\b[^.]{0,40}\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b|\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b[^.]{0,40}\b(?:is|looks|seems)\s+(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile)\b',
-     reason: "a benchmark verdict: benchmarks differ by population (ChartMogul's median NRR 82%, SaaS Capital's 101%); quote one with its source, never as a grade"}
+  # (?:[^.]|\.\d) lets a sentence carry a decimal ('18.8% is healthy')
+  - {pattern: '\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|above (?:the )?benchmark|below (?:the )?benchmark|industry[- ]leading)\b(?:[^.]|\.\d){0,40}\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b|\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b(?:[^.]|\.\d){0,40}\b(?:is|looks|seems)\s+(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile)\b',
+     reason: "a benchmark verdict: benchmarks differ by the population surveyed (ChartMogul's and SaaS Capital's median NRR are far apart); quote one with its source, never as a grade"}
   - {pattern: '\bbookings\s+(?:of|were|was|totall?ed|reached)\b',
      reason: "calls billings or MRR bookings: bookings are signed contract values this data doesn't have"}
 

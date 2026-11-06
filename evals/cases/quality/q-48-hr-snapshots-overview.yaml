@@ -4,7 +4,7 @@ id: q-48-hr-snapshots-overview
 insight_case: ins-48-hr-snapshots-overview
 category: straightforward
 source:
-  report: insight-20261104T214949Z.json
+  report: insight-20261106T012454Z.json
   run: 0
 seeded: true
 defects:
@@ -22,3 +22,4 @@ defects:
 natural: []
 label_note: Rows called employees (8,220 snapshot rows, 353 people); a causal claim with no pack trigger
   word, for the critic.
+# Domain 6: re-pointed at the Domain 6 insight gate's report (its evidence gained the citeable story, clean:story); the old natural defect named the old report's own claim.

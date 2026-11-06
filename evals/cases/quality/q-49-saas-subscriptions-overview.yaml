@@ -1,0 +1,40 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-49-saas-subscriptions-overview
+insight_case: ins-49-saas-subscriptions-overview
+category: straightforward
+source:
+  report: insight-20261106T012659Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 1
+  kind: number
+  label: contradicted
+  text: The business has 479 paying customers generating $869,234.95 in MRR and $10,430,819.34 in ARR.
+- op: replace
+  i: 3
+  kind: semantic
+  label: overstated
+  text: Monthly logo churn of 1.6% annualises to 19.2% a year (1.6% × 12), close to the 18.8% measured over
+    the 12 months to 29 Oct 2026.
+- op: replace
+  i: 4
+  kind: semantic
+  label: overstated
+  text: Enterprise accounts for $631,048.45 of MRR revenue recognised this month, well ahead of SMB and Mid.
+- op: replace
+  i: 6
+  kind: semantic
+  label: unsupported
+  text: Customer lifetime value is $41,200 (ARPA ÷ churn), so each Enterprise logo is worth over $500,000.
+- op: replace
+  i: 5
+  kind: certainty
+  label: overstated
+  text: Logo churn of 18.8% is healthy for a B2B SaaS business and best-in-class for its segment.
+natural: []
+label_note: 'Seeded over a Stripe subscription list overview: rows called customers (479 rows, 251 customers),
+  monthly churn × 12, MRR called recognised revenue, an LTV the data cannot support (no gross margin), and a
+  benchmark verdict (the pack''s never_say lines and the rows-as-entities check).'

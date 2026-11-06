@@ -1,0 +1,32 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-50-saas-mrr-overview
+insight_case: ins-50-saas-mrr-overview
+category: straightforward
+source:
+  report: insight-20261106T012454Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 5
+  kind: number
+  label: contradicted
+  text: Net revenue retention of 136.2% over the 12 months to 31 Oct 2026 shows expansion more than replaced
+    every dollar lost.
+- op: replace
+  i: 2
+  kind: causal
+  label: overstated
+  text: The Enterprise price increase caused the March 2026 churn spike ($45,479.75), when Northwind left after
+    its renewal was repriced.
+- op: replace
+  i: 4
+  kind: semantic
+  label: overstated
+  text: Annual logo churn is 27.9% (monthly churn of 2.3% × 12), so more than a quarter of customers leave
+    each year.
+natural: []
+label_note: 'Seeded over an MRR export overview: a period NRR (MRR now ÷ then, new customers in: 136.2%, the
+  cohort figure is 91.1%), a causal price claim, and monthly churn × 12 presented as annual churn (the 12-month
+  cohort figure is 20.1%).'
