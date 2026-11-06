@@ -339,7 +339,7 @@ def test_pass_3_windows_spans_and_the_list_bridge():
     line = next(ln for ln in dp.spell_story(pack, df, roles) if ln.startswith("MRR bridge"))
     nums = [float(x.replace(",", "")) for x in __import__("re").findall(r"\$([\d,]+\.\d\d)", line)]
     tail = nums[-1]
-    assert "changes in continuing customers' own records" in line
+    assert "net expansion less contraction (not split in this file) $198.00" in line
     assert tail == pytest.approx(t["mrr"])
 
 
@@ -353,3 +353,54 @@ def test_a_neutral_strong_or_weak_is_no_verdict():
     for t in ("gross revenue retention remains strong at 99.3%.",
               "with net revenue retention of 106.5% — healthy, but below last year"):
         assert re.search(bench.pattern, t, re.I), t
+
+
+VERDICTS = ["Net revenue retention looks strong and stable.", "Retention is weak (77.2%).",
+            "NRR is strong compared with peers.", "NRR was strong in 2025.", "Retention is strong!",
+            "NRR is a strong 106.5%.", "NRR is healthy and improving.",
+            "NRR of 106% is best-in-class among peers.", "Churn is poor in SMB.",
+            "with net revenue retention of 106.5% — healthy, but below", "GRR remains strong at 99.3%.",
+            "Logo churn of 18.8% is healthy for a B2B SaaS business"]
+NEUTRAL = ["Logo churn rose to 20.1% while new MRR showed strong growth.",
+           "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
+           "Logo churn of 18.8% is strong evidence of a problem.",
+           "Net revenue retention was 91.1% over the 12 months to 31 Oct 2026."]
+
+
+@pytest.mark.parametrize("t", VERDICTS)
+def test_every_benchmark_verdict_is_never_said(t):
+    """Audit pass 4: the pass-3 narrowing let 11 of 21 verdicts through."""
+    import re
+    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
+    assert re.search(bench.pattern, t, re.I)
+
+
+@pytest.mark.parametrize("t", NEUTRAL)
+def test_a_neutral_sentence_is_no_verdict(t):
+    import re
+    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
+    assert not re.search(bench.pattern, t, re.I)
+
+
+@pytest.mark.parametrize("vals, want", [([10, 12.5, 15, 7.5], [90, 87.5, 85, 92.5]),
+                                        ([1, 1, 1, 20], [99, 99, 99, 80]),
+                                        ([0.2, 0.2, 0.1], [80, 80, 90])])
+def test_discount_scales(vals, want):
+    """Audit pass 4: fractional Stripe percents (12.5) and 1% read right; never rescaled by one."""
+    from tests.test_pack_columns import TOY
+    import yaml
+    pack = dp.Pack.model_validate(yaml.safe_load(TOY))
+    df = pd.DataFrame({"unit_id": [str(i) for i in range(len(vals))], "rent": [100.0] * len(vals),
+                       "rebate": vals, "term": ["monthly"] * len(vals)})
+    out, _ = dp.pack_columns(df, pack, {r: r for r in df.columns})
+    assert out["monthly_rent"].tolist() == pytest.approx(want)
+
+
+def test_a_leap_february_cohort_point_is_kept():
+    """Audit pass 4: with data from Feb 2024, Feb 2025's 12-month cohort starts 28 Feb 2024,
+    'before' the first known state (29 Feb 2024) by a day: dropped as NaN. Months are compared."""
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    shifted = df.assign(month=pd.to_datetime(df["month"]) - pd.DateOffset(months=9))
+    frame = shifted.assign(_p=pd.Series(pd.NaT, index=shifted.index).astype("period[M]"))
+    by = dp.compute_kpi(frame, roles, pack, "nrr", by="_p", full=shifted)
+    assert pd.notna(by.get(pd.Period("2025-02", "M")))

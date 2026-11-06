@@ -332,8 +332,9 @@ never_say:
      reason: "annualises churn by × 12: monthly churn compounds; annual churn is measured on the 12-month cohort"}
   - {pattern: '\b(?:LTV|CLV|lifetime value|CAC|payback(?: period)?|magic number|rule of 40)\s+(?:is|of|was|=|at|stands at)\s+[$\d]',
      reason: "a cost or margin metric this data can't compute (no cost, margin or sales and marketing spend)"}
-  # (?:[^.]|\.\d) lets a sentence carry a decimal ('18.8% is healthy')
-  - {pattern: '\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|above (?:the )?benchmark|below (?:the )?benchmark|industry[- ]leading)\b(?:[^.]|\.\d){0,40}\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b|\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b(?:[^.]|\.\d){0,40}\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|strong|excellent|weak|poor)\b\s*(?:[.,;:)—-]|$|for\b|at\b)',
+  # (?:[^.]|\.\d) lets a sentence carry a decimal ('18.8% is healthy'); strong/weak before a
+  # noun is no verdict ('strong growth', pass 3); every other verdict word always is (pass 4)
+  - {pattern: '\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|above (?:the )?benchmark|below (?:the )?benchmark|industry[- ]leading)\b(?:[^.]|\.\d){0,40}\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b|\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b(?:[^.]|\.\d){0,40}\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|excellent|poor|(?:strong|weak)(?!\s+(?:evidence|signal|signs?|growth|correlation|demand|expansion|contraction|quarter|month|year|start|finish|link|relationship|association|case|effect|uptake)\b))\b',
      reason: "a benchmark verdict: benchmarks differ by the population surveyed (ChartMogul's and SaaS Capital's median NRR are far apart); quote one with its source, never as a grade"}
   - {pattern: '\bbookings\s+(?:of|were|was|totall?ed|reached)\b',
      reason: "calls billings or MRR bookings: bookings are signed contract values this data doesn't have"}

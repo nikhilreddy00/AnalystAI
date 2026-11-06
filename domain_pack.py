@@ -946,7 +946,7 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
         if spells == {"opening"}:   # a level at the cohort's start (Opening MRR)
             return f"on {start:%-d %b %Y}"
         n = round((as_of - start).days / 30.44)
-        return f"{n}-month cohort to {as_of:%-d %b %Y}"
+        return f"{n}-month cohort to {as_of:%-d %b %Y}" if n >= 1 else ""
     return f"{months} month{'s' * (months != 1)} to {as_of:%-d %b %Y}"
 
 
@@ -1085,8 +1085,8 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             continue
         now = compute_kpi(df, roles, pack, k.name)
         cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))
-        whole_year = not cohort or back[1] - pd.DateOffset(months=12) >= first_known(
-            pack, roles, spell_from(pack, df, roles))   # an 11-month cohort is no year-earlier 12
+        whole_year = not cohort or (back[1] - pd.DateOffset(months=12)).to_period("M") >= first_known(
+            pack, roles, spell_from(pack, df, roles)).to_period("M")   # an 11-month cohort is no 12
         then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok and whole_year else None
         if now is not None:
             out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
@@ -1151,10 +1151,12 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
                      else f"− {k.phrase} {say(k, val[m])}" for m, k in parts.items() if k]
             rest = now - start - sum(v if m not in ("contraction", "churn") else -v for m, v in val.items())
             if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
-                terms.append(f"{'+' if rest > 0 else '−'} changes in continuing {pack.spell.words.plural}' "
-                             f"own records {say(stock, abs(rest))}")
-            out.append(f"{stock.label} bridge, 12 months to {as_of:%-d %b %Y}: {say(stock, start)} on "
-                       f"{lo:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
+                terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
+                             f"this file) {say(stock, abs(rest))}")
+            begin = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
+            span = round((as_of - begin).days / 30.44)
+            out.append(f"{stock.label} bridge, {span} months to {as_of:%-d %b %Y}: {say(stock, start)} on "
+                       f"{begin:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
                        + ("" if parts["expansion"] else " Expansion and contraction (price or seat "
                           f"changes) are not in this file (no {pack.spell.words.plural}' monthly values)."))
     lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
@@ -1163,7 +1165,8 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
     if lost and rate and (n := compute_kpi(df, roles, pack, lost.name)) is not None:
         who = pack.spell.words.plural
         out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
-                   f"counts only the {who} in force on {lo:%-d %b %Y} who are not in force now, so "
+                   f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles))):%-d %b %Y} "
+                   "who are not in force now, so "
                    f"the two differ: {who} who joined in the window or came back are in the count only.")
     if (k := parts["churn"]) is not None:
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
@@ -1537,7 +1540,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
         return total(later.clip(upper=base) if term.capped else later, start)
 
     if axis is not None:
-        return pd.Series({p: cohort(s_, e) if s_ >= known else float("nan")
+        return pd.Series({p: cohort(s_, e) if s_.to_period("M") >= known.to_period("M") else float("nan")
                           for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
     value = cohort(cohort_start(as_of, known), as_of)
     return None if isinstance(value, float) and pd.isna(value) else value
@@ -2419,13 +2422,15 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
         if f.net_of:   # a rate: 0.2, or Stripe's percent_off 20 (any value over 1: percent)
             rate = value(f.net_of, 0.0)
             given = rate[rate > 0]
-            # percent (Stripe's 20 = 20%, 1 = 1%): a value over 1 and mostly whole numbers
-            percent = bool(len(given)) and (given > 1).any() and (given == given.round()).mean() > 0.5
-            odd = int((given > 1).sum() if not percent else (given <= 1).sum())
-            if odd:
+            # percent (Stripe's 20 or 12.5 = 20%, 12.5%): most values over 1, or some over 1 and
+            # all whole numbers (1 = 1%); a rate (0.2) otherwise. Rows on the other scale: blank
+            percent = bool(len(given)) and bool((given > 1).mean() > 0.5 or (
+                (given > 1).any() and (given == given.round()).all()))
+            wrong = (rate > 1) if not percent else ((rate > 0) & (rate < 1))
+            if odd := int(wrong.sum()):
                 notes.append(f"{name}: {odd:,} row{'s' * (odd != 1)} of {roles[f.net_of]} disagree "
                              f"with the column's {'percent' if percent else 'rate'} scale: left blank.")
-                out = out.where(~((rate > 1) if not percent else ((rate > 0) & (rate <= 1))))
+                out = out.where(~wrong)
             out = out * (1 - (rate / 100 if percent else rate))
         for x in f.over:
             out = out / value(x, 1.0)
