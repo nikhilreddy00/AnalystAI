@@ -122,3 +122,33 @@ def test_on_a_subscription_list_history_terms_are_not_computable():
              "end_date": "end_date"}
     assert not computable(pack, "expansion_mrr", roles) and not computable(pack, "nrr", roles)
     assert computable(pack, "new_mrr", roles) and computable(pack, "logo_churn_rate", roles)
+
+
+def test_a_count_counts_customers_not_their_concurrent_subscriptions(book):
+    """Found on saas_subscriptions: a customer with a base plan and an add-on counted twice in
+    the opening cohort (229 vs 218). A count term's value is the entity's presence."""
+    pack, df, roles = book
+    two = pd.concat([df, df[df["customer_id"] == "A"].assign(mrr=5)], ignore_index=True)
+    raw = yaml.safe_load(BOOK)
+    raw["spell"]["concurrent"] = True
+    both = Pack.model_validate(raw)
+    assert compute_kpi(two, roles, both, "opening_customers") == 6
+    assert compute_kpi(two, roles, both, "opening_mrr") == 940 + 5
+
+
+def test_the_in_force_memo_returns_the_rule_and_dies_with_its_frame(book):
+    import gc
+
+    import domain_pack as dp
+    pack, df, roles = book
+    for t in pd.to_datetime(["2025-12-31", "2026-03-31", "2026-10-31"]):
+        assert dp._in_force(df, roles, pack, t).equals(dp._in_force_at(df, roles, pack, t))
+        assert dp._in_force(df, roles, pack, t).equals(dp._in_force_at(df, roles, pack, t))
+    other = df.copy()
+    other.loc[other["customer_id"] == "A", "mrr"] = 1   # another frame: never the first's memo
+    assert dp._in_force(other, roles, pack, pd.Timestamp("2026-10-31"))["mrr"].min() == 1
+    key = id(other)
+    del other
+    gc.collect()
+    dp._in_force(df, roles, pack, pd.Timestamp("2026-10-31"))
+    assert key not in dp._MEMO

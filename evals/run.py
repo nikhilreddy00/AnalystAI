@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import yaml
 from scipy.stats import binomtest
 
@@ -227,11 +227,15 @@ def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
                                table_name="data")
     if source == "postgres":
         url, table = os.environ["TEST_PG_URL"], "e2e_" + re.sub(r"\W", "_", stem)
+        schema = case.get("pg_schema")   # a table outside the default schema, named schema.table
         engine = create_engine(url)
         with engine.begin() as conn:
-            df.to_sql(table, conn, index=False, if_exists="replace")
+            if schema:
+                conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+            df.to_sql(table, conn, index=False, if_exists="replace", schema=schema)
         engine.dispose()
-        return ConnectorConfig(type=ConnectorType.SQL, connection_string=url, table_name=table)
+        return ConnectorConfig(type=ConnectorType.SQL, connection_string=url,
+                               table_name=f"{schema}.{table}" if schema else table)
     path = UPLOADS / f"{stem}.{source}"
     if source == "csv":
         if not path.exists() or path.read_text() != csv:
@@ -399,6 +403,9 @@ def intake_contract(case: dict):
     else:
         df = pd.DataFrame(src["frame"]["rows"], columns=src["frame"]["columns"])
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    if "dataset" in src:   # a column the pack adds (a subscription list's MRR), as ingestion does
+        from agents.ingestion_agent import add_pack_columns
+        contract = add_pack_columns(df, contract, ConnectorType.CSV)[1]
     if sql := src.get("source_sql"):
         contract.source_query = Evidence(
             id="sql:query", kind="query", claim="query result", code=sql, result_excerpt="",
@@ -551,11 +558,14 @@ def viz_session(case: dict, df: pd.DataFrame) -> tuple[AnalysisSession, list[str
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import QuestionIntent, TargetedParams
 
+    from agents.ingestion_agent import add_pack_columns
     plan = case["plan"]
+    df, contract, _ = add_pack_columns(
+        df, CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df), ConnectorType.CSV)
     findings, ids = viz_findings(case, df) if case.get("findings") else (None, [])
     session = AnalysisSession(
         session_id=str(uuid.uuid4()),
-        data_contract=CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df),
+        data_contract=contract,
         task_plan=AnalysisTask(
             raw_query=case["question"], target_metrics=plan["target_metrics"],
             segments=plan["segments"], analysis_types=plan["analysis_types"] or ["eda"],
@@ -630,11 +640,12 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import DataNarrative, QuestionIntent
 
-    from agents.ingestion_agent import prepare_frame
+    from agents.ingestion_agent import add_pack_columns, prepare_frame
 
     plan = case["plan"]
     df = insight_frame(case)
-    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    df, contract, _ = add_pack_columns(
+        df, CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df), ConnectorType.CSV)
     if contract.phi:   # patient data: the insight agent reads the PHI-protected copy, as in production
         df, contract = prepare_frame(df, contract, ConnectorType.CSV, {},
                                      AnalysisSession(session_id="x").user_id)

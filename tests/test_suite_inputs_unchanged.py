@@ -15,7 +15,20 @@ import pytest
 from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-CHANGES: dict[str, dict[str, str]] = {}
+_SAAS = ("Domain 6: the dataset reads as the SaaS pack (strong: customer + MRR, snapshots labelled "
+         "on the 1st): MRR is a level at month-ends, pack tiles, the spell facts and story")
+_ONE = ("Domain 6: grammar in the shared not-counted-yet sentence ('1 start or end date falls'), "
+        "the only difference (scripts/domain_diff.py)")
+CHANGES: dict[str, dict[str, str]] = {
+    "deterministic": {"saas_accounts-1": _SAAS, "saas_accounts-2": _SAAS, "saas_accounts-3": _SAAS,
+                      "hr_snapshots-1": _ONE},
+    "analysis": {f"saas-{i}": _SAAS for i in range(1, 5)},
+    "insight": {**{c: _SAAS for c in ("ins-04-subs-overview", "ins-08-plan-revenue",
+                                      "ins-13-mom-vs-yoy", "ins-16-tickets-not-significant-holdout",
+                                      "ins-19-stale-memory-holdout", "ins-29-multi-year-holdout",
+                                      "ins-38-tickets-null")},
+                "ins-48-hr-snapshots-overview": _ONE},
+}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())
