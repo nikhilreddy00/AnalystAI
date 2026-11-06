@@ -167,18 +167,19 @@ async def test_every_table_with_user_data_is_purged():
     """A new table that holds per-thread or per-dataset data must be added to the purge."""
     if not PG:
         pytest.skip("TEST_PG_URL not set")
-    from memory.session_store import SessionStore
-    store = SessionStore(PG)
+    # every store's schema, as production opens it (the test once read whatever tables earlier
+    # tests had left: empty on a fresh per-worker database in a CI shard)
+    deps = await open_deps("production", PG, vector=False)
     try:
-        async with store._engine.connect() as conn:
+        async with deps.run_store._engine.connect() as conn:
             rows = (await conn.execute(text(
                 "SELECT DISTINCT table_name FROM information_schema.columns "
                 "WHERE table_schema = 'public' AND column_name IN "
                 "('session_id', 'run_id', 'thread_id', 'dataset_id', 'user_id')"))).scalars()
             tables = set(rows)
     finally:
-        await store._engine.dispose()
-    assert tables, "no tables found: run the other Postgres tests first"
+        await _close(deps)
+    assert tables, "no tables found"
     assert tables - set(PURGE_TABLES) - NOT_USER_DATA == set()
 
 
