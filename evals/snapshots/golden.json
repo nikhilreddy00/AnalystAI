@@ -5227,7 +5227,7 @@
    }
   },
   "saas-1": {
-   "context": "86a32d18034996d7",
+   "context": "7daf7ec13e2ebc21",
    "roles": {
     "account_id": {
      "date": false,
@@ -5273,8 +5273,168 @@
     }
    }
   },
+  "saas-10": {
+   "context": "343491d079b795b2",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "saas-11": {
+   "context": "fe32f656fc64accd",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
   "saas-2": {
-   "context": "913d8aa077a61e1b",
+   "context": "5d865c7db4ab8f83",
    "roles": {
     "account_id": {
      "date": false,
@@ -5321,7 +5481,7 @@
    }
   },
   "saas-3": {
-   "context": "17d3f84355a37db6",
+   "context": "bad8fe64f77a0106",
    "roles": {
     "account_id": {
      "date": false,
@@ -5368,7 +5528,7 @@
    }
   },
   "saas-4": {
-   "context": "21906e8d8f90d4d3",
+   "context": "ece9a8cc60eb7a4d",
    "roles": {
     "account_id": {
      "date": false,
@@ -5409,6 +5569,391 @@
     "seats": {
      "date": false,
      "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "saas-5": {
+   "context": "60d5bc4d9a1f7fe4",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "saas-6": {
+   "context": "11aa48e9325f7b94",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "saas-7": {
+   "context": "383359b4fbf2fec5",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "saas-8": {
+   "context": "d99e25cf25d1711a",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "saas-9": {
+   "context": "4faff54648da1aaa",
+   "roles": {
+    "amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "invoice_date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "invoice_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "line_type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "period_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "period_start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "tax": {
+     "date": false,
+     "dtype": "float64",
      "id": false,
      "metric": true
     }
@@ -6785,8 +7330,8 @@
    "standard_code": "c478b06389b95606"
   },
   "hr_roster-1": {
-   "answers": "f802484eb4ea8c39",
-   "answers_by_group": "9410fdcdf54c7ed8",
+   "answers": "28627d06773362c1",
+   "answers_by_group": "e2f17f247957d430",
    "audit": "9236d79930eebd15",
    "chart": "9da14161615a1b71",
    "contract": "584853a42bb160c5",
@@ -6796,8 +7341,8 @@
    "standard_code": "033527e0b0285610"
   },
   "hr_roster_onerow-1": {
-   "answers": "f802484eb4ea8c39",
-   "answers_by_group": "9410fdcdf54c7ed8",
+   "answers": "28627d06773362c1",
+   "answers_by_group": "e2f17f247957d430",
    "audit": "dd064137664fee91",
    "chart": "8d0df1bf208611f5",
    "contract": "963e14ec2b95254f",
@@ -6809,7 +7354,7 @@
   "hr_snapshots-1": {
    "answers": "a70861690a87c849",
    "answers_by_group": "25c31f67d4aebade",
-   "audit": "11040f983b5047e3",
+   "audit": "77335b8ca42ae9ef",
    "chart": "e98ffddaeaa87224",
    "contract": "a3f5f0de68d8ad60",
    "extras": "424696454c0a15f8",
@@ -6896,36 +7441,69 @@
   },
   "saas_accounts-1": {
    "answers": "912dacf8d903c9fd",
-   "answers_by_group": "d4667516ad191230",
-   "audit": "034b52be8fbc20b7",
+   "answers_by_group": "de886d816557bb2a",
+   "audit": "78021bb4f3698e87",
    "chart": "be4babed1dc057e5",
-   "contract": "98fd1e7e5ca488de",
+   "contract": "7f29334093fe9316",
    "extras": "ceb01b779ac6009a",
    "frame": "aeda91087b27433b",
-   "kpis": "9ca5f20019075bac",
-   "standard_code": "9cf9d29f3aedf1af"
+   "kpis": "5aa0880e10b661f2",
+   "standard_code": "1424d1ef9455814e"
   },
   "saas_accounts-2": {
    "answers": "1d90fe67bf24aec3",
-   "answers_by_group": "2c4c28ec9b24973e",
-   "audit": "dc599ba22278a789",
+   "answers_by_group": "578c97c5bad9bb1b",
+   "audit": "ff08d5bd3a670843",
    "chart": "7526ccbaf995380e",
-   "contract": "de6c9f410fed0940",
+   "contract": "0de8b7206bff4bc8",
    "extras": "ddb01f120df451b4",
    "frame": "1df50698b8e9e977",
-   "kpis": "d8ed811190fe2c66",
-   "standard_code": "b789a46d8d24ab2a"
+   "kpis": "c909f573f42630ea",
+   "standard_code": "f7d14552594adafb"
   },
   "saas_accounts-3": {
    "answers": "03c8b5ffcca808ad",
-   "answers_by_group": "48e9e215228fbe34",
-   "audit": "034b52be8fbc20b7",
+   "answers_by_group": "d5d204335b4c487e",
+   "audit": "6888d7d3ff0dd2aa",
    "chart": "2361f67d93a910a5",
-   "contract": "ab046b6c7cb163b5",
+   "contract": "18d1841c7398b581",
    "extras": "d27aed53b67a63dd",
    "frame": "daf04f4973a699e9",
-   "kpis": "c4ce276bc81edfc8",
-   "standard_code": "03531dfff073117f"
+   "kpis": "795005caedf393ba",
+   "standard_code": "c5a83a91b6c5c627"
+  },
+  "saas_invoices-1": {
+   "answers": "cfce4abd32ae5eef",
+   "answers_by_group": "2509f548afac61df",
+   "audit": "336c6bfe2a99ca7c",
+   "chart": "839d0e9ffc47dc47",
+   "contract": "21c84284cbd7a012",
+   "extras": "feb099a905c9fe31",
+   "frame": "baf24c5aeabd28db",
+   "kpis": "7d7f4669f2663ce7",
+   "standard_code": "0ee49edba9c1c61c"
+  },
+  "saas_mrr_snapshots-1": {
+   "answers": "57ca076741b3b93d",
+   "answers_by_group": "f709bbdef7a19001",
+   "audit": "2f72b2502853d542",
+   "chart": "6e6ebd720e15559f",
+   "contract": "49a9bc63510682e9",
+   "extras": "291995a4c75d9cf4",
+   "frame": "a7bb0c03e2c7cad8",
+   "kpis": "20a6bd088276fdd7",
+   "standard_code": "440e68413b3a4664"
+  },
+  "saas_subscriptions-1": {
+   "answers": "c4b9e61a01ec501b",
+   "answers_by_group": "1af0a0f6c6fc58e7",
+   "audit": "f11f881596bf9118",
+   "chart": "32dda0321a6c25cf",
+   "contract": "41481d969337a280",
+   "extras": "a6967fce2c9bf888",
+   "frame": "1c37e7b146a98121",
+   "kpis": "d3792037b62e86d7",
+   "standard_code": "033527e0b0285610"
   },
   "sales-1": {
    "answers": "35416c8547d73a4b",
@@ -12568,6 +13146,302 @@
      "metric": false
     }
    }
+  },
+  "e2e-78": {
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-79": {
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-80": {
+   "roles": {
+    "amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "invoice_date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "invoice_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "line_type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "period_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "period_start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "tax": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-81": {
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-82": {
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
   }
  },
  "insight": {
@@ -12785,7 +13659,7 @@
    }
   },
   "ins-04-subs-overview": {
-   "context": "567273530c1d7276",
+   "context": "8de2bec899ed32c2",
    "roles": {
     "account_id": {
      "date": false,
@@ -13009,7 +13883,7 @@
    }
   },
   "ins-08-plan-revenue": {
-   "context": "6bdb38b817cb90a2",
+   "context": "b96f950bddd72b06",
    "roles": {
     "account_id": {
      "date": false,
@@ -13268,7 +14142,7 @@
    }
   },
   "ins-13-mom-vs-yoy": {
-   "context": "51653c2480adc200",
+   "context": "bf058d818927de23",
    "roles": {
     "account_id": {
      "date": false,
@@ -13457,7 +14331,7 @@
    }
   },
   "ins-16-tickets-not-significant-holdout": {
-   "context": "1f0275711d160eba",
+   "context": "21f155ee2cc7c44e",
    "roles": {
     "account_id": {
      "date": false,
@@ -13646,7 +14520,7 @@
    }
   },
   "ins-19-stale-memory-holdout": {
-   "context": "e031a18c48d10d8e",
+   "context": "6e4796c2ab92a388",
    "roles": {
     "account_id": {
      "date": false,
@@ -14332,7 +15206,7 @@
    }
   },
   "ins-29-multi-year-holdout": {
-   "context": "7fdb8847a2753f92",
+   "context": "2bd7738b554c1a43",
    "roles": {
     "account_id": {
      "date": false,
@@ -14911,7 +15785,7 @@
    }
   },
   "ins-38-tickets-null": {
-   "context": "fcbc91394c25d21a",
+   "context": "ab5df8b9ad097e18",
    "roles": {
     "account_id": {
      "date": false,
@@ -15064,7 +15938,7 @@
    }
   },
   "ins-41-loan-tape-overview": {
-   "context": "3849ad276dfcc4d8",
+   "context": "eb87d7466919f161",
    "roles": {
     "As Of Date": {
      "date": true,
@@ -15414,7 +16288,7 @@
    }
   },
   "ins-45-policies-overview": {
-   "context": "83a51532a69b2964",
+   "context": "334163940df6748f",
    "roles": {
     "Claim Count": {
      "date": false,
@@ -15503,7 +16377,7 @@
    }
   },
   "ins-46-loss-run-overview": {
-   "context": "f8a0cda47bca5a12",
+   "context": "b5d0c8eda2ec923f",
    "roles": {
     "Case Reserve": {
      "date": false,
@@ -15592,7 +16466,7 @@
    }
   },
   "ins-47-hr-roster-overview": {
-   "context": "8f720f1b7d00d067",
+   "context": "450af552aff3c45e",
    "roles": {
     "Annual_Salary": {
      "date": false,
@@ -15711,7 +16585,7 @@
    }
   },
   "ins-48-hr-snapshots-overview": {
-   "context": "53ef22cc9da4e85d",
+   "context": "f3bb0a24762e6550",
    "roles": {
     "Base_Salary": {
      "date": false,
@@ -15774,6 +16648,166 @@
      "metric": false
     },
     "Worker_Type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-49-saas-subscriptions-overview": {
+   "context": "a2b429a8d1ab0706",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "ins-50-saas-mrr-overview": {
+   "context": "3c99d7c06044a5af",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
      "date": false,
      "dtype": "str",
      "id": false,
@@ -24388,6 +25422,994 @@
      "dtype": "str",
      "id": false,
      "metric": true
+    }
+   }
+  },
+  "intake-saas-01": {
+   "context": "72bc5e1cebfddd78",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-saas-02": {
+   "context": "f1631ed6715a710a",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-saas-03": {
+   "context": "2a5a58ae4d29c348",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-saas-04": {
+   "context": "12222813b5e8e458",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-saas-05": {
+   "context": "7c72687edef2eef2",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-saas-06": {
+   "context": "fda2e08ca7667309",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-saas-07": {
+   "context": "52536a9544b9e6a2",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-saas-08": {
+   "context": "1ffe9c36254cb146",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-saas-09": {
+   "context": "9cc215546e2e3dd7",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-saas-10": {
+   "context": "5bdf9e0865b1c57f",
+   "roles": {
+    "amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "invoice_date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "invoice_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "line_type": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "period_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "period_start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "tax": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-saas-11": {
+   "context": "3643b622cf57ad18",
+   "roles": {
+    "cancel_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "canceled_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "contact_email": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "created": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "discount_pct": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "ended_at": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "interval": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "interval_count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "quantity": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "subscription_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "trial_end": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "unit_amount": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-saas-12": {
+   "context": "ad8f86ba5d12651d",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-saas-13": {
+   "context": "0a206c245ba8474d",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-saas-14": {
+   "context": "5eb892344531f28d",
+   "roles": {
+    "country": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "customer_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "month": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "mrr": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "plan": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "segment": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
     }
    }
   }

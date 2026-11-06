@@ -174,7 +174,9 @@ Every one has a test; HR stayed byte-identical except where listed in CHANGES.
 | 8 | pass-7 fix diff | 2 | 2 |
 | 9 | pass-8 fix diff | 1 | 3 |
 | 10 | pass-9 fix diff | 1 | 1 |
-| 11 | pass-10 fix diff | see the commit after this note | |
+| 11 | pass-10 fix diff | 1 | 0 |
+| 12 | pass-11 fix diff (the verdict regex) | 1 | 0 |
+| 13 | 40 fresh sentences on the verdict regex | 3 (folded in) | 2 |
 
 - **Why it didn't converge faster:** from pass 3 on, every major was in two places:
   - the never_say benchmark-verdict regex;
@@ -187,6 +189,15 @@ Every one has a test; HR stayed byte-identical except where listed in CHANGES.
   first commit, and the scorer's populations need right and wrong readings planted per change.
   Both are now tests (`test_saas.py`: 60+ sentences; `test_eval_scorer.py`: planted right ×1.0
   and wrong ×1.07 readings).
+
+- **Where the loop stopped, and why:** the last three passes were all on the never_say
+  benchmark-verdict regex, a free-text classifier.
+  - It is now tested on 150+ labelled sentences, and every reviewer's set passes.
+  - Pass 13's 40 fresh sentences: 37 right, then all 40 after its cases were folded in.
+  - It is one signal beside the critic (quality gate: defect recall 100%), and it only flags a
+    claim, never a number.
+  - Remaining known misses ('NRR had a strong quarter', 'churn remains a weakness', 'impressively
+    low') are minor and logged.
 
 ## Stated limits and follow-ups
 
@@ -216,14 +227,14 @@ Every one has a test; HR stayed byte-identical except where listed in CHANGES.
 - `subscriptions` / `saas_accounts`: now read as SaaS.
 - Every other dataset is byte-identical.
 
-## Time: ~6.5 h vs ~4.5 h
+## Time: ~6.8 h vs ~4.5 h
 
 | stage | time |
 |---|---|
 | context, research, brief, red-team, plan v2 | 0 h 50 |
 | build S0–S5, S2 ledger, pack, generators, tests, $0 gates | 1 h 40 |
 | paid gates and diagnoses | 1 h 10 |
-| audits 1–11 | 2 h 20 |
+| audits 1–13 | 2 h 30 |
 | browser (live + finished domains) and docs | 0 h 40 |
 
 The overrun is the audit tail (passes 3–10) on the regex and the scorer.
