@@ -191,18 +191,18 @@ kpis:
     num: [[{spell: moves, move: reactivation, where: *paying}], [{spell: moves, move: reactivation, where: *positive}]]
   # The cohort: customers paying 12 months before the as-of (or before the asked period's end) [SC]
   - name: opening_customers
-    label: Customers 12 months earlier
+    label: Opening customers
     unit: count
     unit_word: customers
     num: [[{spell: opening, where: *paying}], [{spell: opening, where: *positive}]]
   - name: opening_mrr
-    label: MRR 12 months earlier
+    label: Opening MRR
     unit: money
     num: [[{spell: opening, sum: mrr, where: *paying}], [{spell: opening, sum: mrr, where: *positive}]]
   # Logo churn: of the customers paying 12 months earlier, the share not paying now (a customer
   # who left and came back is retained) [CM][SC]; never a monthly rate × 12
   - name: logo_churn_rate
-    label: Logo churn (12 months)
+    label: Logo churn
     unit: percent
     tile: true
     num: [[{spell: opening, where: *paying}, {spell: retained, sign: -1, where: *paying}],
