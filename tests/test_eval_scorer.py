@@ -510,3 +510,34 @@ def test_a_group_named_with_a_qualifier_is_its_group_never_another():
     assert not check_segment_value_truth(f({"2025": 0.23, "20261": 0.26}), truth, "exit_event_date", "r")[0]
     assert not check_segment_value_truth(f({"2025": 0.23, "2026 H1": 0.26, "2026 H2": 0.26}),
                                          truth, "exit_event_date", "r")[0]
+
+
+def test_false_findings_know_month_groups_dates_with_colons_and_parts_of_a_level():
+    """Domain 6 analysis gate, rescored at \$0 (lesson 17): right values were 'false' because the
+    scorer grouped a date by day when the agent grouped by month ('2025-09'), split a date group
+    '2024-11-01 00:00:00|SMB' at its colons, and checked a part of a level (churned MRR filed as
+    sum mrr) as the level's plain total."""
+    import pandas as pd
+
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+
+    def ff(df, seg):
+        return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    inv = datagen.make("saas_invoices", 1)[0]
+    m = pd.to_datetime(inv["invoice_date"]).dt.to_period("M").astype(str)
+    by = inv.assign(_m=m).groupby("_m")["amount"].sum()
+    seg = SegmentResult(segment_column="invoice_date", metric_column="amount", aggregation="sum",
+                        results=[{"name": k, "value": float(v)} for k, v in by.items()])
+    assert ff(inv, seg)["false"] == 0
+    snaps = datagen.make("saas_mrr_snapshots", 1)[0]
+    snaps["month"] = pd.to_datetime(snaps["month"])   # as cleaning hands it on
+    lvl = snaps.groupby(["month", "segment"])["mrr"].sum().head(3)
+    seg = SegmentResult(segment_column="month|segment", metric_column="mrr", aggregation="last",
+                        results=[{"name": f"{pd.Timestamp(a)}|{b}", "value": float(v)} for (a, b), v in lvl.items()])
+    assert ff(snaps, seg)["false"] == 0
+    part = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="sum",
+                         results=[{"name": "SMB", "value": 1234.5}])
+    assert ff(snaps, part)["verifiable"] == 0

@@ -64,6 +64,15 @@ def _is_rate(s: pd.Series) -> bool:
     return len(v) > 0 and v.between(0, 1).all()
 
 
+def _is_level(df: pd.DataFrame, metric: str) -> bool:
+    """A level (MRR, a balance: never summed across dates), by production's own column hint."""
+    from agents.ingestion_agent import build_contract
+    from agents.utils import column_hint
+    from orchestrator.state import ConnectorType
+    hint = column_hint(build_contract(df, ConnectorType.CSV, {}), metric)
+    return hint is not None and hint.aggregation in ("last", "first")
+
+
 def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
     """pandas' groupby, except a level ('last' / 'first', a semantic-layer balance or seat
     count): each entity's latest value, summed, as production computes it (agents.utils)."""
@@ -314,8 +323,19 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         if seg.aggregation not in (*_AGGS, "last", "first") or _derived_truth(seg, truth):
             continue
         agg = seg.aggregation
+        if agg == "sum" and _is_level(df, seg.metric_column):
+            # a sum of a level that production kept is a part of it (churned or new MRR by month:
+            # analysis_agent._a_part_of); a summed level is replaced by the level before scoring
+            continue
         wants = []
+        # a date column grouped by month ('2025-09'): its month, as the agent named the groups
+        parts = [str(r.get("name")).split("|") for r in seg.results]
+        monthly = {c for i, c in enumerate(cols) if parts and all(
+            len(p) == len(cols) and re.fullmatch(r"\d{4}-\d{2}", p[i]) for p in parts)}
         for rows in _populations(df, seg.metric_column):
+            if monthly:
+                rows = rows.assign(**{c: pd.to_datetime(rows[c], format="mixed", errors="coerce")
+                                      .dt.to_period("M").astype(str) for c in monthly})
             want = _grouped(rows, cols, seg.metric_column, agg)
             want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
                           for i in want.index]
@@ -331,7 +351,8 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         distinct.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
                           for i in distinct.index]
         for row in seg.results:
-            name = "|".join(_strata(str(row.get("name")))) if len(cols) > 1 else str(row.get("name"))
+            raw = str(row.get("name"))   # a date group holds ':' ('2024-11-01 00:00:00|SMB')
+            name = raw if "|" in raw else "|".join(_strata(raw)) if len(cols) > 1 else raw
             ok = any(name in w.index and any(_close(row.get("value"), w[name] * k, 0.01) for k in sc)
                      for w in wants)
             if not ok and agg == "count" and name in distinct.index:   # "count account_id": accounts

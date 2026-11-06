@@ -176,3 +176,18 @@ def test_a_column_and_its_formula_inputs_are_never_a_correlation_finding():
     g = AnalysisFindings(eda_summary={}, correlations={"mrr__quantity": 0.5}, trends=[], segments=[],
                          anomalies=[], statistical_tests=[], code_executed="")
     assert not drop_formula_correlations(g, own) and g.correlations
+
+
+def test_the_ledger_facts_give_the_model_its_numbers_by_month_and_by_group():
+    """Analysis gate (lesson 12): saas-10 / 11 / 8 re-derived a cohort by segment or a month's
+    churn and went wrong; the facts now carry them, equal to truth."""
+    df, _, pack, roles, t = _setup("saas_mrr_snapshots")
+    facts = " ".join(dp.spell_facts(pack, df, roles))
+    for k, v in t["monthly_logo_churn_by_month"].items():
+        assert f"{k} {v:.2%}" in facts, k
+    for k, v in t["churned_mrr_by_month_window"].items():
+        assert f"{k} ${v:,.2f}" in facts, k
+    df, _, pack, roles, t = _setup("saas_subscriptions")
+    facts = " ".join(dp.spell_facts(pack, df, roles))
+    for k, v in t["logo_churn_by_segment"].items():
+        assert f"{k} {v:.1%}" in facts, k

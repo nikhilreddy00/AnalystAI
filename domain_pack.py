@@ -991,7 +991,53 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             if by is not None and len(by) <= 15:
                 lines.append(f"{mean.label} by {roles[g]} (a group's rate divides by its own): "
                              + ", ".join(f"{k} {x:,.1f}" for k, x in by.items()) + ".")
-    return lines + spell_story(pack, df, roles)
+    return lines + _ledger_facts(pack, df, roles, lo, as_of) + spell_story(pack, df, roles)
+
+
+def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of) -> list[str]:
+    """The ledger's numbers by month and by group, for a model to quote, never rebuild (Domain 6
+    analysis gate: re-deriving a cohort by segment or a month's churn went wrong in 4 of 33
+    runs): each money move by month, the paying count at each month-end and the monthly churn
+    (churned at a month-end ÷ in force at the one before), each cohort rate tile by the first
+    two overview groups. Only for KPIs made of ledger terms (no other pack has them)."""
+    def ledger(k: KPI) -> bool:
+        return computable(pack, k.name, roles) and all(
+            t.spell in ("opening", "retained", "moves") for alt in [*k.num[:1], *(k.den or [])[:1]]
+            for t in (alt if alt is not k.den else alt) if not t.kpi) and any(
+            t.spell in ("opening", "retained", "moves") or (t.kpi and pack.kpi(t.kpi).num[0][0].spell
+                                                          in ("opening", "retained", "moves"))
+            for t in k.num[0])
+    out: list[str] = []
+    frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+    # months that start inside the window (a 29 Oct as-of: Nov … Oct, never the 2-day sliver
+    # of the October before shown as a whole month); `upto` also the month-end before them
+    months = lambda s: [p for p in s.index if p.start_time.normalize() > lo]   # noqa: E731
+    upto = lambda s: [p for p in s.index if (p + 1).start_time.normalize() > lo]   # noqa: E731
+    for k in (k for k in pack.kpis if ledger(k) and k.unit in ("money", "count") and k.den is None
+              and len(k.num[0]) == 1 and k.num[0][0].spell == "moves"):
+        if (s := compute_kpi(frame, roles, pack, k.name, by="_period", full=df)) is not None:
+            out.append(f"{k.label} by month (12 months to {as_of:%-d %b %Y}): " + ", ".join(
+                f"{p} {_amount(pack, df, roles, k, s[p])}" for p in months(s)) + ".")
+    heads = next((k for k in pack.kpis if k.tile and k.state and k.unit == "count"
+                  and spell_terms(pack, k.name) and computable(pack, k.name, roles)), None)
+    lost = next((k for k in pack.kpis if ledger(k) and k.unit == "count" and len(k.num[0]) == 1
+                 and k.num[0][0].spell == "moves" and k.num[0][0].move == "churn"), None)
+    if heads and lost:
+        n = compute_kpi(frame, roles, pack, heads.name, by="_period", full=df)
+        c = compute_kpi(frame, roles, pack, lost.name, by="_period", full=df)
+        if n is not None and c is not None:
+            out.append(f"{heads.label} at each month-end: " + ", ".join(
+                f"{p} {n[p]:,.0f}" for p in upto(n)) + ".")
+            rate = {p: c.get(p, 0) / n[p - 1] for p in months(n) if (p - 1) in n.index and n[p - 1]}
+            out.append(f"Monthly churn ({lost.phrase} at a month-end ÷ {heads.phrase} at the month-end "
+                       "before; never × 12 into an annual rate): " + ", ".join(
+                           f"{p} {v:.2%}" for p, v in rate.items()) + ".")
+    for k in (k for k in pack.kpis if k.tile and k.unit == "percent" and ledger(k)):
+        for g in [g for g in pack.overview_groups if g in roles][:2]:
+            if (by := compute_kpi(df, roles, pack, k.name, by=roles[g])) is not None and len(by) <= 15:
+                out.append(f"{k.label} by {roles[g]} (each group's own cohort, placed by its row on "
+                           f"{lo:%-d %b %Y}): " + ", ".join(f"{x} {v:.1%}" for x, v in by.items()) + ".")
+    return out
 
 
 def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str]:
