@@ -28,6 +28,16 @@ def _worker_database() -> None:
 _worker_database()
 
 
+def pytest_collection_modifyitems(config, items):
+    """CI_SHARD=i/n (CI's backend matrix): this job runs every n-th test from the i-th. By test,
+    not by file: the slow cross-domain tests are spread over many files."""
+    if not (shard := os.environ.get("CI_SHARD")):
+        return
+    i, n = map(int, shard.split("/"))
+    config.hook.pytest_deselected(items=[t for k, t in enumerate(items) if k % n != i])
+    items[:] = items[i::n]
+
+
 @pytest.fixture(autouse=True)
 def recorded_llm(tmp_path, monkeypatch):
     """Every test runs against an empty RecordedClient — a real model call is impossible.
