@@ -2029,6 +2029,19 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     return text[0].upper() + text[1:] + "."
 
 
+def named_kpis(pack: Pack, contract, message: str) -> list[str]:
+    """THE KPIs a question names, in its order: a glossary word, unless it is a column's own name
+    and not the KPI's ("average revenue" with a revenue column is that column), or the pack's
+    `consumed` words. Intake fills the KPI from it; a question naming two ('MRR and paying
+    customers', 'NRR and GRR') is answered for each (targeted_analysis_agent)."""
+    by_name = {normalize_header(c): r for r, c in contract.roles.items()}
+    own = {normalize_header(x.name) for x in contract.columns}
+    return [c for c, w in glossary_hits(pack, message, []) if pack.kpi(c)
+            and (normalize_header(w) not in own
+                 or (normalize_header(w) in {c, normalize_header(pack.kpi(c).label)}
+                     and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
+
+
 def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
     """[(concept, the words used)] for each glossary concept the question names as whole words,
     unless the words are just one of the data's own column names ("revenue" in a file with a

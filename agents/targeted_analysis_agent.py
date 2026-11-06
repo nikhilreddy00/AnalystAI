@@ -80,6 +80,7 @@ from domain_pack import (
     describe_kpi,
     main_currency,
     money_columns,
+    named_kpis,
     pay_columns,
     pack_caveats,
     pack_for,
@@ -175,6 +176,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     if handler is handle_kpi:
         extra = {"full": full, "intent": intent}
     response = handler(df, params, contract, ctx=ctx, **extra)
+    if handler is handle_kpi and response.answer_text and not response.unanswerable_reason:
+        response.answer_text += _also_named(full, params, contract, pack, session.task_plan.raw_query)
     if period and handler is not handle_kpi:
         response.answer_text += f" Period: {period}."
     response.chart_configs = finalize_charts(response.chart_configs, ctx)
@@ -182,6 +185,34 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract, pack, question: str) -> str:
+    """The other KPIs the question names ('What is our MRR and how many paying customers?'),
+    each overall, in its own words: an answer gives every figure asked for (Domain 6 E2E gate:
+    one of two was given). domain_pack.named_kpis decides which, as intake does."""
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    out = []
+    group = params.group_by or params.segment_column
+    if group and additive(pack, params.kpi) and _TOTAL_WORDS.search(question or "") and \
+            (v := compute_kpi(df, roles, pack, params.kpi)) is not None:   # 'total billings, by type'
+        k = pack.kpi(params.kpi)
+        _, currency, _ = main_currency(df, roles)
+        kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
+        out.append(f"{k.label} in total: {k.written(_format_value(v, kind, currency if kind == 'currency' else None))}.")
+    for name in named_kpis(pack, contract, question or ""):
+        if name == params.kpi or not computable(pack, name, roles):
+            continue
+        k = pack.kpi(name)
+        v = compute_kpi(df, roles, pack, name)
+        if v is None:
+            continue
+        _, currency, _ = main_currency(df, roles)
+        kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
+        when = window_words(pack, df, roles, name)
+        out.append(f"{k.label}{f' ({when})' if when else ''}: "
+                   f"{k.written(_format_value(v, kind, currency if kind == 'currency' else None))}.")
+    return (" Also asked: " + " ".join(out)) if out else ""
+
 
 _TOTAL_WORDS = re.compile(r"\b(?:total|sum|summed|combined|altogether|overall amount|payroll|"
                           r"bed[- ]?days|how much)\b", re.I)
@@ -1241,7 +1272,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         uncut = series
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
-        if spelled and freq != "Y" and kind == "percent":   # a month's rate is a month's
+        cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, kpi.name))
+        if spelled and freq != "Y" and kind == "percent" and cohort:   # NRR at each month-end
+            unit = f"{unit} (each point the 12-month cohort ending that period)"
+        elif spelled and freq != "Y" and kind == "percent":   # a month's rate is a month's
             unit = f"{unit} ({ {'W': 'weekly', 'M': 'monthly', 'Q': 'quarterly'}[freq]} rates, not annualised)"
         if develops:   # every period shown, the young ones named: never a partial cut or a trend
             if len(whole) < len(series) and series.index[-1] not in whole.index:   # say its coverage

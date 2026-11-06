@@ -199,3 +199,16 @@ def test_a_level_by_group_reads_the_stock_tiles_rows():
     from agents.utils import aggregate
     df, contract, pack, roles, t = _setup("saas_subscriptions")
     assert aggregate(df, "segment", "mrr", "sum", contract).to_dict() == pytest.approx(t["mrr_by_segment"])
+
+
+def test_a_question_naming_two_kpis_gets_both():
+    """E2E gate (e2e-79/81): 'MRR and how many paying customers' / 'NRR and GRR' answered one.
+    domain_pack.named_kpis lists both; the answer gives the others too."""
+    from tests.test_oracle import answer
+    _, _, _, _, t = _setup("saas_mrr_snapshots")
+    text, _ = answer("saas_mrr_snapshots", "segment_compare",
+                     "What is our MRR and how many paying customers do we have?", kpi="paying_customers")
+    assert f"${t['mrr']:,.2f}" in text and "539" in text
+    text, _ = answer("saas_invoices", "segment_compare", "What were our total billings, by line type?",
+                     kpi="billings", group_by="line_type")
+    assert "$5,931,219.00" in text
