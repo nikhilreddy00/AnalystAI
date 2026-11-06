@@ -147,7 +147,7 @@ kpis:
     num: [[{spell: active, where: *paying}], [{spell: active, where: *positive}]]
   # ARPA: MRR ÷ paying customers (per account, never per subscription row) [CM]
   - name: arpa
-    label: ARPA (per paying customer)
+    label: ARPA per paying customer
     unit: money
     num: [[{spell: active, sum: mrr, where: *paying}], [{spell: active, sum: mrr, where: *positive}]]
     den: [[{spell: active, where: *paying}], [{spell: active, where: *positive}]]
