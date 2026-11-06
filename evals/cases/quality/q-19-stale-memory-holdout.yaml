@@ -14,4 +14,8 @@ defects:
   label: unsupported
   text: Monthly recurring revenue fell 20% year over year, and it also fell 8.0% in October 2026 compared
     with September 2026.
-natural: []
+natural:
+- i: 4
+  kind: number
+  label: contradicted
+# Domain 6: the subscriptions file reads as SaaS (MRR is a level): a mean over every account-month ($769.01) or MRR summed over 30 months ($576,754.42 'monthly') is no number the evidence holds, so the check flags it (was labelled supported before the pack).

@@ -1000,6 +1000,22 @@ def _repair_label(note: str) -> str:
             else "breakdown_recomputed" if " recomputed: " in note else "level_recomputed")
 
 
+def _a_part_of(s, totals: pd.Series) -> bool:
+    """A breakdown of a level whose values sit below the level itself in some group (churned or
+    new MRR by month, a change): another meaning, the model's own, never replaced by the level
+    (lesson 13; Domain 6 smoke saas-8). A level summed over snapshots is at least the level."""
+    def key(k) -> str:
+        k = "|".join(map(str, k)) if isinstance(k, tuple) else str(k)
+        try:   # a date names its day however it is written ('2025-11-01', '2025-11-01 00:00:00')
+            return f"{pd.Timestamp(k):%Y-%m-%d}" if any(ch.isdigit() for ch in k) and "-" in k else k
+        except (ValueError, TypeError):
+            return k
+    level = {key(k): float(v) for k, v in totals.items()}
+    got = {key(r.get("name")): r.get("value") for r in s.results if isinstance(r, dict)}
+    return any(isinstance(v, (int, float)) and k in level and abs(v) < 0.98 * abs(level[k])
+               for k, v in got.items())
+
+
 def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
                       timeframe: str | None = None, builtin: set[str] = frozenset()) -> list[str]:
     """The model's breakdowns, recomputed where its code read the wrong rows (plan v2 B2: the
@@ -1060,6 +1076,8 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
                 f.segments.remove(s)
                 notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
                 continue
+            if _a_part_of(s, totals):
+                continue
             s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                           "value": round(float(v), 4)} for k, v in totals.items()]
             s.aggregation = hint.aggregation
@@ -1076,6 +1094,8 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
         except (LevelUnavailable, KeyError):
             f.segments.remove(s)
             notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
+            continue
+        if _a_part_of(s, totals):
             continue
         s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                       "value": round(float(v), 4)} for k, v in totals.items()]

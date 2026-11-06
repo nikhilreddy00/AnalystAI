@@ -127,3 +127,37 @@ def test_cohort_rates_by_group_equal_truth():
     df, _, pack, roles, t = _setup("saas_subscriptions")
     by = dp.compute_kpi(df, roles, pack, "logo_churn_rate", by=roles["segment"])
     assert by.to_dict() == pytest.approx(t["logo_churn_by_segment"])
+
+
+def test_a_breakdown_of_part_of_a_level_is_never_replaced_by_the_level():
+    """Smoke run saas-8 (lesson 13): the model's churned MRR by month (a part of MRR, filed under
+    the mrr column) was replaced four times by MRR by month, a level_recomputed repair meant for a
+    level summed over every snapshot. A summed level is at least the level in every group; a
+    churned, new or changed part is below it, and is the model's own meaning."""
+    from agents.analysis_agent import repair_breakdowns
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    churn = SegmentResult(segment_column="month", metric_column="mrr", aggregation="sum", results=[
+        {"name": f"{k}-01", "value": v} for k, v in t["churned_mrr_by_month_window"].items()])
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[churn], anomalies=[],
+                         statistical_tests=[], code_executed="")
+    repair_breakdowns(f, df, contract)
+    assert {r["name"]: r["value"] for r in f.segments[0].results} == {
+        f"{k}-01": v for k, v in t["churned_mrr_by_month_window"].items()}
+    naive = df.groupby("segment")["mrr"].sum()   # the bug it is for: MRR summed over 24 months
+    summed = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="sum",
+                           results=[{"name": k, "value": float(v)} for k, v in naive.items()])
+    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[summed], anomalies=[],
+                         statistical_tests=[], code_executed="")
+    assert repair_breakdowns(f, df, contract)
+    assert {r["name"]: r["value"] for r in f.segments[0].results} == pytest.approx(t["mrr_by_segment_now"])
+
+
+def test_in_force_now_is_the_mrr_tiles_own_rows():
+    """Smoke saas-6: the model summed mrr over every row. The brief points it at in_force_now,
+    which must be exactly the tile's rows (test accounts and other currencies out too)."""
+    from agents.analysis_agent import model_frame
+    df, contract, pack, roles, t = _setup("saas_subscriptions")
+    f, _ = model_frame(df, contract)
+    by = f[f["in_force_now"] == "yes"].groupby("segment")["mrr"].sum()
+    assert by.to_dict() == pytest.approx(t["mrr_by_segment"])

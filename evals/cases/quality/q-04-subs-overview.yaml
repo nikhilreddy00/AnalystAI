@@ -21,4 +21,8 @@ defects:
     so a smaller number of high-value accounts pull the average up.'
   ids:
   - seg:plan/mrr
-natural: []
+natural:
+- i: 4
+  kind: number
+  label: contradicted
+# Domain 6: the subscriptions file reads as SaaS (MRR is a level): a mean over every account-month ($769.01) or MRR summed over 30 months ($576,754.42 'monthly') is no number the evidence holds, so the check flags it (was labelled supported before the pack).

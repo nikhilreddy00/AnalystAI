@@ -2381,6 +2381,9 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
                   and computable(pack, k.name, roles)), None)
     where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), []) if stock else []
     counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
+    if stock is not None:   # and the tile's own rows: its row kinds, the main currency (Domain 6
+        # smoke: test accounts and EUR subscriptions were marked in force, the tile leaves them out)
+        counted &= row_kinds(df, roles, pack).isin(stock.rows) & main_currency(df, roles)[0]
     out = df.copy()
     lo = w[0]
     for col, which in ((start_col, "starts"), (end_col, "ends")):

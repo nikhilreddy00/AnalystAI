@@ -10,5 +10,12 @@ roles:
   billing_period: category
   mrr: metric
   signup_date: date
-expect_domain: null
-label_note: 'SaaS plans: a price alone is one signal, not retail.'
+expect_domain: saas
+expect_roles:
+  customer: account_id
+  plan: plan
+  interval: billing_period
+  unit_amount: price
+  quantity: seats
+  mrr: mrr
+label_note: 'SaaS plans: a price alone is one signal, not retail. Domain 6: customer + MRR is the SaaS pack (strong).'
