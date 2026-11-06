@@ -550,3 +550,23 @@ def test_a_withheld_conclusion_is_a_hedge():
     assert _HEDGE.search("No conclusion about which plan drives more tickets can be drawn until more data")
     assert _HEDGE.search("The gap is consistent with chance, so neither plan leads.")
     assert not _HEDGE.search("Enterprise plans generate more tickets than Basic plans.")
+
+
+def test_a_levels_count_and_mean_on_a_spell_list_are_per_customer():
+    """Final re-measure, rescored at \$0: saas-6's paying customers by segment (152/77/22) and ARPA
+    (MRR ÷ customers) were 'false': the scorer knew rows only (lesson 17)."""
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from tests.test_saas import _setup
+    from agents.analysis_agent import model_frame
+    df, contract, *_ = _setup("saas_subscriptions")
+    f, _ = model_frame(df, contract)
+    now = f[f["in_force_now"] == "yes"]
+    n = now.groupby("segment")["customer_id"].nunique()
+    arpa = now.groupby("segment")["mrr"].sum() / n
+    segs = [SegmentResult(segment_column="segment", metric_column="mrr", aggregation=a,
+                          results=[{"name": k, "value": float(v)} for k, v in s.items()])
+            for a, s in (("count", n), ("mean", arpa))]
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=segs,
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert out["false"] == 0 and out["verifiable"] == 6

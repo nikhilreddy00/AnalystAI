@@ -441,3 +441,23 @@ def test_pass_5_minors():
     assert not any(ln.startswith("MRR bridge") or "left at a month-end" in ln for ln in story)
     line = next(ln for ln in dp.spell_story(pack, df, roles) if ln.startswith("MRR bridge"))
     assert line.startswith(f"MRR bridge, {dp.window_words(pack, df, roles, 'new_mrr')}:")
+
+
+@pytest.mark.parametrize("t, verdict", [
+    ("Churn was poor-fit driven.", False), ("Retention figures are poor for 2024 (few rows).", False),
+    ("Churn coverage is weak before 2025.", False), ("The churn analysis is solid.", False),
+    ("Retention is still quite solid.", True), ("Churn is low compared with industry benchmarks.", True),
+    ("NRR is impressive at 115%.", True)])
+def test_pass_6_sentences(t, verdict):
+    import re
+    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
+    assert bool(re.search(bench.pattern, t, re.I)) == verdict
+
+
+def test_short_snapshots_bridge_months_are_its_moves():
+    """Pass 6: on Aug-Oct snapshots the bridge said '3 months' (2 months of moves)."""
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    short = df[pd.to_datetime(df["month"]) >= "2026-08-01"]
+    assert dp.window_words(pack, short, roles, "new_mrr") == "2 months to 31 Oct 2026"
+    assert next(ln for ln in dp.spell_story(pack, short, roles) if ln.startswith("MRR bridge")).startswith(
+        "MRR bridge, 2 months to 31 Oct 2026: $538,652.55 on 31 Aug 2026")

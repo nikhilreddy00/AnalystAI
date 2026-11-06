@@ -87,6 +87,30 @@ def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
     return df.groupby(by)[metric].agg(agg)
 
 
+def _per_entity(df: pd.DataFrame, cols: list[str], metric: str, agg: str) -> list[pd.Series]:
+    """On spell data, a level's count and mean per entity in force (paying customers by segment,
+    ARPA = MRR ÷ customers): the readings a senior analyst gives, never rows (Domain 6 rescore)."""
+    from agents.ingestion_agent import build_contract
+    from agents.utils import level_rows
+    from domain_pack import has_spell, pack_for
+    from orchestrator.state import ConnectorType
+    if agg not in ("count", "mean"):
+        return []
+    contract = build_contract(df, ConnectorType.CSV, {})
+    pack = pack_for(contract.domain)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    if not (pack and has_spell(pack, roles)):
+        return []
+    now = level_rows(df, metric, contract)
+    ent = roles[pack.spell.entity]
+    if len(now) == len(df) or not set(cols) <= set(now.columns):
+        return []
+    g = now.groupby(cols)
+    out = g[ent].nunique() if agg == "count" else g[metric].sum() / g[ent].nunique()
+    out.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in out.index]
+    return [out]
+
+
 def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
     """The rows a group value of `metric` can be computed over. A snapshot column (a
     semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
@@ -95,14 +119,17 @@ def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
     (domain_pack.rows_for: a claim line's last version, never a replaced one; Domain 3 smoke run).
     Any other column: every row (a churn rate over latest rows is another number)."""
     from agents.ingestion_agent import build_contract
-    from agents.utils import column_hint, latest_rows
+    from agents.utils import column_hint, latest_rows, level_rows
     from domain_pack import rows_for
     from orchestrator.state import ConnectorType
     contract = build_contract(df, ConnectorType.CSV, {})
     hint = column_hint(contract, metric)
     if hint is None or hint.aggregation not in ("last", "first"):
         counted, how = rows_for(df, contract, metric)
-        return [df, counted] if how else [df]
+        # a level on a spell list (MRR of each subscription): production's in-force rows
+        # (utils.level_rows -> domain_pack.in_force_counted), what the brief tells the agent
+        current = level_rows(df, metric, contract)
+        return [df, *([counted] if how else []), *([current] if len(current) != len(df) else [])]
     return [df, latest_rows(df, metric, contract)]
 
 
@@ -323,9 +350,11 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         if seg.aggregation not in (*_AGGS, "last", "first") or _derived_truth(seg, truth):
             continue
         agg = seg.aggregation
-        if agg == "sum" and _is_level(df, seg.metric_column):
-            # a sum of a level that production kept is a part of it (churned or new MRR by month:
-            # analysis_agent._a_part_of); a summed level is replaced by the level before scoring
+        if _is_level(df, seg.metric_column) and (agg == "sum" or agg == "mean" and any(
+                pd.api.types.is_datetime64_any_dtype(df[c]) for c in cols)):
+            # a sum or mean of a level by its dates that production kept is a part of it (churned
+            # MRR by month, its mean per churned customer: analysis_agent._a_part_of); a summed
+            # level is replaced by the level before scoring
             continue
         wants = []
         # a date column grouped by month ('2025-09'): its month, as the agent named the groups
@@ -346,6 +375,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
                      and k not in want.index} if len(whole) else {}
             want = pd.concat([want, pd.Series(extra, dtype=float)]) if extra else want
             wants.append(want)
+        wants += _per_entity(df, cols, seg.metric_column, agg)
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
         distinct = df.groupby(cols)[seg.metric_column].nunique() if agg == "count" else pd.Series()
         distinct.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)

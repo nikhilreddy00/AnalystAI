@@ -941,6 +941,11 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
     if kpi.state:
         return f"as of {as_of:%-d %b %Y}"
     spells = {t.spell for t in spell_terms(pack, name)}
+    if "moves" in spells:   # moves start after the first known state (pass 6: a month too many)
+        known = first_known(pack, roles, spell_from(pack, df, roles))
+        months = sum(p > known for p in pts)
+        if months < 1:
+            return ""
     if spells & {"opening", "retained"}:   # whatever period is asked: the cohort ending there
         start = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
         if spells == {"opening"}:   # a level at the cohort's start (Opening MRR)
@@ -2430,14 +2435,15 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
             # all whole numbers (1 = 1%); a rate (0.2) otherwise. Rows on the other scale: blank
             percent = bool(len(given)) and bool((given > 1).mean() > 0.5 or (
                 (given > 1).any() and (given == given.round()).all()))
-            if len(given) and (given == 1).all():   # 1 = 100% off or 1%: no scale to read it by
+            ones = bool(len(given)) and bool((given == 1).all())
+            if ones:   # 1 = 100% off or 1%: no scale to read it by
                 notes.append(f"{name}: {roles[f.net_of]} holds only 1s: its scale (100% or 1%) is "
                              "unclear, so those rows are left blank.")
-            wrong = ((rate > 1) if not percent else ((rate > 0) & (rate < 1))) | \
-                ((rate == 1) & bool(len(given) and (given == 1).all()))
-            if odd := int(wrong.sum()):
+            wrong = (rate == 1) if ones else (rate > 1) if not percent else ((rate > 0) & (rate < 1))
+            if (odd := int(wrong.sum())) and not ones:
                 notes.append(f"{name}: {odd:,} row{'s' * (odd != 1)} of {roles[f.net_of]} disagree "
                              f"with the column's {'percent' if percent else 'rate'} scale: left blank.")
+            if odd:
                 out = out.where(~wrong)
             out = out * (1 - (rate / 100 if percent else rate))
         for x in f.over:
