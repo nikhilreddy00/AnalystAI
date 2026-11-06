@@ -942,7 +942,7 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
         return f"as of {as_of:%-d %b %Y}"
     spells = {t.spell for t in spell_terms(pack, name)}
     if spells & {"opening", "retained"}:   # whatever period is asked: the cohort ending there
-        start = cohort_start(as_of, spell_from(pack, df, roles), bool(_snapshot_column(pack, roles)))
+        start = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
         if spells == {"opening"}:   # a level at the cohort's start (Opening MRR)
             return f"on {start:%-d %b %Y}"
         n = round((as_of - start).days / 30.44)
@@ -1084,7 +1084,10 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         if not (k.tile and k.unit == "percent" and spell_terms(pack, k.name) and computable(pack, k.name, roles)):
             continue
         now = compute_kpi(df, roles, pack, k.name)
-        then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok else None
+        cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))
+        whole_year = not cohort or back[1] - pd.DateOffset(months=12) >= first_known(
+            pack, roles, spell_from(pack, df, roles))   # an 11-month cohort is no year-earlier 12
+        then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok and whole_year else None
         if now is not None:
             out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
                 f"; a year earlier ({window_words(pack, df, roles, k.name, back)}): {then:.1%}, "
@@ -1146,10 +1149,14 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
         if start is not None and now is not None and None not in val.values():
             terms = [f"+ {k.phrase} {say(k, val[m])}" if m not in ("contraction", "churn")
                      else f"− {k.phrase} {say(k, val[m])}" for m, k in parts.items() if k]
+            rest = now - start - sum(v if m not in ("contraction", "churn") else -v for m, v in val.items())
+            if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
+                terms.append(f"{'+' if rest > 0 else '−'} changes in continuing {pack.spell.words.plural}' "
+                             f"own records {say(stock, abs(rest))}")
             out.append(f"{stock.label} bridge, 12 months to {as_of:%-d %b %Y}: {say(stock, start)} on "
                        f"{lo:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
-                       + ("" if parts["expansion"] else f" Expansion and contraction are not in "
-                          f"this file (no {pack.spell.words.plural}' monthly values)."))
+                       + ("" if parts["expansion"] else " Expansion and contraction (price or seat "
+                          f"changes) are not in this file (no {pack.spell.words.plural}' monthly values)."))
     lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
         (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
          and any(t.spell == "retained" and t.sum is None for alt in k.num for t in alt)), None)
@@ -1412,11 +1419,19 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     return sum(vals) / len(pts)
 
 
-def cohort_start(as_of, first, snapshots: bool = False):
+def first_known(pack: Pack, roles: dict[str, str], first: pd.Timestamp) -> pd.Timestamp:
+    """THE first date the data knows each entity's state: snapshots, the first snapshot (a month
+    label on the 1st: that month's end, as spell_as_of reads it); spells, the day before the first
+    date (in force by start dates). The ledger's opening and moves start there at the earliest."""
+    if not _snapshot_column(pack, roles):
+        return first - pd.Timedelta(days=1)
+    return first + pd.offsets.MonthEnd(0) if pack.spell.month_labels and first.day == 1 else first
+
+
+def cohort_start(as_of, known):
     """THE start of a cohort KPI's window: 12 months before its end, or the data's first known
-    state when it covers less (snapshots: the first snapshot; spells: the day before the first
-    date): the bridge's opening is a real value, never a 0 before the data (fix-diff review)."""
-    return max(as_of - pd.DateOffset(months=12), first if snapshots else first - pd.Timedelta(days=1))
+    state when it covers less: the opening is a real value, never a 0 before the data."""
+    return max(as_of - pd.DateOffset(months=12), known)
 
 
 def _ledger(whole, roles, pack, term: Term, allk, ok, points, part, by):
@@ -1453,8 +1468,9 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
     its new segment. Opening / retained: the cohort in force at the window's start (by period:
     12 months before each period's end), placed by its row then; retained values it at the end
     (an entity back after a churn is retained). A start or end before the data counts 0."""
-    snaps = bool(_snapshot_column(pack, roles))
-    lo = max(lo, cohort_start(as_of, first, snaps))   # moves and the opening start together
+    known = first_known(pack, roles, first)
+    lo = max(lo, known)   # moves never start before the data knows a state (an asked window of
+    # 20 months keeps its 20: pass 3); the 12-month cohort is the opening's own rule
 
     # from the month-end before the first period, so the first period's moves have a start
     before = (first.to_period("M") - 1).end_time.normalize()
@@ -1466,7 +1482,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
         # always the 12-month cohort ending there, an asked period's end included (audit 1: a
         # 6-month period made a 6-month 'Logo churn (12 months)')
         starts = [e - pd.DateOffset(months=12) for e in ends] if axis is not None \
-            else [cohort_start(as_of, first, snaps)]
+            else [cohort_start(as_of, known)]
         points = sorted({*ends, *starts})
     points = [t for t in points if t <= as_of]
     by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
@@ -1521,9 +1537,9 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
         return total(later.clip(upper=base) if term.capped else later, start)
 
     if axis is not None:
-        return pd.Series({p: cohort(s_, e) if s_ >= first - pd.Timedelta(days=1) else float("nan")
+        return pd.Series({p: cohort(s_, e) if s_ >= known else float("nan")
                           for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
-    value = cohort(cohort_start(as_of, first, snaps), as_of)
+    value = cohort(cohort_start(as_of, known), as_of)
     return None if isinstance(value, float) and pd.isna(value) else value
 
 
@@ -2403,7 +2419,8 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
         if f.net_of:   # a rate: 0.2, or Stripe's percent_off 20 (any value over 1: percent)
             rate = value(f.net_of, 0.0)
             given = rate[rate > 0]
-            percent = len(given) and (given > 1).mean() > 0.5   # most over 1: percent (20 = 20%)
+            # percent (Stripe's 20 = 20%, 1 = 1%): a value over 1 and mostly whole numbers
+            percent = bool(len(given)) and (given > 1).any() and (given == given.round()).mean() > 0.5
             odd = int((given > 1).sum() if not percent else (given <= 1).sum())
             if odd:
                 notes.append(f"{name}: {odd:,} row{'s' * (odd != 1)} of {roles[f.net_of]} disagree "

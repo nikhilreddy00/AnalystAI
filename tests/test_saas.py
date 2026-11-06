@@ -322,3 +322,34 @@ def test_one_odd_discount_never_rescales_the_column(monkeypatch):
     out, notes = dp.pack_columns(df, pack, {r: r for r in df.columns})
     assert out["monthly_rent"].tolist()[:2] == [80.0, 80.0] and pd.isna(out["monthly_rent"].iloc[2])
     assert any("disagree" in n for n in notes)
+
+
+def test_pass_3_windows_spans_and_the_list_bridge():
+    """Audit pass 3: a 20-month window's moves were cut to 12 (new MRR \$176k, truth \$263,762);
+    a month-labelled cohort's span counted from the label (1 Apr), not its month-end; the list's
+    bridge was \$198 off (add-ons changing a continuing customer's MRR had no line)."""
+    df, _, pack, roles, t = _setup("saas_mrr_snapshots")
+    v = dp.compute_kpi(df, roles, pack, "new_mrr", window=(pd.Timestamp("2025-03-01"), None))
+    assert v == pytest.approx(263762.11, abs=0.01)
+    short = df[pd.to_datetime(df["month"]) >= "2026-04-01"]
+    assert dp.window_words(pack, short, roles, "nrr") == "6-month cohort to 31 Oct 2026"
+    assert dp.window_words(pack, short, roles, "opening_mrr") == "on 30 Apr 2026"
+    assert not any("a year earlier (12-month cohort" in ln for ln in dp.spell_story(pack, df, roles))
+    df, _, pack, roles, t = _setup("saas_subscriptions")
+    line = next(ln for ln in dp.spell_story(pack, df, roles) if ln.startswith("MRR bridge"))
+    nums = [float(x.replace(",", "")) for x in __import__("re").findall(r"\$([\d,]+\.\d\d)", line)]
+    tail = nums[-1]
+    assert "changes in continuing customers' own records" in line
+    assert tail == pytest.approx(t["mrr"])
+
+
+def test_a_neutral_strong_or_weak_is_no_verdict():
+    import re
+    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
+    for t in ("Logo churn rose to 20.1% while new MRR showed strong growth.",
+              "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
+              "Logo churn of 18.8% is strong evidence of a problem."):
+        assert not re.search(bench.pattern, t, re.I), t
+    for t in ("gross revenue retention remains strong at 99.3%.",
+              "with net revenue retention of 106.5% — healthy, but below last year"):
+        assert re.search(bench.pattern, t, re.I), t

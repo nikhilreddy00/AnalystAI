@@ -333,7 +333,7 @@ never_say:
   - {pattern: '\b(?:LTV|CLV|lifetime value|CAC|payback(?: period)?|magic number|rule of 40)\s+(?:is|of|was|=|at|stands at)\s+[$\d]',
      reason: "a cost or margin metric this data can't compute (no cost, margin or sales and marketing spend)"}
   # (?:[^.]|\.\d) lets a sentence carry a decimal ('18.8% is healthy')
-  - {pattern: '\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|above (?:the )?benchmark|below (?:the )?benchmark|industry[- ]leading)\b(?:[^.]|\.\d){0,40}\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b|\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b(?:[^.]|\.\d){0,40}\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|strong|excellent|weak|poor)\b',
+  - {pattern: '\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|above (?:the )?benchmark|below (?:the )?benchmark|industry[- ]leading)\b(?:[^.]|\.\d){0,40}\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b|\b(?:NRR|GRR|net revenue retention|gross revenue retention|churn|retention)\b(?:[^.]|\.\d){0,40}\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile|strong|excellent|weak|poor)\b\s*(?:[.,;:)—-]|$|for\b|at\b)',
      reason: "a benchmark verdict: benchmarks differ by the population surveyed (ChartMogul's and SaaS Capital's median NRR are far apart); quote one with its source, never as a grade"}
   - {pattern: '\bbookings\s+(?:of|were|was|totall?ed|reached)\b',
      reason: "calls billings or MRR bookings: bookings are signed contract values this data doesn't have"}
