@@ -606,3 +606,21 @@ def test_a_churned_customers_mean_by_month_is_checked_both_ways():
         return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
                                                anomalies=[], statistical_tests=[], code_executed=""), df, {})
     assert ff(1.0)["false"] == 0 and ff(1.07)["false"] == 3
+
+
+def test_an_in_force_mean_by_month_is_accepted():
+    """Audit pass 10: on hr_roster, current staff's mean salary by hire month was false in 110 of
+    135 months (the in-force/former split keyed on raw dates, not the breakdown's months)."""
+    import pandas as pd
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from tests.test_oracle import _built
+    from agents.utils import level_rows
+    _, df, contract, _ = _built("hr_roster")
+    now = level_rows(df, "Annual_Salary", contract)
+    m = now.assign(_m=pd.to_datetime(now["Hire_Date"]).dt.to_period("M").astype(str)).groupby("_m")["Annual_Salary"].mean()
+    seg = SegmentResult(segment_column="Hire_Date", metric_column="Annual_Salary", aggregation="mean",
+                        results=[{"name": k, "value": float(v)} for k, v in m.items()])
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    assert out["false"] == 0 and out["verifiable"] == len(m)

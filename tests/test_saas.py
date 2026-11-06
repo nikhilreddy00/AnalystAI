@@ -379,7 +379,9 @@ _N = ["Churn was concentrated in poor-fit accounts.", "Retention data is poor fo
  "Retention by plan: Pro 95%, Basic 80%.", "Churn was highest among poor payers.",
  "NRR was 106.5%; healthy is not a grade this report gives.", "Churn fell after strong onboarding.",
  "Retention improved with strong adoption of the new tier."]
-VERDICTS = [*_V, "Net revenue retention, at 106.5% over the 12 months to 31 Oct 2026, is strong.",
+VERDICTS = [*_V, "NRR, as of October 2026, is strong.", "Retention, as expected, remains healthy.",
+            "Logo churn, yet again, was poor.", "NRR, so far this year, is healthy.",
+            "Churn, because of annual contracts, is weak.", "NRR, thus far, remains robust.", "Net revenue retention, at 106.5% over the 12 months to 31 Oct 2026, is strong.",
             "NRR, which reached 104%, remains healthy.", "GRR of 91.2%, up from 89%, is solid.",
             "Retention in Enterprise, SMB and Mid-Market is strong.", "Churn, at 2.1% a month, is relatively strong.", "with net revenue retention of 106.5% — healthy, but below", "GRR remains strong at 99.3%.",
             "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is healthy and improving."]

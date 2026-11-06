@@ -140,7 +140,7 @@ def _move_means(df: pd.DataFrame, cols: list[str], metric: str, agg: str) -> lis
 
 
 def _populations(df: pd.DataFrame, metric: str, by_group: bool = True,
-                 cols: list[str] | None = None) -> list[pd.DataFrame]:
+                 cols: list[str] | None = None, monthly: set | frozenset = frozenset()) -> list[pd.DataFrame]:
     """The rows a group value of `metric` can be computed over. A snapshot column (a
     semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
     entity's current snapshot ("seats per account" — production's latest_rows, which the agent
@@ -163,8 +163,11 @@ def _populations(df: pd.DataFrame, metric: str, by_group: bool = True,
             # (pass 8); never every row mixed (pass 7) nor a mixed group's former rows (pass 9)
             former = df.loc[~df.index.isin(current.index)]
             if cols and set(cols) <= set(df.columns):
-                live = pd.MultiIndex.from_frame(current[cols].astype(str))
-                gone = former[~pd.MultiIndex.from_frame(former[cols].astype(str)).isin(live)]
+                def key(rows):   # the group as the breakdown names it (a month, pass 10)
+                    return pd.MultiIndex.from_frame(pd.DataFrame({c: (
+                        pd.to_datetime(rows[c], format="mixed", errors="coerce").dt.to_period("M")
+                        if c in monthly else rows[c]).astype(str) for c in cols}))
+                gone = former[~key(former).isin(key(current))]
                 return [pd.concat([current, gone])]
             return [current]   # a column's distribution
         # reads every row by design (current and former: HR's rule), so a summary keeps them
@@ -398,7 +401,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         parts = [str(r.get("name")).split("|") for r in seg.results]
         monthly = {c for i, c in enumerate(cols) if parts and all(
             len(p) == len(cols) and re.fullmatch(r"\d{4}-\d{2}", p[i]) for p in parts)}
-        for rows in _populations(df, seg.metric_column, cols=cols):
+        for rows in _populations(df, seg.metric_column, cols=cols, monthly=monthly):
             if monthly:
                 rows = rows.assign(**{c: pd.to_datetime(rows[c], format="mixed", errors="coerce")
                                       .dt.to_period("M").astype(str) for c in monthly})
