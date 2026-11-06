@@ -139,7 +139,8 @@ def _move_means(df: pd.DataFrame, cols: list[str], metric: str, agg: str) -> lis
     return out
 
 
-def _populations(df: pd.DataFrame, metric: str, by_group: bool = True) -> list[pd.DataFrame]:
+def _populations(df: pd.DataFrame, metric: str, by_group: bool = True,
+                 cols: list[str] | None = None) -> list[pd.DataFrame]:
     """The rows a group value of `metric` can be computed over. A snapshot column (a
     semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
     entity's current snapshot ("seats per account" — production's latest_rows, which the agent
@@ -157,9 +158,15 @@ def _populations(df: pd.DataFrame, metric: str, by_group: bool = True) -> list[p
         # a level on a spell list (MRR of each subscription): production's in-force rows
         # (utils.level_rows -> domain_pack.in_force_counted), what the brief tells the agent
         current = level_rows(df, metric, contract)
-        if by_group and len(current) != len(df):   # a level by group on spell data: who is in force,
-            # or only former rows (a group of leavers: pass 8), never every row mixed (pass 7)
-            return [current, df.loc[~df.index.isin(current.index)]]   # a column's distribution
+        if by_group and len(current) != len(df):   # a level by group on spell data: each group's
+            # in-force rows; a group with no one in force (leavers, cancelled) its former rows
+            # (pass 8); never every row mixed (pass 7) nor a mixed group's former rows (pass 9)
+            former = df.loc[~df.index.isin(current.index)]
+            if cols and set(cols) <= set(df.columns):
+                live = pd.MultiIndex.from_frame(current[cols].astype(str))
+                gone = former[~pd.MultiIndex.from_frame(former[cols].astype(str)).isin(live)]
+                return [pd.concat([current, gone])]
+            return [current]   # a column's distribution
         # reads every row by design (current and former: HR's rule), so a summary keeps them
         return [df, counted] if how else [df]
     return [df, latest_rows(df, metric, contract)]
@@ -202,7 +209,7 @@ def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, met
         agg = seg.aggregation if seg.aggregation in (*_AGGS, "last", "first") else "mean"
         scs = scales if _is_rate(df[metric]) else (1,)
         whys = [_mismatch(seg, _grouped(rows, segment, metric, agg), agg, scs, rel_tol)
-                for rows in _populations(df, metric)]
+                for rows in _populations(df, metric, cols=[segment] if isinstance(segment, str) else None)]
         why = None if None in whys else whys[0]
         if why:
             return False, why
@@ -391,7 +398,7 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         parts = [str(r.get("name")).split("|") for r in seg.results]
         monthly = {c for i, c in enumerate(cols) if parts and all(
             len(p) == len(cols) and re.fullmatch(r"\d{4}-\d{2}", p[i]) for p in parts)}
-        for rows in _populations(df, seg.metric_column):
+        for rows in _populations(df, seg.metric_column, cols=cols):
             if monthly:
                 rows = rows.assign(**{c: pd.to_datetime(rows[c], format="mixed", errors="coerce")
                                       .dt.to_period("M").astype(str) for c in monthly})

@@ -383,7 +383,8 @@ VERDICTS = [*_V, "Net revenue retention, at 106.5% over the 12 months to 31 Oct 
             "NRR, which reached 104%, remains healthy.", "GRR of 91.2%, up from 89%, is solid.",
             "Retention in Enterprise, SMB and Mid-Market is strong.", "Churn, at 2.1% a month, is relatively strong.", "with net revenue retention of 106.5% — healthy, but below", "GRR remains strong at 99.3%.",
             "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is healthy and improving."]
-NEUTRAL = [*_N, "Logo churn rose to 20.1% while new MRR showed strong growth.",
+NEUTRAL = [*_N, "Churn dropped in Q3, so the team is strong.",
+           "Churn was flat, so the pipeline remains healthy.", "Retention held, as adoption was strong.", "Logo churn rose to 20.1% while new MRR showed strong growth.",
            "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
            "Logo churn of 18.8% is strong evidence of a problem.",
            "Net revenue retention was 91.1% over the 12 months to 31 Oct 2026."]
@@ -499,3 +500,20 @@ def test_a_group_of_former_rows_scores_its_own_reading():
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
                                           anomalies=[], statistical_tests=[], code_executed=""), df, {})
     assert out["false"] == 0
+
+
+def test_a_mixed_groups_former_rows_alone_are_false():
+    """Audit pass 9: mean MRR by plan over only the former rows of mixed groups passed."""
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    from agents.analysis_agent import model_frame
+    df, contract, *_ = _setup("saas_subscriptions")
+    f, _ = model_frame(df, contract)
+    gone = df[f["in_force_now"] != "yes"].groupby("plan")["mrr"].mean()
+    seg = SegmentResult(segment_column="plan", metric_column="mrr", aggregation="mean",
+                        results=[{"name": k, "value": float(v)} for k, v in gone.items()])
+    out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+    now = df[f["in_force_now"] == "yes"].groupby("plan")["mrr"].mean()
+    mixed = [k for k in gone.index if k in now.index and abs(gone[k] - now[k]) > 0.01 * abs(now[k])]
+    assert mixed and out["false"] == len(mixed)
