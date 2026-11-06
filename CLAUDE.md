@@ -45,7 +45,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 5 | The contract on every agent | ✅ 2026-10-30 — `docs/baselines/phase5_*.md` |
 | 5.6 | Durable runs (a) + workspace (b) | ✅ 2026-10-31 — `docs/baselines/phase5_6a.md`, `phase5_6b.md` |
 | 5.5 | Domain coverage (8 domains, PHI) | ✅ 2026-11-01 — `docs/baselines/phase5_5.md` |
-| 5.7 | Domain depth, one domain per session | 1 retail ✅, 2 banking ✅, 3 healthcare ✅, 4 insurance ✅, 5 HR ✅, 6 SaaS ✅ (`docs/baselines/phase5_7_*.md`) — next **7 IoT** |
+| 5.7 | Domain depth, one domain per session | 1 retail ✅, 2 banking ✅, 3 healthcare ✅, 4 insurance ✅, 5 HR ✅, 6 SaaS ✅ (`docs/baselines/phase5_7_*.md`) — next **5.7b structural fixes** (PR #1's 9 recurring classes), then **7 IoT** |
 | 5.8 | Data sources (MySQL, public Sheets, DuckDB, SQL Server, dlt) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
@@ -194,7 +194,7 @@ connector or UI component lives, and update it in the commit that adds or moves 
 - **LLM calls**: through `llm/client.py` — never a new `AsyncAnthropic`. Contract agents (all but drill-down) take `llm: LLMClient` as a parameter; the rest still call `get_client()` until their Phase 5 PR. Every system prompt is a module constant and is prompt-cached by `ClaudeClient` (keep it constant: per-call text belongs in messages). Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl` (metadata, tool names and guardrail rule labels only)
 - **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)
 - **Review**: reviewers apply `CODING_STANDARDS.md` (judgement calls; mechanical rules are tests/linters)
-- **Before pushing**: `.githooks/pre-push` runs CI's checks (turn on once: `git config core.hooksPath .githooks`; `PREPUSH_E2E=1` adds the Playwright e2e)
+- **Before pushing**: `.githooks/pre-push` runs ruff, the branch's touched tests + the contract gates, the $0 suites and the frontend checks, ~2-3 min (turn on once: `git config core.hooksPath .githooks`; `PREPUSH_FULL=1` runs the whole suite, `PREPUSH_E2E=1` adds the Playwright e2e). CI (4 shards, ~8 min) is the merge gate
 - **Tests, fast**: while iterating run only the touched test files; the golden per dataset (`pytest tests/test_suite_inputs_unchanged.py -k <dataset>`, ~3 s); the full suite once per batch, in parallel and in the background (`uv run pytest -q -n 8`, ~1m40s; CI stays serial: shared scratch PG)
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
 - **Eval budget (real money, the user's prepaid credits)**: iterate with `--only <case> --k 1`; one full k=3

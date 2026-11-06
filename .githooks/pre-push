@@ -22,14 +22,30 @@ if [ -n "$missing" ]; then
 fi
 
 uv run ruff check .
-uv run pytest -q -n 8 -rf
+# CI (4 shards, ~8 min) is the merge gate; the hook catches the common failures fast: the tests
+# this branch touched and the cross-domain contract gates, ~2 min. The whole suite as CI runs
+# it: PREPUSH_FULL=1 git push (retro 2026-11-06: 8 min per push, most of it CI's own suite).
+if [ "${PREPUSH_FULL:-0}" = 1 ]; then
+  uv run pytest -q -n 8 -rf
+else
+  touched=$(git diff --name-only --diff-filter=d "$(git merge-base HEAD origin/main)" -- 'tests/test_*.py')
+  # shellcheck disable=SC2086
+  uv run pytest -q -n 8 -rf $touched tests/test_one_definition.py tests/test_second_pack.py \
+    tests/test_replay.py tests/test_suite_inputs_unchanged.py tests/test_untrusted_data.py
+fi
 # CI's zero-suites job ($0, deterministic): Domain 4 went red twice on it unseen; reports go to
-# a temp dir (they are no evidence and piled up untracked in evals/reports)
+# a temp dir (they are no evidence and piled up untracked in evals/reports). The four at once.
 out=$(mktemp -d)
+pids=()
 for suite in visualization cleaning ingestion; do
-  uv run python -m evals.run "$suite" --k 1 --max-usd 0.01 --fail-under 1.0 --out "$out" > /dev/null
+  uv run python -m evals.run "$suite" --k 1 --max-usd 0.01 --fail-under 1.0 --out "$out" > /dev/null &
+  pids+=($!)
 done
-uv run python -m evals.run quality --checks-only --k 1 --max-usd 0.01 --fail-under 0.85 --out "$out" > /dev/null
+uv run python -m evals.run quality --checks-only --k 1 --max-usd 0.01 --fail-under 0.85 --out "$out" > /dev/null &
+pids+=($!)
+for p in "${pids[@]}"; do
+  wait "$p" || { echo "pre-push: a \$0 eval suite failed (visualization, cleaning, ingestion or quality --checks-only)"; exit 1; }
+done
 rm -rf "$out"
 (cd frontend && npx tsc --noEmit && npm run lint --silent \
   && node --experimental-strip-types --test src/lib/*.test.ts > /dev/null)

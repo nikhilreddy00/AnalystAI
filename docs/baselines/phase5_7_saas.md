@@ -238,3 +238,39 @@ Every one has a test; HR stayed byte-identical except where listed in CHANGES.
 | browser (live + finished domains) and docs | 0 h 40 |
 
 The overrun is the audit tail (passes 3–10) on the regex and the scorer.
+
+## After the merge: design reviews, review fixes and CI (PR #1, 2026-11-06)
+
+**Skipped design steps.** Domain-modeling and codebase-design were skipped in plan mode. They
+were run afterwards, with a senior code-review pass (Standards + Spec). The 13-pass audit tail
+came from rules written more than once. Each pass fixed one copy, and the next pass found
+another.
+
+**Nine recurring bug classes were reported, not patched.** They wait for a structural plan; the
+table is in PR #1's description.
+
+**Seven one-off bugs were fixed at the root.** Each has a test that failed first.
+
+| Bug | Root fix |
+|---|---|
+| A list's next `billing_date` read as snapshots: MRR $476k for $869k, logo churn 100% | `Role.weak_headers` (an ambiguous header needs repeating spells); one repeat test `_dates_each`, shared with `_panel` |
+| `compute_kpi` crashed on a duplicate index | Unique row labels enforced at entry |
+| A blank formula input made MRR blank silently | One note rule over every required input |
+| "Logo churn (12 months)" next to "6-month cohort" | The period has one owner, `window_words`; guard over every pack |
+| "Cancellation" meant both the end and the request | SaaS spell word `end` (`end_event_date`) |
+| ARPU answered as ARPA silently | Label `ARPA per paying customer` |
+| GLOSSARY drift | Spell, In force, Move |
+
+**Found on the way:**
+- My first `billing_date` fix dropped real one-snapshot roles; the review caught it and it was
+  reworked.
+- The causal regex flagged an investigation. This was a narrow fix; class #8 stays in the plan.
+- An order-dependent purge-table test.
+
+**Spend.** A k=1 smoke on `saas-1`, `-10` and `-11` cost $0.09 (accuracy 1.0, false findings 0),
+plus `ins-16` re-run at k=1 for $0.02. Domain total: $4.21.
+
+**CI.** It took ~21 min per run, ran twice per push (push + PR) and queued runs.
+- The backend now runs in 4 shards at once, each worker with its own scratch database.
+- Push triggers CI only on `main`, and a newer run cancels the older one.
+- Result: green in 7 min 37 s (run 42272311467).
