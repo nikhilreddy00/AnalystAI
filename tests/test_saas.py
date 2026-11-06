@@ -277,3 +277,48 @@ def test_stripes_percent_off_reaches_mrr():
     row = out[out["percent_off"] > 0].iloc[0]
     months = {"month": 1, "year": 12}[row["interval"]] * row["interval_count"]
     assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["percent_off"] / 100) / months)
+
+
+def test_a_benchmark_verdict_after_the_metric_is_never_said():
+    """Audit pass 2 (a stored ins-04 report): 'net revenue retention of 106.5% — healthy' passed
+    the never_say pattern, which wanted 'is/looks' before the verdict."""
+    import re
+    pack = dp.pack_for("saas")
+    bench = next(n for n in pack.never_say if "benchmark" in n.reason)
+    for t in ("with net revenue retention of 106.5% — healthy, but below last year",
+              "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is best-in-class"):
+        assert re.search(bench.pattern, t, re.I), t
+    for t in ("Net revenue retention was 91.1% over the 12 months to 31 Oct 2026.",
+              "Logo churn rose to 18.8% from 13.7%."):
+        assert not re.search(bench.pattern, t, re.I), t
+
+
+def test_on_short_data_the_bridge_still_adds_up_and_says_its_span():
+    """Fix-diff review of audit 1: on 7 months of data the cohort opened before the data (\$0) and
+    the bridge was off by the opening MRR."""
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    short = df[pd.to_datetime(df["month"]) >= "2026-04-01"]
+    k = {n: dp.compute_kpi(short, roles, pack, n) for n in
+         ("mrr", "opening_mrr", "new_mrr", "expansion_mrr", "reactivation_mrr", "contraction_mrr", "churned_mrr")}
+    assert k["opening_mrr"] > 0
+    assert k["mrr"] == pytest.approx(k["opening_mrr"] + k["new_mrr"] + k["expansion_mrr"]
+                                     + k["reactivation_mrr"] - k["contraction_mrr"] - k["churned_mrr"])
+    assert not dp.window_words(pack, short, roles, "nrr").startswith("12-month")
+
+
+def test_a_scoped_bridge_question_is_never_answered_with_the_whole_file():
+    from tests.test_oracle import answer
+    text, _ = answer("saas_mrr_snapshots", "top_n", "MRR bridge by plan", kpi="mrr_bridge", group_by="plan")
+    assert not text.startswith("MRR bridge, 12 months")
+
+
+def test_one_odd_discount_never_rescales_the_column(monkeypatch):
+    """Fix-diff review: one 1.5 among 0.2 rates divided every rate by 100."""
+    from tests.test_pack_columns import TOY
+    import yaml
+    pack = dp.Pack.model_validate(yaml.safe_load(TOY))
+    df = pd.DataFrame({"unit_id": list("abc"), "rent": [100.0] * 3, "rebate": [0.2, 0.2, 1.5],
+                       "term": ["monthly"] * 3})
+    out, notes = dp.pack_columns(df, pack, {r: r for r in df.columns})
+    assert out["monthly_rent"].tolist()[:2] == [80.0, 80.0] and pd.isna(out["monthly_rent"].iloc[2])
+    assert any("disagree" in n for n in notes)

@@ -63,6 +63,7 @@ from domain_pack import (
     not_counted_yet,
     spell_as_of,
     spell_story,
+    snapshot_role,
     spell_window,
     window_words,
     runout_months,
@@ -147,7 +148,9 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
         roles = {r: c for r, c in contract.roles.items() if c in df.columns}
         story = [ln for ln in (spell_story(pack, df, roles) if has_spell(pack, roles) else [])
                  if ln.lower().startswith(tuple(w.lower() for w in pack.glossary.get(params.kpi, [])))]
-        if story and params.kpi in pack.definitions:   # the product computes it as one line (the
+        scoped = params.group_by or params.segment_column or params.segment_value \
+            or params.period_start or params.period_end
+        if story and params.kpi in pack.definitions and not scoped:   # the product computes it as one line (the
             # MRR bridge on monthly snapshots; audit 1: refused there)
             return TargetedResponse(intent=intent, answer_text=" ".join(story) + " "
                                     + pack.definitions[params.kpi], chart_configs=[], table_data=[])
@@ -976,7 +979,7 @@ def _missing(pack, kpi: str, roles: dict) -> str:
     def lacks(alt) -> list[str]:
         need = {r for t in alt if not t.optional and not t.kpi for r in t.roles()} - set(roles)
         need |= {t.kpi for t in alt if t.kpi and not computable(pack, t.kpi, roles)}
-        snap = pack.spell and pack.date_role not in (pack.spell.start, pack.spell.end) and pack.date_role
+        snap = snapshot_role(pack)
         # a spell's snapshot date: a history of each entity's value (audit 1: 'needs month')
         def said(n: str) -> str:
             if n == snap:

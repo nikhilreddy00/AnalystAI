@@ -4,7 +4,7 @@ id: q-29-multi-year-holdout
 insight_case: ins-29-multi-year-holdout
 category: date_scope
 source:
-  report: insight-20261029T162956Z-rescored-judged.json
+  report: insight-20261106T012454Z.json
   run: 0
 seeded: true
 defects:
@@ -20,8 +20,5 @@ defects:
   label: contradicted
   text: Monthly recurring revenue declined 8.0% year over year, with wide variation across plan tiers
     from $51.37 on Basic to $769.01 on Enterprise.
-natural:
-- i: 4
-  kind: number
-  label: contradicted
-# Domain 6: the subscriptions file reads as SaaS (MRR is a level): a mean over every account-month ($769.01) or MRR summed over 30 months ($576,754.42 'monthly') is no number the evidence holds, so the check flags it (was labelled supported before the pack).
+natural: []
+# Domain 6: re-pointed at the Domain 6 insight gate's report (the subscriptions file reads as SaaS: its evidence gained the citeable story); old natural labels named the old report's claims.
