@@ -931,7 +931,7 @@ def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
         return None
     if window and window[1] is not None:
         as_of = min(as_of, pd.Timestamp(window[1]).normalize())
-    lo = as_of - pd.DateOffset(months=12)
+    lo = as_of - pd.DateOffset(months=WINDOW_MONTHS)
     ends = _month_ends(lo, as_of)
     if window and window[0] is not None:   # an asked start: its own month's end counts ('since
         lo = pd.Timestamp(window[0]).normalize() - pd.Timedelta(days=1)   # 15 Mar' keeps 31 Mar)
@@ -986,6 +986,10 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
         return f"{n}-month cohort to {as_of:%-d %b %Y}" if n >= 1 else ""
     return f"{months} month{'s' * (months != 1)} to {as_of:%-d %b %Y}"
 
+
+# THE spell window and cohort span: flows and rates read the months to the as-of; every sentence
+# naming the span reads this (or window_words), never a written '12 months'
+WINDOW_MONTHS = 12
 
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
 
@@ -1078,7 +1082,7 @@ def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
     upto = lambda s: [p for p in s.index if (p + 1).start_time.normalize() > lo]   # noqa: E731
     for k in (k for u in ("money", "count") for m in MOVES if (k := ledger_kpi(pack, roles, "moves", m, u))):
         if (s := compute_kpi(frame, roles, pack, k.name, by="_period", full=df)) is not None:
-            out.append(f"{k.label} by month (12 months to {as_of:%-d %b %Y}): " + ", ".join(
+            out.append(f"{k.label} by month ({window_words(pack, df, roles, k.name)}): " + ", ".join(
                 f"{p} {_amount(pack, df, roles, k, s[p])}" for p in months(s)) + ".")
     heads = stock_kpi(pack, roles, "count")
     lost = ledger_kpi(pack, roles, "moves", "churn", "count")
@@ -1123,7 +1127,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         now = compute_kpi(df, roles, pack, k.name)
         cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))
         known = first_known(pack, df, roles).to_period("M")   # an 11-month cohort is no 12
-        whole_year = not cohort or (back[1] - pd.DateOffset(months=12)).to_period("M") >= known
+        whole_year = not cohort or (back[1] - pd.DateOffset(months=WINDOW_MONTHS)).to_period("M") >= known
         then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok and whole_year else None
         if now is not None:
             out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
@@ -1483,7 +1487,7 @@ def first_known(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Times
 def cohort_start(as_of, known):
     """THE start of a cohort KPI's window: 12 months before its end, or the data's first known
     state when it covers less: the opening is a real value, never a 0 before the data."""
-    return max(as_of - pd.DateOffset(months=12), known)
+    return max(as_of - pd.DateOffset(months=WINDOW_MONTHS), known)
 
 
 def _ledger(whole, roles, pack, term: Term, allk, ok, points, part, by):
@@ -1533,7 +1537,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
         ends = [min(p.end_time.normalize(), as_of) for p in axis] if axis is not None else [as_of]
         # always the 12-month cohort ending there, an asked period's end included (audit 1: a
         # 6-month period made a 6-month 'Logo churn (12 months)')
-        starts = [e - pd.DateOffset(months=12) for e in ends] if axis is not None \
+        starts = [e - pd.DateOffset(months=WINDOW_MONTHS) for e in ends] if axis is not None \
             else [cohort_start(as_of, known)]
         points = sorted({*ends, *starts})
     points = [t for t in points if t <= as_of]
@@ -2081,8 +2085,9 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                     "average": f"the mean of the month-end counts of distinct {ent} in force "
                                f"({at}, {gone})",
                     "starts": f"spells starting in the period (by {roles.get(sp.start, 'first snapshot')})",
-                    "opening": f"distinct {ent} in force 12 months before the date ({at}, {gone})",
-                    "retained": f"same {ent} (in force 12 months before) at the date"
+                    "opening": f"distinct {ent} in force {WINDOW_MONTHS} months before the date, or at the "
+                               f"data's first month-end when it covers less ({at}, {gone})",
+                    "retained": f"same {ent} (in force at the cohort's start) at the date"
                                 + (", each capped at its value then" if t.capped else ""),
                     "moves": f"{t.move} moves: each {ent} whose value went "
                              + {"new": "from 0 (never in force before) to above 0",
