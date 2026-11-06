@@ -266,7 +266,9 @@ glossary:
   new_mrr: [new mrr, new business, new business mrr, mrr from new customers]
   expansion_mrr: [expansion, expansion mrr, upsell, upsells, upgrades, upgrade mrr]
   contraction_mrr: [contraction, contraction mrr, downgrades, downgrade mrr]
-  churned_mrr: [churned mrr, revenue churn, mrr churn, lost mrr, churned revenue, mrr lost]
+  churned_mrr: [churned mrr, revenue churn, mrr churn, lost mrr, churned revenue, mrr lost,
+                mrr did we lose, mrr we lost, lose to churn, lost to churn, mrr lost to churn,
+                dollar churn, mrr churned]
   reactivation_mrr: [reactivation mrr, reactivation, reactivations, win backs, winbacks,
                      returning customers]
   new_customers: [new customers, new logos, customers won, customers acquired]
