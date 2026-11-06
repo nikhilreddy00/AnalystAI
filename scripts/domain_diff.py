@@ -119,6 +119,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("base", help="the ref before this branch (main, a SHA)")
     ap.add_argument("--datasets", help="comma-separated; default: the base's PACK_DATASETS + non-pack")
+    ap.add_argument("--show", action="store_true",
+                    help="print each changed value's text change (evals.snapshot.text_changes)")
     args = ap.parse_args()
     key = subprocess.run([str(ROOT / ".venv/bin/python"), "-c", "from cryptography.fernet import Fernet;"
                           "print(Fernet.generate_key().decode())"], capture_output=True, text=True).stdout.strip()
@@ -139,6 +141,14 @@ def main() -> None:
     changed = {n: p for n, p in changed.items() if p}
     for n in before:
         print(f"{n}: identical" if n not in changed else f"{n}: CHANGED {len(changed[n])} path(s)")
+        if args.show and n in changed:   # the values: a rename reads as one word, a number as one
+            from evals.snapshot import text_changes
+            seen: set = set()
+            for core, line in text_changes(before[n], after.get(n)):
+                if core not in seen:
+                    seen.add(core)
+                    print("    " + line[:240])
+            continue
         for p in changed.get(n, [])[:8]:
             print("    " + re.sub(r"^\.", "", p))
     sys.exit(1 if changed else 0)
