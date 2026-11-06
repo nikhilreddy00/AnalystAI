@@ -1352,6 +1352,10 @@ def _canonical_value(value: Any) -> str:
     return str(value).strip()
 
 
+# THE pseudonym format (pseudonym below): 'ID-' + 16 hex; one with all-digit hex is no number
+PSEUDONYM_RE = re.compile(r"\bID-[0-9a-f]{16}\b")
+
+
 def pseudonym(value: Any, key: bytes, column: str = "") -> str:
     """One-way, keyed, stable: 'ID-' + 64 bits of HMAC-SHA256 over the column and the canonical
     value (1001, 1001.0 and ' 1001 ' are one value; visit 2 and patient 2 are not). E2B and the
@@ -1396,7 +1400,7 @@ def zip3(value: Any) -> Any:
 def pii_strings(value: Any) -> list[str]:
     """The PII substrings inside one value (emails, phones, SSNs, cards, IPs), for the LLM
     client's guard: a note "call 555-201-3344" yields the number, not the note."""
-    text = value if isinstance(value, str) else str(value)
+    text = PSEUDONYM_RE.sub(" ", value if isinstance(value, str) else str(value))   # no PII inside
     found = [m.group() for rx in (_EMAIL_RE, _SSN_RE, _PHONE_RE, _IPV4_RE) for m in rx.finditer(text)]
     found += [m.group() for m in _INTL_PHONE_RE.finditer(text) if _intl_phone(m) == MASK]
     found += [m.group() for m in _CARD_RE.finditer(text) if _luhn(re.sub(r"\D", "", m.group()))]
