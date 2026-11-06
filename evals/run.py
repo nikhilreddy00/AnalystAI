@@ -635,6 +635,7 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     (+ the cleaning evidence first, as analysis_node does) → visualization agent. Also returns
     the bundle facts the scorer and the judge read (captured here, not from the agent)."""
     from agents.cleaning_agent import build_evidence as cleaning_evidence
+    from agents.cleaning_agent import build_story_evidence
     from agents.cleaning_agent import run_cleaning_agent
     from agents.visualization_agent import run_visualization_agent
     from connectors.csv_connector import CSVConnector
@@ -671,6 +672,8 @@ async def insight_bundle(case: dict) -> tuple[AnalysisSession, list[str], dict]:
     findings, _ = viz_findings(case, clean_df, plan["target_metrics"], session.data_contract)
     findings.missing_pct = {str(c): round(float(clean_df[c].isna().mean() * 100), 2)
                             for c in clean_df.columns}
+    if story := build_story_evidence(audit):   # as analysis_node does
+        findings.evidence.insert(0, story)
     findings.evidence.insert(0, cleaning_evidence(audit))
     # the tiles analysis_node computes (and keeps only when they recheck), as production does
     from agents.visualization_agent import classify_columns, generate_smart_kpis, kpi_mismatches

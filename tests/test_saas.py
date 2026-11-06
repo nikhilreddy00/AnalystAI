@@ -161,3 +161,18 @@ def test_in_force_now_is_the_mrr_tiles_own_rows():
     f, _ = model_frame(df, contract)
     by = f[f["in_force_now"] == "yes"].groupby("segment")["mrr"].sum()
     assert by.to_dict() == pytest.approx(t["mrr_by_segment"])
+
+
+def test_a_column_and_its_formula_inputs_are_never_a_correlation_finding():
+    """Live run: 'seats and MRR move closely together' (MRR is computed from seats)."""
+    from agents.analysis_agent import drop_formula_correlations
+    from orchestrator.state import AnalysisFindings
+    _, contract, *_ = _setup("saas_subscriptions")
+    f = AnalysisFindings(eda_summary={}, correlations={"quantity__mrr": 0.97, "mrr__unit_amount": 0.9,
+                                                       "quantity__interval_count": 0.1},
+                         trends=[], segments=[], anomalies=[], statistical_tests=[], code_executed="")
+    assert drop_formula_correlations(f, contract) and f.correlations == {"quantity__interval_count": 0.1}
+    _, own, *_ = _setup("saas_mrr_snapshots")   # a file's own MRR column: its correlations stand
+    g = AnalysisFindings(eda_summary={}, correlations={"mrr__quantity": 0.5}, trends=[], segments=[],
+                         anomalies=[], statistical_tests=[], code_executed="")
+    assert not drop_formula_correlations(g, own) and g.correlations

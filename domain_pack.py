@@ -2316,6 +2316,28 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
     return df, notes
 
 
+PACK_COLUMN_NOTE = "Added by the product from the {domain} pack's formula: {names}."
+
+
+def formula_pairs(contract) -> set[frozenset]:
+    """{column the product added, one of its formula's inputs} pairs: they move together by
+    construction (MRR is computed from seats), so a correlation of them is no finding (Domain 6
+    live run: 'revenue growth is tightly linked to adding seats')."""
+    pack = pack_for(contract.domain) if contract is not None else None
+    notes = (contract.source_evidence.assumptions if contract is not None and contract.source_evidence
+             else [])
+    head = PACK_COLUMN_NOTE.split("{names}")[0].format(domain=pack.domain) if pack else None
+    added = {n.strip() for a in notes if head and a.startswith(head)
+             for n in a[len(head):].rstrip(".").split(",")}
+    out = set()
+    for r, f in (pack.columns.items() if pack else []):
+        col = contract.roles.get(r)
+        if col in added:
+            out |= {frozenset((col, contract.roles[x])) for x in [*f.times, *f.over,
+                    *([f.net_of] if f.net_of else [])] if x in contract.roles}
+    return out
+
+
 def with_derived(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, list[str]]:
     """The frame with each derivable role the data lacks (Pack.derived) as a column named after
     the role's first header (length_of_stay = discharge − admit in days), and the names added.

@@ -893,6 +893,8 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             frame = await asyncio.to_thread(pd.read_parquet, io.BytesIO(df_parquet))
             await asyncio.to_thread(standard_stats, raw, frame, contract, session.task_plan)
             findings = _parse_findings(raw, full_code, execution.figures_base64)
+            if dropped := drop_formula_correlations(findings, contract):
+                raw["assumptions"] = [dropped, *(raw.get("assumptions") or [])]
             levels = any(c.aggregation in ("last", "first") for c in contract.columns)
             if (levels or defaults_pack(contract)) and (fixed := await asyncio.to_thread(
                     lambda: repair_breakdowns(findings, pd.read_parquet(io.BytesIO(df_parquet)),
@@ -998,6 +1000,18 @@ def _repair_label(note: str) -> str:
     """The trace label of one repair_breakdowns note."""
     return ("model_trend_labelled" if "computed by the model's own code" in note
             else "breakdown_recomputed" if " recomputed: " in note else "level_recomputed")
+
+
+def drop_formula_correlations(f: AnalysisFindings, contract: DataContract) -> str:
+    """Drop a correlation of a column the product computed with one of its own inputs (MRR and
+    seats): equal by construction, never a finding. Returns the note ('' when none)."""
+    from domain_pack import formula_pairs
+    pairs = formula_pairs(contract)
+    gone = [k for k in f.correlations if frozenset(k.split("__")) in pairs]
+    for k in gone:
+        del f.correlations[k]
+    return (f"Not reported: {', '.join(k.replace('__', ' with ') for k in gone)}, computed one from "
+            "the other (the product's formula)") if gone else ""
 
 
 def _a_part_of(s, totals: pd.Series) -> bool:
