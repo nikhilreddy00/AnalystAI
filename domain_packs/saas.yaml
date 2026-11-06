@@ -107,7 +107,8 @@ columns:
         optional: [quantity, discount_pct, interval_count]}
 marker_fields: [trial_end, ended_at, canceled_at, cancel_at, discount_pct, tax]
 
-row_labels: {sale: subscription records, cancel: void or draft invoices}
+# one pack, three shapes: a row is a subscription, a customer-month or an invoice line (R16)
+row_labels: {sale: records, cancel: void or draft invoices}
 kind_codes: {sale: counted, return: netted, refunded: reversed, cancel: voided, test: test,
              non_product: excluded}
 overview_groups: [segment, plan, country]

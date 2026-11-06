@@ -116,3 +116,14 @@ def test_a_segment_filter_moves_tiles_and_the_bridge_adds_up_over_segments():
     for s, v in t["nrr_by_segment_at_cohort"].items():
         assert dp.compute_kpi(df[df[seg] == s], roles, pack, "nrr", full=df) == pytest.approx(v), s
     assert pd.Series(t["nrr_by_segment_at_cohort"]).nunique() == 3
+
+
+def test_cohort_rates_by_group_equal_truth():
+    """$0 rehearsal: NRR and logo churn by segment crashed (a by-group cohort is a Series, the
+    empty-window check took it for a number)."""
+    df, _, pack, roles, t = _setup("saas_mrr_snapshots")
+    by = dp.compute_kpi(df, roles, pack, "nrr", by=roles["segment"])
+    assert by.to_dict() == pytest.approx(t["nrr_by_segment_at_cohort"])
+    df, _, pack, roles, t = _setup("saas_subscriptions")
+    by = dp.compute_kpi(df, roles, pack, "logo_churn_rate", by=roles["segment"])
+    assert by.to_dict() == pytest.approx(t["logo_churn_by_segment"])

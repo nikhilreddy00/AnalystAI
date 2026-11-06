@@ -1439,7 +1439,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
         return pd.Series({p: cohort(s_, e) if s_ >= first - pd.Timedelta(days=1) else float("nan")
                           for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
     value = cohort(lo, as_of)
-    return None if pd.isna(value) else value
+    return None if isinstance(value, float) and pd.isna(value) else value
 
 
 def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> bool:
@@ -1905,8 +1905,9 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     def term(t: Term) -> str:
         if t.kpi:
             how = describe_kpi(pack, t.kpi, roles, present).rstrip(".")
-            return pack.kpi(t.kpi).phrase + (f" ({how[:1].lower() + how[1:]})" if parts and kpi.den
-                                             is not None and spell_terms(pack, t.kpi) else "")
+            return (f"{t.times:g} × " if t.times != 1 else "") + pack.kpi(t.kpi).phrase + (
+                f" ({how[:1].lower() + how[1:]})" if parts and kpi.den is not None
+                and spell_terms(pack, t.kpi) else "")
         if t.nunique:
             return f"distinct {roles[t.nunique]}" + (f" where {where(t.where)}" if t.where else "")
         if t.spell:
@@ -1920,7 +1921,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                                f"({at}, {gone})",
                     "starts": f"spells starting in the period (by {roles.get(sp.start, 'first snapshot')})",
                     "opening": f"distinct {ent} in force 12 months before the date ({at}, {gone})",
-                    "retained": f"the same {ent} (in force 12 months before) at the date"
+                    "retained": f"same {ent} (in force 12 months before) at the date"
                                 + (", each capped at its value then" if t.capped else ""),
                     "moves": f"{t.move} moves: each {ent} whose value went "
                              + {"new": "from 0 (never in force before) to above 0",
