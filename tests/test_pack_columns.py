@@ -43,7 +43,7 @@ def test_a_formula_of_several_roles_is_one_column(pack):
     out, notes = pack_columns(df, pack, {r: r for r in df.columns})
     got = out["monthly_rent"].tolist()
     assert got[:3] == [75.0, 600.0, 30.0] and pd.isna(got[3]) and got[4] == 5.0
-    assert notes == ["monthly_rent: 1 row has a term the formula doesn't know (weekly): left blank."]
+    assert notes == ["monthly_rent: 1 row has a term value the formula doesn't know (weekly): left blank."]
 
 
 def test_a_missing_required_role_or_an_own_column_adds_nothing(pack):
@@ -82,3 +82,17 @@ def test_a_percent_off_in_percent_is_read_as_a_rate(pack):
                        "term": ["monthly", "monthly"]})
     out, _ = pack_columns(df, pack, {r: r for r in df.columns})
     assert out["monthly_rent"].tolist() == [80.0, 100.0]
+
+
+def test_every_blank_or_unreadable_input_is_said(pack):
+    """Review: a blank interval (or price) left MRR blank with no note; only an unknown category
+    was said. Every required input: its blank rows and its unreadable ones, counted."""
+    df = pd.DataFrame({"unit_id": list("abcdef"), "rent": ["100", None, "n/a", "50", "50", "50"],
+                       "term": ["monthly", "monthly", "monthly", None, None, "fortnightly"]})
+    out, notes = pack_columns(df, pack, {r: r for r in df.columns})
+    assert out["monthly_rent"].notna().tolist() == [True, False, False, False, False, False]
+    assert notes == ["monthly_rent: 1 row has no rent: left blank.",
+                     "monthly_rent: 1 row has a rent value the formula doesn't know (n/a): left blank.",
+                     "monthly_rent: 2 rows have no term: left blank.",
+                     "monthly_rent: 1 row has a term value the formula doesn't know (fortnightly): "
+                     "left blank."]

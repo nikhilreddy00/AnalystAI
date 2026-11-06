@@ -325,3 +325,21 @@ def test_no_pack_caveat_names_a_column():
     bad = [(p.domain, k) for p in dp.load_packs() for k, t in [*p.role_caveats.items(), *p.caveats.items()]
            if re.search(r"(?<![{\w])[a-z]+_[a-z_]+\b(?![}])", t)]
     assert not bad, f"write caveats in plain words, never a column name: {bad}"
+
+
+def test_no_spell_kpi_label_names_a_period():
+    """Review: 'Logo churn (12 months)' sat beside its context '6-month cohort' on short data. A
+    spell KPI's period has one owner, window_words (the tile context, the answer's brackets)."""
+    import re
+
+    from domain_pack import load_packs, spell_terms
+    period = re.compile(r"\d+\s*(?:-\s*)?(?:month|year)s?|\bearlier\b|\bannual\b", re.I)
+    bad = [(p.domain, k.label) for p in load_packs() if p.spell for k in p.kpis
+           if spell_terms(p, k.name) and period.search(k.label)]
+    assert not bad, bad
+
+
+def test_one_repeat_test_for_dated_rows():
+    """Review: _snapshot_dates copied _panel's 'dates per entity' median. domain_pack._dates_each
+    is the one; a second `.size().median()` in shared code is a second definition."""
+    assert len(_hits(r"\.size\(\)\.median\(\)")) == 1, _hits(r"\.size\(\)\.median\(\)")

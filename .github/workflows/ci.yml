@@ -1,7 +1,10 @@
 name: CI
 
+# one run per change: a pull request runs on its PR; a push runs only on main (a branch with a
+# PR ran CI twice per push, the push run and the PR run)
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -14,9 +17,21 @@ on:
         description: "Repeats per case"
         default: "3"
 
+# a newer push to the same branch makes an older run's result moot: cancel it (12 pushes in one
+# domain queued 12 runs of ~25 min)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # 4 jobs at once, each a quarter of the tests (tests/conftest.py CI_SHARD): a runner has 4
+    # slow cores, so one job took 19 min even with -n auto
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     services:
       postgres:   # Phase 4: SQL eval gates and the read-only execution tests run against it
         image: postgres:16
@@ -28,6 +43,7 @@ jobs:
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       TEST_PG_URL: postgresql+psycopg://postgres:postgres@localhost:5432/analystai_eval
+      CI_SHARD: ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -35,12 +51,16 @@ jobs:
           python-version: "3.11"
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check .
-      - run: uv run pytest -q   # no secrets: the autouse RecordedClient makes model calls impossible
+      # no secrets: the autouse RecordedClient makes model calls impossible; parallel: each
+      # worker gets its own scratch database (tests/conftest.py _worker_database)
+      - run: uv run pytest -q -n auto
       # The stores again on asyncpg, production's driver (docker-compose): it rejects an aware
       # datetime for a naive column, which psycopg accepts silently.
-      - run: uv run pytest -q tests/test_deletion.py tests/test_workspace_store.py tests/test_run_store.py tests/test_durable_runs.py tests/test_workspace_perf.py
+      - if: matrix.shard == 0
+        run: uv run pytest -q -n auto tests/test_deletion.py tests/test_workspace_store.py tests/test_run_store.py tests/test_durable_runs.py tests/test_workspace_perf.py
         env:
           TEST_PG_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/analystai_eval
+          CI_SHARD: ""
 
   # Phase 5.7: every finished domain's deterministic suites, $0 (no model call), on every push.
   zero-suites:

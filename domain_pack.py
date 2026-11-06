@@ -73,6 +73,15 @@ class Role(_Strict):
     over_time: Literal["sum", "last"] = "sum"
     # A category's numeric meaning in a formula (Pack.columns): a billing interval in months
     numbers: dict[str, float] = Field(default_factory=dict)
+    # Headers another meaning shares (a subscription list's next `billing_date`): they fill a
+    # spell pack's snapshot role only when each spell repeats over their dates (_snapshot_dates)
+    weak_headers: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _weak_are_headers(self):
+        if not set(self.weak_headers) <= set(self.headers):
+            raise ValueError(f"weak_headers {self.weak_headers} must be among headers")
+        return self
 
 
 class Cond(_Strict):
@@ -160,7 +169,7 @@ class Within(_Strict):
 
 class SpellWords(_Strict):
     """A spell's own words, for the frame columns the model's code reads and the sentences the
-    product writes: HR's hire / exit / people, a subscription's start / cancellation / customers.
+    product writes: HR's hire / exit / people, a subscription's start / end / customers.
     Shared code never names them (tests/test_one_definition.py)."""
     start: str = "start"
     end: str = "end"
@@ -171,7 +180,7 @@ class SpellWords(_Strict):
 
 class Spell(_Strict):
     """Entities in force between two dates: an employee from hire to termination, a subscriber
-    from start to cancellation. Rows are spells (a returning entity has a row per spell) or dated
+    from start to end. Rows are spells (a returning entity has a row per spell) or dated
     snapshots (the pack's date role, when it is neither `start` nor `end`). A blank `end` is open;
     a status in `ended` with a blank `end` is over at an unknown date (never in force). `as_of`:
     a report-date role (the extract's own date), else the latest snapshot or start/end date not
@@ -653,7 +662,26 @@ def _panel(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> bool:
     if not (pack.strong_panel and key and date and all(r in roles for r in pack.strong_panel)):
         return False
     pairs = df[[key, date]].dropna()
-    return len(pairs) > 0 and not pairs.duplicated().any() and pairs.groupby(key).size().median() >= 3
+    return not pairs.duplicated().any() and _dates_each(df, [key], date) >= 3
+
+
+def _dates_each(df: pd.DataFrame, keys: list[str], date: str) -> float:
+    """THE repeat test of dated rows: the median number of distinct dates per key (0: none)."""
+    pairs = df[[*keys, date]].dropna().drop_duplicates()
+    return float(pairs.groupby(keys).size().median()) if len(pairs) else 0.0
+
+
+def _snapshot_dates(df: pd.DataFrame, pack: Pack, roles: dict[str, str], header: str | None) -> bool:
+    """Whether a spell pack's snapshot role column holds snapshot dates. A header only the role
+    means (month, snapshot_date) is trusted, one snapshot included; a weak one (Role.weak_headers:
+    a list's next billing_date) needs each spell (its entity and start, when the file has one) on
+    2+ of its dates. Review: a list with a next-billing date was read as snapshots (MRR $476k for
+    $869k); dropping the role on row shape alone also dropped real one-month snapshots."""
+    snap = snapshot_role(pack) if pack.spell else None
+    if snap not in roles or header not in pack.roles[snap].weak_headers or pack.spell.entity not in roles:
+        return True
+    keys = [roles[r] for r in (pack.spell.entity, pack.spell.start) if r in roles]
+    return _dates_each(df, keys, roles[snap]) >= 2
 
 
 def _matches(alts: list[dict[str, list[str]]], roles: dict[str, str]) -> bool:
@@ -676,6 +704,7 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                 any(set(v) <= tokens for v in pack.exclude_pairs):
             continue
         roles: dict[str, str] = {}
+        matched: dict[str, str] = {}   # role → the header that filled it
         expanded = {c: expand_header(n, pack) for c, n in norm.items()}
         for role, r in pack.roles.items():
             for header in r.headers:
@@ -683,8 +712,11 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
                             and not (r.kind == "id" and c in pii_columns)
                             and _fits(df[c], r, pack, c in date_columns)), None)
                 if col is not None:
-                    roles[role] = col
+                    roles[role], matched[role] = col, header
                     break
+        snap = snapshot_role(pack) if pack.spell else None
+        if snap and not _snapshot_dates(df, pack, roles, matched.get(snap)):
+            roles.pop(snap)   # a list's next billing date: no snapshot
         if _matches(pack.strong, roles) or _panel(df, pack, roles):
             found.append((pack.domain, roles, "strong"))
         elif _matches(pack.signals, roles):
@@ -867,7 +899,7 @@ def _spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Time
     snap = _snapshot_column(pack, roles)
     for col in [roles.get(s.as_of) if s.as_of else None, snap]:
         if col and pd.notna(t := _day(df[col]).max()):
-            if col == snap and s.month_labels and (_day(df[col]).dropna().dt.day == 1).all():
+            if col == snap and _month_labelled(pack, df, roles):
                 return min(t + pd.offsets.MonthEnd(0), today())
             return t
     dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end, s.paid_from) if r in roles]
@@ -942,12 +974,12 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
         return f"as of {as_of:%-d %b %Y}"
     spells = {t.spell for t in spell_terms(pack, name)}
     if "moves" in spells:   # moves start after the first known state (pass 6: a month too many)
-        known = first_known(pack, roles, spell_from(pack, df, roles))
+        known = first_known(pack, df, roles)
         months = sum(p > known for p in pts)
         if months < 1:
             return ""
     if spells & {"opening", "retained"}:   # whatever period is asked: the cohort ending there
-        start = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
+        start = cohort_start(as_of, first_known(pack, df, roles))
         if spells == {"opening"}:   # a level at the cohort's start (Opening MRR)
             return f"on {start:%-d %b %Y}"
         n = round((as_of - start).days / 30.44)
@@ -1090,8 +1122,8 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             continue
         now = compute_kpi(df, roles, pack, k.name)
         cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))
-        whole_year = not cohort or (back[1] - pd.DateOffset(months=12)).to_period("M") >= first_known(
-            pack, roles, spell_from(pack, df, roles)).to_period("M")   # an 11-month cohort is no 12
+        known = first_known(pack, df, roles).to_period("M")   # an 11-month cohort is no 12
+        whole_year = not cohort or (back[1] - pd.DateOffset(months=12)).to_period("M") >= known
         then = compute_kpi(df, roles, pack, k.name, window=back) if prior_ok and whole_year else None
         if now is not None:
             out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
@@ -1158,7 +1190,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
                 terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
                              f"this file) {say(stock, abs(rest))}")
-            begin = cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles)))
+            begin = cohort_start(as_of, first_known(pack, df, roles))
             span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
             if not span or begin >= as_of:
                 return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
@@ -1174,7 +1206,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             and compute_kpi(df, roles, pack, rate.name) is not None:   # never without its rate
         who = pack.spell.words.plural
         out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
-                   f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, roles, spell_from(pack, df, roles))):%-d %b %Y} "
+                   f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, df, roles)):%-d %b %Y} "
                    "who are not in force now, so "
                    f"the two differ: {who} who joined in the window or came back are in the count only.")
     if (k := parts["churn"]) is not None:
@@ -1431,13 +1463,21 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     return sum(vals) / len(pts)
 
 
-def first_known(pack: Pack, roles: dict[str, str], first: pd.Timestamp) -> pd.Timestamp:
-    """THE first date the data knows each entity's state: snapshots, the first snapshot (a month
-    label on the 1st: that month's end, as spell_as_of reads it); spells, the day before the first
-    date (in force by start dates). The ledger's opening and moves start there at the earliest."""
+def _month_labelled(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> bool:
+    """THE month-label test: the pack reads labels and every snapshot is on a 1st (one mid-month
+    date: the dates are real days)."""
+    snap = _snapshot_column(pack, roles)
+    return bool(snap and pack.spell.month_labels and (_day(df[snap]).dropna().dt.day == 1).all())
+
+
+def first_known(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timestamp:
+    """THE first date the data knows each entity's state: snapshots, the first snapshot (month
+    labels: that month's end, as spell_as_of reads them); spells, the day before the first date
+    (in force by start dates). The ledger's opening and moves start there at the earliest."""
+    first = spell_from(pack, df, roles)
     if not _snapshot_column(pack, roles):
         return first - pd.Timedelta(days=1)
-    return first + pd.offsets.MonthEnd(0) if pack.spell.month_labels and first.day == 1 else first
+    return first + pd.offsets.MonthEnd(0) if _month_labelled(pack, df, roles) else first
 
 
 def cohort_start(as_of, known):
@@ -1480,7 +1520,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
     its new segment. Opening / retained: the cohort in force at the window's start (by period:
     12 months before each period's end), placed by its row then; retained values it at the end
     (an entity back after a churn is retained). A start or end before the data counts 0."""
-    known = first_known(pack, roles, first)
+    known = first_known(pack, whole, roles)
     lo = max(lo, known)   # moves never start before the data knows a state (an asked window of
     # 20 months keeps its 20: pass 3); the 12-month cohort is the opening's own rule
 
@@ -1711,7 +1751,13 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     filter, a named value): a protected one makes it a protected group. `window` (lo, hi): an
     asked period for a spell KPI,
     which clips its window and as-of instead of cutting rows (rows dated in Q3 are the people
-    hired in Q3, not the people employed then)."""
+    hired in Q3, not the people employed then).
+    Rows are named by index label (a filter's part maps to the whole by it): a repeated label on
+    the whole data is renumbered; on a part of it the mapping is lost, so it is refused."""
+    if not df.index.is_unique or (full is not None and not full.index.is_unique):
+        if full is not None:
+            raise ValueError("compute_kpi: a part and its whole need unique row labels")
+        df = df.reset_index(drop=True)
     kpi = pack.kpi(name)
     if kpi is None or df.empty:
         return None
@@ -2450,12 +2496,16 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
             out = out * (1 - (rate / 100 if percent else rate))
         for x in f.over:
             out = out / value(x, 1.0)
-        for x in (x for x in f.over if pack.roles[x].numbers and x in roles):
-            unknown = df[roles[x]].notna() & value(x, 1.0).isna()
-            if n := int(unknown.sum()):
-                seen = ", ".join(sorted(map(str, df.loc[unknown, roles[x]].unique()))[:3])
-                notes.append(f"{name}: {n:,} row{'s' * (n != 1)} {'have' if n != 1 else 'has'} a "
-                             f"{roles[x]} the formula doesn't know ({seen}): left blank.")
+        for x in needed:   # every required input: its blank rows, then its unreadable ones
+            raw = df[roles[x]].where(df[roles[x]].astype(str).str.strip() != "")
+            for bad, what in ((raw.isna(), f"no {roles[x]}"),
+                              (raw.notna() & value(x, 1.0).isna(),
+                               f"a {roles[x]} value the formula doesn't know")):
+                if n := int(bad.sum()):
+                    seen = "" if raw[bad].isna().all() else \
+                        f" ({', '.join(sorted(map(str, raw[bad].unique()))[:3])})"
+                    notes.append(f"{name}: {n:,} row{'s' * (n != 1)} {'have' if n != 1 else 'has'} "
+                                 f"{what}{seen}: left blank.")
         df = df.assign(**{name: out})
     return df, notes
 

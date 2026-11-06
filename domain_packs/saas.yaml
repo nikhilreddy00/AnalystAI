@@ -30,7 +30,9 @@ roles:
   # none (its created and ended dates are the spell's own); an invoice file dates by invoice.
   month:          {kind: date, headers: [month, mrr_month, snapshot_month, month_start,
                                          billing_month, billing_date, reporting_month,
-                                         snapshot_date]}
+                                         snapshot_date],
+                   # a subscription list's next bill: a snapshot only when spells repeat over it
+                   weak_headers: [billing_month, billing_date]}
   created:        {kind: date, headers: [created, created_at, created_utc, start_date,
                                          subscription_start, started_at, start,
                                          subscription_start_date]}
@@ -100,7 +102,7 @@ test_roles: [customer, contact_email]
 spell: {entity: customer, start: created, end: ended_at, paid_from: trial_end,
         ended: [canceled, cancelled, incomplete_expired, ended], concurrent: true,
         month_labels: true,
-        words: {start: start, end: cancellation, unknown: end_date_unknown, plural: customers,
+        words: {start: start, end: end, unknown: end_date_unknown, plural: customers,
                 after_end: rows after the customer left}}
 snapshot_key: customer
 columns:
@@ -116,7 +118,7 @@ overview_groups: [segment, plan, country]
 overview_kpis: [mrr, nrr, logo_churn_rate, new_mrr, churned_mrr, billings]
 
 text:
-  rows_brief: "MRR, ARR, paying customers, ARPA, the MRR movements (new, expansion, contraction, churned, reactivation), logo churn and net and gross revenue retention are given below as computed facts: use them as they are, never recount them from rows. MRR is a monthly run-rate at a date, not revenue: never call it revenue, and never sum it over months (a month's MRR is each customer's latest value that month, added over customers). On a subscription list the `mrr` column is already normalised by the product (price × seats × (1 − discount) ÷ the billing interval in months: an annual plan's price is ÷ 12): use it, never the raw price. Trials ('trialing'), paused, unpaid and incomplete subscriptions are out of MRR and customer counts; past_due stays in. A subscription converted from a trial pays from its trial_end. canceled_at is the date a cancellation was requested, not the end: a subscription ends at ended_at (a cancel_at after the latest date is a scheduled cancellation, still paying). Who is paying is already marked in columns `df` has beyond the schema: 'in_force_now' ('yes' on each paying subscription in force at the latest date: MRR now, and MRR, customers or ARPA by any group (segment, plan, country), sum mrr over these rows only, because an ended subscription keeps its last price in the file and summing every row adds customers who left), 'cancellation_event_date' and 'start_event_date' (a subscription's own end and start), 'cancellation_in_window', 'end_date_unknown' ('yes' on a canceled subscription with no end date: never in force). A subscription's cancellation is not a churned customer (the customer may hold another subscription or come back): churned customers, new and reactivated customers are the computed facts (a customer whose MRR went to 0 at a month-end, from 0 with no earlier payment, from 0 after an earlier one). Net revenue retention = the MRR at the latest date of the customers paying 12 months earlier ÷ their MRR then (new customers out); gross retention caps each customer at their earlier MRR; logo churn = the share of those customers not paying now. Never multiply a monthly churn rate by 12. Count customers as distinct customer ids, never rows. A partial month is named, never annualised. Invoice lines are billings (invoiced amounts excluding tax, voids and drafts out, credit notes netted, by invoice date), never MRR."
+  rows_brief: "MRR, ARR, paying customers, ARPA, the MRR movements (new, expansion, contraction, churned, reactivation), logo churn and net and gross revenue retention are given below as computed facts: use them as they are, never recount them from rows. MRR is a monthly run-rate at a date, not revenue: never call it revenue, and never sum it over months (a month's MRR is each customer's latest value that month, added over customers). On a subscription list the `mrr` column is already normalised by the product (price × seats × (1 − discount) ÷ the billing interval in months: an annual plan's price is ÷ 12): use it, never the raw price. Trials ('trialing'), paused, unpaid and incomplete subscriptions are out of MRR and customer counts; past_due stays in. A subscription converted from a trial pays from its trial_end. canceled_at is the date a cancellation was requested, not the end: a subscription ends at ended_at (a cancel_at after the latest date is a scheduled cancellation, still paying). Who is paying is already marked in columns `df` has beyond the schema: 'in_force_now' ('yes' on each paying subscription in force at the latest date: MRR now, and MRR, customers or ARPA by any group (segment, plan, country), sum mrr over these rows only, because an ended subscription keeps its last price in the file and summing every row adds customers who left), 'end_event_date' and 'start_event_date' (a subscription's own end and start), 'end_in_window', 'end_date_unknown' ('yes' on a canceled subscription with no end date: never in force). A subscription's end is not a churned customer (the customer may hold another subscription or come back): churned customers, new and reactivated customers are the computed facts (a customer whose MRR went to 0 at a month-end, from 0 with no earlier payment, from 0 after an earlier one). Net revenue retention = the MRR at the latest date of the customers paying 12 months earlier ÷ their MRR then (new customers out); gross retention caps each customer at their earlier MRR; logo churn = the share of those customers not paying now. Never multiply a monthly churn rate by 12. Count customers as distinct customer ids, never rows. A partial month is named, never annualised. Invoice lines are billings (invoiced amounts excluding tax, voids and drafts out, credit notes netted, by invoice date), never MRR."
   grain_line: "One row is a subscription, a customer's month of MRR, or an invoice line: count customers as distinct {key}, never rows."
   unsupported_alternatives: "I can answer with what the data has: MRR, ARR and paying customers now or by month, ARPA, new, churned and reactivated customers, the MRR movements and net and gross revenue retention over the 12 months to the latest date (movements and retention need monthly MRR snapshots), logo churn, by segment, plan or country, and billings on invoice lines. Which would help?"
   kpis_default: its MRR, subscription and invoice columns
@@ -147,7 +149,7 @@ kpis:
     num: [[{spell: active, where: *paying}], [{spell: active, where: *positive}]]
   # ARPA: MRR ÷ paying customers (per account, never per subscription row) [CM]
   - name: arpa
-    label: ARPA
+    label: ARPA per paying customer
     unit: money
     num: [[{spell: active, sum: mrr, where: *paying}], [{spell: active, sum: mrr, where: *positive}]]
     den: [[{spell: active, where: *paying}], [{spell: active, where: *positive}]]
@@ -191,18 +193,18 @@ kpis:
     num: [[{spell: moves, move: reactivation, where: *paying}], [{spell: moves, move: reactivation, where: *positive}]]
   # The cohort: customers paying 12 months before the as-of (or before the asked period's end) [SC]
   - name: opening_customers
-    label: Customers 12 months earlier
+    label: Opening customers
     unit: count
     unit_word: customers
     num: [[{spell: opening, where: *paying}], [{spell: opening, where: *positive}]]
   - name: opening_mrr
-    label: MRR 12 months earlier
+    label: Opening MRR
     unit: money
     num: [[{spell: opening, sum: mrr, where: *paying}], [{spell: opening, sum: mrr, where: *positive}]]
   # Logo churn: of the customers paying 12 months earlier, the share not paying now (a customer
   # who left and came back is retained) [CM][SC]; never a monthly rate × 12
   - name: logo_churn_rate
-    label: Logo churn (12 months)
+    label: Logo churn
     unit: percent
     tile: true
     num: [[{spell: opening, where: *paying}, {spell: retained, sign: -1, where: *paying}],

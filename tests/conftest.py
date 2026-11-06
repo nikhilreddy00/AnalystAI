@@ -1,6 +1,41 @@
+import os
+
 import pytest
 
 from llm.client import RecordedClient, set_client
+
+
+def _worker_database() -> None:
+    """Each pytest-xdist worker gets its own scratch database (<db>_gw0, <db>_gw1 …), created on
+    first use, so the Postgres tests run in parallel without sharing schemas (CI ran the whole
+    suite serially because of them: 22 min). Set before any test module reads TEST_PG_URL."""
+    url, worker = os.environ.get("TEST_PG_URL"), os.environ.get("PYTEST_XDIST_WORKER")
+    if not url or not worker:
+        return
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.engine import make_url
+    base = make_url(url)
+    name = f"{base.database}_{worker}"
+    admin = create_engine(base.set(drivername="postgresql+psycopg", database="postgres"),
+                          isolation_level="AUTOCOMMIT")
+    with admin.connect() as c:
+        if not c.execute(text("select 1 from pg_database where datname = :n"), {"n": name}).first():
+            c.execute(text(f'CREATE DATABASE "{name}"'))
+    admin.dispose()
+    os.environ["TEST_PG_URL"] = base.set(database=name).render_as_string(hide_password=False)
+
+
+_worker_database()
+
+
+def pytest_collection_modifyitems(config, items):
+    """CI_SHARD=i/n (CI's backend matrix): this job runs every n-th test from the i-th. By test,
+    not by file: the slow cross-domain tests are spread over many files."""
+    if not (shard := os.environ.get("CI_SHARD")):
+        return
+    i, n = map(int, shard.split("/"))
+    config.hook.pytest_deselected(items=[t for k, t in enumerate(items) if k % n != i])
+    items[:] = items[i::n]
 
 
 @pytest.fixture(autouse=True)

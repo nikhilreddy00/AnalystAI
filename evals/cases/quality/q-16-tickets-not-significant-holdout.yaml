@@ -4,9 +4,10 @@ id: q-16-tickets-not-significant-holdout
 insight_case: ins-16-tickets-not-significant-holdout
 category: contradictory
 source:
-  report: insight-20261106T012454Z.json
+  report: insight-20261106T181700Z.json
   run: 0
 seeded: false
 defects: []
 natural: []
 # Domain 6: re-pointed at the Domain 6 insight gate's report (the subscriptions file reads as SaaS: its evidence gained the citeable story); old natural labels named the old report's claims.
+# Review fixes (2026-11-06): re-pointed again: on its 20 rows no account repeats, so the file is no longer read as snapshots (its old story said logo churn 100%, NRR 0%).

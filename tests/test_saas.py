@@ -84,7 +84,7 @@ def test_the_spell_columns_say_saas_words():
     from agents.analysis_agent import model_frame
     df, contract, *_ = _setup("saas_subscriptions")
     _, extra = model_frame(df, contract)
-    assert {"start_event_date", "cancellation_event_date", "in_force_now", "end_date_unknown"} <= set(extra)
+    assert {"start_event_date", "end_event_date", "in_force_now", "end_date_unknown"} <= set(extra)
     assert not any(w in c for c in extra for w in ("hire", "exit", "left"))
 
 
@@ -530,3 +530,90 @@ def test_a_mixed_groups_former_rows_alone_are_false():
     now = df[f["in_force_now"] == "yes"].groupby("plan")["mrr"].mean()
     mixed = [k for k in gone.index if k in now.index and abs(gone[k] - now[k]) > 0.01 * abs(now[k])]
     assert mixed and out["false"] == len(mixed)
+
+
+def test_month_labels_are_judged_once_for_the_as_of_and_the_first_known_month():
+    """Design review: spell_as_of read labels only when every snapshot is on the 1st, first_known
+    whenever the first one is. One mid-month snapshot: neither reads the 1st as a month's end."""
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    mixed = df.copy()
+    last = pd.to_datetime(mixed["month"]) == pd.to_datetime(mixed["month"]).max()
+    mixed.loc[last, "month"] = "2026-10-15"
+    first = dp.spell_from(pack, mixed, roles)
+    assert dp.spell_as_of(pack, mixed, roles) == pd.Timestamp("2026-10-15")
+    assert dp.first_known(pack, mixed, roles) == first
+    assert dp.first_known(pack, df, roles) == first + pd.offsets.MonthEnd(0)
+
+
+def test_a_next_billing_date_never_makes_a_subscription_list_snapshots(monkeypatch):
+    """Review: a list with a `billing_date` column (each subscription's next bill) was read as
+    monthly snapshots: MRR $476k for $869k, logo churn 100%. The snapshot role needs the entity
+    to repeat over its dates when the file has the spell's start."""
+    import numpy as np
+
+    from tests import test_oracle
+
+    def next_bill(raw):
+        days = pd.to_timedelta(np.arange(len(raw)) % 28, unit="D")
+        return raw.assign(billing_date=(pd.Timestamp("2026-11-01") + days).strftime("%Y-%m-%d"))
+    monkeypatch.setitem(test_oracle.TRANSFORMS, "next_bill", next_bill)
+    _, df, contract, truth = test_oracle._built("saas_subscriptions", transform="next_bill")
+    pack = dp.pack_for(contract.domain)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    assert "month" not in roles
+    for k in ("mrr", "logo_churn_rate"):
+        assert dp.compute_kpi(df, roles, pack, k) == pytest.approx(truth[k], rel=1e-9), k
+
+
+def test_an_mrr_export_keeps_its_billing_date_as_the_snapshot_month():
+    """reg-subscriptions: account × billing_date MRR rows are snapshots (the entity repeats)."""
+    from evals import datagen
+    raw, _ = datagen.make("subscriptions", 7)
+    assert dp.detect(raw, {"billing_date"})[1].get("month") == "billing_date"
+
+
+@pytest.mark.parametrize("name", ["saas_subscriptions", "saas_mrr_snapshots", "hr_roster", "hr_snapshots"])
+def test_a_duplicate_row_index_gives_the_same_spell_kpis(name):
+    """Review: _in_force memoised row labels, so a frame with a repeated index crashed
+    ('cannot reindex on an axis with duplicate labels') or counted rows twice."""
+    df, _, pack, roles, _ = _setup(name)
+    dup = df.copy()
+    dup.index = dup.index % (len(dup) // 3)
+    for k in (k.name for k in pack.kpis if dp.spell_terms(pack, k.name) and dp.computable(pack, k.name, roles)):
+        assert dp.compute_kpi(dup, roles, pack, k) == dp.compute_kpi(df, roles, pack, k), k
+    with pytest.raises(ValueError, match="unique row labels"):
+        dp.compute_kpi(dup.head(50), roles, pack, "mrr" if "saas" in name else pack.kpis[0].name, full=dup)
+
+
+@pytest.mark.parametrize("name, cut", [("hr_snapshots", "Snapshot_Date"), ("saas_mrr_snapshots", "month")])
+def test_one_snapshot_keeps_its_snapshot_role(name, cut):
+    """Review of the first billing_date fix: dropping the role on row shape alone dropped a real
+    one-snapshot extract (the as-of fell back to the latest hire date). A trusted header stays."""
+    from evals import datagen
+    raw, _ = datagen.make(name, 1)
+    one = raw[raw[cut] == raw[cut].max()]
+    if name == "saas_mrr_snapshots":   # with a start column, as a warehouse model has
+        one = one.assign(created="2024-01-15")
+    assert dp.detect(one, {cut, "created", "Hire_Date", "Termination_Date"} & set(one.columns))[1].get(snapshot_of(name)) == cut
+
+
+def snapshot_of(name):
+    return dp.snapshot_role(dp.pack_for("hr" if name.startswith("hr") else "saas"))
+
+
+def test_a_next_billing_date_with_add_ons_is_still_no_snapshot(monkeypatch):
+    """Spec review: most customers on a base plan + an add-on billed on different days put each
+    customer on 2+ dates; each subscription (customer and start) is still on one."""
+    import numpy as np
+
+    from tests import test_oracle
+
+    def add_ons(raw):
+        twin = raw.assign(subscription_id=raw["subscription_id"] + "_addon",
+                          created=(pd.to_datetime(raw["created"]) + pd.Timedelta(days=3)).dt.strftime("%Y-%m-%d"))
+        both = pd.concat([raw, twin], ignore_index=True)
+        days = pd.to_timedelta(np.arange(len(both)) % 28, unit="D")
+        return both.assign(billing_date=(pd.Timestamp("2026-11-01") + days).strftime("%Y-%m-%d"))
+    monkeypatch.setitem(test_oracle.TRANSFORMS, "add_ons", add_ons)
+    _, df, contract, _ = test_oracle._built("saas_subscriptions", transform="add_ons")
+    assert "month" not in contract.roles

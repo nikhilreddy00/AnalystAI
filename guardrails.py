@@ -538,7 +538,9 @@ _CAUSAL_RE = re.compile(r"\b(?:drives?|drove|driving|driven by|causes?|caused|ca
                         r"boosts?|boosted|boosting|lifts?|lifted|lifting|fuel(?:s|ed|led|ing)|"
                         r"pays? for (?:it|them)sel(?:f|ves)|makes? .{0,20}"
                         r"(?:rise|grow|increase))\b", re.I)
+# an investigation asks what drives something, never says it does ('understand what drives …')
 _NOT_ASSERTED_RE = re.compile(r"\b(?:whether|if|test|experiment|validate|determine|isolate|"
+                              r"understand|investigate|explore|examine|"
                               r"could|may|might|not|n't|no|rather than|imply|implies|possible|"
                               r"likely|association|associated|correlat\w*|unclear|cannot|"
                               r"uncertain|inconclusive|insufficient|lacks?)\b", re.I)

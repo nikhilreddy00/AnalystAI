@@ -17,11 +17,12 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
 - **Protected role** — a special-category attribute (gender, ethnicity, disability, religion,
   union membership …) or pay: described only, never a recommendation, never a small cell.
 - **Spell** — one entity's stay between two dates (an employee from hire to termination, a
-  subscriber from start to cancellation); a returning entity has a spell per stay. Rows are
+  subscription from start to end); a returning entity has a spell per stay. Rows are
   spells, or dated snapshots of who is in force.
 - **In force at t** — an entity's latest row on or before t (a snapshot, or its latest spell
-  started by t) whose end is blank or after t, and whose status doesn't say it ended at an
-  unknown date. Headcount is the people in force at a date; never a sum of rows or months.
+  started by t; a pack with concurrent spells keeps every one in force, a role summed over them:
+  a customer's base plan and add-on) whose end is blank or after t, and whose status doesn't say
+  it ended at an unknown date. Headcount is the people in force at a date; never a sum of rows or months.
 - **As-of date** — the date spell figures are measured at: a report date in the data, else the
   latest snapshot, else the latest start or end date not after today. Dates after it are not
   yet events. Flows and rates read the 12 months to it unless a period is asked.
@@ -36,7 +37,8 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   1 for being there), built on all rows and kept where a filter's part holds the chosen row. MRR
   movements and cohort retention are read from it, never from row sums (Domain 6, 2026-11-05).
 - **Move** — one entity's change between two consecutive month-ends, of one kind: new (from 0,
-  never in force before), reactivation (from 0, in force before), expansion, contraction, churn
+  never in force before), reactivation (from 0, in force at an earlier month-end: a stay that began and ended inside
+  one month is unseen, so its return is new), expansion, contraction, churn
   (to 0). Counted where its later row is (a churn: its earlier row).
 - **Opening cohort** — the entities in force at a window's start (12 months before the as-of, or
   before each period's end); retention follows the same entities to the end.
