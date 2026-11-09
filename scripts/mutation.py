@@ -54,6 +54,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("functions", nargs="+", help="function names (any module)")
     ap.add_argument("--tests", nargs="+", required=True, help="test files or node ids to run")
+    ap.add_argument("-k", dest="keyword", help="pytest -k over the tests (leave slow ones out)")
     ap.add_argument("--json", help="also write the scores here")
     args = ap.parse_args()
     head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
@@ -66,8 +67,9 @@ def main() -> int:
             cfg = wt / "pyproject.toml"
             text = cfg.read_text()
             assert "[tool.mutmut]\n" in text, "pyproject.toml has no [tool.mutmut] table"
+            tests = [*args.tests, *(["-k", args.keyword] if args.keyword else [])]
             cfg.write_text(text.replace("[tool.mutmut]\n", "[tool.mutmut]\n"
-                                        f"pytest_add_cli_args_test_selection = {json.dumps(args.tests)}\n"))
+                                        f"pytest_add_cli_args_test_selection = {json.dumps(tests)}\n"))
             env = {**os.environ, "ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
             globs = [f"*.x_{f}__mutmut_*" if "." not in f else
                      f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
