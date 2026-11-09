@@ -6,23 +6,25 @@ from __future__ import annotations
 import pandas as pd
 
 from .pack import (Term, _column, _meets, _snapshot_column)
-from .spell import (WINDOW_MONTHS, _in_force, _month_ends, cohort_start, first_known)
+from .spell import (SpellView, WINDOW_MONTHS, _in_force, _month_ends, cohort_start, first_known)
 
 
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
 
 
-def _ledger(whole, roles, pack, term: Term, allk, ok, points, part, by):
+def _ledger(view: SpellView, term: Term, counted, points, part, by):
     """THE ledger: (values, in the part, group), each an entity × date frame. An entity's value
     at t is its rows in force at t (on ALL rows: _in_force) of the KPI's kinds meeting `where`,
     the term's role summed (concurrent spells add up) or 1 for a count (the entity is there,
     however many of its spells are); 0 when none. `in part`:
-    one of those rows is in `part` (a filter); `group`: the `by` value of its first row."""
+    one of those rows is in `part` (a filter); `group`: the `by` value of its first row.
+    `counted`: by the whole data's row label, the rows of the KPI's kinds."""
+    whole, roles, pack = view.whole, view.roles, view.pack
     ent = roles[pack.spell.entity]
     vals, inside, grp = {}, {}, {}
     for t in points:
         rows = _in_force(whole, roles, pack, t)
-        m = allk.reindex(rows.index).isin(ok).to_numpy()
+        m = counted.reindex(rows.index, fill_value=False).to_numpy()
         if term.where:
             m = m & _meets(rows, roles, term.where).to_numpy()
         rows = rows[m]
@@ -38,14 +40,17 @@ def _ledger(whole, roles, pack, term: Term, allk, ok, points, part, by):
             pd.DataFrame(grp, columns=points).reindex(values.index) if by else None)
 
 
-def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, first, axis, groups):
+def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups):
     """An opening / retained / moves term from the ledger. Moves: each pair of consecutive
     month-ends classes each entity's change (0→x new, or reactivation when it was in force at an
     earlier month-end; up expansion; down contraction; x→0 churn), counted where its later row
     is (a churn: its earlier row), so a segment's bridge adds up and a mover's growth counts in
     its new segment. Opening / retained: the cohort in force at the window's start (by period:
     12 months before each period's end), placed by its row then; retained values it at the end
-    (an entity back after a churn is retained). A start or end before the data counts 0."""
+    (an entity back after a churn is retained). A start or end before the data counts 0.
+    `part`: the filtered rows' labels; `counted`: the rows of the KPI's kinds (as in _ledger)."""
+    whole, roles, pack, first = view.whole, view.roles, view.pack, view.first
+    lo, as_of = view.window.lo, view.window.as_of
     known = first_known(pack, whole, roles)
     lo = max(lo, known)   # moves never start before the data knows a state (an asked window of
     # 20 months keeps its 20: pass 3); the 12-month cohort is the opening's own rule
@@ -64,7 +69,7 @@ def _ledger_term(df, whole, roles, pack, term: Term, allk, ok, by, lo, as_of, fi
         points = sorted({*ends, *starts})
     points = [t for t in points if t <= as_of]
     by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
-    v, inside, g = _ledger(whole, roles, pack, term, allk, ok, points, df.index, by)
+    v, inside, g = _ledger(view, term, counted, points, part, by)
 
     def total(x: pd.Series, at, key=None):
         """x summed over the entities in the part at `at` (by group or one number)."""

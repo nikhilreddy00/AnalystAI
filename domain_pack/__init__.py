@@ -75,6 +75,9 @@ from .columns import (  # noqa: F401
     with_derived,
 )
 from .spell import (  # noqa: F401
+    SpellView,
+    SpellWindow,
+    spell_view,
     SPELL_YEARS,
     SPELL_PERIODS,
     spell_as_of,

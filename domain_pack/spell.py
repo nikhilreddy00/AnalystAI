@@ -3,6 +3,8 @@ force at a date. Every other module reads these, never re-derives them."""
 from __future__ import annotations
 
 import threading
+from dataclasses import dataclass
+from typing import NamedTuple
 
 import pandas as pd
 
@@ -55,8 +57,15 @@ def spell_from(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timest
     return None
 
 
+class SpellWindow(NamedTuple):
+    """spell_window's answer: flows count in (lo, as_of], an average reads the month-ends."""
+    lo: pd.Timestamp
+    as_of: pd.Timestamp
+    month_ends: list
+
+
 def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
-                 window: tuple | None = None) -> tuple[pd.Timestamp, pd.Timestamp, list] | None:
+                 window: tuple | None = None) -> SpellWindow | None:
     """THE window of a spell KPI asked without a period grouping: (lo, as_of, month-ends), flows
     counted in (lo, as_of] and the average over the month-ends. The 12 months to the as-of, or
     the shorter span the data covers (month-ends on or after its first date: a stock there is
@@ -71,7 +80,33 @@ def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
     if window and window[0] is not None:   # an asked start: its own month's end counts ('since
         lo = pd.Timestamp(window[0]).normalize() - pd.Timedelta(days=1)   # 15 Mar' keeps 31 Mar)
         ends = [e for e in _month_ends(lo - pd.offsets.MonthEnd(1), as_of) if e > lo]
-    return max(lo, first - pd.Timedelta(days=1)), as_of, [e for e in ends if e >= first]
+    return SpellWindow(max(lo, first - pd.Timedelta(days=1)), as_of, [e for e in ends if e >= first])
+
+
+@dataclass(frozen=True, eq=False)   # eq=False: a DataFrame is never compared or hashed
+class SpellView:
+    """A spell KPI's frame of reference, built once by spell_view: the whole data and its roles,
+    the window every reader takes, and the first date a spell figure is shown from. A term's own
+    rows (its kinds, its filter) travel beside it, never in it."""
+    pack: Pack
+    roles: dict[str, str]
+    whole: pd.DataFrame   # ALL rows: a filter's part maps to them by row label
+    window: SpellWindow
+    first: pd.Timestamp   # spell_from
+
+
+def spell_view(pack: Pack, whole: pd.DataFrame, roles: dict[str, str],
+               window: tuple | None = None) -> SpellView | None:
+    """The view of `whole` for a spell KPI (an asked window clips it); None when the data has no
+    as-of or first date. An asked window past the data is no error: its month-ends are none."""
+    w = spell_window(pack, whole, roles, window)
+    if w is None:
+        return None
+    view = SpellView(pack, roles, whole, w, spell_from(pack, whole, roles))
+    ends = w.month_ends
+    assert whole.index.is_unique and all(a < b for a, b in zip(ends, ends[1:])) \
+        and all(w.lo < e <= w.as_of and e >= view.first for e in ends), w
+    return view
 
 
 def spell_covered(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Series:

@@ -7,7 +7,7 @@ import pandas as pd
 
 from .pack import (KPI, Pack, Term, Within, _column, _day, _meets, _snapshot_column, normalize_header, pack_for, spell_terms)
 from .detect import main_currency, row_kinds
-from .spell import (SPELL_PERIODS, _ended, _in_force, _month_ends, _spell_events, _started, has_spell, spell_from, spell_window)
+from .spell import (SPELL_PERIODS, _ended, _in_force, _month_ends, _spell_events, _started, has_spell, spell_view, spell_window)
 from .ledger import _ledger_term
 
 
@@ -71,18 +71,18 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     whole = kinds.attrs.get("frame", df)
     if not has_spell(pack, roles):
         return None
-    w = spell_window(pack, whole, roles, kinds.attrs.get("window"))
-    if w is None:
+    view = spell_view(pack, whole, roles, kinds.attrs.get("window"))
+    if view is None:
         return None
-    lo, as_of, window_pts = w
-    first = spell_from(pack, whole, roles)
-    allk = kinds.attrs.get("kinds", kinds)
-    ok = set(term.rows or kpi.rows)
+    lo, as_of, window_pts = view.window
+    first = view.first
+    allk = kinds.attrs.get("kinds", kinds)   # whole's kinds, or df's when df is the whole
+    counted = allk.reindex(whole.index).isin(set(term.rows or kpi.rows))   # the KPI's kinds
     periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
     ent = roles[s.entity]
 
     def kept(rows: pd.DataFrame) -> pd.DataFrame:
-        m = rows.index.isin(df.index) & allk.reindex(rows.index).isin(ok).to_numpy()
+        m = rows.index.isin(df.index) & counted.reindex(rows.index, fill_value=False).to_numpy()
         if term.where:
             m &= _meets(rows, roles, term.where).to_numpy()
         return rows[m]
@@ -105,12 +105,11 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         axis = None
         pop = df[_meets(df, roles, w)] if by and (w := _population(pack, term.where)) else df
         # and rows of the KPI's kinds: a country billed only in euros is no '$0' group (audit 1)
-        pop = pop[allk.reindex(pop.index).isin(ok).to_numpy()] if by else pop
+        pop = pop[counted.reindex(pop.index, fill_value=False).to_numpy()] if by else pop
         groups = pd.unique(pop[by].dropna()) if by else None
 
     if term.spell in ("opening", "retained", "moves"):
-        return _ledger_term(df, whole, roles, pack, term, allk, ok, by, lo, as_of, first,
-                            axis if periodic else None, groups)
+        return _ledger_term(view, term, df.index, counted, by, axis if periodic else None, groups)
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)

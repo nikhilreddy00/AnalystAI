@@ -152,3 +152,17 @@ def test_the_in_force_memo_returns_the_rule_and_dies_with_its_frame(book):
     gc.collect()
     dp._in_force(df, roles, pack, pd.Timestamp("2026-10-31"))
     assert key not in dp._MEMO
+
+
+def test_a_part_whose_row_labels_are_not_the_wholes_counts_by_label(book):
+    """SpellView (5.7b-1) precomputes the KPI's kinds over the whole data; a part relabelled
+    away from it (labels outside, or landing on other rows) reads what it read before: values
+    pinned from the code before the refactor."""
+    pack, df, roles = book
+    smb = df[df["segment"] == "SMB"]
+    outside, overlap = smb.set_axis(range(1000, 1000 + len(smb))), smb.set_axis(range(5, 5 + len(smb)))
+    assert compute_kpi(outside, roles, pack, "mrr", full=df) is None
+    assert compute_kpi(outside, roles, pack, "new_mrr", by="segment", full=df) is None
+    assert compute_kpi(overlap, roles, pack, "mrr", full=df) == 600
+    assert compute_kpi(overlap, roles, pack, "opening_mrr", by="segment", full=df).to_dict() == {"SMB": 180}
+    assert compute_kpi(overlap, roles, pack, "nrr", full=df) == pytest.approx(0.6794871794871795)
