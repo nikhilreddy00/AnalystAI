@@ -72,3 +72,24 @@ source_paths = ["domain_pack.py"]
 also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
              "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",
              "guardrails.py", "semantic_layer.py"]
+
+[tool.importlinter]
+# The domain_pack layers (Phase 5.7b-1): a module imports only the layers below it, so a rule
+# lives in one place (the window and in-force rows in spell, the moves in ledger) and a reader
+# can't grow a second copy beside it. Run: uv run lint-imports (CI and the pre-push hook).
+root_packages = ["domain_pack", "evals", "agents"]
+
+[[tool.importlinter.contracts]]
+name = "domain_pack layers"
+type = "layers"
+layers = ["domain_pack.story | domain_pack.rows", "domain_pack.kpi", "domain_pack.ledger",
+          "domain_pack.spell | domain_pack.columns", "domain_pack.detect", "domain_pack.pack"]
+# the package's in-function imports of agents.* (today, snapshot_rows …) come back through the
+# re-exporting domain_pack/__init__: a route to every layer that is not a layer import
+ignore_imports = ["domain_pack.* -> agents.*"]
+
+[[tool.importlinter.contracts]]
+name = "the reference oracle never reads the product"
+type = "forbidden"
+source_modules = ["evals.reference_kpis"]
+forbidden_modules = ["domain_pack", "agents"]

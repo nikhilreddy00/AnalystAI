@@ -57,8 +57,9 @@ def _pseudo(domain: str = "banking"):
 def pseudo(monkeypatch, request):
     domain = getattr(request, "param", "banking")
     p = _pseudo(domain)
-    monkeypatch.setattr(domain_pack, "load_packs", lambda: tuple(
+    monkeypatch.setattr(domain_pack.pack, "load_packs", lambda: tuple(
         p if x.domain == domain else x for x in domain_pack.__dict__["_real_load"]()))
+    assert domain_pack.pack_for(domain) is p   # the patch reaches the readers (else: no check)
     return p
 
 

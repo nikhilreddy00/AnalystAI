@@ -51,7 +51,12 @@ prompts/<agent>/v<N>.md    — versioned system prompts (analysis: v3 = old v2 v
                              intake: v1 = old inline prompt verbatim, v2 current, overview_vN = first-run override;
                              insight: v1 = old prompt verbatim, v4 current; insight_judge: v1 = the eval's judge)
 
-domain_pack.py             — Phase 5.7 domain packs (domain_packs/<domain>.yaml, strict schema): detect →
+domain_pack/               — the package (5.7b-1), layers each importing only those below (lint-imports):
+                             pack (models, loading, primitives) → detect (roles, row kinds) →
+                             columns | spell (as-of, window, in force) → ledger (moves, cohort) → kpi
+                             (compute_kpi) → rows | story; every name re-exported by __init__.
+                             Patch the loader at domain_pack.pack (PACKS, load_packs).
+                             Phase 5.7 domain packs (domain_packs/<domain>.yaml, strict schema): detect →
                              strong/weak (strong = defaults apply; weak = hedge + a KPI the user names),
                              row_kinds/with_row_kind (one row filter), compute_kpi, money_rows, pack_brief,
                              pack_caveats, first_questions; adding a domain = a YAML file. Shared code
