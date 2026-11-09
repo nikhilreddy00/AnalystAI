@@ -619,6 +619,110 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   blanked rows keep `len(rows) == len(df)`), a recurring-class-1 bug in banking. Its own PR with a
   banking analysis re-measure (insurance doesn't need it: loss runs use the version chain).
 
+### Phase 5.7b: Structural fixes, from audits to properties (added 2026-11-09 at the user's request)
+- **Why:** across Domains 1–6, findings fixed in code held and findings fixed in prose recurred.
+  The audit tail grew 3 → 5 → 9 → 13 passes, because every guard checks examples someone
+  already thought of. Evidence, sources and the $0 pilots:
+  `docs/research/2026-11-06-recurring-retro-findings.md`. The 9 recurring classes are listed in
+  PR #1's description (`gh pr view 1`), as **C1–C9** below.
+- **Rules for all three sessions:**
+  - **Measure first.** Each session starts by recording its baseline: failing properties,
+    mutation score, audit-found majors per class.
+  - **Red before green.** A property or check is written first, fails on today's code for the
+    class it targets, then the fix makes it green.
+  - **A finding closes only with a check** (a test, hook, type, property or cap), recorded in
+    `docs/retro-ledger.md` with its class and recurrence count. Prose-only = "unenforced".
+  - **Every finished domain stays byte-identical** unless a CHANGES entry says why: golden,
+    `domain_diff.py main --show`, `evals.snapshot text`.
+  - **$0** except session 3's paid steps (cap $5).
+  - Plan mode for each session with `domain-modeling` and `codebase-design` (CLAUDE.md rule).
+- **Session 5.7b-1: foundations ($0).** Each step protects the next:
+  1. **Retro ledger** (`docs/retro-ledger.md`): one row per finding of Domains 1–6 and PR #1–#3.
+     Columns: class, domain(s), fix, enforced-by (a check, or "unenforced"), recurrences.
+  2. **Reference implementation** `evals/reference_kpis.py`:
+     - naive loops, no pandas tricks, no import from `domain_pack`;
+     - covers the spell and ledger KPIs (in force, MRR, the bridge moves, opening/retained,
+       logo churn, NRR/GRR) and the window;
+     - checked against the generators' truth on every spell dataset.
+     It is the one independent oracle.
+  3. **Property tests** (Hypothesis, added as a dev dependency), over generated frames for every
+     pack shape (spells, snapshots, ledger, rows), with the reference as the differential oracle:
+     - P1: the bridge identity, in total and per segment (C3);
+     - P2: partition (Σ over a filter's values = the total, for additive KPIs);
+     - P3: shuffle, source and scale invariance;
+     - P4: a KPI is a number with evidence or explicitly unavailable, never a 0 or a guess from
+       missing data (C5);
+     - P5: the window is the same for every reader (C2).
+     Known-failing properties are marked `xfail(strict=True, reason="C3")`, so each fix flips one.
+  4. **Mutation baseline:**
+     - mutmut config in `pyproject.toml`;
+     - `scripts/mutation.py <functions>` runs it in a throwaway worktree on the named functions
+       with their tests;
+     - record the score of each spell/ledger/pack-column function. Pilot: `pack_columns` 71%.
+  5. **The `domain_pack.py` split:**
+     - `domain_pack/` package: `spell.py` (in force, window, as-of), `ledger.py`, `columns.py`,
+       `kpi.py`, `detect.py`, with re-exports so no import breaks;
+     - a `SpellView` object replaces `_ledger_term`'s 13 parameters;
+     - import-linter contracts: only `spell.py` defines the window and in-force rows, only
+       `ledger.py` the moves.
+     Pure moves, golden and `domain_diff` byte-identical.
+  - **Done when:** the ledger is committed; the reference equals truth on every spell dataset;
+    P1–P5 run in CI (known failures xfail-strict); the mutation baseline is recorded;
+    `domain_pack/` is split with contracts green; golden and `domain_diff` unchanged; CI green.
+- **Session 5.7b-2: the recurring classes ($0), each flipping a property or check to green:**
+  1. **Types:**
+     - `Window` (one constructor, `spell.window()`): every reader takes it. This replaces the ~6
+       copies and the hard-coded "12 months" in pack prose (a `{window}` placeholder filled by
+       `window_words`). C2.
+     - `KPIValue = Measured | Unavailable(reason)`: `compute_kpi` and every caller. This removes
+       `filtered_dashboard`'s silent fallback to generic tiles and the duplicate-index crash at
+       the other entry points. C5.
+  2. **One `term_rows`** (which rows a term counts). The eval scorer reads the reference, never
+     its own `_populations` / `_move_means`. C1, plus the scorer drift.
+  3. **Segment transfers** (`transfer_in` / `transfer_out` moves), so a bridge reconciles per
+     segment. P1 goes green. C3.
+  4. **Never a confident 0** (C5):
+     - a term whose role is missing is unavailable and said (`canceled_at` with no end date);
+     - today's status never rewrites past month-ends (unpaid and paused churn at their date).
+  5. **Units in the glossary:** each entry declares rate / money / count; a test matches it to its
+     KPI. C6.
+  6. **Scale declared in YAML** (`percent_off` = percent); values are guessed only for unnamed
+     headers, with a bound check. C7.
+  7. **Level repair by intent:** "a part of the level" is decided from the question's kind (a move
+     vs a level), never the value. The scorer scores the kept part against the reference. C4.
+  8. **Words in YAML:** the SaaS sentences in shared Python move to `SpellWords`. The guard checks
+     a word list built from every pack. C9.
+  9. **Mutation gate:** every function changed in steps 1–8 reaches 0 surviving mutants on its
+     changed lines (or each survivor is named equivalent, with a reason). The gate goes into the
+     pre-push hook for changed spell/ledger/pack-column functions.
+  - **Done when:** P1–P5 all green with no xfail left; C1–C7 and C9 each closed by a check in the
+    ledger; mutation score 100% on changed lines; finished domains' numbers unchanged except
+    CHANGES entries, each a fixed wrong number with its truth; CI green.
+- **Session 5.7b-3: prose, charts, the audit itself (cap $5):**
+  1. **Typed claims (C8):**
+     - The insight agent emits each causal / benchmark / comparison claim as structured data
+       (`{kind, cause, effect, evidence_id}` / `{kind: benchmark, metric, verdict, source}`); code
+       checks the claim, and the prose is rendered from it.
+     - The causal and benchmark regexes are deleted, except a short benchmark-phrase list.
+     - Leftover free text goes to a binary Haiku judge, calibrated on a ~50-sentence labelled set,
+       with TPR/TNR reported.
+     - Re-measure insight and quality at k=3 on the cases they touch (est. $2–3).
+  2. **Ledger charts:** MRR bridge bars and NRR at month-ends. The visualization agent stays
+     deterministic, with a `ChartRationale`, through `finalize_charts`.
+  3. **The audit procedure,** written into the 5.7 contract for Domain 7:
+     - 1–2 read-only reviewer passes, run only after properties and the mutation gate are green;
+     - the brief is the invariant list and the class ledger, not the diff;
+     - one pass on a different Claude model than the builder's (only Claude models are wired
+       here; a different model family is not available);
+     - **stop rule:** properties, mutation gate and ledger checks green. It is no longer "an
+       auditor found nothing".
+  4. **Per-domain property hook:** a new pack must register its shapes with the P1–P5 generators
+     (a test fails when a pack's datasets lack one).
+  - **Done when:** the regex judges are gone or fenced, with judge TPR/TNR ≥ 0.9 on the held-out
+    set; insight and quality hard rules 100% and pass rates ≥ baseline; charts live in a
+    1440 px Playwright check on SaaS; the 5.7 contract updated; spend ≤ $5; CI green.
+- **Measured on Domain 7:** audit-found majors per class, and the pass count. Target ≤ 2 passes.
+
 ### Phase 5.8: Data sources (added 2026-11-03 at the user's request)
 - **Why:** every domain was proven on CSV uploads only, while small companies keep data in
   spreadsheets, SaaS exports, Postgres (56% of developers), MySQL (41%) and SQL Server (30%)
