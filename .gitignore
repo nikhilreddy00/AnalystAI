@@ -38,3 +38,8 @@ scripts/ui_check/fixtures/scenario
 # live check kit (scripts/live_check)
 .pgdata/
 .live/
+
+# property / mutation / import-linter tooling (5.7b-1)
+.hypothesis/
+.import_linter_cache/
+mutants/

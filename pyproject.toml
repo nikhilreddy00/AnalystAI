@@ -58,5 +58,17 @@ asyncio_mode = "auto"
 
 [dependency-groups]
 dev = [
+    "hypothesis==6.170.15",
+    "import-linter==2.16",
+    "mutmut==3.8.1",
     "pytest-xdist>=3.8.0",
 ]
+
+[tool.mutmut]
+# Run only through scripts/mutation.py: it works in a throwaway worktree and adds the tests.
+# mutmut copies only these into mutants/ and drops the repo root from sys.path, so every
+# module the tests import is copied too (and domain_packs/, read via Path(__file__)).
+source_paths = ["domain_pack.py"]
+also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
+             "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",
+             "guardrails.py", "semantic_layer.py"]
