@@ -2,12 +2,11 @@
 added to the frame analysis code gets."""
 from __future__ import annotations
 
-
 import pandas as pd
 
-from .pack import (Pack, ROW_KIND_COLUMN, _day, _meets, _snapshot_column, defaults_pack, pack_for)
+from .pack import Pack, ROW_KIND_COLUMN, _day, _meets, _snapshot_column, defaults_pack, pack_for
 from .detect import main_currency, row_kinds, superseded
-from .spell import (_ended, _ended_undated, _in_force, _spell_events, has_spell, spell_window)
+from .spell import _ended, _ended_undated, _in_force, _spell_events, has_spell, spell_window
 from .kpi import counted, stock_kpi, used_terms
 
 

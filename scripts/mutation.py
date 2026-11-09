@@ -8,7 +8,8 @@ A mutant no selected test reaches counts as not killed; timeouts are shown apart
         tests/test_ledger.py --json /tmp/m.json
 
 Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
-(this script adds the test selection). Exit 1 when a function has a surviving mutant."""
+(this script adds the test selection). Exit 1 when a function has a mutant that survived or
+that no selected test reached, or when mutmut itself fails."""
 import argparse
 import json
 import os
@@ -66,14 +67,15 @@ def main() -> int:
         try:
             cfg = wt / "pyproject.toml"
             text = cfg.read_text()
-            assert "[tool.mutmut]\n" in text, "pyproject.toml has no [tool.mutmut] table"
+            if "[tool.mutmut]\n" not in text:
+                raise SystemExit("pyproject.toml has no [tool.mutmut] table")
             tests = [*args.tests, *(["-k", args.keyword] if args.keyword else [])]
-            cfg.write_text(text.replace("[tool.mutmut]\n", "[tool.mutmut]\n"
-                                        f"pytest_add_cli_args_test_selection = {json.dumps(tests)}\n"))
+            selection = f"pytest_add_cli_args_test_selection = {json.dumps(tests)}\n"
+            cfg.write_text(text.replace("[tool.mutmut]\n", "[tool.mutmut]\n" + selection))
             env = {**os.environ, "ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
             globs = [f"*.x_{f}__mutmut_*" if "." not in f else
                      f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
-            subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt, env=env)
+            run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt, env=env)
             got = scores([json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")])
         finally:
             subprocess.run(["git", "-C", str(ROOT), "worktree", "remove", "--force", str(wt)],
@@ -81,10 +83,13 @@ def main() -> int:
     got = {f: got.get(f, {"score": None}) for f in args.functions}
     print(f"mutation scores at {head} (tests: {' '.join(args.tests)})")
     for f, c in got.items():
-        print(f"  {f:28} {c.get('score')}  " + " ".join(f"{k}={v}" for k, v in c.items() if k != "score"))
+        counts = " ".join(f"{k}={v}" for k, v in c.items() if k != "score")
+        print(f"  {f:28} {c.get('score')}  {counts}")
     if args.json:
-        Path(args.json).write_text(json.dumps({"head": head, "tests": args.tests, "scores": got}, indent=1))
-    return 1 if any(c.get("survived") or c.get("no_tests") for c in got.values()) else 0
+        Path(args.json).write_text(json.dumps({"head": head, "tests": args.tests, "scores": got},
+                                              indent=1))
+    return 1 if run.returncode or any(c.get("survived") or c.get("no_tests")
+                                      for c in got.values()) else 0
 
 
 if __name__ == "__main__":

@@ -13,18 +13,10 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, StrictFloat, Str
 
 
 PACKS = Path(__file__).parent.parent / "domain_packs"
-
-
 ROW_KINDS = ("sale", "return", "refunded", "cancel", "test", "non_product")
-
-
 ROW_KIND_COLUMN = "row_kind"
-
-
 # Role names shared code may use: a role of these kinds is named after its kind in every pack.
 RESERVED_ROLES = ("status", "currency")   # each row's kind, in the frame analysis code gets
-
-
 # The caveat conditions code can check (pack_caveats); a pack writes the words for each.
 CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "partial_last_period", "returns_present", "refunded_excluded", "cancelled_excluded",
               "months_lt_13", "mixed_currency", "test_excluded", "non_product_excluded", "level_as_of",
@@ -32,14 +24,10 @@ CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "pa
 
 
 RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
-
-
 # A pack's own sentences; each has a domain-neutral default (TEXT_DEFAULTS).
 TextKey = Literal["rows_brief", "grain_line", "unsupported_alternatives", "kpis_default",
                   "causal_removed", "return_rule", "refunded_rule", "cancel_rule",
                   "non_product_rule", "money_rows_note", "people_nouns"]
-
-
 TEXT_DEFAULTS = {   # fit every domain: a pack says its own words (tests/test_pseudo_pack.py)
     "rows_brief": "Figures use the rows these rules keep; net figures also the netted rows.",
     "grain_line": "One row is a line of a larger record: count records as distinct {key}, never "

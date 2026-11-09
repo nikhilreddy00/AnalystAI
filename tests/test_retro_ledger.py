@@ -23,7 +23,7 @@ def _tables() -> list[list[list[str]]]:
 def _table(header: list[str]) -> list[list[str]]:
     found = [t for t in _tables() if t[0] == header]
     assert len(found) == 1, f"expected one table with columns {header}"
-    return [r for r in found[0][2:]]
+    return found[0][2:]
 
 
 def test_every_row_is_well_formed():

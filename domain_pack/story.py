@@ -6,11 +6,14 @@ import re
 
 import pandas as pd
 
-from .pack import (CONDITIONS, Cond, KPI, Maturity, Pack, ROW_KINDS, ROW_KIND_COLUMN, Term, _column, _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header, ordinal, roles_of, spell_terms)
+from .pack import (CONDITIONS, Cond, KPI, Maturity, Pack, ROW_KINDS, ROW_KIND_COLUMN, Term, _column,
+                   _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
+                   ordinal, roles_of, spell_terms)
 from .detect import main_currency, row_kinds
-from .spell import (WINDOW_MONTHS, _ended_undated, _in_force, cohort_start, first_known, has_spell, not_counted_yet, spell_window, window_words)
+from .spell import (WINDOW_MONTHS, _ended_undated, _in_force, cohort_start, first_known, has_spell,
+                    not_counted_yet, spell_window, window_words)
 from .ledger import MOVES
-from .kpi import (_person_col, computable, compute_kpi, kpi_roles, ledger_kpi, stock_kpi, used_terms)
+from .kpi import _person_col, computable, compute_kpi, kpi_roles, ledger_kpi, stock_kpi, used_terms
 
 
 def _amount(pack: Pack, df: pd.DataFrame, roles: dict[str, str], kpi: KPI, v: float) -> str:

@@ -92,4 +92,4 @@ ignore_imports = ["domain_pack.* -> agents.*"]
 name = "the reference oracle never reads the product"
 type = "forbidden"
 source_modules = ["evals.reference_kpis"]
-forbidden_modules = ["domain_pack", "agents"]
+forbidden_modules = ["domain_pack", "agents", "evals.datagen"]   # nor the generator's truth

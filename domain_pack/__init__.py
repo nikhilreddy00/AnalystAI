@@ -6,7 +6,8 @@ domain is a YAML file, never an agent edit. An invalid pack stops the API and th
 
 The package (Phase 5.7b-1): pack → detect → columns | spell → ledger → kpi → rows | story, each
 importing only the layers below it (import-linter, pyproject.toml). Every name is re-exported
-here, so `import domain_pack` and `from domain_pack import x` keep working.
+here, so `import domain_pack` and `from domain_pack import x` keep working; the private names
+too, for the tests that pin them (`_in_force`, `_MEMO` …). Patch the loader at domain_pack.pack.
 """
 from .pack import (  # noqa: F401
     PACKS,

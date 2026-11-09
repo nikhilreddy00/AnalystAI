@@ -232,11 +232,15 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | PR2-02 | D | PR2 | The pre-push hook took ~8 min | Touched tests + contract gates; $0 suites at once (~3 min) | `.githooks/pre-push` | 0 |
 | PR2-03 | C0 | PR2, PR3 | A flaky PHI test: a pseudonym's digits read as a card number in the PII guard | Pseudonyms never scanned as PII | `tests/test_phi_mode.py::test_a_pseudonym_is_never_read_as_personal_data`; `tests/test_phi_mode.py::test_phi_followup_guard_from_raw` | 0 |
 | PR2-04 | D | PR2 | The hook no longer runs the whole suite, so an untouched test can fail first on CI | Accepted; CI is the merge gate | unenforced | 0 |
-| PR5-01 | C7 | PR5 | The snapshot cadence is learned from each customer's gaps though the pack declares month labels: with no repeat, or irregular gaps, a customer absent from the newest month still pays | Open (5.7b-2); pinned by an xfail-strict D case | `tests/test_properties.py::test_d_a_customer_absent_from_the_newest_month_label_is_gone` | 0 |
+| PR5-01 | C7 | PR5 | The snapshot cadence is learned from each entity's gaps (though SaaS declares month labels): with no repeat, or irregular gaps, a customer absent from the newest month still pays, and a person absent from the newest HR snapshot still counts | Open (5.7b-2); pinned by xfail-strict D cases | `tests/test_properties.py::test_d_a_customer_absent_from_the_newest_month_label_is_gone`; `tests/test_properties.py::test_d_a_person_absent_from_the_newest_snapshot_is_gone` | 0 |
 | PR5-02 | C2 | PR5 | A mid-month as-of: the default window reads 12 month-ends, the same span asked as a period reads 13 (its first month's end too) | Open (5.7b-2 `Window`); pinned by an xfail-strict P5 case | `tests/test_properties.py::test_p5_a_mid_month_as_of_reads_the_same_window_asked_or_not` | 0 |
 | PR5-03 | C5 | PR5 | A blank column a KPI reads (mrr, status) makes a confident 0 (paying customers, opening MRR) | Open (5.7b-2 `Unavailable`); pinned by xfail-strict P4 cases | `tests/test_properties.py::test_p4_a_blank_column_a_kpi_reads_never_makes_a_0` | 0 |
 | PR5-04 | C0 | PR5 | `kpi_roles` lists only a spell term's entity, not the spell's dates and status, though it says "every role a KPI can read" (harmless today: its callers check protected roles only) | Open | unenforced | 0 |
-| PR5-05 | C2 | PR5 | GLOSSARY's Window said "since the first date the data knows a state" without saying which date; the reference read it as the first start, the product as the day before the first end | GLOSSARY Window names the date per shape | `tests/test_properties.py::test_d_the_product_equals_the_reference`; `tests/test_reference.py::test_the_reference_equals_the_product_on_every_spell_dataset` | 0 |
+| PR5-05 | C2 | PR5 | GLOSSARY's Window said "since the first date the data knows a state" without saying which date; the reference read it as the first start (the product: the day before the first end) and as the first snapshot (the product: its month-end included, moves from it) | GLOSSARY Window names the date per shape | `tests/test_properties.py::test_d_the_product_equals_the_reference`; `tests/test_reference.py::test_the_reference_equals_the_product_on_every_spell_dataset` | 0 |
+| PR5-06 | C5 | PR5 | Nobody in force at the as-of (a list whose one subscription ended that day, a filter's group with nobody now) reads MRR as unavailable, not $0 | Open (5.7b-2 `Unavailable`); pinned by an xfail-strict D case | `tests/test_properties.py::test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable` | 0 |
+| PR5-07 | C2 | PR5 | An asked window: the moves read it, the opening stays the 12-month cohort, so the bridge doesn't add up (60 vs 50) | Open (5.7b-2 `Window`); pinned by an xfail-strict P1 case | `tests/test_properties.py::test_p1_the_bridge_adds_up_on_an_asked_window` | 0 |
+| PR5-08 | G | PR5 | CLAUDE.md's 100-character lines aren't checked: ruff's default rules leave E501 out (main: 96 long lines in domain_pack.py alone) | New code wrapped | unenforced | 0 |
+| PR5-09 | C0 | PR5 | The reference oracle copies the packs' word lists; a pack edit it misses would pass or fail for no bug | One test reads both | `tests/test_reference.py::test_the_references_word_lists_are_the_packs` | 0 |
 | PR3-01 | C | PR3 | Plan mode closed without every ROADMAP 5.7 step | CLAUDE.md: check off each step by name | unenforced | 0 |
 | PR3-02 | C2 | PR3 | 4 shared strings wrote "12 months" | `WINDOW_MONTHS` + an AST guard | `tests/test_one_definition.py::test_no_shared_sentence_writes_the_window_span` | 0 |
 | PR3-03 | B | PR3 | Metamorphic transforms ran on some packs only | `next_bill` and `one_snapshot` on every pack | `tests/test_oracle.py::test_a_next_billing_date_column_changes_no_number`; `tests/test_oracle.py::test_one_snapshot_is_still_read_as_snapshots` | 0 |
@@ -249,12 +253,12 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 
 | class | rows | unenforced | recurrences |
 |---|---|---|---|
-| C0 | 92 | 42 | 18 |
+| C0 | 93 | 42 | 18 |
 | C1 | 29 | 9 | 18 |
-| C2 | 28 | 7 | 4 |
+| C2 | 29 | 7 | 4 |
 | C3 | 1 | 0 | 0 |
 | C4 | 2 | 1 | 1 |
-| C5 | 11 | 4 | 3 |
+| C5 | 12 | 4 | 3 |
 | C6 | 17 | 6 | 8 |
 | C7 | 12 | 6 | 3 |
 | C8 | 4 | 2 | 2 |
@@ -265,4 +269,4 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | D | 4 | 1 | 6 |
 | E | 2 | 1 | 3 |
 | F | 3 | 1 | 4 |
-| G | 1 | 0 | 4 |
+| G | 2 | 1 | 4 |

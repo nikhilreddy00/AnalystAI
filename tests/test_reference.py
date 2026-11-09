@@ -2,8 +2,6 @@
 
 Each dataset maps the truth keys it must reproduce (truth key -> reference key) and lists every
 other truth key with the reason it is left out, so a new truth key can't slip by unnoticed."""
-import ast
-from pathlib import Path
 
 import pytest
 
@@ -100,19 +98,6 @@ CASES = {
 }
 
 
-def test_reference_is_independent():
-    src = Path(__file__).parents[1] / "evals" / "reference_kpis.py"
-    names = set()
-    for node in ast.walk(ast.parse(src.read_text())):
-        if isinstance(node, ast.Import):
-            names |= {a.name for a in node.names}
-        elif isinstance(node, ast.ImportFrom):
-            names |= {node.module or ""} | {f"{node.module}.{a.name}" for a in node.names}
-    bad = {n for n in names if n.split(".")[0] in ("domain_pack", "agents")
-           or n.startswith("evals.datagen") or n.endswith(".datagen") or n == "evals"}
-    assert not bad, bad
-
-
 def _same(got, want) -> bool:
     if isinstance(want, dict):
         return isinstance(got, dict) and set(got) == set(want) and all(
@@ -147,3 +132,22 @@ def test_the_reference_equals_the_product_on_every_spell_dataset(name):
     assert len(both) >= 5, both
     for k in both:
         assert dp.compute_kpi(df, roles, pack, k) == pytest.approx(ref[k], rel=1e-9), k
+
+
+def test_the_references_word_lists_are_the_packs():
+    """The oracle copies the packs' words (it may not read the product, pyproject's contract):
+    a pack edit its copy misses would make the two agree on the wrong thing, or disagree for no
+    bug. Read here from the packs, in the test only."""
+    import domain_pack as dp
+    from evals import reference_kpis as R
+    hr, saas = dp.pack_for("hr"), dp.pack_for("saas")
+
+    def cond(pack, kpi, i=0):
+        return pack.kpi(kpi).num[0][0].where[0][i]
+    assert set(R.HR_ENDED) == set(hr.spell.ended) and set(R.SAAS_ENDED) == set(saas.spell.ended)
+    assert R.CONTINGENT == set(cond(hr, "headcount").not_in)
+    assert (R.VOLUNTARY, R.INVOLUNTARY, R.RETIREMENT) == (
+        set(cond(hr, "voluntary_separations", 1).in_), set(cond(hr, "involuntary_separations", 1).in_),
+        set(cond(hr, "retirements", 1).in_))
+    assert set(R.SAAS_OUT) == set(cond(saas, "mrr").not_in)
+    assert R.TEST_MARKER.pattern == saas.test_marker

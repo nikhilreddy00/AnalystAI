@@ -2,10 +2,9 @@
 the layout of blanks that are the file's shape, not missing values."""
 from __future__ import annotations
 
-
 import pandas as pd
 
-from .pack import (Pack, _column, first_line_only, pack_for, words)
+from .pack import Pack, _column, first_line_only, pack_for, words
 
 
 def filled_statuses(df: pd.DataFrame, pack: Pack, roles: dict[str, str], role: str) -> pd.Series:

@@ -29,9 +29,9 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   as-of is that month's end, never after today.
 - **Window** — the span a flow or rate reads: (its start, the as-of], with the month-ends in it;
   the 12 months to the as-of, or the shorter span since the first date the data knows a state
-  (snapshots: the first snapshot; spells: the day before the first end, since a list of recent
-  leavers misses who left before it, or before the first start when nobody ended), or an asked
-  period.
+  (snapshots: from the first snapshot, its month-end included; spells: the day before the first
+  end, since a list of recent leavers misses who left before it, or before the first start when
+  nobody ended), or an asked period. Moves and cohorts start at the first known state.
 - **Unavailable** — a figure the data can't support (a role it lacks, a 0 denominator, no month
   of moves, a group under the small-cell limit): said as unavailable, never shown as 0.
 - **Developing period** — a period year younger than the pack's `maturity.months` at the latest

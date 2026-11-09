@@ -7,6 +7,8 @@ the production reader, with drawn transforms.
 A known failure of a recurring class (docs/retro-ledger.md, C1–C9) is its own xfail-strict test
 on its minimal case; the generative tests leave that case out, so a new failure is never hidden
 behind an expected one, and fixing the class flips its xfail (XPASS fails the suite)."""
+import io
+
 import pandas as pd
 import pytest
 from hypothesis import assume, given, settings, strategies as st
@@ -78,12 +80,12 @@ def subscription_lists(draw) -> pd.DataFrame:
 
 
 @st.composite
-def hr_rosters(draw) -> pd.DataFrame:
+def hr_rosters(draw, rehires: bool = True) -> pd.DataFrame:
     """An HR roster: one row per employment spell (a rehire is a second row of the same id)."""
     rows = []
     for e in range(draw(st.integers(1, 8))):
         hire, dept = _date(draw, "2022-01-01"), draw(st.sampled_from(DEPTS))
-        for _ in range(draw(st.integers(1, 2))):
+        for _ in range(draw(st.integers(1, 2 if rehires else 1))):
             end = _date(draw, hire.strftime("%Y-%m-%d")) if draw(st.booleans()) else pd.NaT
             rows.append((f"e{e}", hire, end, dept, "Terminated" if pd.notna(end) else "Active"))
             if pd.isna(end):
@@ -101,6 +103,11 @@ def _snapshots(roster: pd.DataFrame) -> pd.DataFrame:
     rows = [(t, r.employee_id, r.department) for t in ends for r in roster.itertuples()
             if r.hire_date <= t and (pd.isna(r.termination_date) or r.termination_date > t)]
     return pd.DataFrame(rows, columns=["snapshot_date", "employee_id", "department"])
+
+
+def hr_snapshot_books(rehires: bool = True):
+    """An HR snapshot file: the people in force at each month-end of a generated roster."""
+    return hr_rosters(rehires).map(_snapshots).filter(lambda df: len(df) > 0)
 
 
 def _kpis(pack, roles, df) -> dict:
@@ -125,6 +132,8 @@ def _bridge(df: pd.DataFrame, part: pd.DataFrame | None = None) -> tuple[float, 
     k = {n: dp.compute_kpi(df if part is None else part, MRR_ROLES, SAAS, n,
                            full=None if part is None else df)
          for n in ("mrr", "opening_mrr", *FLOWS)}
+    if k["mrr"] is None and k["opening_mrr"] is not None:   # nobody now: $0 (the known C5,
+        k["mrr"] = 0.0                                       # PR5-06), so a churned-out part counts
     if any(v is None for v in k.values()):
         return None
     return k["mrr"], k["opening_mrr"] + sum(s * k[n] for n, s in FLOWS.items())
@@ -143,32 +152,62 @@ def test_p1_the_bridge_adds_up_per_segment_when_no_customer_changes_segment(df):
             assert b[0] == pytest.approx(b[1]), s
 
 
-@pytest.mark.xfail(strict=True, reason="C3: a customer who changes segment leaves a gap in both")
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C3: a customer who changes segment leaves a gap in both")
 def test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment():
+    """c0 moves SMB → Ent: SMB opens at 100 and ends at 0 (nobody: its MRR is unavailable, read
+    as 0 here) with no move out; Ent ends at 100 with no move in."""
     df = pd.DataFrame({"month": pd.to_datetime(["2026-09-01", "2026-10-01"]),
                        "customer_id": ["c0", "c0"], "mrr": [100.0, 100.0],
                        "segment": ["SMB", "Ent"]})
     for s in ("SMB", "Ent"):
-        now, built = _bridge(df, df[df["segment"] == s])
-        assert now == pytest.approx(built), s   # SMB: 0 now, 100 opening and no churn
+        k = {n: dp.compute_kpi(df[df["segment"] == s], MRR_ROLES, SAAS, n, full=df) or 0.0
+             for n in ("mrr", "opening_mrr", *FLOWS)}
+        built = k["opening_mrr"] + sum(sg * k[n] for n, sg in FLOWS.items())
+        assert k["mrr"] == pytest.approx(built), s
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C2: an asked window's moves read it, the opening stays 12 months back")
+def test_p1_the_bridge_adds_up_on_an_asked_window():
+    """a pays 100 until May 2026; b pays 50, then 60 from Nov 2025. Asked: Apr–Oct 2026. The
+    moves read those 7 months (a's churn), the opening reads 31 Oct 2025 (a 12-month cohort)."""
+    months = pd.date_range("2024-10-01", "2026-10-01", freq="MS")
+    rows = [(m, "a", 100.0, "SMB") for m in months[:20]] + \
+        [(m, "b", 50.0 + 10 * (i > 12), "SMB") for i, m in enumerate(months)]
+    df = pd.DataFrame(rows, columns=["month", "customer_id", "mrr", "segment"])
+    asked = (pd.Timestamp("2026-04-01"), pd.Timestamp("2026-10-31"))
+    k = {n: dp.compute_kpi(df, MRR_ROLES, SAAS, n, window=asked)
+         for n in ("mrr", "opening_mrr", *FLOWS)}
+    assert k["mrr"] == pytest.approx(k["opening_mrr"] + sum(sg * k[n] for n, sg in FLOWS.items()))
 
 
 # ── P2: partition ─────────────────────────────────────────────────────────────────────────────
 
 def _partitioned(pack, name: str) -> bool:
     """A KPI whose groups add up to its total: no denominator, every term a sum of rows or of
-    each entity's own value (a distinct count over groups double-counts a mover)."""
+    each entity's own value, a count of events (hires, exits), or of entities in force at one
+    date when each holds one spell at a time (a distinct count over groups double-counts a
+    mover, and a customer's concurrent subscriptions in two segments)."""
     kpi = pack.kpi(name)
-    return kpi.den is None and all(t.sum is not None and not t.kpi for alt in kpi.num for t in alt)
+    one_at_a_time = pack.spell is not None and not pack.spell.concurrent
+
+    def adds(t) -> bool:
+        return not t.kpi and (t.sum is not None or t.spell in ("starts", "ends")
+                              or (t.spell == "active" and one_at_a_time))
+    return kpi.den is None and all(adds(t) for alt in kpi.num for t in alt)
 
 
 def _check_partition(pack, roles, df, by):
     for k in (k.name for k in pack.kpis if _partitioned(pack, k.name)
               and dp.computable(pack, k.name, roles)):
         total, parts = dp.compute_kpi(df, roles, pack, k), dp.compute_kpi(df, roles, pack, k, by=by)
+        if total is None:   # unavailable in total: no group has a number either
+            assert parts is None or parts.isna().all(), (k, by)
+            continue
         if parts is None or parts.attrs.get("hidden"):   # small cells: not shown, not added
             continue
-        assert parts.sum() == pytest.approx(total or 0.0, abs=1e-6), (k, by)
+        assert parts.sum() == pytest.approx(total, abs=1e-6), (k, by)
 
 
 @given(mrr_books())
@@ -181,13 +220,19 @@ def test_p2_hr_by_department_adds_up_to_the_total(df):
     _check_partition(HR, HR_ROLES, df, "department")
 
 
+@given(hr_snapshot_books())
+def test_p2_hr_snapshots_by_department_add_up_to_the_total(df):
+    _check_partition(HR, SNAP_ROLES, df, "department")
+
+
 # ── P3: shuffle, source and scale invariance ──────────────────────────────────────────────────
 
 BOOKS = [(mrr_books(), SAAS, MRR_ROLES), (subscription_lists(), SAAS, LIST_ROLES),
-         (hr_rosters(), HR, HR_ROLES)]
+         (hr_rosters(), HR, HR_ROLES), (hr_snapshot_books(), HR, SNAP_ROLES)]
+SHAPES = ["mrr_export", "subscription_list", "roster", "snapshots"]
 
 
-@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=["mrr_export", "subscription_list", "roster"])
+@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
 @given(data=st.data())
 def test_p3_row_order_never_changes_a_kpi(book, pack, roles, data):
     df = data.draw(book)
@@ -196,14 +241,29 @@ def test_p3_row_order_never_changes_a_kpi(book, pack, roles, data):
                                         .reset_index(drop=True)))
 
 
-@pytest.mark.parametrize("suffix", [".csv", ".json"])
-@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=["mrr_export", "subscription_list", "roster"])
+@pytest.mark.parametrize("suffix", [".csv", ".json", ".xlsx"])
+@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
 @given(data=st.data())
 def test_p3_the_file_format_never_changes_a_kpi(book, pack, roles, suffix, data):
     df = data.draw(book)
-    raw = (df.to_csv(index=False) if suffix == ".csv"
-           else df.to_json(orient="records", date_format="iso")).encode()
+    if suffix == ".xlsx":
+        buf = io.BytesIO()
+        df.to_excel(buf, index=False)
+        raw = buf.getvalue()
+    else:
+        raw = (df.to_csv(index=False) if suffix == ".csv"
+               else df.to_json(orient="records", date_format="iso")).encode()
     _same(_kpis(pack, roles, df), _kpis(pack, roles, _read_bytes(raw, suffix)[0]))
+
+
+@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
+@given(data=st.data())
+def test_p3_dates_written_as_text_change_nothing(book, pack, roles, data):
+    """A date column as text (an API's ISO strings, a sheet's cells) reads as the dates."""
+    df = data.draw(book)
+    text = df.assign(**{c: df[c].dt.strftime("%Y-%m-%dT%H:%M:%S")
+                        for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])})
+    _same(_kpis(pack, roles, df), _kpis(pack, roles, text))
 
 
 @pytest.mark.parametrize("book,pack,roles", BOOKS[:2], ids=["mrr_export", "subscription_list"])
@@ -218,7 +278,7 @@ def test_p3_money_in_another_scale_scales_money_kpis_only(book, pack, roles, dat
 
 # ── P4: never a confident 0 from missing data ─────────────────────────────────────────────────
 
-@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=["mrr_export", "subscription_list", "roster"])
+@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
 @given(data=st.data())
 def test_p4_a_kpi_without_a_role_it_needs_is_unavailable_never_0(book, pack, roles, data):
     df = data.draw(book)
@@ -229,7 +289,7 @@ def test_p4_a_kpi_without_a_role_it_needs_is_unavailable_never_0(book, pack, rol
                 assert dp.compute_kpi(df, less, pack, k.name) is None, (role, k.name)
 
 
-@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=["mrr_export", "subscription_list", "roster"])
+@pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
 @given(data=st.data())
 def test_p4_a_blank_column_a_kpi_doesnt_read_changes_nothing(book, pack, roles, data):
     df = data.draw(book)
@@ -364,18 +424,49 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 
 @pytest.mark.parametrize("book,pack,roles,spec", [   # the MRR export in runs: the known C7 below
     (mrr_books(one_run=True), SAAS, MRR_ROLES, "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
-    (*BOOKS[2], "book_roster")], ids=["mrr_export", "subscription_list", "roster"])
+    (*BOOKS[2], "book_roster"),   # snapshots without rehires (unbroken runs): the known C7 below
+    (hr_snapshot_books(rehires=False), HR, SNAP_ROLES, "book_hr_snapshots")], ids=SHAPES)
 @given(data=st.data())
 def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
     from evals.reference_kpis import reference
     df = data.draw(book)
     ref = reference(spec, df)
     for k, v in _kpis(pack, roles, df).items():
-        if k in ref and v is not None:
-            assert v == pytest.approx(ref[k], rel=1e-9, abs=1e-9), k
+        if k in ref:
+            if v is None and ref[k] == 0 and k in LEVELS:   # nobody in force: the known C5 below
+                continue
+            assert (v is None) == (ref[k] is None), (k, v, ref[k])
+            if v is not None:
+                assert v == pytest.approx(ref[k], rel=1e-9, abs=1e-9), k
 
 
-@pytest.mark.xfail(strict=True, reason="C7: the snapshot cadence is guessed from gaps, not read from the pack")
+LEVELS = {"mrr", "arr", "paying_customers", "headcount", "contingent_workers", "fte"}
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C5: nobody in force reads as unavailable, not 0")
+def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():
+    """c0 started and ended on 1 Jun 2023, the as-of: nobody pays then, a known $0."""
+    df = pd.DataFrame({"customer_id": ["c0"], "created": pd.to_datetime(["2023-06-01"]),
+                       "ended_at": pd.to_datetime(["2023-06-01"]), "status": ["canceled"],
+                       "mrr": [50.0], "segment": ["SMB"]})
+    assert dp.compute_kpi(df, LIST_ROLES, SAAS, "mrr") == 0
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C7: an HR snapshot's cadence is guessed from gaps")
+def test_d_a_person_absent_from_the_newest_snapshot_is_gone():
+    """e1 is on the Jan, Jun and Jul 2022 snapshots only; e0 on every one to Oct 2026. The
+    irregular gaps of e1 switch the 'stopped' cut off, so e1 still counts in Oct 2026."""
+    roster = pd.DataFrame({"employee_id": ["e0", "e1", "e1"],
+                           "hire_date": pd.to_datetime(["2022-01-01", "2022-01-01", "2022-06-01"]),
+                           "termination_date": pd.to_datetime([pd.NaT, "2022-02-01", "2022-08-02"]),
+                           "department": ["Ops"] * 3, "status": ["Active", "Terminated", "Terminated"]})
+    assert dp.compute_kpi(_snapshots(roster), SNAP_ROLES, HR, "headcount") == 1
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C7: the snapshot cadence is guessed from gaps, not read from the pack")
 @pytest.mark.parametrize("months,ids", [
     (["2025-09-01", "2025-08-01"], ["c0", "c1"]),                              # nobody repeats
     (["2025-09-01", "2025-05-01", "2025-07-01", "2025-08-01"], ["c0", "c1", "c1", "c1"])])  # gaps

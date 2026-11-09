@@ -8,15 +8,13 @@ from typing import NamedTuple
 
 import pandas as pd
 
-from .pack import (Pack, _day, _snapshot_column, spell_terms, words)
+from .pack import Pack, _day, _snapshot_column, spell_terms, words
 
 
 # A spell series reaches back at most this many years and has at most this many periods (one
 # in-force pass per period: a weekly axis over a decade is 520 passes).
 # ponytail: one pass per period; an interval sweep over start/end events if rosters pass ~500k rows
 SPELL_YEARS = 10
-
-
 SPELL_PERIODS = 520
 
 
@@ -61,7 +59,7 @@ class SpellWindow(NamedTuple):
     """spell_window's answer: flows count in (lo, as_of], an average reads the month-ends."""
     lo: pd.Timestamp
     as_of: pd.Timestamp
-    month_ends: list
+    month_ends: list[pd.Timestamp]
 
 
 def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
@@ -80,7 +78,8 @@ def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
     if window and window[0] is not None:   # an asked start: its own month's end counts ('since
         lo = pd.Timestamp(window[0]).normalize() - pd.Timedelta(days=1)   # 15 Mar' keeps 31 Mar)
         ends = [e for e in _month_ends(lo - pd.offsets.MonthEnd(1), as_of) if e > lo]
-    return SpellWindow(max(lo, first - pd.Timedelta(days=1)), as_of, [e for e in ends if e >= first])
+    return SpellWindow(max(lo, first - pd.Timedelta(days=1)), as_of,
+                       [e for e in ends if e >= first])
 
 
 @dataclass(frozen=True, eq=False)   # eq=False: a DataFrame is never compared or hashed
@@ -104,8 +103,9 @@ def spell_view(pack: Pack, whole: pd.DataFrame, roles: dict[str, str],
         return None
     view = SpellView(pack, roles, whole, w, spell_from(pack, whole, roles))
     ends = w.month_ends
-    assert whole.index.is_unique and all(a < b for a, b in zip(ends, ends[1:])) \
-        and all(w.lo < e <= w.as_of and e >= view.first for e in ends), w
+    if not (whole.index.is_unique and all(a < b for a, b in zip(ends, ends[1:]))
+            and all(w.lo < e <= w.as_of and e >= view.first for e in ends)):
+        raise ValueError(f"spell_view: a window its readers can't share ({w})")
     return view
 
 
@@ -167,8 +167,6 @@ WINDOW_MONTHS = 12
 # Keyed on the frame's identity, held weakly (dies with the frame); a frame changed in place
 # after a call would be stale (nothing here mutates a frame it passes in).
 _MEMO: dict[int, tuple] = {}
-
-
 _MEMO_LOCK = threading.Lock()   # runs build dashboards in threads (asyncio.to_thread)
 
 

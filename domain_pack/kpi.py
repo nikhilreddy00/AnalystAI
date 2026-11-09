@@ -2,12 +2,13 @@
 cell rules that hide a protected group."""
 from __future__ import annotations
 
-
 import pandas as pd
 
-from .pack import (KPI, Pack, Term, Within, _column, _day, _meets, _snapshot_column, normalize_header, pack_for, spell_terms)
+from .pack import (KPI, Pack, Term, Within, _column, _day, _meets, _snapshot_column,
+                   normalize_header, pack_for, spell_terms)
 from .detect import main_currency, row_kinds
-from .spell import (SPELL_PERIODS, _ended, _in_force, _month_ends, _spell_events, _started, has_spell, spell_view, spell_window)
+from .spell import (SPELL_PERIODS, _ended, _in_force, _month_ends, _spell_events, _started,
+                    has_spell, spell_view, spell_window)
 from .ledger import _ledger_term
 
 

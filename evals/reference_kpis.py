@@ -116,6 +116,8 @@ SPECS = {
         entity="customer_id", money=True, value=lambda r: float(r["mrr"]), start="created",
         end="ended_at", status="status", ended=SAAS_ENDED, out_statuses=SAAS_OUT,
         concurrent=True, segment="segment", groups=("segment",)),
+    "book_hr_snapshots": Spec(entity="employee_id", money=False, value=lambda r: 1.0,
+                              snapshot="snapshot_date", segment="department"),
     "book_roster": Spec(entity="employee_id", money=False, value=lambda r: 1.0,
                         start="hire_date", end="termination_date", status="status",
                         ended=HR_ENDED, segment="department"),
@@ -161,12 +163,13 @@ def as_of(rows: list[dict], spec: Spec, today: pd.Timestamp) -> pd.Timestamp:
 
 def window(rows: list[dict], spec: Spec, at: pd.Timestamp):
     """(lo, as-of, month_ends): the 12 months to the as-of, or the shorter span since the first
-    date the data knows a state (GLOSSARY, Window): snapshots, the first snapshot; spells, the
-    day before the earliest end (a leavers-only list misses who left before it), or before the
-    earliest start when nobody ended. month_ends are each month's end (the as-of itself for its
-    own month), after lo; flows count in (lo, as-of]."""
+    date the data knows a state (GLOSSARY, Window): the day before the first snapshot (its own
+    month-end is a complete stock); spells, the day before the earliest end (a leavers-only list
+    misses who left before it), or before the earliest start when nobody ended. month_ends are
+    each month's end (the as-of itself for its own month), after lo; flows count in (lo, as-of].
+    The ledger's moves and cohort start no earlier than the first snapshot (ledger_kpis)."""
     if spec.snapshot:
-        first = min(r["snap"] for r in rows if r["snap"] is not None)
+        first = min(r["snap"] for r in rows if r["snap"] is not None) - pd.Timedelta(days=1)
     else:
         ends = [_date(r["row"][spec.end]) for r in rows if spec.end and _date(r["row"][spec.end])]
         starts = [_date(r["row"][spec.start]) for r in rows if _date(r["row"][spec.start])]
@@ -299,13 +302,16 @@ def cohort(opening: dict, closing: dict) -> dict:
 
 
 def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
+    if spec.snapshot:   # a move or a cohort needs a known state: from the first snapshot on
+        lo = max(lo, min(r["snap"] for r in rows if r["snap"] is not None))
     points = history(rows, spec, lo, month_ends)
     ledger = {t: in_force(rows, spec, t) for t in points}
     mv = moves(ledger, points, lo)
     co = cohort(ledger[lo], ledger[at])
     now = ledger[at]
     mrr = level(now)
-    out = {"mrr": mrr, "arr": 12 * mrr, "paying_customers": len(now), "arpa": mrr / len(now) if now else None,
+    out = {"mrr": mrr, "arr": 12 * mrr, "paying_customers": len(now),
+           "arpa": mrr / len(now) if now else None,
            **{k: co[k] for k in ("opening_customers", "opening_mrr", "retained_customers",
                                  "nrr", "grr", "logo_churn_rate")},
            "nrr_by_segment": {s: v["nrr"] for s, v in co["by_segment"].items()},

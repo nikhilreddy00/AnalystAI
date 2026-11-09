@@ -9,12 +9,14 @@ import pytest
 ROOT = Path(__file__).parent.parent
 PACKAGE = sorted((ROOT / "domain_pack").glob("*.py"))
 SHARED = [*sorted((ROOT / "agents").glob("*.py")), ROOT / "guardrails.py", *PACKAGE]
-DOMAIN_PACK = {f"domain_pack/{p.name}" for p in PACKAGE}   # the package's own files, by _name
 
 
 def _name(p: Path) -> str:
     """agents/x.py → 'x.py'; domain_pack/x.py → 'domain_pack/x.py' (two __init__.py)."""
     return f"domain_pack/{p.name}" if p.parent.name == "domain_pack" else p.name
+
+
+DOMAIN_PACK = {_name(p) for p in PACKAGE}   # the package's own files
 
 
 def _hits(pattern: str, allowed: set[str] = frozenset()) -> list[str]:
@@ -388,8 +390,12 @@ def test_the_window_in_force_and_moves_are_defined_once():
     owner = {**dict.fromkeys(["spell_window", "spell_as_of", "spell_from", "_in_force_at",
                               "_ended", "first_known", "cohort_start", "_month_ends"], "spell"),
              **dict.fromkeys(["_ledger", "_ledger_term"], "ledger")}
+    owner["MOVES"] = "ledger"   # the move kinds: one tuple
     defs = [(n.name, _name(p)) for p in SHARED for n in ast.walk(ast.parse(p.read_text()))
             if isinstance(n, ast.FunctionDef) and n.name in owner]
+    defs += [(t.id, _name(p)) for p in SHARED for n in ast.parse(p.read_text()).body
+             if isinstance(n, ast.Assign) for t in n.targets
+             if isinstance(t, ast.Name) and t.id in owner]
     assert sorted(defs) == sorted((f, f"domain_pack/{m}.py") for f, m in owner.items()), defs
 
 

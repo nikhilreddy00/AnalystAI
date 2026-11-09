@@ -2,11 +2,10 @@
 (new, expansion, contraction, churn, reactivation), opening and retained cohorts."""
 from __future__ import annotations
 
-
 import pandas as pd
 
-from .pack import (Term, _column, _meets, _snapshot_column)
-from .spell import (SpellView, WINDOW_MONTHS, _in_force, _month_ends, cohort_start, first_known)
+from .pack import Term, _column, _meets, _snapshot_column
+from .spell import SpellView, WINDOW_MONTHS, _in_force, _month_ends, cohort_start, first_known
 
 
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
