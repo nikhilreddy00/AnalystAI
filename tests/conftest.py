@@ -41,7 +41,7 @@ def _hypothesis_profiles() -> None:
     settings.register_profile("dev", max_examples=25, derandomize=True, database=None, **common)
     settings.register_profile("deep", max_examples=500, derandomize=False, database=None, **common)
     settings.register_profile("mutation", max_examples=5, derandomize=True, database=None, **common)
-    settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "ci" if os.environ.get("CI") else "dev"))
+    settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE") or ("ci" if os.environ.get("CI") else "dev"))
 
 
 _hypothesis_profiles()
