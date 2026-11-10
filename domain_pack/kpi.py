@@ -114,10 +114,8 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         groups = pd.unique(pop[by].dropna()) if by else None
 
     if term.spell in ("opening", "retained", "moves"):   # a cohort rate's opening is its cohort's
-        cohort = any(t.spell == "retained" for t in spell_terms(pack, kinds.attrs.get("asked_kpi",
-                                                                                     kpi.name)))
-        return _ledger_term(view, term, df.index, counted, by, axis if periodic else None, groups,
-                            cohort)
+        cohort = any(t.spell == "retained" for t in spell_terms(pack, kinds.attrs["asked_kpi"]))
+        return _ledger_term(view, term, df.index, counted, by, axis, groups, cohort)
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
@@ -145,12 +143,10 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     if periodic:   # ponytail: one in-force pass per month-end, fine below ~50k rows × 120 months
         out = {}
         for p in axis:
-            pts = pw.month_ends if (pw := win.period(p)) else ()
-            out[p] = sum(active_at(t) for t in pts) / len(pts) if pts else float("nan")
+            pts = win.period(p).month_ends
+            out[p] = sum(active_at(t) for t in pts) / len(pts)
         return pd.Series(out, dtype=float).reindex(axis)
     pts = win.month_ends
-    if not pts:
-        return Unavailable("too_short")
     vals = [active_at(t) for t in pts]
     if by:
         return (pd.concat(vals, axis=1).fillna(0).sum(axis=1) / len(pts)).reindex(groups, fill_value=0)

@@ -126,5 +126,4 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, c
                          dtype=float).reindex(axis)
     if starts[0] >= as_of:   # a cohort of no span (one month of data): no rate, never 0% churn
         return Unavailable("too_short")
-    value = cohort(starts[0], as_of)
-    return Unavailable("outside_the_data") if isinstance(value, float) and pd.isna(value) else value
+    return cohort(starts[0], as_of)   # both are ledger points, start < end: never NaN

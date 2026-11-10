@@ -70,8 +70,9 @@ class Window:
     asked: tuple | None = None   # (first day, last day), inclusive, either None
 
     def __post_init__(self):
-        e = self.month_ends
-        if not (self.lo < self.as_of and all(a < b for a, b in zip(e, e[1:]))
+        e = self.month_ends   # never empty: the as-of ends its own month, so an average has one
+        if not (self.lo < self.as_of and e and e[-1] == self.as_of
+                and all(a < b for a, b in zip(e, e[1:]))
                 and all(self.lo < x <= self.as_of and x >= self.first for x in e)):
             raise ValueError(f"a window its readers can't share: {self}")
 
@@ -131,7 +132,7 @@ def _cut(as_of: pd.Timestamp, first: pd.Timestamp, known: pd.Timestamp,
     lo = max(start, first) - pd.Timedelta(days=1)
     if lo >= as_of:   # asked wholly before the data: nothing to read, never a 0 (C5)
         return None
-    months = pd.period_range(start.to_period("M"), as_of.to_period("M"), freq="M")
+    months = pd.period_range(start.to_period("M"), as_of.to_period("M"))
     # exactly N whole months starting mid-month (25 Oct – 24 Oct): its first month is the end's
     whole = start.day != 1 and start == as_of - pd.DateOffset(months=len(months) - 1) + pd.Timedelta(days=1)
     ends = [min(m.end_time.normalize(), as_of) for m in months[1 if whole else 0:]]

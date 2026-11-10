@@ -111,6 +111,22 @@ def test_by_month_the_moves_fall_in_their_month(book):
                      "churned_mrr", by="_p", full=df)
     assert by[pd.Period("2025-12", "M")] == 80 and by[pd.Period("2026-03", "M")] == 200
     assert by.sum() >= 280
+    # from Jan 2026 on: the first month has no month before it in the snapshots, so its moves
+    # are unknown (left out), never $0; Feb's are known (none)
+    jan = df[df["month"] >= "2026-01-01"]
+    by = compute_kpi(jan.assign(_p=pd.to_datetime(jan["month"]).dt.to_period("M")), roles, pack,
+                     "churned_mrr", by="_p", full=jan)
+    assert by.index[0] == pd.Period("2026-02", "M") and by.iloc[0] == 0
+
+
+def test_by_month_a_cohort_rate_needs_its_whole_year(book):
+    """Each month's NRR follows its own cohort, 12 months back: only Oct 2026's lies wholly in
+    the data (Oct 2025 on); every earlier month's is unknown, never a shorter cohort's rate."""
+    pack, df, roles = book
+    by = compute_kpi(df.assign(_p=pd.to_datetime(df["month"]).dt.to_period("M")), roles, pack,
+                     "nrr", by="_p", full=df)
+    assert list(by.index) == [pd.Period("2026-10", "M")]
+    assert by.iloc[0] == pytest.approx((100 + 150 + 300 + 0 + 80 + 90) / 940)
 
 
 def test_on_a_subscription_list_history_terms_are_not_computable():
