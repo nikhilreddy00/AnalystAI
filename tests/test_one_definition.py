@@ -412,6 +412,34 @@ def test_pack_prose_names_the_window_through_its_placeholder():
     assert not [t for t in said if re.search(r"\b(?:the )?12 months to\b", t)]
 
 
+def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess():
+    """5.7b-2a (C7): a spell read from snapshots declares how often they are taken, so absence
+    from the newest one is never guessed from an entity's gaps. A pack declaring none (a bank's
+    balances) keeps the guess: a regular weekly account missing from the newest week is out, an
+    account in an irregular ledger (no cadence) is kept."""
+    import domain_pack as dp
+    from agents.utils import snapshot_rows
+    assert not [p.domain for p in dp.load_packs()
+                if p.spell and dp.snapshot_role(p) and not p.spell.snapshot_every]
+    weeks = pd.date_range("2026-09-06", periods=6, freq="W")
+    df = pd.DataFrame({"a": ["x"] * 6 + ["y"] * 3, "t": [*weeks, *weeks[:3]]})
+    assert set(snapshot_rows(df, ["a"], "t")["a"]) == {"x"}   # y missed its last two weeks
+    odd = pd.DataFrame({"a": ["x", "x", "x", "y", "y"],
+                        "t": pd.to_datetime(["2026-01-03", "2026-01-04", "2026-06-30",
+                                             "2026-02-01", "2026-05-17"])})
+    assert set(snapshot_rows(odd, ["a"], "t")["a"]) == {"x", "y"}   # no cadence: nothing cut
+
+
+def test_every_unavailable_reason_has_words_in_every_pack():
+    """A reason without words would show a '—' tile with nothing beside it."""
+    from typing import get_args
+
+    import domain_pack as dp
+    for p in dp.load_packs():
+        for r in get_args(dp.pack.Reason):
+            assert dp.unavailable_words(dp.Unavailable(r, ("status",)), p).strip(), (p.domain, r)
+
+
 def test_product_code_reads_a_kpi_through_measure():
     """5.7b-2 (C5): compute_kpi's None hid why a figure is unavailable, so callers re-guessed it
     (a small cell or 'can't be computed') and read a real 0 as no value. Product code reads
@@ -441,8 +469,9 @@ def test_no_reader_rebuilds_the_window_from_its_span():
     year-before and its asked re-cut. Each reader now names a Window field (first_day,
     moves_from, cohort_start, year_earlier, period); spell.py alone builds it. The eval code
     reads it too; the reference oracle and the generator are independent by design."""
-    rx = re.compile(r"DateOffset\((?:months=(?:WINDOW_MONTHS|12)|years=1)|lo \+ pd\.Timedelta\(days=1\)"
-                    r"|max\(lo, known\)")
+    rx = re.compile(r"DateOffset\((?:months=(?:WINDOW_MONTHS|1[12])|years=1)|MonthEnd\(1[12]\)"
+                    r"|relativedelta\(|Timedelta\(days=36[56]\)|replace\(year="
+                    r"|lo \+ pd\.(?:Timedelta\(days=1\)|offsets\.Day\(1\))|max\(lo, known\)")
     evals = [p for p in sorted((ROOT / "evals").glob("*.py"))
              if p.name not in ("reference_kpis.py", "datagen.py")]
     rebuilt = _hits(rx.pattern, {"domain_pack/spell.py", "utils.py"}) + [   # utils: _year_back

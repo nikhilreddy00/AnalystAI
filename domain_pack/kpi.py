@@ -75,8 +75,8 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     if not has_spell(pack, roles):
         return Unavailable("role_missing", (s.entity, s.start))
     view = spell_view(pack, whole, roles, kinds.attrs.get("window"))
-    if view is None:   # no as-of or first date: no dated row up to today
-        return Unavailable("no_rows")
+    if view is None:   # an asked period wholly before the data, or no dated row up to today
+        return Unavailable("outside_the_data" if kinds.attrs.get("window") else "no_rows")
     win = view.window
     lo, as_of, first = win.lo, win.as_of, win.first
     allk = kinds.attrs.get("kinds", kinds)   # whole's kinds, or df's when df is the whole

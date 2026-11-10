@@ -1398,10 +1398,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     got = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)
     if isinstance(got, Unavailable):   # its own reason, never re-guessed (C5)
         hidden = got.reason == "small_cell"
-        return _unanswerable(intent, f"{kpi.phrase}{where} isn't shown: fewer than {SMALL_CELL} "
-                             "people, so a figure can identify them" if hidden else
-                             f"{kpi.phrase} can't be computed from these rows: "
-                             f"{unavailable_words(got, pack)}",
+        return _unanswerable(intent, (f"{kpi.phrase}{where} isn't shown: " if hidden else
+                                      f"{kpi.phrase} can't be computed from these rows: ")
+                             + unavailable_words(got, pack),
                              ["Ask about a larger group" if hidden else "Ask about a longer period"])
     value = got.value
     answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)

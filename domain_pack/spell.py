@@ -130,8 +130,8 @@ def _cut(as_of: pd.Timestamp, first: pd.Timestamp, known: pd.Timestamp,
     if lo >= as_of:   # asked wholly before the data: nothing to read, never a 0 (C5)
         return None
     months = pd.period_range(start.to_period("M"), as_of.to_period("M"), freq="M")
-    whole = start.day != 1 and any(start == as_of - pd.DateOffset(months=n) + pd.Timedelta(days=1)
-                                   for n in (len(months) - 1, len(months)))
+    # exactly N whole months starting mid-month (25 Oct – 24 Oct): its first month is the end's
+    whole = start.day != 1 and start == as_of - pd.DateOffset(months=len(months) - 1) + pd.Timedelta(days=1)
     ends = [min(m.end_time.normalize(), as_of) for m in months[1 if whole else 0:]]
     return Window(lo, as_of, tuple(dict.fromkeys(e for e in ends if e >= first)), first, known,
                   asked)

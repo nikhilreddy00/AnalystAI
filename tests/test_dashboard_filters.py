@@ -297,6 +297,9 @@ def test_every_filter_partitions_and_matches_the_group_answer(name):
                     assert text != UNAVAILABLE or o["contexts"][label], (name, col, v, label)
         for label, kpi in tiles.items():
             by = domain_pack.compute_kpi(clean, roles, pack, kpi.name, by=col, full=clean)
+            for v, o in outs.items():   # a group the KPI supports is a number, never a '—'
+                if by is not None and v in by.index.astype(str) and not o["suppressed"]:
+                    assert o["tiles"][label] != UNAVAILABLE, (name, col, label, v)
             got = {v: _number(o["tiles"][label]) for v, o in outs.items()
                    if o["tiles"].get(label, UNAVAILABLE) != UNAVAILABLE}
             scale = 100 if kpi.unit == "percent" else 1

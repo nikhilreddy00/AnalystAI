@@ -314,3 +314,24 @@ def test_a_weak_domain_match_still_refuses_a_group_by_pay(monkeypatch):
     text, _ = answer("hr_roster", "segment_compare", "q", metric_column="Performance_Rating",
                      segment_column="Annual_Salary", aggregation="mean")
     assert "is pay" in text, text
+
+
+def test_a_year_earlier_0_is_said_and_an_unavailable_prior_gives_its_reason():
+    """5.7b-2a (C5): two hires in the 12 months to 31 Oct 2026 and none the year before: the
+    year-earlier 0 is a measured 0, said with its zero base, never 'no year-earlier comparison'
+    (a $0 prior read as no value). A roster without exit dates can't count exits at all: the
+    answer says why, never a 0."""
+    from agents.targeted_analysis_agent import handle_kpi
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType, TargetedParams
+    df = pd.DataFrame({"employee_id": ["e0", "e1", "e2"],
+                       "hire_date": ["2022-01-10", "2026-03-02", "2026-06-15"],
+                       "termination_date": ["", "", ""], "department": ["Ops"] * 3,
+                       "status": ["Active"] * 3, "report_date": ["2026-10-31"] * 3})
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    text = handle_kpi(df, TargetedParams(kpi="hires", compare="yoy"), contract).answer_text
+    assert "A year earlier" in text and "no % change from a zero" in text, text
+    df = df.drop(columns="termination_date").assign(status="Active")
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    text = handle_kpi(df, TargetedParams(kpi="separations"), contract).answer_text
+    assert "no exit date" in text and ": 0" not in text, text
