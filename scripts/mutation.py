@@ -131,16 +131,22 @@ def _placed(wt: Path, keys: list[str]) -> dict[str, tuple[str, int]]:
     out = {}
     for key in keys:
         file = key.rsplit("__mutmut_", 1)[0].rsplit(".", 1)[0].replace(".", "/") + ".py"
-        defs = {}
-        for node in ast.parse((wt / file).read_text()).body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                defs[node.name] = node.lineno
-            elif isinstance(node, ast.ClassDef):
-                defs |= {f"{node.name}.{m.name}": m.lineno for m in node.body
-                         if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))}
         shown = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "show", key], cwd=wt,
                                capture_output=True, text=True, check=True).stdout
-        out[key] = (file, mutant_line(shown, defs[_function(key)]))
+        out[key] = (file, mutant_line(shown, first_lines((wt / file).read_text())[_function(key)]))
+    return out
+
+
+def first_lines(source: str) -> dict[str, int]:
+    """Each top-level function's and method's first line, its decorators included (mutmut's
+    diff of a function starts there), named as mutmut names them."""
+    out = {}
+    for node in ast.parse(source).body:
+        defs = ([(node.name, node)] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                else [(f"{node.name}.{m.name}", m) for m in node.body
+                      if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))]
+                if isinstance(node, ast.ClassDef) else [])
+        out |= {name: min([d.lineno, *(x.lineno for x in d.decorator_list)]) for name, d in defs}
     return out
 
 
