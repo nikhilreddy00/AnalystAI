@@ -123,7 +123,45 @@ The run covers the 23 functions on the pre-split tree `ab4270a`:
 - the per-function table, the wall time, and the post-split scores of the three functions
   SpellView changed are filled in below.
 
-_Running (843 of 1,635 mutants at the first push); the table is filled in before merge._
+| Function (module after the split) | Mutants | Killed | Survived | Score |
+|---|---|---|---|---|
+| `spell_as_of` (spell) | 19 | 17 | 2 | 89.5% |
+| `_spell_as_of` (spell) | 39 | 33 | 6 | 84.6% |
+| `spell_from` (spell) | 26 | 22 | 4 | 84.6% |
+| `spell_window` (spell) | 60 | 56 | 4 | 93.3% |
+| `spell_covered` (spell) | 32 | 23 | 9 | 71.9% |
+| `_month_ends` (spell) | 24 | 21 | 3 | 87.5% |
+| `window_words` (spell) | 80 | 66 | 14 | 82.5% |
+| `_month_labelled` (spell) | 11 | 11 | 0 | 100.0% |
+| `first_known` (spell) | 26 | 22 | 4 | 84.6% |
+| `cohort_start` (spell) | 6 | 6 | 0 | 100.0% |
+| `_in_force_at` (spell) | 49 | 47 | 2 | 95.9% |
+| `_ended` (spell) | 19 | 17 | 2 | 89.5% |
+| `_ended_undated` (spell) | 28 | 20 | 8 | 71.4% |
+| `_started` (spell) | 13 | 13 | 0 | 100.0% |
+| `has_spell` (spell) | 13 | 12 | 1 | 92.3% |
+| `_spell_events` (spell) | 132 | 90 | 42 | 68.2% |
+| `_spell` (kpi) | 294 | 256 | 38 | 87.1% |
+| `_ledger` (ledger) | 71 | 61 | 10 | 85.9% |
+| `_ledger_term` (ledger) | 312 | 263 | 49 | 84.3% |
+| `pack_columns` (columns) | 189 | 158 | 31 | 83.6% |
+| `filled_statuses` (columns) | 17 | 6 | 11 | 35.3% |
+| `layout_columns` (columns) | 75 | 26 | 49 | 34.7% |
+| `with_spell_events` (rows) | 100 | 64 | 36 | 64.0% |
+| **all 23** | **1635** | **1310** | **325** | **80.1%** |
+
+Wall time 4 h 56 min (11:50–16:46), about 2 min per mutant on the central functions, which every
+selected test reaches. No mutant was untested or timed out. The lowest scores, and so 5.7b-2's
+first targets for its 100%-on-changed-lines gate: `layout_columns` and `filled_statuses` (about 35%), `with_spell_events` (64%), `_spell_events` (68%). `pack_columns` scores 83.6% here against the pilot's 71%, because the wider test selection kills more.
+
+**After SpellView** (the new baseline for the three functions it changed; `ded3c70`, same
+tests). Their mutants changed with the code, so these replace the pre-split rows for 5.7b-2:
+
+| Function | Pre-split | Post-split | Mutants (killed / survived / timeout) |
+|---|---|---|---|
+| `_spell` (kpi) | 87.1% | 85.2% | 284 (242 / 42 / 0) |
+| `_ledger` (ledger) | 85.9% | 86.1% | 75 (62 / 10 / 3) |
+| `_ledger_term` (ledger) | 84.3% | 84.4% | 308 (255 / 47 / 6) |
 
 ## Step 5: the split
 
