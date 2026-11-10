@@ -6,21 +6,34 @@ A mutant no selected test reaches counts as not killed; timeouts are shown apart
     uv run python scripts/mutation.py pack_columns --tests tests/test_pack_columns.py
     uv run python scripts/mutation.py spell_window cohort_start --tests tests/test_spell.py \\
         tests/test_ledger.py --json /tmp/m.json
+    uv run python scripts/mutation.py --changed-since main --tests tests/test_spell.py
+    uv run python scripts/mutation.py --status            # scores so far of a run still going
+    uv run python scripts/mutation.py --plant domain_pack/kpi.py OLD NEW --tests \\
+        tests/test_properties.py -k p2   # one hand-planted bug: exit 0 when a test catches it
+
+`--changed-since REF` mutates every function in `[tool.mutmut] source_paths` whose lines the
+diff REF...HEAD touches (the 5.7b-2 gate). `--plant` replaces the one exact occurrence of OLD
+with NEW in a worktree and runs the tests: caught = a test failed.
 
 Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
 (this script adds the test selection). Exit 1 when a function has a mutant that survived or
 that no selected test reached, or when mutmut itself fails."""
 import argparse
+import ast
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import tomllib
+from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 KILLED, SURVIVED, NO_TESTS = {1, 3}, {0}, {5, 33}
 TIMEOUT = {36, 24, -24, 152, 255}
+PREFIX = "analystai-mutation-"   # --status finds running worktrees by it
+ENV = {"ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
 
 
 def _function(key: str) -> str:
@@ -51,35 +64,129 @@ def scores(metas: list[dict]) -> dict[str, dict]:
     return out
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("functions", nargs="+", help="function names (any module)")
-    ap.add_argument("--tests", nargs="+", required=True, help="test files or node ids to run")
-    ap.add_argument("-k", dest="keyword", help="pytest -k over the tests (leave slow ones out)")
-    ap.add_argument("--json", help="also write the scores here")
-    args = ap.parse_args()
-    head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
-                          capture_output=True, text=True, check=True).stdout.strip()
-    with tempfile.TemporaryDirectory() as tmp:
+def functions_touching(source: str, lines: set[int]) -> list[str]:
+    """The top-level functions and methods ('Pack.kpi') whose span holds any of the lines, named
+    as mutmut names them (a nested function belongs to the one it is in)."""
+    out = []
+    for node in ast.parse(source).body:
+        defs = ([(node.name, node)] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                else [(f"{node.name}.{m.name}", m) for m in node.body
+                      if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))]
+                if isinstance(node, ast.ClassDef) else [])
+        for name, d in defs:
+            first = min([d.lineno, *(x.lineno for x in d.decorator_list)])
+            if any(first <= n <= d.end_lineno for n in lines):
+                out.append(name)
+    return out
+
+
+def changed_functions(ref: str) -> list[str]:
+    """Every source_paths function the diff ref...HEAD adds or changes lines in."""
+    paths = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]["source_paths"]
+    diff = subprocess.run(["git", "-C", str(ROOT), "diff", "-U0", f"{ref}...HEAD", "--", *paths],
+                          capture_output=True, text=True, check=True).stdout
+    touched: dict[str, set[int]] = {}
+    f = None
+    for line in diff.splitlines():
+        if line.startswith("+++ "):
+            f = line[6:] if line.startswith("+++ b/") else None
+        elif line.startswith("@@") and f and f.endswith(".py"):
+            start, _, n = line.split("+", 1)[1].split(" ", 1)[0].partition(",")
+            # a pure deletion (",0") names the line before it: still a change to that function
+            touched.setdefault(f, set()).update(range(int(start), int(start) + max(int(n or 1), 1)))
+    return sorted({name for f, lines in touched.items()
+                   for name in functions_touching((ROOT / f).read_text(), lines)})
+
+
+def planted(text: str, old: str, new: str) -> str:
+    """text with its one occurrence of old replaced; a plant that matches 0 or 2+ times is an
+    error, never a silent no-op."""
+    if text.count(old) != 1:
+        raise SystemExit(f"--plant: OLD occurs {text.count(old)} times (needs exactly 1)")
+    return text.replace(old, new)
+
+
+@contextmanager
+def worktree():
+    """A detached worktree of HEAD under the system temp dir, removed on exit."""
+    with tempfile.TemporaryDirectory(prefix=PREFIX) as tmp:
         wt = Path(tmp) / "mut"
         subprocess.run(["git", "-C", str(ROOT), "worktree", "add", "--detach", str(wt), "HEAD"],
                        check=True, capture_output=True)
         try:
-            cfg = wt / "pyproject.toml"
-            text = cfg.read_text()
-            if "[tool.mutmut]\n" not in text:
-                raise SystemExit("pyproject.toml has no [tool.mutmut] table")
-            tests = [*args.tests, *(["-k", args.keyword] if args.keyword else [])]
-            selection = f"pytest_add_cli_args_test_selection = {json.dumps(tests)}\n"
-            cfg.write_text(text.replace("[tool.mutmut]\n", "[tool.mutmut]\n" + selection))
-            env = {**os.environ, "ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
-            globs = [f"*.x_{f}__mutmut_*" if "." not in f else
-                     f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
-            run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt, env=env)
-            got = scores([json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")])
+            yield wt
         finally:
             subprocess.run(["git", "-C", str(ROOT), "worktree", "remove", "--force", str(wt)],
                            check=False)
+
+
+def status() -> int:
+    """Scores so far of every mutation run still going (read from its worktree's .meta files)."""
+    runs = sorted(Path(tempfile.gettempdir()).glob(f"{PREFIX}*/mut/mutants"))
+    if not runs:
+        print("no mutation run is going")
+    for m in runs:
+        print(m.parent)
+        for f, c in scores([json.loads(p.read_text()) for p in m.rglob("*.meta")]).items():
+            print(f"  {f:28} {c['score']}  " + " ".join(f"{k}={v}" for k, v in c.items()
+                                                        if k != "score"))
+    return 0
+
+
+def plant(file: str, old: str, new: str, tests: list[str], keyword: str | None) -> int:
+    """0 when a selected test fails on the planted bug, 1 when every test passes, 2 when pytest
+    errors or selects nothing (an error is not a catch)."""
+    with worktree() as wt:
+        src = wt / file
+        src.write_text(planted(src.read_text(), old, new))
+        run = subprocess.run([str(ROOT / ".venv/bin/python"), "-m", "pytest", "-q", "-x",
+                              "-p", "no:warnings", *tests, *(["-k", keyword] if keyword else [])],
+                             cwd=wt, env={**os.environ, **ENV}, capture_output=True, text=True)
+    print("\n".join(run.stdout.strip().splitlines()[-3:]))
+    verdict = {1: ("caught", 0), 0: ("MISSED: every selected test passed", 1)}
+    word, code = verdict.get(run.returncode, (f"ERROR: pytest exit {run.returncode}", 2))
+    print(f"plant in {file}: {word}")
+    return code
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("functions", nargs="*", help="function names (any module)")
+    ap.add_argument("--tests", nargs="+", help="test files or node ids to run")
+    ap.add_argument("-k", dest="keyword", help="pytest -k over the tests (leave slow ones out)")
+    ap.add_argument("--json", help="also write the scores here")
+    ap.add_argument("--changed-since", metavar="REF", help="add the functions REF...HEAD changed")
+    ap.add_argument("--status", action="store_true", help="scores so far of a running run")
+    ap.add_argument("--plant", nargs=3, metavar=("FILE", "OLD", "NEW"), help="one planted bug")
+    args = ap.parse_args()
+    if args.status:
+        return status()
+    if not args.tests:
+        ap.error("--tests is required")
+    if args.plant:
+        return plant(*args.plant, args.tests, args.keyword)
+    if args.changed_since:
+        args.functions = sorted({*args.functions, *changed_functions(args.changed_since)})
+        print(f"changed since {args.changed_since}: {' '.join(args.functions) or '(none)'}")
+        if not args.functions:
+            return 0
+    if not args.functions:
+        ap.error("name a function, or pass --changed-since")
+    head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
+                          capture_output=True, text=True, check=True).stdout.strip()
+    with worktree() as wt:
+        cfg = wt / "pyproject.toml"
+        text = cfg.read_text()
+        if "[tool.mutmut]\n" not in text:
+            raise SystemExit("pyproject.toml has no [tool.mutmut] table")
+        tests = [*args.tests, *(["-k", args.keyword] if args.keyword else [])]
+        selection = f"pytest_add_cli_args_test_selection = {json.dumps(tests)}\n"
+        cfg.write_text(text.replace("[tool.mutmut]\n", "[tool.mutmut]\n" + selection))
+        globs = [f"*.x_{f}__mutmut_*" if "." not in f else
+                 f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
+        run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt,
+                             env={**os.environ, **ENV})
+        got = scores([json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")])
     got = {f: got.get(f, {"score": None}) for f in args.functions}
     print(f"mutation scores at {head} (tests: {' '.join(args.tests)})")
     for f, c in got.items():

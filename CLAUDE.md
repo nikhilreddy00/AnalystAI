@@ -11,23 +11,11 @@ every agent gets guardrails, memory context, an agent card (self-knowledge), ret
 evals/tests, and evidence-backed justification; then an open-source v0.1 release.
 
 **Working rules**
-- **Phase 5.7: one domain per session**, < $5 eval spend. **Plan mode is done when the plan file
-  checks off every plan-mode step of `docs/ROADMAP.md` Phase 5.7, by name**: expert brief,
-  `domain-modeling` term ledger, `codebase-design` on the shared-fix table, red-team, grill. A
-  domain prompt that omits a step does not drop it. Say "Domain N (<name>) done" at the end.
-- **Domain regression contract (every domain, never skipped; ROADMAP 5.7).** Code as a 30-year
-  senior engineer would: one shared definition per rule (fix the root in the shared function,
-  then add a guard in `tests/test_one_definition.py` so it can't come back), domain knowledge in
-  the pack YAML only, never a role name in shared code. Gates: the rolling golden
-  (`tests/test_suite_inputs_unchanged.py`; re-pin only at a domain's end), `tests/test_second_pack.py`,
-  `tests/test_replay.py`, every finished domain's $0 suites, **CI green (`gh run list`) before
-  any merge**, and a desktop (1440 px) Playwright check with live uploads of this domain AND
-  one dataset per finished domain before "Domain N done".
-- **Repeating bugs (user, 2026-11-04):** fix the structural cause (delete the second copy of a
-  rule), never per dataset. The browser never computes a number. Add the new domain's datasets to
-  every cross-domain guard (`PACK_DATASETS` in `tests/test_dashboard_filters.py`, the oracle lists)
-  in the pack's commit. Run a $0 senior audit over every domain's answer paths before "done"
-  (ROADMAP 5.7 contract).
+- **Domain session (Phase 5.7):** read `docs/ROADMAP.md` Phase 5.7 first, all of it: the
+  session shape, the regression contract and its gates. Plan mode is done when the plan file
+  checks off every plan-mode step there by name. Say "Domain N (<name>) done" at the end.
+- **CI green (`gh run list`) before any merge.** A repeating bug is fixed at its structural cause
+  (delete the second copy of a rule), never per dataset.
 - **One phase per session.** Finish the phase, verify its "Done when" criteria, post a short review
   note (built / metrics / deviations), update the status table below, then tell the user
   "Phase N done" — they `/clear` and start the next phase in a fresh session.
@@ -131,7 +119,7 @@ connector or UI component lives, and update it in the commit that adds or moves 
 
 ## Code Conventions
 
-- **Python**: 3.11+, `ruff` linter, 100-char line length, `async/await` everywhere
+- **Python**: 3.11+, `ruff` linter, `async/await` everywhere
 - **Pydantic v2**: all schemas use `BaseModel`, `model_dump_json()`, `model_validate_json()`
 - **LLM responses**: always strip markdown fences (```` ```json ... ``` ````) before JSON parsing
 - **Error handling**: every agent wraps its core logic in try/except, sets `session.error_message`

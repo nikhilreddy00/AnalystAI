@@ -581,6 +581,9 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
       in `tests/test_second_pack.py`). The interface (the YAML a pack author writes) stays small.
       `DESIGN-IT-TWICE` parallel designs are used only for a new shared mechanism (like the version
       chain or maturity), never for a field.
+    - **Plan mode is done when the plan file checks off every plan-mode step by name:** expert
+      brief, `domain-modeling` term ledger, `codebase-design` on the shared-fix table, red-team,
+      grill. A domain prompt that omits a step does not drop it.
 - **Done when (per domain):** its analysis cases pass at k=3 on every run and its E2E cases at
   k=1 (k=3 on failures), hard rules 100%, each agent's expert-rubric checks pass, the final
   audit pass finds 0 major and ≤ 2 minor, and the README's domain list is regenerated from the
@@ -693,8 +696,9 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   8. **Words in YAML:** the SaaS sentences in shared Python move to `SpellWords`. The guard checks
      a word list built from every pack. C9.
   9. **Mutation gate:** every function changed in steps 1–8 reaches 0 surviving mutants on its
-     changed lines (or each survivor is named equivalent, with a reason). The gate goes into the
-     pre-push hook for changed spell/ledger/pack-column functions.
+     changed lines (or each survivor is named equivalent, with a reason):
+     `scripts/mutation.py --changed-since main --tests …` (`--status` while it runs). The gate
+     goes into the pre-push hook for changed spell/ledger/pack-column functions.
   - **Done when:** P1–P5 all green with no xfail left; C1–C7 and C9 each closed by a check in the
     ledger; mutation score 100% on changed lines; finished domains' numbers unchanged except
     CHANGES entries, each a fixed wrong number with its truth; CI green.
