@@ -355,7 +355,9 @@ def test_p5_asking_for_the_default_window_changes_nothing(book, pack, roles, dat
         df, roles = df.assign(report_date=end), {**roles, "report_date": "report_date"}
     w = dp.window(pack, df, roles)
     assume(w is not None)
-    asked = (w.first_day, w.as_of)
+    # the default asked for: 'the 12 months to the as-of', never its data-clipped first day (a
+    # roster starting 31 Jul asked from 31 Jul is exactly 9 months, a different window: deep)
+    asked = (w.as_of - pd.DateOffset(months=dp.WINDOW_MONTHS) + pd.Timedelta(days=1), w.as_of)
     again = dp.window(pack, df, roles, asked)   # every field a reader names, the year-earlier too
     for f in ("lo", "as_of", "month_ends", "moves_from", "cohort_start", "full_cohort", "months",
               "move_months"):
@@ -396,6 +398,22 @@ def test_tier_b_groups_add_up_to_the_total(name):
     df, pack, roles = _frame(name)
     for g in (roles[g] for g in pack.overview_groups if g in roles):
         _check_partition(pack, roles, df, g)
+
+
+def test_p5_a_window_the_data_cuts_short_keeps_its_month_ends_asked_or_not():
+    """Deep profile (5.7b-2a): a roster known from 31 Jul 2024 (its first exit), as of 30 Apr
+    2025: the 12 months to it are cut to 31 Jul, with 10 month-ends from 31 Jul (the reference's
+    rule). Asking 'the 12 months to 30 Apr 2025' gives the same window."""
+    df = pd.DataFrame({"employee_id": ["e0", "e1"],
+                       "hire_date": pd.to_datetime(["2022-01-01", "2022-01-01"]),
+                       "termination_date": pd.to_datetime(["2024-07-31", pd.NaT]),
+                       "department": ["Ops", "Ops"], "status": ["Terminated", "Active"],
+                       "report_date": pd.to_datetime(["2025-04-30"] * 2)})
+    roles = {**HR_ROLES, "report_date": "report_date"}
+    w = dp.window(HR, df, roles)
+    assert w.month_ends[0] == pd.Timestamp("2024-07-31") and w.months == 10
+    again = dp.window(HR, df, roles, (pd.Timestamp("2024-05-01"), pd.Timestamp("2025-04-30")))
+    assert (again.lo, again.month_ends) == (w.lo, w.month_ends)
 
 
 def test_p5_a_mid_month_as_of_reads_the_same_window_asked_or_not():

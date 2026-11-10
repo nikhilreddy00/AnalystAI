@@ -103,10 +103,12 @@ class Window:
     def year_earlier(self) -> Window | None:
         """The same window a year earlier, or None when the data covers fewer of its month-ends
         (a 4-month prior is no year-earlier 12)."""
-        start = self.asked[0] if self.asked else None
-        prior = _cut(self.as_of, self.first, self.known,
-                     (None if start is None else start - pd.DateOffset(years=1),
-                      self.as_of - pd.DateOffset(years=1)))
+        # its own span a year back, asked or default (never 'the 12 months to' the earlier date:
+        # after a leap year that opens on 29 Feb, a day off the asked span's 1 Mar)
+        start = self.asked[0] if self.asked and self.asked[0] is not None else \
+            self.as_of - pd.DateOffset(months=WINDOW_MONTHS) + pd.Timedelta(days=1)
+        prior = _cut(self.as_of, self.first, self.known, (start - pd.DateOffset(years=1),
+                                                          self.as_of - pd.DateOffset(years=1)))
         return prior if prior is not None and prior.months >= self.months else None
 
     def period(self, p: pd.Period) -> Window | None:
