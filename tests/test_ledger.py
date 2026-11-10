@@ -161,7 +161,7 @@ def test_a_part_whose_row_labels_are_not_the_wholes_counts_by_label(book):
     pack, df, roles = book
     smb = df[df["segment"] == "SMB"]
     outside, overlap = smb.set_axis(range(1000, 1000 + len(smb))), smb.set_axis(range(5, 5 + len(smb)))
-    assert compute_kpi(outside, roles, pack, "mrr", full=df) is None
+    assert compute_kpi(outside, roles, pack, "mrr", full=df) == 0   # nobody in force: $0 (C5)
     assert compute_kpi(outside, roles, pack, "new_mrr", by="segment", full=df) is None
     assert compute_kpi(overlap, roles, pack, "mrr", full=df) == 600
     assert compute_kpi(overlap, roles, pack, "opening_mrr", by="segment", full=df).to_dict() == {"SMB": 180}

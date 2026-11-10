@@ -2,10 +2,13 @@
 module reads (headers, words, dates, a role's column, a condition)."""
 from __future__ import annotations
 
+import math
 import re
+from collections.abc import Hashable
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import Literal
+from typing import Literal, get_args
 
 import pandas as pd
 import yaml
@@ -623,6 +626,55 @@ def _snapshot_column(pack: Pack, roles: dict[str, str]) -> str | None:
     """A spell's snapshot date column (snapshot_role, when the data has it): rows are then dated
     snapshots, not spells."""
     return roles.get(snapshot_role(pack)) if snapshot_role(pack) else None
+
+
+# Why a figure is unavailable (GLOSSARY: Unavailable): each reason is decided once, where the
+# value is computed, and said by unavailable_words; never re-guessed by a caller.
+Reason = Literal["role_missing", "end_date_missing", "blank_column", "no_rows", "no_kind_rows",
+                 "mixed_units", "undated_snapshots", "zero_denominator", "too_short",
+                 "outside_the_data", "small_cell"]
+
+
+@dataclass(frozen=True)
+class Measured:
+    """A figure the data supports (GLOSSARY: Measured): a finite number; 0 is a measurement,
+    never 'unknown'."""
+    value: float
+
+    def __post_init__(self):
+        if not math.isfinite(self.value):
+            raise ValueError(f"Measured needs a finite number, not {self.value}")
+
+
+@dataclass(frozen=True)
+class MeasuredBy:
+    """A figure per group or period: a non-empty Series of finite numbers (a group or period the
+    data can't support is left out, never NaN). `hidden`: the groups left out as small cells,
+    said in the answer. Shallow-frozen: the Series is copied in, never shared."""
+    values: pd.Series
+    hidden: tuple[Hashable, ...] = ()
+
+    def __post_init__(self):
+        v = self.values
+        if v.empty or v.index.duplicated().any() or not v.map(math.isfinite).all():
+            raise ValueError(f"MeasuredBy needs unique groups with finite numbers: {v}")
+        object.__setattr__(self, "values", v.copy())
+
+
+@dataclass(frozen=True)
+class Unavailable:
+    """A figure the data can't support, with its reason (GLOSSARY: Unavailable); `roles`: the
+    pack roles it is about (never column names: the answer says them in the pack's words).
+    Never shown as a 0."""
+    reason: Reason
+    roles: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        if self.reason not in get_args(Reason):
+            raise ValueError(f"unknown reason {self.reason!r}")
+
+
+KPIValue = Measured | MeasuredBy | Unavailable
 
 
 def spell_terms(pack: Pack, name: str) -> list[Term]:

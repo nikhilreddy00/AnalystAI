@@ -132,8 +132,6 @@ def _bridge(df: pd.DataFrame, part: pd.DataFrame | None = None) -> tuple[float, 
     k = {n: dp.compute_kpi(df if part is None else part, MRR_ROLES, SAAS, n,
                            full=None if part is None else df)
          for n in ("mrr", "opening_mrr", *FLOWS)}
-    if k["mrr"] is None and k["opening_mrr"] is not None:   # nobody now: $0 (the known C5,
-        k["mrr"] = 0.0                                       # PR5-06), so a churned-out part counts
     if any(v is None for v in k.values()):
         return None
     return k["mrr"], k["opening_mrr"] + sum(s * k[n] for n, s in FLOWS.items())
@@ -286,7 +284,9 @@ def test_p4_a_kpi_without_a_role_it_needs_is_unavailable_never_0(book, pack, rol
         less = {r: c for r, c in roles.items() if r != role}
         for k in pack.kpis:
             if dp.computable(pack, k.name, roles) and not dp.computable(pack, k.name, less):
-                assert dp.compute_kpi(df, less, pack, k.name) is None, (role, k.name)
+                got = dp.measure(df, less, pack, k.name)
+                assert isinstance(got, dp.Unavailable) and got.reason in (
+                    "role_missing", "end_date_missing"), (role, k.name, got)
 
 
 @pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
@@ -300,20 +300,16 @@ def test_p4_a_blank_column_a_kpi_doesnt_read_changes_nothing(book, pack, roles, 
 
 
 def _reads(pack, name: str) -> set[str]:
-    """The roles a KPI reads: its terms' (kpi_roles), and a spell term reads the whole spell
-    (kpi_roles lists only its entity: ledger row 'kpi_roles under-reports spell roles')."""
-    s = pack.spell
-    spell = {s.entity, s.start, s.end, s.paid_from, s.as_of, dp.snapshot_role(pack), "status"} \
-        if s and dp.spell_terms(pack, name) else set()
-    return dp.kpi_roles(pack, name) | spell
+    """The roles a KPI reads: kpi_roles, a spell term's whole spell included (PR5-04)."""
+    return dp.kpi_roles(pack, name)
 
 
-@pytest.mark.xfail(strict=True, reason="C5: a blank column a KPI reads makes a confident 0")
 @pytest.mark.parametrize("role,name", [("mrr", "paying_customers"), ("mrr", "opening_mrr"),
                                        ("status", "paying_customers")])
 def test_p4_a_blank_column_a_kpi_reads_never_makes_a_0(role, name):
-    """Every value of a role's column blank: the KPI can't be measured, so it is unavailable,
-    never 0 (today the filter `mrr > 0` or `status not in …` keeps nobody: 0)."""
+    """Every value of a role's column blank reads as the column missing (the filter `mrr > 0` or
+    `status not in …` kept nobody: 0): the pack's formula without it (paying customers by
+    MRR > 0 when there is no status), else unavailable for that reason, never 0."""
     df = pd.DataFrame({"customer_id": ["c0", "c1"],
                        "created": pd.to_datetime(["2024-01-01", "2024-03-01"]),
                        "ended_at": pd.to_datetime([pd.NaT, pd.NaT]), "status": ["active"] * 2,
@@ -322,13 +318,15 @@ def test_p4_a_blank_column_a_kpi_reads_never_makes_a_0(role, name):
     if roles is MRR_ROLES:
         df = pd.DataFrame({"month": pd.to_datetime(["2025-10-01", "2026-10-01"]),
                            "customer_id": ["c0", "c0"], "mrr": [100.0] * 2, "segment": ["SMB"] * 2})
-    assert dp.compute_kpi(df.assign(**{role: None}), roles, SAAS, name) != 0
+    got = dp.measure(df.assign(**{role: None}), roles, SAAS, name)
+    less = dp.measure(df, {r: c for r, c in roles.items() if r != role}, SAAS, name)
+    assert got == (less if isinstance(less, dp.Measured) else dp.Unavailable("blank_column", (role,)))
 
 
-@pytest.mark.xfail(strict=True, reason="C5: canceled_at with no ended_at reads as 0% logo churn")
 def test_p4_a_list_with_a_cancellation_date_but_no_end_date_has_no_logo_churn():
     """c0 asked to cancel in Mar 2025, inside the 12 months to 30 Jun 2025; with no end date
-    the churn is unknown, never 0% (today: c0 is never in force, so nobody churned)."""
+    the churn is unknown, never 0% (c0 was never in force, so nobody churned). New customers
+    need no end date: still measured."""
     df = pd.DataFrame({"customer_id": ["c0", "c1", "c2"],
                        "created": pd.to_datetime(["2024-01-01", "2024-01-01", "2025-06-30"]),
                        "canceled_at": pd.to_datetime(["2025-03-01", pd.NaT, pd.NaT]),
@@ -336,7 +334,8 @@ def test_p4_a_list_with_a_cancellation_date_but_no_end_date_has_no_logo_churn():
     roles = {"customer": "customer_id", "created": "created", "canceled_at": "canceled_at",
              "status": "status", "mrr": "mrr"}
     for k in ("logo_churn_rate", "churned_customers"):
-        assert dp.compute_kpi(df, roles, SAAS, k) != 0, k
+        assert dp.measure(df, roles, SAAS, k) == dp.Unavailable("end_date_missing", ("ended_at",)), k
+    assert isinstance(dp.measure(df, roles, SAAS, "new_customers"), dp.Measured)
 
 
 # ── P5: one window for every reader ───────────────────────────────────────────────────────────
@@ -433,18 +432,11 @@ def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
     ref = reference(spec, df)
     for k, v in _kpis(pack, roles, df).items():
         if k in ref:
-            if v is None and ref[k] == 0 and k in LEVELS:   # nobody in force: the known C5 below
-                continue
             assert (v is None) == (ref[k] is None), (k, v, ref[k])
             if v is not None:
                 assert v == pytest.approx(ref[k], rel=1e-9, abs=1e-9), k
 
 
-LEVELS = {"mrr", "arr", "paying_customers", "headcount", "contingent_workers", "fte"}
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C5: nobody in force reads as unavailable, not 0")
 def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():
     """c0 started and ended on 1 Jun 2023, the as-of: nobody pays then, a known $0."""
     df = pd.DataFrame({"customer_id": ["c0"], "created": pd.to_datetime(["2023-06-01"]),

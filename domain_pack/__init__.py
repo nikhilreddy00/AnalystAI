@@ -10,6 +10,10 @@ here, so `import domain_pack` and `from domain_pack import x` keep working; the 
 too, for the tests that pin them (`_in_force`, `_MEMO` …). Patch the loader at domain_pack.pack.
 """
 from .pack import (  # noqa: F401
+    KPIValue,
+    Measured,
+    MeasuredBy,
+    Unavailable,
     PACKS,
     ROW_KINDS,
     ROW_KIND_COLUMN,
@@ -121,6 +125,8 @@ from .kpi import (  # noqa: F401
     _side,
     _kpi_value,
     compute_kpi,
+    measure,
+    unavailable_words,
     _person_col,
     _population,
     pay_columns,

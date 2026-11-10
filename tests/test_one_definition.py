@@ -391,12 +391,36 @@ def test_the_window_in_force_and_moves_are_defined_once():
                               "_ended", "first_known", "cohort_start", "_month_ends"], "spell"),
              **dict.fromkeys(["_ledger", "_ledger_term"], "ledger")}
     owner["MOVES"] = "ledger"   # the move kinds: one tuple
+    owner |= {"measure": "kpi", "unavailable_words": "kpi"}   # a KPI's value and why it has none
     defs = [(n.name, _name(p)) for p in SHARED for n in ast.walk(ast.parse(p.read_text()))
             if isinstance(n, ast.FunctionDef) and n.name in owner]
     defs += [(t.id, _name(p)) for p in SHARED for n in ast.parse(p.read_text()).body
              if isinstance(n, ast.Assign) for t in n.targets
              if isinstance(t, ast.Name) and t.id in owner]
     assert sorted(defs) == sorted((f, f"domain_pack/{m}.py") for f, m in owner.items()), defs
+
+
+def test_product_code_reads_a_kpi_through_measure():
+    """5.7b-2 (C5): compute_kpi's None hid why a figure is unavailable, so callers re-guessed it
+    (a small cell or 'can't be computed') and read a real 0 as no value. Product code reads
+    measure(): Measured, MeasuredBy or Unavailable with its reason. compute_kpi is the tests'
+    float-or-None view of it."""
+    assert _hits(r"\bcompute_kpi\(", {"domain_pack/kpi.py"}) == []
+
+
+def test_a_kpi_value_refuses_what_it_can_not_mean():
+    import domain_pack as dp
+    for bad in (lambda: dp.Measured(float("nan")), lambda: dp.Measured(float("inf")),
+                lambda: dp.MeasuredBy(pd.Series(dtype=float)),
+                lambda: dp.MeasuredBy(pd.Series([1.0, float("nan")], index=["a", "b"])),
+                lambda: dp.MeasuredBy(pd.Series([1.0, 2.0], index=["a", "a"])),
+                lambda: dp.Unavailable("not_a_reason")):
+        with pytest.raises(ValueError):
+            bad()
+    s = pd.Series([1.0], index=["a"])
+    m = dp.MeasuredBy(s, ("b",))
+    s["a"] = 9.0   # the caller's Series is copied in, never shared
+    assert m.values["a"] == 1.0 and dp.Measured(0.0).value == 0
 
 
 @pytest.mark.xfail(strict=True, reason="C2: 5.7b-2's Window type removes these rebuilds")

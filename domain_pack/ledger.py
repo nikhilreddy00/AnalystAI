@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import Term, _column, _meets, _snapshot_column
+from .pack import Term, Unavailable, _column, _meets, _snapshot_column
 from .spell import SpellView, WINDOW_MONTHS, _in_force, _month_ends, cohort_start, first_known
 
 
@@ -105,7 +105,7 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups):
             return series
         inside_window = [b for b in out if b > lo]
         if not inside_window:   # no month of moves (one month of data): unknown, never $0 (pass 7)
-            return None
+            return Unavailable("too_short")
         if by:
             return sum((out[b] for b in inside_window), pd.Series(0.0, index=groups)) \
                 if inside_window else pd.Series(0.0, index=groups)
@@ -124,4 +124,4 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups):
         return pd.Series({p: cohort(s_, e) if s_.to_period("M") >= known.to_period("M") else float("nan")
                           for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
     value = cohort(cohort_start(as_of, known), as_of)
-    return None if isinstance(value, float) and pd.isna(value) else value
+    return Unavailable("outside_the_data") if isinstance(value, float) and pd.isna(value) else value
