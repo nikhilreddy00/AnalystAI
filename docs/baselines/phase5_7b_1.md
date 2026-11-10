@@ -102,6 +102,21 @@ per class:
 | P5 | an asked window keeps lo's month-end | red |
 | D | reactivation folded into new | red (the subscription list, and both SaaS datasets in `test_reference.py`) |
 
+Re-run a plant with `scripts/mutation.py --plant FILE OLD NEW --tests tests/test_properties.py
+-k EXPR` (exit 0 = caught, 1 = missed, 2 = pytest error). The three kept from the session,
+re-run on `1c57881` and all caught:
+
+```text
+--plant domain_pack/kpi.py    'return count(rows, rows[by]).reindex(groups, fill_value=0)' \
+        'return count(rows, rows[by]).reindex(groups, fill_value=0).iloc[1:]'      -k p2_hr
+--plant domain_pack/pack.py   'pd.to_datetime(s, format="mixed", errors="coerce")' \
+        'pd.to_datetime(s, format="%Y-%m-%d", errors="coerce")'                    -k dates_written_as_text
+--plant domain_pack/ledger.py 'out[b] = total(delta, a if kind == "churn" else b)' \
+        'out[b] = total(delta, b)'                -k p1_the_bridge_adds_up_per_segment_when
+```
+
+The other rows were planted by a review agent; their exact edits were not kept.
+
 Every pinned xfail fails on its own assertion (`raises=AssertionError`), so fixing its class
 flips it.
 
