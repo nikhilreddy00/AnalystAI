@@ -37,7 +37,9 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
 - **Opening cohort** — the entities in force 12 months before a window's end (or at the first
   date the data knows a state when it covers less); retention, NRR and logo churn follow them to
   the end, whatever period is asked. An asked period's bridge opens at the period's own start.
-  A signup cohort (entities grouped by start month) is a different thing.
+  A cohort needs a span: when the data knows a state only at the window's end (one month of
+  data), its opening and rates are unavailable, never a 0% churn over no time. A signup cohort
+  (entities grouped by start month) is a different thing.
 - **Measured** — a figure the data supports, with its evidence; 0 is a measurement (nobody in
   force at the as-of is 0 MRR, never unavailable).
 - **Unavailable** — a figure the data can't support, with its reason: a role it lacks, a column
