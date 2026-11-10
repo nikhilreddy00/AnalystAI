@@ -12,8 +12,8 @@ A mutant no selected test reaches counts as not killed; timeouts are shown apart
         tests/test_properties.py -k p2   # one hand-planted bug: exit 0 when a test catches it
 
 `--changed-since REF` mutates every function in `[tool.mutmut] source_paths` whose lines the
-diff REF...HEAD touches; `--lines REF` then fails only on a survivor whose line that diff
-changed, and lists them by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
+diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines that diff changed
+and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
 with NEW in a worktree and runs the tests: caught = a test failed.
 
 Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
@@ -104,49 +104,34 @@ def changed_functions(ref: str) -> list[str]:
                    for name in functions_touching((ROOT / f).read_text(), lines)})
 
 
-def mutant_line(diff: str, def_line: int) -> int:
-    """The file line a mutant changes, from `mutmut show`'s diff of its function alone (line 1 =
-    the def, at def_line in the file): the hunk's start plus its context lines before the first
-    removed line."""
-    lines = diff.splitlines()
-    i = next(n for n, x in enumerate(lines) if x.startswith("@@"))
-    at = int(lines[i].split("-", 1)[1].split(",", 1)[0].split(" ", 1)[0])
-    for x in lines[i + 1:]:
-        if x.startswith("-"):
-            return def_line + at - 1
-        at += 1
-    raise ValueError("a mutant diff with no removed line")
-
-
-def on_changed_lines(survivors: dict[str, tuple[str, int]],
-                     changed: dict[str, set[int]]) -> tuple[list[str], list[str]]:
-    """(survivors on a changed line, the rest): only the first fail the gate (ROADMAP 5.7b-2
-    step 9: 0 survivors on changed lines)."""
-    on = [k for k, (f, n) in survivors.items() if n in changed.get(f, set())]
-    return on, [k for k in survivors if k not in on]
-
-
-def _placed(wt: Path, keys: list[str]) -> dict[str, tuple[str, int]]:
-    """Each surviving mutant's (file, line), read from `mutmut show` in the worktree."""
+def mutant_lines(mutated: str, source: str) -> dict[str, int]:
+    """Each mutant in mutmut's generated file → the source line it changes: its function's def
+    line in `source` plus the first line where it differs from the unmutated copy
+    (`…__mutmut_orig`). One parse per file, never a `mutmut show` per mutant."""
+    lines = mutated.splitlines()
+    spans = {}
+    for node in ast.parse(mutated).body:
+        for d in ([node] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  else node.body if isinstance(node, ast.ClassDef) else []):
+            if isinstance(d, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                spans[d.name] = lines[d.lineno - 1:d.end_lineno]
+    defs = {}
+    for node in ast.parse(source).body:   # the def line (a mutant copy has no decorators)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            defs[node.name] = node.lineno
+        elif isinstance(node, ast.ClassDef):
+            defs |= {f"{node.name}.{m.name}": m.lineno for m in node.body
+                     if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))}
     out = {}
-    for key in keys:
-        file = key.rsplit("__mutmut_", 1)[0].rsplit(".", 1)[0].replace(".", "/") + ".py"
-        shown = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "show", key], cwd=wt,
-                               capture_output=True, text=True, check=True).stdout
-        out[key] = (file, mutant_line(shown, first_lines((wt / file).read_text())[_function(key)]))
-    return out
-
-
-def first_lines(source: str) -> dict[str, int]:
-    """Each top-level function's and method's first line, its decorators included (mutmut's
-    diff of a function starts there), named as mutmut names them."""
-    out = {}
-    for node in ast.parse(source).body:
-        defs = ([(node.name, node)] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                else [(f"{node.name}.{m.name}", m) for m in node.body
-                      if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))]
-                if isinstance(node, ast.ClassDef) else [])
-        out |= {name: min([d.lineno, *(x.lineno for x in d.decorator_list)]) for name, d in defs}
+    for name, body in spans.items():
+        base, _, n = name.rpartition("__mutmut_")
+        orig = spans.get(f"{base}__mutmut_orig")
+        if not base or n == "orig" or orig is None or _function(name) not in defs:
+            continue
+        a, b = [orig[0].replace(f"{base}__mutmut_orig", base), *orig[1:]], \
+            [body[0].replace(name, base), *body[1:]]
+        i = next((k for k, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+        out[name] = defs[_function(name)] + i
     return out
 
 
@@ -238,17 +223,27 @@ def main() -> int:
         cfg.write_text(text.replace("[tool.mutmut]\n", "[tool.mutmut]\n" + selection))
         globs = [f"*.x_{f}__mutmut_*" if "." not in f else
                  f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
+        placed = {}
+        if args.lines:   # the gate judges changed lines: run only the mutants on them
+            subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", "no_such_mutant"], cwd=wt,
+                           env={**os.environ, **ENV}, capture_output=True)   # generate them
+            changed = changed_lines(args.lines)
+            for f, lines in changed.items():
+                if (mutated := wt / "mutants" / f).is_file():
+                    module = f.removesuffix(".py").replace("/", ".")
+                    placed |= {f"{module}.{k}": (f, n) for k, n in
+                               mutant_lines(mutated.read_text(), (wt / f).read_text()).items()
+                               if n in lines and _function(k) in args.functions}
+            globs = sorted(placed) or ["no_such_mutant"]
+            print(f"{len(placed)} mutants on lines changed since {args.lines}")
         run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt,
                              env={**os.environ, **ENV})
         metas = [json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")]
         got = scores(metas)
-        if args.lines:   # only survivors on lines changed since REF fail the gate
-            alive = [k for m in metas for k, c in m.get("exit_code_by_key", {}).items()
-                     if c in SURVIVED | NO_TESTS and _function(k) in args.functions]
-            placed = _placed(wt, alive)
-            on, off = on_changed_lines(placed, changed_lines(args.lines))
-            print(f"survivors on lines changed since {args.lines}: {len(on)} "
-                  f"(elsewhere in those functions: {len(off)})")
+        if args.lines:   # every mutant run is on a changed line: each survivor fails the gate
+            on = sorted(k for m in metas for k, c in m.get("exit_code_by_key", {}).items()
+                        if c in SURVIVED | NO_TESTS and k in placed)
+            print(f"survivors on lines changed since {args.lines}: {len(on)}")
             for k in on:
                 print(f"  {placed[k][0]}:{placed[k][1]}  {k}")
     got = {f: got.get(f, {"score": None}) for f in args.functions}

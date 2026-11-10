@@ -1,8 +1,7 @@
 """scripts/mutation.py turns mutmut's per-file .meta results into a score per function."""
 import pytest
 
-from scripts.mutation import (first_lines, functions_touching, mutant_line, on_changed_lines,
-                              planted, scores)
+from scripts.mutation import functions_touching, mutant_lines, planted, scores
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -49,33 +48,18 @@ class Pack:
     assert functions_touching(src, {1, 5, 6}) == []       # imports and blank lines: nothing
 
 
-def test_a_mutant_is_placed_on_its_source_line_from_its_diff():
-    """mutmut show's diff is of the function alone (its def = line 1): the first changed line,
-    offset from the def's line in the file, is the line the gate checks against the change."""
-    diff = """--- domain_pack/spell.py
-+++ domain_pack/spell.py
-@@ -1,5 +1,5 @@
- def cohort_start(as_of, known):
-     \"\"\"doc\"\"\"
--    return max(as_of - pd.DateOffset(months=WINDOW_MONTHS), known)
-+    return min(as_of - pd.DateOffset(months=WINDOW_MONTHS), known)
-"""
-    assert mutant_line(diff, 323) == 325
-    later = "--- f\n+++ f\n@@ -7,3 +7,3 @@\n     a = 1\n-    b = 2\n+    b = 3\n"
-    assert mutant_line(later, 10) == 17       # hunk at the function's 7th line, one context line
-
-
-def test_a_functions_first_line_is_its_first_decorator():
-    src = "import x\n\n@dec\n@dec2\ndef b():\n    pass\n\nclass P:\n    def kpi(self):\n        pass\n"
-    assert first_lines(src) == {"b": 3, "P.kpi": 9}
-
-
-def test_only_survivors_on_changed_lines_fail_the_gate():
-    survivors = {"domain_pack.spell.x_cohort_start__mutmut_1": ("domain_pack/spell.py", 325),
-                 "domain_pack.spell.x_cohort_start__mutmut_2": ("domain_pack/spell.py", 330)}
-    on, off = on_changed_lines(survivors, {"domain_pack/spell.py": {325, 326}})
-    assert on == ["domain_pack.spell.x_cohort_start__mutmut_1"]
-    assert off == ["domain_pack.spell.x_cohort_start__mutmut_2"]
+def test_only_mutants_on_changed_lines_are_run():
+    """The gate judges changed lines only (ROADMAP 5.7b-2 step 9), so --lines runs only the
+    mutants whose copy differs from the function's unmutated copy on a changed line: a
+    mutant's line is the def's line in the source plus its first differing line."""
+    source = "import x\n\n\ndef f(a):\n    b = a + 1\n    return b * 2\n\n\nclass P:\n    def k(self):\n        return 3\n"
+    mutated = ("def x_f__mutmut_orig(a):\n    b = a + 1\n    return b * 2\n"
+               "def x_f__mutmut_1(a):\n    b = a - 1\n    return b * 2\n"
+               "def x_f__mutmut_2(a):\n    b = a + 1\n    return b / 2\n"
+               "class P:\n    def xǁPǁk__mutmut_orig(self):\n        return 3\n"
+               "    def xǁPǁk__mutmut_1(self):\n        return 4\n")
+    assert mutant_lines(mutated, source) == {"x_f__mutmut_1": 5, "x_f__mutmut_2": 6,
+                                             "xǁPǁk__mutmut_1": 11}
 
 
 def test_a_plant_must_match_exactly_once():
