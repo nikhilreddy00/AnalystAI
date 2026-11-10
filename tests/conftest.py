@@ -28,6 +28,26 @@ def _worker_database() -> None:
 _worker_database()
 
 
+def _hypothesis_profiles() -> None:
+    """Property tests (tests/test_properties.py) run derandomized everywhere, so a local run
+    finds what CI finds: `ci` extends Hypothesis' own (no database, no deadline; it loads
+    itself when CI is set), `deep` is the nightly job, `mutation` the cheap one each mutant
+    runs (scripts/mutation.py). HYPOTHESIS_PROFILE picks one."""
+    from hypothesis import HealthCheck, settings
+    common = {"print_blob": True, "deadline": None,
+              # the autouse fixtures only set constants (today, a key), never per-example state
+              "suppress_health_check": [HealthCheck.function_scoped_fixture, HealthCheck.too_slow]}
+    settings.register_profile("ci", settings.get_profile("ci"), max_examples=25, **common)
+    settings.register_profile("dev", max_examples=25, derandomize=True, database=None, **common)
+    settings.register_profile("deep", max_examples=500, derandomize=False, database=None, **common)
+    settings.register_profile("mutation", max_examples=5, derandomize=True, database=None, **common)
+    default = "ci" if os.environ.get("CI") else "dev"
+    settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE") or default)
+
+
+_hypothesis_profiles()
+
+
 def pytest_collection_modifyitems(config, items):
     """TEST_ORDER_SEED=<n>: the tests in a shuffled order (CI's nightly job): a test that passes
     only after another one created its state fails here first (retro 2026-11-06: the purge-table
@@ -77,6 +97,22 @@ def encryption_key(monkeypatch):
     from api.config import settings
     if not settings.encryption_key:
         monkeypatch.setattr(settings, "encryption_key", "dGVzdC1maXhlZC1rZXktZm9yLXBzZXVkb255bXMtMTI=")
+
+
+@pytest.fixture(autouse=True)
+def mutant_caches():
+    """Under mutmut (scripts/mutation.py) each mutant runs in a process forked after the clean
+    tests: a result cached then (packs, memoised spell dates, built datasets) was computed by
+    the unmutated code and would hide the mutant. Clear every cache before each test there."""
+    if os.environ.get("MUTANT_UNDER_TEST"):
+        import sys
+        import domain_pack
+        domain_pack._MEMO.clear()
+        for name, mod in list(sys.modules.items()):
+            if name == "domain_pack" or name.startswith(("domain_pack.", "tests.")):
+                for v in list(vars(mod).values()):
+                    if callable(getattr(v, "cache_clear", None)):
+                        v.cache_clear()
 
 
 @pytest.fixture(autouse=True)

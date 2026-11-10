@@ -96,7 +96,7 @@ def bad_pack(tmp_path, monkeypatch):
     import domain_pack
     (tmp_path / "broken.yaml").write_text("domain: x\nsignals: [{a: [r]}]\nroles: {r: {kind: money, "
                                           "headers: [Revenue]}}\n")
-    monkeypatch.setattr(domain_pack, "PACKS", tmp_path)
+    monkeypatch.setattr(domain_pack.pack, "PACKS", tmp_path)
     domain_pack.load_packs.cache_clear()
     yield
     domain_pack.load_packs.cache_clear()
@@ -123,5 +123,5 @@ def test_the_shipped_packs_are_valid_found_from_any_directory_and_in_the_image(t
     domain_pack.load_packs.cache_clear()
     assert "retail" in [p.domain for p in domain_pack.load_packs()]   # any later pack beside it
     ignored = (root / ".dockerignore").read_text().split()
-    assert not {"domain_packs", "domain_packs/", "*.yaml", "domain_pack.py"} & set(ignored)
+    assert not {"domain_packs", "domain_packs/", "*.yaml", "domain_pack", "domain_pack/"} & set(ignored)
     assert "COPY . ." in (root / "Dockerfile").read_text()

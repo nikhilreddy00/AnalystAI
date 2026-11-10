@@ -7,14 +7,31 @@ import pandas as pd
 import pytest
 
 ROOT = Path(__file__).parent.parent
-SHARED = [*sorted((ROOT / "agents").glob("*.py")), ROOT / "guardrails.py", ROOT / "domain_pack.py"]
+PACKAGE = sorted((ROOT / "domain_pack").glob("*.py"))
+SHARED = [*sorted((ROOT / "agents").glob("*.py")), ROOT / "guardrails.py", *PACKAGE]
+
+
+def _name(p: Path) -> str:
+    """agents/x.py → 'x.py'; domain_pack/x.py → 'domain_pack/x.py' (two __init__.py)."""
+    return f"domain_pack/{p.name}" if p.parent.name == "domain_pack" else p.name
+
+
+DOMAIN_PACK = {_name(p) for p in PACKAGE}   # the package's own files
 
 
 def _hits(pattern: str, allowed: set[str] = frozenset()) -> list[str]:
     rx = re.compile(pattern)
-    return [f"{p.name}:{i}" for p in SHARED if p.name not in allowed
+    return [f"{_name(p)}:{i}" for p in SHARED if _name(p) not in allowed
             for i, line in enumerate(p.read_text().splitlines(), 1)
             if rx.search(line) and not line.lstrip().startswith("#")]
+
+
+def test_every_shared_file_the_guards_read_exists():
+    """A guard over a file that moved reads nothing and passes (the domain_pack split, 5.7b-1):
+    every path is there, and the package is read whole."""
+    assert all(p.is_file() for p in SHARED)
+    assert {p.stem for p in PACKAGE} >= {"__init__", "pack", "detect", "columns", "spell", "ledger",
+                                         "kpi", "rows", "story"}
 
 
 def test_ties_rank_the_same_on_every_machine():
@@ -68,7 +85,7 @@ def test_a_comparison_says_ties_and_names_the_real_lowest_group():
 def test_one_rule_for_blanks_that_are_the_layout():
     """Domain 1 left the schema summary saying "Discount Amount 44% missing" on a Shopify export
     while cleaning knew better: every place that reports blanks reads domain_pack.layout_columns."""
-    assert _hits(r"first_line_only\(", {"domain_pack.py"}) == [], "use domain_pack.layout_columns"
+    assert _hits(r"first_line_only\(", DOMAIN_PACK) == [], "use domain_pack.layout_columns"
 
 
 def test_a_kpi_label_in_a_sentence_is_kpi_phrase():
@@ -203,7 +220,7 @@ def test_a_question_without_its_number_asks_never_guesses_the_first_column():
 def test_one_version_chain_rule():
     """Domain 3: a claim's replaced and voided versions are resolved once, in
     domain_pack._versions (inside row_kinds); every answer, tile and chart reads row kinds."""
-    assert _hits(r"version_(?:key|order|void)", {"domain_pack.py"}) == [], \
+    assert _hits(r"version_(?:key|order|void)", DOMAIN_PACK) == [], \
         "read domain_pack.row_kinds / rows_for; never re-derive version chains"
 
 
@@ -238,7 +255,7 @@ def test_a_pooled_department_is_never_named_in_an_answer():
 
 def test_version_roles_are_named_once():
     """Pass 3: shared code asks domain_pack.version_roles, never re-lists a pack's version fields."""
-    assert _hits(r"\(\*?pack\.version_key|pack\.version_order\)", {"domain_pack.py"}) == []
+    assert _hits(r"\(\*?pack\.version_key|pack\.version_order\)", DOMAIN_PACK) == []
 
 
 @pytest.mark.parametrize("strategy", ["order_level", "paired", "conditional", "marker"])
@@ -282,10 +299,10 @@ def test_a_spells_ended_statuses_are_read_once():
     three users agree on the planted rows (5 Terminated, no date, on hr_roster)."""
     import domain_pack as dp
     from tests.test_oracle import _built
-    src = (ROOT / "domain_pack.py").read_text().splitlines()
+    src = (ROOT / "domain_pack" / "spell.py").read_text().splitlines()
     start = next(i for i, ln in enumerate(src, 1) if ln.startswith("def _ended_undated("))
     end = next(i for i, ln in enumerate(src[start:], start + 1) if ln.startswith("def "))
-    readers = [h for h in _hits(r"\.ended\b") if not (h.startswith("domain_pack.py:")
+    readers = [h for h in _hits(r"\.ended\b") if not (h.startswith("domain_pack/spell.py:")
                                                        and start <= int(h.split(":")[1]) < end)]
     assert not readers, f"read the ended statuses through domain_pack._ended_undated: {readers}"
     _, df, contract, _ = _built("hr_roster")
@@ -363,3 +380,30 @@ def test_no_shared_sentence_writes_the_window_span():
                 if isinstance(n, ast.Constant) and isinstance(n.value, str)
                 and id(n) not in docs and span.search(n.value)]
     assert not bad, bad
+
+
+def test_the_window_in_force_and_moves_are_defined_once():
+    """5.7b-1 (the domain_pack split): the window, the as-of and who is in force are defined in
+    domain_pack/spell.py only; the ledger and its moves in domain_pack/ledger.py only. A second
+    `def` of one of them anywhere in shared code is a second copy of the rule."""
+    import ast
+    owner = {**dict.fromkeys(["spell_window", "spell_as_of", "spell_from", "_in_force_at",
+                              "_ended", "first_known", "cohort_start", "_month_ends"], "spell"),
+             **dict.fromkeys(["_ledger", "_ledger_term"], "ledger")}
+    owner["MOVES"] = "ledger"   # the move kinds: one tuple
+    defs = [(n.name, _name(p)) for p in SHARED for n in ast.walk(ast.parse(p.read_text()))
+            if isinstance(n, ast.FunctionDef) and n.name in owner]
+    defs += [(t.id, _name(p)) for p in SHARED for n in ast.parse(p.read_text()).body
+             if isinstance(n, ast.Assign) for t in n.targets
+             if isinstance(t, ast.Name) and t.id in owner]
+    assert sorted(defs) == sorted((f, f"domain_pack/{m}.py") for f, m in owner.items()), defs
+
+
+@pytest.mark.xfail(strict=True, reason="C2: 5.7b-2's Window type removes these rebuilds")
+def test_no_reader_rebuilds_the_window_from_its_span():
+    """Today the window's start is rebuilt from its span outside spell.py: the ledger's cohort
+    starts by period (ledger.py), the story's year-earlier window (story.py) and the targeted
+    year-before (targeted_analysis_agent.py). Each is a copy of the rule (PR1-02)."""
+    rebuilt = _hits(r"DateOffset\((?:months=WINDOW_MONTHS|years=1)",
+                    {"domain_pack/spell.py", "utils.py"})   # utils: _year_back, a YoY offset
+    assert rebuilt == [], rebuilt

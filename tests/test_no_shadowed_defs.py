@@ -8,11 +8,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 PACKAGES = ("agents", "api", "connectors", "evals", "llm", "memory", "orchestrator", "sandbox",
-            "worker", "scripts")
+            "worker", "scripts", "domain_pack")
 
 
 def test_no_module_defines_a_top_level_name_twice():
-    files = [ROOT / "guardrails.py", ROOT / "semantic_layer.py", ROOT / "domain_pack.py",
+    files = [ROOT / "guardrails.py", ROOT / "semantic_layer.py",
              *(p for pkg in PACKAGES for p in (ROOT / pkg).rglob("*.py"))]
     dupes = {}
     for f in files:

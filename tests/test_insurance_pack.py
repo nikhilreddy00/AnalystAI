@@ -28,7 +28,7 @@ def toy_run(tmp_path, monkeypatch):
     for p in domain_pack.PACKS.glob("*.yaml"):
         shutil.copy(p, tmp_path / p.name)
     (tmp_path / "toyrun.yaml").write_text(TOYRUN)
-    monkeypatch.setattr(domain_pack, "PACKS", tmp_path)
+    monkeypatch.setattr(domain_pack.pack, "PACKS", tmp_path)
     domain_pack.load_packs.cache_clear()
     yield domain_pack.pack_for("toyrun")
     domain_pack.load_packs.cache_clear()

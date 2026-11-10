@@ -58,5 +58,38 @@ asyncio_mode = "auto"
 
 [dependency-groups]
 dev = [
+    "hypothesis==6.170.15",
+    "import-linter==2.16",
+    "mutmut==3.8.1",
     "pytest-xdist>=3.8.0",
 ]
+
+[tool.mutmut]
+# Run only through scripts/mutation.py: it works in a throwaway worktree and adds the tests.
+# mutmut copies only these into mutants/ and drops the repo root from sys.path, so every
+# module the tests import is copied too (and domain_packs/, read via Path(__file__)).
+source_paths = ["domain_pack/"]
+also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
+             "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",
+             "guardrails.py", "semantic_layer.py"]
+
+[tool.importlinter]
+# The domain_pack layers (Phase 5.7b-1): a module imports only the layers below it, so a rule
+# lives in one place (the window and in-force rows in spell, the moves in ledger) and a reader
+# can't grow a second copy beside it. Run: uv run lint-imports (CI and the pre-push hook).
+root_packages = ["domain_pack", "evals", "agents"]
+
+[[tool.importlinter.contracts]]
+name = "domain_pack layers"
+type = "layers"
+layers = ["domain_pack.story | domain_pack.rows", "domain_pack.kpi", "domain_pack.ledger",
+          "domain_pack.spell | domain_pack.columns", "domain_pack.detect", "domain_pack.pack"]
+# the package's in-function imports of agents.* (today, snapshot_rows …) come back through the
+# re-exporting domain_pack/__init__: a route to every layer that is not a layer import
+ignore_imports = ["domain_pack.* -> agents.*"]
+
+[[tool.importlinter.contracts]]
+name = "the reference oracle never reads the product"
+type = "forbidden"
+source_modules = ["evals.reference_kpis"]
+forbidden_modules = ["domain_pack", "agents", "evals.datagen"]   # nor the generator's truth
