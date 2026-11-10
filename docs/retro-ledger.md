@@ -207,10 +207,10 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | D6-11 | C0 | D6 | A misfired browser upload ran an overview in an old thread | Noted | unenforced | 0 |
 | D6-12 | C8 | D6 | "NRR had a strong quarter", "churn remains a weakness", "impressively low" not flagged | Open minor | unenforced | 0 |
 | PR1-01 | C1 | PR1 | Rows a term counts has 3 implementations; the scorer re-derives the ledger | Proposed: one `term_rows` / ledger API | unenforced | 0 |
-| PR1-02 | C2 | PR1 | The window/partial-month rule copied ~6×; billings has no period; `handle_kpi` re-cuts after `cut_partial` | Proposed: one `ledger_window` | unenforced | 0 |
+| PR1-02 | C2 | PR1 | The window/partial-month rule copied ~6×; billings has no period; `handle_kpi` re-cuts after `cut_partial` | 5.7b-2a: one `Window` built by `spell.window()` (fields `first_day`, `moves_from`, `cohort_start`, `year_earlier()`, `period()`); every reader names its fields. Open: `{window}` in pack prose and billings' period (5.7b-2c, PR7-03) | `tests/test_one_definition.py::test_no_reader_rebuilds_the_window_from_its_span`; `tests/test_properties.py::test_p5_asking_for_the_default_window_changes_nothing` | 0 |
 | PR1-03 | C3 | PR1, PR3 | The segment bridge doesn't reconcile when a customer changes segment (Ent −$4,192, Mid +$2,967, SMB +$1,225); the PR3 Hypothesis pilot shrank it to 2 rows | Open (5.7b-2: transfer moves); pinned by an xfail-strict P1 case | `tests/test_properties.py::test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment` | 0 |
 | PR1-04 | C4 | PR1 | A model's low level-by-month total is kept; the scorer skips every sum of a level | Proposed: decide by intent, not value | unenforced | 0 |
-| PR1-05 | C5 | PR1 | `canceled_at` without `ended_at` reports 0% logo churn; `unpaid`/`paused` removed from history | Open (5.7b-2: computable-or-refuse per term); pinned by an xfail-strict P4 case | `tests/test_properties.py::test_p4_a_list_with_a_cancellation_date_but_no_end_date_has_no_logo_churn` | 0 |
+| PR1-05 | C5 | PR1 | `canceled_at` without `ended_at` reports 0% logo churn; `unpaid`/`paused` removed from history | 5.7b-2a: a spell list without its end role can't count ends, churn, reactivation or retention (`Unavailable("end_date_missing")`); paused/unpaid stay out of every month-end (no date they began; user decision 2026-11-10) and the story and every spell answer say so (`Spell.today_only`) | `tests/test_properties.py::test_p4_a_list_with_a_cancellation_date_but_no_end_date_has_no_logo_churn`; `tests/test_saas.py::test_a_status_held_for_today_only_is_said_wherever_the_list_is_read` | 0 |
 | PR1-06 | C6 | PR1 | "revenue churn rate" → `churned_mrr` ($); "how many returning" → reactivation $ | Proposed: a unit per glossary entry | unenforced | 0 |
 | PR1-07 | C7 | PR1 | `percent_off` 0.5 read as 50%; a $ discount read as a percent | Proposed: scale declared in YAML | unenforced | 0 |
 | PR1-08 | C8 | PR1 | The benchmark-verdict `never_say` regex changed more than 10 times | Proposed: short phrase list + critic rubric | unenforced | 0 |
@@ -232,15 +232,21 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | PR2-02 | D | PR2 | The pre-push hook took ~8 min | Touched tests + contract gates; $0 suites at once (~3 min) | `.githooks/pre-push` | 0 |
 | PR2-03 | C0 | PR2, PR3 | A flaky PHI test: a pseudonym's digits read as a card number in the PII guard | Pseudonyms never scanned as PII | `tests/test_phi_mode.py::test_a_pseudonym_is_never_read_as_personal_data`; `tests/test_phi_mode.py::test_phi_followup_guard_from_raw` | 0 |
 | PR2-04 | D | PR2 | The hook no longer runs the whole suite, so an untouched test can fail first on CI | Accepted; CI is the merge gate | unenforced | 0 |
-| PR5-01 | C7 | PR5 | The snapshot cadence is learned from each entity's gaps (though SaaS declares month labels): with no repeat, or irregular gaps, a customer absent from the newest month still pays, and a person absent from the newest HR snapshot still counts | Open (5.7b-2); pinned by xfail-strict D cases | `tests/test_properties.py::test_d_a_customer_absent_from_the_newest_month_label_is_gone`; `tests/test_properties.py::test_d_a_person_absent_from_the_newest_snapshot_is_gone` | 0 |
-| PR5-02 | C2 | PR5 | A mid-month as-of: the default window reads 12 month-ends, the same span asked as a period reads 13 (its first month's end too) | Open (5.7b-2 `Window`); pinned by an xfail-strict P5 case | `tests/test_properties.py::test_p5_a_mid_month_as_of_reads_the_same_window_asked_or_not` | 0 |
-| PR5-03 | C5 | PR5 | A blank column a KPI reads (mrr, status) makes a confident 0 (paying customers, opening MRR) | Open (5.7b-2 `Unavailable`); pinned by xfail-strict P4 cases | `tests/test_properties.py::test_p4_a_blank_column_a_kpi_reads_never_makes_a_0` | 0 |
-| PR5-04 | C0 | PR5 | `kpi_roles` lists only a spell term's entity, not the spell's dates and status, though it says "every role a KPI can read" (harmless today: its callers check protected roles only) | Open | unenforced | 0 |
+| PR5-01 | C7 | PR5 | The snapshot cadence is learned from each entity's gaps (though SaaS declares month labels): with no repeat, or irregular gaps, a customer absent from the newest month still pays, and a person absent from the newest HR snapshot still counts | 5.7b-2a: the pack declares its snapshot cadence (`Spell.snapshot_every: month`, SaaS and HR); `snapshot_rows` guesses only when none is declared; D runs on broken runs | `tests/test_properties.py::test_d_a_customer_absent_from_the_newest_month_label_is_gone`; `tests/test_properties.py::test_d_a_person_absent_from_the_newest_snapshot_is_gone`; `tests/test_properties.py::test_d_snapshots_taken_on_each_customers_own_billing_day_all_count` | 0 |
+| PR5-02 | C2 | PR5 | A mid-month as-of: the default window reads 12 month-ends, the same span asked as a period reads 13 (its first month's end too) | 5.7b-2a `Window`: a span of exactly N months has N month-ends, any other one per month it touches | `tests/test_properties.py::test_p5_a_mid_month_as_of_reads_the_same_window_asked_or_not` | 0 |
+| PR5-03 | C5 | PR5 | A blank column a KPI reads (mrr, status) makes a confident 0 (paying customers, opening MRR) | 5.7b-2a: a blank column reads as a missing one (the formula without it, else `Unavailable("blank_column")`) | `tests/test_properties.py::test_p4_a_blank_column_a_kpi_reads_never_makes_a_0` | 0 |
+| PR5-04 | C0 | PR5 | `kpi_roles` lists only a spell term's entity, not the spell's dates and status, though it says "every role a KPI can read" (harmless today: its callers check protected roles only) | 5.7b-2a: a spell term lists its whole spell (start, end, paid-from, as-of, snapshot date, status) | `tests/test_properties.py::test_p4_a_blank_column_a_kpi_doesnt_read_changes_nothing` | 0 |
 | PR5-05 | C2 | PR5 | GLOSSARY's Window said "since the first date the data knows a state" without saying which date; the reference read it as the first start (the product: the day before the first end) and as the first snapshot (the product: its month-end included, moves from it) | GLOSSARY Window names the date per shape | `tests/test_properties.py::test_d_the_product_equals_the_reference`; `tests/test_reference.py::test_the_reference_equals_the_product_on_every_spell_dataset` | 0 |
-| PR5-06 | C5 | PR5 | Nobody in force at the as-of (a list whose one subscription ended that day, a filter's group with nobody now) reads MRR as unavailable, not $0 | Open (5.7b-2 `Unavailable`); pinned by an xfail-strict D case | `tests/test_properties.py::test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable` | 0 |
-| PR5-07 | C2 | PR5 | An asked window: the moves read it, the opening stays the 12-month cohort, so the bridge doesn't add up (60 vs 50) | Open (5.7b-2 `Window`); pinned by an xfail-strict P1 case | `tests/test_properties.py::test_p1_the_bridge_adds_up_on_an_asked_window` | 0 |
+| PR5-06 | C5 | PR5 | Nobody in force at the as-of (a list whose one subscription ended that day, a filter's group with nobody now) reads MRR as unavailable, not $0 | 5.7b-2a: `KPIValue` (Measured, MeasuredBy or Unavailable with its reason) from one `measure()`; nobody in force is `Measured(0)`; product code never calls `compute_kpi` (the tests' view) | `tests/test_properties.py::test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable`; `tests/test_one_definition.py::test_product_code_reads_a_kpi_through_measure` | 0 |
+| PR5-07 | C2 | PR5 | An asked window: the moves read it, the opening stays the 12-month cohort, so the bridge doesn't add up (60 vs 50) | 5.7b-2a: a bridge's opening is where its moves start (`Window.moves_from`); NRR, GRR and logo churn keep the 12-month cohort (`cohort_start`; user decision, expert M3) | `tests/test_properties.py::test_p1_the_bridge_adds_up_on_an_asked_window`; `tests/test_saas.py::test_a_cohort_rate_over_an_asked_period_is_the_12_month_cohort_ending_there` | 0 |
 | PR5-08 | G | PR5 | CLAUDE.md's 100-character lines aren't checked: ruff's default rules leave E501 out (main: 96 long lines in domain_pack.py alone) | Rule dropped from CLAUDE.md (retro 2026-11-10): no check, so no rule; `pyproject.toml`'s `line-length` is only ruff's setting | unenforced | 0 |
 | PR5-09 | C0 | PR5 | The reference oracle copies the packs' word lists; a pack edit it misses would pass or fail for no bug | One test reads both | `tests/test_reference.py::test_the_references_word_lists_are_the_packs` | 0 |
+| PR7-01 | C1 | PR7 | On HR snapshots a person back after a gap (out Jan 2025, back Nov 2025) is no hire: the snapshot events read each person's first snapshot only (reference 1, product 0); hidden until C7 let D read rehires | Open (5.7b-2b `term_rows`); pinned by an xfail-strict D case | `tests/test_properties.py::test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire` | 0 |
+| PR7-02 | C5 | PR7 | One month of data: the reference said $0 new MRR and 0% logo churn (no month of moves, a cohort of no span); the product said unavailable for another reason. Found by the mutation profile's draws | Reference fixed from GLOSSARY (Unavailable: no month of moves); both say too short | `tests/test_properties.py::test_d_one_month_of_data_has_no_moves_and_no_cohort` | 0 |
+| PR7-03 | C2 | PR7 | Pack prose said with the data names the window as "12 months" (SaaS and HR `read_as_domain`, `unsupported_alternatives`): wrong on short data; billings has no period | Open (5.7b-2c: `{window}` filled from the Window, through the cleaning audit) | `tests/test_one_definition.py::test_pack_prose_names_the_window_through_its_placeholder` | 0 |
+| PR7-04 | B | PR7 | The every-filter and in-range dashboard tests passed vacuously when a part's pack tiles dropped: the strip fell back to generic tiles, so no pack tile was compared (bank_statement's ATM part) | The strip keeps the whole data's tiles (an unavailable one says why); the test asserts the same tiles under every filter | `tests/test_dashboard_filters.py::test_every_filter_partitions_and_matches_the_group_answer`; `tests/test_banking_pack.py::test_a_debit_only_part_of_a_statement_has_0_inflows_not_none` | 0 |
+| PR7-05 | C5 | PR7 | An unanswerable KPI's reason was guessed by the caller: "every group has fewer than 11 people" whenever the pack has protected roles (HR contingent workers by department: there are none) | `measure()` decides the reason where the value is computed; callers say `unavailable_words` | `tests/test_one_definition.py::test_product_code_reads_a_kpi_through_measure` | 0 |
+| PR7-06 | G | PR7 | A baseline (snapshot text) ran on the working tree while code was being edited and crashed on a half-written file | Measure on a commit, in a worktree | unenforced | 0 |
 | PR3-01 | C | PR3 | Plan mode closed without every ROADMAP 5.7 step | CLAUDE.md: check off each step by name | unenforced | 0 |
 | PR3-02 | C2 | PR3 | 4 shared strings wrote "12 months" | `WINDOW_MONTHS` + an AST guard | `tests/test_one_definition.py::test_no_shared_sentence_writes_the_window_span` | 0 |
 | PR3-03 | B | PR3 | Metamorphic transforms ran on some packs only | `next_bill` and `one_snapshot` on every pack | `tests/test_oracle.py::test_a_next_billing_date_column_changes_no_number`; `tests/test_oracle.py::test_one_snapshot_is_still_read_as_snapshots` | 0 |
@@ -253,20 +259,20 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 
 | class | rows | unenforced | recurrences |
 |---|---|---|---|
-| C0 | 93 | 42 | 18 |
-| C1 | 29 | 9 | 18 |
-| C2 | 29 | 7 | 4 |
+| C0 | 93 | 41 | 18 |
+| C1 | 30 | 9 | 18 |
+| C2 | 30 | 6 | 4 |
 | C3 | 1 | 0 | 0 |
 | C4 | 2 | 1 | 1 |
-| C5 | 12 | 4 | 3 |
+| C5 | 14 | 4 | 3 |
 | C6 | 17 | 6 | 8 |
 | C7 | 12 | 6 | 3 |
 | C8 | 4 | 2 | 2 |
 | C9 | 3 | 1 | 3 |
 | A | 2 | 1 | 4 |
-| B | 12 | 3 | 8 |
+| B | 13 | 3 | 8 |
 | C | 7 | 4 | 3 |
 | D | 4 | 1 | 6 |
 | E | 2 | 1 | 3 |
 | F | 3 | 1 | 4 |
-| G | 2 | 1 | 4 |
+| G | 3 | 2 | 4 |
