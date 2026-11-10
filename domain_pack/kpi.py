@@ -8,8 +8,9 @@ from .pack import (KPI, KPIValue, Measured, MeasuredBy, Pack, Term, Unavailable,
                    _column, _day, _meets, _snapshot_column, and_list, normalize_header, pack_for,
                    snapshot_role, spell_terms)
 from .detect import main_currency, row_kinds
-from .spell import (SPELL_PERIODS, _ended, _in_force, _month_ends, _spell_events, _started,
-                    has_spell, spell_view, spell_window)
+from .spell import (SPELL_PERIODS, _ended, _in_force, _spell_events, _started, has_spell,
+                    spell_view)
+from .spell import window as spell_window_of
 from .ledger import _ledger_term
 
 
@@ -76,8 +77,8 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     view = spell_view(pack, whole, roles, kinds.attrs.get("window"))
     if view is None:   # no as-of or first date: no dated row up to today
         return Unavailable("no_rows")
-    lo, as_of, window_pts = view.window
-    first = view.first
+    win = view.window
+    lo, as_of, first = win.lo, win.as_of, win.first
     allk = kinds.attrs.get("kinds", kinds)   # whole's kinds, or df's when df is the whole
     counted = allk.reindex(whole.index).isin(set(term.rows or kpi.rows))   # the KPI's kinds
     periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
@@ -112,8 +113,11 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         pop = pop[counted.reindex(pop.index, fill_value=False).to_numpy()] if by else pop
         groups = pd.unique(pop[by].dropna()) if by else None
 
-    if term.spell in ("opening", "retained", "moves"):
-        return _ledger_term(view, term, df.index, counted, by, axis if periodic else None, groups)
+    if term.spell in ("opening", "retained", "moves"):   # a cohort rate's opening is its cohort's
+        cohort = any(t.spell == "retained" for t in spell_terms(pack, kinds.attrs.get("asked_kpi",
+                                                                                     kpi.name)))
+        return _ledger_term(view, term, df.index, counted, by, axis if periodic else None, groups,
+                            cohort)
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
@@ -141,11 +145,10 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     if periodic:   # ponytail: one in-force pass per month-end, fine below ~50k rows × 120 months
         out = {}
         for p in axis:
-            pts = [e for e in _month_ends(p.start_time - pd.Timedelta(days=1),
-                                          min(p.end_time.normalize(), as_of)) if e >= first]
+            pts = pw.month_ends if (pw := win.period(p)) else ()
             out[p] = sum(active_at(t) for t in pts) / len(pts) if pts else float("nan")
         return pd.Series(out, dtype=float).reindex(axis)
-    pts = window_pts
+    pts = win.month_ends
     if not pts:
         return Unavailable("too_short")
     vals = [active_at(t) for t in pts]
@@ -384,6 +387,7 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         kinds.attrs["kinds"] = whole
     if window:
         kinds.attrs["window"] = window
+    kinds.attrs["asked_kpi"] = name   # a rate's opening (NRR's Opening MRR) reads its cohort
     value = _kpi_value(df, kinds, roles, pack, kpi, by)
     if isinstance(value, Unavailable):
         return value
@@ -444,8 +448,8 @@ def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool
     group). With `by`: a Series per group (0 for none)."""
     whole = part if whole is None else whole
     col = _person_col(pack, roles)
-    if has_spell(pack, roles) and (w := spell_window(pack, whole, roles, window)):
-        lo, as_of, _ = w
+    if has_spell(pack, roles) and (w := spell_window_of(pack, whole, roles, window)):
+        lo, as_of = w.lo, w.as_of
         if state:
             rows = _in_force(whole, roles, pack, as_of)
         else:   # in force at some point of (lo, as_of]: started by its end, not ended by its start

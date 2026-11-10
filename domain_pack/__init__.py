@@ -81,14 +81,14 @@ from .columns import (  # noqa: F401
 )
 from .spell import (  # noqa: F401
     SpellView,
-    SpellWindow,
+    Window,
     spell_view,
     SPELL_YEARS,
     SPELL_PERIODS,
     spell_as_of,
     _spell_as_of,
     spell_from,
-    spell_window,
+    window,
     spell_covered,
     _month_ends,
     window_words,
@@ -108,7 +108,6 @@ from .spell import (  # noqa: F401
     _spell_events,
     _month_labelled,
     first_known,
-    cohort_start,
 )
 from .ledger import (  # noqa: F401
     MOVES,

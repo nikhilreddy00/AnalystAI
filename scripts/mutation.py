@@ -4,7 +4,7 @@ the given tests, and prints each function's score: killed ÷ (killed + survived 
 A mutant no selected test reaches counts as not killed; timeouts are shown apart.
 
     uv run python scripts/mutation.py pack_columns --tests tests/test_pack_columns.py
-    uv run python scripts/mutation.py spell_window cohort_start --tests tests/test_spell.py \\
+    uv run python scripts/mutation.py window first_known --tests tests/test_spell.py \\
         tests/test_ledger.py --json /tmp/m.json
     uv run python scripts/mutation.py --changed-since main --tests tests/test_spell.py
     uv run python scripts/mutation.py --status            # scores so far of a run still going

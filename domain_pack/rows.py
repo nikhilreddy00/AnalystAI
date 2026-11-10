@@ -6,7 +6,7 @@ import pandas as pd
 
 from .pack import Pack, ROW_KIND_COLUMN, _day, _meets, _snapshot_column, defaults_pack, pack_for
 from .detect import main_currency, row_kinds, superseded
-from .spell import _ended, _ended_undated, _in_force, _spell_events, has_spell, spell_window
+from .spell import _ended, _ended_undated, _in_force, _spell_events, has_spell, window
 from .kpi import counted, stock_kpi, used_terms
 
 
@@ -82,13 +82,12 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
     start_col, end_col, window_col, now_col, unknown_col = names = spell_event_columns(pack)
     if any(c in df.columns for c in names):
         return df
-    w = spell_window(pack, df, roles)
+    w = window(pack, df, roles)
     if w is None:
         return df
-    as_of = w[1]
+    as_of, lo = w.as_of, w.lo
     counted = stock_population(df, roles, pack)
     out = df.copy()
-    lo = w[0]
     for col, which in ((start_col, "starts"), (end_col, "ends")):
         rows, when = _spell_events(df, roles, pack, which, as_of)
         rows, when = rows[counted.loc[rows.index]], when[counted.loc[rows.index]]

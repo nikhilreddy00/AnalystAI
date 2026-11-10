@@ -67,7 +67,7 @@ from domain_pack import (
     spell_as_of,
     spell_story,
     snapshot_role,
-    spell_window,
+    window,
     window_words,
     runout_months,
     developing_note,
@@ -1128,7 +1128,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                                            "group_by": None if params.group_by == params.segment_column
                                            else params.group_by})
     # people (subscribers) at a date and the exits in a period are not the rows dated in it: an
-    # asked period is a spell KPI's window (domain_pack.spell_window); the caller never cut it
+    # asked period is a spell KPI's window (domain_pack.window); the caller never cut it
     spelled = bool(pack.spell and spell_terms(pack, kpi.name))
     win = None
     if spelled:
@@ -1143,12 +1143,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     def year_before(group_by):
         """(the same window a year earlier, its value, its words) for a spell KPI; (None, '') when
         the data covers fewer of that window's months (a 4-month prior is no year-earlier 12)."""
-        lo, hi, pts = spell_window(pack, all_rows, roles, win)
-        back = (None if win is None or win[0] is None else lo + pd.Timedelta(days=1) - pd.DateOffset(years=1),
-                hi - pd.DateOffset(years=1))   # unasked: the default window a year earlier
-        prior = spell_window(pack, all_rows, roles, back)
-        if prior is None or len(prior[2]) < len(pts):
+        prior = (w := window(pack, all_rows, roles, win)) and w.year_earlier()
+        if not prior:
             return None, ""
+        back = prior.asked   # unasked: the default window a year earlier
         v = measure(df, roles, pack, kpi.name, by=group_by, full=all_rows, window=back, cut=cut)
         return (None if isinstance(v, Unavailable) else v.values if group_by else v.value,
                 window_words(pack, all_rows, roles, kpi.name, back))
@@ -1181,8 +1179,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     read = " " + lines[0] if lines else ""   # (a pack without that line says nothing)
     how = describe_kpi(pack, kpi.name, roles, present, parts=True) + read + (
         f" {currency} only: {other:,} rows in other currencies left out." if other else "")   # counts too
-    if spelled and (w := spell_window(pack, all_rows, roles)) and (later := not_counted_yet(
-            pack, all_rows, roles, w[1])):
+    if spelled and (w := window(pack, all_rows, roles)) and (later := not_counted_yet(
+            pack, all_rows, roles, w.as_of)):
         how += " " + later
     if spelled and (held := today_only(pack, all_rows, roles)):
         how += " " + held
@@ -1330,9 +1328,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                          f"the data's end ({done:%d %b %Y} is the last day it covers).")
         series = whole
         if asked:   # the buckets inside the asked window; comparisons still read `whole`
-            lo, hi = (spell_window(pack, all_rows, roles, win)[:2] if spelled else
-                      period_window(full, date, params.period_start, params.period_end)[:2])
-            lo = lo + pd.Timedelta(days=1) if spelled else lo   # the window's first day
+            if spelled:   # the window's first and last day
+                lo, hi = (w := window(pack, all_rows, roles, win)).first_day, w.as_of
+            else:
+                lo, hi = period_window(full, date, params.period_start, params.period_end)[:2]
             series = whole[[p.start_time >= lo.normalize() and p.end_time.normalize() <= hi.normalize()
                             for p in whole.index]]
             # a bucket cut outside the window is not this answer's business
@@ -1374,7 +1373,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             if spelled and not asked and last not in whole.index and pd.notna(uncut[last]):
                 # the partial last period is named with its months and shown, never compared
                 # or annualised (the layoff year must not vanish: Domain 5 audit)
-                lo_p, as_of, pts = spell_window(pack, all_rows, roles, (last.start_time, last.end_time))
+                part = window(pack, all_rows, roles).period(last)
+                pts, as_of = part.month_ends, part.as_of
                 answer += (f"; {name(last)} so far ({len(pts)} month{'s' * (len(pts) != 1)} to "
                            f"{as_of:%-d %b %Y}, not annualised and not compared) {fmt(uncut[last])}")
                 # a rate or a level over 10 months is comparable on a line; a count is not

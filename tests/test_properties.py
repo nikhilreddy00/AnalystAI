@@ -165,11 +165,10 @@ def test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment():
         assert k["mrr"] == pytest.approx(built), s
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C2: an asked window's moves read it, the opening stays 12 months back")
 def test_p1_the_bridge_adds_up_on_an_asked_window():
     """a pays 100 until May 2026; b pays 50, then 60 from Nov 2025. Asked: Apr–Oct 2026. The
-    moves read those 7 months (a's churn), the opening reads 31 Oct 2025 (a 12-month cohort)."""
+    moves read those 7 months (a's churn); the opening read 31 Oct 2025 (a 12-month cohort): a
+    bridge opens where its moves start, 31 Mar 2026 (C2; NRR keeps its 12-month cohort)."""
     months = pd.date_range("2024-10-01", "2026-10-01", freq="MS")
     rows = [(m, "a", 100.0, "SMB") for m in months[:20]] + \
         [(m, "b", 50.0 + 10 * (i > 12), "SMB") for i, m in enumerate(months)]
@@ -354,10 +353,15 @@ def test_p5_asking_for_the_default_window_changes_nothing(book, pack, roles, dat
     if pack is HR:   # a report date on a month-end (a mid-month as-of is the known C2 below)
         end = data.draw(st.sampled_from(list(pd.date_range("2022-01-31", "2026-10-31", freq="ME"))))
         df, roles = df.assign(report_date=end), {**roles, "report_date": "report_date"}
-    w = dp.spell_window(pack, df, roles)
+    w = dp.window(pack, df, roles)
     assume(w is not None)
-    lo, as_of, _ = w
-    asked = (lo + pd.Timedelta(days=1), as_of)
+    asked = (w.first_day, w.as_of)
+    again = dp.window(pack, df, roles, asked)   # every field a reader names, the year-earlier too
+    for f in ("lo", "as_of", "month_ends", "moves_from", "cohort_start", "full_cohort", "months",
+              "move_months"):
+        assert getattr(again, f) == getattr(w, f), f
+        if w.year_earlier():
+            assert getattr(again.year_earlier(), f) == getattr(w.year_earlier(), f), f
     for k in (k for k in SPELL_FLOWS[pack.domain] if dp.computable(pack, k, roles)):
         a, b = dp.compute_kpi(df, roles, pack, k), dp.compute_kpi(df, roles, pack, k, window=asked)
         assert (a is None) == (b is None) and (a is None or b == pytest.approx(a)), k
@@ -394,16 +398,15 @@ def test_tier_b_groups_add_up_to_the_total(name):
         _check_partition(pack, roles, df, g)
 
 
-@pytest.mark.xfail(strict=True, reason="C2: the default window drops lo's own month-end, an asked one keeps it")
 def test_p5_a_mid_month_as_of_reads_the_same_window_asked_or_not():
     """As of 1 Jan 2023, the 12 months to it read 12 month-ends; the same span asked as 'since
-    2 Jan 2022' reads 13 (31 Jan 2022 too)."""
+    2 Jan 2022' read 13 (31 Jan 2022 too): a span of exactly 12 months has 12 (C2)."""
     df = pd.DataFrame({"employee_id": ["e0", "e1"],
                        "hire_date": pd.to_datetime(["2022-01-01", "2023-01-01"]),
                        "termination_date": pd.to_datetime([pd.NaT, pd.NaT]),
                        "department": ["Ops", "Ops"], "status": ["Active", "Active"]})
-    lo, as_of, _ = dp.spell_window(HR, df, HR_ROLES)
-    asked = (lo + pd.Timedelta(days=1), as_of)
+    w = dp.window(HR, df, HR_ROLES)
+    asked = (w.first_day, w.as_of)
     assert dp.window_words(HR, df, HR_ROLES, "avg_headcount") == \
         dp.window_words(HR, df, HR_ROLES, "avg_headcount", asked)
 

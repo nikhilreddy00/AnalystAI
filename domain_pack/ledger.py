@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .pack import Term, Unavailable, _column, _meets, _snapshot_column
-from .spell import SpellView, WINDOW_MONTHS, _in_force, _month_ends, cohort_start, first_known
+from .spell import SpellView, _in_force, _month_ends
 
 
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
@@ -39,32 +39,32 @@ def _ledger(view: SpellView, term: Term, counted, points, part, by):
             pd.DataFrame(grp, columns=points).reindex(values.index) if by else None)
 
 
-def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups):
+def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, cohort: bool):
     """An opening / retained / moves term from the ledger. Moves: each pair of consecutive
     month-ends classes each entity's change (0→x new, or reactivation when it was in force at an
     earlier month-end; up expansion; down contraction; x→0 churn), counted where its later row
     is (a churn: its earlier row), so a segment's bridge adds up and a mover's growth counts in
-    its new segment. Opening / retained: the cohort in force at the window's start (by period:
-    12 months before each period's end), placed by its row then; retained values it at the end
-    (an entity back after a churn is retained). A start or end before the data counts 0.
-    `part`: the filtered rows' labels; `counted`: the rows of the KPI's kinds (as in _ledger)."""
-    whole, roles, pack, first = view.whole, view.roles, view.pack, view.first
-    lo, as_of = view.window.lo, view.window.as_of
-    known = first_known(pack, whole, roles)
-    lo = max(lo, known)   # moves never start before the data knows a state (an asked window of
-    # 20 months keeps its 20: pass 3); the 12-month cohort is the opening's own rule
+    its new segment. Opening / retained: the entities in force at the start, placed by their row
+    then; retained values them at the end (an entity back after a churn is retained). The start:
+    a cohort rate's (`cohort`: NRR, logo churn) is the Window's cohort_start, 12 months before
+    the end whatever period is asked (expert M3); a bridge's opening level is where its moves
+    start (moves_from); by period, each period's own cohort (NaN before the data). A start or
+    end before the data counts 0. `part`: the filtered rows' labels; `counted`: the rows of the
+    KPI's kinds (as in _ledger)."""
+    roles, pack, w = view.roles, view.pack, view.window
+    as_of, lo = w.as_of, w.moves_from   # moves never start before the data knows a state (an
+    # asked window of 20 months keeps its 20: pass 3)
 
     # from the month-end before the first period, so the first period's moves have a start
-    before = (first.to_period("M") - 1).end_time.normalize()
+    before = (w.first.to_period("M") - 1).end_time.normalize()
     history = [before, *(t for t in _month_ends(before, as_of) if t <= as_of)]
     if term.spell == "moves":
         points = sorted({*history, lo, as_of})
     else:
-        ends = [min(p.end_time.normalize(), as_of) for p in axis] if axis is not None else [as_of]
-        # always the 12-month cohort ending there, an asked period's end included (audit 1: a
-        # 6-month period made a 6-month 'Logo churn (12 months)')
-        starts = [e - pd.DateOffset(months=WINDOW_MONTHS) for e in ends] if axis is not None \
-            else [cohort_start(as_of, known)]
+        periods = [w.period(p) for p in axis] if axis is not None else []
+        ends = [pw.as_of for pw in periods] if axis is not None else [as_of]
+        starts = [pw.cohort_start for pw in periods] if axis is not None \
+            else [w.cohort_start if cohort else lo]
         points = sorted({*ends, *starts})
     points = [t for t in points if t <= as_of]
     by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
@@ -101,7 +101,7 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups):
             series = pd.Series(per, dtype=float).reindex(axis, fill_value=0.0)
             if _snapshot_column(pack, roles):   # snapshots: the first period has no month before
                 # it in the data, so its moves are unknown, never a \$0 (audit 1)
-                series[series.index <= pd.Period(first, freq=axis.freq)] = float("nan")
+                series[series.index <= pd.Period(w.first, freq=axis.freq)] = float("nan")
             return series
         inside_window = [b for b in out if b > lo]
         if not inside_window:   # no month of moves (one month of data): unknown, never $0 (pass 7)
@@ -120,8 +120,9 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups):
         later = v[end].where(base > 0, 0.0)
         return total(later.clip(upper=base) if term.capped else later, start)
 
-    if axis is not None:
-        return pd.Series({p: cohort(s_, e) if s_.to_period("M") >= known.to_period("M") else float("nan")
-                          for p, s_, e in zip(axis, starts, ends)}, dtype=float).reindex(axis)
-    value = cohort(cohort_start(as_of, known), as_of)
+    if axis is not None:   # a period whose whole cohort precedes the data: NaN, never a short one
+        return pd.Series({p: cohort(s_, e) if pw.full_cohort else float("nan")
+                          for p, pw, s_, e in zip(axis, periods, starts, ends)},
+                         dtype=float).reindex(axis)
+    value = cohort(starts[0], as_of)
     return Unavailable("outside_the_data") if isinstance(value, float) and pd.isna(value) else value

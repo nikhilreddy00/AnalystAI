@@ -11,8 +11,8 @@ from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, 
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
                    ordinal, roles_of, spell_terms)
 from .detect import main_currency, row_kinds
-from .spell import (WINDOW_MONTHS, _ended_undated, _in_force, cohort_start, first_known, has_spell,
-                    not_counted_yet, spell_window, today_only, window_words)
+from .spell import (WINDOW_MONTHS, Window, _ended_undated, _in_force, has_spell, not_counted_yet,
+                    today_only, window, window_words)
 from .ledger import MOVES
 from .kpi import _person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, used_terms
 
@@ -43,17 +43,17 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     stock = stock_kpi(pack, roles)
     mean = next((k for k in pack.kpis if any(t.spell == "average" for alt in k.num for t in alt)
                  and computable(pack, k.name, roles)), None)
-    w = spell_window(pack, df, roles)
+    w = window(pack, df, roles)
     if not s or stock is None or w is None:
         return []
-    lo, as_of, pts = w
-    months = len(pts)
+    lo, as_of = w.lo, w.as_of
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
     series = _fact(frame, roles, pack, stock.name, by="_period", full=df)
-    shown = ", ".join(f"{t:%b %Y} {_amount(pack, df, roles, stock, series.get(t.to_period('M')))}" for t in pts
+    shown = ", ".join(f"{t:%b %Y} {_amount(pack, df, roles, stock, series.get(t.to_period('M')))}"
+                      for t in w.month_ends
                       if series is not None and pd.notna(series.get(t.to_period("M"))))
-    lines = [f"As of {as_of:%-d %b %Y}: the window is the {months} months "
-             f"{(lo + pd.Timedelta(days=1)):%-d %b %Y} – {as_of:%-d %b %Y}."]
+    lines = [f"As of {as_of:%-d %b %Y}: the window is the {w.months} months "
+             f"{w.first_day:%-d %b %Y} – {as_of:%-d %b %Y}."]
     if shown:
         lines.append(f"{stock.label} at its month-ends: {shown}.")
     if mean and (v := _fact(df, roles, pack, mean.name)) is not None:
@@ -117,23 +117,23 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     largest month of ends against the usual month and the group most of it came from, people
     against rows, and what is dated after the as-of. Computed facts for the analysis and the
     insight, never re-derived by a model."""
-    if not has_spell(pack, roles) or (w := spell_window(pack, df, roles)) is None:
+    if not has_spell(pack, roles) or (w := window(pack, df, roles)) is None:
         return []
-    lo, as_of, pts = w
+    lo, as_of = w.lo, w.as_of
     out: list[str] = []
     stock = stock_kpi(pack, roles)
     ends = next((k for k in pack.kpis if k.tile and k.unit == "count" and computable(pack, k.name, roles)
                  and [t.spell for t in used_terms(pack, k, roles)] == ["ends"]), None)
-    back = (None, as_of - pd.DateOffset(years=1))   # the default window a year earlier (12 points)
-    prior_ok = (pw := spell_window(pack, df, roles, back)) is not None and len(pw[2]) >= len(pts)
+    prior = w.year_earlier()   # the default window a year earlier, when the data covers it all
+    back = prior.asked if prior else None
     for k in pack.kpis:   # each rate tile now and a year earlier, the change in points
         if not (k.tile and k.unit == "percent" and spell_terms(pack, k.name) and computable(pack, k.name, roles)):
             continue
         now = _fact(df, roles, pack, k.name)
         cohort = any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))
-        known = first_known(pack, df, roles).to_period("M")   # an 11-month cohort is no 12
-        whole_year = not cohort or (back[1] - pd.DateOffset(months=WINDOW_MONTHS)).to_period("M") >= known
-        then = _fact(df, roles, pack, k.name, window=back) if prior_ok and whole_year else None
+        # an 11-month cohort is no 12
+        then = _fact(df, roles, pack, k.name, window=back) \
+            if prior and (not cohort or prior.full_cohort) else None
         if now is not None:
             out.append(f"{k.label} ({window_words(pack, df, roles, k.name)}): {now:.1%}" + (
                 f"; a year earlier ({window_words(pack, df, roles, k.name, back)}): {then:.1%}, "
@@ -160,7 +160,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
                     and len(g) and g.max() >= 0.5 * e[top]:
                 line += f", {g.max():,.0f} of them in {g.idxmax()} ({group})"
             out.append(line + ".")
-    out += _ledger_story(pack, df, roles, lo, as_of)
+    out += _ledger_story(pack, df, roles, w)
     col = _person_col(pack, roles)
     heads = stock_kpi(pack, roles, "count")
     if col:
@@ -180,13 +180,14 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     return out
 
 
-def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of) -> list[str]:
+def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window) -> list[str]:
     """The ledger's facts (Domain 6 S9), from the pack's KPIs of one moves or opening term each:
     the bridge (opening + new + expansion + reactivation − contraction − churned = now), the
     churned-customer count beside the cohort rate (they differ: new and returning customers'
     churns are in the count only), and the largest month of churned value against a usual
     month, with its largest single entity's share and group. No line without its KPIs."""
     out: list[str] = []
+    lo, as_of = w.lo, w.as_of
     stock = stock_kpi(pack, roles, "money")
     parts = {m: ledger_kpi(pack, roles, "moves", m) for m in ("new", "expansion", "reactivation",
                                                               "contraction", "churn")}
@@ -202,7 +203,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
                 terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
                              f"this file) {say(stock, abs(rest))}")
-            begin = cohort_start(as_of, first_known(pack, df, roles))
+            begin = w.moves_from   # the bridge opens where its moves start
             span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
             if not span or begin >= as_of:
                 return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
@@ -218,7 +219,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             and _fact(df, roles, pack, rate.name) is not None:   # never without its rate
         who = pack.spell.words.plural
         out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
-                   f"counts only the {who} in force on {cohort_start(as_of, first_known(pack, df, roles)):%-d %b %Y} "
+                   f"counts only the {who} in force on {w.cohort_start:%-d %b %Y} "
                    "who are not in force now, so "
                    f"the two differ: {who} who joined in the window or came back are in the count only.")
     if (k := parts["churn"]) is not None:

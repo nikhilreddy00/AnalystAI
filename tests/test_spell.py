@@ -195,11 +195,10 @@ def test_a_typo_date_never_makes_an_unbounded_series(pack):
 
 
 def test_an_asked_window_from_mid_month_keeps_that_months_end(pack):
-    from domain_pack import spell_window
-    lo, as_of, pts = spell_window(pack, _roster(), ROLES, ("2026-03-15", "2026-06-30"))
+    from domain_pack import window
+    pts = window(pack, _roster(), ROLES, ("2026-03-15", "2026-06-30")).month_ends
     assert pts[0] == pd.Timestamp("2026-03-31") and pts[-1] == pd.Timestamp("2026-06-30") and len(pts) == 4
-    _, _, full = spell_window(pack, _roster(), ROLES)
-    assert len(full) == 12   # the default 12-month window keeps its 12 month-ends
+    assert window(pack, _roster(), ROLES).months == 12   # the default window keeps its 12
 
 
 def test_concurrent_spells_of_one_entity_all_count_when_the_pack_says_so(pack):
