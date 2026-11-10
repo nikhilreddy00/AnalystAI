@@ -247,6 +247,7 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | PR7-04 | B | PR7 | The every-filter and in-range dashboard tests passed vacuously when a part's pack tiles dropped: the strip fell back to generic tiles, so no pack tile was compared (bank_statement's ATM part) | The strip keeps the whole data's tiles (an unavailable one says why); the test asserts the same tiles under every filter | `tests/test_dashboard_filters.py::test_every_filter_partitions_and_matches_the_group_answer`; `tests/test_banking_pack.py::test_a_debit_only_part_of_a_statement_has_0_inflows_not_none` | 0 |
 | PR7-05 | C5 | PR7 | An unanswerable KPI's reason was guessed by the caller: "every group has fewer than 11 people" whenever the pack has protected roles (HR contingent workers by department: there are none) | `measure()` decides the reason where the value is computed; callers say `unavailable_words` | `tests/test_one_definition.py::test_product_code_reads_a_kpi_through_measure` | 0 |
 | PR7-06 | G | PR7 | A baseline (snapshot text) ran on the working tree while code was being edited and crashed on a half-written file | Measure on a commit, in a worktree | unenforced | 0 |
+| PR7-07 | C2 | PR7 | Found by the deep profile: as of 28 Feb after a leap year the default's year earlier opened on 29 Feb, the same span asked on 1 Mar (a day of flows apart); a window the data cuts short re-asked from its first day is another window | `Window.year_earlier` shifts the window's own nominal span; "the default asked for" is the 12 months to the as-of | `tests/test_properties.py::test_p5_asking_for_the_default_window_changes_nothing`; `tests/test_properties.py::test_p5_a_window_the_data_cuts_short_keeps_its_month_ends_asked_or_not` | 0 |
 | PR3-01 | C | PR3 | Plan mode closed without every ROADMAP 5.7 step | CLAUDE.md: check off each step by name | unenforced | 0 |
 | PR3-02 | C2 | PR3 | 4 shared strings wrote "12 months" | `WINDOW_MONTHS` + an AST guard | `tests/test_one_definition.py::test_no_shared_sentence_writes_the_window_span` | 0 |
 | PR3-03 | B | PR3 | Metamorphic transforms ran on some packs only | `next_bill` and `one_snapshot` on every pack | `tests/test_oracle.py::test_a_next_billing_date_column_changes_no_number`; `tests/test_oracle.py::test_one_snapshot_is_still_read_as_snapshots` | 0 |
@@ -261,7 +262,7 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 |---|---|---|---|
 | C0 | 93 | 41 | 18 |
 | C1 | 30 | 9 | 18 |
-| C2 | 30 | 6 | 4 |
+| C2 | 31 | 6 | 4 |
 | C3 | 1 | 0 | 0 |
 | C4 | 2 | 1 | 1 |
 | C5 | 14 | 4 | 3 |
