@@ -230,7 +230,12 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         values = values.fillna(0)
     if by:
         return values.groupby(part[by]).sum(min_count=1).reindex(groups, fill_value=0)
-    return values.sum(min_count=1)
+    total = values.sum(min_count=1)
+    # blank on every row here while the data has values (a debit-only part of a Dr/Cr
+    # statement: no credits): a measured 0 (C5), never unknown
+    if pd.isna(total) and _column(kinds.attrs.get("frame", df), roles, expr).notna().any():
+        return 0.0
+    return total
 
 
 def _end_missing(pack: Pack, roles: dict[str, str], t: Term) -> bool:
@@ -323,7 +328,10 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
                 by: str | None = None, full: pd.DataFrame | None = None,
                 window: tuple | None = None, cut=()):
     """The tests' view of `measure`: the number (or the Series per group, its small cells in
-    attrs['hidden']), or None when unavailable. Product code reads `measure` (its reason)."""
+    attrs['hidden']), or None when unavailable (or no such KPI: measure raises). Product code
+    reads `measure` (its reason)."""
+    if pack.kpi(name) is None:
+        return None
     v = measure(df, roles, pack, name, by, full, window, cut)
     if isinstance(v, MeasuredBy):
         out = v.values
