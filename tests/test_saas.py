@@ -617,3 +617,28 @@ def test_a_next_billing_date_with_add_ons_is_still_no_snapshot(monkeypatch):
     monkeypatch.setitem(test_oracle.TRANSFORMS, "add_ons", add_ons)
     _, df, contract, _ = test_oracle._built("saas_subscriptions", transform="add_ons")
     assert "month" not in contract.roles
+
+
+def test_a_status_held_for_today_only_is_said_wherever_the_list_is_read():
+    """5.7b-2 (C5, user decision 2026-11-10): a list's paused or unpaid status is today's, with
+    no date it began, so those subscriptions are out of every month-end, never churned at a
+    guessed date; the file's story and every spell KPI answer say so (counted). A list without
+    one says nothing; snapshots carry each month's own status, so it never applies to them."""
+    pack = dp.pack_for("saas")
+    roles = {"customer": "customer_id", "created": "created", "ended_at": "ended_at",
+             "status": "status", "mrr": "mrr"}
+    df = pd.DataFrame({"customer_id": ["c0", "c1", "c2"],
+                       "created": pd.to_datetime(["2025-01-01"] * 3),
+                       "ended_at": pd.to_datetime([pd.NaT] * 3),
+                       "status": ["active", "paused", "unpaid"], "mrr": [100.0, 50.0, 70.0]})
+    note = dp.today_only(pack, df, roles)
+    assert note.startswith("2 rows") and "today" in note
+    assert note in dp.spell_story(pack, df, roles)
+    assert dp.today_only(pack, df.assign(status="active"), roles) == ""
+    snaps = df.assign(month=pd.Timestamp("2026-10-01"))
+    assert dp.today_only(pack, snaps, {**roles, "month": "month"}) == ""
+    from agents.targeted_analysis_agent import handle_kpi
+    from orchestrator.state import TargetedParams
+    _, clean, contract, _ = _built("saas_subscriptions")   # the generator pauses ~3%
+    held = dp.today_only(pack, clean, {r: c for r, c in contract.roles.items() if c in clean.columns})
+    assert held and held in handle_kpi(clean, TargetedParams(kpi="mrr"), contract).answer_text

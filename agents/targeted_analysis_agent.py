@@ -63,6 +63,7 @@ from domain_pack import (
     spell_terms,
     has_spell,
     not_counted_yet,
+    today_only,
     spell_as_of,
     spell_story,
     snapshot_role,
@@ -1183,6 +1184,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     if spelled and (w := spell_window(pack, all_rows, roles)) and (later := not_counted_yet(
             pack, all_rows, roles, w[1])):
         how += " " + later
+    if spelled and (held := today_only(pack, all_rows, roles)):
+        how += " " + held
     group = params.group_by or params.segment_column
     # a measure still developing (losses at a valuation): its young periods are never compared
     # with older ones, never cut as partial; the answer says why (domain_pack.developing_note)

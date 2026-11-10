@@ -174,6 +174,7 @@ class SpellWords(_Strict):
     unknown: str = "end_date_unknown"   # the column marking an ended status with no end date
     plural: str = "entities"            # who the entities are ('885 people', '412 customers')
     after_end: str = "rows after the end"   # an exit record's gloss on snapshots
+    today_only: str = ""   # after 'N rows are': why Spell.today_only statuses are out of history
 
 
 class Spell(_Strict):
@@ -198,6 +199,9 @@ class Spell(_Strict):
     # A later date the spell counts from when filled (a trial's end: a subscription converted
     # from a trial pays from then, not from its start; red-team R3)
     paid_from: str | None = None
+    # Statuses a list of spells holds for today only, with no date they began (a paused
+    # subscription): out of every month-end, never moved at a guessed date, and said (C5)
+    today_only: list[str] = Field(default_factory=list)
 
 
 class Term(_Strict):

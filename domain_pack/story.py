@@ -12,7 +12,7 @@ from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, 
                    ordinal, roles_of, spell_terms)
 from .detect import main_currency, row_kinds
 from .spell import (WINDOW_MONTHS, _ended_undated, _in_force, cohort_start, first_known, has_spell,
-                    not_counted_yet, spell_window, window_words)
+                    not_counted_yet, spell_window, today_only, window_words)
 from .ledger import MOVES
 from .kpi import _person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, used_terms
 
@@ -172,6 +172,8 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
                    + ".")
     if later := not_counted_yet(pack, df, roles, as_of):
         out.append(later)
+    if held := today_only(pack, df, roles):
+        out.append(held)
     undated = int(_ended_undated(df, roles, pack).sum())
     if undated:
         out.append(f"{undated:,} rows have an ended status but no end date.")

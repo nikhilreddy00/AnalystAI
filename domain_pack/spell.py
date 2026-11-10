@@ -241,6 +241,17 @@ def not_counted_yet(pack: Pack, df: pd.DataFrame, roles: dict[str, str], as_of) 
             f"{as_of:%-d %b %Y}: not counted yet.") if later else ""
 
 
+def today_only(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> str:
+    """THE sentence about a list's statuses held for today only (GLOSSARY: Today-only status):
+    how many rows, and why they are out of every month-end. Snapshots carry each date's own
+    status: never. The file's story and every spell answer say it."""
+    s = pack.spell
+    if not (s and s.today_only and "status" in roles) or _snapshot_column(pack, roles):
+        return ""
+    n = int(words(df[roles["status"]]).isin(set(words(pd.Series(s.today_only)))).sum())
+    return f"{n:,} row{'s are' if n != 1 else ' is'} {s.words.today_only}" if n else ""
+
+
 def _ended_undated(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
     """THE over-at-an-unknown-date test: an `ended` status with no end date (never in force at
     any date). _ended, the frame's marker and the file's story all read it."""

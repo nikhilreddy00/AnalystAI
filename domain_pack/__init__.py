@@ -101,6 +101,7 @@ from .spell import (  # noqa: F401
     _in_force_at,
     _ended,
     not_counted_yet,
+    today_only,
     _ended_undated,
     _started,
     has_spell,

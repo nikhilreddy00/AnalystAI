@@ -101,9 +101,12 @@ test_roles: [customer, contact_email]
 # subscriptions at once (a base plan and an add-on); a returning customer has a new one.
 spell: {entity: customer, start: created, end: ended_at, paid_from: trial_end,
         ended: [canceled, cancelled, incomplete_expired, ended], concurrent: true,
-        month_labels: true,
+        month_labels: true, today_only: [paused, unpaid],
         words: {start: start, end: end, unknown: end_date_unknown, plural: customers,
-                after_end: rows after the customer left}}
+                after_end: rows after the customer left,
+                today_only: "paused or unpaid today: a subscription list holds its status for
+                  today only, with no date it began, so they are out of every month-end's MRR,
+                  never churned at a guessed date."}}
 snapshot_key: customer
 columns:
   mrr: {times: [unit_amount, quantity], net_of: discount_pct, over: [interval, interval_count],
