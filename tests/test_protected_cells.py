@@ -52,6 +52,7 @@ def _staff():
 def test_pay_of_a_group_under_11_people_in_force_is_hidden(pack):
     by = compute_kpi(_staff(), ROLES, pack, "avg_pay", by="team")
     assert "Big" in by.index and "Tiny" not in by.index   # 16 rows, 4 people in force
+    assert by.attrs["hidden"] == ["Tiny"]   # and named as hidden, so nothing adds it back
 
 
 def test_a_headcount_by_an_unprotected_group_is_shown(pack):
