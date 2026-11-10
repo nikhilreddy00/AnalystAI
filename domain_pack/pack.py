@@ -202,6 +202,9 @@ class Spell(_Strict):
     # Statuses a list of spells holds for today only, with no date they began (a paused
     # subscription): out of every month-end, never moved at a guessed date, and said (C5)
     today_only: list[str] = Field(default_factory=list)
+    # How often the pack's snapshots are taken (GLOSSARY: Snapshot cadence): monthly, an entity
+    # absent from the newest month is gone, whatever its own gaps; undeclared, guessed (C7)
+    snapshot_every: Literal["month"] | None = None
 
 
 class Term(_Strict):

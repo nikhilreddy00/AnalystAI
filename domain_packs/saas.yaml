@@ -101,7 +101,7 @@ test_roles: [customer, contact_email]
 # subscriptions at once (a base plan and an add-on); a returning customer has a new one.
 spell: {entity: customer, start: created, end: ended_at, paid_from: trial_end,
         ended: [canceled, cancelled, incomplete_expired, ended], concurrent: true,
-        month_labels: true, today_only: [paused, unpaid],
+        month_labels: true, snapshot_every: month, today_only: [paused, unpaid],
         words: {start: start, end: end, unknown: end_date_unknown, plural: customers,
                 after_end: rows after the customer left,
                 today_only: "paused or unpaid today: a subscription list holds its status for

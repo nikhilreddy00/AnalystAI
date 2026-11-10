@@ -424,9 +424,9 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 
 # ── D: the product against the independent reference (evals/reference_kpis.py) ──────────────
 
-@pytest.mark.parametrize("book,pack,roles,spec", [   # the MRR export in runs: the known C7 below
-    (mrr_books(one_run=True), SAAS, MRR_ROLES, "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
-    (*BOOKS[2], "book_roster"),   # snapshots without rehires (unbroken runs): the known C7 below
+@pytest.mark.parametrize("book,pack,roles,spec", [   # broken runs too: the cadence is declared (C7)
+    (*BOOKS[0], "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
+    (*BOOKS[2], "book_roster"),   # snapshots without rehires: the known C1 below (PR6-01)
     (hr_snapshot_books(rehires=False), HR, SNAP_ROLES, "book_hr_snapshots")], ids=SHAPES)
 @given(data=st.data())
 def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
@@ -448,11 +448,10 @@ def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():
     assert dp.compute_kpi(df, LIST_ROLES, SAAS, "mrr") == 0
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C7: an HR snapshot's cadence is guessed from gaps")
 def test_d_a_person_absent_from_the_newest_snapshot_is_gone():
     """e1 is on the Jan, Jun and Jul 2022 snapshots only; e0 on every one to Oct 2026. The
-    irregular gaps of e1 switch the 'stopped' cut off, so e1 still counts in Oct 2026."""
+    irregular gaps of e1 switched the guessed 'stopped' cut off, so e1 still counted in Oct
+    2026; the pack declares monthly snapshots (C7)."""
     roster = pd.DataFrame({"employee_id": ["e0", "e1", "e1"],
                            "hire_date": pd.to_datetime(["2022-01-01", "2022-01-01", "2022-06-01"]),
                            "termination_date": pd.to_datetime([pd.NaT, "2022-02-01", "2022-08-02"]),
@@ -460,14 +459,36 @@ def test_d_a_person_absent_from_the_newest_snapshot_is_gone():
     assert dp.compute_kpi(_snapshots(roster), SNAP_ROLES, HR, "headcount") == 1
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C7: the snapshot cadence is guessed from gaps, not read from the pack")
 @pytest.mark.parametrize("months,ids", [
     (["2025-09-01", "2025-08-01"], ["c0", "c1"]),                              # nobody repeats
     (["2025-09-01", "2025-05-01", "2025-07-01", "2025-08-01"], ["c0", "c1", "c1", "c1"])])  # gaps
 def test_d_a_customer_absent_from_the_newest_month_label_is_gone(months, ids):
-    """The pack says month labels (monthly); the cadence is learned from each customer's gaps
-    instead, so with none (or irregular ones) c1, absent from September, still pays then."""
+    """The pack says month labels (monthly); the cadence was learned from each customer's gaps
+    instead, so with none (or irregular ones) c1, absent from September, still paid then."""
     df = pd.DataFrame({"month": pd.to_datetime(months), "customer_id": ids,
                        "mrr": [50.0] * len(ids), "segment": ["SMB"] * len(ids)})
     assert dp.compute_kpi(df, MRR_ROLES, SAAS, "mrr") == 50.0
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C1: a snapshot entity's return after a gap is no hire (5.7b-2b term_rows)")
+def test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire():
+    """e3 leaves on 5 Jan 2025 and is back on 1 Nov 2025: on month-end snapshots, absent Jan to
+    Oct 2025, present again from 30 Nov 2025. Hires in the 12 months to 31 Oct 2026 are 1 (the
+    reference); the hires read each person's first snapshot only, so a return is never one."""
+    roster = pd.DataFrame({"employee_id": ["e0", "e3", "e3"],
+                           "hire_date": pd.to_datetime(["2022-01-01", "2022-01-01", "2025-11-01"]),
+                           "termination_date": pd.to_datetime([pd.NaT, "2025-01-05", pd.NaT]),
+                           "department": ["Ops"] * 3, "status": ["Active", "Terminated", "Active"]})
+    assert dp.compute_kpi(_snapshots(roster), SNAP_ROLES, HR, "hires") == 1
+
+
+def test_d_snapshots_taken_on_each_customers_own_billing_day_all_count():
+    """Red-team (5.7b-2 plan): an export with each customer on its own billing day (c0 on the
+    5th, c1 on the 20th) is still monthly: as of 20 Oct both pay, never only the customers
+    billed on the newest day; c2, last billed in August, is gone."""
+    rows = [(f"2026-{m:02d}-05", "c0") for m in range(6, 11)] + \
+        [(f"2026-{m:02d}-20", "c1") for m in range(6, 11)] + [("2026-08-12", "c2")]
+    df = pd.DataFrame(rows, columns=["month", "customer_id"]).assign(
+        month=lambda d: pd.to_datetime(d["month"]), mrr=50.0, segment="SMB")
+    assert dp.compute_kpi(df, MRR_ROLES, SAAS, "mrr") == 100.0

@@ -267,7 +267,7 @@ def _in_force_at(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t) -> p
     if snap:
         from agents.utils import snapshot_rows
         upto = whole[_day(whole[snap]) <= t]
-        rows = snapshot_rows(upto, [ent], snap)
+        rows = snapshot_rows(upto, [ent], snap, every=s.snapshot_every)
         if s.concurrent:   # every row of that snapshot (an export with one row per subscription)
             chosen = pd.MultiIndex.from_arrays([rows[ent], _day(rows[snap])])
             rows = upto[pd.MultiIndex.from_arrays([upto[ent], _day(upto[snap])]).isin(chosen)]
