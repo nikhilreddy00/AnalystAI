@@ -16,7 +16,8 @@ diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines tha
 and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
 with NEW in a worktree and runs the tests: caught = a test failed.
 
-Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
+Leave tests/test_one_definition.py out of --tests: its guards read source files, and mutmut's
+rewritten ones fail them before any mutant runs. Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
 (this script adds the test selection). Exit 1 when a function has a mutant that survived or
 that no selected test reached, or when mutmut itself fails."""
 import argparse
@@ -240,7 +241,9 @@ def main() -> int:
                              env={**os.environ, **ENV})
         metas = [json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")]
         got = scores(metas)
-        if args.lines:   # every mutant run is on a changed line: each survivor fails the gate
+        if args.lines and run.returncode:   # never '0 survivors' from a run that never ran
+            print(f"MUTMUT FAILED (exit {run.returncode}): no survivor count; see its output above")
+        elif args.lines:   # every mutant run is on a changed line: each survivor fails the gate
             on = sorted(k for m in metas for k, c in m.get("exit_code_by_key", {}).items()
                         if c in SURVIVED | NO_TESTS and k in placed)
             print(f"survivors on lines changed since {args.lines}: {len(on)}")
