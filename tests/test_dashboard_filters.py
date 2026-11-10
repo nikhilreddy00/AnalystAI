@@ -479,3 +479,21 @@ def test_every_domain_dataset_is_in_the_every_filter_check():
     domains = [n for n in datagen.DATASETS if _built(n)[2].domain_confidence == "strong"]
     missing = sorted(set(domains) - set(PACK_DATASETS))
     assert not missing, f"add to PACK_DATASETS (every filter on every domain): {missing}"
+
+
+def test_a_books_ratio_tile_says_its_spread_over_the_rankable_groups():
+    """5.7b-2a gate: a loan tape's 30+ delinquency tile says its highest and lowest product (the
+    generator's by-product truth); a group of blank labels is never the highest or lowest."""
+    from guardrails import UNKNOWN_LABEL
+    from tests.test_oracle import _built
+    from agents.visualization_agent import pack_kpis
+    _, df, contract, t = _built("loan_tape")
+    by = t["delinq30_by_product_pct"]
+    hi, lo = max(by, key=by.get), min(by, key=by.get)
+    tile = next(k for k in pack_kpis(df, contract) if k.label == "30+ delinquency")
+    assert tile.context.startswith(f"by Product: highest {hi} {by[hi]:.1f}%, lowest {lo} {by[lo]:.1f}%"), tile.context
+    blank = df.assign(Product=df["Product"].replace(lo, UNKNOWN_LABEL))
+    rest = {k: v for k, v in by.items() if k != lo}
+    tile = next(k for k in pack_kpis(blank, contract) if k.label == "30+ delinquency")
+    low = min(rest, key=rest.get)
+    assert tile.context.startswith(f"by Product: highest {hi} {by[hi]:.1f}%, lowest {low} {rest[low]:.1f}%"), tile.context
