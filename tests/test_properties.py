@@ -483,6 +483,19 @@ def test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire():
     assert dp.compute_kpi(_snapshots(roster), SNAP_ROLES, HR, "hires") == 1
 
 
+def test_d_one_month_of_data_has_no_moves_and_no_cohort():
+    """5.7b-2a (found by the mutation profile's draws): one month label opens and ends its
+    cohort on the same date, with no month of moves. The reference said $0 new MRR and 0% logo
+    churn, the product unavailable with another reason: both now say too short (GLOSSARY
+    Unavailable), never a 0."""
+    from evals.reference_kpis import reference
+    df = pd.DataFrame({"month": pd.to_datetime(["2026-10-01"]), "customer_id": ["c0"],
+                       "mrr": [50.0], "segment": ["SMB"]})
+    ref = reference("book_mrr_export", df)
+    for k in ("new_mrr", "opening_customers", "logo_churn_rate", "nrr"):
+        assert ref[k] is None and dp.measure(df, MRR_ROLES, SAAS, k) == dp.Unavailable("too_short"), k
+
+
 def test_d_snapshots_taken_on_each_customers_own_billing_day_all_count():
     """Red-team (5.7b-2 plan): an export with each customer on its own billing day (c0 on the
     5th, c1 on the 20th) is still monthly: as of 20 Oct both pay, never only the customers

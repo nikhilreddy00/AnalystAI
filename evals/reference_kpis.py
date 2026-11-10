@@ -250,10 +250,14 @@ def history(rows: list[dict], spec: Spec, lo, month_ends) -> list[pd.Timestamp]:
     return sorted(points)
 
 
-def moves(ledger: dict, points: list, lo) -> dict:
+def moves(ledger: dict, points: list, lo) -> dict | None:
     """Each entity's change between consecutive points whose later point is after lo: new (from
     0, never in force before), reactivation (from 0, in force at an earlier point), expansion,
-    contraction, churn (to 0). Counted in the segment of the later row (a churn: the earlier)."""
+    contraction, churn (to 0). Counted in the segment of the later row (a churn: the earlier).
+    None when no point is after lo (one month of data: GLOSSARY Unavailable, 'no month of
+    moves'; never $0)."""
+    if not any(b > lo for b in points):
+        return None
     amount = {k: 0.0 for k in MOVES}
     count = {k: 0 for k in MOVES}
     by_seg: dict = {k: {} for k in MOVES}
@@ -307,24 +311,27 @@ def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
     points = history(rows, spec, lo, month_ends)
     ledger = {t: in_force(rows, spec, t) for t in points}
     mv = moves(ledger, points, lo)
-    co = cohort(ledger[lo], ledger[at])
+    # a cohort needs a span: one month of data opens and ends on the same date (no rate there:
+    # GLOSSARY Unavailable, never a 0% churn)
+    co = cohort(ledger[lo], ledger[at]) if lo < at else None
     now = ledger[at]
     mrr = level(now)
     out = {"mrr": mrr, "arr": 12 * mrr, "paying_customers": len(now),
            "arpa": mrr / len(now) if now else None,
-           **{k: co[k] for k in ("opening_customers", "opening_mrr", "retained_customers",
-                                 "nrr", "grr", "logo_churn_rate")},
-           "nrr_by_segment": {s: v["nrr"] for s, v in co["by_segment"].items()},
+           **{k: co[k] if co else None for k in ("opening_customers", "opening_mrr",
+                                                 "retained_customers", "nrr", "grr",
+                                                 "logo_churn_rate")},
+           "nrr_by_segment": {s: v["nrr"] for s, v in co["by_segment"].items()} if co else {},
            "logo_churn_rate_by_segment": {s: v["logo_churn_rate"]
-                                          for s, v in co["by_segment"].items()}}
+                                          for s, v in co["by_segment"].items()} if co else {}}
     names = {"new": ("new_mrr", "new_customers"), "expansion": ("expansion_mrr",
              "expansion_customers"), "contraction": ("contraction_mrr", "contraction_customers"),
              "churn": ("churned_mrr", "churned_customers"),
              "reactivation": ("reactivation_mrr", "reactivated_customers")}
     for kind, (money, n) in names.items():
-        out[money] = mv["amount"][kind]
-        out[n] = mv["count"][kind]
-        out[f"{money}_by_segment"] = mv["by_segment"][kind]
+        out[money] = mv["amount"][kind] if mv else None
+        out[n] = mv["count"][kind] if mv else None
+        out[f"{money}_by_segment"] = mv["by_segment"][kind] if mv else {}
     for col in spec.groups:
         out[f"mrr_by_{col}"] = by_column(now, col)
     return out
