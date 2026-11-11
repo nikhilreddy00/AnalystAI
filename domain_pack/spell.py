@@ -71,7 +71,7 @@ class Window:
 
     def __post_init__(self):
         e = self.month_ends   # never empty: the as-of ends its own month, so an average has one
-        if not (self.lo < self.as_of and e and e[-1] == self.as_of
+        if not (e and e[-1] == self.as_of   # with lo < each month-end: lo < as_of
                 and all(a < b for a, b in zip(e, e[1:]))
                 and all(self.lo < x <= self.as_of and x >= self.first for x in e)):
             raise ValueError(f"a window its readers can't share: {self}")

@@ -289,11 +289,23 @@ def test_an_asked_span_of_exactly_n_months_from_the_2nd_reads_n_month_ends(pack)
 def test_no_window_when_every_date_is_after_today(pack):
     """A first date but no as-of (all dated after today): no window, never a crash."""
     assert window(pack, _roster().assign(start_date="2027-01-05", cancel_date=""), ROLES) is None
+    assert window(pack, _roster(), ROLES, ("2026-11-01", None)) is None   # the day after the as-of
+
+
+def test_a_year_earlier_shifts_the_asked_span_and_needs_all_its_months(pack):
+    df = _roster()   # as-of 31 Oct 2026, data from 2023
+    assert window(pack, df, ROLES, ("2026-03-15", "2026-09-30")).year_earlier().asked \
+        == _ts("2025-03-15", "2025-09-30")
+    assert window(pack, df, ROLES, (None, "2026-09-30")).year_earlier().asked \
+        == _ts("2024-10-01", "2025-09-30")   # no asked start: the 12 months to the asked end
+    late = df[pd.to_datetime(df["start_date"]) >= "2025-06-01"].copy()
+    late.loc[late["subscriber_id"] == "S4", "start_date"] = "2025-03-01"   # data from Mar 2025
+    assert window(pack, late, ROLES).year_earlier() is None   # 8 months a year earlier: none
 
 
 def test_duplicate_row_labels_are_refused_by_name(pack):
     df = _roster()
-    with pytest.raises(ValueError, match="needs unique row labels"):
+    with pytest.raises(ValueError, match="^spell_view: the whole data needs unique row labels$"):
         spell_view(pack, df.set_axis([0] * len(df)), ROLES)
 
 
@@ -319,6 +331,10 @@ def test_by_month_an_average_is_that_months_end(pack):
     assert avg.notna().all()
     for p in avg.index:
         assert avg[p] == _active_at(df, min(p.end_time.normalize(), pd.Timestamp("2026-10-31"))), p
+    q = compute_kpi(df.assign(_period=df["_period"].dt.asfreq("Q")), ROLES, pack, "avg_active",
+                    by="_period")   # a quarter averages its three month-ends
+    ends = [pd.Timestamp(t) for t in ("2026-01-31", "2026-02-28", "2026-03-31")]
+    assert q[pd.Period("2026Q1", "Q")] == pytest.approx(sum(_active_at(df, t) for t in ends) / 3)
 
 
 def test_the_today_only_sentence_counts_its_rows(pack):
