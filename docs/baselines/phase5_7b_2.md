@@ -125,7 +125,38 @@ No window change moved a number: every default window is byte-identical.
 - **The plan's `Asked` type was skipped.** `first_day` removes the exclusive/inclusive trap.
 
 ### Mutation gate (changed lines)
-TBD: filled from the run.
+`scripts/mutation.py --changed-since main --lines main`, run in a throwaway worktree:
+- **First run (b1c1652):** 1,483 mutants on changed lines, **183 survivors**. Most were text
+  (each reason's clause, 44), story's year-earlier facts, the per-period average and the
+  `Window` invariants.
+- **What closed them:**
+  - Tests, each plant-proven (`--plant` printed "caught"): `tests/test_kpi_value.py` (a hand-written
+    clause per reason); in `test_spell.py`, the Window invariants, an exact-N span from the 2nd,
+    the reason per spell case, the monthly and quarterly averages, the year earlier (asked start,
+    asked end only, a shorter prior), and today-only's singular; in `test_ledger.py`, the
+    snapshot book's unknown first month and the by-month cohort rate. The story, also-named and
+    spread facts are checked against `evals/reference_kpis.py` (`test_saas.py`,
+    `test_hr_audit_guards.py`, `test_dashboard_filters.py`).
+  - Dead code deleted, because a Window's month-ends always end at its as-of: the average's
+    "no month-ends" guards, the ledger's NaN-cohort reason, a redundant `lo < as_of` clause,
+    story's `full=df` next to `df`'s own frame, and `_amount`'s unused `pack`.
+- **Re-runs at 11b4c5a and d087738:** 456 + 372 mutants; 18 + 22 survivors, every one then
+  killed by a plant-proven test, deleted, or named below.
+- **Final run (the functions edited after those):** see the gate4 line below.
+- **Equivalents (11, with reasons):**
+  - `snapshot_rows` 30→31 days, and 86400→86401 seconds: a declared month is read only as "at
+    least 27 days".
+  - `_ledger_term`: `None` or `"NAN"` for `float("nan")` (×3); `.reindex(axis)` and
+    `dtype=float` on a dict already keyed on the axis, with float values (×3); a month-end two
+    months before the data instead of one (an all-zero column moves nothing).
+  - `_also_named` `kind == 'currency' or True`: only the currency kind reads a unit.
+  - `_spread` `group or True`: with no group, `measure` is a scalar, so the result is "".
 
 ### Suite and CI
-TBD.
+- **Full suite at d087738 (worktree):** 3,018 passed, 128 skipped, 3 xfailed. The xfails are
+  C3 per-segment and PR7-01 (2b) and PR7-03 (2c).
+- **`domain_diff.py main`:** the same 9 datasets changed as at b1c1652, each a CHANGES entry;
+  19 identical. **`snapshot text main`:** 3 changes, all the today-only sentence (CHANGES).
+- **Deep Hypothesis profile (500 examples):** 54 passed, 2 xfailed. One deep failure earlier in
+  the session did not reproduce, and its traceback was not kept.
+- **CI:** see the PR.
