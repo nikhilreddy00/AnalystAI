@@ -27,13 +27,30 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   latest snapshot, else the latest start or end date not after today. Dates after it are not
   yet events. Flows and rates read the 12 months to it unless a period is asked. A month label's
   as-of is that month's end, never after today.
-- **Window** — the span a flow or rate reads: (its start, the as-of], with the month-ends in it;
-  the 12 months to the as-of, or the shorter span since the first date the data knows a state
+- **Window** — the span a flow or rate reads: (its start, its end]; the 12 months to the as-of,
+  or an asked period, cut to the shorter span since the first date the data knows a state
   (snapshots: from the first snapshot, its month-end included; spells: the day before the first
   end, since a list of recent leavers misses who left before it, or before the first start when
-  nobody ended), or an asked period. Moves and cohorts start at the first known state.
-- **Unavailable** — a figure the data can't support (a role it lacks, a 0 denominator, no month
-  of moves, a group under the small-cell limit): said as unavailable, never shown as 0.
+  nobody ended). Its month-ends: a span of exactly N months (the 12 months to 24 Oct) has N, the
+  end's own month ending at the end; any other span has one per month it touches (since 15 Mar
+  keeps 31 Mar). Moves start at the first known state.
+- **Opening cohort** — the entities in force 12 months before a window's end (or at the first
+  date the data knows a state when it covers less); retention, NRR and logo churn follow them to
+  the end, whatever period is asked. An asked period's bridge opens at the period's own start.
+  A cohort needs a span: when the data knows a state only at the window's end (one month of
+  data), its opening and rates are unavailable, never a 0% churn over no time. A signup cohort
+  (entities grouped by start month) is a different thing.
+- **Measured** — a figure the data supports, with its evidence; 0 is a measurement (nobody in
+  force at the as-of is 0 MRR, never unavailable).
+- **Unavailable** — a figure the data can't support, with its reason: a role it lacks, a column
+  it reads left blank, no end date for a churn or exit, a 0 denominator, no month of moves, a
+  group under the small-cell limit. Said as unavailable, never shown as 0.
+- **Snapshot cadence** — how often a pack's snapshots are taken (monthly), declared by the pack:
+  an entity absent from the newest snapshot of that cadence is gone. Guessed from the dates only
+  for a pack that declares none.
+- **Today-only status** — a status a list holds for today only (a paused or unpaid subscription):
+  it keeps the entity out of every month-end, since the date it changed is unknown, and the
+  answer says so.
 - **Developing period** — a period year younger than the pack's `maturity.months` at the latest
   valuation date (an accident year whose claims are still being reported and reserved): named with
   its age, never cut and never called final (Domain 4, 2026-11-03).
@@ -48,10 +65,6 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   never in force before), reactivation (from 0, in force at an earlier month-end: a stay that began and ended inside
   one month is unseen, so its return is new), expansion, contraction, churn
   (to 0). Counted where its later row is (a churn: its earlier row).
-- **Opening cohort** — the entities in force at a window's start (12 months before the as-of, or
-  the first date the data knows a state when it covers less, or before each period's end);
-  retention follows the same entities to the end. A signup cohort (entities grouped by start
-  month) is a different thing.
 - **Month label** — a snapshot date written on the month's 1st that names the whole month (an
   MRR export's `2026-10-01` is October): the as-of is that month's end.
 - **Pack column** — a column the product adds to the data at ingestion from a pack formula (a

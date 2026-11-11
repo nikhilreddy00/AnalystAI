@@ -387,10 +387,11 @@ def test_the_window_in_force_and_moves_are_defined_once():
     domain_pack/spell.py only; the ledger and its moves in domain_pack/ledger.py only. A second
     `def` of one of them anywhere in shared code is a second copy of the rule."""
     import ast
-    owner = {**dict.fromkeys(["spell_window", "spell_as_of", "spell_from", "_in_force_at",
-                              "_ended", "first_known", "cohort_start", "_month_ends"], "spell"),
+    owner = {**dict.fromkeys(["window", "_cut", "spell_as_of", "spell_from", "_in_force_at",
+                              "_ended", "first_known", "_month_ends"], "spell"),
              **dict.fromkeys(["_ledger", "_ledger_term"], "ledger")}
     owner["MOVES"] = "ledger"   # the move kinds: one tuple
+    owner |= {"measure": "kpi", "unavailable_words": "kpi"}   # a KPI's value and why it has none
     defs = [(n.name, _name(p)) for p in SHARED for n in ast.walk(ast.parse(p.read_text()))
             if isinstance(n, ast.FunctionDef) and n.name in owner]
     defs += [(t.id, _name(p)) for p in SHARED for n in ast.parse(p.read_text()).body
@@ -399,11 +400,81 @@ def test_the_window_in_force_and_moves_are_defined_once():
     assert sorted(defs) == sorted((f, f"domain_pack/{m}.py") for f, m in owner.items()), defs
 
 
-@pytest.mark.xfail(strict=True, reason="C2: 5.7b-2's Window type removes these rebuilds")
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C2: pack prose naming the window gets {window} in 5.7b-2c")
+def test_pack_prose_names_the_window_through_its_placeholder():
+    """5.7b-2 (C2, ROADMAP step 1): prose said with the data that names the window it was read
+    over ('over the 12 months to that date') is wrong on short data; it says {window}, filled
+    from the Window. A rule's own span (the 12-month cohort, expert M3) is no window."""
+    import domain_pack as dp
+    said = [t for p in dp.load_packs() for t in (p.caveats.get("read_as_domain", ""),
+                                          p.text.get("unsupported_alternatives", ""))]
+    assert not [t for t in said if re.search(r"\b(?:the )?12 months to\b", t)]
+
+
+def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess():
+    """5.7b-2a (C7): a spell read from snapshots declares how often they are taken, so absence
+    from the newest one is never guessed from an entity's gaps. A pack declaring none (a bank's
+    balances) keeps the guess: a regular weekly account missing from the newest week is out, an
+    account in an irregular ledger (no cadence) is kept."""
+    import domain_pack as dp
+    from agents.utils import snapshot_rows
+    assert not [p.domain for p in dp.load_packs()
+                if p.spell and dp.snapshot_role(p) and not p.spell.snapshot_every]
+    weeks = pd.date_range("2026-09-06", periods=6, freq="W")
+    df = pd.DataFrame({"a": ["x"] * 6 + ["y"] * 3, "t": [*weeks, *weeks[:3]]})
+    assert set(snapshot_rows(df, ["a"], "t")["a"]) == {"x"}   # y missed its last two weeks
+    odd = pd.DataFrame({"a": ["x", "x", "x", "y", "y"],
+                        "t": pd.to_datetime(["2026-01-03", "2026-01-04", "2026-06-30",
+                                             "2026-02-01", "2026-05-17"])})
+    assert set(snapshot_rows(odd, ["a"], "t")["a"]) == {"x", "y"}   # no cadence: nothing cut
+
+
+def test_every_unavailable_reason_has_words_in_every_pack():
+    """A reason without words would show a '—' tile with nothing beside it."""
+    from typing import get_args
+
+    import domain_pack as dp
+    for p in dp.load_packs():
+        for r in get_args(dp.pack.Reason):
+            assert dp.unavailable_words(dp.Unavailable(r, ("status",)), p).strip(), (p.domain, r)
+
+
+def test_product_code_reads_a_kpi_through_measure():
+    """5.7b-2 (C5): compute_kpi's None hid why a figure is unavailable, so callers re-guessed it
+    (a small cell or 'can't be computed') and read a real 0 as no value. Product code reads
+    measure(): Measured, MeasuredBy or Unavailable with its reason. compute_kpi is the tests'
+    float-or-None view of it."""
+    assert _hits(r"\bcompute_kpi\(", {"domain_pack/kpi.py"}) == []
+
+
+def test_a_kpi_value_refuses_what_it_can_not_mean():
+    import domain_pack as dp
+    for bad in (lambda: dp.Measured(float("nan")), lambda: dp.Measured(float("inf")),
+                lambda: dp.MeasuredBy(pd.Series(dtype=float)),
+                lambda: dp.MeasuredBy(pd.Series([1.0, float("nan")], index=["a", "b"])),
+                lambda: dp.MeasuredBy(pd.Series([1.0, 2.0], index=["a", "a"])),
+                lambda: dp.Unavailable("not_a_reason")):
+        with pytest.raises(ValueError):
+            bad()
+    s = pd.Series([1.0], index=["a"])
+    m = dp.MeasuredBy(s, ("b",))
+    s["a"] = 9.0   # the caller's Series is copied in, never shared
+    assert m.values["a"] == 1.0 and dp.Measured(0.0).value == 0
+
+
 def test_no_reader_rebuilds_the_window_from_its_span():
-    """Today the window's start is rebuilt from its span outside spell.py: the ledger's cohort
-    starts by period (ledger.py), the story's year-earlier window (story.py) and the targeted
-    year-before (targeted_analysis_agent.py). Each is a copy of the rule (PR1-02)."""
-    rebuilt = _hits(r"DateOffset\((?:months=WINDOW_MONTHS|years=1)",
-                    {"domain_pack/spell.py", "utils.py"})   # utils: _year_back, a YoY offset
+    """5.7b-2 (C2, PR1-02): the window's start was rebuilt outside spell.py: the ledger's cohort
+    starts by period and its moves' start, the story's year-earlier window, the targeted
+    year-before and its asked re-cut. Each reader now names a Window field (first_day,
+    moves_from, cohort_start, year_earlier, period); spell.py alone builds it. The eval code
+    reads it too; the reference oracle and the generator are independent by design."""
+    rx = re.compile(r"DateOffset\((?:months=(?:WINDOW_MONTHS|1[12])|years=1)|MonthEnd\(1[12]\)"
+                    r"|relativedelta\(|Timedelta\(days=36[56]\)|replace\(year="
+                    r"|lo \+ pd\.(?:Timedelta\(days=1\)|offsets\.Day\(1\))|max\(lo, known\)")
+    evals = [p for p in sorted((ROOT / "evals").glob("*.py"))
+             if p.name not in ("reference_kpis.py", "datagen.py")]
+    rebuilt = _hits(rx.pattern, {"domain_pack/spell.py", "utils.py"}) + [   # utils: _year_back
+        f"evals/{p.name}:{i}" for p in evals for i, line in enumerate(p.read_text().splitlines(), 1)
+        if rx.search(line) and not line.lstrip().startswith("#")]
     assert rebuilt == [], rebuilt

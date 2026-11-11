@@ -15,7 +15,13 @@ import pytest
 from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-CHANGES: dict[str, dict[str, str]] = {}
+CHANGES: dict[str, dict[str, str]] = {
+    "deterministic": {"saas_subscriptions-1": "5.7b-2a C5 (user decision 2026-11-10): the file's "
+                      "story says its 10 paused or unpaid rows are out of every month-end (no "
+                      "date they began); no number moved"},
+    "insight": {"ins-49-saas-subscriptions-overview": "5.7b-2a C5: the same today-only sentence "
+                "in the story the insight reads; no number moved"},
+}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())

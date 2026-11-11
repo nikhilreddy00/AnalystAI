@@ -10,6 +10,10 @@ here, so `import domain_pack` and `from domain_pack import x` keep working; the 
 too, for the tests that pin them (`_in_force`, `_MEMO` …). Patch the loader at domain_pack.pack.
 """
 from .pack import (  # noqa: F401
+    KPIValue,
+    Measured,
+    MeasuredBy,
+    Unavailable,
     PACKS,
     ROW_KINDS,
     ROW_KIND_COLUMN,
@@ -77,14 +81,14 @@ from .columns import (  # noqa: F401
 )
 from .spell import (  # noqa: F401
     SpellView,
-    SpellWindow,
+    Window,
     spell_view,
     SPELL_YEARS,
     SPELL_PERIODS,
     spell_as_of,
     _spell_as_of,
     spell_from,
-    spell_window,
+    window,
     spell_covered,
     _month_ends,
     window_words,
@@ -97,13 +101,13 @@ from .spell import (  # noqa: F401
     _in_force_at,
     _ended,
     not_counted_yet,
+    today_only,
     _ended_undated,
     _started,
     has_spell,
     _spell_events,
     _month_labelled,
     first_known,
-    cohort_start,
 )
 from .ledger import (  # noqa: F401
     MOVES,
@@ -121,6 +125,8 @@ from .kpi import (  # noqa: F401
     _side,
     _kpi_value,
     compute_kpi,
+    measure,
+    unavailable_words,
     _person_col,
     _population,
     pay_columns,

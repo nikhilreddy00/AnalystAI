@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from domain_pack import Pack, compute_kpi, computable
+from domain_pack import Pack, compute_kpi, computable, spell_facts
 
 BOOK = """
 domain: toymrr
@@ -111,6 +111,35 @@ def test_by_month_the_moves_fall_in_their_month(book):
                      "churned_mrr", by="_p", full=df)
     assert by[pd.Period("2025-12", "M")] == 80 and by[pd.Period("2026-03", "M")] == 200
     assert by.sum() >= 280
+    # from Jan 2026 on: the first month has no month before it in the snapshots, so its moves
+    # are unknown (left out), never $0; Feb's are known (none)
+    jan = df[df["month"] >= "2026-01-01"]
+    by = compute_kpi(jan.assign(_p=pd.to_datetime(jan["month"]).dt.to_period("M")), roles, pack,
+                     "churned_mrr", by="_p", full=jan)
+    assert by.index[0] == pd.Period("2026-02", "M") and by.iloc[0] == 0
+
+
+def test_the_story_says_a_money_stocks_fall_from_its_peak_and_each_months_moves(book):
+    """By hand from PLAN: MRR is 940 at Nov 2025 (its peak in the window) and 770 at the as-of
+    (−18.1%); a customer churns in Dec (F) and one in Mar (D)."""
+    _, df, roles = book
+    raw = yaml.safe_load(BOOK)
+    raw["kpis"][0]["tile"] = True   # MRR as the stock the story reads
+    facts = spell_facts(Pack.model_validate(raw), df, roles)
+    assert "MRR peaked at $940.00 (Nov 2025) and is $770.00 at 31 Oct 2026 (-18.1%)." in facts
+    assert "Churned customers by month (12 months to 31 Oct 2026): " + ", ".join(
+        f"{p} {1 if p in ('2025-12', '2026-03') else 0}"
+        for p in pd.period_range("2025-11", "2026-10", freq="M").astype(str)) + "." in facts
+
+
+def test_by_month_a_cohort_rate_needs_its_whole_year(book):
+    """Each month's NRR follows its own cohort, 12 months back: only Oct 2026's lies wholly in
+    the data (Oct 2025 on); every earlier month's is unknown, never a shorter cohort's rate."""
+    pack, df, roles = book
+    by = compute_kpi(df.assign(_p=pd.to_datetime(df["month"]).dt.to_period("M")), roles, pack,
+                     "nrr", by="_p", full=df)
+    assert list(by.index) == [pd.Period("2026-10", "M")]
+    assert by.iloc[0] == pytest.approx((100 + 150 + 300 + 0 + 80 + 90) / 940)
 
 
 def test_on_a_subscription_list_history_terms_are_not_computable():
@@ -161,7 +190,7 @@ def test_a_part_whose_row_labels_are_not_the_wholes_counts_by_label(book):
     pack, df, roles = book
     smb = df[df["segment"] == "SMB"]
     outside, overlap = smb.set_axis(range(1000, 1000 + len(smb))), smb.set_axis(range(5, 5 + len(smb)))
-    assert compute_kpi(outside, roles, pack, "mrr", full=df) is None
+    assert compute_kpi(outside, roles, pack, "mrr", full=df) == 0   # nobody in force: $0 (C5)
     assert compute_kpi(outside, roles, pack, "new_mrr", by="segment", full=df) is None
     assert compute_kpi(overlap, roles, pack, "mrr", full=df) == 600
     assert compute_kpi(overlap, roles, pack, "opening_mrr", by="segment", full=df).to_dict() == {"SMB": 180}

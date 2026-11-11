@@ -361,7 +361,7 @@ def _in_time_order(d):
 
 
 def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: bool = True,
-                  per: str | None = None):
+                  per: str | None = None, every: str | None = None):
     """Each entity's latest snapshot (or first, for a 'first' window): the one rule for a level's
     current rows (a balance's tile, bars, answers). An entity whose latest snapshot is a full
     usual gaps older than the newest one has stopped (a closed account) and is left out (monthly
@@ -370,7 +370,9 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: b
     entity's latest row in each period, the stopped cut judged against THAT period's newest date
     (an account closed on 10 Aug is out of August's month-end). `current=False`: no stopped cut
     (an entity's last row, wherever it is: a correlation keeps accounts that stopped). No `by`:
-    the file is one series (a single account's statement)."""
+    the file is one series (a single account's statement). `every`: the cadence the pack
+    declares ('month'): used, never guessed from an entity's own gaps (C7: one with no repeat,
+    or irregular gaps, is still gone once absent from the newest month)."""
     import pandas as pd
     t = pd.to_datetime(df[time], format="mixed", errors="coerce")
     d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
@@ -387,6 +389,8 @@ def snapshot_rows(df, by: list[str], time: str, window: str = "last", current: b
     # snapshots come at a cadence (weekly, each account's statement day); a ledger's running
     # balance does not: a quiet account there is no closed one, so nothing is cut
     regular = len(gaps) and (each.std().fillna(0) / each.mean()).median() <= REGULAR_CV
+    if every == "month" and len(d):   # declared by the pack: never a guess (no rows: nothing to cut)
+        cadence, regular = 30 * 86400, True
     last = g.tail(1)
     newest = d["_t"].max()
     if per is not None:   # each period's own month-end

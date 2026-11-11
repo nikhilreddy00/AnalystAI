@@ -46,14 +46,18 @@ from domain_pack import (
     window_words,
     runout_months,
     computable,
-    compute_kpi,
     defaults_pack,
     describe_kpi,
     main_currency,
+    measure,
+    Measured,
+    MeasuredBy,
     money_columns,
     entity_rows,
     rows_for,
     row_kinds,
+    Unavailable,
+    unavailable_words,
 )
 from guardrails import chart_lint, rankable
 from llm.client import trace_verdict
@@ -76,6 +80,8 @@ from orchestrator.state import (
 )
 
 logger = logging.getLogger(__name__)
+
+UNAVAILABLE = "—"   # an unavailable tile's value; its context says why (C5)
 
 
 # ── Agent card (ADR-0001) ────────────────────────────────────────────────────
@@ -1160,10 +1166,12 @@ def _unit_fields(kind: str, unit: str | None) -> dict:
 def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
               full: pd.DataFrame | None = None, window: tuple | None = None,
               cut: tuple = ()) -> list[KPI]:
-    """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. A KPI the
-    data can't support is no tile (never a 0); one that fails to compute is dropped and traced,
-    and the run goes on. Money is in the main currency; other currencies are left out, said in
-    the tile's context."""
+    """The data's domain-pack tiles (domain_pack: `tile: true`), in the pack's order. The tiles
+    are the KPIs the whole data supports (never a 0 for one it can't); under a filter (`full`)
+    the strip keeps them, a tile the part can't support shown as '—' with its reason (C5: never
+    a silent swap to the generic tiles). One that fails to compute is dropped and traced, and the
+    run goes on. Money is in the main currency; other currencies are left out, said in the
+    tile's context."""
     pack = defaults_pack(contract)   # a weak match keeps the generic tiles (and says how it read)
     if pack is None or df is None or df.empty:
         return []
@@ -1177,15 +1185,24 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         if not k.tile:
             continue
         try:
-            v = compute_kpi(df, roles, pack, k.name, full=full, window=window, cut=cut)
+            v = measure(df, roles, pack, k.name, full=full, window=window, cut=cut)
+            tile = isinstance(v, Measured) if full is None else isinstance(
+                measure(full, roles, pack, k.name, window=window), Measured)
         except Exception:   # a pack/data mismatch is a missing tile, never a failed run
             logger.warning("KPI %s failed", k.name, exc_info=True)
             trace_verdict("visualization", VIZ_CARD.version, "kpi_failed")
             continue
-        if v is None:
+        if not tile:
             continue
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
+        if isinstance(v, Unavailable):   # the part can't support it: said, never a 0 or a gap
+            tiles.append(KPI(label=k.label, value=UNAVAILABLE, context=unavailable_words(v, pack),
+                             recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
+                                              **_unit_fields(kind, unit)),
+                             how=describe_kpi(pack, k.name, roles, present)))
+            continue
+        v = v.value
         context = f"{currency} only; {other:,} rows in other currencies left out" if other else ""
         # a headcount is as of a date, an attrition rate over 12 months to it: the tile says which
         context = "; ".join(x for x in (window_words(pack, df if full is None else full, roles, k.name,
@@ -1204,8 +1221,9 @@ def _spread(df: pd.DataFrame, roles: dict, pack, name: str) -> str:
     """'highest Credit Card 10.4%, lowest Mortgage 0.0%' over the pack's first overview group the
     data has: a portfolio ratio of 0.5% can hide a product at 10%."""
     group = next((roles[g] for g in pack.overview_groups if g in roles), None)
-    by = compute_kpi(df, roles, pack, name, by=group) if group else None
-    by = by[[rankable(k) for k in by.index]] if by is not None else None   # never the pooled bucket
+    v = measure(df, roles, pack, name, by=group) if group else None
+    by = v.values[[rankable(k) for k in v.values.index]] if isinstance(v, MeasuredBy) else None
+    # (never the pooled bucket; an unavailable spread is no spread: the tile says the value)
     if by is None or len(by) < 2:
         return ""
     order = ranked(by)

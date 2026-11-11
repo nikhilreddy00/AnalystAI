@@ -648,3 +648,18 @@ def test_a_status_is_its_words_wherever_it_is_read(status):
     from domain_pack import row_kinds
     df = pd.DataFrame({"s": [status, "Current"]})
     assert row_kinds(df, {"status": "s"}, BANK).tolist() == ["cancel", "sale"]
+
+
+def test_a_debit_only_part_of_a_statement_has_0_inflows_not_none():
+    """5.7b-2 (C5): a filter to ATM withdrawals leaves the Credit column blank on every row (the
+    Dr/Cr layout) while the statement has credits: inflows there are a measured $0 and net flow
+    is minus the outflows. They read as unknown, the tiles dropped and the strip fell back to
+    the generic tiles."""
+    from tests.test_oracle import _built
+    _, clean, contract, _ = _built("bank_statement")
+    pack = pack_for(contract.domain)
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    part = clean[clean[roles["merchant"]] == "ATM WITHDRAWAL"]
+    out = domain_pack.measure(part, roles, pack, "outflows", full=clean).value
+    assert domain_pack.measure(part, roles, pack, "inflows", full=clean) == domain_pack.Measured(0.0)
+    assert domain_pack.measure(part, roles, pack, "net_flow", full=clean).value == pytest.approx(-out)

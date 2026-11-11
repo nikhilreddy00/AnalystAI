@@ -314,3 +314,70 @@ def test_a_weak_domain_match_still_refuses_a_group_by_pay(monkeypatch):
     text, _ = answer("hr_roster", "segment_compare", "q", metric_column="Performance_Rating",
                      segment_column="Annual_Salary", aggregation="mean")
     assert "is pay" in text, text
+
+
+def test_a_year_earlier_0_is_said_and_an_unavailable_prior_gives_its_reason():
+    """5.7b-2a (C5): two hires in the 12 months to 31 Oct 2026 and none the year before: the
+    year-earlier 0 is a measured 0, said with its zero base, never 'no year-earlier comparison'
+    (a $0 prior read as no value). A roster without exit dates can't count exits at all: the
+    answer says why, never a 0."""
+    from agents.targeted_analysis_agent import handle_kpi
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType, TargetedParams
+    df = pd.DataFrame({"employee_id": ["e0", "e1", "e2"],
+                       "hire_date": ["2022-01-10", "2026-03-02", "2026-06-15"],
+                       "termination_date": ["", "", ""], "department": ["Ops"] * 3,
+                       "status": ["Active"] * 3, "report_date": ["2026-10-31"] * 3})
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    text = handle_kpi(df, TargetedParams(kpi="hires", compare="yoy"), contract).answer_text
+    assert "A year earlier" in text and "no % change from a zero" in text, text
+    df = df.drop(columns="termination_date").assign(status="Active")
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    text = handle_kpi(df, TargetedParams(kpi="separations"), contract).answer_text
+    assert "no exit date" in text and ": 0" not in text, text
+
+
+def test_a_rosters_spell_facts_and_story_are_the_references_numbers(monkeypatch):
+    """5.7b-2a gate: each fact line of a roster against the generator's truth or the independent
+    reference (evals/reference_kpis.py): the month-end headcounts, their mean, a year's mean, the
+    mean by department, each rate now and a year earlier (the reference a year back), the peak,
+    the largest month of exits and its department, and people against rows. A headcount that
+    can't be measured is left out of the rows sentence, never a crash."""
+    from evals.reference_kpis import reference
+    _, df, contract, t = _built("hr_roster")
+    pack, roles = pack_for("hr"), _roles(contract, df)
+    facts = domain_pack.spell_facts(pack, df, roles)
+    ends = {pd.Timestamp(k): v for k, v in t["headcount_by_month_end"].items()}
+    assert "Headcount at its month-ends: " + ", ".join(
+        f"{k:%b %Y} {v:,}" for k, v in ends.items()) + "." in facts
+    assert f"Average headcount = {t['avg_headcount_12m']:,.1f} (their mean)" in " ".join(facts)
+    year = [v for k, v in ends.items() if k.year == 2026]   # Jan–Oct 2026: the last year's own
+    by_year = next(ln for ln in facts if ln.startswith("Average headcount by year"))
+    assert f"2026 {sum(year) / len(year):,.1f}." in by_year, by_year
+    now, back = reference("hr_roster", df), reference("hr_roster", df, pd.Timestamp("2025-10-31"))
+    head = "Average headcount by Department (a group's rate divides by its own): "
+    dept = next(ln for ln in facts if ln.startswith(head)).removeprefix(head).rstrip(".")
+    said_ = {k: float(v) for k, v in (x.rsplit(" ", 1) for x in dept.split(", "))}
+    assert said_ == pytest.approx(now["avg_headcount_by_department"], abs=0.051)   # 183.25 rounds
+    for label, k in (("Attrition rate", "attrition_rate"), ("Voluntary attrition", "voluntary_attrition")):
+        assert (f"{label} (12 months to 31 Oct 2026): {now[k]:.1%}; a year earlier (12 months to "
+                f"31 Oct 2025): {back[k]:.1%}, {(now[k] - back[k]) * 100:+.1f} points.") in facts, label
+    peak = max(ends, key=ends.get)
+    assert (f"Headcount peaked at {ends[peak]:,} ({peak:%b %Y}) and is {t['headcount_asof']:,} at "
+            f"31 Oct 2026 ({(t['headcount_asof'] / ends[peak] - 1) * 100:+.1f}%).") in facts
+    from evals import reference_kpis as R
+    spec = R.SPECS["hr_roster"]
+    exits, _ = R.separations(R.prepare(df, spec), spec, pd.Timestamp("1900-01-01"), pd.Timestamp(t["as_of"]))
+    top = pd.Series([r["end"].to_period("M") for r in exits]).value_counts()
+    jun = pd.Series([r["segment"] for r in exits if r["end"].to_period("M") == top.index[0]]).value_counts()
+    big = next(ln for ln in facts if ln.startswith("The largest month of separations"))
+    assert big.startswith(f"The largest month of separations: {top.index[0].strftime('%b %Y')} with {top.iloc[0]} ")
+    assert big.endswith(f", {jun.iloc[0]} of them in {jun.index[0]} (Department)."), big
+    multi = int((df[roles["employee"]].value_counts() > 1).sum())
+    said = f"{t['rows']:,} rows are {t['people']:,} people ({multi:,} with more than one row)"
+    assert f"{said}; {t['headcount_asof']:,} in force at 31 Oct 2026." in facts
+    real = domain_pack.story.measure
+    monkeypatch.setattr(domain_pack.story, "measure", lambda df_, roles_, pack_, name, **kw:
+                        domain_pack.Unavailable("no_rows") if name == "headcount" and not kw
+                        else real(df_, roles_, pack_, name, **kw))
+    assert f"{said}." in domain_pack.spell_story(pack, df, roles)

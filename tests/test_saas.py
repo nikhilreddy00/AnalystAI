@@ -617,3 +617,88 @@ def test_a_next_billing_date_with_add_ons_is_still_no_snapshot(monkeypatch):
     monkeypatch.setitem(test_oracle.TRANSFORMS, "add_ons", add_ons)
     _, df, contract, _ = test_oracle._built("saas_subscriptions", transform="add_ons")
     assert "month" not in contract.roles
+
+
+def test_a_status_held_for_today_only_is_said_wherever_the_list_is_read():
+    """5.7b-2 (C5, user decision 2026-11-10): a list's paused or unpaid status is today's, with
+    no date it began, so those subscriptions are out of every month-end, never churned at a
+    guessed date; the file's story and every spell KPI answer say so (counted). A list without
+    one says nothing; snapshots carry each month's own status, so it never applies to them."""
+    pack = dp.pack_for("saas")
+    roles = {"customer": "customer_id", "created": "created", "ended_at": "ended_at",
+             "status": "status", "mrr": "mrr"}
+    df = pd.DataFrame({"customer_id": ["c0", "c1", "c2"],
+                       "created": pd.to_datetime(["2025-01-01"] * 3),
+                       "ended_at": pd.to_datetime([pd.NaT] * 3),
+                       "status": ["active", "paused", "unpaid"], "mrr": [100.0, 50.0, 70.0]})
+    note = dp.today_only(pack, df, roles)
+    assert note.startswith("2 rows") and "today" in note
+    assert note in dp.spell_story(pack, df, roles)
+    assert dp.today_only(pack, df.assign(status="active"), roles) == ""
+    snaps = df.assign(month=pd.Timestamp("2026-10-01"))
+    assert dp.today_only(pack, snaps, {**roles, "month": "month"}) == ""
+    from agents.targeted_analysis_agent import handle_kpi
+    from orchestrator.state import TargetedParams
+    _, clean, contract, _ = _built("saas_subscriptions")   # the generator pauses ~3%
+    held = dp.today_only(pack, clean, {r: c for r, c in contract.roles.items() if c in clean.columns})
+    assert held and held in handle_kpi(clean, TargetedParams(kpi="mrr"), contract).answer_text
+
+
+def test_the_story_says_the_ledger_and_each_rate_against_a_year_earlier():
+    """5.7b-2a gate: the story's rate lines against the reference (a year earlier: the reference
+    a year back), a cohort without a full year-earlier cohort says so, the churned-customer
+    count beside its rate, and the largest month of churned MRR with its one big customer
+    (generator truth)."""
+    from evals.reference_kpis import reference
+    df, _, pack, roles, t = _setup("saas_mrr_snapshots")
+    story = dp.spell_story(pack, df, roles)
+    assert (f"Net revenue retention (12-month cohort to 31 Oct 2026): {t['nrr']:.1%}; "
+            "no full year-earlier window in the data.") in story   # the data opens Nov 2024
+    assert any(ln.startswith(f"{t['churn_n']:,.0f} customers left at a month-end in the window "
+                             "(churned customers); logo churn counts only the customers in force on "
+                             "31 Oct 2025 who are not in force now") for ln in story), story
+    big = next(ln for ln in story if ln.startswith("The largest month of churned MRR"))
+    top = pd.Period(t["biggest_churn_month"], "M")
+    assert big.startswith(f"The largest month of churned MRR: {top.strftime('%b %Y')} with "
+                          f"${t['churned_mrr_by_month_window'][str(top)]:,.2f}"), big
+    assert f", {t['northwind_share_of_big_month']:.0%} of it one customer_id" in big, big
+    df, _, pack, roles, t = _setup("saas_subscriptions")
+    now, back = reference("saas_subscriptions", df), reference("saas_subscriptions", df, pd.Timestamp("2025-10-29"))
+    assert (f"Logo churn (12-month cohort to 29 Oct 2026): {now['logo_churn_rate']:.1%}; a year earlier "
+            f"(12-month cohort to 29 Oct 2025): {back['logo_churn_rate']:.1%}, "
+            f"{(now['logo_churn_rate'] - back['logo_churn_rate']) * 100:+.1f} points.") in dp.spell_story(pack, df, roles)
+
+
+@pytest.mark.parametrize("n", [15, 16])
+def test_a_cohort_rate_by_group_is_a_fact_up_to_15_groups(n):
+    """The ledger facts give a cohort rate by group (equal to the reference) for at most 15
+    groups; 16 is no fact line (too many to quote)."""
+    from evals.reference_kpis import reference
+    df, _, pack, roles, _ = _setup("saas_subscriptions")
+    ids = {c: i for i, c in enumerate(df["customer_id"].unique())}
+    df = df.assign(segment=[f"S{ids[c] % n:02d}" for c in df["customer_id"]])
+    line = next((ln for ln in dp.spell_facts(pack, df, roles) if ln.startswith("Logo churn by segment")), None)
+    if n == 16:
+        assert line is None, line
+        return
+    want = reference("saas_subscriptions", df)["logo_churn_rate_by_segment"]
+    assert len(want) == n and line is not None
+    said = dict(x.rsplit(" ", 1) for x in line.split("): ", 1)[1].rstrip(".").split(", "))
+    assert {k: float(v.rstrip("%")) / 100 for k, v in said.items()} == pytest.approx(want, abs=0.0005)
+
+
+def test_a_total_and_an_unavailable_kpi_the_question_names_are_both_said():
+    """5.7b-2a gate: 'total billings by type' gives the total in the data's own currency (the
+    generator's billings, in euros); a second KPI the question names that the rows can't support
+    is said with its reason (one month of snapshots: no month of moves), never left out."""
+    from agents.targeted_analysis_agent import _also_named
+    from orchestrator.state import TargetedParams
+    _, df, contract, t = _built("saas_invoices")
+    pack = dp.pack_for(contract.domain)
+    text = _also_named(df.assign(currency="EUR"), TargetedParams(kpi="billings", group_by="line_type"),
+                       contract, pack, "total billings by type")
+    assert text == f" Also asked: Billings in total: €{t['billings']:,.2f}.", text
+    df, contract, pack, _, _ = _setup("saas_mrr_snapshots")
+    one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
+    text = _also_named(one, TargetedParams(kpi="mrr"), contract, pack, "What is our MRR and new MRR?")
+    assert text == " Also asked: New MRR: unavailable, the data covers too short a span.", text

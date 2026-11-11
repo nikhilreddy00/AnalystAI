@@ -103,7 +103,7 @@ status_values:
 # person's latest snapshot on or before a date (absent from the newest = gone).
 spell: {entity: employee, start: hire_date, end: termination_date,
         ended: [terminated, inactive, separated, withdrawn, retired, deceased],
-        as_of: report_date,
+        as_of: report_date, snapshot_every: month,
         words: {start: hire, end: exit, unknown: left_date_unknown, plural: people,
                 after_end: rows after a person left}}
 snapshot_key: employee

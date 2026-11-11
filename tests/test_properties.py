@@ -132,8 +132,6 @@ def _bridge(df: pd.DataFrame, part: pd.DataFrame | None = None) -> tuple[float, 
     k = {n: dp.compute_kpi(df if part is None else part, MRR_ROLES, SAAS, n,
                            full=None if part is None else df)
          for n in ("mrr", "opening_mrr", *FLOWS)}
-    if k["mrr"] is None and k["opening_mrr"] is not None:   # nobody now: $0 (the known C5,
-        k["mrr"] = 0.0                                       # PR5-06), so a churned-out part counts
     if any(v is None for v in k.values()):
         return None
     return k["mrr"], k["opening_mrr"] + sum(s * k[n] for n, s in FLOWS.items())
@@ -167,11 +165,10 @@ def test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment():
         assert k["mrr"] == pytest.approx(built), s
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C2: an asked window's moves read it, the opening stays 12 months back")
 def test_p1_the_bridge_adds_up_on_an_asked_window():
     """a pays 100 until May 2026; b pays 50, then 60 from Nov 2025. Asked: Apr–Oct 2026. The
-    moves read those 7 months (a's churn), the opening reads 31 Oct 2025 (a 12-month cohort)."""
+    moves read those 7 months (a's churn); the opening read 31 Oct 2025 (a 12-month cohort): a
+    bridge opens where its moves start, 31 Mar 2026 (C2; NRR keeps its 12-month cohort)."""
     months = pd.date_range("2024-10-01", "2026-10-01", freq="MS")
     rows = [(m, "a", 100.0, "SMB") for m in months[:20]] + \
         [(m, "b", 50.0 + 10 * (i > 12), "SMB") for i, m in enumerate(months)]
@@ -286,7 +283,9 @@ def test_p4_a_kpi_without_a_role_it_needs_is_unavailable_never_0(book, pack, rol
         less = {r: c for r, c in roles.items() if r != role}
         for k in pack.kpis:
             if dp.computable(pack, k.name, roles) and not dp.computable(pack, k.name, less):
-                assert dp.compute_kpi(df, less, pack, k.name) is None, (role, k.name)
+                got = dp.measure(df, less, pack, k.name)
+                assert isinstance(got, dp.Unavailable) and got.reason in (
+                    "role_missing", "end_date_missing"), (role, k.name, got)
 
 
 @pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
@@ -300,20 +299,16 @@ def test_p4_a_blank_column_a_kpi_doesnt_read_changes_nothing(book, pack, roles, 
 
 
 def _reads(pack, name: str) -> set[str]:
-    """The roles a KPI reads: its terms' (kpi_roles), and a spell term reads the whole spell
-    (kpi_roles lists only its entity: ledger row 'kpi_roles under-reports spell roles')."""
-    s = pack.spell
-    spell = {s.entity, s.start, s.end, s.paid_from, s.as_of, dp.snapshot_role(pack), "status"} \
-        if s and dp.spell_terms(pack, name) else set()
-    return dp.kpi_roles(pack, name) | spell
+    """The roles a KPI reads: kpi_roles, a spell term's whole spell included (PR5-04)."""
+    return dp.kpi_roles(pack, name)
 
 
-@pytest.mark.xfail(strict=True, reason="C5: a blank column a KPI reads makes a confident 0")
 @pytest.mark.parametrize("role,name", [("mrr", "paying_customers"), ("mrr", "opening_mrr"),
                                        ("status", "paying_customers")])
 def test_p4_a_blank_column_a_kpi_reads_never_makes_a_0(role, name):
-    """Every value of a role's column blank: the KPI can't be measured, so it is unavailable,
-    never 0 (today the filter `mrr > 0` or `status not in …` keeps nobody: 0)."""
+    """Every value of a role's column blank reads as the column missing (the filter `mrr > 0` or
+    `status not in …` kept nobody: 0): the pack's formula without it (paying customers by
+    MRR > 0 when there is no status), else unavailable for that reason, never 0."""
     df = pd.DataFrame({"customer_id": ["c0", "c1"],
                        "created": pd.to_datetime(["2024-01-01", "2024-03-01"]),
                        "ended_at": pd.to_datetime([pd.NaT, pd.NaT]), "status": ["active"] * 2,
@@ -322,13 +317,15 @@ def test_p4_a_blank_column_a_kpi_reads_never_makes_a_0(role, name):
     if roles is MRR_ROLES:
         df = pd.DataFrame({"month": pd.to_datetime(["2025-10-01", "2026-10-01"]),
                            "customer_id": ["c0", "c0"], "mrr": [100.0] * 2, "segment": ["SMB"] * 2})
-    assert dp.compute_kpi(df.assign(**{role: None}), roles, SAAS, name) != 0
+    got = dp.measure(df.assign(**{role: None}), roles, SAAS, name)
+    less = dp.measure(df, {r: c for r, c in roles.items() if r != role}, SAAS, name)
+    assert got == (less if isinstance(less, dp.Measured) else dp.Unavailable("blank_column", (role,)))
 
 
-@pytest.mark.xfail(strict=True, reason="C5: canceled_at with no ended_at reads as 0% logo churn")
 def test_p4_a_list_with_a_cancellation_date_but_no_end_date_has_no_logo_churn():
     """c0 asked to cancel in Mar 2025, inside the 12 months to 30 Jun 2025; with no end date
-    the churn is unknown, never 0% (today: c0 is never in force, so nobody churned)."""
+    the churn is unknown, never 0% (c0 was never in force, so nobody churned). New customers
+    need no end date: still measured."""
     df = pd.DataFrame({"customer_id": ["c0", "c1", "c2"],
                        "created": pd.to_datetime(["2024-01-01", "2024-01-01", "2025-06-30"]),
                        "canceled_at": pd.to_datetime(["2025-03-01", pd.NaT, pd.NaT]),
@@ -336,7 +333,8 @@ def test_p4_a_list_with_a_cancellation_date_but_no_end_date_has_no_logo_churn():
     roles = {"customer": "customer_id", "created": "created", "canceled_at": "canceled_at",
              "status": "status", "mrr": "mrr"}
     for k in ("logo_churn_rate", "churned_customers"):
-        assert dp.compute_kpi(df, roles, SAAS, k) != 0, k
+        assert dp.measure(df, roles, SAAS, k) == dp.Unavailable("end_date_missing", ("ended_at",)), k
+    assert isinstance(dp.measure(df, roles, SAAS, "new_customers"), dp.Measured)
 
 
 # ── P5: one window for every reader ───────────────────────────────────────────────────────────
@@ -355,10 +353,17 @@ def test_p5_asking_for_the_default_window_changes_nothing(book, pack, roles, dat
     if pack is HR:   # a report date on a month-end (a mid-month as-of is the known C2 below)
         end = data.draw(st.sampled_from(list(pd.date_range("2022-01-31", "2026-10-31", freq="ME"))))
         df, roles = df.assign(report_date=end), {**roles, "report_date": "report_date"}
-    w = dp.spell_window(pack, df, roles)
+    w = dp.window(pack, df, roles)
     assume(w is not None)
-    lo, as_of, _ = w
-    asked = (lo + pd.Timedelta(days=1), as_of)
+    # the default asked for: 'the 12 months to the as-of', never its data-clipped first day (a
+    # roster starting 31 Jul asked from 31 Jul is exactly 9 months, a different window: deep)
+    asked = (w.as_of - pd.DateOffset(months=dp.WINDOW_MONTHS) + pd.Timedelta(days=1), w.as_of)
+    again = dp.window(pack, df, roles, asked)   # every field a reader names, the year-earlier too
+    for f in ("lo", "as_of", "month_ends", "moves_from", "cohort_start", "full_cohort", "months",
+              "move_months"):
+        assert getattr(again, f) == getattr(w, f), f
+        if w.year_earlier():
+            assert getattr(again.year_earlier(), f) == getattr(w.year_earlier(), f), f
     for k in (k for k in SPELL_FLOWS[pack.domain] if dp.computable(pack, k, roles)):
         a, b = dp.compute_kpi(df, roles, pack, k), dp.compute_kpi(df, roles, pack, k, window=asked)
         assert (a is None) == (b is None) and (a is None or b == pytest.approx(a)), k
@@ -395,16 +400,31 @@ def test_tier_b_groups_add_up_to_the_total(name):
         _check_partition(pack, roles, df, g)
 
 
-@pytest.mark.xfail(strict=True, reason="C2: the default window drops lo's own month-end, an asked one keeps it")
+def test_p5_a_window_the_data_cuts_short_keeps_its_month_ends_asked_or_not():
+    """Deep profile (5.7b-2a): a roster known from 31 Jul 2024 (its first exit), as of 30 Apr
+    2025: the 12 months to it are cut to 31 Jul, with 10 month-ends from 31 Jul (the reference's
+    rule). Asking 'the 12 months to 30 Apr 2025' gives the same window."""
+    df = pd.DataFrame({"employee_id": ["e0", "e1"],
+                       "hire_date": pd.to_datetime(["2022-01-01", "2022-01-01"]),
+                       "termination_date": pd.to_datetime(["2024-07-31", pd.NaT]),
+                       "department": ["Ops", "Ops"], "status": ["Terminated", "Active"],
+                       "report_date": pd.to_datetime(["2025-04-30"] * 2)})
+    roles = {**HR_ROLES, "report_date": "report_date"}
+    w = dp.window(HR, df, roles)
+    assert w.month_ends[0] == pd.Timestamp("2024-07-31") and w.months == 10
+    again = dp.window(HR, df, roles, (pd.Timestamp("2024-05-01"), pd.Timestamp("2025-04-30")))
+    assert (again.lo, again.month_ends) == (w.lo, w.month_ends)
+
+
 def test_p5_a_mid_month_as_of_reads_the_same_window_asked_or_not():
     """As of 1 Jan 2023, the 12 months to it read 12 month-ends; the same span asked as 'since
-    2 Jan 2022' reads 13 (31 Jan 2022 too)."""
+    2 Jan 2022' read 13 (31 Jan 2022 too): a span of exactly 12 months has 12 (C2)."""
     df = pd.DataFrame({"employee_id": ["e0", "e1"],
                        "hire_date": pd.to_datetime(["2022-01-01", "2023-01-01"]),
                        "termination_date": pd.to_datetime([pd.NaT, pd.NaT]),
                        "department": ["Ops", "Ops"], "status": ["Active", "Active"]})
-    lo, as_of, _ = dp.spell_window(HR, df, HR_ROLES)
-    asked = (lo + pd.Timedelta(days=1), as_of)
+    w = dp.window(HR, df, HR_ROLES)
+    asked = (w.first_day, w.as_of)
     assert dp.window_words(HR, df, HR_ROLES, "avg_headcount") == \
         dp.window_words(HR, df, HR_ROLES, "avg_headcount", asked)
 
@@ -422,9 +442,9 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 
 # ── D: the product against the independent reference (evals/reference_kpis.py) ──────────────
 
-@pytest.mark.parametrize("book,pack,roles,spec", [   # the MRR export in runs: the known C7 below
-    (mrr_books(one_run=True), SAAS, MRR_ROLES, "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
-    (*BOOKS[2], "book_roster"),   # snapshots without rehires (unbroken runs): the known C7 below
+@pytest.mark.parametrize("book,pack,roles,spec", [   # broken runs too: the cadence is declared (C7)
+    (*BOOKS[0], "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
+    (*BOOKS[2], "book_roster"),   # snapshots without rehires: the known C1 below (PR6-01)
     (hr_snapshot_books(rehires=False), HR, SNAP_ROLES, "book_hr_snapshots")], ids=SHAPES)
 @given(data=st.data())
 def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
@@ -433,18 +453,11 @@ def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
     ref = reference(spec, df)
     for k, v in _kpis(pack, roles, df).items():
         if k in ref:
-            if v is None and ref[k] == 0 and k in LEVELS:   # nobody in force: the known C5 below
-                continue
             assert (v is None) == (ref[k] is None), (k, v, ref[k])
             if v is not None:
                 assert v == pytest.approx(ref[k], rel=1e-9, abs=1e-9), k
 
 
-LEVELS = {"mrr", "arr", "paying_customers", "headcount", "contingent_workers", "fte"}
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C5: nobody in force reads as unavailable, not 0")
 def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():
     """c0 started and ended on 1 Jun 2023, the as-of: nobody pays then, a known $0."""
     df = pd.DataFrame({"customer_id": ["c0"], "created": pd.to_datetime(["2023-06-01"]),
@@ -453,11 +466,10 @@ def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():
     assert dp.compute_kpi(df, LIST_ROLES, SAAS, "mrr") == 0
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C7: an HR snapshot's cadence is guessed from gaps")
 def test_d_a_person_absent_from_the_newest_snapshot_is_gone():
     """e1 is on the Jan, Jun and Jul 2022 snapshots only; e0 on every one to Oct 2026. The
-    irregular gaps of e1 switch the 'stopped' cut off, so e1 still counts in Oct 2026."""
+    irregular gaps of e1 switched the guessed 'stopped' cut off, so e1 still counted in Oct
+    2026; the pack declares monthly snapshots (C7)."""
     roster = pd.DataFrame({"employee_id": ["e0", "e1", "e1"],
                            "hire_date": pd.to_datetime(["2022-01-01", "2022-01-01", "2022-06-01"]),
                            "termination_date": pd.to_datetime([pd.NaT, "2022-02-01", "2022-08-02"]),
@@ -465,14 +477,49 @@ def test_d_a_person_absent_from_the_newest_snapshot_is_gone():
     assert dp.compute_kpi(_snapshots(roster), SNAP_ROLES, HR, "headcount") == 1
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C7: the snapshot cadence is guessed from gaps, not read from the pack")
 @pytest.mark.parametrize("months,ids", [
     (["2025-09-01", "2025-08-01"], ["c0", "c1"]),                              # nobody repeats
     (["2025-09-01", "2025-05-01", "2025-07-01", "2025-08-01"], ["c0", "c1", "c1", "c1"])])  # gaps
 def test_d_a_customer_absent_from_the_newest_month_label_is_gone(months, ids):
-    """The pack says month labels (monthly); the cadence is learned from each customer's gaps
-    instead, so with none (or irregular ones) c1, absent from September, still pays then."""
+    """The pack says month labels (monthly); the cadence was learned from each customer's gaps
+    instead, so with none (or irregular ones) c1, absent from September, still paid then."""
     df = pd.DataFrame({"month": pd.to_datetime(months), "customer_id": ids,
                        "mrr": [50.0] * len(ids), "segment": ["SMB"] * len(ids)})
     assert dp.compute_kpi(df, MRR_ROLES, SAAS, "mrr") == 50.0
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="C1: a snapshot entity's return after a gap is no hire (5.7b-2b term_rows)")
+def test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire():
+    """e3 leaves on 5 Jan 2025 and is back on 1 Nov 2025: on month-end snapshots, absent Jan to
+    Oct 2025, present again from 30 Nov 2025. Hires in the 12 months to 31 Oct 2026 are 1 (the
+    reference); the hires read each person's first snapshot only, so a return is never one."""
+    roster = pd.DataFrame({"employee_id": ["e0", "e3", "e3"],
+                           "hire_date": pd.to_datetime(["2022-01-01", "2022-01-01", "2025-11-01"]),
+                           "termination_date": pd.to_datetime([pd.NaT, "2025-01-05", pd.NaT]),
+                           "department": ["Ops"] * 3, "status": ["Active", "Terminated", "Active"]})
+    assert dp.compute_kpi(_snapshots(roster), SNAP_ROLES, HR, "hires") == 1
+
+
+def test_d_one_month_of_data_has_no_moves_and_no_cohort():
+    """5.7b-2a (found by the mutation profile's draws): one month label opens and ends its
+    cohort on the same date, with no month of moves. The reference said $0 new MRR and 0% logo
+    churn, the product unavailable with another reason: both now say too short (GLOSSARY
+    Unavailable), never a 0."""
+    from evals.reference_kpis import reference
+    df = pd.DataFrame({"month": pd.to_datetime(["2026-10-01"]), "customer_id": ["c0"],
+                       "mrr": [50.0], "segment": ["SMB"]})
+    ref = reference("book_mrr_export", df)
+    for k in ("new_mrr", "opening_customers", "logo_churn_rate", "nrr"):
+        assert ref[k] is None and dp.measure(df, MRR_ROLES, SAAS, k) == dp.Unavailable("too_short"), k
+
+
+def test_d_snapshots_taken_on_each_customers_own_billing_day_all_count():
+    """Red-team (5.7b-2 plan): an export with each customer on its own billing day (c0 on the
+    5th, c1 on the 20th) is still monthly: as of 20 Oct both pay, never only the customers
+    billed on the newest day; c2, last billed in August, is gone."""
+    rows = [(f"2026-{m:02d}-05", "c0") for m in range(6, 11)] + \
+        [(f"2026-{m:02d}-20", "c1") for m in range(6, 11)] + [("2026-08-12", "c2")]
+    df = pd.DataFrame(rows, columns=["month", "customer_id"]).assign(
+        month=lambda d: pd.to_datetime(d["month"]), mrr=50.0, segment="SMB")
+    assert dp.compute_kpi(df, MRR_ROLES, SAAS, "mrr") == 100.0

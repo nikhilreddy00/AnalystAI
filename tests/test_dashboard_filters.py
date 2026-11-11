@@ -236,6 +236,9 @@ async def test_the_dashboard_sends_filter_options_never_rows_and_has_no_browser_
 # ── Every filter on every domain (user request 2026-11-04: 'no matter what the filters, the
 # right answers'): relations that need no truth table, so every new domain is covered at once.
 
+UNAVAILABLE = "—"   # an unavailable tile's value; its context says why
+
+
 def _number(text: str) -> float:
     return float(re.sub(r"[^0-9.\-]", "", text.split(" vs ")[0]))
 
@@ -287,9 +290,18 @@ def test_every_filter_partitions_and_matches_the_group_answer(name):
             assert not o["suppressed"] or (o["rows"] is None and not o["tiles"] and not o["charts"]), v
         if not any(o["suppressed"] for o in outs.values()):
             assert sum(o["rows"] for o in outs.values()) == whole["rows"], (name, col, "rows")
+        for v, o in outs.items():   # the strip keeps its tiles: an unavailable one is said (C5)
+            if not o["suppressed"]:
+                assert list(o["tiles"]) == list(whole["tiles"]), (name, col, v)
+                for label, text in o["tiles"].items():
+                    assert text != UNAVAILABLE or o["contexts"][label], (name, col, v, label)
         for label, kpi in tiles.items():
             by = domain_pack.compute_kpi(clean, roles, pack, kpi.name, by=col, full=clean)
-            got = {v: _number(o["tiles"][label]) for v, o in outs.items() if label in o["tiles"]}
+            for v, o in outs.items():   # a group the KPI supports is a number, never a '—'
+                if by is not None and v in by.index.astype(str) and not o["suppressed"]:
+                    assert o["tiles"][label] != UNAVAILABLE, (name, col, label, v)
+            got = {v: _number(o["tiles"][label]) for v, o in outs.items()
+                   if o["tiles"].get(label, UNAVAILABLE) != UNAVAILABLE}
             scale = 100 if kpi.unit == "percent" else 1
             tol = 0.051 if kpi.unit == "percent" else 0.0051
             for v, x in got.items():   # the filtered tile = the KPI computed by that column
@@ -467,3 +479,21 @@ def test_every_domain_dataset_is_in_the_every_filter_check():
     domains = [n for n in datagen.DATASETS if _built(n)[2].domain_confidence == "strong"]
     missing = sorted(set(domains) - set(PACK_DATASETS))
     assert not missing, f"add to PACK_DATASETS (every filter on every domain): {missing}"
+
+
+def test_a_books_ratio_tile_says_its_spread_over_the_rankable_groups():
+    """5.7b-2a gate: a loan tape's 30+ delinquency tile says its highest and lowest product (the
+    generator's by-product truth); a group of blank labels is never the highest or lowest."""
+    from guardrails import UNKNOWN_LABEL
+    from tests.test_oracle import _built
+    from agents.visualization_agent import pack_kpis
+    _, df, contract, t = _built("loan_tape")
+    by = t["delinq30_by_product_pct"]
+    hi, lo = max(by, key=by.get), min(by, key=by.get)
+    tile = next(k for k in pack_kpis(df, contract) if k.label == "30+ delinquency")
+    assert tile.context.startswith(f"by Product: highest {hi} {by[hi]:.1f}%, lowest {lo} {by[lo]:.1f}%"), tile.context
+    blank = df.assign(Product=df["Product"].replace(lo, UNKNOWN_LABEL))
+    rest = {k: v for k, v in by.items() if k != lo}
+    tile = next(k for k in pack_kpis(blank, contract) if k.label == "30+ delinquency")
+    low = min(rest, key=rest.get)
+    assert tile.context.startswith(f"by Product: highest {hi} {by[hi]:.1f}%, lowest {low} {rest[low]:.1f}%"), tile.context

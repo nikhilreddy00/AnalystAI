@@ -77,6 +77,10 @@ _SAAS_AUDIT1 = ("Domain 6 audit 1: the SaaS pack's caveat (a one-month customer 
                 "figure), the ledger story in generic words and the cohort window words changed the "
                 "deterministic text after the model")
 CHANGED = {
+    # 5.7b-2a (C5, PR1-05): a 20-row ticket list read as SaaS has no end-date column, so churned
+    # MRR and logo churn can't be counted: no longer named as KPIs it reads (they read 0 before)
+    ("insight-20261106T181700Z.json", "ins-16-tickets-not-significant-holdout"):
+        "5.7b-2a C5: a spell list without its end date names no churn KPI (unavailable, not 0)",
     ("insight-20261106T012454Z.json", "ins-04-subs-overview"): _SAAS_AUDIT1,
     ("insight-20261106T012454Z.json", "ins-08-plan-revenue"): _SAAS_AUDIT1,
     ("insight-20261106T012454Z.json", "ins-13-mom-vs-yoy"): _SAAS_AUDIT1,

@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 import yaml
 
-from domain_pack import Pack, compute_kpi, spell_as_of
+from domain_pack import (Pack, Unavailable, Window, compute_kpi, load_packs, measure, spell_as_of,
+                         spell_story, spell_view, today_only, window)
 
 SUBS = """
 domain: toysubs
@@ -195,11 +196,10 @@ def test_a_typo_date_never_makes_an_unbounded_series(pack):
 
 
 def test_an_asked_window_from_mid_month_keeps_that_months_end(pack):
-    from domain_pack import spell_window
-    lo, as_of, pts = spell_window(pack, _roster(), ROLES, ("2026-03-15", "2026-06-30"))
+    from domain_pack import window
+    pts = window(pack, _roster(), ROLES, ("2026-03-15", "2026-06-30")).month_ends
     assert pts[0] == pd.Timestamp("2026-03-31") and pts[-1] == pd.Timestamp("2026-06-30") and len(pts) == 4
-    _, _, full = spell_window(pack, _roster(), ROLES)
-    assert len(full) == 12   # the default 12-month window keeps its 12 month-ends
+    assert window(pack, _roster(), ROLES).months == 12   # the default window keeps its 12
 
 
 def test_concurrent_spells_of_one_entity_all_count_when_the_pack_says_so(pack):
@@ -255,3 +255,107 @@ def test_a_converted_trial_counts_from_its_trial_end(pack):
     by = compute_kpi(frame, roles, paid, "active", by="_p", full=df)
     assert by[pd.Period("2025-12", "M")] == 1 and by[pd.Period("2026-01", "M")] == 2
     assert compute_kpi(frame, roles, pack, "active", by="_p", full=df)[pd.Period("2025-12", "M")] == 2
+
+
+def _ts(*days):
+    return tuple(pd.Timestamp(d) for d in days)
+
+
+def test_a_window_its_readers_can_not_share_is_refused():
+    """Window's invariants (mutation gate 5.7b-2a): a span, strictly rising month-ends inside
+    (lo, as_of], none before the first date, the last one the as-of."""
+    ok = dict(lo=pd.Timestamp("2026-01-31"), as_of=pd.Timestamp("2026-03-31"),
+              month_ends=_ts("2026-02-28", "2026-03-31"), first=pd.Timestamp("2025-01-01"),
+              known=pd.Timestamp("2025-01-01"))
+    Window(**ok)
+    for bad in ({"lo": pd.Timestamp("2026-03-31"), "month_ends": _ts("2026-03-31")},   # no span
+                {"month_ends": ()},                                                  # no month-end
+                {"month_ends": _ts("2026-02-28")},                                   # as-of's missing
+                {"month_ends": _ts("2026-03-31", "2026-03-31")},                     # repeated
+                {"month_ends": _ts("2026-02-28", "2026-02-28", "2026-03-31")},       # repeated, 3
+                {"month_ends": _ts("2026-01-31", "2026-03-31")},                     # at lo
+                {"month_ends": _ts("2026-02-28", "2026-03-31"),
+                 "first": pd.Timestamp("2026-03-01")}):                              # before first
+        with pytest.raises(ValueError, match="a window its readers can't share"):
+            Window(**{**ok, **bad})
+
+
+def test_an_asked_span_of_exactly_n_months_from_the_2nd_reads_n_month_ends(pack):
+    """2 Feb–1 May is exactly 3 months: its first month is dropped (rule 3), as from the 15th."""
+    w = window(pack, _roster(), ROLES, ("2026-02-02", "2026-05-01"))
+    assert w.month_ends == _ts("2026-03-31", "2026-04-30", "2026-05-01")
+
+
+def test_no_window_when_every_date_is_after_today(pack):
+    """A first date but no as-of (all dated after today): no window, never a crash."""
+    assert window(pack, _roster().assign(start_date="2027-01-05", cancel_date=""), ROLES) is None
+    assert window(pack, _roster(), ROLES, ("2026-11-01", None)) is None   # the day after the as-of
+
+
+def test_a_year_earlier_shifts_the_asked_span_and_needs_all_its_months(pack):
+    df = _roster()   # as-of 31 Oct 2026, data from 2023
+    assert window(pack, df, ROLES, ("2026-03-15", "2026-09-30")).year_earlier().asked \
+        == _ts("2025-03-15", "2025-09-30")
+    assert window(pack, df, ROLES, (None, "2026-09-30")).year_earlier().asked \
+        == _ts("2024-10-01", "2025-09-30")   # no asked start: the 12 months to the asked end
+    late = pd.DataFrame([("A", "2025-03-01", "", "pro", "paid", 1, "active"),
+                         ("B", "2026-10-31", "", "pro", "paid", 1, "active")], columns=df.columns)
+    assert window(pack, late, ROLES).year_earlier() is None   # data from Mar 2025: 8 months, none
+
+
+def test_duplicate_row_labels_are_refused_by_name(pack):
+    df = _roster()
+    with pytest.raises(ValueError, match="^spell_view: the whole data needs unique row labels$"):
+        spell_view(pack, df.set_axis([0] * len(df)), ROLES)
+
+
+def test_each_spell_reason_is_its_own(pack):
+    """measure's reasons on a spell KPI (C5): a missing spell role names the roles; an asked
+    period wholly before the data is outside it; no dated row at all has no rows."""
+    df = _roster()
+    no_start = {k: v for k, v in ROLES.items() if k != "start_date"}
+    assert measure(df, no_start, pack, "active") == Unavailable("role_missing",
+                                                                ("subscriber_id", "start_date"))
+    assert measure(df, ROLES, pack, "active", window=("2019-01-01", "2019-06-30")) \
+        == Unavailable("outside_the_data")
+    assert measure(df.assign(start_date="", cancel_date=""), ROLES, pack, "active") \
+        == Unavailable("no_rows")
+
+
+def test_by_month_an_average_is_that_months_end(pack):
+    """A month's own window has one month-end, so its average is the count in force then."""
+    df = _roster()
+    df = df[df["subscriber_id"] != "S5"]
+    df["_period"] = pd.to_datetime(df["start_date"]).dt.to_period("M")
+    avg = compute_kpi(df, ROLES, pack, "avg_active", by="_period")
+    assert avg.notna().all()
+    for p in avg.index:
+        assert avg[p] == _active_at(df, min(p.end_time.normalize(), pd.Timestamp("2026-10-31"))), p
+    q = compute_kpi(df.assign(_period=df["_period"].dt.asfreq("Q")), ROLES, pack, "avg_active",
+                    by="_period")   # a quarter averages its three month-ends
+    ends = [pd.Timestamp(t) for t in ("2026-01-31", "2026-02-28", "2026-03-31")]
+    assert q[pd.Period("2026Q1", "Q")] == pytest.approx(sum(_active_at(df, t) for t in ends) / 3)
+
+
+def test_the_today_only_sentence_counts_its_rows(pack):
+    raw = yaml.safe_load(SUBS)
+    raw["spell"]["today_only"] = ["paused"]
+    held = Pack.model_validate(raw)
+    df = _roster()
+    one = df.assign(status=["paused"] + list(df["status"][1:]))
+    assert today_only(held, one, ROLES) == f"1 row is {held.spell.words.today_only}"
+    assert today_only(held, one.assign(status="paused"), ROLES).startswith("10 rows are ")
+    assert today_only(held, df, ROLES) == ""                 # none held today
+    assert today_only(pack, one, ROLES) == ""                # the pack holds no status for today
+    retail = next(p for p in load_packs() if p.spell is None)
+    assert today_only(retail, one, ROLES) == ""              # no spell at all
+
+
+def test_a_pack_with_no_count_stock_says_rows_against_people_without_a_count(pack):
+    """A user pack may count a stock only in money: the people line drops its 'in force' count
+    (nothing to read it from) and never fails."""
+    raw = yaml.safe_load(SUBS)
+    raw["kpis"][0]["tile"] = False   # 'active' is the only count stock
+    no_heads = Pack.model_validate(raw)
+    line = next(s for s in spell_story(no_heads, _roster(), ROLES) if "more than one row" in s)
+    assert line.endswith("(1 with more than one row).")

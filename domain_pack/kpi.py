@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import (KPI, Pack, Term, Within, _column, _day, _meets, _snapshot_column,
-                   normalize_header, pack_for, spell_terms)
+from .pack import (KPI, KPIValue, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
+                   _column, _day, _meets, _snapshot_column, and_list, normalize_header, pack_for,
+                   snapshot_role, spell_terms)
 from .detect import main_currency, row_kinds
-from .spell import (SPELL_PERIODS, _ended, _in_force, _month_ends, _spell_events, _started,
-                    has_spell, spell_view, spell_window)
+from .spell import (SPELL_PERIODS, _ended, _in_force, _spell_events, _started, has_spell,
+                    spell_view)
+from .spell import window as spell_window_of
 from .ledger import _ledger_term
 
 
@@ -71,12 +73,12 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     s = pack.spell
     whole = kinds.attrs.get("frame", df)
     if not has_spell(pack, roles):
-        return None
+        return Unavailable("role_missing", (s.entity, s.start))
     view = spell_view(pack, whole, roles, kinds.attrs.get("window"))
-    if view is None:
-        return None
-    lo, as_of, window_pts = view.window
-    first = view.first
+    if view is None:   # an asked period wholly before the data, or no dated row up to today
+        return Unavailable("outside_the_data" if kinds.attrs.get("window") else "no_rows")
+    win = view.window
+    lo, as_of, first = win.lo, win.as_of, win.first
     allk = kinds.attrs.get("kinds", kinds)   # whole's kinds, or df's when df is the whole
     counted = allk.reindex(whole.index).isin(set(term.rows or kpi.rows))   # the KPI's kinds
     periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
@@ -91,9 +93,11 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     def count(rows: pd.DataFrame, key):
         """People in force: distinct entities (or a role summed over their one row each);
         events: rows (a returning entity's two exits are two)."""
-        if term.sum is not None:
+        if term.sum is not None:   # nobody in force: a measured 0 (C5); all blank: unknown
             v = _column(rows, roles, term.sum)
-            return v.sum(min_count=1) if key is None else v.groupby(key).sum(min_count=1)
+            if key is None:
+                return v.sum(min_count=1) if len(v) else 0.0
+            return v.groupby(key).sum(min_count=1)
         if term.spell in ("starts", "ends"):
             return float(len(rows)) if key is None else rows.groupby(key).size()
         return float(rows[ent].nunique()) if key is None else rows[ent].groupby(key).nunique()
@@ -109,8 +113,9 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         pop = pop[counted.reindex(pop.index, fill_value=False).to_numpy()] if by else pop
         groups = pd.unique(pop[by].dropna()) if by else None
 
-    if term.spell in ("opening", "retained", "moves"):
-        return _ledger_term(view, term, df.index, counted, by, axis if periodic else None, groups)
+    if term.spell in ("opening", "retained", "moves"):   # a cohort rate's opening is its cohort's
+        cohort = any(t.spell == "retained" for t in spell_terms(pack, kinds.attrs["asked_kpi"]))
+        return _ledger_term(view, term, df.index, counted, by, axis, groups, cohort)
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
@@ -138,13 +143,10 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     if periodic:   # ponytail: one in-force pass per month-end, fine below ~50k rows × 120 months
         out = {}
         for p in axis:
-            pts = [e for e in _month_ends(p.start_time - pd.Timedelta(days=1),
-                                          min(p.end_time.normalize(), as_of)) if e >= first]
-            out[p] = sum(active_at(t) for t in pts) / len(pts) if pts else float("nan")
+            pts = win.period(p).month_ends
+            out[p] = sum(active_at(t) for t in pts) / len(pts)
         return pd.Series(out, dtype=float).reindex(axis)
-    pts = window_pts
-    if not pts:
-        return None
+    pts = win.month_ends
     vals = [active_at(t) for t in pts]
     if by:
         return (pd.concat(vals, axis=1).fillna(0).sum(axis=1) / len(pts)).reindex(groups, fill_value=0)
@@ -160,10 +162,23 @@ def _order_level(df: pd.DataFrame, roles: dict[str, str], pack: Pack, expr) -> b
     return bool(len(per)) and int(per.max()) <= 1
 
 
+def _blank(term: Term, roles: dict[str, str], pack: Pack, whole: pd.DataFrame) -> Unavailable | None:
+    """A role the term reads whose column is blank on every row (a sum, a condition): it can't
+    be measured, never a 0 from a filter that kept nobody (C5). A marker field's blanks mean none
+    (no end date: nobody ended) and an optional term's mean 0: those are read."""
+    if term.optional:
+        return None
+    blank = [r for r in term.roles() if r in roles and r not in pack.marker_fields
+             and whole[roles[r]].isna().all()]
+    return Unavailable("blank_column", tuple(blank)) if blank else None
+
+
 def _term(df, kinds, roles, pack, kpi, term: Term, by):
     rows = kinds.isin(term.rows or kpi.rows)
     if term.kpi:
         return _kpi_value(df, kinds, roles, pack, pack.kpi(term.kpi), by)
+    if blank := _blank(term, roles, pack, kinds.attrs.get("frame", df)):
+        return blank
     if term.spell:
         return _spell(df, kinds, roles, pack, kpi, term, by)
     met = _meets(df, roles, term.where) if term.where else None
@@ -171,13 +186,14 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         rows &= met
         whole = kinds.attrs.get("frame", df)
         if not met.any() and not _meets(whole, roles, term.where).any():
-            return None   # no interest rows anywhere in the data: unknown, never a $0.00
+            # no interest rows anywhere in the data: unknown, never a $0.00
+            return Unavailable("no_kind_rows", tuple(c.role for alt in term.where for c in alt))
     part = df[rows]
     # no rows of these kinds here (no returns this month, in this store) while the data has them
     # elsewhere: 0, and a group keeps its place (a 0% return rate ranks lowest); none anywhere in
     # the data (returns may not be exported at all): unknown
     if part.empty and not set(term.rows or kpi.rows) & kinds.attrs.get("present", set(kinds)):
-        return None
+        return Unavailable("no_kind_rows")
     # the groups this KPI's rows have (a postage-only code or a test customer is no group at $0)
     counted = kinds.isin({"sale", "return", "refunded", *kpi.rows})
     periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
@@ -213,33 +229,57 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         values = values.fillna(0)
     if by:
         return values.groupby(part[by]).sum(min_count=1).reindex(groups, fill_value=0)
-    return values.sum(min_count=1)
+    total = values.sum(min_count=1)
+    # blank on every row here while the data has values (a debit-only part of a Dr/Cr
+    # statement: no credits): a measured 0 (C5), never unknown
+    if pd.isna(total) and _column(kinds.attrs.get("frame", df), roles, expr).notna().any():
+        return 0.0
+    return total
+
+
+def _end_missing(pack: Pack, roles: dict[str, str], t: Term) -> bool:
+    """A spell term that needs each spell's end (exits, churn, a return after one, who is
+    retained) on a list of spells without an end-date column: a cancellation request or a status
+    is no end date (C5, PR1-05). Snapshots date an end by absence; new and expansion need none."""
+    needs = t.spell in ("ends", "retained") or (t.spell == "moves" and t.move in ("churn",
+                                                                               "reactivation"))
+    return needs and pack.spell.end not in roles and not _snapshot_column(pack, roles)
 
 
 def _side(df, kinds, roles, pack, kpi, alternatives, by):
+    """The first alternative the data can compute; else why none can: the reason met in one the
+    data fits (a blank column), before a role another alternative needs and the data lacks."""
+    why, lacks = None, None
     for alt in alternatives:
-        usable = [t for t in alt if all(r in roles for r in t.roles())]
-        if any(not t.optional and t not in usable for t in alt):
+        missing = [r for t in alt if not t.optional for r in t.roles() if r not in roles]
+        if missing:
+            lacks = lacks or Unavailable("role_missing", tuple(dict.fromkeys(missing)))
+            continue
+        if any(_end_missing(pack, roles, t) for t in alt):
+            why = why or Unavailable("end_date_missing", (pack.spell.end,))
             continue
         total = None
-        for t in usable:
+        for t in (t for t in alt if all(r in roles for r in t.roles())):
             v = _term(df, kinds, roles, pack, kpi, t, by)
-            if v is None:
+            if isinstance(v, Unavailable):
+                why = why or v
                 break
             v = v * t.sign * t.times
             total = v if total is None else (total.add(v, fill_value=0) if by else total + v)
         else:
             if total is not None:
                 return total
-    return None
+    return why or lacks or Unavailable("role_missing")
 
 
 def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
     if kpi.at == "latest":   # a state: each entity's latest row of any kind, then the filters
         from agents.utils import snapshot_rows
         key, date = roles.get(pack.snapshot_key), roles.get(pack.date_role)
-        if key is None or (date is None and df[key].duplicated().any()):
-            return None   # undated snapshots of one account: which is the latest is unknown
+        if key is None:
+            return Unavailable("role_missing", (pack.snapshot_key,))
+        if date is None and df[key].duplicated().any():
+            return Unavailable("undated_snapshots")   # which of an account's rows is the latest?
         present = kinds.attrs.get("present")
         # by period: each account's latest row in each period (its month-end); by a group: its
         # latest row overall, in the group it is in now
@@ -250,28 +290,65 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
         if present is not None:
             kinds.attrs["present"] = present
     num = _side(df, kinds, roles, pack, kpi, kpi.num, by)
-    if num is None or kpi.den is None:
+    if isinstance(num, Unavailable) or kpi.den is None:
         return num
     den = _side(df, kinds, roles, pack, kpi, kpi.den, by)
-    if den is None:
-        return None
+    if isinstance(den, Unavailable):
+        return den
     if by:
         den = den.where(den != 0)
         return (num / den).dropna()
-    return None if not den or pd.isna(den) else num / den
+    return Unavailable("zero_denominator") if not den or pd.isna(den) else num / den
+
+
+def unavailable_words(u: Unavailable, pack: Pack) -> str:
+    """THE clause saying why a figure is unavailable ('the data has no end date, so customers
+    who left can't be counted'), in the pack's words; every answer and tile says it this way."""
+    from guardrails import SMALL_CELL
+    named = and_list([r.replace("_", " ") for r in u.roles])
+    s = pack.spell
+    return {
+        "role_missing": f"the data has no {named or 'column it needs'}",
+        "end_date_missing": (f"the data has no {s.words.end} date, so {s.words.plural} who left "
+                             "can't be counted") if s else "the data has no end date",
+        "blank_column": f"{named or 'a column it reads'} is blank on every row",
+        "no_rows": "there are no rows to count",
+        "no_kind_rows": "the data has no rows of the kind it counts",
+        "mixed_units": "its parts are in different units, which never add up",
+        "undated_snapshots": "the rows have no date, so the latest of each can't be told",
+        "zero_denominator": "its base is 0",
+        "too_short": "the data covers too short a span",
+        "outside_the_data": "the period falls outside the data",
+        "small_cell": f"fewer than {SMALL_CELL} people, so a figure can identify them",
+    }[u.reason]
 
 
 def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
                 by: str | None = None, full: pd.DataFrame | None = None,
                 window: tuple | None = None, cut=()):
-    """A KPI's value (or a Series per `by` group) on the main currency's rows; None when the data
-    lacks its roles or a denominator is 0 — never a 0 or an infinity standing in for "unknown".
-    `full`: the whole data when `df` is a period of it (a month with no returns has a 0% return
-    rate when the data has returns at all). `cut`: the columns `df` was filtered by (a dashboard
-    filter, a named value): a protected one makes it a protected group. `window` (lo, hi): an
-    asked period for a spell KPI,
-    which clips its window and as-of instead of cutting rows (rows dated in Q3 are the people
-    hired in Q3, not the people employed then).
+    """The tests' view of `measure`: the number (or the Series per group, its small cells in
+    attrs['hidden']), or None when unavailable (or no such KPI: measure raises). Product code
+    reads `measure` (its reason)."""
+    if pack.kpi(name) is None:
+        return None
+    v = measure(df, roles, pack, name, by, full, window, cut)
+    if isinstance(v, MeasuredBy):
+        out = v.values
+        out.attrs["hidden"] = list(v.hidden)
+        return out
+    return v.value if isinstance(v, Measured) else None
+
+
+def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
+            by: str | None = None, full: pd.DataFrame | None = None,
+            window: tuple | None = None, cut=()) -> KPIValue:
+    """THE value of a KPI on the main currency's rows: Measured (a number), MeasuredBy (per `by`
+    group or period) or Unavailable with its reason — never a 0 or an infinity standing in for
+    "unknown". `full`: the whole data when `df` is a period of it (a month with no returns has a
+    0% return rate when the data has returns at all). `cut`: the columns `df` was filtered by (a
+    dashboard filter, a named value): a protected one makes it a protected group. `window`
+    (lo, hi): an asked period for a spell KPI, which clips its window and as-of instead of
+    cutting rows (rows dated in Q3 are the people hired in Q3, not the people employed then).
     Rows are named by index label (a filter's part maps to the whole by it): a repeated label on
     the whole data is renumbered; on a part of it the mapping is lost, so it is refused."""
     if not df.index.is_unique or (full is not None and not full.index.is_unique):
@@ -279,10 +356,12 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
             raise ValueError("compute_kpi: a part and its whole need unique row labels")
         df = df.reset_index(drop=True)
     kpi = pack.kpi(name)
-    if kpi is None or df.empty:
-        return None
+    if kpi is None:
+        raise KeyError(f"{pack.domain} has no KPI {name!r}")
+    if df.empty:
+        return Unavailable("no_rows")
     if mixes(df, roles, kpi, by):   # car-years and house-years never add up
-        return None
+        return Unavailable("mixed_units")
     keep, _, _ = main_currency(df, roles)
     # another currency is a kind of row no KPI counts (tiles side by side read the same rows:
     # net sales / orders = AOV), unless the question splits BY currency: then each currency is its
@@ -304,17 +383,20 @@ def compute_kpi(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         kinds.attrs["kinds"] = whole
     if window:
         kinds.attrs["window"] = window
+    kinds.attrs["asked_kpi"] = name   # a rate's opening (NRR's Opening MRR) reads its cohort
     value = _kpi_value(df, kinds, roles, pack, kpi, by)
-    if value is None:
-        return None
+    if isinstance(value, Unavailable):
+        return value
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
         hidden = small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index, window, cut)
         value = value.drop(hidden, errors="ignore").dropna()
-        value.attrs["hidden"] = list(hidden)   # said in the answer ('Not shown: …')
-        return value if len(value) else None
+        if len(value):
+            return MeasuredBy(value.astype(float), tuple(hidden))   # hidden: 'Not shown: …'
+        return Unavailable("small_cell" if hidden else
+                           "zero_denominator" if kpi.den is not None else "no_rows")
     if full is not None and protected_value(df, full, roles, pack, name, window, cut):
-        return None   # a protected group of fewer than 11 people (pay in a 6-person department)
-    return None if pd.isna(value) else float(value)
+        return Unavailable("small_cell")   # a protected group of < 11 people (pay, 6 people)
+    return Unavailable("no_rows") if pd.isna(value) else Measured(float(value))
 
 
 def _person_col(pack: Pack, roles: dict[str, str]) -> str | None:
@@ -362,8 +444,8 @@ def people_in(part: pd.DataFrame, roles: dict[str, str], pack: Pack, state: bool
     group). With `by`: a Series per group (0 for none)."""
     whole = part if whole is None else whole
     col = _person_col(pack, roles)
-    if has_spell(pack, roles) and (w := spell_window(pack, whole, roles, window)):
-        lo, as_of, _ = w
+    if has_spell(pack, roles) and (w := spell_window_of(pack, whole, roles, window)):
+        lo, as_of = w.lo, w.as_of
         if state:
             rows = _in_force(whole, roles, pack, as_of)
         else:   # in force at some point of (lo, as_of]: started by its end, not ended by its start
@@ -513,7 +595,8 @@ def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
     kpi = pack.kpi(name)
 
     def has(t: Term) -> bool:
-        return all(r in roles for r in t.roles()) and (not t.kpi or computable(pack, t.kpi, roles))
+        return all(r in roles for r in t.roles()) and (not t.kpi or computable(pack, t.kpi, roles)) \
+            and not (t.spell and _end_missing(pack, roles, t))
 
     def side(alts) -> bool:   # every needed term, and at least one term there (all optional: any)
         return any(all(t.optional or has(t) for t in alt) and any(has(t) for t in alt)
@@ -551,12 +634,17 @@ def kpi_measures(pack: Pack, name: str) -> set[str]:
 
 
 def kpi_roles(pack: Pack, name: str) -> set[str]:
-    """Every role a KPI can read, through the KPIs it refers to."""
+    """Every role a KPI can read, through the KPIs it refers to; a spell term reads its whole
+    spell (start, end, the date it pays from, the as-of, the status that ends it undated)."""
     kpi = pack.kpi(name)
+    s = pack.spell
     out: set[str] = set()
     for alt in [*kpi.num, *(kpi.den or [])]:
         for t in alt:
             out |= set(t.roles()) | (kpi_roles(pack, t.kpi) if t.kpi else set())
+            if t.spell:
+                out |= {r for r in (s.start, s.end, s.paid_from, s.as_of, snapshot_role(pack),
+                                    "status") if r}
     return out
 
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from typing import NamedTuple
 
 import pandas as pd
 
@@ -55,31 +54,102 @@ def spell_from(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timest
     return None
 
 
-class SpellWindow(NamedTuple):
-    """spell_window's answer: flows count in (lo, as_of], an average reads the month-ends."""
+@dataclass(frozen=True)
+class Window:
+    """THE window of a spell KPI (GLOSSARY: Window), built only by `window()` (and its own
+    `year_earlier` / `period`): flows count in (lo, as_of], from first_day; an average reads the
+    month-ends; moves (and a bridge's opening) start at moves_from, the first date the data knows
+    a state at the earliest; a cohort rate (NRR, logo churn) follows the entities in force at
+    cohort_start, 12 months before the as-of whatever period is asked (expert M3). On the
+    default window moves_from = cohort_start. Never unpacked: readers name what they read."""
     lo: pd.Timestamp
     as_of: pd.Timestamp
-    month_ends: list[pd.Timestamp]
+    month_ends: tuple[pd.Timestamp, ...]
+    first: pd.Timestamp   # spell_from: the first date a spell figure is shown from
+    known: pd.Timestamp   # first_known: the first date the data knows each entity's state
+    asked: tuple | None = None   # (first day, last day), inclusive, either None
+
+    def __post_init__(self):
+        e = self.month_ends   # never empty: the as-of ends its own month, so an average has one
+        if not (e and e[-1] == self.as_of   # with lo < each month-end: lo < as_of
+                and all(a < b for a, b in zip(e, e[1:]))
+                and all(self.lo < x <= self.as_of and x >= self.first for x in e)):
+            raise ValueError(f"a window its readers can't share: {self}")
+
+    @property
+    def first_day(self) -> pd.Timestamp:   # the inclusive start every label and asked period reads
+        return self.lo + pd.Timedelta(days=1)
+
+    @property
+    def moves_from(self) -> pd.Timestamp:
+        return min(max(self.lo, self.known), self.as_of)
+
+    @property
+    def cohort_start(self) -> pd.Timestamp:   # the opening is a real value, never a 0 before the data
+        return min(max(self.as_of - pd.DateOffset(months=WINDOW_MONTHS), self.known), self.as_of)
+
+    @property
+    def full_cohort(self) -> bool:   # the data knows a state a whole cohort span before the end
+        return (self.as_of - pd.DateOffset(months=WINDOW_MONTHS)).to_period("M") >= \
+            self.known.to_period("M")
+
+    @property
+    def months(self) -> int:
+        return len(self.month_ends)
+
+    @property
+    def move_months(self) -> int:   # the month-ends moves are counted at (after moves_from)
+        return sum(e > self.moves_from for e in self.month_ends)
+
+    def year_earlier(self) -> Window | None:
+        """The same window a year earlier, or None when the data covers fewer of its month-ends
+        (a 4-month prior is no year-earlier 12)."""
+        # its own span a year back, asked or default (never 'the 12 months to' the earlier date:
+        # after a leap year that opens on 29 Feb, a day off the asked span's 1 Mar)
+        start = self.asked[0] if self.asked and self.asked[0] is not None else \
+            self.as_of - pd.DateOffset(months=WINDOW_MONTHS) + pd.Timedelta(days=1)
+        prior = _cut(self.as_of, self.first, self.known, (start - pd.DateOffset(years=1),
+                                                          self.as_of - pd.DateOffset(years=1)))
+        return prior if prior is not None and prior.months >= self.months else None
+
+    def period(self, p: pd.Period) -> Window | None:
+        """A period's own window (a month, a quarter, a year; the last clipped to the as-of)."""
+        return _cut(self.as_of, self.first, self.known,
+                    (p.start_time.normalize(), min(p.end_time.normalize(), self.as_of)))
 
 
-def spell_window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
-                 window: tuple | None = None) -> SpellWindow | None:
-    """THE window of a spell KPI asked without a period grouping: (lo, as_of, month-ends), flows
-    counted in (lo, as_of] and the average over the month-ends. The 12 months to the as-of, or
-    the shorter span the data covers (month-ends on or after its first date: a stock there is
-    complete); an asked window (lo, hi) clips both ends."""
+def _cut(as_of: pd.Timestamp, first: pd.Timestamp, known: pd.Timestamp,
+         asked: tuple | None) -> Window | None:
+    """window()'s rule on its inputs (the data's as-of and first dates). Month-ends: a span of
+    exactly N months (the 12 months to 24 Oct) has N, the end's own month ending at the end; any
+    other has one per month it touches ('since 15 Mar' keeps 31 Mar)."""
+    asked = tuple(None if x is None else pd.Timestamp(x).normalize() for x in asked) \
+        if asked and any(x is not None for x in asked) else None
+    if asked and asked[1] is not None:
+        as_of = min(as_of, asked[1])
+    start = (asked[0] if asked and asked[0] is not None
+             else as_of - pd.DateOffset(months=WINDOW_MONTHS) + pd.Timedelta(days=1))
+    lo = max(start, first) - pd.Timedelta(days=1)
+    if lo >= as_of:   # asked wholly before the data: nothing to read, never a 0 (C5)
+        return None
+    months = pd.period_range(start.to_period("M"), as_of.to_period("M"))
+    # exactly N whole months starting mid-month (25 Oct – 24 Oct): its first month is the end's
+    whole = start.day != 1 and start == as_of - pd.DateOffset(months=len(months) - 1) + pd.Timedelta(days=1)
+    ends = [min(m.end_time.normalize(), as_of) for m in months[1 if whole else 0:]]
+    return Window(lo, as_of, tuple(dict.fromkeys(e for e in ends if e >= first)), first, known,
+                  asked)
+
+
+def window(pack: Pack, df: pd.DataFrame, roles: dict[str, str],
+           asked: tuple | None = None) -> Window | None:
+    """THE window of a spell KPI asked without a period grouping: the 12 months to the as-of, or
+    an asked period (first day, last day, inclusive; either may be None), cut to the span the
+    data covers (month-ends on or after its first date: a stock there is complete). None when the
+    data has no as-of or first date, or the asked period is wholly before the data."""
     as_of, first = spell_as_of(pack, df, roles), spell_from(pack, df, roles)
     if as_of is None or first is None:
         return None
-    if window and window[1] is not None:
-        as_of = min(as_of, pd.Timestamp(window[1]).normalize())
-    lo = as_of - pd.DateOffset(months=WINDOW_MONTHS)
-    ends = _month_ends(lo, as_of)
-    if window and window[0] is not None:   # an asked start: its own month's end counts ('since
-        lo = pd.Timestamp(window[0]).normalize() - pd.Timedelta(days=1)   # 15 Mar' keeps 31 Mar)
-        ends = [e for e in _month_ends(lo - pd.offsets.MonthEnd(1), as_of) if e > lo]
-    return SpellWindow(max(lo, first - pd.Timedelta(days=1)), as_of,
-                       [e for e in ends if e >= first])
+    return _cut(as_of, first, first_known(pack, df, roles), asked)
 
 
 @dataclass(frozen=True, eq=False)   # eq=False: a DataFrame is never compared or hashed
@@ -90,23 +160,17 @@ class SpellView:
     pack: Pack
     roles: dict[str, str]
     whole: pd.DataFrame   # ALL rows: a filter's part maps to them by row label
-    window: SpellWindow
-    first: pd.Timestamp   # spell_from
+    window: Window
 
 
 def spell_view(pack: Pack, whole: pd.DataFrame, roles: dict[str, str],
-               window: tuple | None = None) -> SpellView | None:
-    """The view of `whole` for a spell KPI (an asked window clips it); None when the data has no
-    as-of or first date. An asked window past the data is no error: its month-ends are none."""
-    w = spell_window(pack, whole, roles, window)
-    if w is None:
-        return None
-    view = SpellView(pack, roles, whole, w, spell_from(pack, whole, roles))
-    ends = w.month_ends
-    if not (whole.index.is_unique and all(a < b for a, b in zip(ends, ends[1:]))
-            and all(w.lo < e <= w.as_of and e >= view.first for e in ends)):
-        raise ValueError(f"spell_view: a window its readers can't share ({w})")
-    return view
+               asked: tuple | None = None) -> SpellView | None:
+    """The view of `whole` for a spell KPI (an asked period clips it); None when the data has no
+    as-of or first date, or the asked period is wholly before the data."""
+    if not whole.index.is_unique:
+        raise ValueError("spell_view: the whole data needs unique row labels")
+    w = window(pack, whole, roles, asked)
+    return None if w is None else SpellView(pack, roles, whole, w)
 
 
 def spell_covered(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Series:
@@ -129,32 +193,29 @@ def _month_ends(a: pd.Timestamp, b: pd.Timestamp) -> list[pd.Timestamp]:
 
 
 def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
-                 window: tuple | None = None) -> str:
+                 asked: tuple | None = None) -> str:
     """'as of 31 Oct 2026' (a state) or '12 months to 31 Oct 2026' (a flow, a rate): how a spell
-    KPI's answer names its period; '' for other KPIs."""
+    KPI's answer names its period, read from its Window; '' for other KPIs."""
     kpi = pack.kpi(name)
     if not pack.spell or not kpi or not spell_terms(pack, name):
         return ""
-    w = spell_window(pack, df, roles, window)
+    w = window(pack, df, roles, asked)
     if w is None:
         return ""
-    lo, as_of, pts = w
-    months = len(pts)
     if kpi.state:
-        return f"as of {as_of:%-d %b %Y}"
+        return f"as of {w.as_of:%-d %b %Y}"
     spells = {t.spell for t in spell_terms(pack, name)}
+    months = w.months
     if "moves" in spells:   # moves start after the first known state (pass 6: a month too many)
-        known = first_known(pack, df, roles)
-        months = sum(p > known for p in pts)
+        months = w.move_months
         if months < 1:
             return ""
-    if spells & {"opening", "retained"}:   # whatever period is asked: the cohort ending there
-        start = cohort_start(as_of, first_known(pack, df, roles))
-        if spells == {"opening"}:   # a level at the cohort's start (Opening MRR)
-            return f"on {start:%-d %b %Y}"
-        n = round((as_of - start).days / 30.44)
-        return f"{n}-month cohort to {as_of:%-d %b %Y}" if n >= 1 else ""
-    return f"{months} month{'s' * (months != 1)} to {as_of:%-d %b %Y}"
+    if "retained" in spells:   # a cohort rate: the cohort ending there, whatever period is asked
+        n = round((w.as_of - w.cohort_start).days / 30.44)
+        return f"{n}-month cohort to {w.as_of:%-d %b %Y}" if n >= 1 else ""
+    if spells == {"opening"}:   # a bridge's opening level (Opening MRR): where its moves start
+        return f"on {w.moves_from:%-d %b %Y}"
+    return f"{months} month{'s' * (months != 1)} to {w.as_of:%-d %b %Y}"
 
 
 # THE spell window and cohort span: flows and rates read the months to the as-of; every sentence
@@ -209,7 +270,7 @@ def _in_force_at(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t) -> p
     if snap:
         from agents.utils import snapshot_rows
         upto = whole[_day(whole[snap]) <= t]
-        rows = snapshot_rows(upto, [ent], snap)
+        rows = snapshot_rows(upto, [ent], snap, every=s.snapshot_every)
         if s.concurrent:   # every row of that snapshot (an export with one row per subscription)
             chosen = pd.MultiIndex.from_arrays([rows[ent], _day(rows[snap])])
             rows = upto[pd.MultiIndex.from_arrays([upto[ent], _day(upto[snap])]).isin(chosen)]
@@ -239,6 +300,17 @@ def not_counted_yet(pack: Pack, df: pd.DataFrame, roles: dict[str, str], as_of) 
                 if r in roles)
     return (f"{later:,} start or end date{'s fall' if later != 1 else ' falls'} after "
             f"{as_of:%-d %b %Y}: not counted yet.") if later else ""
+
+
+def today_only(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> str:
+    """THE sentence about a list's statuses held for today only (GLOSSARY: Today-only status):
+    how many rows, and why they are out of every month-end. Snapshots carry each date's own
+    status: never. The file's story and every spell answer say it."""
+    s = pack.spell
+    if not (s and s.today_only and "status" in roles) or _snapshot_column(pack, roles):
+        return ""
+    n = int(words(df[roles["status"]]).isin(set(words(pd.Series(s.today_only)))).sum())
+    return f"{n:,} row{'s are' if n != 1 else ' is'} {s.words.today_only}" if n else ""
 
 
 def _ended_undated(rows: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
@@ -318,9 +390,3 @@ def first_known(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Times
     if not _snapshot_column(pack, roles):
         return first - pd.Timedelta(days=1)
     return first + pd.offsets.MonthEnd(0) if _month_labelled(pack, df, roles) else first
-
-
-def cohort_start(as_of, known):
-    """THE start of a cohort KPI's window: 12 months before its end, or the data's first known
-    state when it covers less: the opening is a real value, never a 0 before the data."""
-    return max(as_of - pd.DateOffset(months=WINDOW_MONTHS), known)

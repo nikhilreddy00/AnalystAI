@@ -4,7 +4,7 @@ the given tests, and prints each function's score: killed ÷ (killed + survived 
 A mutant no selected test reaches counts as not killed; timeouts are shown apart.
 
     uv run python scripts/mutation.py pack_columns --tests tests/test_pack_columns.py
-    uv run python scripts/mutation.py spell_window cohort_start --tests tests/test_spell.py \\
+    uv run python scripts/mutation.py window first_known --tests tests/test_spell.py \\
         tests/test_ledger.py --json /tmp/m.json
     uv run python scripts/mutation.py --changed-since main --tests tests/test_spell.py
     uv run python scripts/mutation.py --status            # scores so far of a run still going
@@ -12,10 +12,12 @@ A mutant no selected test reaches counts as not killed; timeouts are shown apart
         tests/test_properties.py -k p2   # one hand-planted bug: exit 0 when a test catches it
 
 `--changed-since REF` mutates every function in `[tool.mutmut] source_paths` whose lines the
-diff REF...HEAD touches (the 5.7b-2 gate). `--plant` replaces the one exact occurrence of OLD
+diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines that diff changed
+and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
 with NEW in a worktree and runs the tests: caught = a test failed.
 
-Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
+Leave tests/test_one_definition.py out of --tests: its guards read source files, and mutmut's
+rewritten ones fail them before any mutant runs. Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
 (this script adds the test selection). Exit 1 when a function has a mutant that survived or
 that no selected test reached, or when mutmut itself fails."""
 import argparse
@@ -80,8 +82,8 @@ def functions_touching(source: str, lines: set[int]) -> list[str]:
     return out
 
 
-def changed_functions(ref: str) -> list[str]:
-    """Every source_paths function the diff ref...HEAD adds or changes lines in."""
+def changed_lines(ref: str) -> dict[str, set[int]]:
+    """Per source_paths file, the HEAD lines the diff ref...HEAD adds or changes."""
     paths = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]["source_paths"]
     diff = subprocess.run(["git", "-C", str(ROOT), "diff", "-U0", f"{ref}...HEAD", "--", *paths],
                           capture_output=True, text=True, check=True).stdout
@@ -94,8 +96,44 @@ def changed_functions(ref: str) -> list[str]:
             start, _, n = line.split("+", 1)[1].split(" ", 1)[0].partition(",")
             # a pure deletion (",0") names the line before it: still a change to that function
             touched.setdefault(f, set()).update(range(int(start), int(start) + max(int(n or 1), 1)))
-    return sorted({name for f, lines in touched.items()
+    return touched
+
+
+def changed_functions(ref: str) -> list[str]:
+    """Every source_paths function the diff ref...HEAD adds or changes lines in."""
+    return sorted({name for f, lines in changed_lines(ref).items()
                    for name in functions_touching((ROOT / f).read_text(), lines)})
+
+
+def mutant_lines(mutated: str, source: str) -> dict[str, int]:
+    """Each mutant in mutmut's generated file → the source line it changes: its function's def
+    line in `source` plus the first line where it differs from the unmutated copy
+    (`…__mutmut_orig`). One parse per file, never a `mutmut show` per mutant."""
+    lines = mutated.splitlines()
+    spans = {}
+    for node in ast.parse(mutated).body:
+        for d in ([node] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  else node.body if isinstance(node, ast.ClassDef) else []):
+            if isinstance(d, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                spans[d.name] = lines[d.lineno - 1:d.end_lineno]
+    defs = {}
+    for node in ast.parse(source).body:   # the def line (a mutant copy has no decorators)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            defs[node.name] = node.lineno
+        elif isinstance(node, ast.ClassDef):
+            defs |= {f"{node.name}.{m.name}": m.lineno for m in node.body
+                     if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    out = {}
+    for name, body in spans.items():
+        base, _, n = name.rpartition("__mutmut_")
+        orig = spans.get(f"{base}__mutmut_orig")
+        if not base or n == "orig" or orig is None or _function(name) not in defs:
+            continue
+        a, b = [orig[0].replace(f"{base}__mutmut_orig", base), *orig[1:]], \
+            [body[0].replace(name, base), *body[1:]]
+        i = next((k for k, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+        out[name] = defs[_function(name)] + i
+    return out
 
 
 def planted(text: str, old: str, new: str) -> str:
@@ -156,6 +194,8 @@ def main() -> int:
     ap.add_argument("-k", dest="keyword", help="pytest -k over the tests (leave slow ones out)")
     ap.add_argument("--json", help="also write the scores here")
     ap.add_argument("--changed-since", metavar="REF", help="add the functions REF...HEAD changed")
+    ap.add_argument("--lines", metavar="REF", help="fail only on survivors on lines REF...HEAD "
+                                                   "changed (the 5.7b-2 gate)")
     ap.add_argument("--status", action="store_true", help="scores so far of a running run")
     ap.add_argument("--plant", nargs=3, metavar=("FILE", "OLD", "NEW"), help="one planted bug")
     args = ap.parse_args()
@@ -184,9 +224,31 @@ def main() -> int:
         cfg.write_text(text.replace("[tool.mutmut]\n", "[tool.mutmut]\n" + selection))
         globs = [f"*.x_{f}__mutmut_*" if "." not in f else
                  f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
+        placed = {}
+        if args.lines:   # the gate judges changed lines: run only the mutants on them
+            subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", "no_such_mutant"], cwd=wt,
+                           env={**os.environ, **ENV}, capture_output=True)   # generate them
+            changed = changed_lines(args.lines)
+            for f, lines in changed.items():
+                if (mutated := wt / "mutants" / f).is_file():
+                    module = f.removesuffix(".py").replace("/", ".")
+                    placed |= {f"{module}.{k}": (f, n) for k, n in
+                               mutant_lines(mutated.read_text(), (wt / f).read_text()).items()
+                               if n in lines and _function(k) in args.functions}
+            globs = sorted(placed) or ["no_such_mutant"]
+            print(f"{len(placed)} mutants on lines changed since {args.lines}")
         run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt,
                              env={**os.environ, **ENV})
-        got = scores([json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")])
+        metas = [json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")]
+        got = scores(metas)
+        if args.lines and run.returncode:   # never '0 survivors' from a run that never ran
+            print(f"MUTMUT FAILED (exit {run.returncode}): no survivor count; see its output above")
+        elif args.lines:   # every mutant run is on a changed line: each survivor fails the gate
+            on = sorted(k for m in metas for k, c in m.get("exit_code_by_key", {}).items()
+                        if c in SURVIVED | NO_TESTS and k in placed)
+            print(f"survivors on lines changed since {args.lines}: {len(on)}")
+            for k in on:
+                print(f"  {placed[k][0]}:{placed[k][1]}  {k}")
     got = {f: got.get(f, {"score": None}) for f in args.functions}
     print(f"mutation scores at {head} (tests: {' '.join(args.tests)})")
     for f, c in got.items():
@@ -195,6 +257,8 @@ def main() -> int:
     if args.json:
         Path(args.json).write_text(json.dumps({"head": head, "tests": args.tests, "scores": got},
                                               indent=1))
+    if args.lines:
+        return 1 if run.returncode or on else 0
     return 1 if run.returncode or any(c.get("survived") or c.get("no_tests")
                                       for c in got.values()) else 0
 
