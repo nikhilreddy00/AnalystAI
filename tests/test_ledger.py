@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from domain_pack import Pack, compute_kpi, computable
+from domain_pack import Pack, compute_kpi, computable, spell_facts
 
 BOOK = """
 domain: toymrr
@@ -117,6 +117,19 @@ def test_by_month_the_moves_fall_in_their_month(book):
     by = compute_kpi(jan.assign(_p=pd.to_datetime(jan["month"]).dt.to_period("M")), roles, pack,
                      "churned_mrr", by="_p", full=jan)
     assert by.index[0] == pd.Period("2026-02", "M") and by.iloc[0] == 0
+
+
+def test_the_story_says_a_money_stocks_fall_from_its_peak_and_each_months_moves(book):
+    """By hand from PLAN: MRR is 940 at Nov 2025 (its peak in the window) and 770 at the as-of
+    (−18.1%); a customer churns in Dec (F) and one in Mar (D)."""
+    _, df, roles = book
+    raw = yaml.safe_load(BOOK)
+    raw["kpis"][0]["tile"] = True   # MRR as the stock the story reads
+    facts = spell_facts(Pack.model_validate(raw), df, roles)
+    assert "MRR peaked at $940.00 (Nov 2025) and is $770.00 at 31 Oct 2026 (-18.1%)." in facts
+    assert "Churned customers by month (12 months to 31 Oct 2026): " + ", ".join(
+        f"{p} {1 if p in ('2025-12', '2026-03') else 0}"
+        for p in pd.period_range("2025-11", "2026-10", freq="M").astype(str)) + "." in facts
 
 
 def test_by_month_a_cohort_rate_needs_its_whole_year(book):
