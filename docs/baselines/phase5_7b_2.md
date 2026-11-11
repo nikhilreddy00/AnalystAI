@@ -142,7 +142,10 @@ No window change moved a number: every default window is byte-identical.
     story's `full=df` next to `df`'s own frame, and `_amount`'s unused `pack`.
 - **Re-runs at 11b4c5a and d087738:** 456 + 372 mutants; 18 + 22 survivors, every one then
   killed by a plant-proven test, deleted, or named below.
-- **Final run (the functions edited after those):** see the gate4 line below.
+- **Final run at c3d5a69 (the functions edited after those):** 371 mutants, 6 survivors. All
+  six were on the story's money-peak sentence and a by-month fact's full stop. They are now
+  killed by `test_ledger.py::test_the_story_says_a_money_stocks_fall_from_its_peak_and_each_months_moves`,
+  all six plant-proven. **0 unexplained survivors on changed lines.**
 - **Equivalents (11, with reasons):**
   - `snapshot_rows` 30→31 days, and 86400→86401 seconds: a declared month is read only as "at
     least 27 days".
