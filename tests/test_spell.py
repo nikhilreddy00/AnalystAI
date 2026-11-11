@@ -298,9 +298,9 @@ def test_a_year_earlier_shifts_the_asked_span_and_needs_all_its_months(pack):
         == _ts("2025-03-15", "2025-09-30")
     assert window(pack, df, ROLES, (None, "2026-09-30")).year_earlier().asked \
         == _ts("2024-10-01", "2025-09-30")   # no asked start: the 12 months to the asked end
-    late = df[pd.to_datetime(df["start_date"]) >= "2025-06-01"].copy()
-    late.loc[late["subscriber_id"] == "S4", "start_date"] = "2025-03-01"   # data from Mar 2025
-    assert window(pack, late, ROLES).year_earlier() is None   # 8 months a year earlier: none
+    late = pd.DataFrame([("A", "2025-03-01", "", "pro", "paid", 1, "active"),
+                         ("B", "2026-10-31", "", "pro", "paid", 1, "active")], columns=df.columns)
+    assert window(pack, late, ROLES).year_earlier() is None   # data from Mar 2025: 8 months, none
 
 
 def test_duplicate_row_labels_are_refused_by_name(pack):
