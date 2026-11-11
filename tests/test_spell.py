@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from domain_pack import (Pack, Unavailable, Window, compute_kpi, load_packs, measure, spell_as_of,
-                         spell_view, today_only, window)
+                         spell_story, spell_view, today_only, window)
 
 SUBS = """
 domain: toysubs
@@ -349,3 +349,13 @@ def test_the_today_only_sentence_counts_its_rows(pack):
     assert today_only(pack, one, ROLES) == ""                # the pack holds no status for today
     retail = next(p for p in load_packs() if p.spell is None)
     assert today_only(retail, one, ROLES) == ""              # no spell at all
+
+
+def test_a_pack_with_no_count_stock_says_rows_against_people_without_a_count(pack):
+    """A user pack may count a stock only in money: the people line drops its 'in force' count
+    (nothing to read it from) and never fails."""
+    raw = yaml.safe_load(SUBS)
+    raw["kpis"][0]["tile"] = False   # 'active' is the only count stock
+    no_heads = Pack.model_validate(raw)
+    line = next(s for s in spell_story(no_heads, _roster(), ROLES) if "more than one row" in s)
+    assert line.endswith("(1 with more than one row).")

@@ -25,7 +25,7 @@ def _fact(*args, **kw):
     return v.value if isinstance(v, Measured) else v.values if isinstance(v, MeasuredBy) else None
 
 
-def _amount(pack: Pack, df: pd.DataFrame, roles: dict[str, str], kpi: KPI, v: float) -> str:
+def _amount(df: pd.DataFrame, roles: dict[str, str], kpi: KPI, v: float) -> str:
     """A spell fact's number in its KPI's unit: money with the main currency ('$851,102'), a
     count or number as before ('885')."""
     if kpi.unit == "money":
@@ -49,7 +49,7 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     lo, as_of = w.lo, w.as_of
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
     series = _fact(frame, roles, pack, stock.name, by="_period")
-    shown = ", ".join(f"{t:%b %Y} {_amount(pack, df, roles, stock, series.get(t.to_period('M')))}"
+    shown = ", ".join(f"{t:%b %Y} {_amount(df, roles, stock, series.get(t.to_period('M')))}"
                       for t in w.month_ends
                       if series is not None and pd.notna(series.get(t.to_period("M"))))
     lines = [f"As of {as_of:%-d %b %Y}: the window is the {w.months} months "
@@ -88,7 +88,7 @@ def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
     for k in (k for u in ("money", "count") for m in MOVES if (k := ledger_kpi(pack, roles, "moves", m, u))):
         if (s := _fact(frame, roles, pack, k.name, by="_period")) is not None:
             out.append(f"{k.label} by month ({window_words(pack, df, roles, k.name)}): " + ", ".join(
-                f"{p} {_amount(pack, df, roles, k, s[p])}" for p in months(s)) + ".")
+                f"{p} {_amount(df, roles, k, s[p])}" for p in months(s)) + ".")
     heads = stock_kpi(pack, roles, "count")
     lost = ledger_kpi(pack, roles, "moves", "churn", "count")
     if heads and lost:
@@ -145,8 +145,8 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         if len(inside) > 1 and inside.idxmax() != inside.index[-1] \
                 and inside.iloc[-1] <= 0.95 * inside.max():   # a material fall only (5%+)
             peak, now = inside.max(), inside.iloc[-1]
-            out.append(f"{stock.label} peaked at {_amount(pack, df, roles, stock, peak)} "
-                       f"({inside.idxmax().strftime('%b %Y')}) and is {_amount(pack, df, roles, stock, now)} "
+            out.append(f"{stock.label} peaked at {_amount(df, roles, stock, peak)} "
+                       f"({inside.idxmax().strftime('%b %Y')}) and is {_amount(df, roles, stock, now)} "
                        f"at {as_of:%-d %b %Y} ({(now / peak - 1) * 100:+.1f}%).")
     if ends is not None and (e := _fact(frame, roles, pack, ends.name, by="_period")) is not None \
             and len(e) >= 6:
@@ -192,7 +192,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
     parts = {m: ledger_kpi(pack, roles, "moves", m) for m in ("new", "expansion", "reactivation",
                                                               "contraction", "churn")}
     opening = ledger_kpi(pack, roles, "opening")
-    say = lambda k, v: _amount(pack, df, roles, k, v)   # noqa: E731
+    say = lambda k, v: _amount(df, roles, k, v)   # noqa: E731
     if stock and opening and parts["new"] and parts["churn"]:
         val = {m: _fact(df, roles, pack, k.name) for m, k in parts.items() if k}
         start, now = _fact(df, roles, pack, opening.name), _fact(df, roles, pack, stock.name)
