@@ -48,7 +48,7 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         return []
     lo, as_of = w.lo, w.as_of
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
-    series = _fact(frame, roles, pack, stock.name, by="_period", full=df)
+    series = _fact(frame, roles, pack, stock.name, by="_period")
     shown = ", ".join(f"{t:%b %Y} {_amount(pack, df, roles, stock, series.get(t.to_period('M')))}"
                       for t in w.month_ends
                       if series is not None and pd.notna(series.get(t.to_period("M"))))
@@ -60,7 +60,7 @@ def spell_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
         lines.append(f"{mean.label} = {v:,.1f} (their mean): divide the window's counts by it "
                      "for a rate; never recount it from rows.")
         frame_y = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[Y]"))
-        years = _fact(frame_y, roles, pack, mean.name, by="_period", full=df)
+        years = _fact(frame_y, roles, pack, mean.name, by="_period")
         if years is not None and len(years):   # a year's rate divides by that year's own base
             lines.append(f"{mean.label} by year (each year's month-ends; the last year to "
                          f"{as_of:%-d %b %Y} only): " + ", ".join(
@@ -86,14 +86,14 @@ def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
     months = lambda s: [p for p in s.index if p.start_time.normalize() > lo]   # noqa: E731
     upto = lambda s: [p for p in s.index if (p + 1).start_time.normalize() > lo]   # noqa: E731
     for k in (k for u in ("money", "count") for m in MOVES if (k := ledger_kpi(pack, roles, "moves", m, u))):
-        if (s := _fact(frame, roles, pack, k.name, by="_period", full=df)) is not None:
+        if (s := _fact(frame, roles, pack, k.name, by="_period")) is not None:
             out.append(f"{k.label} by month ({window_words(pack, df, roles, k.name)}): " + ", ".join(
                 f"{p} {_amount(pack, df, roles, k, s[p])}" for p in months(s)) + ".")
     heads = stock_kpi(pack, roles, "count")
     lost = ledger_kpi(pack, roles, "moves", "churn", "count")
     if heads and lost:
-        n = _fact(frame, roles, pack, heads.name, by="_period", full=df)
-        c = _fact(frame, roles, pack, lost.name, by="_period", full=df)
+        n = _fact(frame, roles, pack, heads.name, by="_period")
+        c = _fact(frame, roles, pack, lost.name, by="_period")
         if n is not None and c is not None:
             out.append(f"{heads.label} at each month-end: " + ", ".join(
                 f"{p} {n[p]:,.0f}" for p in upto(n)) + ".")
@@ -140,7 +140,7 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
                 f"{(now - then) * 100:+.1f} points" if then is not None
                 else "; no full year-earlier window in the data") + ".")
     frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
-    if stock is not None and (s_ := _fact(frame, roles, pack, stock.name, by="_period", full=df)) is not None:
+    if stock is not None and (s_ := _fact(frame, roles, pack, stock.name, by="_period")) is not None:
         inside = s_[[p for p in s_.index if p.end_time.normalize() > lo]].dropna()
         if len(inside) > 1 and inside.idxmax() != inside.index[-1] \
                 and inside.iloc[-1] <= 0.95 * inside.max():   # a material fall only (5%+)
@@ -148,14 +148,14 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
             out.append(f"{stock.label} peaked at {_amount(pack, df, roles, stock, peak)} "
                        f"({inside.idxmax().strftime('%b %Y')}) and is {_amount(pack, df, roles, stock, now)} "
                        f"at {as_of:%-d %b %Y} ({(now / peak - 1) * 100:+.1f}%).")
-    if ends is not None and (e := _fact(frame, roles, pack, ends.name, by="_period", full=df)) is not None \
+    if ends is not None and (e := _fact(frame, roles, pack, ends.name, by="_period")) is not None \
             and len(e) >= 6:
         top, usual = e.idxmax(), float(e.drop(e.idxmax()).median())
         if e[top] >= 10 and e[top] >= 2.5 * max(usual, 1):
             line = (f"The largest month of {ends.phrase}: {top.strftime('%b %Y')} with {e[top]:,.0f} (a usual month: "
                     f"{usual:,.0f})")
             group = next((roles[g] for g in pack.overview_groups if g in roles), None)
-            if group and (g := _fact(df, roles, pack, ends.name, by=group, full=df,
+            if group and (g := _fact(df, roles, pack, ends.name, by=group,
                                            window=(top.start_time, top.end_time.normalize()))) is not None \
                     and len(g) and g.max() >= 0.5 * e[top]:
                 line += f", {g.max():,.0f} of them in {g.idxmax()} ({group})"
@@ -224,7 +224,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
                    f"the two differ: {who} who joined in the window or came back are in the count only.")
     if (k := parts["churn"]) is not None:
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
-        e = _fact(frame, roles, pack, k.name, by="_period", full=df)
+        e = _fact(frame, roles, pack, k.name, by="_period")
         e = e[[p for p in e.index if p.end_time.normalize() > lo]] if e is not None else None
         if e is not None and len(e) >= 6 and e.max() > 0:
             top, usual = e.idxmax(), float(e.drop(e.idxmax()).median())
