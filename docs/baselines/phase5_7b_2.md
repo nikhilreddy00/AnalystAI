@@ -269,6 +269,46 @@ pytest-asyncio, and the golden fails 52 of 53 without it.
 
 No total moved: every whole-book number, the golden and snapshot text are unchanged.
 
+### The readers of each changed rule (CODING_STANDARDS: a widened rule lists its readers)
+- **`_spell_events` (runs by month).** Readers: the hires and separations tiles, rates and
+  by-period series (`kpi._spell`), and the model frame's start and end event markers
+  (`with_spell_events`). Probes: D (snapshot books with rehires, all packs' shapes) and the
+  golden and domain_diff (unchanged on every HR dataset).
+- **Cohort placement (first group in sort order).** Readers: NRR, GRR and logo churn by group
+  (tiles, answers, the story's facts by group). Probes: D per segment (PR9-01), and domain_diff,
+  which shows no cohort change on any dataset.
+- **`stock_rows` reads the term's own `rows` (`term.rows or stock.rows`, was `stock.rows`).** No
+  pack's stock term sets `rows`, so the rows are the same. Probe: the characterization test on
+  all 8 spell datasets.
+
+### Deviations from the plan
+- **Words:** one `Spell.words.moved` template, not `moved_in` / `moved_out`. One sentence with
+  both amounts reads better than two half-sentences.
+- **`_moves_asked(task, contract)`**, not `(task, pack, contract)`: the pack comes from the
+  contract.
+- **No bridge is said on a part.** The plan named "story's bridge on a part", but `spell_story`
+  only ever reads the whole file (cleaning, the targeted story lines), where transfers are 0.
+  The by-group answer (`handle_kpi`) is where a part's moves are said.
+- **A move named keeps every summed-level breakdown in the findings, not only the move's one.**
+  With "churned MRR by month" asked, an MRR-summed-by-segment breakdown is no longer replaced by
+  the level. This is a known limit: the scorer marks it false against the reference (spec
+  review c2). Narrowing it needs the breakdown's own meaning, which the model doesn't file.
+- **`reference_by` offers each move by any group, not only by month** (ec33cae). The rescore
+  found true numbers marked false without it. The scorer is more lenient: a sum matches if it
+  equals any one of about 14 readings. Each reading is a true number.
+- **`subscriptions` gets a Spec too** (test review: spell data outside `SPECS` would score a
+  level by every row). It is checked against the product on every KPI both compute.
+- **The e2e suite is not rescored:** its checks call neither `false_findings` nor
+  `check_segment_value`.
+- **The type-design-analyzer step did not run:** no new type was added. The ledger's lines are
+  the (entity, part) index of a frame.
+- **Rejected review notes:**
+  - `_moves_asked` reaching into the pack (Feature Envy): it is one function at its only
+    caller.
+  - A NaN group in the ledger: it is dropped from groups, as before; no generator writes one.
+  - Mean by month double-counting an entity: the ledger points give one step per month, so it
+    can't happen.
+
 ### $0 rescore (rescore, never rerun)
 The latest analysis report of every spell case (saas-1..11, hr-1..10), rescored with the new
 scorer:

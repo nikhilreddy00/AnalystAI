@@ -49,12 +49,6 @@ def spell_event_columns(pack: Pack) -> tuple[str, str, str, str, str]:
             w.unknown)
 
 
-def stock_population(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
-    """The stock tile's rows (kpi.stock_rows) as a mask: the events the model's frame marks
-    read the same people."""
-    return pd.Series(df.index.isin(stock_rows(df, roles, pack).index), index=df.index)
-
-
 def in_force_counted(df: pd.DataFrame, roles: dict[str, str], pack: Pack, as_of) -> pd.Index:
     """THE rows in force at `as_of` that the stock tile counts (kpi.stock_rows): the model's
     in_force_now marker and a level by group (MRR or pay by segment, utils._in_force_rows) read
@@ -79,11 +73,12 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
     if w is None:
         return df
     as_of, lo = w.as_of, w.lo
-    counted = stock_population(df, roles, pack)
+    counted = stock_rows(df, roles, pack).index   # the stock tile's people (kpi.stock_rows)
     out = df.copy()
     for col, which in ((start_col, "starts"), (end_col, "ends")):
         rows, when = _spell_events(df, roles, pack, which, as_of)
-        rows, when = rows[counted.loc[rows.index]], when[counted.loc[rows.index]]
+        keep = rows.index.isin(counted)
+        rows, when = rows[keep], when[keep]
         out[col] = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
         out.loc[rows.index, col] = when.astype("datetime64[ns]")
         if which == "ends":   # the window the facts name (12 months to the as-of): marked, so a

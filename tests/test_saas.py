@@ -689,6 +689,9 @@ def test_a_move_by_segment_says_what_moved_in_from_and_out_to_another_segment():
     assert (f"{lead}: ${t_in:,.2f} moved in from another segment and ${t_out:,.2f} moved out to "
             "another segment") in text
     assert "transfer" not in text.lower()
+    # a count says no money moved (its transfers are no KPI)
+    text = handle_kpi(df, TargetedParams(kpi="churned_customers", group_by="segment"), contract).answer_text
+    assert "moved in from" not in text
 
 
 def test_the_story_says_the_ledger_and_each_rate_against_a_year_earlier():

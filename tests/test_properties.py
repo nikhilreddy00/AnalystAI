@@ -214,6 +214,27 @@ def test_a_cohort_by_segment_places_a_customer_in_two_segments_the_same_way_in_a
         assert dp.compute_kpi(book, MRR_ROLES, SAAS, "nrr", by="segment").to_dict() == {"Ent": 1.0, "SMB": 1.0}
 
 
+def test_a_customer_new_in_two_segments_at_once_is_new_in_each_and_once_in_the_whole():
+    """GLOSSARY Move on counts: c0 starts paying in SMB and Ent in October. Each segment gained
+    a new customer (a distinct count by group, never a partition: P2); the whole has one."""
+    df = pd.DataFrame({"month": pd.to_datetime(["2026-09-01", "2026-10-01", "2026-10-01", "2026-10-01"]),
+                       "customer_id": ["c1", "c1", "c0", "c0"], "mrr": [50.0, 50.0, 100.0, 20.0],
+                       "segment": ["Mid", "Mid", "SMB", "Ent"]})
+    assert dp.compute_kpi(df, MRR_ROLES, SAAS, "new_customers") == 1
+    by = dp.compute_kpi(df, MRR_ROLES, SAAS, "new_customers", by="segment")
+    assert {s: v for s, v in by.items() if v} == {"SMB": 1, "Ent": 1}
+
+
+def test_nobody_paying_at_any_month_end_moves_nothing():
+    """An empty ledger (every row's MRR is 0: the paying condition keeps none): every move and
+    transfer is a measured 0, never an error; by segment there is no paying group to show."""
+    df = pd.DataFrame({"month": pd.to_datetime(["2026-09-01", "2026-10-01"]), "customer_id": ["c0", "c0"],
+                       "mrr": [0.0, 0.0], "segment": ["SMB", "SMB"]})
+    for k in FLOWS:
+        assert dp.compute_kpi(df, MRR_ROLES, SAAS, k) == 0, k
+        assert dp.measure(df, MRR_ROLES, SAAS, k, by="segment") == dp.Unavailable("no_rows"), k
+
+
 def test_a_customer_with_rows_in_and_out_of_a_filter_is_one_customer_in_its_cohort():
     """5.7b-2b (domain_diff, found on the branch): c0 holds a monthly and a yearly subscription.
     Filtered to the monthly ones, its two ledger lines (in and out of the part) are one customer,

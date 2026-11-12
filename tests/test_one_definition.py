@@ -390,7 +390,8 @@ def test_the_window_in_force_and_moves_are_defined_once():
     owner = {**dict.fromkeys(["window", "_cut", "spell_as_of", "spell_from", "_in_force_at",
                               "_ended", "first_known", "_month_ends", "term_rows"], "spell"),
              **dict.fromkeys(["_ledger", "_ledger_term"], "ledger")}
-    owner["MOVES"] = "ledger"   # the move kinds: one tuple
+    owner["MOVES"] = owner["TRANSFERS"] = "ledger"   # the move kinds: one tuple each
+    owner["stock_rows"] = "kpi"   # the stock tile's rows: term_rows of its term
     owner |= {"measure": "kpi", "unavailable_words": "kpi"}   # a KPI's value and why it has none
     defs = [(n.name, _name(p)) for p in SHARED for n in ast.walk(ast.parse(p.read_text()))
             if isinstance(n, ast.FunctionDef) and n.name in owner]

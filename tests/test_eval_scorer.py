@@ -596,6 +596,19 @@ def test_a_kept_move_breakdown_is_scored_against_the_references_moves_by_month()
     assert ff(0.71)["false"] == n   # (x1.13 puts May 2026 on its new MRR: a true number)
 
 
+def test_a_group_nobody_is_in_force_in_keeps_its_every_row_reading_beside_its_moves():
+    """5.7b-2b spec review: a plan whose every customer churned is in the churn reading, so it
+    lost its every-row reading (pass 8). The groups nobody is in force in come from the level
+    readings only."""
+    import pandas as pd
+    from evals.scoring import _reference_wants
+    months = pd.date_range("2025-10-01", "2026-10-01", freq="MS")
+    df = pd.DataFrame([(m, "c0", 100.0, "Basic") for m in months[:6]]
+                      + [(m, "c1", 50.0, "Pro") for m in months], columns=["month", "customer_id", "mrr", "segment"])
+    wants = _reference_wants(("saas_mrr_snapshots", df), df, ["segment"], "mrr", "sum")
+    assert any(w.get("Basic") == 600.0 for w in wants)   # Basic's every row: nobody in force
+
+
 def _spell(name: str) -> tuple:
     """The (dataset, raw frame) evals.run hands the scorer on spell data: the reference reads it."""
     from evals import datagen

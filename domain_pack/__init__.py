@@ -154,7 +154,6 @@ from .rows import (  # noqa: F401
     version_grain,
     with_row_kind,
     spell_event_columns,
-    stock_population,
     in_force_counted,
     with_spell_events,
     rows_for,

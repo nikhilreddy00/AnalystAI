@@ -39,6 +39,10 @@ TEST_MARKER = re.compile(r"(?i)^cus_test|@example\.(?:com|org|net)$|^test(?:@|\+
 INTERVAL_MONTHS = {"month": 1, "year": 12}
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
 TRANSFERS = ("transfer_in", "transfer_out")   # a move between parts: nothing in the whole
+MOVE_NAMES = {"new": ("new_mrr", "new_customers"), "expansion": ("expansion_mrr",   # (money, count)
+              "expansion_customers"), "contraction": ("contraction_mrr", "contraction_customers"),
+              "churn": ("churned_mrr", "churned_customers"),
+              "reactivation": ("reactivation_mrr", "reactivated_customers")}
 
 
 def _blank(v) -> bool:
@@ -105,6 +109,10 @@ SPECS = {
         entity="customer_id", money=True, value=lambda r: float(r["mrr"]), snapshot="month",
         month_labels=True, segment="segment", groups=("segment",), test_cols=("customer_id",),
         levels=("mrr",)),
+    # account-month billing: MRR and seats as levels (the insight cases' book)
+    "subscriptions": Spec(
+        entity="account_id", money=True, value=lambda r: float(r["mrr"]), snapshot="billing_date",
+        month_labels=True, segment="plan", groups=("plan",), levels=("mrr", "seats")),
     # an account-month export: every account each month, MRR, seats and users as levels
     "saas_accounts": Spec(
         entity="account_id", money=True, value=lambda r: float(r["mrr"]), snapshot="month",
@@ -368,11 +376,7 @@ def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
            "nrr_by_segment": {s: v["nrr"] for s, v in co["by_segment"].items()} if co else {},
            "logo_churn_rate_by_segment": {s: v["logo_churn_rate"]
                                           for s, v in co["by_segment"].items()} if co else {}}
-    names = {"new": ("new_mrr", "new_customers"), "expansion": ("expansion_mrr",
-             "expansion_customers"), "contraction": ("contraction_mrr", "contraction_customers"),
-             "churn": ("churned_mrr", "churned_customers"),
-             "reactivation": ("reactivation_mrr", "reactivated_customers")}
-    for kind, (money, n) in names.items():
+    for kind, (money, n) in MOVE_NAMES.items():
         out[money] = mv["amount"][kind] if mv else None
         out[n] = mv["count"][kind] if mv else None
         out[f"{money}_by_segment"] = mv["by_segment"][kind] if mv else {}
@@ -471,16 +475,17 @@ AGGS = {   # naive, as pandas defines them (std: the sample's, n − 1)
 
 def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg: str,
                  months: set | frozenset = frozenset(),
-                 today: pd.Timestamp | None = None) -> list[dict]:
-    """The readings of a level (MRR, seats, salary: the spec's `levels`) by any row columns, as
-    the definitions give them: the rows in force at the as-of (the population's), grouped by
-    `cols` ('a|b' keys, a date column in `months` by its month 'YYYY-MM', an 'Overall' total),
-    `agg` over those rows; per entity (a count of entities, a sum ÷ entities: MRR per customer);
-    and by one month column, each move of the entity's value by month (an amount, or its mean
-    per entity). [] for any other column."""
+                 today: pd.Timestamp | None = None) -> tuple[list[dict], list[dict]]:
+    """(levels, moves): the readings of a level (MRR, seats, salary: the spec's `levels`) by any
+    row columns, as the definitions give them. Levels: the rows in force at the as-of (the
+    population's), grouped by `cols` ('a|b' keys, a date column in `months` by its month
+    'YYYY-MM', an 'Overall' total), `agg` over those rows; per entity (a count of entities, a
+    sum ÷ entities: MRR per customer). Moves of the entity's value: by one column, each move by
+    month (an amount, or its mean per entity); summed by groups, each move by them, transfers
+    included. ([], []) for any other column."""
     spec = SPECS[name]
     if metric not in spec.levels or agg not in AGGS:
-        return []
+        return [], []
     today = today or pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today())
     rows = prepare(df, spec)
     at = as_of(rows, spec, today.normalize())
@@ -503,22 +508,23 @@ def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg:
                 if (v := value(r)) is not None:
                     vals.setdefault(k, []).append(v)
                 ents.setdefault(k, set()).add(c)
-    out = [{k: AGGS[agg](v) for k, v in vals.items()}]
+    levels = [{k: AGGS[agg](v) for k, v in vals.items()}]
     if agg in ("count", "mean"):   # per entity: customers, MRR per customer
-        out.append({k: (len(ents[k]) if agg == "count" else sum(vals.get(k, [])) / len(ents[k]))
-                    for k in ents})
+        levels.append({k: (len(ents[k]) if agg == "count" else sum(vals.get(k, [])) / len(ents[k]))
+                       for k in ents})
+    moved: list[dict] = []
     if agg in ("sum", "mean") and metric == spec.levels[0] and spec.money:   # the value's moves
         if len(cols) == 1:   # by month ('YYYY-MM': a month column's groups)
             got = reference(name, df, today)
-            for n in ("new", "expansion", "contraction", "churned", "reactivation"):
-                out.append(got.get(f"{n}_mrr_{'mean_' if agg == 'mean' else ''}by_month") or {})
+            moved += [got.get(f"{MOVE_NAMES[k][0]}_{'mean_' if agg == 'mean' else ''}by_month") or {}
+                      for k in MOVES]
         if agg == "sum" and not set(cols) & set(months):   # by the groups, each line its group
             # (GLOSSARY Move, transfers too)
             lo, _, month_ends = window(rows, spec, at)
             lo, points, ledger = ledger_at(rows, spec, lo, month_ends)
             mv = moves(ledger, points, lo, part=key)
-            out += [mv["by_segment"][k] for k in (*MOVES, *TRANSFERS)] if mv else []
-    return [o for o in out if o]
+            moved += [mv["by_segment"][k] for k in (*MOVES, *TRANSFERS)] if mv else []
+    return [o for o in levels if o], [o for o in moved if o]
 
 
 def reference(name: str, df: pd.DataFrame, today: pd.Timestamp | None = None) -> dict:

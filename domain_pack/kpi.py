@@ -72,7 +72,7 @@ def stock_rows(df: pd.DataFrame, roles: dict[str, str], pack: Pack,
     stock = stock_kpi(pack, roles)
     if stock is None:
         return df if t is None else _in_force(df, roles, pack, t)
-    term = next((t_ for t_ in used_terms(pack, stock, roles) if t_.spell), None)
+    term = next(x for x in used_terms(pack, stock, roles) if x.spell)   # stock_kpi: it has one
     counted = row_kinds(df, roles, pack).isin(set(term.rows or stock.rows)) & main_currency(df, roles)[0]
     return term_rows(df, roles, pack, counted, term.where, t)
 
@@ -100,8 +100,6 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
 
     def kept(rows: pd.DataFrame) -> pd.DataFrame:   # the term's rows, in the part `df`
         return rows[rows.index.isin(df.index)]
-
-    population = term_rows(whole, roles, pack, counted, term.where).index
 
     def count(rows: pd.DataFrame, key):
         """People in force: distinct entities (or a role summed over their one row each);
@@ -132,7 +130,7 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
-        rows = kept(rows[rows.index.isin(population)])
+        rows = kept(rows[rows.index.isin(term_rows(whole, roles, pack, counted, term.where).index)])
         when = when[rows.index]
         if periodic:
             n = count(rows, when.dt.to_period(freq))

@@ -88,9 +88,8 @@ def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
 
 
 def _keyed(s: pd.Series) -> pd.Series:
-    """A grouped Series keyed as a breakdown names its groups ('a|b')."""
-    s.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in s.index]
-    return s
+    """A grouped Series keyed as a breakdown names its groups ('a|b'); a copy."""
+    return s.set_axis(["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in s.index])
 
 
 def _reference_wants(spell: tuple | None, rows: pd.DataFrame, cols: list[str], metric: str,
@@ -102,13 +101,13 @@ def _reference_wants(spell: tuple | None, rows: pd.DataFrame, cols: list[str], m
     dataset's (name, raw frame); `rows`: the scored frame, its groups named as the breakdown
     names them (a month, pass 10). [] when the dataset has no reference or `metric` is no level."""
     from evals.reference_kpis import reference_by
-    readings = reference_by(*spell, cols, metric, agg, months) if spell else []
-    if not readings:
+    levels, moved = reference_by(*spell, cols, metric, agg, months) if spell else ([], [])
+    if not levels:
         return []
-    known = set().union(*readings)
-    rest = _keyed(rows.groupby(cols)[metric].agg(agg))
-    rest = rest[~rest.index.isin(known)]
-    return [pd.concat([pd.Series(r, dtype=float), rest]) for r in readings]
+    rest = _keyed(rows.groupby(cols)[metric].agg(agg))   # groups nobody in force is in (a churned
+    rest = rest[~rest.index.isin(set().union(*levels))]   # plan: in a move, never in a level)
+    return [pd.concat([pd.Series(r, dtype=float), rest]) for r in levels] + \
+        [pd.Series(m, dtype=float) for m in moved]
 
 
 def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
@@ -378,9 +377,8 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict,
                                           _OVERALL and k not in w.index}, dtype=float)])
                  if "Overall" in w.index else w for w in wants]
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
-        distinct = df.groupby(cols)[seg.metric_column].nunique() if agg == "count" else pd.Series()
-        distinct.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
-                          for i in distinct.index]
+        distinct = _keyed(df.groupby(cols)[seg.metric_column].nunique()) if agg == "count" \
+            else pd.Series(dtype=float)
         for row in seg.results:
             raw = str(row.get("name"))   # a date group holds ':' ('2024-11-01 00:00:00|SMB')
             name = raw if "|" in raw else "|".join(_strata(raw)) if len(cols) > 1 else raw

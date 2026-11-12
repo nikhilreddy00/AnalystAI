@@ -84,6 +84,12 @@ CASES = {
         "mrr_mom_pct": "a month-over-month change: a period-asked figure",
         "pro_mrr_mom_pct": "a month-over-month change: a period-asked figure",
         **{k: NAIVE for k in ("naive_total_mrr", "naive_mrr_by_plan")}}),
+    # 5.7b-2b: account-month billing (the insight cases' book), spell data the scorer reads
+    "subscriptions": (1, {}, {
+        "row_count": FILE, "corr_mrr_tickets": PAY,
+        "mean_mrr_by_plan": "a mean over every account-month row, not a level at a date",
+        "mrr_mom_pct": "a month-over-month change: a period-asked figure",
+        "mrr_yoy_pct": "a year-over-year change: a period-asked figure"}),
     "hr_roster_onerow": (1, HR, {
         "row_count": FILE, "pii_columns": FILE, "people": FILE, "rows": FILE,
         "separations_12m_spells": "the spell file's count, not this file's",
@@ -179,7 +185,7 @@ def test_the_references_word_lists_are_the_packs():
 def test_a_level_by_a_column_is_one_of_the_references_readings(name, cols, metric, agg, key):
     from evals.reference_kpis import reference_by
     df, truth = datagen.make(name, 4 if name == "hr_snapshots" else 1)
-    readings = reference_by(name, df, cols, metric, agg)
+    readings = [r for side in reference_by(name, df, cols, metric, agg) for r in side]
     assert any({k: v for k, v in r.items() if k != "Overall"} == pytest.approx(truth[key])
                for r in readings), (readings, truth[key])
 
@@ -190,15 +196,17 @@ def test_each_move_by_a_group_is_a_reading():
     on the same lines as the segment outputs (checked against the product on the real data)."""
     from evals.reference_kpis import reference_by
     df, _ = datagen.make("saas_mrr_snapshots", 1)
-    readings = reference_by("saas_mrr_snapshots", df, ["segment"], "mrr", "sum")
+    levels, moved = reference_by("saas_mrr_snapshots", df, ["segment"], "mrr", "sum")
     for k in ("churned_mrr", "contraction_mrr", "transfer_out_mrr"):
-        assert reference("saas_mrr_snapshots", df)[f"{k}_by_segment"] in readings, k
+        assert reference("saas_mrr_snapshots", df)[f"{k}_by_segment"] in moved, k
+    assert reference("saas_mrr_snapshots", df)["mrr_by_segment"] in [
+        {k: v for k, v in r.items() if k != "Overall"} for r in levels]
 
 
 def test_a_column_that_is_no_level_has_no_reading():
     from evals.reference_kpis import reference_by
     df, _ = datagen.make("hr_roster", 1)
-    assert reference_by("hr_roster", df, ["Department"], "Performance_Rating", "mean") == []
+    assert reference_by("hr_roster", df, ["Department"], "Performance_Rating", "mean") == ([], [])
 
 
 # ── 5.7b-2b (C3): the ledger's lines and transfer moves, from GLOSSARY Move ──────────────────
