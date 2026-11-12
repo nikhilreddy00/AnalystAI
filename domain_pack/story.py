@@ -13,7 +13,7 @@ from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, 
 from .detect import main_currency, row_kinds
 from .spell import (WINDOW_MONTHS, Window, _ended_undated, has_spell, not_counted_yet,
                     today_only, window, window_words)
-from .ledger import MOVES
+from .ledger import MOVES, TRANSFERS
 from .kpi import (_person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, stock_rows,
                   used_terms)
 
@@ -275,11 +275,16 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                                f"data's first month-end when it covers less ({at}, {gone})",
                     "retained": f"same {ent} (in force at the cohort's start) at the date"
                                 + (", each capped at its value then" if t.capped else ""),
-                    "moves": f"{t.move} moves: each {ent} whose value went "
-                             + {"new": "from 0 (never in force before) to above 0",
-                                "reactivation": "from 0 back above 0 (in force before)",
-                                "expansion": "up", "contraction": "down (not to 0)",
-                                "churn": "to 0"}.get(t.move or "", "")
+                    "moves": (("value moved in from another group: each {e}'s rise in a group "
+                               "matched by its fall in another" if t.move == "transfer_in" else
+                               "value moved out to another group: each {e}'s fall in a group "
+                               "matched by its rise in another").format(e=ent)
+                              if t.move in TRANSFERS else
+                              f"{t.move} moves: each {ent} whose value went "
+                              + {"new": "from 0 (never in force before) to above 0",
+                                 "reactivation": "from 0 back above 0 (in force before)",
+                                 "expansion": "up", "contraction": "down (not to 0)",
+                                 "churn": "to 0"}.get(t.move or "", ""))
                              + " between consecutive month-ends in the period",
                     "ends": f"{sp.words.end}s in the period (events: by {roles.get(sp.end, sp.end)}"
                             + (", or the first snapshot an entity is missing from" if snap else "")

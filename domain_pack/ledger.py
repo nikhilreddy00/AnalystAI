@@ -102,7 +102,8 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, c
     points = [t for t in points if t <= as_of]
     by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
     lines, inside, g = _ledger(view, term, counted, points, part, by)
-    v = lines.groupby(level=0).sum()   # each entity's value: the sum of its lines
+    # each entity's value: its lines summed; a count's, there or not (two lines are one customer)
+    v = lines.groupby(level=0).agg("sum" if term.sum is not None else "max")
 
     def total(x: pd.Series) -> float | pd.Series:
         """x summed over the ledger lines in the part (by group or one number)."""

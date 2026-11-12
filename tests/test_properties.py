@@ -214,6 +214,19 @@ def test_a_cohort_by_segment_places_a_customer_in_two_segments_the_same_way_in_a
         assert dp.compute_kpi(book, MRR_ROLES, SAAS, "nrr", by="segment").to_dict() == {"Ent": 1.0, "SMB": 1.0}
 
 
+def test_a_customer_with_rows_in_and_out_of_a_filter_is_one_customer_in_its_cohort():
+    """5.7b-2b (domain_diff, found on the branch): c0 holds a monthly and a yearly subscription.
+    Filtered to the monthly ones, its two ledger lines (in and out of the part) are one customer,
+    never two: c0 stays, c1 leaves, so logo churn is 50%."""
+    df = pd.DataFrame({"customer_id": ["c0", "c0", "c1"],
+                       "created": pd.to_datetime(["2024-01-01"] * 3),
+                       "ended_at": pd.to_datetime([None, None, "2026-06-01"]),
+                       "status": ["active", "active", "canceled"], "mrr": [50.0, 100.0, 50.0],
+                       "segment": ["SMB"] * 3, "interval": ["month", "year", "month"]})
+    part = df[df["interval"] == "month"]
+    assert dp.compute_kpi(part, LIST_ROLES, SAAS, "logo_churn_rate", full=df) == pytest.approx(0.5)
+
+
 @given(mrr_books())
 def test_p1_a_parts_bridge_adds_up_month_by_month(df):
     """By period on a part: each month's MRR is the month before plus that month's moves,
