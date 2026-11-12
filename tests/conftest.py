@@ -32,14 +32,18 @@ def _hypothesis_profiles() -> None:
     """Property tests (tests/test_properties.py) run derandomized everywhere, so a local run
     finds what CI finds: `ci` extends Hypothesis' own (no database, no deadline; it loads
     itself when CI is set), `deep` is the nightly job, `mutation` the cheap one each mutant
-    runs (scripts/mutation.py). HYPOTHESIS_PROFILE picks one."""
+    runs (scripts/mutation.py). HYPOTHESIS_PROFILE picks one. `deep` is random, so it keeps
+    its failures in .hypothesis/deep and the next deep run replays them first (retro 5.7b-2a:
+    a deep failure scrolled away and never came back)."""
     from hypothesis import HealthCheck, settings
+    from hypothesis.database import DirectoryBasedExampleDatabase
     common = {"print_blob": True, "deadline": None,
               # the autouse fixtures only set constants (today, a key), never per-example state
               "suppress_health_check": [HealthCheck.function_scoped_fixture, HealthCheck.too_slow]}
     settings.register_profile("ci", settings.get_profile("ci"), max_examples=25, **common)
     settings.register_profile("dev", max_examples=25, derandomize=True, database=None, **common)
-    settings.register_profile("deep", max_examples=500, derandomize=False, database=None, **common)
+    settings.register_profile("deep", max_examples=500, derandomize=False,
+                              database=DirectoryBasedExampleDatabase(".hypothesis/deep"), **common)
     settings.register_profile("mutation", max_examples=5, derandomize=True, database=None, **common)
     default = "ci" if os.environ.get("CI") else "dev"
     settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE") or default)

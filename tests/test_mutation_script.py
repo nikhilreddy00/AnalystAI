@@ -1,7 +1,9 @@
 """scripts/mutation.py turns mutmut's per-file .meta results into a score per function."""
+import subprocess
+
 import pytest
 
-from scripts.mutation import functions_touching, mutant_lines, planted, scores
+from scripts.mutation import functions_touching, mutant_lines, planted, scores, uncommitted
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -58,8 +60,26 @@ def test_only_mutants_on_changed_lines_are_run():
                "def x_f__mutmut_2(a):\n    b = a + 1\n    return b / 2\n"
                "class P:\n    def xǁPǁk__mutmut_orig(self):\n        return 3\n"
                "    def xǁPǁk__mutmut_1(self):\n        return 4\n")
-    assert mutant_lines(mutated, source) == {"x_f__mutmut_1": 5, "x_f__mutmut_2": 6,
-                                             "xǁPǁk__mutmut_1": 11}
+    assert mutant_lines(mutated, source) == {
+        "x_f__mutmut_1": (5, "b = a + 1", "b = a - 1"),
+        "x_f__mutmut_2": (6, "return b * 2", "return b / 2"),
+        "xǁPǁk__mutmut_1": (11, "return 3", "return 4")}
+
+
+def test_a_run_refuses_files_that_differ_from_head(tmp_path):
+    """The worktree is HEAD (retro 5.7b-2a: two plants ran without their new tests), so a
+    changed or untracked file the run reads is refused, never silently left out."""
+    def git(*a):
+        subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)
+    git("init", "-q")
+    (tmp_path / "a.py").write_text("x = 1\n")
+    (tmp_path / "c.py").write_text("y = 1\n")
+    git("add", ".")
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c")
+    assert uncommitted(["a.py", "c.py::test_x"], tmp_path) == []
+    (tmp_path / "a.py").write_text("x = 2\n")
+    (tmp_path / "b.py").write_text("")
+    assert uncommitted(["a.py", "b.py", "c.py::test_x"], tmp_path) == ["a.py", "b.py"]
 
 
 def test_a_plant_must_match_exactly_once():
