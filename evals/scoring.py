@@ -55,7 +55,7 @@ def _summary_values(df: pd.DataFrame, column: str, stat: str) -> list[float]:
     """`stat` of `column` over each population production summarises (every row, or the rows
     its tiles count: domain_pack.rows_for). THE rule of eda_stat and false_findings."""
     return [float(s.count() if stat == "count" else getattr(s, stat)())
-            for s in (rows[column].dropna() for rows in _populations(df, column, by_group=False))]
+            for s in (rows[column].dropna() for rows in _populations(df, column))]
 
 
 def _is_rate(s: pd.Series) -> bool:
@@ -87,89 +87,46 @@ def _grouped(df: pd.DataFrame, by, metric: str, agg: str) -> pd.Series:
     return df.groupby(by)[metric].agg(agg)
 
 
-def _per_entity(df: pd.DataFrame, cols: list[str], metric: str, agg: str) -> list[pd.Series]:
-    """On spell data, a level's count and mean per entity in force (paying customers by segment,
-    ARPA = MRR ÷ customers): the readings a senior analyst gives, never rows (Domain 6 rescore)."""
+def _keyed(s: pd.Series) -> pd.Series:
+    """A grouped Series keyed as a breakdown names its groups ('a|b')."""
+    s.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in s.index]
+    return s
+
+
+def _reference_wants(spell: tuple | None, rows: pd.DataFrame, cols: list[str], metric: str,
+                     agg: str, months: set | frozenset = frozenset()) -> list[pd.Series]:
+    """On spell data the scorer re-derives nothing (5.7b-2b, C1): a level by group (MRR, seats,
+    salary) is each of the reference's readings (evals.reference_kpis.reference_by: the rows in
+    force, per entity, and a value's moves by month), and a group with nobody in force reads
+    every row of it (pass 8: leavers; a mixed group is in the reference, pass 9). `spell`: the
+    dataset's (name, raw frame); `rows`: the scored frame, its groups named as the breakdown
+    names them (a month, pass 10). [] when the dataset has no reference or `metric` is no level."""
+    from evals.reference_kpis import reference_by
+    readings = reference_by(*spell, cols, metric, agg, months) if spell else []
+    if not readings:
+        return []
+    known = set().union(*readings)
+    rest = _keyed(rows.groupby(cols)[metric].agg(agg))
+    rest = rest[~rest.index.isin(known)]
+    return [pd.concat([pd.Series(r, dtype=float), rest]) for r in readings]
+
+
+def _populations(df: pd.DataFrame, metric: str) -> list[pd.DataFrame]:
+    """The rows a value of `metric` can be computed over, off spell data (a spell list's level
+    by group is the reference's: _reference_wants). A snapshot column (a semantic-layer level:
+    seats, a balance) has two right readings: every snapshot row, or each entity's current
+    snapshot ("seats per account" — production's latest_rows, which the agent is told about). A
+    domain pack's counted column also has the rows its tiles count (domain_pack.rows_for: a
+    claim line's last version, never a replaced one; Domain 3 smoke run). Any other column:
+    every row (a churn rate over latest rows is another number)."""
     from agents.ingestion_agent import build_contract
-    from agents.utils import level_rows
-    from domain_pack import has_spell, pack_for
-    from orchestrator.state import ConnectorType
-    if agg not in ("count", "mean"):
-        return []
-    contract = build_contract(df, ConnectorType.CSV, {})
-    pack = pack_for(contract.domain)
-    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    if not (pack and has_spell(pack, roles)):
-        return []
-    now = level_rows(df, metric, contract)
-    ent = roles[pack.spell.entity]
-    if len(now) == len(df) or not set(cols) <= set(now.columns):
-        return []
-    g = now.groupby(cols)
-    out = g[ent].nunique() if agg == "count" else g[metric].sum() / g[ent].nunique()
-    out.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i) for i in out.index]
-    return [out]
-
-
-def _move_means(df: pd.DataFrame, cols: list[str], metric: str, agg: str) -> list[pd.Series]:
-    """A snapshot level's mean by its month, per customer who churned or joined that month (mean
-    churned MRR per churned customer: the final re-measure's saas-8, equal to truth), as the
-    ledger reads it: month-end values, a churn by its earlier value, a new one by its later."""
-    from agents.ingestion_agent import build_contract
-    from agents.utils import column_hint
-    from orchestrator.state import ConnectorType
-    if agg != "mean" or len(cols) != 1:
-        return []
-    hint = column_hint(build_contract(df, ConnectorType.CSV, {}), metric)
-    if not (hint and hint.aggregation in ("last", "first") and hint.aggregation_time == cols[0]
-            and len(hint.aggregation_by) == 1):
-        return []
-    end = pd.to_datetime(df[cols[0]], errors="coerce") + pd.offsets.MonthEnd(0)
-    v = df.assign(_t=end).pivot_table(index=hint.aggregation_by[0], columns="_t", values=metric,
-                                      aggfunc="sum").fillna(0)
-    cols_ = sorted(v.columns)
-    out = []
-    for pick in ("churn", "new"):
-        means = {}
-        for a, b in zip(cols_, cols_[1:]):
-            m = (v[a] > 0) & (v[b] == 0) if pick == "churn" else (v[a] == 0) & (v[b] > 0)
-            if m.any():
-                means[f"{b:%Y-%m}"] = (v.loc[m, a] if pick == "churn" else v.loc[m, b]).mean()
-        out.append(pd.Series(means, dtype=float))
-    return out
-
-
-def _populations(df: pd.DataFrame, metric: str, by_group: bool = True,
-                 cols: list[str] | None = None, monthly: set | frozenset = frozenset()) -> list[pd.DataFrame]:
-    """The rows a group value of `metric` can be computed over. A snapshot column (a
-    semantic-layer level: seats, a balance) has two right readings: every snapshot row, or each
-    entity's current snapshot ("seats per account" — production's latest_rows, which the agent
-    is told about). A domain pack's counted column also has the rows its tiles count
-    (domain_pack.rows_for: a claim line's last version, never a replaced one; Domain 3 smoke run).
-    Any other column: every row (a churn rate over latest rows is another number)."""
-    from agents.ingestion_agent import build_contract
-    from agents.utils import column_hint, latest_rows, level_rows
+    from agents.utils import column_hint, latest_rows
     from domain_pack import rows_for
     from orchestrator.state import ConnectorType
     contract = build_contract(df, ConnectorType.CSV, {})
     hint = column_hint(contract, metric)
     if hint is None or hint.aggregation not in ("last", "first"):
         counted, how = rows_for(df, contract, metric)
-        # a level on a spell list (MRR of each subscription): production's in-force rows
-        # (utils.level_rows -> domain_pack.in_force_counted), what the brief tells the agent
-        current = level_rows(df, metric, contract)
-        if by_group and len(current) != len(df):   # a level by group on spell data: each group's
-            # in-force rows; a group with no one in force (leavers, cancelled) its former rows
-            # (pass 8); never every row mixed (pass 7) nor a mixed group's former rows (pass 9)
-            former = df.loc[~df.index.isin(current.index)]
-            if cols and set(cols) <= set(df.columns):
-                def key(rows):   # the group as the breakdown names it (a month, pass 10)
-                    return pd.MultiIndex.from_frame(pd.DataFrame({c: (
-                        pd.to_datetime(rows[c], format="mixed", errors="coerce").dt.to_period("M")
-                        if c in monthly else rows[c]).astype(str) for c in cols}))
-                gone = former[~key(former).isin(key(current))]
-                return [pd.concat([current, gone])]
-            return [current]   # a column's distribution
         # reads every row by design (current and former: HR's rule), so a summary keeps them
         return [df, counted] if how else [df]
     return [df, latest_rows(df, metric, contract)]
@@ -189,11 +146,12 @@ def _mismatch(seg, want: pd.Series, agg: str, scales: tuple, rel_tol: float) -> 
 
 def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, metric: str,
                         rel_tol: float = 0.01, scales: tuple = (1, 100),
-                        aggregation: str | None = None) -> tuple[bool, str]:
+                        aggregation: str | None = None, spell: tuple | None = None) -> tuple[bool, str]:
     """Passes if a segment result for (segment, metric) exists and every group value matches
-    pandas under the aggregation the agent reported. The agent picks the aggregation, since
-    it never sees the user's wording; correctness of the number is what's scored. `aggregation`
-    pins it where only one answers the question (attrition is a rate: a headcount isn't it)."""
+    pandas under the aggregation the agent reported (on spell data, a level by group: the
+    reference's readings, _reference_wants). The agent picks the aggregation, since it never
+    sees the user's wording; correctness of the number is what's scored. `aggregation` pins it
+    where only one answers the question (attrition is a rate: a headcount isn't it)."""
     flag = metric in df.columns and set(pd.to_numeric(df[metric], errors="coerce").dropna()) <= {0, 1}
 
     def scored(s) -> bool:
@@ -211,8 +169,9 @@ def check_segment_value(f: AnalysisFindings, df: pd.DataFrame, segment: str, met
             return False, f"empty results for {metric} by {segment}"
         agg = seg.aggregation if seg.aggregation in (*_AGGS, "last", "first") else "mean"
         scs = scales if _is_rate(df[metric]) else (1,)
-        whys = [_mismatch(seg, _grouped(rows, segment, metric, agg), agg, scs, rel_tol)
-                for rows in _populations(df, metric, cols=[segment] if isinstance(segment, str) else None)]
+        wants = _reference_wants(spell, df, [segment], metric, agg) or \
+            [_grouped(rows, segment, metric, agg) for rows in _populations(df, metric)]
+        whys = [_mismatch(seg, w, agg, scs, rel_tol) for w in wants]
         why = None if None in whys else whys[0]
         if why:
             return False, why
@@ -366,9 +325,11 @@ def _derived_truth(seg, truth: dict) -> bool:
 _OVERALL = ("overall", "total", "all", "grand total", "all groups")   # compared lower-case
 
 
-def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
+def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict,
+                   spell: tuple | None = None) -> dict:
     """Recompute every claim that can be checked against the data. A claim is false when the
-    number is wrong, or when a test calls a planted null pair significant."""
+    number is wrong, or when a test calls a planted null pair significant. `spell`: the
+    dataset's (name, raw frame) when the reference covers it (evals.reference_kpis.SPECS)."""
     claims: list[tuple[str, bool]] = []   # (label, is_false)
     numeric = set(df.select_dtypes("number").columns)
     for key, r in f.correlations.items():
@@ -392,30 +353,30 @@ def false_findings(f: AnalysisFindings, df: pd.DataFrame, truth: dict) -> dict:
         if seg.aggregation not in (*_AGGS, "last", "first") or _derived_truth(seg, truth):
             continue
         agg = seg.aggregation
-        if agg == "sum" and _is_level(df, seg.metric_column):
-            # a sum of a level that production kept is a part of it (churned or new MRR by month:
-            # analysis_agent._a_part_of); a summed level is replaced by the level before scoring
-            continue
-        wants = []
         # a date column grouped by month ('2025-09'): its month, as the agent named the groups
         parts = [str(r.get("name")).split("|") for r in seg.results]
         monthly = {c for i, c in enumerate(cols) if parts and all(
             len(p) == len(cols) and re.fullmatch(r"\d{4}-\d{2}", p[i]) for p in parts)}
-        for rows in _populations(df, seg.metric_column, cols=cols, monthly=monthly):
-            if monthly:
-                rows = rows.assign(**{c: pd.to_datetime(rows[c], format="mixed", errors="coerce")
-                                      .dt.to_period("M").astype(str) for c in monthly})
-            want = _grouped(rows, cols, seg.metric_column, agg)
-            want.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)
-                          for i in want.index]
+
+        def named(rows: pd.DataFrame) -> pd.DataFrame:
+            return rows.assign(**{c: pd.to_datetime(rows[c], format="mixed", errors="coerce")
+                                  .dt.to_period("M").astype(str) for c in monthly}) if monthly else rows
+        names = {str(r.get("name")) for r in seg.results}
+        # spell data: the reference's readings (a sum of a level production kept is a move asked,
+        # churned MRR by month: analysis_agent._moves_asked, scored against the moves by month)
+        wants = _reference_wants(spell, named(df), cols, seg.metric_column, agg, monthly)
+        if not wants and agg == "sum" and _is_level(df, seg.metric_column):
+            continue   # any other data: a kept sum of a level is not verifiable here
+        for rows in [] if wants else _populations(df, seg.metric_column):
+            rows = named(rows)
+            want = _keyed(_grouped(rows, cols, seg.metric_column, agg))
             # a total row beside the groups ('Overall'): the whole population's value
             whole = _grouped(rows.assign(_all="Overall"), ["_all"], seg.metric_column, agg)
-            names = {str(r.get("name")) for r in seg.results}
-            extra = {k: whole.iloc[0] for k in names if k.strip().lower() in _OVERALL
-                     and k not in want.index} if len(whole) else {}
-            want = pd.concat([want, pd.Series(extra, dtype=float)]) if extra else want
-            wants.append(want)
-        wants += _per_entity(df, cols, seg.metric_column, agg) + _move_means(df, cols, seg.metric_column, agg)
+            wants.append(pd.concat([want, pd.Series({"Overall": whole.iloc[0]}, dtype=float)])
+                         if len(whole) and "Overall" not in want.index else want)
+        wants = [pd.concat([w, pd.Series({k: w["Overall"] for k in names if k.strip().lower() in
+                                          _OVERALL and k not in w.index}, dtype=float)])
+                 if "Overall" in w.index else w for w in wants]
         sc = (1, 100) if agg == "mean" and _is_rate(df[seg.metric_column]) else (1,)
         distinct = df.groupby(cols)[seg.metric_column].nunique() if agg == "count" else pd.Series()
         distinct.index = ["|".join(map(str, i)) if isinstance(i, tuple) else str(i)

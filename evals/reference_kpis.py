@@ -86,27 +86,35 @@ class Spec:
     fte: str | None = None
     currency: tuple | None = None        # (column, the currency kept)
     test_cols: tuple = field(default=())  # columns the test-account marker reads
+    # columns that are a level at a date (MRR, seats, salary): read on the rows in force, never
+    # summed over dates; the first is the entity's value (MRR, a column the list may not have)
+    levels: tuple = ()
 
 
 HR_ROSTER = Spec(entity="Employee_ID", money=False, value=lambda r: 1.0, start="Hire_Date",
                  end="Termination_Date", status="Employment_Status", ended=HR_ENDED,
                  segment="Department", worker_type="Worker_Type",
-                 category="Termination_Category", fte="FTE")
+                 category="Termination_Category", fte="FTE", levels=("FTE", "Annual_Salary"))
 SPECS = {
     "saas_subscriptions": Spec(
         entity="customer_id", money=True, value=subscription_mrr, start="created",
         end="ended_at", paid_from="trial_end", status="status", ended=SAAS_ENDED,
         out_statuses=SAAS_OUT, concurrent=True, segment="segment", groups=("segment", "plan"),
-        currency=("currency", "USD"), test_cols=("customer_id", "contact_email")),
+        currency=("currency", "USD"), test_cols=("customer_id", "contact_email"), levels=("mrr",)),
     "saas_mrr_snapshots": Spec(
         entity="customer_id", money=True, value=lambda r: float(r["mrr"]), snapshot="month",
-        month_labels=True, segment="segment", groups=("segment",), test_cols=("customer_id",)),
+        month_labels=True, segment="segment", groups=("segment",), test_cols=("customer_id",),
+        levels=("mrr",)),
+    # an account-month export: every account each month, MRR, seats and users as levels
+    "saas_accounts": Spec(
+        entity="account_id", money=True, value=lambda r: float(r["mrr"]), snapshot="month",
+        month_labels=True, segment="plan", groups=("plan",), levels=("mrr", "seats", "active_users")),
     "hr_roster": HR_ROSTER,
     "hr_roster_onerow": HR_ROSTER,   # Hire_Date is the latest hire; Original_Hire_Date unread
     "hr_snapshots": Spec(
         entity="Emp_ID", money=False, value=lambda r: 1.0, snapshot="Snapshot_Date",
         end="Termination_Date", status="Status", ended=HR_ENDED, segment="Department",
-        worker_type="Worker_Type", fte="FTE"),
+        worker_type="Worker_Type", fte="FTE", levels=("FTE", "Base_Salary")),
     "employees": Spec(entity="employee_id", money=False, value=lambda r: 1.0,
                       start="hire_date", end="termination_date", segment="department"),
     # the property tests' small books (tests/test_properties.py)
@@ -444,6 +452,58 @@ def headcount_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
                     n[str(r["segment"])] = n.get(str(r["segment"]), 0) + 1
             out[f"{name}_by_department"] = {d: n.get(d, 0) / a for d, a in dept_avg.items()}
     return out
+
+
+AGGS = {   # naive, as pandas defines them (std: the sample's, n − 1)
+    "sum": sum, "count": len, "min": min, "max": max,
+    "mean": lambda v: sum(v) / len(v),
+    "median": lambda v: (sorted(v)[(len(v) - 1) // 2] + sorted(v)[len(v) // 2]) / 2,
+    "std": lambda v: (sum((x - sum(v) / len(v)) ** 2 for x in v) / (len(v) - 1)) ** 0.5
+    if len(v) > 1 else float("nan"),
+}
+
+
+def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg: str,
+                 months: set | frozenset = frozenset(),
+                 today: pd.Timestamp | None = None) -> list[dict]:
+    """The readings of a level (MRR, seats, salary: the spec's `levels`) by any row columns, as
+    the definitions give them: the rows in force at the as-of (the population's), grouped by
+    `cols` ('a|b' keys, a date column in `months` by its month 'YYYY-MM', an 'Overall' total),
+    `agg` over those rows; per entity (a count of entities, a sum ÷ entities: MRR per customer);
+    and by one month column, each move of the entity's value by month (an amount, or its mean
+    per entity). [] for any other column."""
+    spec = SPECS[name]
+    if metric not in spec.levels or agg not in AGGS:
+        return []
+    today = today or pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today())
+    rows = prepare(df, spec)
+    at = as_of(rows, spec, today.normalize())
+    now = in_force(rows, spec, at)
+
+    def value(r) -> float | None:
+        if metric == spec.levels[0] and spec.money:
+            return r["value"]   # the entity's own value (a list's MRR from its price)
+        return None if _blank(r["row"].get(metric)) else float(r["row"][metric])
+
+    vals: dict = {}
+    ents: dict = {}
+    for c, rs in now.items():
+        for r in rs:
+            key = "|".join(f"{_date(r['row'][k]):%Y-%m}" if k in months and _date(r["row"][k])
+                           else str(r["row"][k]) for k in cols)
+            for k in (key, "Overall"):
+                if (v := value(r)) is not None:
+                    vals.setdefault(k, []).append(v)
+                ents.setdefault(k, set()).add(c)
+    out = [{k: AGGS[agg](v) for k, v in vals.items()}]
+    if agg in ("count", "mean"):   # per entity: customers, MRR per customer
+        out.append({k: (len(ents[k]) if agg == "count" else sum(vals.get(k, [])) / len(ents[k]))
+                    for k in ents})
+    if agg in ("sum", "mean") and len(cols) == 1 and metric == spec.levels[0] and spec.money:
+        got = reference(name, df, today)
+        for n in ("new", "expansion", "contraction", "churned", "reactivation"):
+            out.append(got.get(f"{n}_mrr_{'mean_' if agg == 'mean' else ''}by_month") or {})
+    return [o for o in out if o]
 
 
 def reference(name: str, df: pd.DataFrame, today: pd.Timestamp | None = None) -> dict:

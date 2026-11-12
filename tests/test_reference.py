@@ -78,6 +78,12 @@ CASES = {
                               "attrition_12m_with_contingent", "voluntary_incl_retirement",
                               "avg_headcount_start_end", "attrition_2026_annualised",
                               "pay_gap_mean_annual_by_level", "pay_gap_median_annual_by_level")}}),
+    # 5.7b-2b: spell data the scorer reads (saas-1..4, e2e-29/30); every account every month
+    "saas_accounts": (1, {"mrr_last_month_total": "mrr"}, {
+        "row_count": FILE, "pii_columns": FILE, "corr_seats_users": PAY,
+        "mrr_mom_pct": "a month-over-month change: a period-asked figure",
+        "pro_mrr_mom_pct": "a month-over-month change: a period-asked figure",
+        **{k: NAIVE for k in ("naive_total_mrr", "naive_mrr_by_plan")}}),
     "hr_roster_onerow": (1, HR, {
         "row_count": FILE, "pii_columns": FILE, "people": FILE, "rows": FILE,
         "separations_12m_spells": "the spell file's count, not this file's",
@@ -157,6 +163,31 @@ def test_the_references_word_lists_are_the_packs():
         set(cond(hr, "retirements", 1).in_))
     assert set(R.SAAS_OUT) == set(cond(saas, "mrr").not_in)
     assert R.TEST_MARKER.pattern == saas.test_marker
+
+
+# ── 5.7b-2b: the readings the scorer takes from the reference, checked against truth first ──
+
+@pytest.mark.parametrize("name,cols,metric,agg,key", [
+    ("saas_mrr_snapshots", ["segment"], "mrr", "sum", "mrr_by_segment_now"),
+    ("saas_mrr_snapshots", ["month"], "mrr", "sum", "churned_mrr_by_month_window"),
+    ("saas_subscriptions", ["segment"], "mrr", "sum", "mrr_by_segment"),
+    ("saas_subscriptions", ["plan"], "mrr", "sum", "mrr_by_plan"),
+    ("hr_roster", ["Department"], "Annual_Salary", "mean", "avg_salary_by_dept_asof"),
+    ("hr_roster", ["Department"], "FTE", "count", "headcount_by_dept_asof"),
+    ("hr_snapshots", ["Department"], "Base_Salary", "mean", "avg_salary_by_dept_asof"),
+])
+def test_a_level_by_a_column_is_one_of_the_references_readings(name, cols, metric, agg, key):
+    from evals.reference_kpis import reference_by
+    df, truth = datagen.make(name, 4 if name == "hr_snapshots" else 1)
+    readings = reference_by(name, df, cols, metric, agg)
+    assert any({k: v for k, v in r.items() if k != "Overall"} == pytest.approx(truth[key])
+               for r in readings), (readings, truth[key])
+
+
+def test_a_column_that_is_no_level_has_no_reading():
+    from evals.reference_kpis import reference_by
+    df, _ = datagen.make("hr_roster", 1)
+    assert reference_by("hr_roster", df, ["Department"], "Performance_Rating", "mean") == []
 
 
 # ── 5.7b-2b (C3): the ledger's lines and transfer moves, from GLOSSARY Move ──────────────────

@@ -537,7 +537,8 @@ def test_a_group_of_former_rows_scores_its_own_reading():
     seg = SegmentResult(segment_column="status", metric_column="mrr", aggregation="mean",
                         results=[{"name": k, "value": float(v)} for k, v in m.items() if k == "canceled"])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         ("saas_subscriptions", datagen.make("saas_subscriptions", 1)[0]))
     assert out["false"] == 0
 
 
@@ -552,7 +553,8 @@ def test_a_mixed_groups_former_rows_alone_are_false():
     seg = SegmentResult(segment_column="plan", metric_column="mrr", aggregation="mean",
                         results=[{"name": k, "value": float(v)} for k, v in gone.items()])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         ("saas_subscriptions", datagen.make("saas_subscriptions", 1)[0]))
     now = df[f["in_force_now"] == "yes"].groupby("plan")["mrr"].mean()
     mixed = [k for k in gone.index if k in now.index and abs(gone[k] - now[k]) > 0.01 * abs(now[k])]
     assert mixed and out["false"] == len(mixed)

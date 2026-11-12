@@ -568,8 +568,38 @@ def test_a_levels_count_and_mean_on_a_spell_list_are_per_customer():
                           results=[{"name": k, "value": float(v)} for k, v in s.items()])
             for a, s in (("count", n), ("mean", arpa))]
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=segs,
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         _spell("saas_subscriptions"))
     assert out["false"] == 0 and out["verifiable"] == 6
+
+
+def test_a_kept_move_breakdown_is_scored_against_the_references_moves_by_month():
+    """5.7b-2b (C4, PR1-04): the scorer skipped every sum of a level as unverifiable. On spell
+    data a sum production kept is a move the question named (churned MRR by month): scored
+    against the reference's moves by month, so a wrong one is false."""
+    import pandas as pd
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df, truth = datagen.make("saas_mrr_snapshots", 1)
+    df["month"] = pd.to_datetime(df["month"])
+    churn = truth["churned_mrr_by_month_window"]
+
+    def ff(k):
+        seg = SegmentResult(segment_column="month", metric_column="mrr", aggregation="sum",
+                            results=[{"name": m, "value": v * k} for m, v in churn.items() if v])
+        return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                              _spell("saas_mrr_snapshots"))
+    n = sum(1 for v in churn.values() if v)
+    assert (ff(1.0)["false"], ff(1.0)["verifiable"]) == (0, n)
+    assert ff(0.71)["false"] == n   # (x1.13 puts May 2026 on its new MRR: a true number)
+
+
+def _spell(name: str) -> tuple:
+    """The (dataset, raw frame) evals.run hands the scorer on spell data: the reference reads it."""
+    from evals import datagen
+    return name, datagen.make(name, 1)[0]
 
 
 def test_a_level_on_spell_data_read_over_every_row_is_false():
@@ -582,13 +612,15 @@ def test_a_level_on_spell_data_read_over_every_row_is_false():
     seg = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="count",
                         results=[{"name": k, "value": float(v)} for k, v in allrows.items()])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         _spell("saas_subscriptions"))
     assert out["false"] == 3
 
 
 def test_a_churned_customers_mean_by_month_is_checked_both_ways():
     """Final re-measure saas-8: mean churned MRR per churned customer by month equals truth and is
-    accepted; the same values x1.07 are false."""
+    accepted; the same values x1.13 are false. (x1.07 puts Sep within 1% of its new MRR per new
+    customer, $804.01: since 5.7b-2b the scorer reads every move's mean by month, a true number.)"""
     import pandas as pd
     from evals import datagen
     from evals.scoring import false_findings
@@ -604,8 +636,9 @@ def test_a_churned_customers_mean_by_month_is_checked_both_ways():
         seg = SegmentResult(segment_column="month", metric_column="mrr", aggregation="mean",
                             results=[{"name": n, "value": float(x) * k} for n, x in right.items()])
         return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                               anomalies=[], statistical_tests=[], code_executed=""), df, {})
-    assert ff(1.0)["false"] == 0 and ff(1.07)["false"] == 3
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                              _spell("saas_mrr_snapshots"))
+    assert ff(1.0)["false"] == 0 and ff(1.13)["false"] == 3
 
 
 def test_an_in_force_mean_by_month_is_accepted():
@@ -622,5 +655,6 @@ def test_an_in_force_mean_by_month_is_accepted():
     seg = SegmentResult(segment_column="Hire_Date", metric_column="Annual_Salary", aggregation="mean",
                         results=[{"name": k, "value": float(v)} for k, v in m.items()])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         _spell("hr_roster"))
     assert out["false"] == 0 and out["verifiable"] == len(m)
