@@ -37,10 +37,10 @@ CASES = {
                               "mrr_one_subscription_each", "churn_counting_cancel_at",
                               "mrr_with_test_and_eur", "customers_as_rows")}}),
     "saas_mrr_snapshots": (1, {**LEDGER, "mrr_by_segment_now": "mrr_by_segment",
-                               "nrr_by_segment_at_cohort": "nrr_by_segment"}, {
+                               "nrr_by_segment_at_cohort": "nrr_by_segment",
+                               "churned_mrr_by_month_window": "churned_mrr_by_month"}, {
         "row_count": FILE, "pii_columns": FILE,
         "churned_mrr_by_month": "per-month breakdown over all history: a period-asked figure",
-        "churned_mrr_by_month_window": "per-month breakdown: a period-asked figure",
         "biggest_churn_month": "derived from the per-month breakdown",
         "northwind_share_of_big_month": "a planted-story ratio, not a KPI",
         "monthly_logo_churn_by_month": "a monthly rate, not a pack KPI",
@@ -151,3 +151,81 @@ def test_the_references_word_lists_are_the_packs():
         set(cond(hr, "retirements", 1).in_))
     assert set(R.SAAS_OUT) == set(cond(saas, "mrr").not_in)
     assert R.TEST_MARKER.pattern == saas.test_marker
+
+
+# ── 5.7b-2b (C3): the ledger's lines and transfer moves, from GLOSSARY Move ──────────────────
+
+def _book(*months) -> "pd.DataFrame":
+    """An MRR export over Sep and Oct 2026: each month's (customer, MRR, segment) rows."""
+    import pandas as pd
+    return pd.DataFrame([(pd.Timestamp(f"2026-{9 + i}-01"), c, v, s)
+                         for i, rows in enumerate(months) for c, v, s in rows],
+                        columns=["month", "customer_id", "mrr", "segment"])
+
+
+MOVED = ["new_mrr", "expansion_mrr", "reactivation_mrr", "transfer_in_mrr"]
+LOST = ["contraction_mrr", "churned_mrr", "transfer_out_mrr"]
+
+
+@pytest.mark.parametrize("sep,oct_,want", [
+    # 1. SMB 100 → Ent 100: moved, no new, no churn
+    ([("c0", 100.0, "SMB")], [("c0", 100.0, "Ent")],
+     {"transfer_out_mrr": {"SMB": 100}, "transfer_in_mrr": {"Ent": 100}}),
+    # 2. SMB 100 → Ent 60: 60 moved, the 40 lost in the part that fell
+    ([("c0", 100.0, "SMB")], [("c0", 60.0, "Ent")],
+     {"transfer_out_mrr": {"SMB": 60}, "transfer_in_mrr": {"Ent": 60}, "contraction_mrr": {"SMB": 40}}),
+    # 3. SMB 100 → Ent 150: 100 moved, the 50 grown in the part that rose
+    ([("c0", 100.0, "SMB")], [("c0", 150.0, "Ent")],
+     {"transfer_out_mrr": {"SMB": 100}, "transfer_in_mrr": {"Ent": 100}, "expansion_mrr": {"Ent": 50}}),
+    # 4. SMB 100 + Mid 100 → Ent 150: 150 moved, 75 out of each; the 50 lost, 25 in each
+    ([("c0", 100.0, "SMB"), ("c0", 100.0, "Mid")], [("c0", 150.0, "Ent")],
+     {"transfer_out_mrr": {"SMB": 75, "Mid": 75}, "transfer_in_mrr": {"Ent": 150},
+      "contraction_mrr": {"SMB": 25, "Mid": 25}}),
+    # 5. a churn where it was, a new one where it starts; nothing moved
+    ([("c0", 100.0, "SMB")], [("c1", 50.0, "Ent")],
+     {"churned_mrr": {"SMB": 100}, "new_mrr": {"Ent": 50}}),
+])
+def test_a_customer_who_moves_segment_moves_between_their_bridges(sep, oct_, want):
+    got = reference("book_mrr_export", _book(sep, oct_))
+    for k in MOVED + LOST:
+        assert {s: v for s, v in got[f"{k}_by_segment"].items() if v} == pytest.approx(want.get(k, {})), k
+    assert got["transfer_in_mrr"] == got["transfer_out_mrr"]   # 7. nothing moves in the whole
+
+
+def test_a_mover_is_no_churned_or_new_customer():
+    """6. a count: c0 moved segment, c1 added a second segment and kept the first. Neither is a
+    new or a churned customer."""
+    got = reference("book_mrr_export", _book([("c0", 100.0, "SMB"), ("c1", 50.0, "SMB")],
+                                              [("c0", 100.0, "Ent"), ("c1", 50.0, "SMB"),
+                                               ("c1", 50.0, "Ent")]))
+    assert (got["new_customers"], got["churned_customers"]) == (0, 0)
+    assert got["expansion_mrr"] == 50 and got["expansion_mrr_by_segment"] == {"Ent": 50}
+
+
+def test_churned_mrr_by_month_and_its_mean_per_customer():
+    got = reference("book_mrr_export", _book([("c0", 100.0, "SMB"), ("c1", 50.0, "SMB"),
+                                              ("c2", 10.0, "SMB")], [("c2", 10.0, "SMB")]))
+    assert got["churned_mrr_by_month"] == {"2026-10": 150} and got["churned_customers_by_month"] == {"2026-10": 2}
+    assert got["churned_mrr_mean_by_month"] == {"2026-10": 75}
+
+
+def test_the_references_segment_bridge_adds_up_on_every_book():
+    """The reference against the generator first (P1's books, concurrent rows and movers
+    included): each segment opens on its lines, and its moves, transfers in and out included,
+    end at its MRR."""
+    from hypothesis import given
+
+    from tests.test_properties import mrr_books
+
+    @given(mrr_books())
+    def check(df):
+        got = reference("book_mrr_export", df)
+        if got["new_mrr"] is None:   # one month of data: no moves
+            return
+        segs = set(got["mrr_by_segment"]) | set(got["opening_mrr_by_segment"])
+        for s in segs:
+            built = got["opening_mrr_by_segment"].get(s, 0) + sum(
+                got[f"{k}_by_segment"].get(s, 0) for k in MOVED) - sum(
+                got[f"{k}_by_segment"].get(s, 0) for k in LOST)
+            assert got["mrr_by_segment"].get(s, 0) == pytest.approx(built), s
+    check()

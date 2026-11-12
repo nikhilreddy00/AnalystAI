@@ -38,6 +38,7 @@ TEST_MARKER = re.compile(r"(?i)^cus_test|@example\.(?:com|org|net)$|^test(?:@|\+
                          r"|@test\.")
 INTERVAL_MONTHS = {"month": 1, "year": 12}
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
+TRANSFERS = ("transfer_in", "transfer_out")   # a move between parts: nothing in the whole
 
 
 def _blank(v) -> bool:
@@ -250,41 +251,70 @@ def history(rows: list[dict], spec: Spec, lo, month_ends) -> list[pd.Timestamp]:
     return sorted(points)
 
 
-def moves(ledger: dict, points: list, lo) -> dict | None:
-    """Each entity's change between consecutive points whose later point is after lo: new (from
-    0, never in force before), reactivation (from 0, in force at an earlier point), expansion,
-    contraction, churn (to 0). Counted in the segment of the later row (a churn: the earlier).
-    None when no point is after lo (one month of data: GLOSSARY Unavailable, 'no month of
-    moves'; never $0)."""
+def _lines(rs: list[dict], part) -> dict:
+    """An entity's ledger lines at a date: part -> its rows' values summed (GLOSSARY, Ledger)."""
+    out: dict = {}
+    for r in rs:
+        out[part(r)] = out.get(part(r), 0.0) + r["value"]
+    return out
+
+
+def moves(ledger: dict, points: list, lo, part=lambda r: str(r["segment"])) -> dict | None:
+    """Each entity's change between consecutive points whose later point is after lo (GLOSSARY,
+    Move). Per entity, its lines' rises and falls across parts are matched first: the matched
+    amount is a transfer (out of the parts that fell, into the parts that rose, each in
+    proportion to its own rise or fall). The rest is classed on the entity's whole value: new
+    (from 0, never in force before), reactivation (from 0, in force at an earlier point),
+    expansion, contraction, churn (to 0), booked in the parts that moved, in proportion. `count`
+    counts entities per kind (a transfer is no entity's move in the whole). `by_month` keys a
+    move by its later point's month. None when no point is after lo (one month of data: GLOSSARY
+    Unavailable, 'no month of moves'; never $0)."""
     if not any(b > lo for b in points):
         return None
-    amount = {k: 0.0 for k in MOVES}
+    kinds = (*MOVES, *TRANSFERS)
+    amount = {k: 0.0 for k in kinds}
     count = {k: 0 for k in MOVES}
-    by_seg: dict = {k: {} for k in MOVES}
+    by_seg: dict = {k: {} for k in kinds}
+    by_month: dict = {k: {} for k in MOVES}
+    n_month: dict = {k: {} for k in MOVES}
     seen: set = set()
     for a, b in zip(points, points[1:]):
         va, vb = ledger[a], ledger[b]
         seen |= set(va)
         if b <= lo:
             continue
+        month = f"{b:%Y-%m}"
+        for name in MOVES:   # every month of moves, a month with none at 0
+            by_month[name].setdefault(month, 0.0)
+            n_month[name].setdefault(month, 0)
         for c in set(va) | set(vb):
-            x = _value(va[c]) if c in va else 0.0
-            y = _value(vb[c]) if c in vb else 0.0
-            if x == 0 and y > 0:
-                kind, amt = ("reactivation" if c in seen else "new"), y
-            elif x > 0 and y == 0:
-                kind, amt = "churn", x
-            elif y > x:
-                kind, amt = "expansion", y - x
-            elif y < x:
-                kind, amt = "contraction", x - y
-            else:
-                continue
-            seg = _segment(va[c] if kind == "churn" else vb[c])
-            amount[kind] += amt
-            count[kind] += 1
-            by_seg[kind][seg] = by_seg[kind].get(seg, 0.0) + amt
-    return {"amount": amount, "count": count, "by_segment": by_seg}
+            xa, yb = _lines(va.get(c, []), part), _lines(vb.get(c, []), part)
+            x, y = sum(xa.values()), sum(yb.values())
+            d = {k: yb.get(k, 0.0) - xa.get(k, 0.0) for k in set(xa) | set(yb)}
+            up = sum(v for v in d.values() if v > 0)
+            down = sum(-v for v in d.values() if v < 0)
+            matched = min(up, down)
+            rise = ("reactivation" if c in seen else "new") if x == 0 else "expansion"
+            fall = "churn" if y == 0 else "contraction"
+            booked: dict = {}
+            for k, v in d.items():
+                if v == 0:
+                    continue
+                side, kind, size, total = (("transfer_in", rise, v, up) if v > 0
+                                           else ("transfer_out", fall, -v, down))
+                moved = size * matched / total
+                for name, amt in ((side, moved), (kind, size - moved)):
+                    if amt:
+                        amount[name] += amt
+                        by_seg[name][k] = by_seg[name].get(k, 0.0) + amt
+                        booked[name] = booked.get(name, 0.0) + amt
+            for name in MOVES:
+                if booked.get(name):
+                    count[name] += 1
+                    by_month[name][month] = by_month[name].get(month, 0.0) + booked[name]
+                    n_month[name][month] = n_month[name].get(month, 0) + 1
+    return {"amount": amount, "count": count, "by_segment": by_seg, "by_month": by_month,
+            "count_by_month": n_month}
 
 
 def cohort(opening: dict, closing: dict) -> dict:
@@ -332,8 +362,18 @@ def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
         out[money] = mv["amount"][kind] if mv else None
         out[n] = mv["count"][kind] if mv else None
         out[f"{money}_by_segment"] = mv["by_segment"][kind] if mv else {}
+        out[f"{money}_by_month"] = mv["by_month"][kind] if mv else {}
+        out[f"{n}_by_month"] = mv["count_by_month"][kind] if mv else {}
+        out[f"{money}_mean_by_month"] = {m: v / mv["count_by_month"][kind][m]
+                                         for m, v in mv["by_month"][kind].items()
+                                         if mv["count_by_month"][kind][m]} if mv else {}
+    for kind in TRANSFERS:   # 0 in the whole; each segment's own in and out
+        out[f"{kind}_mrr"] = mv["amount"][kind] if mv else None
+        out[f"{kind}_mrr_by_segment"] = mv["by_segment"][kind] if mv else {}
     for col in spec.groups:
         out[f"mrr_by_{col}"] = by_column(now, col)
+    if spec.segment:   # a segment bridge opens on its lines (a cohort places by the opening row)
+        out["opening_mrr_by_segment"] = by_column(ledger[lo], spec.segment) if lo < at else {}
     return out
 
 
