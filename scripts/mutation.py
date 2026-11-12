@@ -17,7 +17,8 @@ and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed li
 with NEW in a worktree and runs the tests: caught = a test failed.
 
 Leave tests/test_one_definition.py out of --tests: its guards read source files, and mutmut's
-rewritten ones fail them before any mutant runs. Commit first: the worktree is HEAD. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
+rewritten ones fail them before any mutant runs. The worktree is HEAD, so a run refuses an
+uncommitted source or test file it reads. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
 (this script adds the test selection). Exit 1 when a function has a mutant that survived or
 that no selected test reached, or when mutmut itself fails."""
 import argparse
@@ -105,10 +106,10 @@ def changed_functions(ref: str) -> list[str]:
                    for name in functions_touching((ROOT / f).read_text(), lines)})
 
 
-def mutant_lines(mutated: str, source: str) -> dict[str, int]:
-    """Each mutant in mutmut's generated file → the source line it changes: its function's def
-    line in `source` plus the first line where it differs from the unmutated copy
-    (`…__mutmut_orig`). One parse per file, never a `mutmut show` per mutant."""
+def mutant_lines(mutated: str, source: str) -> dict[str, tuple[int, str, str]]:
+    """Each mutant in mutmut's generated file → (the source line it changes, that line before,
+    after): its function's def line in `source` plus the first line where it differs from the
+    unmutated copy (`…__mutmut_orig`). One parse per file, never a `mutmut show` per mutant."""
     lines = mutated.splitlines()
     spans = {}
     for node in ast.parse(mutated).body:
@@ -132,8 +133,24 @@ def mutant_lines(mutated: str, source: str) -> dict[str, int]:
         a, b = [orig[0].replace(f"{base}__mutmut_orig", base), *orig[1:]], \
             [body[0].replace(name, base), *body[1:]]
         i = next((k for k, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
-        out[name] = defs[_function(name)] + i
+        out[name] = (defs[_function(name)] + i, *((x[i].strip() if i < len(x) else "")
+                                                   for x in (a, b)))
     return out
+
+
+def uncommitted(paths: list[str], root: Path = ROOT) -> list[str]:
+    """The paths (a test node id reads as its file) that differ from HEAD or are untracked: the
+    worktree is HEAD, so a run would silently read their committed copy, or none."""
+    files = [p.split("::", 1)[0] for p in paths]
+    out = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", *files],
+                         capture_output=True, text=True, check=True).stdout
+    return sorted(line[3:] for line in out.splitlines())
+
+
+def _refuse_uncommitted(paths: list[str]) -> None:
+    if dirty := uncommitted(paths):
+        print("uncommitted (the run reads HEAD): commit first: " + " ".join(dirty), file=sys.stderr)
+        raise SystemExit(2)   # 1 means a missed plant or a survivor
 
 
 def planted(text: str, old: str, new: str) -> str:
@@ -204,7 +221,10 @@ def main() -> int:
     if not args.tests:
         ap.error("--tests is required")
     if args.plant:
+        _refuse_uncommitted([args.plant[0], *args.tests])
         return plant(*args.plant, args.tests, args.keyword)
+    _refuse_uncommitted([*tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]
+                         ["source_paths"], *args.tests])
     if args.changed_since:
         args.functions = sorted({*args.functions, *changed_functions(args.changed_since)})
         print(f"changed since {args.changed_since}: {' '.join(args.functions) or '(none)'}")
@@ -232,9 +252,9 @@ def main() -> int:
             for f, lines in changed.items():
                 if (mutated := wt / "mutants" / f).is_file():
                     module = f.removesuffix(".py").replace("/", ".")
-                    placed |= {f"{module}.{k}": (f, n) for k, n in
+                    placed |= {f"{module}.{k}": (f, *m) for k, m in
                                mutant_lines(mutated.read_text(), (wt / f).read_text()).items()
-                               if n in lines and _function(k) in args.functions}
+                               if m[0] in lines and _function(k) in args.functions}
             globs = sorted(placed) or ["no_such_mutant"]
             print(f"{len(placed)} mutants on lines changed since {args.lines}")
         run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt,
@@ -247,8 +267,9 @@ def main() -> int:
             on = sorted(k for m in metas for k, c in m.get("exit_code_by_key", {}).items()
                         if c in SURVIVED | NO_TESTS and k in placed)
             print(f"survivors on lines changed since {args.lines}: {len(on)}")
-            for k in on:
-                print(f"  {placed[k][0]}:{placed[k][1]}  {k}")
+            for k in on:   # the changed line itself: no `mutmut show` needed to judge it
+                f, n, old, new = placed[k]
+                print(f"  {f}:{n}  {k}\n    - {old}\n    + {new}")
     got = {f: got.get(f, {"score": None}) for f in args.functions}
     print(f"mutation scores at {head} (tests: {' '.join(args.tests)})")
     for f, c in got.items():
