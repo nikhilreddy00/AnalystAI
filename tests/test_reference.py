@@ -133,6 +133,11 @@ def test_the_reference_equals_the_product_on_every_spell_dataset(name):
     assert len(both) >= 5, both
     for k in both:
         assert dp.compute_kpi(df, roles, pack, k) == pytest.approx(ref[k], rel=1e-9), k
+    seg = roles.get("segment")   # 5.7b-2b (C3): each segment's moves, transfers in and out included
+    for k in (k for k in both if seg and f"{k}_by_segment" in ref and k.endswith("_mrr")):
+        got = dp.compute_kpi(df, roles, pack, k, by=seg)
+        assert {s: v for s, v in got.items() if v} == pytest.approx(
+            {s: v for s, v in ref[f"{k}_by_segment"].items() if v}, rel=1e-9), k
 
 
 def test_the_references_word_lists_are_the_packs():

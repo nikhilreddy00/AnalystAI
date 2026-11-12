@@ -367,7 +367,7 @@ def test_a_model_breakdown_of_a_money_column_is_recomputed_from_its_rows():
         results=[{"name": str(k), "value": float(v)} for k, v in naive.items()])])
     rows, _ = domain_pack.rows_for(clean, contract, "Amount")
     assert len(rows) < len(clean)   # the trap is there
-    assert repair_breakdowns(f, clean, contract)
+    assert repair_breakdowns(f, clean, contract, None)
     assert close(segment({"segments": [s.model_dump() for s in f.segments]}, by, "Amount", "sum"),
                  rows.groupby(by)["Amount"].sum().round(4).to_dict())
     # the model's own filter (a quarter, spend only) answers the question: left as it is
@@ -376,7 +376,7 @@ def test_a_model_breakdown_of_a_money_column_is_recomputed_from_its_rows():
                          forecast_points=[], distributions={}, code_executed="", segments=[SegmentResult(
                              segment_column=by, metric_column="Amount", aggregation="sum",
                              results=[{"name": str(k), "value": float(v)} for k, v in spend.items()])])
-    assert repair_breakdowns(g, clean, contract) == []
+    assert repair_breakdowns(g, clean, contract, None) == []
     assert g.segments[0].results[0]["value"] == float(spend.iloc[0])
 
 
@@ -404,7 +404,7 @@ def test_a_model_trend_the_built_ins_dont_make_says_who_computed_it():
                          forecast_points=[], distributions={}, code_executed="", trends=[
         TrendResult(column="Amount", period="QoQ", pct_change=3.0, direction="up"),
         TrendResult(column="Amount", period="MoM", pct_change=1.0, direction="up")])
-    notes = repair_breakdowns(f, clean, contract, builtin={"trend:Amount:MoM"})
+    notes = repair_breakdowns(f, clean, contract, None, builtin={"trend:Amount:MoM"})
     assert len(notes) == 1 and notes[0].startswith("Amount QoQ: computed by the model's own code")
 
 

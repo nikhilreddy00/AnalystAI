@@ -114,12 +114,12 @@ def test_a_model_finding_that_sums_a_level_is_recomputed_not_failed():
     seg = SegmentResult(segment_column="segment", metric_column="balance", aggregation="sum",
                         results=[{"name": k, "value": float(v)} for k, v in summed.items()])
     f = _findings(segments=[seg])
-    notes = repair_breakdowns(f, df, _bank_contract())
+    notes = repair_breakdowns(f, df, _bank_contract(), None)
     latest = df[df.snapshot_date == df.snapshot_date.max()].groupby("segment").balance.sum()
     assert notes and {r["name"]: r["value"] for r in f.segments[0].results} == pytest.approx(
         latest.to_dict()) and f.segments[0].aggregation == "last"
     gone = _findings(segments=[seg.model_copy(update={"aggregation": "sum"})])
-    assert repair_breakdowns(gone, df.drop(columns="account_id"), _bank_contract()) and not gone.segments
+    assert repair_breakdowns(gone, df.drop(columns="account_id"), _bank_contract(), None) and not gone.segments
 
 
 def test_charts_of_a_summed_level_finding_show_the_current_total():
@@ -292,7 +292,10 @@ def test_a_breakdown_for_a_stated_period_is_dropped_not_replaced_by_today():
     df, _ = datagen.make("bank_balances", 1)
     f = _findings(segments=[SegmentResult(segment_column="segment", metric_column="balance",
                                           aggregation="sum", results=[{"name": "b", "value": 1.0}])])
-    notes = repair_breakdowns(f, df, _bank_contract(), timeframe="2026-Q2")
+    from orchestrator.state import AnalysisTask
+    task = AnalysisTask(raw_query="Balance by segment in 2026-Q2", target_metrics=["balance"],
+                        analysis_types=["segmentation"], timeframe="2026-Q2")
+    notes = repair_breakdowns(f, df, _bank_contract(), task)
     assert not f.segments and "2026-Q2" in notes[0]
 
 

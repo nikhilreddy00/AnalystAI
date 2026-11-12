@@ -129,28 +129,54 @@ def test_cohort_rates_by_group_equal_truth():
     assert by.to_dict() == pytest.approx(t["logo_churn_by_segment"])
 
 
+def _task(question: str):
+    from orchestrator.state import AnalysisTask
+    return AnalysisTask(raw_query=question, target_metrics=["mrr"], analysis_types=["segmentation"])
+
+
+def _findings(*segments):
+    from orchestrator.state import AnalysisFindings
+    return AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=list(segments),
+                            anomalies=[], statistical_tests=[], code_executed="")
+
+
 def test_a_breakdown_of_part_of_a_level_is_never_replaced_by_the_level():
     """Smoke run saas-8 (lesson 13): the model's churned MRR by month (a part of MRR, filed under
     the mrr column) was replaced four times by MRR by month, a level_recomputed repair meant for a
-    level summed over every snapshot. A summed level is at least the level in every group; a
-    churned, new or changed part is below it, and is the model's own meaning."""
+    level summed over every snapshot. The question names a move (churned MRR): the breakdown is
+    that move, the model's own meaning (GLOSSARY Move breakdown)."""
     from agents.analysis_agent import repair_breakdowns
-    from orchestrator.state import AnalysisFindings, SegmentResult
+    from orchestrator.state import SegmentResult
     df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
     churn = SegmentResult(segment_column="month", metric_column="mrr", aggregation="sum", results=[
         {"name": f"{k}-01", "value": v} for k, v in t["churned_mrr_by_month_window"].items()])
-    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[churn], anomalies=[],
-                         statistical_tests=[], code_executed="")
-    repair_breakdowns(f, df, contract)
+    f = _findings(churn)
+    repair_breakdowns(f, df, contract, _task("How much MRR did we lose to churned customers each "
+                                             "month over the last 12 months?"))
     assert {r["name"]: r["value"] for r in f.segments[0].results} == {
         f"{k}-01": v for k, v in t["churned_mrr_by_month_window"].items()}
     naive = df.groupby("segment")["mrr"].sum()   # the bug it is for: MRR summed over 24 months
     summed = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="sum",
                            results=[{"name": k, "value": float(v)} for k, v in naive.items()])
-    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[summed], anomalies=[],
-                         statistical_tests=[], code_executed="")
-    assert repair_breakdowns(f, df, contract)
+    f = _findings(summed)
+    assert repair_breakdowns(f, df, contract, _task("What is MRR by segment?"))
     assert {r["name"]: r["value"] for r in f.segments[0].results} == pytest.approx(t["mrr_by_segment_now"])
+
+
+def test_a_low_level_by_month_with_no_move_asked_is_the_level():
+    """5.7b-2b (C4, PR1-04): the repair kept any breakdown below the level as "a part of it", so a
+    model's MRR by month that summed half the customers was kept. The question names no move: it
+    is the level by month, whatever the values (decided by the question, never by the value)."""
+    from agents.analysis_agent import repair_breakdowns
+    from agents.utils import aggregate
+    from orchestrator.state import SegmentResult
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    level = aggregate(df, ["month"], "mrr", "last", contract)
+    low = SegmentResult(segment_column="month", metric_column="mrr", aggregation="sum",
+                        results=[{"name": str(k), "value": float(v) / 2} for k, v in level.items()])
+    f = _findings(low)
+    assert repair_breakdowns(f, df, contract, _task("What was MRR each month?"))
+    assert [r["value"] for r in f.segments[0].results] == pytest.approx([float(v) for v in level])
 
 
 def test_in_force_now_is_the_mrr_tiles_own_rows():

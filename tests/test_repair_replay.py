@@ -43,11 +43,12 @@ def _frame(cid: str):
 @pytest.mark.parametrize("report, cid, i, output", _stored(), ids=lambda x: x if isinstance(x, str) else "")
 def test_a_passing_breakdown_is_left_as_it_is(report, cid, i, output):
     from agents.analysis_agent import repair_breakdowns
-    from orchestrator.state import AnalysisFindings
+    from orchestrator.state import AnalysisFindings, AnalysisTask
     f = AnalysisFindings.model_validate(output)
     before = [s.model_dump() for s in f.segments]
     df, contract = _frame(cid)
-    repair_breakdowns(f, df, contract)
+    case = _cases()[cid]   # the question the stored run answered (C4: a move asked is kept)
+    repair_breakdowns(f, df, contract, AnalysisTask(raw_query=case["question"], **case["task"]))
     after = [s.model_dump() for s in f.segments]
     if (report, cid) not in CHANGED:   # a named one may be corrected; nothing else moves
         assert after == before

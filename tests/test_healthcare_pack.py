@@ -366,7 +366,7 @@ def test_a_breakdown_of_a_date_column_never_crashes_the_repair():
                         results=[{"name": "A", "value": 3.5}, {"name": "B", "value": 2.0}])
     f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg], anomalies=[],
                          statistical_tests=[], forecast_points=[], distributions={}, code_executed="")
-    assert repair_breakdowns(f, df, build_contract(df, ConnectorType.CSV)) == []
+    assert repair_breakdowns(f, df, build_contract(df, ConnectorType.CSV), None) == []
     assert f.segments[0].results[0]["value"] == 3.5
 
 
