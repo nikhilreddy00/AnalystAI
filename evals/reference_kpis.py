@@ -343,11 +343,17 @@ def cohort(opening: dict, closing: dict) -> dict:
     return {**one(list(opening)), "by_segment": {s: one(ids) for s, ids in segs.items()}}
 
 
-def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
-    if spec.snapshot:   # a move or a cohort needs a known state: from the first snapshot on
+def ledger_at(rows: list[dict], spec: Spec, lo, month_ends) -> tuple:
+    """(lo, points, ledger): the in-force map at every ledger point. A move or a cohort needs a
+    known state: on snapshots, from the first snapshot on."""
+    if spec.snapshot:
         lo = max(lo, min(r["snap"] for r in rows if r["snap"] is not None))
     points = history(rows, spec, lo, month_ends)
-    ledger = {t: in_force(rows, spec, t) for t in points}
+    return lo, points, {t: in_force(rows, spec, t) for t in points}
+
+
+def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
+    lo, points, ledger = ledger_at(rows, spec, lo, month_ends)
     mv = moves(ledger, points, lo)
     # a cohort needs a span: one month of data opens and ends on the same date (no rate there:
     # GLOSSARY Unavailable, never a 0% churn)
@@ -485,13 +491,15 @@ def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg:
             return r["value"]   # the entity's own value (a list's MRR from its price)
         return None if _blank(r["row"].get(metric)) else float(r["row"][metric])
 
+    def key(r) -> str:
+        return "|".join(f"{_date(r['row'][k]):%Y-%m}" if k in months and _date(r["row"][k])
+                        else str(r["row"][k]) for k in cols)
+
     vals: dict = {}
     ents: dict = {}
     for c, rs in now.items():
         for r in rs:
-            key = "|".join(f"{_date(r['row'][k]):%Y-%m}" if k in months and _date(r["row"][k])
-                           else str(r["row"][k]) for k in cols)
-            for k in (key, "Overall"):
+            for k in (key(r), "Overall"):
                 if (v := value(r)) is not None:
                     vals.setdefault(k, []).append(v)
                 ents.setdefault(k, set()).add(c)
@@ -499,10 +507,17 @@ def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg:
     if agg in ("count", "mean"):   # per entity: customers, MRR per customer
         out.append({k: (len(ents[k]) if agg == "count" else sum(vals.get(k, [])) / len(ents[k]))
                     for k in ents})
-    if agg in ("sum", "mean") and len(cols) == 1 and metric == spec.levels[0] and spec.money:
-        got = reference(name, df, today)
-        for n in ("new", "expansion", "contraction", "churned", "reactivation"):
-            out.append(got.get(f"{n}_mrr_{'mean_' if agg == 'mean' else ''}by_month") or {})
+    if agg in ("sum", "mean") and metric == spec.levels[0] and spec.money:   # the value's moves
+        if len(cols) == 1:   # by month ('YYYY-MM': a month column's groups)
+            got = reference(name, df, today)
+            for n in ("new", "expansion", "contraction", "churned", "reactivation"):
+                out.append(got.get(f"{n}_mrr_{'mean_' if agg == 'mean' else ''}by_month") or {})
+        if agg == "sum" and not set(cols) & set(months):   # by the groups, each line its group
+            # (GLOSSARY Move, transfers too)
+            lo, _, month_ends = window(rows, spec, at)
+            lo, points, ledger = ledger_at(rows, spec, lo, month_ends)
+            mv = moves(ledger, points, lo, part=key)
+            out += [mv["by_segment"][k] for k in (*MOVES, *TRANSFERS)] if mv else []
     return [o for o in out if o]
 
 

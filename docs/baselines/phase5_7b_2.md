@@ -176,7 +176,7 @@ The red-team found 3 blockers, 8 majors and 7 minors, all folded in. Spend: $0.
 | xfail-strict known failures | 3: C3 P1 per-segment, PR7-01 (C1), PR7-03 (C2, for 2c) |
 | golden | 53 passed |
 | `domain_diff.py main` | every dataset identical |
-| `snapshot text main` | see below |
+| `snapshot text main` | 0 distinct changes |
 | Majors per class (ledger) | C1 30 rows, 9 unenforced; C3 1, 0; C4 2, 1 |
 
 The worktree needed `uv sync --all-extras --all-groups`: a fresh worktree's venv has no
@@ -192,3 +192,101 @@ pytest-asyncio, and the golden fails 52 of 53 without it.
   - Opening cohort says a cohort places its entities by their opening row.
 - `source_paths` gains `agents/analysis_agent.py` and `evals/scoring.py`. The reference oracle
   stays out: the generators check it, and mutating the truth against the product is circular.
+
+### What was built
+- **C1, one `term_rows`** (`domain_pack/spell.py`, beside `_in_force`).
+  - It returns the rows a spell term reads: its row kinds, its condition, and with a date those
+    in force then.
+  - `_spell`, the ledger and `kpi.stock_rows` read it. `stock_rows` is the stock tile's rows,
+    read by the model frame's `in_force_now` / event markers (`with_spell_events`), a level by
+    group (`utils._in_force_rows`) and the story's churned entities, which read raw `_in_force`
+    before. Their copies are deleted. The owner guard names `term_rows`.
+  - A characterization test came first: on all 8 spell datasets, the marker's rows are the
+    stock tiles' rows. It passed before and after.
+  - `people_in` (the small-cell rule) is a different rule: people in force at any point of a
+    window, with no row kinds. It is left alone.
+- **PR7-01** (`_spell_events`). On snapshots with no start date and a declared monthly cadence,
+  an entity's snapshots split into runs at a missing month. A return is a hire, a month with no
+  file at all is no gap, and snapshots on each entity's own day are one month. The exit is the
+  first month a run is missing from, so the staggered-day case no longer reads a false exit. D
+  now runs the snapshot books with rehires.
+- **C3, the entity × part ledger** (`domain_pack/ledger.py`).
+  - `_ledger` keeps one line per (entity, part): in or out of a filter's part, and its `by`
+    group.
+  - `_moved` splits each step per entity. The matched fall and rise across its lines is a
+    transfer, each line's share in proportion. The rest is classed on the entity's whole value
+    and booked in the lines that moved. On a count, a part gained or lost while the entity stays
+    is a one-sided transfer.
+  - A bridge's opening reads lines. A cohort rate keeps the entity placement (decision 1, plan
+    red-team 5).
+  - SaaS gains `transfer_in_mrr` / `transfer_out_mrr` (non-tile, 0 on a whole book).
+  - A move by group says "<group>: $X moved in from another segment and $Y moved out to another
+    segment (customers who changed segment: never new or churned)". The words live in
+    `Spell.words.moved` (saas.yaml), and a guard keeps "transfer" out of every glossary and those
+    words.
+  - The reference has the same rule, written from GLOSSARY. It was checked against the
+    generator's churned MRR by month, the 8 scenarios and its own segment bridge on P1's books,
+    before the product was compared to it.
+- **C4** (`agents/analysis_agent.py`). `_moves_asked(task, contract)` replaces `_a_part_of`: a
+  breakdown filed under a level's column is kept when the question names a move (the task's KPI,
+  else `named_kpis`), and is otherwise the level, whatever its values. `repair_breakdowns` takes
+  the task. The replay over 8 stored reports is unchanged.
+- **The scorer reads the reference** (`evals/scoring.py`, `evals/run.py`).
+  - On `SPECS` datasets a level by group is one of `reference_by`'s readings: the rows in force
+    (any `agg`), per entity, and each move by month (amount or mean per entity). A group with
+    nobody in force reads its every row (pass 8).
+  - `_move_means`, `_per_entity` and `_populations`' `level_rows` branch are deleted.
+  - A kept sum of a level is scored against the reference's moves by month. Off spell data it
+    stays unverifiable, as before.
+  - `saas_accounts` gets a Spec, checked against its truth and the product.
+  - **Scorer change (recorded per the eval rules):** accepted readings for a level by group on
+    spell data are now the reference's. Two kinds of claim become verifiable: a kept move
+    breakdown, and every move kind's mean by month. Two test factors moved because ×1.07 and
+    ×1.13 now land on another true number (Sep new MRR per customer; May new MRR).
+
+### Flipped (the xfail marker removed in the fix's commit)
+| Class | Test | Commit |
+|---|---|---|
+| C1 | `test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire` (PR7-01) | `a27c933` |
+| C3 | `test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment`, rewritten under its name: P1's books gain concurrent rows and movers; per segment, by group, Σ in = Σ out | `e0219b5` |
+
+### Found on the way (ledger)
+- **PR9-01 (C3):** D's new per-segment check found NRR / logo churn by segment following the
+  file's row order when a customer pays in two segments at the cohort's opening (main had it
+  too). The placement is now the first group in sort order (GLOSSARY Opening cohort).
+- **domain_diff, on the branch:** a count's entity with lines in and out of a filter counted
+  twice in its cohort (logo churn by segment on a filtered dashboard moved). Fixed before merge,
+  so there is no ledger row: a count entity's value is the max of its lines, pinned by
+  `test_a_customer_with_rows_in_and_out_of_a_filter_is_one_customer_in_its_cohort`.
+
+### CHANGES (each a wrong output of a class, with its truth)
+| Where | Change | Class | Truth |
+|---|---|---|---|
+| saas_mrr_snapshots, contraction MRR by segment | SMB $4,572.22 → $3,198.54; Mid $12,850.32 → $14,224.00 | C3 | `reference(...)["contraction_mrr_by_segment"]` (`test_reference.py`, per segment) |
+| saas_mrr_snapshots, quick ratio by segment | Mid 2.53 → 2.44; SMB 1.54 → 1.63 | C3 | its contraction term (above) |
+| saas_mrr_snapshots, churned / contraction / reactivation MRR by segment | adds the lead's moved-in / moved-out sentence (Enterprise: $0.00 in, $4,191.86 out: PR1-03's "Ent −$4,192") | C3 | `reference(...)["transfer_*_mrr_by_segment"]` |
+| saas datasets (5) | two new KPIs answer: MRR moved in / out ($0.00 on a whole book; by group, each group's own) | C3 | the reference (0 in the whole) |
+
+No total moved: every whole-book number, the golden and snapshot text are unchanged.
+
+### $0 rescore (rescore, never rerun)
+The latest analysis report of every spell case (saas-1..11, hr-1..10), rescored with the new
+scorer:
+
+| Report | Runs | Pass rate | Runs whose score moved |
+|---|---|---|---|
+| `analysis-20261105T180055Z` (hr-1..10) | 30 | 1.0 → 1.0 | 0 |
+| `analysis-20261106T033628Z` (saas-5..9) | 21 | 1.0 → 1.0 | 0 |
+| `analysis-20261106T011019Z` (saas-2..4, saas-8) | 33 | 0.8485 → 0.8485 | 2 (below) |
+| `analysis-20261106T181002Z` (saas-1, 10, 11) | 3 | 1.0 → 1.0 | 0 |
+
+- **saas-8 run 1:** false findings 0/6 → 0/16. Its churned MRR by segment and plan were
+  unverifiable before (a kept sum of a level). They are the reference's numbers, so all 10 are
+  now verified true.
+- **saas-8 run 0:** false findings 0/78 → 2/81. Its SMB and Mid churned MRR by segment ($22,514.47,
+  $18,217.61) match no reading; the truth is $19,937.12 and $22,148.05. The model counted
+  customers who changed segment by its own rule, the C3 class.
+- **The rescore found a gap in the scorer change.** The first rescore marked run 1's true
+  numbers false, because `reference_by` offered moves by month only. It now offers each move by
+  any group, through the same line rule
+  (`tests/test_reference.py::test_each_move_by_a_group_is_a_reading`).

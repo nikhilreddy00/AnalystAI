@@ -184,6 +184,17 @@ def test_a_level_by_a_column_is_one_of_the_references_readings(name, cols, metri
                for r in readings), (readings, truth[key])
 
 
+def test_each_move_by_a_group_is_a_reading():
+    """The 5.7b-2b rescore: saas-8's churned MRR by segment, the reference's own numbers, was
+    scored false because the readings had moves by month only. Each move by any group is one,
+    on the same lines as the segment outputs (checked against the product on the real data)."""
+    from evals.reference_kpis import reference_by
+    df, _ = datagen.make("saas_mrr_snapshots", 1)
+    readings = reference_by("saas_mrr_snapshots", df, ["segment"], "mrr", "sum")
+    for k in ("churned_mrr", "contraction_mrr", "transfer_out_mrr"):
+        assert reference("saas_mrr_snapshots", df)[f"{k}_by_segment"] in readings, k
+
+
 def test_a_column_that_is_no_level_has_no_reading():
     from evals.reference_kpis import reference_by
     df, _ = datagen.make("hr_roster", 1)
