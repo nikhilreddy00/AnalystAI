@@ -163,3 +163,32 @@ No window change moved a number: every default window is byte-identical.
 - **Deep Hypothesis profile (500 examples):** 54 passed, 2 xfailed. One deep failure earlier in
   the session did not reproduce, and its traceback was not kept.
 - **CI:** see the PR.
+
+## 5.7b-2b: the ledger (2026-11-12)
+
+Plan: `~/.claude/plans/pasted-content-id-0e41-start-phase-structured-pizza.md`. It covers ROADMAP
+steps 2, 3 and 7, and the 2a plan's decisions 7–9. Every plan-mode step is checked off by name.
+The red-team found 3 blockers, 8 majors and 7 minors, all folded in. Spend: $0.
+
+### Measured first (main `a89b3b0`, a throwaway worktree)
+| What | Before |
+|---|---|
+| xfail-strict known failures | 3: C3 P1 per-segment, PR7-01 (C1), PR7-03 (C2, for 2c) |
+| golden | 53 passed |
+| `domain_diff.py main` | every dataset identical |
+| `snapshot text main` | see below |
+| Majors per class (ledger) | C1 30 rows, 9 unenforced; C3 1, 0; C4 2, 1 |
+
+The worktree needed `uv sync --all-extras --all-groups`: a fresh worktree's venv has no
+pytest-asyncio, and the golden fails 52 of 53 without it.
+
+### GLOSSARY (B0)
+- New: Part, Term rows, Transfer move (inside Move), Move breakdown (was "a part of the level":
+  "part" now means a figure's rows).
+- Sharpened:
+  - Ledger is one line per (entity, part).
+  - Move books its rest in the parts that moved, not "where its later row is" (the cause of
+    PR1-03).
+  - Opening cohort says a cohort places its entities by their opening row.
+- `source_paths` gains `agents/analysis_agent.py` and `evals/scoring.py`. The reference oracle
+  stays out: the generators check it, and mutating the truth against the product is circular.
