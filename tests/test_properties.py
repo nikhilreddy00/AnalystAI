@@ -444,8 +444,7 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 
 @pytest.mark.parametrize("book,pack,roles,spec", [   # broken runs too: the cadence is declared (C7)
     (*BOOKS[0], "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
-    (*BOOKS[2], "book_roster"),   # snapshots without rehires: the known C1 below (PR6-01)
-    (hr_snapshot_books(rehires=False), HR, SNAP_ROLES, "book_hr_snapshots")], ids=SHAPES)
+    (*BOOKS[2], "book_roster"), (*BOOKS[3], "book_hr_snapshots")], ids=SHAPES)
 @given(data=st.data())
 def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
     from evals.reference_kpis import reference
@@ -488,8 +487,6 @@ def test_d_a_customer_absent_from_the_newest_month_label_is_gone(months, ids):
     assert dp.compute_kpi(df, MRR_ROLES, SAAS, "mrr") == 50.0
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C1: a snapshot entity's return after a gap is no hire (5.7b-2b term_rows)")
 def test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire():
     """e3 leaves on 5 Jan 2025 and is back on 1 Nov 2025: on month-end snapshots, absent Jan to
     Oct 2025, present again from 30 Nov 2025. Hires in the 12 months to 31 Oct 2026 are 1 (the
@@ -499,6 +496,26 @@ def test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire():
                            "termination_date": pd.to_datetime([pd.NaT, "2025-01-05", pd.NaT]),
                            "department": ["Ops"] * 3, "status": ["Active", "Terminated", "Active"]})
     assert dp.compute_kpi(_snapshots(roster), SNAP_ROLES, HR, "hires") == 1
+
+
+def test_d_a_month_missing_from_the_snapshots_is_no_return():
+    """PR7-01's rule, its edge (5.7b-2b red-team): no file at all for Mar 2026. e0 and e1 are on
+    every other month-end: the April snapshot follows February's, so nobody comes back in April
+    and nobody leaves in March (hires and exits 0 in the 12 months to 31 Oct 2026)."""
+    ends = [t for t in pd.date_range("2025-01-31", "2026-10-31", freq="ME") if t.month != 3 or t.year != 2026]
+    df = pd.DataFrame([(t, e, "Ops") for t in ends for e in ("e0", "e1")],
+                      columns=["snapshot_date", "employee_id", "department"])
+    assert (dp.compute_kpi(df, SNAP_ROLES, HR, "hires"), dp.compute_kpi(df, SNAP_ROLES, HR, "separations")) == (0, 0)
+
+
+def test_d_snapshots_on_each_persons_own_day_of_the_month_are_one_run():
+    """PR7-01's rule, its edge: e0 is on the 5th of each month, e1 on the 20th (monthly, the
+    declared cadence). Neither ever leaves or comes back; e2 joins on 20 Jun 2026, a hire."""
+    rows = [(pd.Timestamp(f"{y}-{m:02d}-{d:02d}"), e) for y, m in [(2025, m) for m in range(1, 13)]
+            + [(2026, m) for m in range(1, 11)] for e, d in (("e0", 5), ("e1", 20))]
+    rows += [(pd.Timestamp(f"2026-{m:02d}-20"), "e2") for m in range(6, 11)]
+    df = pd.DataFrame(rows, columns=["snapshot_date", "employee_id"]).assign(department="Ops")
+    assert (dp.compute_kpi(df, SNAP_ROLES, HR, "hires"), dp.compute_kpi(df, SNAP_ROLES, HR, "separations")) == (1, 0)
 
 
 def test_d_one_month_of_data_has_no_moves_and_no_cohort():

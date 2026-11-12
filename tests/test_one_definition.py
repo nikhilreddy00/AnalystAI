@@ -388,7 +388,7 @@ def test_the_window_in_force_and_moves_are_defined_once():
     `def` of one of them anywhere in shared code is a second copy of the rule."""
     import ast
     owner = {**dict.fromkeys(["window", "_cut", "spell_as_of", "spell_from", "_in_force_at",
-                              "_ended", "first_known", "_month_ends"], "spell"),
+                              "_ended", "first_known", "_month_ends", "term_rows"], "spell"),
              **dict.fromkeys(["_ledger", "_ledger_term"], "ledger")}
     owner["MOVES"] = "ledger"   # the move kinds: one tuple
     owner |= {"measure": "kpi", "unavailable_words": "kpi"}   # a KPI's value and why it has none
@@ -398,6 +398,29 @@ def test_the_window_in_force_and_moves_are_defined_once():
              if isinstance(n, ast.Assign) for t in n.targets
              if isinstance(t, ast.Name) and t.id in owner]
     assert sorted(defs) == sorted((f, f"domain_pack/{m}.py") for f, m in owner.items()), defs
+
+
+@pytest.mark.parametrize("name", ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees",
+                                  "saas_subscriptions", "saas_mrr_snapshots", "subscriptions",
+                                  "saas_accounts"])
+def test_the_in_force_marker_counts_the_stock_tiles_own_rows(name):
+    """5.7b-2b (C1, PR1-01): which rows a term counts had three copies (the KPI's, the ledger's
+    and the model frame's in_force_now marker). On every spell dataset the marker's rows are
+    the stock tiles' rows: the count tile is their people, the money tile their sum."""
+    import domain_pack as dp
+    from tests.test_oracle import _built
+    _, df, contract, _ = _built(name)
+    pack = dp.pack_for(contract.domain)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    if not dp.has_spell(pack, roles):
+        pytest.skip("no spell in this data")
+    rows = df.loc[dp.in_force_counted(df, roles, pack, dp.spell_as_of(pack, df, roles))]
+    from domain_pack.pack import _column
+    for k in (k for u in ("count", "money") if (k := dp.stock_kpi(pack, roles, u)) and k.den is None):
+        term = dp.used_terms(pack, k, roles)[0]
+        want = rows[roles[pack.spell.entity]].nunique() if term.sum is None \
+            else _column(rows, roles, term.sum).sum()
+        assert dp.compute_kpi(df, roles, pack, k.name) == pytest.approx(want), k.name
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError,

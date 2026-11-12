@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import Term, Unavailable, _column, _meets, _snapshot_column
-from .spell import SpellView, _in_force, _month_ends
+from .pack import Term, Unavailable, _column, _snapshot_column
+from .spell import SpellView, _month_ends, term_rows
 
 
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
@@ -22,11 +22,7 @@ def _ledger(view: SpellView, term: Term, counted, points, part, by):
     ent = roles[pack.spell.entity]
     vals, inside, grp = {}, {}, {}
     for t in points:
-        rows = _in_force(whole, roles, pack, t)
-        m = counted.reindex(rows.index, fill_value=False).to_numpy()
-        if term.where:
-            m = m & _meets(rows, roles, term.where).to_numpy()
-        rows = rows[m]
+        rows = term_rows(whole, roles, pack, counted, term.where, t)
         if term.sum is not None:
             vals[t] = _column(rows, roles, term.sum).groupby(rows[ent]).sum()
         else:   # a count: the entity is there (two concurrent subscriptions are one customer)
