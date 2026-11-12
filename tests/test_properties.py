@@ -21,7 +21,7 @@ LABELS = pd.date_range("2025-01-01", "2026-10-01", freq="MS")   # month labels, 
 SEGMENTS = ["SMB", "Mid", "Ent"]
 DEPTS = ["Ops", "Sales", "Eng"]
 FLOWS = {"new_mrr": 1, "expansion_mrr": 1, "reactivation_mrr": 1, "contraction_mrr": -1,
-         "churned_mrr": -1}
+         "churned_mrr": -1, "transfer_in_mrr": 1, "transfer_out_mrr": -1}
 MRR_ROLES = {"month": "month", "customer": "customer_id", "mrr": "mrr", "segment": "segment"}
 LIST_ROLES = {"customer": "customer_id", "created": "created", "ended_at": "ended_at",
               "status": "status", "mrr": "mrr", "segment": "segment"}
@@ -37,7 +37,9 @@ SNAP_ROLES = {"employee": "employee_id", "snapshot_date": "snapshot_date",
 @st.composite
 def mrr_books(draw, moves_segment: bool = True, one_run: bool = False) -> pd.DataFrame:
     """An MRR export: one row per paying customer per month label; absent = not paying.
-    `one_run`: each customer pays over one unbroken run of months, two months at least."""
+    `one_run`: each customer pays over one unbroken run of months, two months at least. With
+    `moves_segment`, a customer may change segment and may hold a second row in a month (an
+    add-on in another segment: the pack's concurrent spells)."""
     lo = draw(st.integers(0, len(LABELS) - 2))
     hi = draw(st.integers(lo + 1, len(LABELS) - 1))
     rows = []
@@ -50,6 +52,9 @@ def mrr_books(draw, moves_segment: bool = True, one_run: bool = False) -> pd.Dat
                 seg = draw(st.sampled_from(SEGMENTS))
             if v := draw(st.sampled_from([50, 100, 150] if one_run else [0, 0, 50, 100, 150])):
                 rows.append((m, f"c{c}", float(v), seg))
+                if moves_segment and not one_run and draw(st.integers(0, 4)) == 0:
+                    rows.append((m, f"c{c}", float(draw(st.sampled_from([20, 50]))),
+                                 draw(st.sampled_from(SEGMENTS))))
     assume(rows)
     return pd.DataFrame(rows, columns=["month", "customer_id", "mrr", "segment"])
 
@@ -75,6 +80,11 @@ def subscription_lists(draw) -> pd.DataFrame:
                 break
             start = end + pd.Timedelta(days=draw(st.integers(1, 200)))
             assume(start <= pd.Timestamp("2026-10-31"))
+        if draw(st.integers(0, 3)) == 0:   # a concurrent subscription, maybe in another segment
+            s2 = _date(draw)
+            e2 = _date(draw, s2.strftime("%Y-%m-%d")) if draw(st.booleans()) else pd.NaT
+            rows.append((f"c{c}", s2, e2, "canceled" if pd.notna(e2) else "active",
+                         float(draw(st.sampled_from([20, 50]))), draw(st.sampled_from(SEGMENTS))))
     return pd.DataFrame(rows, columns=["customer_id", "created", "ended_at", "status", "mrr",
                                        "segment"])
 
@@ -126,15 +136,27 @@ def _same(a: dict, b: dict, scale: dict | None = None):
 
 # ── P1: the bridge identity ───────────────────────────────────────────────────────────────────
 
-def _bridge(df: pd.DataFrame, part: pd.DataFrame | None = None) -> tuple[float, float] | None:
+def _bridge(df: pd.DataFrame, part: pd.DataFrame | None = None,
+            roles: dict = MRR_ROLES) -> tuple[float, float] | None:
     """(MRR now, opening + Σ moves) on the whole book or a part of it; None when a term is
     unavailable (one month of data has no moves: the bridge can't be built, it isn't 0)."""
-    k = {n: dp.compute_kpi(df if part is None else part, MRR_ROLES, SAAS, n,
+    k = {n: dp.compute_kpi(df if part is None else part, roles, SAAS, n,
                            full=None if part is None else df)
          for n in ("mrr", "opening_mrr", *FLOWS)}
     if any(v is None for v in k.values()):
         return None
     return k["mrr"], k["opening_mrr"] + sum(s * k[n] for n, s in FLOWS.items())
+
+
+def _by(df: pd.DataFrame, roles: dict, by: str) -> dict | None:
+    """Each bridge KPI by `by` (a group with none: 0); None when a term is unavailable."""
+    k = {n: dp.compute_kpi(df, roles, SAAS, n, by=by) for n in ("mrr", "opening_mrr", *FLOWS)}
+    if any(v is None for v in k.values()):
+        return None
+    groups = set().union(*(v.index for v in k.values()))
+    return {n: v.reindex(sorted(groups, key=str), fill_value=0.0) for n, v in k.items()}
+
+SPLIT_BOOKS = [(mrr_books(), MRR_ROLES), (subscription_lists(), LIST_ROLES)]
 
 
 @given(mrr_books())
@@ -150,19 +172,62 @@ def test_p1_the_bridge_adds_up_per_segment_when_no_customer_changes_segment(df):
             assert b[0] == pytest.approx(b[1]), s
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C3: a customer who changes segment leaves a gap in both")
-def test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment():
-    """c0 moves SMB → Ent: SMB opens at 100 and ends at 0 (nobody: its MRR is unavailable, read
-    as 0 here) with no move out; Ent ends at 100 with no move in."""
+@pytest.mark.parametrize("book,roles", SPLIT_BOOKS, ids=["mrr_export", "subscription_list"])
+@given(data=st.data())
+def test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment(book, roles, data):
+    """5.7b-2b (C3, PR1-03): a customer who changes segment, or holds subscriptions in two at
+    once, moves between the segments' bridges (GLOSSARY Move: a transfer in and out). Each
+    segment's opening plus its moves is its MRR now, as a filter's part and as a group."""
+    df = data.draw(book)
+    for s in df["segment"].unique():
+        if b := _bridge(df, df[df["segment"] == s], roles):
+            assert b[0] == pytest.approx(b[1]), s
+    if k := _by(df, roles, "segment"):
+        built = k["opening_mrr"] + sum(sg * k[n] for n, sg in FLOWS.items())
+        assert k["mrr"].to_numpy() == pytest.approx(built.to_numpy())
+        # a move between segments is nothing in the whole
+        assert k["transfer_in_mrr"].sum() == pytest.approx(k["transfer_out_mrr"].sum())
+
+
+def test_p1_a_customer_who_moves_segment_moves_its_mrr_between_the_bridges():
+    """The C3 case 5.7b-1 pinned: c0 moves SMB → Ent. SMB opened at 100 with no move out and
+    Ent ended at 100 with no move in; now 100 moves out of SMB and into Ent, and c0 is neither
+    a churned nor a new customer."""
     df = pd.DataFrame({"month": pd.to_datetime(["2026-09-01", "2026-10-01"]),
                        "customer_id": ["c0", "c0"], "mrr": [100.0, 100.0],
                        "segment": ["SMB", "Ent"]})
-    for s in ("SMB", "Ent"):
-        k = {n: dp.compute_kpi(df[df["segment"] == s], MRR_ROLES, SAAS, n, full=df) or 0.0
-             for n in ("mrr", "opening_mrr", *FLOWS)}
-        built = k["opening_mrr"] + sum(sg * k[n] for n, sg in FLOWS.items())
-        assert k["mrr"] == pytest.approx(built), s
+    k = _by(df, MRR_ROLES, "segment")
+    assert (k["transfer_out_mrr"]["SMB"], k["transfer_in_mrr"]["Ent"]) == (100, 100)
+    assert k["churned_mrr"].sum() == k["new_mrr"].sum() == 0
+    assert dp.compute_kpi(df, MRR_ROLES, SAAS, "churned_customers", by="segment").sum() == 0
+
+
+def test_a_cohort_by_segment_places_a_customer_in_two_segments_the_same_way_in_any_row_order():
+    """5.7b-2b (PR9-01, found by D): c0 pays in Mid and in Ent at the cohort's opening. A cohort
+    places an entity in one group (GLOSSARY Opening cohort): the first in sort order, Ent, never
+    the file's first row, so NRR by segment never depends on the row order."""
+    months = pd.date_range("2025-10-01", "2026-10-01", freq="MS")
+    df = pd.DataFrame([(m, c, v, s) for m in months for c, v, s in
+                       (("c0", 150.0, "Mid"), ("c0", 50.0, "Ent"), ("c1", 100.0, "SMB"))],
+                      columns=["month", "customer_id", "mrr", "segment"])
+    for book in (df, df.iloc[::-1].reset_index(drop=True)):
+        assert dp.compute_kpi(book, MRR_ROLES, SAAS, "nrr", by="segment").to_dict() == {"Ent": 1.0, "SMB": 1.0}
+
+
+@given(mrr_books())
+def test_p1_a_parts_bridge_adds_up_month_by_month(df):
+    """By period on a part: each month's MRR is the month before plus that month's moves,
+    transfers included (a month the snapshots can't tell is unknown, never a gap)."""
+    df = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
+    for s in df["segment"].unique():
+        part = df[df["segment"] == s]
+        k = {n: dp.compute_kpi(part, MRR_ROLES, SAAS, n, by="_period", full=df) for n in ("mrr", *FLOWS)}
+        if any(v is None for v in k.values()):
+            continue
+        moves = sum(sg * k[n] for n, sg in FLOWS.items())
+        for p in k["mrr"].index[1:]:
+            if pd.notna(moves.get(p)) and pd.notna(k["mrr"].get(p - 1)):
+                assert k["mrr"][p] == pytest.approx(k["mrr"][p - 1] + moves[p]), (s, p)
 
 
 def test_p1_the_bridge_adds_up_on_an_asked_window():
@@ -189,8 +254,8 @@ def _partitioned(pack, name: str) -> bool:
     kpi = pack.kpi(name)
     one_at_a_time = pack.spell is not None and not pack.spell.concurrent
 
-    def adds(t) -> bool:
-        return not t.kpi and (t.sum is not None or t.spell in ("starts", "ends")
+    def adds(t) -> bool:   # a transfer is a move between groups: 0 in the whole
+        return not t.kpi and t.move not in dp.TRANSFERS and (t.sum is not None or t.spell in ("starts", "ends")
                               or (t.spell == "active" and one_at_a_time))
     return kpi.den is None and all(adds(t) for alt in kpi.num for t in alt)
 
@@ -455,6 +520,11 @@ def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
             assert (v is None) == (ref[k] is None), (k, v, ref[k])
             if v is not None:
                 assert v == pytest.approx(ref[k], rel=1e-9, abs=1e-9), k
+    for k in (k for k in ("mrr", *FLOWS, "nrr") if f"{k}_by_segment" in ref and ref["new_mrr"] is not None
+              and dp.computable(pack, k, roles)):
+        got = dp.compute_kpi(df, roles, pack, k, by="segment")   # C3: each segment's own lines
+        got = {} if got is None else {str(s): v for s, v in got.items() if v}
+        assert got == pytest.approx({str(s): v for s, v in ref[f"{k}_by_segment"].items() if v}), k
 
 
 def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():

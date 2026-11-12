@@ -367,8 +367,8 @@ def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
         out[f"{money}_mean_by_month"] = {m: v / mv["count_by_month"][kind][m]
                                          for m, v in mv["by_month"][kind].items()
                                          if mv["count_by_month"][kind][m]} if mv else {}
-    for kind in TRANSFERS:   # 0 in the whole; each segment's own in and out
-        out[f"{kind}_mrr"] = mv["amount"][kind] if mv else None
+    for kind in TRANSFERS:   # the whole book is one part: nothing moves; each segment's own
+        out[f"{kind}_mrr"] = 0.0 if mv else None
         out[f"{kind}_mrr_by_segment"] = mv["by_segment"][kind] if mv else {}
     for col in spec.groups:
         out[f"mrr_by_{col}"] = by_column(now, col)

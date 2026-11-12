@@ -175,6 +175,9 @@ class SpellWords(_Strict):
     plural: str = "entities"            # who the entities are ('885 people', '412 customers')
     after_end: str = "rows after the end"   # an exit record's gloss on snapshots
     today_only: str = ""   # after 'N rows are': why Spell.today_only statuses are out of history
+    # a move by group: a group's transfers in and out ({part}, {group}, {moved_in}, {moved_out});
+    # '' says nothing (GLOSSARY Move: answers never say "transfer", a bank's own word)
+    moved: str = ""
 
 
 class Spell(_Strict):
@@ -222,7 +225,8 @@ class Term(_Strict):
     # the ledger's terms (Domain 6): `opening` = the entities in force at the window's start (a
     # cohort; with `sum`, their value), `retained` = that cohort's value at its end (`capped`: no
     # entity above its opening value: GRR), `moves` = the month-end changes of one kind summed
-    move: Literal["new", "expansion", "contraction", "churn", "reactivation"] | None = None
+    move: Literal["new", "expansion", "contraction", "churn", "reactivation", "transfer_in",
+                  "transfer_out"] | None = None
     capped: bool = False
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] | None = None
     sign: Literal[1, -1] = 1

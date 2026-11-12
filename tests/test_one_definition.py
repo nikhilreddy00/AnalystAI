@@ -453,6 +453,18 @@ def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess(
     assert set(snapshot_rows(odd, ["a"], "t")["a"]) == {"x", "y"}   # no cadence: nothing cut
 
 
+def test_a_transfer_move_is_said_in_the_packs_words_and_never_routed_by_a_word():
+    """5.7b-2b (C3): "transfer" is a bank transaction type and a hospital discharge, so no pack's
+    glossary routes a question to a transfer move, and a pack with moves says them in its own
+    words ("moved in from another segment")."""
+    import domain_pack as dp
+    for p in dp.load_packs():
+        transfers = {k.name for k in p.kpis if any(t.move in dp.TRANSFERS for alt in k.num for t in alt)}
+        assert not transfers & set(p.glossary), (p.domain, transfers & set(p.glossary))
+        if transfers:
+            assert "{moved_in}" in p.spell.words.moved and "transfer" not in p.spell.words.moved.lower()
+
+
 def test_every_unavailable_reason_has_words_in_every_pack():
     """A reason without words would show a '—' tile with nothing beside it."""
     from typing import get_args

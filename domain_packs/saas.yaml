@@ -106,7 +106,9 @@ spell: {entity: customer, start: created, end: ended_at, paid_from: trial_end,
                 after_end: rows after the customer left,
                 today_only: "paused or unpaid today: a subscription list holds its status for
                   today only, with no date it began, so they are out of every month-end's MRR,
-                  never churned at a guessed date."}}
+                  never churned at a guessed date.",
+                moved: "{part}: {moved_in} moved in from another {group} and {moved_out} moved
+                  out to another {group} (customers who changed {group}: never new or churned)."}}
 snapshot_key: customer
 columns:
   mrr: {times: [unit_amount, quantity], net_of: discount_pct, over: [interval, interval_count],
@@ -179,6 +181,15 @@ kpis:
     label: Reactivation MRR
     unit: money
     num: [[{spell: moves, move: reactivation, sum: mrr, where: *paying}], [{spell: moves, move: reactivation, sum: mrr, where: *positive}]]
+  # A customer's MRR moving between two parts (a segment, a plan): 0 in the whole (GLOSSARY Move)
+  - name: transfer_in_mrr
+    label: MRR moved in
+    unit: money
+    num: [[{spell: moves, move: transfer_in, sum: mrr, where: *paying}], [{spell: moves, move: transfer_in, sum: mrr, where: *positive}]]
+  - name: transfer_out_mrr
+    label: MRR moved out
+    unit: money
+    num: [[{spell: moves, move: transfer_out, sum: mrr, where: *paying}], [{spell: moves, move: transfer_out, sum: mrr, where: *positive}]]
   - name: new_customers
     label: New customers
     unit: count

@@ -644,6 +644,25 @@ def test_a_status_held_for_today_only_is_said_wherever_the_list_is_read():
     assert held and held in handle_kpi(clean, TargetedParams(kpi="mrr"), contract).answer_text
 
 
+def test_a_move_by_segment_says_what_moved_in_from_and_out_to_another_segment():
+    """5.7b-2b (C3): churned MRR by segment no longer hides a customer who changed segment: the
+    answer says the lead segment's MRR moved in from and out to another segment (never new or
+    churned), the reference's numbers, in the pack's words ("transfer" is a bank transaction)."""
+    from agents.targeted_analysis_agent import handle_kpi
+    from evals.reference_kpis import reference
+    from orchestrator.state import TargetedParams
+    df, contract, pack, roles, _ = _setup("saas_mrr_snapshots")
+    ref = reference("saas_mrr_snapshots", datagen.make("saas_mrr_snapshots", 1)[0])
+    got = dp.compute_kpi(df, roles, pack, "churned_mrr", by="segment")
+    lead = got.idxmax()
+    text = handle_kpi(df, TargetedParams(kpi="churned_mrr", group_by="segment"), contract).answer_text
+    t_in, t_out = (ref[f"transfer_{k}_mrr_by_segment"].get(lead, 0.0) for k in ("in", "out"))
+    assert t_in or t_out, "the generator moves a customer between segments (PR1-03)"
+    assert (f"{lead}: ${t_in:,.2f} moved in from another segment and ${t_out:,.2f} moved out to "
+            "another segment") in text
+    assert "transfer" not in text.lower()
+
+
 def test_the_story_says_the_ledger_and_each_rate_against_a_year_earlier():
     """5.7b-2a gate: the story's rate lines against the reference (a year earlier: the reference
     a year back), a cohort without a full year-earlier cohort says so, the churned-customer

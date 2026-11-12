@@ -3,6 +3,7 @@
 Each dataset maps the truth keys it must reproduce (truth key -> reference key) and lists every
 other truth key with the reason it is left out, so a new truth key can't slip by unnoticed."""
 
+import pandas as pd
 import pytest
 
 from evals import datagen
@@ -155,9 +156,8 @@ def test_the_references_word_lists_are_the_packs():
 
 # ── 5.7b-2b (C3): the ledger's lines and transfer moves, from GLOSSARY Move ──────────────────
 
-def _book(*months) -> "pd.DataFrame":
+def _book(*months) -> pd.DataFrame:
     """An MRR export over Sep and Oct 2026: each month's (customer, MRR, segment) rows."""
-    import pandas as pd
     return pd.DataFrame([(pd.Timestamp(f"2026-{9 + i}-01"), c, v, s)
                          for i, rows in enumerate(months) for c, v, s in rows],
                         columns=["month", "customer_id", "mrr", "segment"])

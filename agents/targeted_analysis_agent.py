@@ -55,10 +55,14 @@ from scipy import stats
 
 from guardrails import rankable
 from domain_pack import (
+    MOVES,
+    TRANSFERS,
     WINDOW_MONTHS,
     kpi_roles,
+    ledger_kpi,
     measure,
     Measured,
+    MeasuredBy,
     spell_covered,
     spell_terms,
     has_spell,
@@ -1225,6 +1229,16 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                       f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
         answer += hidden_note(hidden, bool(protected_by))
+        said = pack.spell.words.moved if spelled else ""
+        if said and kpi.unit == "money" and any(t.move in MOVES for t in spell_terms(pack, kpi.name)):
+            # a customer who changed group moved between the groups' bridges (GLOSSARY Move)
+            moved = [measure(df, roles, pack, m.name, by=group, full=all_rows, window=win, cut=cut)
+                     for k in TRANSFERS if (m := ledger_kpi(pack, roles, "moves", k))]
+            if len(moved) == 2 and all(isinstance(v, MeasuredBy) for v in moved):
+                t_in, t_out = (float(v.values.get(lead, 0.0)) for v in moved)
+                if t_in or t_out:
+                    answer += " " + said.format(part=lead, group=group, moved_in=fmt(t_in),
+                                                moved_out=fmt(t_out))
         if params.compare == "yoy" and spelled:
             prior, prior_period = year_before(group)
             if prior is not None and lead in prior.index:   # a $0 a year earlier is said (C5)
