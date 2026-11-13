@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "docs" / "retro-ledger.md"
 COLUMNS = ["id", "class", "domain(s)", "finding", "fix", "enforced-by", "recurrences"]
 SUMMARY = ["class", "rows", "unenforced", "recurrences"]
+UNENFORCED = 88   # the ratchet: prose-only rows; it only goes down
 
 
 def _tables() -> list[list[list[str]]]:
@@ -64,3 +65,12 @@ def test_summary_counts_match_the_rows():
         want[r[1]] = (n + 1, u + (r[5] == "unenforced"), rec + int(r[6]))
     got = {r[0]: tuple(int(x) for x in r[1:]) for r in _table(SUMMARY)}
     assert got == want
+
+
+def test_the_prose_only_fixes_never_grow():
+    """PR3-07: findings fixed in prose came back, findings fixed in code did not (PR7-06 did,
+    in 5.7b-2b). A new finding closes with a check, or an older prose-only row gets one first,
+    so the count never grows. When a row gets a check, lower UNENFORCED to the new count."""
+    n = sum(r[5] == "unenforced" for r in _table(COLUMNS))
+    assert n <= UNENFORCED, f"{n} prose-only rows, the cap is {UNENFORCED}: give the finding a check"
+    assert n == UNENFORCED, f"{n} prose-only rows: lower UNENFORCED to {n}"

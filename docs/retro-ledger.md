@@ -246,9 +246,15 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | PR7-03 | C2 | PR7 | Pack prose said with the data names the window as "12 months" (SaaS and HR `read_as_domain`, `unsupported_alternatives`): wrong on short data; billings has no period | Open (5.7b-2c: `{window}` filled from the Window, through the cleaning audit) | `tests/test_one_definition.py::test_pack_prose_names_the_window_through_its_placeholder` | 0 |
 | PR7-04 | B | PR7 | The every-filter and in-range dashboard tests passed vacuously when a part's pack tiles dropped: the strip fell back to generic tiles, so no pack tile was compared (bank_statement's ATM part) | The strip keeps the whole data's tiles (an unavailable one says why); the test asserts the same tiles under every filter | `tests/test_dashboard_filters.py::test_every_filter_partitions_and_matches_the_group_answer`; `tests/test_banking_pack.py::test_a_debit_only_part_of_a_statement_has_0_inflows_not_none` | 0 |
 | PR7-05 | C5 | PR7 | An unanswerable KPI's reason was guessed by the caller: "every group has fewer than 11 people" whenever the pack has protected roles (HR contingent workers by department: there are none) | `measure()` decides the reason where the value is computed; callers say `unavailable_words` | `tests/test_one_definition.py::test_product_code_reads_a_kpi_through_measure` | 0 |
-| PR7-06 | G | PR7 | A baseline (snapshot text) ran on the working tree while code was being edited and crashed on a half-written file | Measure on a commit, in a worktree | unenforced | 0 |
+| PR7-06 | G | PR7 | A baseline (snapshot text) ran on the working tree while code was being edited and crashed on a half-written file | Measure on a commit, in a worktree; came back in 5.7b-2b (a pack edited mid-suite failed 330 tests): the suite runs on HEAD in a worktree (`scripts/suite.py`) | `tests/test_domain_diff_script.py::test_the_suite_runs_on_head_in_a_worktree_never_the_edited_tree` | 1 |
 | PR7-07 | C2 | PR7 | Found by the deep profile: as of 28 Feb after a leap year the default's year earlier opened on 29 Feb, the same span asked on 1 Mar (a day of flows apart); a window the data cuts short re-asked from its first day is another window | `Window.year_earlier` shifts the window's own nominal span; "the default asked for" is the 12 months to the as-of | `tests/test_properties.py::test_p5_asking_for_the_default_window_changes_nothing`; `tests/test_properties.py::test_p5_a_window_the_data_cuts_short_keeps_its_month_ends_asked_or_not` | 0 |
 | PR9-01 | C3 | PR9 | Found by D's new per-segment check (5.7b-2b): a customer paying in two segments at the cohort's opening was placed by its first row in file order, so NRR and logo churn by segment changed with row order (the reference takes the first segment in sort order) | A cohort places an entity in the first of its groups in sort order (GLOSSARY Opening cohort) | `tests/test_properties.py::test_a_cohort_by_segment_places_a_customer_in_two_segments_the_same_way_in_any_row_order`; `tests/test_properties.py::test_d_the_product_equals_the_reference` | 0 |
+| PR9-02 | G | PR9 | The mutation gate's hand-picked `--tests` left out callers: `check_segment_value` (35) and `run_analysis_agent` (4) showed as no_tests only after hours of mutants | `mutation.py` refuses, before any mutant runs, a function no selected test reaches, and names the test files that name it | `tests/test_mutation_script.py::test_a_function_no_selected_test_reaches_is_found_before_any_mutant_runs` | 0 |
+| PR9-03 | G | PR9 | `domain_diff.py main --show`, run as CLAUDE.md says, crashed at its import after every dataset was dumped | The import comes first, with the repo on the path | `tests/test_domain_diff_script.py::test_show_imports_its_text_diff_when_run_as_a_script` | 0 |
+| PR9-04 | G | PR9 | Gate 1 died on `tests/test_one_definition.py` (its greps read mutmut's rewritten sources); the rule was a docstring line | `mutation.py` drops the source guards itself | `tests/test_mutation_script.py::test_the_source_guards_are_left_out_of_a_mutation_run` | 0 |
+| PR9-05 | C | PR9 | Three parallel agents' worktrees started on main, not the branch; each had to reset itself | ROADMAP 5.7b step 9: the brief names the SHA, `uv sync` and the test files owned | unenforced | 0 |
+| PR9-06 | C3 | PR9 | On a named plan the moved sentence said "another segment", though its number counted moves to another plan too (numbers right, words narrower); the red team and review missed it, the gate found it | The part's column is said beside the group's; CODING_STANDARDS: a number's words name all its cuts | `tests/test_saas.py::test_what_moved_between_segments_is_said_for_the_period_and_part_asked` | 0 |
+| PR9-07 | A | PR9 | Scorer tests planted "wrong" factors that equalled true readings, so a test passed for the wrong reason | Factors 1.13 and 0.71; CODING_STANDARDS: a planted wrong value is no true reading | unenforced | 0 |
 | PR3-01 | C | PR3 | Plan mode closed without every ROADMAP 5.7 step | CLAUDE.md: check off each step by name | unenforced | 0 |
 | PR3-02 | C2 | PR3 | 4 shared strings wrote "12 months" | `WINDOW_MONTHS` + an AST guard | `tests/test_one_definition.py::test_no_shared_sentence_writes_the_window_span` | 0 |
 | PR3-03 | B | PR3 | Metamorphic transforms ran on some packs only | `next_bill` and `one_snapshot` on every pack | `tests/test_oracle.py::test_a_next_billing_date_column_changes_no_number`; `tests/test_oracle.py::test_one_snapshot_is_still_read_as_snapshots` | 0 |
@@ -264,17 +270,17 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | C0 | 93 | 41 | 18 |
 | C1 | 30 | 8 | 18 |
 | C2 | 31 | 6 | 4 |
-| C3 | 2 | 0 | 0 |
+| C3 | 3 | 0 | 0 |
 | C4 | 2 | 0 | 1 |
 | C5 | 14 | 4 | 3 |
 | C6 | 17 | 6 | 8 |
 | C7 | 12 | 6 | 3 |
 | C8 | 4 | 2 | 2 |
 | C9 | 3 | 1 | 3 |
-| A | 2 | 1 | 4 |
+| A | 3 | 2 | 4 |
 | B | 13 | 3 | 8 |
-| C | 7 | 4 | 3 |
+| C | 8 | 5 | 3 |
 | D | 4 | 1 | 6 |
 | E | 2 | 1 | 3 |
 | F | 3 | 1 | 4 |
-| G | 3 | 2 | 4 |
+| G | 6 | 1 | 5 |
