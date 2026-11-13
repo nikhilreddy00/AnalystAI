@@ -427,3 +427,23 @@ def test_a_new_case_is_priced_from_its_own_dataset_never_the_suite_average(tmp_p
              "new_loss": {"dataset": {"name": "loss"}}, "new_other": {"dataset": {"name": "z"}}}
     assert estimate_usd("analysis", 1, tmp_path, ["new_loss"], 1, cases=cases) == 0.07
     assert estimate_usd("analysis", 1, tmp_path, ["new_other"], 1, cases=cases) >= 0.05   # p90, not 0.02
+
+
+async def test_the_golden_pins_the_analysis_context_a_paid_run_sends(monkeypatch):
+    """5.7b-2c (D3-10): the golden rendered each analysis case with no frame and no cleaning
+    audit, a context no paid run sends (its pack prose, spell facts and row kinds differ). It
+    renders the paid run's session (evals.run.analysis_session): a spell case shows its facts."""
+    from agents import analysis_agent
+    from api.config import settings
+    from evals import run as harness
+    from evals.snapshot import _sha, snapshot
+    case = next(c for c in harness.load_cases("analysis", None) if c["id"] == "saas-5")
+    monkeypatch.setattr(harness, "load_cases", lambda suite, _: [case])
+    key, settings.encryption_key = settings.encryption_key, harness.EVAL_ENCRYPTION_KEY
+    try:
+        sent = analysis_agent.build_context(harness.analysis_session(case)).render()
+    finally:
+        settings.encryption_key = key
+    assert "MRR bridge" in sent   # the spell facts the frame gives
+    got = (await snapshot(("analysis",)))["analysis"]["saas-5"]["context"]
+    assert got == _sha(sent)

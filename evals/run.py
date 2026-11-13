@@ -125,6 +125,21 @@ def cleaned_for_analysis(case: dict, df: pd.DataFrame, contract) -> tuple[pd.Dat
     return clean(cleaning_context(s))
 
 
+def analysis_session(case: dict) -> AnalysisSession:
+    """The session analysis_node hands the agent: the contract, the (cleaned) frame and its
+    audit. The paid run and the golden snapshot both build it here, so the golden pins the
+    context a paid run sends (5.7b-2c: the snapshot had no frame and no audit)."""
+    df, contract = working_frame(case, guard=True)
+    df, audit = cleaned_for_analysis(case, df, contract)
+    session = AnalysisSession(session_id=str(uuid.uuid4()), cleaning_audit=audit)
+    session.data_contract = contract
+    session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    session.__dict__["_df_parquet"] = buf.getvalue()
+    return session
+
+
 async def run_analysis_case(case: dict) -> dict:
     from agents.analysis_agent import run_analysis_agent
 
@@ -134,14 +149,7 @@ async def run_analysis_case(case: dict) -> dict:
     uploads: list[str] = []
     E2B_UPLOADS.set(uploads)
     pii_values.set(set())    # this case's guard, as the runner sets one per run
-    df, contract = working_frame(case, guard=True)
-    df, audit = cleaned_for_analysis(case, df, contract)
-    session = AnalysisSession(session_id=str(uuid.uuid4()), cleaning_audit=audit)
-    session.data_contract = contract
-    session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
-    buf = io.BytesIO()
-    df.to_parquet(buf, index=False)
-    session.__dict__["_df_parquet"] = buf.getvalue()
+    session = analysis_session(case)
 
     findings, error = None, None
     try:

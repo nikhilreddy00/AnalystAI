@@ -26,6 +26,7 @@ from agents.utils import display_values, pii_columns, safe_column_name, strip_ma
 from domain_pack import (
     protected_groups,
     spell_facts,
+    window_span,
     runout_months,
     developing_trend,
     ROW_KIND_COLUMN,
@@ -587,11 +588,14 @@ def _domain(contract: DataContract, task: AnalysisTask, audit, parquet: bytes | 
     present = {d.strategy for d in (audit.decisions if audit else [])
                if d.operation == "flag" and d.strategy in ROW_KINDS}
     grain = audit.grain if audit else None
+    spell = pack.spell and parquet and defaults_pack(contract)
+    frame = pd.read_parquet(io.BytesIO(parquet)) if spell else None
+    # the span pack prose names (PR7-03): the audit's, else read from the frame, as intake does
+    spans = audit.window_span if audit else window_span(pack, frame, roles) if spell else None
     brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None,
-                       kind_column(contract), audit.window_span if audit else None)
+                       kind_column(contract), spans)
     facts: list[str] = []
-    if brief and pack.spell and parquet and defaults_pack(contract):   # the product's numbers
-        frame = pd.read_parquet(io.BytesIO(parquet))
+    if brief and spell:   # the product's numbers
         facts = spell_facts(pack, frame, {r: c for r, c in roles.items() if c in frame.columns})
     if not brief:
         return {}
