@@ -397,7 +397,7 @@ def test_snapshots_with_a_start_date_split_spells_by_it(pack):
     ends = pd.date_range("2026-01-31", "2026-10-31", freq="ME")
     rows = [(t, "C", "2024-01-01") for t in ends]
     rows += [(t, "E", "2025-01-01" if t.month <= 3 else "2026-05-01") for t in ends if t.month != 4]
-    rows += [(t, "F", "") for t in ends if t.month <= 6]
+    rows += [(t, "F", None) for t in ends if t.month <= 6]
     df = pd.DataFrame(rows, columns=["snapshot_date", "subscriber_id", "start_date"]).assign(
         cancel_date="", plan="pro", kind="paid", seats=1, status="active")
     assert compute_kpi(df, SNAP_ROLES, pack, "starts") == 1     # E's return
