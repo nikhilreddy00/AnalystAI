@@ -107,9 +107,12 @@ def _wordless(domain: str):
     """The pseudo pack with its spell's words replaced too: every sentence they are in."""
     p = _pseudo(domain)
     w = p.spell.words
-    words = w.model_copy(update={**{f: f"⟦w_{f}⟧" for f in type(w).model_fields
+
+    def token(name: str, text: str) -> str:   # its placeholders kept: what fills them is checked
+        return " ".join([f"⟦{name}⟧", *re.findall(r"\{\w+\}", text)])
+    words = w.model_copy(update={**{f: token(f"w_{f}", getattr(w, f)) for f in type(w).model_fields
                                     if isinstance(getattr(w, f), str) and getattr(w, f)},
-                                 "moves": {m: f"⟦move_{m}⟧" for m in w.moves}})
+                                 "moves": {m: token(f"move_{m}", t) for m, t in w.moves.items()}})
     return p.model_copy(update={"spell": p.spell.model_copy(update={"words": words})})
 
 
