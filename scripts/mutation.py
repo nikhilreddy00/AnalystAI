@@ -16,6 +16,14 @@ diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines tha
 and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
 with NEW in a worktree and runs the tests: caught = a test failed.
 
+The pre-push gate (ROADMAP 5.7b-2 step 9): the hook can't run mutmut, so it runs
+`--check "$(git merge-base HEAD origin/main)"` (< 1 s), which refuses a GATED function whose
+code (its AST, docstring out: a comment is no change) differs from REF's unless
+docs/mutation/gate.json holds its hash. `--record` (with `--lines REF`) writes those hashes after
+a run whose every surviving mutant on a function's changed lines is one of its named
+`equivalents` ({old, new, n, reason}, written into gate.json by hand first). Known limit: a module
+constant or a pack's YAML changes behaviour without changing any function's hash.
+
 --tests drops the guards that read source files (SOURCE_GUARDS): mutmut's rewritten sources
 fail them before any mutant runs. The worktree is HEAD, so a run refuses an
 uncommitted source or test file it reads. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
@@ -24,12 +32,15 @@ reaches a named function (it prints the test files that name it). Exit 1 when a 
 or no test reached it, or when mutmut itself fails."""
 import argparse
 import ast
+import copy
+import hashlib
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import tomllib
+from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -39,6 +50,11 @@ TIMEOUT = {36, 24, -24, 152, 255}
 PREFIX = "analystai-mutation-"   # --status finds running worktrees by it
 ENV = {"ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
 SOURCE_GUARDS = {"tests/test_one_definition.py"}   # grep the sources: mutmut rewrites them
+# the pre-push gate's files: spell, ledger, pack-column and scorer functions (kpi's _spell and
+# rows' with_spell_events are spell functions: the 5.7b-1 baseline scored them)
+GATED = ("domain_pack/spell.py", "domain_pack/ledger.py", "domain_pack/columns.py",
+         "domain_pack/kpi.py", "domain_pack/rows.py", "evals/scoring.py")
+GATE = "docs/mutation/gate.json"
 
 
 def runnable(tests: list[str]) -> list[str]:
@@ -74,20 +90,82 @@ def scores(metas: list[dict]) -> dict[str, dict]:
     return out
 
 
-def functions_touching(source: str, lines: set[int]) -> list[str]:
-    """The top-level functions and methods ('Pack.kpi') whose span holds any of the lines, named
-    as mutmut names them (a nested function belongs to the one it is in)."""
-    out = []
+def _defs(source: str):
+    """(name, node) per top-level function and method ('Pack.kpi'), named as mutmut names them (a
+    nested function belongs to the one it is in)."""
     for node in ast.parse(source).body:
-        defs = ([(node.name, node)] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                else [(f"{node.name}.{m.name}", m) for m in node.body
-                      if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))]
-                if isinstance(node, ast.ClassDef) else [])
-        for name, d in defs:
-            first = min([d.lineno, *(x.lineno for x in d.decorator_list)])
-            if any(first <= n <= d.end_lineno for n in lines):
-                out.append(name)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            yield node.name, node
+        elif isinstance(node, ast.ClassDef):
+            yield from ((f"{node.name}.{m.name}", m) for m in node.body
+                        if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef)))
+
+
+def functions_touching(source: str, lines: set[int]) -> list[str]:
+    """The top-level functions and methods whose span (decorators included) holds any line."""
+    return [name for name, d in _defs(source)
+            if any(min([d.lineno, *(x.lineno for x in d.decorator_list)]) <= n <= d.end_lineno
+                   for n in lines)]
+
+
+def function_hashes(source: str) -> dict[str, str]:
+    """Each function's code as a hash: its AST with the docstring out, so a comment, a docstring
+    or a move down the file is the same code, and a changed expression or decorator is not."""
+    out = {}
+    for name, d in _defs(source):
+        node = copy.copy(d)
+        if ast.get_docstring(d, clean=False) is not None:
+            node.body = d.body[1:] or [ast.Pass()]
+        out[name] = hashlib.sha256(ast.dump(node).encode()).hexdigest()[:16]
     return out
+
+
+def _at(ref: str, file: str, root: Path) -> str:
+    """The file's text at ref ("" when it isn't there)."""
+    got = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{file}"], capture_output=True,
+                         text=True)
+    return got.stdout if got.returncode == 0 else ""
+
+
+def check(ref: str, root: Path = ROOT) -> list[str]:
+    """The pre-push gate, on HEAD's committed files: each GATED function whose code differs from
+    ref's must have its hash in GATE, and every GATE key must name a function that exists."""
+    text = _at("HEAD", GATE, root)
+    gate = json.loads(text) if text else {}
+    problems, exist = [], set()
+    for f in GATED:
+        before, now = function_hashes(_at(ref, f, root)), function_hashes(_at("HEAD", f, root))
+        for name, h in now.items():
+            exist.add(key := f"{f}::{name}")
+            if before.get(name) != h and gate.get(key, {}).get("hash") != h:
+                problems.append(f"{key}: changed since {ref[:12]} with no clean mutation gate "
+                                f"recorded")
+    problems += [f"{k}: in {GATE}, but no such function (renamed or deleted)"
+                 for k in gate if k not in exist]
+    return problems
+
+
+def recorded(gate: dict, hashes: dict[str, str],
+             left: dict[str, list[tuple[str, str, str]]]) -> tuple[dict, dict]:
+    """GATE with each run function's hash written when every mutant left on its changed lines
+    ((kind, old line, new line), not killed) is a survivor named in its equivalents, as many
+    times as named; and the functions with any other left mutant (no test, timeout), unrecorded."""
+    new = {k: dict(v) for k, v in gate.items()}
+    unexplained = {}
+    for key, h in hashes.items():
+        entry = new.setdefault(key, {})
+        entry.setdefault("equivalents", [])
+        named = Counter()
+        for e in entry["equivalents"]:
+            named[e["old"], e["new"]] += e["n"]
+        mutants = left.get(key, [])
+        seen = Counter((old, nu) for kind, old, nu in mutants if kind == "survived")
+        if bad := [m for m in mutants if m[0] != "survived" or seen[m[1:]] > named[m[1:]]]:
+            unexplained[key] = bad
+            entry.pop("hash", None)
+        else:
+            entry["hash"] = h
+    return new, unexplained
 
 
 def changed_lines(ref: str) -> dict[str, set[int]]:
@@ -226,6 +304,30 @@ def plant(file: str, old: str, new: str, tests: list[str], keyword: str | None) 
     return code
 
 
+def record(changed: dict[str, set[int]], metas: list[dict], placed: dict, functions: list[str]):
+    """Writes GATE for the run's GATED functions (HEAD's code; the run is a worktree of HEAD):
+    each one's hash when every mutant left on its changed lines is a named equivalent."""
+    kinds = {c: kind for kind, codes in (("survived", SURVIVED), ("no_tests", NO_TESTS),
+                                         ("timeout", TIMEOUT)) for c in codes}
+    hashes, left = {}, {}
+    for f in (f for f in GATED if f in changed):
+        source = _at("HEAD", f, ROOT)
+        run = set(functions_touching(source, changed[f])) & set(functions)
+        hashes |= {f"{f}::{n}": h for n, h in function_hashes(source).items() if n in run}
+    for m in metas:
+        for k, c in m.get("exit_code_by_key", {}).items():
+            if k in placed and c not in KILLED:
+                f, _, old, new = placed[k]
+                left.setdefault(f"{f}::{_function(k)}", []).append((kinds.get(c, "not run"), old, new))
+    path = ROOT / GATE
+    gate, unexplained = recorded(json.loads(path.read_text()) if path.is_file() else {}, hashes, left)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(gate, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
+    print(f"recorded in {GATE}: {' '.join(k for k in hashes if k not in unexplained) or '(none)'}")
+    for k, bad in unexplained.items():
+        print(f"NOT recorded {k}: {len(bad)} left mutants are no named equivalent")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("functions", nargs="*", help="function names (any module)")
@@ -237,9 +339,22 @@ def main() -> int:
                                                    "changed (the 5.7b-2 gate)")
     ap.add_argument("--status", action="store_true", help="scores so far of a running run")
     ap.add_argument("--plant", nargs=3, metavar=("FILE", "OLD", "NEW"), help="one planted bug")
+    ap.add_argument("--check", metavar="REF", help="the pre-push gate: GATED functions changed "
+                                                   "since REF have a recorded clean gate")
+    ap.add_argument("--record", action="store_true", help=f"with --lines: write {GATE} for each "
+                    "GATED function whose left mutants are all named equivalents")
     args = ap.parse_args()
     if args.status:
         return status()
+    if args.check:
+        for p in (problems := check(args.check)):
+            print(f"pre-push: {p}", file=sys.stderr)
+        if problems:
+            print("run: uv run python scripts/mutation.py --changed-since main --lines main "
+                  "--record --tests <each function's callers' test files>", file=sys.stderr)
+        return 1 if problems else 0
+    if args.record and not args.lines:
+        ap.error("--record needs --lines REF (it records a gate on changed lines)")
     if not args.tests:
         ap.error("--tests is required")
     if args.plant:
@@ -311,6 +426,8 @@ def main() -> int:
             for k in on:   # the changed line itself: no `mutmut show` needed to judge it
                 f, n, old, new = placed[k]
                 print(f"  {f}:{n}  {k}\n    - {old}\n    + {new}")
+            if args.record:
+                record(changed, metas, placed, args.functions)
     got = {f: got.get(f, {"score": None}) for f in args.functions}
     print(f"mutation scores at {head} (tests: {' '.join(args.tests)})")
     for f, c in got.items():

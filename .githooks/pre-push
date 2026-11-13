@@ -23,6 +23,9 @@ fi
 
 uv run ruff check .
 uv run lint-imports   # the domain_pack layers + the reference oracle's independence (pyproject)
+# the mutation gate (ROADMAP 5.7b-2 step 9): a changed spell / ledger / pack-column / scorer
+# function needs its clean gate recorded in docs/mutation/gate.json (mutmut is too slow here)
+uv run python scripts/mutation.py --check "$(git merge-base HEAD origin/main)"
 # CI (4 shards, ~8 min) is the merge gate; the hook catches the common failures fast: the tests
 # this branch touched and the cross-domain contract gates, ~2 min. The whole suite as CI runs
 # it: PREPUSH_FULL=1 git push (retro 2026-11-06: 8 min per push, most of it CI's own suite).

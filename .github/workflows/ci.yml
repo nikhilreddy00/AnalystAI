@@ -75,10 +75,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the mutation gate diffs against the merge-base with main
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
       - run: uv sync --frozen --extra dev
+      # the pre-push hook's mutation gate again: the hook is opt-in and --no-verify skips it
+      - run: uv run python scripts/mutation.py --check "$(git merge-base HEAD origin/main)"
       - run: uv run python -m evals.run visualization --k 1 --max-usd 0.01 --fail-under 1.0
       - run: uv run python -m evals.run cleaning --k 1 --max-usd 0.01 --fail-under 1.0
       - run: uv run python -m evals.run ingestion --k 1 --max-usd 0.01 --fail-under 1.0
