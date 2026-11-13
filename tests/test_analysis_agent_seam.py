@@ -1,6 +1,7 @@
 """The analysis agent at its public seam, with a fake LLM and a fake sandbox (no network)."""
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 
@@ -41,6 +42,33 @@ async def test_analysis_agent_runs_recorded_code_and_parses_findings(recorded_ll
     assert findings.correlations == {"revenue__units": 0.5}
     assert "result['correlations']['revenue__units'] = 0.5" in seen["code"]   # fences stripped
     assert recorded_llm.calls[0]["agent"] == "analysis"
+
+
+def test_the_level_repair_reads_the_sessions_question(recorded_llm, monkeypatch):
+    """5.7b-2b gate (C4): the repair after the model's code reads the session's task plan. Asked
+    about churned MRR, the model's sum by month under the mrr column is that move, kept; asked
+    about MRR, the same sum is the level summed over every snapshot, recomputed."""
+    from tests.test_oracle import _built
+    _, df, contract, truth = _built("saas_mrr_snapshots")
+    churned = {f"{k}-01": v for k, v in truth["churned_mrr_by_month_window"].items()}
+    out = {"segments": [{"segment_column": "month", "metric_column": "mrr", "aggregation": "sum",
+                         "results": [{"name": k, "value": v} for k, v in churned.items()]}]}
+
+    async def run(question: str):
+        _fake_sandbox(monkeypatch, out)
+        recorded_llm.responses.append("result['segments'] = []")
+        s = AnalysisSession(session_id="seam")
+        s.data_contract = contract
+        s.task_plan = AnalysisTask(raw_query=question, target_metrics=["mrr"],
+                                   analysis_types=["segmentation"])
+        buf = io.BytesIO()
+        df.to_parquet(buf, index=False)
+        s.__dict__["_df_parquet"] = buf.getvalue()
+        seg = (await analysis_agent.run_analysis_agent(s, recorded_llm)).segments
+        return {r["name"]: r["value"] for r in seg[0].results}
+
+    assert asyncio.run(run("How much MRR did we lose to churned customers each month?")) == churned
+    assert asyncio.run(run("What was MRR each month?")) != churned
 
 
 async def test_analysis_agent_refusal_is_loud(recorded_llm):
