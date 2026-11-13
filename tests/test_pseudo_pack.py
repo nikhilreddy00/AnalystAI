@@ -84,12 +84,23 @@ _STOP = set("the and an no not with from one of a to in on by is per at or as al
 
 def _only_its_words(domain: str) -> set[str]:
     """C9 (ROADMAP 5.7b-2 step 8): the words only this pack says, built from every pack (never a
-    hand list): its KPI labels' and glossary phrases' words no other pack uses."""
+    hand list): its KPI labels' and glossary phrases' words no other pack uses, and its spell's
+    words no other spell's words use ("churn" is HR's glossary word too, never its spell's)."""
+    def tokens(said) -> set[str]:
+        return {t for w in said for t in _TOKEN.findall(str(w).lower())}
+
     def vocab(p) -> set[str]:
-        said = [*(k.label for k in p.kpis), *(w for ws in p.glossary.values() for w in ws)]
-        return {t for w in said for t in _TOKEN.findall(w.lower())}
-    others = set().union(*(vocab(p) for p in domain_pack.load_packs() if p.domain != domain))
-    return vocab(pack_for(domain)) - others - _STOP
+        return tokens([*(k.label for k in p.kpis), *(w for ws in p.glossary.values() for w in ws)])
+
+    def spell(p) -> set[str]:
+        w = p.spell.words if p.spell else None
+        return tokens([*w.model_dump(exclude={"moves"}).values(), *w.moves.values()]) if w else set()
+    packs = domain_pack.load_packs()
+    others = [p for p in packs if p.domain != domain]
+    its = pack_for(domain)
+    generic = tokens(domain_pack.pack.SpellWords().model_dump(exclude={"moves"}).values())
+    return ((vocab(its) - set().union(*map(vocab, others)))
+            | (spell(its) - set().union(*map(spell, others)) - generic)) - _STOP
 
 
 def _wordless(domain: str):
