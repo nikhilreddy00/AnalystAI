@@ -379,6 +379,23 @@ def test_stripes_percent_off_reaches_mrr():
     assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["percent_off"] / 100) / months)
 
 
+def test_a_finished_datasets_pct_header_keeps_its_scale():
+    """5.7b-2c (C7 red-team 6): `pct` expands to `percent` (saas.yaml abbreviations), so a
+    declared `discount_percent` would read the finished dataset's 0.1 as 0.1%. Only Stripe's own
+    headers declare percent; discount_pct stays a guessed fraction."""
+    raw = datagen.make("saas_subscriptions", 1)[0]
+    contract = __import__("connectors.csv_connector", fromlist=["x"]).CSVConnector(
+        __import__("orchestrator.state", fromlist=["x"]).ConnectorConfig(type="csv")).build_data_contract(raw)
+    from agents.ingestion_agent import add_pack_columns
+    from domain_pack.columns import scale_of
+    out, c, _ = add_pack_columns(raw, contract, "csv")
+    assert c.roles["discount_pct"] == "discount_pct"
+    assert scale_of(dp.pack_for("saas"), "discount_pct", c.roles) is None
+    row = out[out["discount_pct"] > 0].iloc[0]
+    months = {"month": 1, "year": 12}[row["interval"]] * row["interval_count"]
+    assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["discount_pct"]) / months)
+
+
 def test_a_benchmark_verdict_after_the_metric_is_never_said():
     """Audit pass 2 (a stored ins-04 report): 'net revenue retention of 106.5% — healthy' passed
     the never_say pattern, which wanted 'is/looks' before the verdict."""
@@ -518,17 +535,20 @@ def test_a_neutral_sentence_is_no_verdict(t):
     assert not re.search(bench.pattern, t, re.I)
 
 
-@pytest.mark.parametrize("vals, want", [([10, 12.5, 15, 7.5], [90, 87.5, 85, 92.5]),
-                                        ([1, 1, 1, 20], [99, 99, 99, 80]),
-                                        ([0.2, 0.2, 0.1], [80, 80, 90])])
-def test_discount_scales(vals, want):
-    """Audit pass 4: fractional Stripe percents (12.5) and 1% read right; never rescaled by one."""
+@pytest.mark.parametrize("header, vals, want", [("rebate_pct", [10, 12.5, 15, 7.5], [90, 87.5, 85, 92.5]),
+                                                ("rebate", [1, 1, 1, 20], [99, 99, 99, 80]),
+                                                ("rebate", [0.2, 0.2, 0.1], [80, 80, 90])])
+def test_discount_scales(header, vals, want):
+    """Audit pass 4: fractional Stripe percents (12.5) and 1% read right; never rescaled by one.
+    5.7b-2c (PR1-07): 12.5 is read as a percent under a header that declares it (Stripe's
+    percent_off); under an undeclared one it could be an amount, so it is said unreadable."""
     from tests.test_pack_columns import TOY
     import yaml
     pack = dp.Pack.model_validate(yaml.safe_load(TOY))
     df = pd.DataFrame({"unit_id": [str(i) for i in range(len(vals))], "rent": [100.0] * len(vals),
-                       "rebate": vals, "term": ["monthly"] * len(vals)})
-    out, _ = dp.pack_columns(df, pack, {r: r for r in df.columns})
+                       header: vals, "term": ["monthly"] * len(vals)})
+    out, _ = dp.pack_columns(df, pack, {"unit_id": "unit_id", "rent": "rent", "rebate": header,
+                                        "term": "term"})
     assert out["monthly_rent"].tolist() == pytest.approx(want)
 
 

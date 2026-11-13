@@ -17,7 +17,8 @@ roles:
   moved_in: {kind: date, headers: [moved_in]}
   rent:     {kind: money, headers: [rent]}
   units:    {kind: count, headers: [units]}
-  rebate:   {kind: rate, headers: [rebate]}
+  rebate:   {kind: rate, headers: [rebate, rebate_pct, rebate_share],
+             scales: {rebate_pct: percent, rebate_share: fraction}}
   term:     {kind: category, headers: [term], numbers: {monthly: 1, quarterly: 3, yearly: 12}}
   terms:    {kind: count, headers: [terms]}
   monthly_rent: {kind: money, headers: [monthly_rent]}
@@ -82,6 +83,55 @@ def test_a_percent_off_in_percent_is_read_as_a_rate(pack):
                        "term": ["monthly", "monthly"]})
     out, _ = pack_columns(df, pack, {r: r for r in df.columns})
     assert out["monthly_rent"].tolist() == [80.0, 100.0]
+
+
+def _rents(pack, column, values):
+    df = pd.DataFrame({"unit_id": [str(i) for i in range(len(values))], "rent": 100.0,
+                       column: values, "term": "monthly"})
+    out, notes = pack_columns(df, pack, {"unit_id": "unit_id", "rent": "rent", "rebate": column,
+                                         "term": "term"})
+    return [None if pd.isna(x) else round(x, 6) for x in out["monthly_rent"]], notes
+
+
+def test_a_declared_percent_header_is_read_as_percent_whatever_its_values(pack):
+    """C7 (ROADMAP 5.7b-2 step 6, PR1-07): Stripe's percent_off 0.5 is 0.5% off; the values'
+    guess read it as 50%. A declared header is read at its scale, its bound said."""
+    assert _rents(pack, "rebate_pct", [0.5, 20, 1, 0]) == ([99.5, 80.0, 99.0, 100.0], [])
+    assert _rents(pack, "rebate_pct", [20, 150, -5]) == ([80.0, None, None], [
+        "monthly_rent: 2 rows of rebate_pct disagree with the column's percent scale: left blank."])
+    assert _rents(pack, "rebate_share", [0.2, 1, 5]) == ([80.0, 0.0, None], [
+        "monthly_rent: 1 row of rebate_share disagree with the column's rate scale: left blank."])
+
+
+def test_an_undeclared_discount_that_is_neither_whole_percents_nor_fractions_is_said_unreadable(pack):
+    """PR1-07: a bare discount of 12.50 (an amount, or 12.5%?) was read as a percent; PR3-06: a
+    column of only 1s (100% or 1%?) is unreadable too. Each is blank and said, never guessed."""
+    assert _rents(pack, "rebate", [12.5, 10, 0]) == ([None, None, 100.0], [
+        "monthly_rent: rebate has values over 1 with decimals: a percent can't be told from an "
+        "amount, so those rows are left blank."])
+    assert _rents(pack, "rebate", [1, 1, 0]) == ([None, None, 100.0], [
+        "monthly_rent: rebate holds only 1s: its scale (100% or 1%) is unclear, so those rows "
+        "are left blank."])
+    assert _rents(pack, "rebate", [20, 1, 0.5, 200, 30]) == ([80.0, 99.0, None, None, 70.0], [
+        "monthly_rent: 2 rows of rebate disagree with the column's percent scale: left blank."])
+    assert _rents(pack, "rebate", [0.25, 0.5, 0]) == ([75.0, 50.0, 100.0], [])
+
+
+def test_a_declared_percent_header_fits_its_rate_role_and_an_undeclared_one_must_read_0_to_1(pack):
+    """Detection binds a rate role by its values (0–1), unless the header declares its scale: a
+    percent_off of 20 still gets its role, and rate_values then says any value off its scale."""
+    from domain_pack.detect import _fits
+    r = pack.roles["rebate"]
+    assert _fits(pd.Series([20.0, 10.0]), r, pack, False, "rebate_pct")
+    assert not _fits(pd.Series([20.0, 10.0]), r, pack, False, "rebate")
+    assert _fits(pd.Series([0.2, 0.1]), r, pack, False, "rebate")
+
+
+def test_a_scale_names_a_header_of_its_role():
+    raw = yaml.safe_load(TOY)
+    raw["roles"]["rebate"]["scales"] = {"discount": "percent"}
+    with pytest.raises(ValueError, match="scales"):
+        Pack.model_validate(raw)
 
 
 def test_every_blank_or_unreadable_input_is_said(pack):

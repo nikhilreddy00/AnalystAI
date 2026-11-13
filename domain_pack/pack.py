@@ -74,11 +74,17 @@ class Role(_Strict):
     # Headers another meaning shares (a subscription list's next `billing_date`): they fill a
     # spell pack's snapshot role only when each spell repeats over their dates (_snapshot_dates)
     weak_headers: list[str] = Field(default_factory=list)
+    # How a rate's numbers are written under a header (GLOSSARY Scale): Stripe's percent_off is
+    # percent (20 = 20%, 0.5 = 0.5%). Read at that scale, never guessed (columns.rate_values);
+    # an undeclared header is guessed from its values only when that is unambiguous.
+    scales: dict[str, Literal["percent", "fraction"]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _weak_are_headers(self):
         if not set(self.weak_headers) <= set(self.headers):
             raise ValueError(f"weak_headers {self.weak_headers} must be among headers")
+        if not set(self.scales) <= set(self.headers):
+            raise ValueError(f"scales {sorted(self.scales)} must be among headers")
         return self
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import Pack, _column, first_line_only, pack_for, words
+from .pack import Pack, _column, expand_header, first_line_only, normalize_header, pack_for, words
 
 
 def filled_statuses(df: pd.DataFrame, pack: Pack, roles: dict[str, str], role: str) -> pd.Series:
@@ -59,6 +59,39 @@ def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
                                           if c in df.columns}))
 
 
+def scale_of(pack: Pack, role: str, roles: dict[str, str]) -> str | None:
+    """The scale the pack declares for the header this data's column of the role has (GLOSSARY
+    Scale), or None: undeclared."""
+    return pack.roles[role].scales.get(expand_header(normalize_header(roles[role]), pack))
+
+
+def rate_values(v: pd.Series, scale: str | None, col: str) -> tuple[pd.Series, list[str]]:
+    """(each row's rate as a fraction, blank where it can't be read; what was left blank, said).
+    A declared scale is read as declared, never guessed. An undeclared column is guessed only
+    when unambiguous: whole numbers over 1 (or most values over 1) are percent, values within
+    0–1 a fraction, other rows blank and said; only 1s (100% or 1%?) and decimals over 1 (12.50:
+    a percent or an amount?) are unreadable. 0 and a blank are no discount (the caller's)."""
+    given = v[v > 0]
+    said = []
+    if scale is None:
+        if bool(len(given)) and bool((given == 1).all()):   # 1 = 100% off or 1%
+            return v.mask(v == 1), [f"{col} holds only 1s: its scale (100% or 1%) is unclear, so "
+                                    "those rows are left blank."]
+        over = given[given > 1]
+        scale = "percent" if bool(len(given)) and bool(
+            (given > 1).mean() > 0.5 or (len(over) and (given == given.round()).all())) else "fraction"
+        if scale == "percent" and bool((over != over.round()).any()):
+            return v.mask(v > 0), [f"{col} has values over 1 with decimals: a percent can't be told "
+                                   "from an amount, so those rows are left blank."]
+        wrong = (v > 1) if scale == "fraction" else ((v > 0) & (v < 1)) | (v > 100)
+    else:
+        wrong = (v < 0) | (v > (100 if scale == "percent" else 1))
+    if odd := int(wrong.sum()):
+        said.append(f"{odd:,} row{'s' * (odd != 1)} of {col} disagree with the column's "
+                    f"{'percent' if scale == 'percent' else 'rate'} scale: left blank.")
+    return v.mask(wrong) / (100 if scale == "percent" else 1), said
+
+
 def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
                  ) -> tuple[pd.DataFrame, list[str]]:
     """(the data with each Pack.columns role it lacks, a note per row left blank). Raw values are
@@ -96,24 +129,11 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
         out = pd.Series(1.0, index=df.index)
         for x in f.times:
             out = out * value(x, 1.0)
-        if f.net_of:   # a rate: 0.2, or Stripe's percent_off 20 (any value over 1: percent)
-            rate = value(f.net_of, 0.0)
-            given = rate[rate > 0]
-            # percent (Stripe's 20 or 12.5 = 20%, 12.5%): most values over 1, or some over 1 and
-            # all whole numbers (1 = 1%); a rate (0.2) otherwise. Rows on the other scale: blank
-            percent = bool(len(given)) and bool((given > 1).mean() > 0.5 or (
-                (given > 1).any() and (given == given.round()).all()))
-            ones = bool(len(given)) and bool((given == 1).all())
-            if ones:   # 1 = 100% off or 1%: no scale to read it by
-                notes.append(f"{name}: {roles[f.net_of]} holds only 1s: its scale (100% or 1%) is "
-                             "unclear, so those rows are left blank.")
-            wrong = (rate == 1) if ones else (rate > 1) if not percent else ((rate > 0) & (rate < 1))
-            if (odd := int(wrong.sum())) and not ones:
-                notes.append(f"{name}: {odd:,} row{'s' * (odd != 1)} of {roles[f.net_of]} disagree "
-                             f"with the column's {'percent' if percent else 'rate'} scale: left blank.")
-            if odd:
-                out = out.where(~wrong)
-            out = out * (1 - (rate / 100 if percent else rate))
+        if f.net_of:   # a rate: 0.2, or Stripe's percent_off 20 (its scale: rate_values)
+            rate, said = rate_values(value(f.net_of, 0.0), scale_of(pack, f.net_of, roles)
+                                     if f.net_of in roles else None, roles.get(f.net_of, f.net_of))
+            notes += [f"{name}: {s}" for s in said]
+            out = out * (1 - rate)
         for x in f.over:
             out = out / value(x, 1.0)
         inputs = [x for x in [*f.times, *f.over, *([f.net_of] if f.net_of else [])] if x in roles]

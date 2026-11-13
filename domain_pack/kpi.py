@@ -12,6 +12,7 @@ from .spell import (SPELL_PERIODS, _ended, _in_force, _spell_events, _started, h
                     spell_view, term_rows)
 from .spell import window as spell_window_of
 from .ledger import _ledger_term
+from .columns import rate_values, scale_of
 
 
 def follow_up_complete(pack: Pack, name: str, df: pd.DataFrame, roles: dict[str, str]):
@@ -232,8 +233,10 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         total = weight.groupby(order).transform("sum")
         n = order.groupby(order).transform("size")
         values = values * (weight / total).where(total > 0, 1 / n)
-    if term.net_of:
-        values = values * (1 - pd.to_numeric(part[roles[term.net_of]], errors="coerce").fillna(0))
+    if term.net_of:   # read at its scale, as the pack column's net_of is (columns.rate_values)
+        rate, _ = rate_values(pd.to_numeric(part[roles[term.net_of]], errors="coerce"),
+                              scale_of(pack, term.net_of, roles), roles[term.net_of])
+        values = values * (1 - rate.fillna(0))
     if term.sum_abs is not None:
         values = values.abs()
     if term.optional:   # a blank discount is no discount

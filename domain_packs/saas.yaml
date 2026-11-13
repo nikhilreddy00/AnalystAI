@@ -68,9 +68,11 @@ roles:
                    headers: [unit_amount, plan_amount, price, unit_price, plan_price,
                              amount_per_period]}
   quantity:       {kind: count, additive: false, headers: [quantity, seats, licenses, units]}
-  # a rate (0.2) or Stripe's percent_off (20): the MRR formula reads either (over 1: percent)
+  # a rate (0.2) or Stripe's percent_off (20, or 0.5 = 0.5%): Stripe's headers declare their
+  # scale; the rest are guessed only when unambiguous (columns.rate_values; PR1-07)
   discount_pct:   {kind: number, additive: false, headers: [discount_percent, percent_off,
-                                         coupon_percent_off, discount_rate, discount]}
+                                         coupon_percent_off, discount_rate, discount],
+                   scales: {percent_off: percent, coupon_percent_off: percent}}
   # MRR: a level (a run-rate at a date), never summed over months; added by the product from
   # the price, seats, discount and interval when a subscription list has none
   mrr:            {kind: money, over_time: last,
