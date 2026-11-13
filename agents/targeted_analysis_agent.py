@@ -1124,8 +1124,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
     # the columns this part was asked by (a named value, a dashboard filter): a protected one
     # makes every number here a protected group's (domain_pack.protected_cut)
     cut = tuple(getattr(ctx, "cut", ()) or ()) if ctx is not None else ()
+    part = None   # a named value's column: moving out of it is a transfer too (GLOSSARY Part)
     if named := _named_group(df, params):   # "frequency for Auto": that value's rows are counted
-        cut = (*cut, params.segment_column)
+        part = params.segment_column
+        cut = (*cut, part)
         df = df[df[params.segment_column].astype(str) == named]
         full = full[full[params.segment_column].astype(str) == named]   # periods read these rows
         params = params.model_copy(update={"segment_column": None, "segment_value": None,
@@ -1237,7 +1239,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             if len(moved) == 2 and all(isinstance(v, MeasuredBy) for v in moved):
                 t_in, t_out = (float(v.values.get(lead, 0.0)) for v in moved)
                 if t_in or t_out:
-                    answer += " " + said.format(part=lead, group=group, moved_in=fmt(t_in),
+                    answer += " " + said.format(part=lead, group=f"{part} or {group}" if part else group,
+                                                moved_in=fmt(t_in),
                                                 moved_out=fmt(t_out))
         if params.compare == "yoy" and spelled:
             prior, prior_period = year_before(group)

@@ -790,7 +790,9 @@ def test_what_moved_between_segments_is_said_for_the_period_and_part_asked():
     text = handle_kpi(df, TargetedParams(kpi="churned_mrr", group_by="segment", segment_column="plan",
                                          segment_value="Starter"), contract).answer_text
     assert text.startswith("Churned MRR by segment, Starter") and t_in and t_out
-    assert f". SMB: ${t_in:,.2f} moved in from another segment and ${t_out:,.2f} moved out" in text
+    # a move within SMB from Starter to Pro is in it: the part's column is said beside the group's
+    assert (f". SMB: ${t_in:,.2f} moved in from another plan or segment and ${t_out:,.2f} moved "
+            "out to another plan or segment (customers who changed plan or segment") in text
 
 
 def test_the_story_says_the_ledger_and_each_rate_against_a_year_earlier():
