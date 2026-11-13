@@ -249,6 +249,18 @@ def test_a_mover_across_parts_is_a_transfer_by_hand(book):
     assert compute_kpi(df, roles, pack, "opening_mrr") == 940 + 40 + 0.5 + 70   # W: 0, not −30
 
 
+def test_a_pack_with_moves_says_them_in_its_own_words():
+    """C9 (PR1-09): the ledger's sentences were SaaS's words in shared Python; a pack with moves
+    must give each move's words and the ledger's sentences (SpellWords), or it doesn't load."""
+    raw = yaml.safe_load(BOOK)
+    raw["spell"]["words"] = {k: v for k, v in raw["spell"]["words"].items() if k != "bridge"}
+    with pytest.raises(ValueError, match="spell.words.bridge"):
+        Pack.model_validate(raw)
+    raw["spell"]["words"] = {**yaml.safe_load(BOOK)["spell"]["words"], "moves": {"new": "x"}}
+    with pytest.raises(ValueError, match="no words for the churn move"):
+        Pack.model_validate(raw)
+
+
 def test_how_each_move_is_counted_in_words(book):
     """An answer's How for each move: the words written here, by hand."""
     roles, pack = book[2], _moved_pack()
