@@ -22,6 +22,9 @@ def main(args: list[str]) -> int:
         print("not measured (uncommitted): " + " ".join(dirty), file=sys.stderr)
     with worktree() as wt:
         (wt / ".venv").symlink_to(ROOT / ".venv")   # scripts and tests call <root>/.venv/bin/…
+        head = subprocess.run(["git", "-C", str(wt), "rev-parse", "--short", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        print(f"suite at {head} in {wt}", flush=True)
         return subprocess.run([str(ROOT / ".venv/bin/python"), "-m", "pytest",
                                *(args or ["-q", "-n", "8", "-rx"])], cwd=wt, env=os.environ).returncode
 
