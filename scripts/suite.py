@@ -21,6 +21,7 @@ def main(args: list[str]) -> int:
     if dirty := [ln[3:] for ln in dirty if ln]:
         print("not measured (uncommitted): " + " ".join(dirty), file=sys.stderr)
     with worktree() as wt:
+        (wt / ".venv").symlink_to(ROOT / ".venv")   # scripts and tests call <root>/.venv/bin/…
         return subprocess.run([str(ROOT / ".venv/bin/python"), "-m", "pytest",
                                *(args or ["-q", "-n", "8", "-rx"])], cwd=wt, env=os.environ).returncode
 
