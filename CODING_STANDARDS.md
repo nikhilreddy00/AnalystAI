@@ -49,3 +49,21 @@ scorer that passes a wrong answer or an estimator that underprices a run costs r
 
 **Why:** Domain 4's smoke run cost 4.5× its estimate because `estimate_usd` priced never-run
 cases at the suite average; no review had read it.
+
+## An answer's words name everything its number includes
+
+The words beside a number name every dimension the number was cut or grouped by: a named
+filter's column as well as the group's ("moved out to another plan or segment"), a period as
+well as a part. A sentence written for the unfiltered case is re-read with a filter on.
+
+**Why:** in 5.7b-2b the transfer sentence on a named plan said "another segment", but its number
+counted moves to another plan too. The numbers equalled the reference; only the words were
+wrong, and neither the red team nor review saw it.
+
+## A test's wrong value can't be a true one
+
+A value a test plants as wrong (a scale factor, an off-by amount, a "false" claim) is checked to
+match no true reading of the data, or it is an obvious non-reading (1.13×, not 1.1× or 2×).
+
+**Why:** in 5.7b-2b scorer tests planted factors that equalled real readings of the data, so a
+"false" claim scored true and the test passed for the wrong reason.
