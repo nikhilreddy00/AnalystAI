@@ -705,6 +705,11 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
      changed lines (or each survivor is named equivalent, with a reason):
      `scripts/mutation.py --changed-since main --tests …` (`--status` while it runs). The gate
      goes into the pre-push hook for changed spell/ledger/pack-column functions.
+     - Closing survivors in parallel (one agent per module, `isolation: worktree`): the agent's
+       worktree starts on main, so its brief names the branch SHA to `git reset --hard` to and
+       `uv sync --all-extras --all-groups` (pytest-asyncio is missing otherwise), plus the test
+       files it owns. Cherry-pick its commits, then `git worktree remove -f -f <path>` and
+       `git branch -D <branch>`: Claude Code keeps it locked.
   - **Done when:** P1–P5 all green with no xfail left; C1–C7 and C9 each closed by a check in the
     ledger; mutation score 100% on changed lines; finished domains' numbers unchanged except
     CHANGES entries, each a fixed wrong number with its truth; CI green.

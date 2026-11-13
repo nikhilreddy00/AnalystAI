@@ -3,8 +3,8 @@ import subprocess
 
 import pytest
 
-from scripts.mutation import (functions_touching, mutant_lines, naming, planted, scores,
-                              uncommitted, unreached)
+from scripts.mutation import (functions_touching, mutant_lines, naming, planted, runnable,
+                              scores, uncommitted, unreached)
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -100,6 +100,14 @@ def test_a_function_no_selected_test_reaches_is_found_before_any_mutant_runs(tmp
     subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
     assert naming("check_segment_value", tmp_path) == ["tests/test_a.py"]
     assert naming("Pack.kpi", tmp_path) == []
+
+
+def test_the_source_guards_are_left_out_of_a_mutation_run():
+    """Retro 5.7b-2b: tests/test_one_definition.py greps the sources, so mutmut's rewritten copies
+    fail it before any mutant runs (gate 1 died on it). The run drops it, file or node id."""
+    assert runnable(["tests/test_spell.py", "tests/test_one_definition.py",
+                     "tests/test_one_definition.py::test_x", "tests/test_saas.py::test_y"]) \
+        == ["tests/test_spell.py", "tests/test_saas.py::test_y"]
 
 
 def test_a_plant_must_match_exactly_once():

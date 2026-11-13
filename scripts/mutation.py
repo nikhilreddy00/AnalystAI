@@ -16,8 +16,8 @@ diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines tha
 and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
 with NEW in a worktree and runs the tests: caught = a test failed.
 
-Leave tests/test_one_definition.py out of --tests: its guards read source files, and mutmut's
-rewritten ones fail them before any mutant runs. The worktree is HEAD, so a run refuses an
+--tests drops the guards that read source files (SOURCE_GUARDS): mutmut's rewritten sources
+fail them before any mutant runs. The worktree is HEAD, so a run refuses an
 uncommitted source or test file it reads. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
 (this script adds the test selection). Exit 2, before any mutant runs, when no selected test
 reaches a named function (it prints the test files that name it). Exit 1 when a mutant survived
@@ -38,6 +38,12 @@ KILLED, SURVIVED, NO_TESTS = {1, 3}, {0}, {5, 33}
 TIMEOUT = {36, 24, -24, 152, 255}
 PREFIX = "analystai-mutation-"   # --status finds running worktrees by it
 ENV = {"ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
+SOURCE_GUARDS = {"tests/test_one_definition.py"}   # grep the sources: mutmut rewrites them
+
+
+def runnable(tests: list[str]) -> list[str]:
+    """The --tests without the source guards (a node id reads as its file)."""
+    return [t for t in tests if t.split("::", 1)[0] not in SOURCE_GUARDS]
 
 
 def _function(key: str) -> str:
@@ -241,6 +247,9 @@ def main() -> int:
         return plant(*args.plant, args.tests, args.keyword)
     _refuse_uncommitted([*tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]
                          ["source_paths"], *args.tests])
+    if dropped := [t for t in args.tests if t not in runnable(args.tests)]:
+        print("left out (they read the sources mutmut rewrites): " + " ".join(dropped))
+        args.tests = runnable(args.tests) or ap.error("no --tests left to run")
     if args.changed_since:
         args.functions = sorted({*args.functions, *changed_functions(args.changed_since)})
         print(f"changed since {args.changed_since}: {' '.join(args.functions) or '(none)'}")
