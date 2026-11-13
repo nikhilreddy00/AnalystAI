@@ -269,7 +269,7 @@ def term_rows(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, counted: p
     the whole data's row label) meeting the term's `where`; with `t`, only those in force then
     (_in_force). The KPI, the ledger and the model frame's markers read it, never their own copy."""
     rows = whole if t is None else _in_force(whole, roles, pack, t)
-    m = counted.reindex(rows.index, fill_value=False).to_numpy()
+    m = counted.loc[rows.index].to_numpy()   # `counted` labels every row of `whole`
     if where:
         m = m & _meets(rows, roles, where).to_numpy()
     return rows[m]
@@ -370,10 +370,9 @@ def _spell_events(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, which:
         if s.start not in roles:   # no start date: back after a step it was missing from is a
             # new spell, a hire (PR7-01: a return after a gap was no hire)
             at = pd.Series(steps.searchsorted(step), index=d.index)
-            d = d.assign(__run=(at.groupby(d[ent], sort=False).diff().fillna(2) > 1)
-                         .groupby(d[ent], sort=False).cumsum())
+            d = d.assign(__run=(at.groupby(d[ent]).diff() > 1).groupby(d[ent]).cumsum())
             keys.append("__run")
-        g = d.groupby(keys, sort=False, dropna=False)
+        g = d.groupby(keys, dropna=False)   # head / tail keep the frame's order
         if which == "starts":
             rows = g.head(1)
             when = (_day(rows[roles[s.start]]) if s.start in roles
@@ -381,12 +380,12 @@ def _spell_events(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, which:
         else:
             rows = g.tail(1)
             when = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
-            first = d.groupby(step, sort=True)["__t"].min()   # each step's first snapshot
+            first = d.groupby(step)["__t"].min()   # each step's first snapshot
             pos = steps.searchsorted(step[rows.index], side="right")
             missing = pd.Series([first[steps[p]] if p < len(steps) else pd.NaT for p in pos],
                                 index=rows.index)
             when = when.where(when.notna(), missing)
-        rows = rows.drop(columns=[c for c in ("__t", "__run") if c in rows])
+        rows = rows[whole.columns]
     else:
         col = roles.get(s.start if which == "starts" else s.end)
         if col is None:

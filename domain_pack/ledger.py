@@ -27,21 +27,20 @@ def _ledger(view: SpellView, term: Term, counted, points, part, by):
     for t in points:
         rows = term_rows(whole, roles, pack, counted, term.where, t)
         here = pd.Series(rows.index.isin(part), index=rows.index)
-        key = [rows[ent].rename(ent), here.rename(IN),
+        key = [rows[ent], here.rename(IN),
                (rows[by] if by else pd.Series("", index=rows.index)).rename(GROUP)]
         v = _column(rows, roles, term.sum) if term.sum is not None else pd.Series(1.0, index=rows.index)
         if len(rows):   # a count: 1 per line, however many rows
             vals[t] = v.groupby(key, dropna=False).agg("sum" if term.sum is not None else "max")
         inside[t] = here.groupby(rows[ent]).any()
         if by:   # two groups at once: the first in sort order, never the file's (PR9-01)
-            s = rows[by].iloc[rows[by].astype(str).argsort(kind="stable")]
+            s = rows[by].iloc[rows[by].astype(str).argsort()]
             grp[t] = s.groupby(rows[ent].loc[s.index]).first()
     lines = pd.DataFrame(vals, columns=points).fillna(0.0).clip(lower=0)
     if not vals:
         lines.index = pd.MultiIndex.from_arrays([[], [], []], names=[ent, IN, GROUP])
-    ents = lines.index.get_level_values(0).unique()
-    return (lines, pd.DataFrame(inside, columns=points).reindex(ents).eq(True),
-            pd.DataFrame(grp, columns=points).reindex(ents) if by else None)
+    # inside / grp hold the same entities as the lines (each read the same rows)
+    return lines, pd.DataFrame(inside).eq(True), pd.DataFrame(grp)
 
 
 def _moved(x: pd.Series, y: pd.Series, ever: pd.Series, kind: str, count: bool) -> pd.Series:
@@ -64,12 +63,11 @@ def _moved(x: pd.Series, y: pd.Series, ever: pd.Series, kind: str, count: bool) 
         t_in = (up * matched / rose.where(rose > 0)).fillna(0.0)
         t_out = (down * matched / fell.where(fell > 0)).fillna(0.0)
     rise, fall = up - t_in, down - t_out
-    before = pd.Series(ever.reindex(ents).fillna(False).to_numpy(dtype=bool), index=x.index)
+    before = pd.Series(ever.reindex(ents).to_numpy(), index=x.index)   # ever: the same entities
     return {"transfer_in": t_in, "transfer_out": t_out,
-            "new": rise.where((was == 0) & ~before, 0.0),
-            "reactivation": rise.where((was == 0) & before, 0.0),
-            "expansion": rise.where(was > 0, 0.0),
-            "contraction": fall.where(now > 0, 0.0), "churn": fall.where(now == 0, 0.0)}[kind]
+            "new": rise * ((was == 0) & ~before), "reactivation": rise * ((was == 0) & before),
+            "expansion": rise * (was > 0),
+            "contraction": fall * (now > 0), "churn": fall * (now == 0)}[kind]
 
 
 def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, cohort: bool):
@@ -107,7 +105,7 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, c
 
     def total(x: pd.Series) -> float | pd.Series:
         """x summed over the ledger lines in the part (by group or one number)."""
-        x = x[x.index.get_level_values(IN).to_numpy(dtype=bool) & (x != 0).to_numpy()]
+        x = x[x.index.get_level_values(IN).to_numpy() & (x != 0).to_numpy()]
         if by:
             return x.groupby(level=GROUP).sum().reindex(groups, fill_value=0).rename_axis(None)
         return float(x.sum())

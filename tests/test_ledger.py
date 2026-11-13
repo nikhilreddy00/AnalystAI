@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from domain_pack import Pack, compute_kpi, computable, spell_facts
+from domain_pack import Pack, compute_kpi, computable, describe_kpi, spell_facts
 
 BOOK = """
 domain: toymrr
@@ -195,3 +195,69 @@ def test_a_part_whose_row_labels_are_not_the_wholes_counts_by_label(book):
     assert compute_kpi(overlap, roles, pack, "mrr", full=df) == 600
     assert compute_kpi(overlap, roles, pack, "opening_mrr", by="segment", full=df).to_dict() == {"SMB": 180}
     assert compute_kpi(overlap, roles, pack, "nrr", full=df) == pytest.approx(0.6794871794871795)
+
+
+MOVED = """
+- {name: transfer_in_mrr, label: MRR moved in, unit: money, num: [[{spell: moves, move: transfer_in, sum: mrr}]]}
+- {name: transfer_out_mrr, label: MRR moved out, unit: money, num: [[{spell: moves, move: transfer_out, sum: mrr}]]}
+- {name: customers_in, label: Customers moved in, unit: count, num: [[{spell: moves, move: transfer_in}]]}
+- {name: customers_out, label: Customers moved out, unit: count, num: [[{spell: moves, move: transfer_out}]]}
+"""
+
+
+def _moved_pack() -> Pack:
+    """The book with transfer KPIs, money and count, and concurrent rows (a customer in two
+    segments at once)."""
+    raw = yaml.safe_load(BOOK)
+    raw["kpis"] += yaml.safe_load(MOVED)
+    raw["spell"]["concurrent"] = True
+    return Pack.model_validate(raw)
+
+
+def _rows(c, seg, mrr, months) -> pd.DataFrame:
+    return pd.DataFrame([(m, c, mrr, seg) for m in months], columns=["month", "customer_id", "mrr", "segment"])
+
+
+def test_a_mover_across_parts_is_a_transfer_by_hand(book):
+    """GLOSSARY Move (transfer), by hand on the book (window: Nov 2025 to Oct 2026).
+    - G: SMB 60 → Ent 90 in May: 60 moved, +30 expansion in Ent.
+    - X: SMB 40, adds Ent 40 in Jan (both), drops SMB in Apr. In money, Jan is Ent expansion and
+      Apr SMB contraction (no matched fall / rise). As a count, a part gained (Jan) and lost (Apr)
+      while X stays is a transfer each way.
+    - Y: $0.50 SMB → Ent in Jun, a transfer under $1.
+    - Z: SMB 70 until May, its segment blank from Jun. A blank group is a part too, so Z moved
+      out of SMB (into no named group), never churned.
+    - W: a −$30 credit at the opening. A line is never below 0."""
+    _, df, roles = book
+    pack, m = _moved_pack(), MONTHS
+    df = pd.concat([df, _rows("X", "SMB", 40, m[:6]), _rows("X", "Ent", 40, m[3:]),
+                    _rows("Y", "SMB", 0.5, m[:8]), _rows("Y", "Ent", 0.5, m[8:]),
+                    _rows("Z", "SMB", 70, m[:8]), _rows("Z", None, 70, m[8:]),
+                    _rows("W", "SMB", -30, m[:1])], ignore_index=True)
+
+    def by(k):
+        return {s: v for s, v in compute_kpi(df, roles, pack, k, by="segment").items() if v}
+    assert by("customers_in") == {"Ent": 3}             # X Jan, G May, Y Jun
+    assert by("customers_out") == {"SMB": 4}            # X Apr, G May, Y Jun, Z Jun
+    assert by("transfer_in_mrr") == {"Ent": 60 + 0.5}   # G, Y (Z's 70 went to no named group)
+    assert by("transfer_out_mrr") == {"SMB": 60 + 0.5 + 70}
+    assert by("churned_mrr") == {"SMB": 80, "Ent": 200}   # F and D only
+    assert compute_kpi(df, roles, pack, "opening_mrr") == 940 + 40 + 0.5 + 70   # W: 0, not −30
+
+
+def test_how_each_move_is_counted_in_words(book):
+    """An answer's How for each move: the words written here, by hand."""
+    roles, pack = book[2], _moved_pack()
+    went = " moves: each customer_id whose value went "
+    rule = {"new_mrr": "new" + went + "from 0 (never in force before) to above 0",
+            "reactivation_mrr": "reactivation" + went + "from 0 back above 0 (in force before)",
+            "expansion_mrr": "expansion" + went + "up",
+            "contraction_mrr": "contraction" + went + "down (not to 0)",
+            "churned_mrr": "churn" + went + "to 0",
+            "transfer_in_mrr": "value moved in from another group: each customer_id's rise in a "
+                               "group matched by its fall in another",
+            "transfer_out_mrr": "value moved out to another group: each customer_id's fall in a "
+                                "group matched by its rise in another"}
+    for k, how in rule.items():
+        assert describe_kpi(pack, k, roles).split(";")[0] == (
+            f"Sum of mrr over the {how} between consecutive month-ends in the period"), k

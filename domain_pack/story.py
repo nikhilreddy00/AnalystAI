@@ -284,7 +284,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                               + {"new": "from 0 (never in force before) to above 0",
                                  "reactivation": "from 0 back above 0 (in force before)",
                                  "expansion": "up", "contraction": "down (not to 0)",
-                                 "churn": "to 0"}.get(t.move or "", ""))
+                                 "churn": "to 0"}.get(t.move, ""))
                              + " between consecutive month-ends in the period",
                     "ends": f"{sp.words.end}s in the period (events: by {roles.get(sp.end, sp.end)}"
                             + (", or the first snapshot an entity is missing from" if snap else "")
