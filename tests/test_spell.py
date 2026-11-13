@@ -359,3 +359,46 @@ def test_a_pack_with_no_count_stock_says_rows_against_people_without_a_count(pac
     no_heads = Pack.model_validate(raw)
     line = next(s for s in spell_story(no_heads, _roster(), ROLES) if "more than one row" in s)
     assert line.endswith("(1 with more than one row).")
+
+
+def test_the_in_force_marker_reads_the_stock_tiles_rows_or_every_row_without_one(pack):
+    """By hand from _roster at 15 Jan 2026: S2, S3, S4, S8 and the trial S7 are in force (S1
+    between its spells, S5 and S6 not started, S9 gone). The stock tile leaves the trial out; a
+    pack with no stock tile reads every row in force."""
+    from domain_pack import in_force_counted, stock_rows
+    raw = yaml.safe_load(SUBS)
+    raw["kpis"][0]["tile"] = False
+    no_stock, df, t = Pack.model_validate(raw), _roster(), pd.Timestamp("2026-01-15")
+    assert sorted(in_force_counted(df, ROLES, pack, t)) == [2, 3, 4, 8]
+    assert sorted(in_force_counted(df, ROLES, no_stock, t)) == [2, 3, 4, 7, 8]
+    assert stock_rows(df, ROLES, no_stock).index.equals(df.index)
+
+
+def _weekly(present: dict[str, list[int]]) -> pd.DataFrame:
+    weeks = pd.date_range("2026-10-04", periods=4, freq="7D")
+    return pd.DataFrame([(weeks[i], s) for s, ws in present.items() for i in ws],
+                        columns=["snapshot_date", "subscriber_id"])
+
+
+def test_snapshots_with_no_start_date_read_each_snapshot_when_no_cadence_is_declared(pack):
+    """Weekly snapshots (4, from 4 Oct 2026); the toy pack declares no cadence, so each snapshot
+    is a step. A is on all; B misses the 2nd and is back on the 3rd (a new spell: an exit on the
+    2nd, a start on the 3rd); C first shows on the 2nd. The first snapshot holds no starts."""
+    df, roles = _weekly({"A": [0, 1, 2, 3], "B": [0, 2, 3], "C": [1, 2, 3]}), \
+        {"subscriber_id": "subscriber_id", "snapshot_date": "snapshot_date"}
+    assert compute_kpi(df, roles, pack, "starts") == 2     # C, B's return
+    assert compute_kpi(df, roles, pack, "cancels") == 1    # B on the 2nd
+
+
+def test_snapshots_with_a_start_date_split_spells_by_it(pack):
+    """Month-end snapshots Jan to Oct 2026. C stays. E is on Jan to Mar (started 2025-01-01) and
+    May to Oct (started 2026-05-01): two spells, so one start in the window and an exit on 30 Apr.
+    F has no start date and is gone after June: its exit (31 Jul) still counts."""
+    ends = pd.date_range("2026-01-31", "2026-10-31", freq="ME")
+    rows = [(t, "C", "2024-01-01") for t in ends]
+    rows += [(t, "E", "2025-01-01" if t.month <= 3 else "2026-05-01") for t in ends if t.month != 4]
+    rows += [(t, "F", None) for t in ends if t.month <= 6]
+    df = pd.DataFrame(rows, columns=["snapshot_date", "subscriber_id", "start_date"]).assign(
+        cancel_date="", plan="pro", kind="paid", seats=1, status="active")
+    assert compute_kpi(df, SNAP_ROLES, pack, "starts") == 1     # E's return
+    assert compute_kpi(df, SNAP_ROLES, pack, "cancels") == 2    # E on 30 Apr, F on 31 Jul

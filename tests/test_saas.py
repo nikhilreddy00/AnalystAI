@@ -129,28 +129,128 @@ def test_cohort_rates_by_group_equal_truth():
     assert by.to_dict() == pytest.approx(t["logo_churn_by_segment"])
 
 
+def _task(question: str):
+    from orchestrator.state import AnalysisTask
+    return AnalysisTask(raw_query=question, target_metrics=["mrr"], analysis_types=["segmentation"])
+
+
+def _findings(*segments):
+    from orchestrator.state import AnalysisFindings
+    return AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=list(segments),
+                            anomalies=[], statistical_tests=[], code_executed="")
+
+
 def test_a_breakdown_of_part_of_a_level_is_never_replaced_by_the_level():
     """Smoke run saas-8 (lesson 13): the model's churned MRR by month (a part of MRR, filed under
     the mrr column) was replaced four times by MRR by month, a level_recomputed repair meant for a
-    level summed over every snapshot. A summed level is at least the level in every group; a
-    churned, new or changed part is below it, and is the model's own meaning."""
+    level summed over every snapshot. The question names a move (churned MRR): the breakdown is
+    that move, the model's own meaning (GLOSSARY Move breakdown)."""
     from agents.analysis_agent import repair_breakdowns
-    from orchestrator.state import AnalysisFindings, SegmentResult
+    from orchestrator.state import SegmentResult
     df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
     churn = SegmentResult(segment_column="month", metric_column="mrr", aggregation="sum", results=[
         {"name": f"{k}-01", "value": v} for k, v in t["churned_mrr_by_month_window"].items()])
-    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[churn], anomalies=[],
-                         statistical_tests=[], code_executed="")
-    repair_breakdowns(f, df, contract)
+    f = _findings(churn)
+    repair_breakdowns(f, df, contract, _task("How much MRR did we lose to churned customers each "
+                                             "month over the last 12 months?"))
     assert {r["name"]: r["value"] for r in f.segments[0].results} == {
         f"{k}-01": v for k, v in t["churned_mrr_by_month_window"].items()}
     naive = df.groupby("segment")["mrr"].sum()   # the bug it is for: MRR summed over 24 months
     summed = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="sum",
                            results=[{"name": k, "value": float(v)} for k, v in naive.items()])
-    f = AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[summed], anomalies=[],
-                         statistical_tests=[], code_executed="")
-    assert repair_breakdowns(f, df, contract)
+    f = _findings(summed)
+    assert repair_breakdowns(f, df, contract, _task("What is MRR by segment?"))
     assert {r["name"]: r["value"] for r in f.segments[0].results} == pytest.approx(t["mrr_by_segment_now"])
+
+
+def test_a_low_level_by_month_with_no_move_asked_is_the_level():
+    """5.7b-2b (C4, PR1-04): the repair kept any breakdown below the level as "a part of it", so a
+    model's MRR by month that summed half the customers was kept. The question names no move: it
+    is the level by month, whatever the values (decided by the question, never by the value)."""
+    from agents.analysis_agent import repair_breakdowns
+    from agents.utils import aggregate
+    from orchestrator.state import SegmentResult
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    level = aggregate(df, ["month"], "mrr", "last", contract)
+    low = SegmentResult(segment_column="month", metric_column="mrr", aggregation="sum",
+                        results=[{"name": str(k), "value": float(v) / 2} for k, v in level.items()])
+    f = _findings(low)
+    assert repair_breakdowns(f, df, contract, _task("What was MRR each month?"))
+    assert [r["value"] for r in f.segments[0].results] == pytest.approx([float(v) for v in level])
+
+
+def _summed(df, by: str, metric: str = "mrr"):
+    """The bug the repair is for: a level summed over every snapshot, by `by`."""
+    from orchestrator.state import SegmentResult
+    naive = df.groupby(by)[metric].sum()
+    return SegmentResult(segment_column=by, metric_column=metric, aggregation="sum",
+                         results=[{"name": str(k), "value": float(v)} for k, v in naive.items()])
+
+
+def test_the_level_repair_reads_the_named_kpi_and_runs_with_no_task():
+    """5.7b-2b gate (C4): a targeted question's KPI is the named one, whatever the words (a
+    churned-MRR card asked "MRR each month?" keeps the model's sum). With no task plan nothing
+    is named: the summed level is the level (the generator's MRR by segment now)."""
+    from agents.analysis_agent import repair_breakdowns
+    from orchestrator.state import TargetedParams
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    task = _task("What was MRR each month?").model_copy(
+        update={"targeted_params": TargetedParams(kpi="churned_mrr")})
+    f = _findings(_summed(df, "segment"))
+    before = [dict(r) for r in f.segments[0].results]
+    assert repair_breakdowns(f, df, contract, task) == [] and f.segments[0].results == before
+    f = _findings(_summed(df, "segment"))
+    assert repair_breakdowns(f, df, contract, None)
+    assert {r["name"]: r["value"] for r in f.segments[0].results} == pytest.approx(t["mrr_by_segment_now"])
+
+
+def test_the_level_repair_goes_on_past_a_breakdown_it_leaves_alone():
+    """5.7b-2b gate: a breakdown the repair leaves as it is (a measure the model derived, with no
+    column of its own) never stops it: the summed MRR after it is still the level."""
+    from agents.analysis_agent import repair_breakdowns
+    from orchestrator.state import SegmentResult
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    derived = SegmentResult(segment_column="segment", metric_column="net_new_mrr", aggregation="sum",
+                            results=[{"name": "SMB", "value": 1.0}])
+    f = _findings(derived, _summed(df, "segment"))
+    assert repair_breakdowns(f, df, contract, _task("What is MRR by segment?"))
+    assert f.segments[0].results == [{"name": "SMB", "value": 1.0}]
+    assert {r["name"]: r["value"] for r in f.segments[1].results} == pytest.approx(t["mrr_by_segment_now"])
+
+
+def test_a_level_read_at_its_first_value_is_repaired_too():
+    """5.7b-2b gate: a level the contract reads at each account's first value (a 'first'
+    window) is a level: a sum of it over every snapshot is repaired, never kept."""
+    from agents.analysis_agent import repair_breakdowns
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    contract = contract.model_copy(update={"columns": [
+        c.model_copy(update={"aggregation": "first"}) if c.name == "mrr" else c for c in contract.columns]})
+    f = _findings(_summed(df, "segment"))
+    assert repair_breakdowns(f, df, contract, _task("What is MRR by segment?"))
+    assert f.segments[0].aggregation == "first"
+
+
+def test_every_summed_level_with_no_account_column_is_removed():
+    """5.7b-2b gate: with its account column gone no level can be read: each summed level is
+    removed, by its snapshot time and by any group alike, one after the other."""
+    from agents.analysis_agent import repair_breakdowns
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    df = df.drop(columns=["customer_id"])
+    f = _findings(_summed(df, "month"), _summed(df, "segment"), _summed(df, "plan"))
+    notes = repair_breakdowns(f, df, contract, _task("What is MRR by segment?"))
+    assert f.segments == [] and len(notes) == 3
+
+
+def test_a_level_summed_for_a_stated_period_is_removed():
+    """5.7b-2b gate: the question's period is the task's: a level summed over it is removed
+    (its current total would answer another question)."""
+    from agents.analysis_agent import repair_breakdowns
+    df, contract, pack, roles, t = _setup("saas_mrr_snapshots")
+    task = _task("What was MRR by segment in Q1 2026?").model_copy(update={"timeframe": "Q1 2026"})
+    f = _findings(_summed(df, "segment"))
+    assert repair_breakdowns(f, df, contract, task) == [
+        "mrr by segment for Q1 2026 removed: it summed a balance-like value over every snapshot"]
+    assert f.segments == []
 
 
 def test_in_force_now_is_the_mrr_tiles_own_rows():
@@ -511,7 +611,8 @@ def test_a_group_of_former_rows_scores_its_own_reading():
     seg = SegmentResult(segment_column="status", metric_column="mrr", aggregation="mean",
                         results=[{"name": k, "value": float(v)} for k, v in m.items() if k == "canceled"])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         ("saas_subscriptions", datagen.make("saas_subscriptions", 1)[0]))
     assert out["false"] == 0
 
 
@@ -526,7 +627,8 @@ def test_a_mixed_groups_former_rows_alone_are_false():
     seg = SegmentResult(segment_column="plan", metric_column="mrr", aggregation="mean",
                         results=[{"name": k, "value": float(v)} for k, v in gone.items()])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         ("saas_subscriptions", datagen.make("saas_subscriptions", 1)[0]))
     now = df[f["in_force_now"] == "yes"].groupby("plan")["mrr"].mean()
     mixed = [k for k in gone.index if k in now.index and abs(gone[k] - now[k]) > 0.01 * abs(now[k])]
     assert mixed and out["false"] == len(mixed)
@@ -642,6 +744,55 @@ def test_a_status_held_for_today_only_is_said_wherever_the_list_is_read():
     _, clean, contract, _ = _built("saas_subscriptions")   # the generator pauses ~3%
     held = dp.today_only(pack, clean, {r: c for r, c in contract.roles.items() if c in clean.columns})
     assert held and held in handle_kpi(clean, TargetedParams(kpi="mrr"), contract).answer_text
+
+
+def test_a_move_by_segment_says_what_moved_in_from_and_out_to_another_segment():
+    """5.7b-2b (C3): churned MRR by segment no longer hides a customer who changed segment: the
+    answer says the lead segment's MRR moved in from and out to another segment (never new or
+    churned), the reference's numbers, in the pack's words ("transfer" is a bank transaction)."""
+    from agents.targeted_analysis_agent import handle_kpi
+    from evals.reference_kpis import reference
+    from orchestrator.state import TargetedParams
+    df, contract, pack, roles, _ = _setup("saas_mrr_snapshots")
+    ref = reference("saas_mrr_snapshots", datagen.make("saas_mrr_snapshots", 1)[0])
+    got = dp.compute_kpi(df, roles, pack, "churned_mrr", by="segment")
+    lead = got.idxmax()
+    text = handle_kpi(df, TargetedParams(kpi="churned_mrr", group_by="segment"), contract).answer_text
+    t_in, t_out = (ref[f"transfer_{k}_mrr_by_segment"].get(lead, 0.0) for k in ("in", "out"))
+    assert t_in or t_out, "the generator moves a customer between segments (PR1-03)"
+    assert text.startswith("Churned MRR by segment")
+    assert (f". {lead}: ${t_in:,.2f} moved in from another segment and ${t_out:,.2f} moved out to "
+            "another segment") in text
+    assert "transfer" not in text.lower()
+    # a count says no money moved (its transfers are no KPI)
+    text = handle_kpi(df, TargetedParams(kpi="churned_customers", group_by="segment"), contract).answer_text
+    assert "moved in from" not in text
+
+
+def test_what_moved_between_segments_is_said_for_the_period_and_part_asked():
+    """5.7b-2b gate (C3): the moved-in/out sentence reads the asked window (to 30 Apr 2026 the
+    reference on the snapshots to then has no Enterprise mover, so none is said) and, on a named
+    plan, the whole book's lines: a Starter customer who left the plan moved out of it (the
+    reference by plan and segment), never a churn."""
+    from agents.targeted_analysis_agent import handle_kpi
+    from evals.reference_kpis import MOVES, reference, reference_by
+    from orchestrator.state import TargetedParams
+    df, contract, pack, roles, _ = _setup("saas_mrr_snapshots")
+    raw = datagen.make("saas_mrr_snapshots", 1)[0]
+    ref = reference("saas_mrr_snapshots", raw[pd.to_datetime(raw["month"]) <= "2026-04-30"])
+    text = handle_kpi(df, TargetedParams(kpi="churned_mrr", group_by="segment", period_end="2026-04-30"),
+                      contract).answer_text
+    assert text.startswith("Churned MRR by segment (12 months to 30 Apr 2026): Enterprise leads")
+    assert not any(ref[f"transfer_{k}_mrr_by_segment"].get("Enterprise") for k in ("in", "out"))
+    assert "moved in from" not in text
+    _, mv = reference_by("saas_mrr_snapshots", raw, ["plan", "segment"], "mrr", "sum")
+    t_in, t_out = (mv[len(MOVES) + i].get("Starter|SMB", 0.0) for i in (0, 1))
+    text = handle_kpi(df, TargetedParams(kpi="churned_mrr", group_by="segment", segment_column="plan",
+                                         segment_value="Starter"), contract).answer_text
+    assert text.startswith("Churned MRR by segment, Starter") and t_in and t_out
+    # a move within SMB from Starter to Pro is in it: the part's column is said beside the group's
+    assert (f". SMB: ${t_in:,.2f} moved in from another plan or segment and ${t_out:,.2f} moved "
+            "out to another plan or segment (customers who changed plan or segment") in text
 
 
 def test_the_story_says_the_ledger_and_each_rate_against_a_year_earlier():

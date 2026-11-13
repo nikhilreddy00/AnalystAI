@@ -163,3 +163,249 @@ No window change moved a number: every default window is byte-identical.
 - **Deep Hypothesis profile (500 examples):** 54 passed, 2 xfailed. One deep failure earlier in
   the session did not reproduce, and its traceback was not kept.
 - **CI:** see the PR.
+
+## 5.7b-2b: the ledger (2026-11-12)
+
+Plan: `~/.claude/plans/pasted-content-id-0e41-start-phase-structured-pizza.md`. It covers ROADMAP
+steps 2, 3 and 7, and the 2a plan's decisions 7–9. Every plan-mode step is checked off by name.
+The red-team found 3 blockers, 8 majors and 7 minors, all folded in. Spend: $0.
+
+### Measured first (main `a89b3b0`, a throwaway worktree)
+| What | Before |
+|---|---|
+| xfail-strict known failures | 3: C3 P1 per-segment, PR7-01 (C1), PR7-03 (C2, for 2c) |
+| golden | 53 passed |
+| `domain_diff.py main` | every dataset identical |
+| `snapshot text main` | 0 distinct changes |
+| Majors per class (ledger) | C1 30 rows, 9 unenforced; C3 1, 0; C4 2, 1 |
+
+The worktree needed `uv sync --all-extras --all-groups`: a fresh worktree's venv has no
+pytest-asyncio, and the golden fails 52 of 53 without it.
+
+### GLOSSARY (B0)
+- New: Part, Term rows, Transfer move (inside Move), Move breakdown (was "a part of the level":
+  "part" now means a figure's rows).
+- Sharpened:
+  - Ledger is one line per (entity, part).
+  - Move books its rest in the parts that moved, not "where its later row is" (the cause of
+    PR1-03).
+  - Opening cohort says a cohort places its entities by their opening row.
+- `source_paths` gains `agents/analysis_agent.py` and `evals/scoring.py`. The reference oracle
+  stays out: the generators check it, and mutating the truth against the product is circular.
+
+### What was built
+- **C1, one `term_rows`** (`domain_pack/spell.py`, beside `_in_force`).
+  - It returns the rows a spell term reads: its row kinds, its condition, and with a date those
+    in force then.
+  - `_spell`, the ledger and `kpi.stock_rows` read it. `stock_rows` is the stock tile's rows,
+    read by the model frame's `in_force_now` / event markers (`with_spell_events`), a level by
+    group (`utils._in_force_rows`) and the story's churned entities, which read raw `_in_force`
+    before. Their copies are deleted. The owner guard names `term_rows`.
+  - A characterization test came first: on all 8 spell datasets, the marker's rows are the
+    stock tiles' rows. It passed before and after.
+  - `people_in` (the small-cell rule) is a different rule: people in force at any point of a
+    window, with no row kinds. It is left alone.
+- **PR7-01** (`_spell_events`). On snapshots with no start date and a declared monthly cadence,
+  an entity's snapshots split into runs at a missing month. A return is a hire, a month with no
+  file at all is no gap, and snapshots on each entity's own day are one month. The exit is the
+  first month a run is missing from, so the staggered-day case no longer reads a false exit. D
+  now runs the snapshot books with rehires.
+- **C3, the entity × part ledger** (`domain_pack/ledger.py`).
+  - `_ledger` keeps one line per (entity, part): in or out of a filter's part, and its `by`
+    group.
+  - `_moved` splits each step per entity. The matched fall and rise across its lines is a
+    transfer, each line's share in proportion. The rest is classed on the entity's whole value
+    and booked in the lines that moved. On a count, a part gained or lost while the entity stays
+    is a one-sided transfer.
+  - A bridge's opening reads lines. A cohort rate keeps the entity placement (decision 1, plan
+    red-team 5).
+  - SaaS gains `transfer_in_mrr` / `transfer_out_mrr` (non-tile, 0 on a whole book).
+  - A move by group says "<group>: $X moved in from another segment and $Y moved out to another
+    segment (customers who changed segment: never new or churned)". The words live in
+    `Spell.words.moved` (saas.yaml), and a guard keeps "transfer" out of every glossary and those
+    words.
+  - The reference has the same rule, written from GLOSSARY. It was checked against the
+    generator's churned MRR by month, the 8 scenarios and its own segment bridge on P1's books,
+    before the product was compared to it.
+- **C4** (`agents/analysis_agent.py`). `_moves_asked(task, contract)` replaces `_a_part_of`: a
+  breakdown filed under a level's column is kept when the question names a move (the task's KPI,
+  else `named_kpis`), and is otherwise the level, whatever its values. `repair_breakdowns` takes
+  the task. The replay over 8 stored reports is unchanged.
+- **The scorer reads the reference** (`evals/scoring.py`, `evals/run.py`).
+  - On `SPECS` datasets a level by group is one of `reference_by`'s readings: the rows in force
+    (any `agg`), per entity, and each move by month (amount or mean per entity). A group with
+    nobody in force reads its every row (pass 8).
+  - `_move_means`, `_per_entity` and `_populations`' `level_rows` branch are deleted.
+  - A kept sum of a level is scored against the reference's moves by month. Off spell data it
+    stays unverifiable, as before.
+  - `saas_accounts` gets a Spec, checked against its truth and the product.
+  - **Scorer change (recorded per the eval rules):** accepted readings for a level by group on
+    spell data are now the reference's. Two kinds of claim become verifiable: a kept move
+    breakdown, and every move kind's mean by month. Two test factors moved because ×1.07 and
+    ×1.13 now land on another true number (Sep new MRR per customer; May new MRR).
+
+### Flipped (the xfail marker removed in the fix's commit)
+| Class | Test | Commit |
+|---|---|---|
+| C1 | `test_d_a_person_back_on_the_snapshots_after_a_gap_is_a_hire` (PR7-01) | `a27c933` |
+| C3 | `test_p1_the_bridge_adds_up_per_segment_for_a_customer_who_changes_segment`, rewritten under its name: P1's books gain concurrent rows and movers; per segment, by group, Σ in = Σ out | `e0219b5` |
+
+### Found on the way (ledger)
+- **PR9-01 (C3):** D's new per-segment check found NRR / logo churn by segment following the
+  file's row order when a customer pays in two segments at the cohort's opening (main had it
+  too). The placement is now the first group in sort order (GLOSSARY Opening cohort).
+- **domain_diff, on the branch:** a count's entity with lines in and out of a filter counted
+  twice in its cohort (logo churn by segment on a filtered dashboard moved). Fixed before merge,
+  so there is no ledger row: a count entity's value is the max of its lines, pinned by
+  `test_a_customer_with_rows_in_and_out_of_a_filter_is_one_customer_in_its_cohort`.
+
+### CHANGES (each a wrong output of a class, with its truth)
+| Where | Change | Class | Truth |
+|---|---|---|---|
+| saas_mrr_snapshots, contraction MRR by segment | SMB $4,572.22 → $3,198.54; Mid $12,850.32 → $14,224.00 | C3 | `reference(...)["contraction_mrr_by_segment"]` (`test_reference.py`, per segment) |
+| saas_mrr_snapshots, quick ratio by segment | Mid 2.53 → 2.44; SMB 1.54 → 1.63 | C3 | its contraction term (above) |
+| saas_mrr_snapshots, churned / contraction / reactivation MRR by segment | adds the lead's moved-in / moved-out sentence (Enterprise: $0.00 in, $4,191.86 out: PR1-03's "Ent −$4,192") | C3 | `reference(...)["transfer_*_mrr_by_segment"]` |
+| saas datasets (5) | two new KPIs answer: MRR moved in / out ($0.00 on a whole book; by group, each group's own) | C3 | the reference (0 in the whole) |
+
+No total moved: every whole-book number, the golden and snapshot text are unchanged.
+
+### The readers of each changed rule (CODING_STANDARDS: a widened rule lists its readers)
+- **`_spell_events` (runs by month).** Readers: the hires and separations tiles, rates and
+  by-period series (`kpi._spell`), and the model frame's start and end event markers
+  (`with_spell_events`). Probes: D (snapshot books with rehires, all packs' shapes) and the
+  golden and domain_diff (unchanged on every HR dataset).
+- **Cohort placement (first group in sort order).** Readers: NRR, GRR and logo churn by group
+  (tiles, answers, the story's facts by group). Probes: D per segment (PR9-01), and domain_diff,
+  which shows no cohort change on any dataset.
+- **`stock_rows` reads the term's own `rows` (`term.rows or stock.rows`, was `stock.rows`).** No
+  pack's stock term sets `rows`, so the rows are the same. Probe: the characterization test on
+  all 8 spell datasets.
+
+### Deviations from the plan
+- **Words:** one `Spell.words.moved` template, not `moved_in` / `moved_out`. One sentence with
+  both amounts reads better than two half-sentences.
+- **`_moves_asked(task, contract)`**, not `(task, pack, contract)`: the pack comes from the
+  contract.
+- **No bridge is said on a part.** The plan named "story's bridge on a part", but `spell_story`
+  only ever reads the whole file (cleaning, the targeted story lines), where transfers are 0.
+  The by-group answer (`handle_kpi`) is where a part's moves are said.
+- **A move named keeps every summed-level breakdown in the findings, not only the move's one.**
+  With "churned MRR by month" asked, an MRR-summed-by-segment breakdown is no longer replaced by
+  the level. This is a known limit: the scorer marks it false against the reference (spec
+  review c2). Narrowing it needs the breakdown's own meaning, which the model doesn't file.
+- **`reference_by` offers each move by any group, not only by month** (ec33cae). The rescore
+  found true numbers marked false without it. The scorer is more lenient: a sum matches if it
+  equals any one of about 14 readings. Each reading is a true number.
+- **`subscriptions` gets a Spec too** (test review: spell data outside `SPECS` would score a
+  level by every row). It is checked against the product on every KPI both compute.
+- **The e2e suite is not rescored:** its checks call neither `false_findings` nor
+  `check_segment_value`.
+- **The type-design-analyzer step did not run:** no new type was added. The ledger's lines are
+  the (entity, part) index of a frame.
+- **Rejected review notes:**
+  - `_moves_asked` reaching into the pack (Feature Envy): it is one function at its only
+    caller.
+  - A NaN group in the ledger: it is dropped from groups, as before; no generator writes one.
+  - Mean by month double-counting an entity: the ledger points give one step per month, so it
+    can't happen.
+
+### $0 rescore (rescore, never rerun)
+The latest analysis report of every spell case (saas-1..11, hr-1..10), rescored with the new
+scorer:
+
+| Report | Runs | Pass rate | Runs whose score moved |
+|---|---|---|---|
+| `analysis-20261105T180055Z` (hr-1..10) | 30 | 1.0 → 1.0 | 0 |
+| `analysis-20261106T033628Z` (saas-5..9) | 21 | 1.0 → 1.0 | 0 |
+| `analysis-20261106T011019Z` (saas-2..4, saas-8) | 33 | 0.8485 → 0.8485 | 2 (below) |
+| `analysis-20261106T181002Z` (saas-1, 10, 11) | 3 | 1.0 → 1.0 | 0 |
+
+- **saas-8 run 1:** false findings 0/6 → 0/16. Its churned MRR by segment and plan were
+  unverifiable before (a kept sum of a level). They are the reference's numbers, so all 10 are
+  now verified true.
+- **saas-8 run 0:** false findings 0/78 → 2/81. Its SMB and Mid churned MRR by segment ($22,514.47,
+  $18,217.61) match no reading; the truth is $19,937.12 and $22,148.05. The model counted
+  customers who changed segment by its own rule, the C3 class.
+- **The rescore found a gap in the scorer change.** The first rescore marked run 1's true
+  numbers false, because `reference_by` offered moves by month only. It now offers each move by
+  any group, through the same line rule
+  (`tests/test_reference.py::test_each_move_by_a_group_is_a_reading`).
+
+### Mutation gate (changed lines)
+`scripts/mutation.py --changed-since main --lines main`, each run in its own worktree:
+- **First run (c3a7872):** 21 functions, **229 survivors** on changed lines:
+  - domain_pack: 123 (`describe_kpi`'s How text 41, `_spell_events` 25, `_ledger` 19,
+    `_moved` 19, `stock_rows` 12);
+  - scorer: 76 (`check_segment_value` 35 with no test, `false_findings` 37,
+    `_reference_wants` 4);
+  - agents: 30 (`handle_kpi` 13, `repair_breakdowns` 10, `run_analysis_agent` 4 with no test,
+    `_moves_asked` 3).
+  The test list left out `check_segment_value`'s and `run_analysis_agent`'s callers; tests now
+  call both directly.
+- **What closed them** (three parallel agents, one module each, each test killing its mutants
+  in a gate run or a `--plant`):
+  - **Tests:**
+    - `test_ledger.py`: a mover across parts by hand (money and count transfers, under $1, to a
+      blank group, a negative line); the How text of all 7 moves.
+    - `test_spell.py`: the in-force marker with and without a stock tile; snapshots with no
+      start date and no declared cadence; a start date splitting spells; a blank start date
+      that is missing.
+    - `test_eval_scorer.py`: `check_segment_value` off and on spell data and over a pack's
+      counted rows; total words; a group named "Overall"; a claim on no rows; the distinct
+      count; mixed date formats by month; a skipped kept level that doesn't skip the next.
+    - `test_saas.py`: the level repair reading the named KPI, with no task, past an untouched
+      breakdown, at a first value, with no account column, for a stated period; the moved
+      sentence for an asked period and part.
+    - `test_analysis_agent_seam.py`: `run_analysis_agent` passes the session's question to
+      the repair.
+  - **Dead code deleted, no behaviour change:**
+    - `term_rows`' reindex fill;
+    - `_spell_events`' groupby `sort` arguments, `.fillna(2)` and the helper-column drop;
+    - `_ledger`'s `rename`, sort kind and returned frames' `reindex` / `columns`;
+    - `_moved`'s `.where`, which became `* c`, and the `fillna` / `dtype` in `before`;
+    - `total`'s `dtype=bool`.
+- **Found by the gate (C3 words):** on a named part, the moved sentence said "another segment",
+  but a Starter customer who moved to Pro inside SMB is a transfer out of the part. It now says
+  "another plan or segment" (`test_what_moved_between_segments_is_said_for_the_period_and_part_asked`,
+  plant-proven). The numbers were already the reference's.
+- **Final runs:**
+  - domain_pack at 8245f8b: 486 mutants, 13 survivors. The `_spell_events` `dropna` mutant was
+    then killed (plant-proven); the rest are named below.
+  - scorer: 175 mutants, 11 survivors, all named.
+  - `_spell_events` and `handle_kpi` at 741430a, after their last change: 136 mutants, 11
+    survivors. `cut = None` on a named part is caught by `tests/test_protected_cells.py`
+    (plant-proven); the rest are named. **0 unexplained survivors on changed lines.**
+- **Equivalents (31, with reasons):**
+  - **`_spell` / `stock_rows` `pack` → `None` (2):** with no `t`, `term_rows` never reads
+    `pack`, and `used_terms` never reads its `pack`.
+  - **`_ledger` group filler `""` → `None` / NaN / `"XXXX"` (3):** with no `by`, nothing groups by
+    it.
+  - **`dropna=None` (`_ledger`, `_spell_events`) (2):** pandas reads it as `False`.
+  - **`_ledger_term` `float("NAN")` (1):** the same NaN (as in 2a).
+  - **`_moved` `fillna(None)` (2):** it touches only lines where the rise (or fall) is 0. There
+    every kind is NaN, and `total()` skips NaN as it skips 0.
+  - **`describe_kpi` `.get` default (1):** read only for a moves term, whose `move` the pack
+    validator makes a key.
+  - **Scorer `dtype=float` dropped or `None` (9):** every value is read through `float()`, or the
+    Series is only checked for membership.
+  - **`false_findings` `monthly or True` (1):** with no monthly column, `assign(**{})` changes
+    nothing.
+  - **`false_findings` distinct count for every aggregation (1):** it is read only when
+    `agg == "count"`.
+  - **`handle_kpi` `spelled or True` and `else "XXXX"` (2):** unspelled, `spell_terms` is
+    empty, so the move check is False either way.
+  - **`handle_kpi` `cut` → `None` or omitted in the transfer `measure` (2):** `cut` feeds only
+    `protected_cut`, and SaaS, the one pack with moved words, has no protected roles.
+  - **`handle_kpi` `len(moved) == 2 or …` (1):** SaaS declares both transfer KPIs, which
+    measure where the answer's own KPI already measured.
+  - **`handle_kpi` `.get(lead, …)` default (3):** every move of a ledger has its lines'
+    groups, so the lead is always there.
+  - **`handle_kpi` `part = ""` (1):** falsy, like `None`.
+
+### Suite and CI
+- **Full suite at 741430a:** 3,067 passed, 128 skipped, 1 xfailed (PR7-03).
+- **Golden:** unchanged.
+- **`snapshot text main`:** 0 changes.
+- **`domain_diff.py main`:** CHANGES only, the list above, plus the two new transfer KPIs on 5
+  SaaS datasets.
+- **CI:** see PR #9.

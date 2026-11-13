@@ -17,7 +17,7 @@
   "pass_rate": 0.8485,
   "case_majority_pass_rate": 0.9091,
   "flip_rate": 0.1818,
-  "hard_rule_violations": 0,
+  "hard_rule_violations": 1,
   "hard_rules_na": 48,
   "errors": 1,
   "runs_with_truncated_llm_output": 0,
@@ -29,8 +29,8 @@
   "latency_p95_s": 43.48,
   "numeric_accuracy": 0.8485,
   "insight_recall": 0.8485,
-  "false_finding_rate": 0.0,
-  "verifiable_claims": 923,
+  "false_finding_rate": 0.0021,
+  "verifiable_claims": 936,
   "by_domain": {
    "saas": {
     "cases": 11,
@@ -38,7 +38,7 @@
     "k_max": 3,
     "cases_passed_all_runs": 8,
     "pass_rate": 0.8485,
-    "hard_rule_violations": 0,
+    "hard_rule_violations": 1,
     "hard_rules_na": 48,
     "builtin_only_cases": [
      "saas-1",
@@ -50,13 +50,13 @@
     "model_dependent_cases": 7,
     "numeric_accuracy": 0.8485,
     "insight_recall": 0.8485,
-    "false_finding_rate": 0.0,
-    "verifiable_claims": 923,
+    "false_finding_rate": 0.0021,
+    "verifiable_claims": 936,
     "model_dependent_quality": {
      "numeric_accuracy": 0.7619,
      "insight_recall": 0.7619,
-     "false_finding_rate": 0.0,
-     "verifiable_claims": 587
+     "false_finding_rate": 0.0033,
+     "verifiable_claims": 600
     }
    }
   }
@@ -1442,8 +1442,8 @@
     "hard": [
      {
       "rule": "no_unknown_columns",
-      "ok": true,
-      "detail": "ok"
+      "ok": false,
+      "detail": "unknown columns ['cancellation_in_window']"
      },
      {
       "rule": "non_empty_or_error",
@@ -15382,9 +15382,12 @@
     ],
     "error": null,
     "false_findings": {
-     "false": 0,
-     "verifiable": 78,
-     "details": []
+     "false": 2,
+     "verifiable": 81,
+     "details": [
+      "sum mrr[SMB]",
+      "sum mrr[Mid]"
+     ]
     },
     "builtin_only": false,
     "pii_exits": {
@@ -16090,7 +16093,7 @@
     "error": null,
     "false_findings": {
      "false": 0,
-     "verifiable": 6,
+     "verifiable": 16,
      "details": []
     },
     "builtin_only": false,

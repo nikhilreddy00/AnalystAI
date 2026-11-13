@@ -9,7 +9,7 @@ from .pack import (KPI, KPIValue, Measured, MeasuredBy, Pack, Term, Unavailable,
                    snapshot_role, spell_terms)
 from .detect import main_currency, row_kinds
 from .spell import (SPELL_PERIODS, _ended, _in_force, _spell_events, _started, has_spell,
-                    spell_view)
+                    spell_view, term_rows)
 from .spell import window as spell_window_of
 from .ledger import _ledger_term
 
@@ -63,6 +63,20 @@ def stock_kpi(pack: Pack, roles: dict[str, str], unit: str | None = None) -> KPI
                  and spell_terms(pack, k.name) and computable(pack, k.name, roles)), None)
 
 
+def stock_rows(df: pd.DataFrame, roles: dict[str, str], pack: Pack,
+               t: pd.Timestamp | None = None) -> pd.DataFrame:
+    """THE rows the stock tile (headcount, MRR) counts: term_rows of its spell term, its row kinds
+    in the main currency (Domain 6 smoke: test accounts and EUR subscriptions were marked in
+    force, the tile leaves them out); with `t`, those in force then. The in-force marker, a level
+    by group and the story's churned entities read the same rows."""
+    stock = stock_kpi(pack, roles)
+    if stock is None:
+        return df if t is None else _in_force(df, roles, pack, t)
+    term = next(x for x in used_terms(pack, stock, roles) if x.spell)   # stock_kpi: it has one
+    counted = row_kinds(df, roles, pack).isin(set(term.rows or stock.rows)) & main_currency(df, roles)[0]
+    return term_rows(df, roles, pack, counted, term.where, t)
+
+
 def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     """A spell term's value (or a Series per `by` group or period). The entities are chosen on
     ALL rows (the state at a date, an exit's own row), then counted when the chosen row is in
@@ -84,11 +98,8 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
     periodic = by is not None and isinstance(df[by].dtype, pd.PeriodDtype)
     ent = roles[s.entity]
 
-    def kept(rows: pd.DataFrame) -> pd.DataFrame:
-        m = rows.index.isin(df.index) & counted.reindex(rows.index, fill_value=False).to_numpy()
-        if term.where:
-            m &= _meets(rows, roles, term.where).to_numpy()
-        return rows[m]
+    def kept(rows: pd.DataFrame) -> pd.DataFrame:   # the term's rows, in the part `df`
+        return rows[rows.index.isin(df.index)]
 
     def count(rows: pd.DataFrame, key):
         """People in force: distinct entities (or a role summed over their one row each);
@@ -119,7 +130,7 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
 
     if term.spell in ("starts", "ends"):
         rows, when = _spell_events(whole, roles, pack, term.spell, as_of)
-        rows = kept(rows)
+        rows = kept(rows[rows.index.isin(term_rows(whole, roles, pack, counted, term.where).index)])
         when = when[rows.index]
         if periodic:
             n = count(rows, when.dt.to_period(freq))
@@ -130,7 +141,7 @@ def _spell(df, kinds, roles, pack, kpi, term: Term, by):
         return count(rows, None)
 
     def active_at(t: pd.Timestamp):
-        rows = kept(_in_force(whole, roles, pack, t))
+        rows = kept(term_rows(whole, roles, pack, counted, term.where, t))
         return count(rows, rows[by] if by and not periodic else None)
 
     if term.spell == "active":

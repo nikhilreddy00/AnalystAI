@@ -11,10 +11,11 @@ from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, 
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
                    ordinal, roles_of, spell_terms)
 from .detect import main_currency, row_kinds
-from .spell import (WINDOW_MONTHS, Window, _ended_undated, _in_force, has_spell, not_counted_yet,
+from .spell import (WINDOW_MONTHS, Window, _ended_undated, has_spell, not_counted_yet,
                     today_only, window, window_words)
-from .ledger import MOVES
-from .kpi import _person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, used_terms
+from .ledger import MOVES, TRANSFERS
+from .kpi import (_person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, stock_rows,
+                  used_terms)
 
 
 def _fact(*args, **kw):
@@ -232,8 +233,8 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
                 line = (f"The largest month of {k.phrase}: {top.strftime('%b %Y')} with "
                         f"{say(k, e[top])} (a usual month: {say(k, usual)})")
                 ent, prev = roles[pack.spell.entity], (top - 1).end_time.normalize()
-                rows = _in_force(df, roles, pack, prev)
-                gone = rows[~rows[ent].isin(_in_force(df, roles, pack, top.end_time.normalize())[ent])]
+                rows = stock_rows(df, roles, pack, prev)   # the tile's people (no test account)
+                gone = rows[~rows[ent].isin(stock_rows(df, roles, pack, top.end_time.normalize())[ent])]
                 if len(gone) and (m := _column(gone, roles, k.num[0][0].sum)).notna().any():
                     big = m.groupby(gone[ent]).sum()
                     line += f", {big.max() / e[top]:.0%} of it one {ent}"
@@ -274,11 +275,16 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                                f"data's first month-end when it covers less ({at}, {gone})",
                     "retained": f"same {ent} (in force at the cohort's start) at the date"
                                 + (", each capped at its value then" if t.capped else ""),
-                    "moves": f"{t.move} moves: each {ent} whose value went "
-                             + {"new": "from 0 (never in force before) to above 0",
-                                "reactivation": "from 0 back above 0 (in force before)",
-                                "expansion": "up", "contraction": "down (not to 0)",
-                                "churn": "to 0"}.get(t.move or "", "")
+                    "moves": (("value moved in from another group: each {e}'s rise in a group "
+                               "matched by its fall in another" if t.move == "transfer_in" else
+                               "value moved out to another group: each {e}'s fall in a group "
+                               "matched by its rise in another").format(e=ent)
+                              if t.move in TRANSFERS else
+                              f"{t.move} moves: each {ent} whose value went "
+                              + {"new": "from 0 (never in force before) to above 0",
+                                 "reactivation": "from 0 back above 0 (in force before)",
+                                 "expansion": "up", "contraction": "down (not to 0)",
+                                 "churn": "to 0"}.get(t.move, ""))
                              + " between consecutive month-ends in the period",
                     "ends": f"{sp.words.end}s in the period (events: by {roles.get(sp.end, sp.end)}"
                             + (", or the first snapshot an entity is missing from" if snap else "")

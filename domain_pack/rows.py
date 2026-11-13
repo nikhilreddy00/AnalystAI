@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import Pack, ROW_KIND_COLUMN, _day, _meets, _snapshot_column, defaults_pack, pack_for
+from .pack import Pack, ROW_KIND_COLUMN, _day, _snapshot_column, defaults_pack, pack_for
 from .detect import main_currency, row_kinds, superseded
-from .spell import _ended, _ended_undated, _in_force, _spell_events, has_spell, window
-from .kpi import counted, stock_kpi, used_terms
+from .spell import _ended, _ended_undated, _spell_events, has_spell, window
+from .kpi import counted, stock_rows
 
 
 def version_roles(pack: Pack | None) -> set[str]:
@@ -49,25 +49,12 @@ def spell_event_columns(pack: Pack) -> tuple[str, str, str, str, str]:
             w.unknown)
 
 
-def stock_population(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> pd.Series:
-    """THE rows the stock tile (headcount, MRR) counts, as a mask: its `where` (contractors out
-    on HR; trials, paused out on SaaS), its row kinds and the main currency (Domain 6 smoke: test
-    accounts and EUR subscriptions were marked in force, the tile leaves them out). A rate's
-    events, the in-force marker and a level by group read the same people."""
-    stock = stock_kpi(pack, roles)
-    if stock is None:
-        return pd.Series(True, index=df.index)
-    where = next((t.where for t in used_terms(pack, stock, roles) if t.spell), [])
-    counted = _meets(df, roles, where) if where else pd.Series(True, index=df.index)
-    return counted & row_kinds(df, roles, pack).isin(stock.rows) & main_currency(df, roles)[0]
-
-
 def in_force_counted(df: pd.DataFrame, roles: dict[str, str], pack: Pack, as_of) -> pd.Index:
-    """THE rows in force at `as_of` that the stock tile counts: the model's in_force_now marker
-    and a level by group (MRR or pay by segment, utils._in_force_rows) read this, never their
-    own copy (Domain 6 insight gate: MRR by segment added trials, test accounts and EUR)."""
-    now = _in_force(df, roles, pack, as_of).index
-    return now[stock_population(df, roles, pack).loc[now].to_numpy()]
+    """THE rows in force at `as_of` that the stock tile counts (kpi.stock_rows): the model's
+    in_force_now marker and a level by group (MRR or pay by segment, utils._in_force_rows) read
+    this, never their own copy (Domain 6 insight gate: MRR by segment added trials, test
+    accounts and EUR)."""
+    return stock_rows(df, roles, pack, as_of).index
 
 
 def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd.DataFrame:
@@ -86,11 +73,12 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
     if w is None:
         return df
     as_of, lo = w.as_of, w.lo
-    counted = stock_population(df, roles, pack)
+    counted = stock_rows(df, roles, pack).index   # the stock tile's people (kpi.stock_rows)
     out = df.copy()
     for col, which in ((start_col, "starts"), (end_col, "ends")):
         rows, when = _spell_events(df, roles, pack, which, as_of)
-        rows, when = rows[counted.loc[rows.index]], when[counted.loc[rows.index]]
+        keep = rows.index.isin(counted)
+        rows, when = rows[keep], when[keep]
         out[col] = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
         out.loc[rows.index, col] = when.astype("datetime64[ns]")
         if which == "ends":   # the window the facts name (12 months to the as-of): marked, so a

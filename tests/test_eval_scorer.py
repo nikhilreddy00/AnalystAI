@@ -568,8 +568,51 @@ def test_a_levels_count_and_mean_on_a_spell_list_are_per_customer():
                           results=[{"name": k, "value": float(v)} for k, v in s.items()])
             for a, s in (("count", n), ("mean", arpa))]
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=segs,
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         _spell("saas_subscriptions"))
     assert out["false"] == 0 and out["verifiable"] == 6
+
+
+def test_a_kept_move_breakdown_is_scored_against_the_references_moves_by_month():
+    """5.7b-2b (C4, PR1-04): the scorer skipped every sum of a level as unverifiable. On spell
+    data a sum production kept is a move the question named (churned MRR by month): scored
+    against the reference's moves by month, so a wrong one is false."""
+    import pandas as pd
+    from evals import datagen
+    from evals.scoring import false_findings
+    from orchestrator.state import AnalysisFindings, SegmentResult
+    df, truth = datagen.make("saas_mrr_snapshots", 1)
+    df["month"] = pd.to_datetime(df["month"])
+    churn = truth["churned_mrr_by_month_window"]
+
+    def ff(k):
+        seg = SegmentResult(segment_column="month", metric_column="mrr", aggregation="sum",
+                            results=[{"name": m, "value": v * k} for m, v in churn.items() if v])
+        return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                              _spell("saas_mrr_snapshots"))
+    n = sum(1 for v in churn.values() if v)
+    assert (ff(1.0)["false"], ff(1.0)["verifiable"]) == (0, n)
+    assert ff(0.71)["false"] == n   # (x1.13 puts May 2026 on its new MRR: a true number)
+
+
+def test_a_group_nobody_is_in_force_in_keeps_its_every_row_reading_beside_its_moves():
+    """5.7b-2b spec review: a plan whose every customer churned is in the churn reading, so it
+    lost its every-row reading (pass 8). The groups nobody is in force in come from the level
+    readings only."""
+    import pandas as pd
+    from evals.scoring import _reference_wants
+    months = pd.date_range("2025-10-01", "2026-10-01", freq="MS")
+    df = pd.DataFrame([(m, "c0", 100.0, "Basic") for m in months[:6]]
+                      + [(m, "c1", 50.0, "Pro") for m in months], columns=["month", "customer_id", "mrr", "segment"])
+    wants = _reference_wants(("saas_mrr_snapshots", df), df, ["segment"], "mrr", "sum")
+    assert any(w.get("Basic") == 600.0 for w in wants)   # Basic's every row: nobody in force
+
+
+def _spell(name: str) -> tuple:
+    """The (dataset, raw frame) evals.run hands the scorer on spell data: the reference reads it."""
+    from evals import datagen
+    return name, datagen.make(name, 1)[0]
 
 
 def test_a_level_on_spell_data_read_over_every_row_is_false():
@@ -582,13 +625,15 @@ def test_a_level_on_spell_data_read_over_every_row_is_false():
     seg = SegmentResult(segment_column="segment", metric_column="mrr", aggregation="count",
                         results=[{"name": k, "value": float(v)} for k, v in allrows.items()])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         _spell("saas_subscriptions"))
     assert out["false"] == 3
 
 
 def test_a_churned_customers_mean_by_month_is_checked_both_ways():
     """Final re-measure saas-8: mean churned MRR per churned customer by month equals truth and is
-    accepted; the same values x1.07 are false."""
+    accepted; the same values x1.13 are false. (x1.07 puts Sep within 1% of its new MRR per new
+    customer, $804.01: since 5.7b-2b the scorer reads every move's mean by month, a true number.)"""
     import pandas as pd
     from evals import datagen
     from evals.scoring import false_findings
@@ -604,8 +649,9 @@ def test_a_churned_customers_mean_by_month_is_checked_both_ways():
         seg = SegmentResult(segment_column="month", metric_column="mrr", aggregation="mean",
                             results=[{"name": n, "value": float(x) * k} for n, x in right.items()])
         return false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                               anomalies=[], statistical_tests=[], code_executed=""), df, {})
-    assert ff(1.0)["false"] == 0 and ff(1.07)["false"] == 3
+                                               anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                              _spell("saas_mrr_snapshots"))
+    assert ff(1.0)["false"] == 0 and ff(1.13)["false"] == 3
 
 
 def test_an_in_force_mean_by_month_is_accepted():
@@ -622,5 +668,119 @@ def test_an_in_force_mean_by_month_is_accepted():
     seg = SegmentResult(segment_column="Hire_Date", metric_column="Annual_Salary", aggregation="mean",
                         results=[{"name": k, "value": float(v)} for k, v in m.items()])
     out = false_findings(AnalysisFindings(eda_summary={}, correlations={}, trends=[], segments=[seg],
-                                          anomalies=[], statistical_tests=[], code_executed=""), df, {})
+                                          anomalies=[], statistical_tests=[], code_executed=""), df, {},
+                         _spell("hr_roster"))
     assert out["false"] == 0 and out["verifiable"] == len(m)
+
+
+def _seg(col: str, metric: str, agg: str, values) -> SegmentResult:
+    return SegmentResult(segment_column=col, metric_column=metric, aggregation=agg,
+                         results=[{"name": str(k), "value": float(v)} for k, v in dict(values).items()])
+
+
+def test_segment_value_off_spell_data_reads_every_row():
+    """5.7b-2b gate: check_segment_value off spell data is pandas' groupby over the rows; a wrong
+    group says which one and what it wanted."""
+    import pandas as pd
+    from evals.scoring import check_segment_value
+    df = pd.DataFrame({"plan": ["A", "A", "B"], "seats": [1.0, 2.0, 4.0]})
+    assert check_segment_value(_findings(segments=[_seg("plan", "seats", "sum", {"A": 3, "B": 4})]),
+                               df, "plan", "seats") == (True, "ok")
+    assert check_segment_value(_findings(segments=[_seg("plan", "seats", "mean", {"A": 1.5, "B": 4})]),
+                               df, "plan", "seats") == (True, "ok")
+    ok, why = check_segment_value(_findings(segments=[_seg("plan", "seats", "sum", {"A": 3, "B": 5})]),
+                                  df, "plan", "seats")
+    assert not ok and why == "sum seats[B]: got 5.0, want 4.0000"
+    assert check_segment_value(_findings(segments=[_seg("plan", "seats", "sum", {"A": 3.02, "B": 4})]),
+                               df, "plan", "seats", rel_tol=0.01)[0]
+
+
+def test_segment_value_off_spell_data_also_reads_the_rows_a_pack_counts():
+    """5.7b-2b gate: a pack's counted column (loss_run's paid, last claim versions) is also right
+    over the rows its tiles count, as false_findings reads it."""
+    from agents.ingestion_agent import build_contract
+    from domain_pack import rows_for
+    from evals.scoring import check_segment_value
+    from orchestrator.state import ConnectorType
+    df, _ = datagen.make("loss_run", 1)
+    counted = rows_for(df, build_contract(df, ConnectorType.CSV, {}), "Paid to Date")[0]
+    want = counted.groupby("Line of Business")["Paid to Date"].mean()
+    assert not want.round(2).equals(df.groupby("Line of Business")["Paid to Date"].mean().round(2))
+    assert check_segment_value(_findings(segments=[_seg("Line of Business", "Paid to Date", "mean", want)]),
+                               df, "Line of Business", "Paid to Date")[0]
+
+
+def test_segment_value_on_spell_data_reads_the_reference_never_every_row():
+    """5.7b-2b (C1): on spell data the level by group is the reference's in-force reading; the
+    same column summed over every row (cancelled subscriptions too) is wrong there, and right
+    off spell data."""
+    from evals.scoring import check_segment_value
+    from tests.test_saas import _setup
+    from agents.analysis_agent import model_frame
+    df, contract, *_ = _setup("saas_subscriptions")
+    f, _ = model_frame(df, contract)
+    now = f[f["in_force_now"] == "yes"].groupby("segment")["mrr"].sum()
+    every = df.groupby("segment")["mrr"].sum()
+    spell = _spell("saas_subscriptions")
+    assert check_segment_value(_findings(segments=[_seg("segment", "mrr", "sum", now)]),
+                               df, "segment", "mrr", spell=spell)[0]
+    assert not check_segment_value(_findings(segments=[_seg("segment", "mrr", "sum", every)]),
+                                   df, "segment", "mrr", spell=spell)[0]
+    assert check_segment_value(_findings(segments=[_seg("segment", "mrr", "sum", every)]),
+                               df, "segment", "mrr")[0]
+
+
+def _ff(df, *segs, spell=None) -> dict:
+    from evals.scoring import false_findings
+    return false_findings(_findings(segments=list(segs)), df, {}, spell)
+
+
+def test_a_total_named_any_overall_word_is_the_whole_populations_value():
+    """5.7b-2b gate: 'Total' or 'All groups' beside the groups reads as the whole (as 'Overall');
+    a wrong total is false."""
+    import pandas as pd
+    df = pd.DataFrame({"plan": ["A", "A", "B"], "seats": [1.0, 2.0, 4.0]})
+    assert _ff(df, _seg("plan", "seats", "sum", {"A": 3, "B": 4, " Total ": 7, "All groups": 7}))["false"] == 0
+    assert _ff(df, _seg("plan", "seats", "sum", {"A": 3, "Total": 8}))["false"] == 1
+
+
+def test_a_real_group_named_overall_keeps_its_own_value():
+    """5.7b-2b gate: a data group literally called 'Overall' is that group, never the whole."""
+    import pandas as pd
+    df = pd.DataFrame({"plan": ["Overall", "A"], "seats": [5.0, 3.0]})
+    assert _ff(df, _seg("plan", "seats", "sum", {"Overall": 5, "A": 3}))["false"] == 0
+
+
+def test_a_claim_on_no_rows_is_false_not_a_crash():
+    import pandas as pd
+    df = pd.DataFrame({"plan": pd.Series([], dtype=str), "seats": pd.Series([], dtype=float)})
+    assert _ff(df, _seg("plan", "seats", "sum", {"A": 1, "Total": 1}))["false"] == 2
+
+
+def test_a_count_of_an_id_column_reads_its_distinct_ids_only_for_a_count():
+    """5.7b-2b gate: 'count account_id' by group may be the distinct accounts; a sum that happens
+    to equal the distinct count is still false."""
+    import pandas as pd
+    df = pd.DataFrame({"plan": ["A", "A", "A"], "account_id": [7.0, 7.0, 9.0]})
+    assert _ff(df, _seg("plan", "account_id", "count", {"A": 2}))["false"] == 0
+    assert _ff(df, _seg("plan", "account_id", "sum", {"A": 2}))["false"] == 1
+
+
+def test_months_from_mixed_date_formats_are_one_month():
+    """5.7b-2b gate: a date column written two ways ('2025-09-01', '09/15/2025 10:00') and a junk
+    value group by month as the agent names them."""
+    import pandas as pd
+    df = pd.DataFrame({"d": ["2025-09-01", "09/15/2025 10:00", "n/a", "2025-10-02"],
+                       "amount": [1.0, 2.0, 50.0, 4.0]})
+    out = _ff(df, _seg("d", "amount", "sum", {"2025-09": 3, "2025-10": 4}))
+    assert (out["false"], out["verifiable"]) == (0, 2)
+
+
+def test_a_skipped_kept_level_leaves_the_next_breakdown_scored():
+    """5.7b-2b gate: off spell data a kept sum of a level is skipped, never the rest."""
+    import pandas as pd
+    snaps = datagen.make("saas_mrr_snapshots", 1)[0]
+    snaps["month"] = pd.to_datetime(snaps["month"])
+    n = snaps.groupby("segment")["mrr"].count()
+    out = _ff(snaps, _seg("segment", "mrr", "sum", {"SMB": 1234.5}), _seg("segment", "mrr", "count", n))
+    assert (out["false"], out["verifiable"]) == (0, len(n))

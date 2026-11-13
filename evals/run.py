@@ -194,12 +194,16 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
     """Scores one analysis run from its stored output (so `rescore` costs nothing), against the
     frame the agent was given (PHI mode's working copy on patient data)."""
     from agents.analysis_agent import model_frame
-    _, truth, _ = dataset(case)
+    from evals.reference_kpis import SPECS
+    raw, truth, _ = dataset(case)
+    # spell data: the scorer reads the independent reference on the raw table (5.7b-2b)
+    spell = (case["dataset"]["name"], raw) if case["dataset"]["name"] in SPECS else None
     df, contract = working_frame(case)
     df = model_frame(df, contract)[0] if contract and contract.domain else df   # the model's own frame
     checks = []
     for spec in case["checks"]:
         kind, kwargs = spec["kind"], {k: v for k, v in spec.items() if k not in ("kind", "planted")}
+        kwargs |= {"spell": spell} if kind == "segment_value" else {}
         ok, detail = ANALYSIS_CHECKS[kind](findings, df, truth, **kwargs) if findings else (False, "no findings")
         checks.append({"kind": kind, "ok": ok, "detail": detail, "planted": spec.get("planted", False)})
     types = frozenset(case["task"].get("analysis_types", []))
@@ -207,7 +211,7 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
                                                                 truth=truth))))
             for r in case["hard_rules"]]
     return {"checks": checks, "hard": _explicit_error_ok(hard, error), "error": error,
-            "false_findings": false_findings(findings, df, truth) if findings else None,
+            "false_findings": false_findings(findings, df, truth, spell) if findings else None,
             **({"builtin_only": builtin_only(case)} if baseline and "domain" in case else {})}
 
 

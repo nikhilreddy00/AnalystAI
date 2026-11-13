@@ -36,7 +36,10 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   keeps 31 Mar). Moves start at the first known state.
 - **Opening cohort** — the entities in force 12 months before a window's end (or at the first
   date the data knows a state when it covers less); retention, NRR and logo churn follow them to
-  the end, whatever period is asked. An asked period's bridge opens at the period's own start.
+  the end, whatever period is asked; by group, each entity sits in the group of its row at the
+  opening, the first in sort order when it has two (a cohort follows its entities, never its
+  parts). An asked period's bridge opens at the
+  period's own start.
   A cohort needs a span: when the data knows a state only at the window's end (one month of
   data), its opening and rates are unavailable, never a 0% churn over no time. A signup cohort
   (entities grouped by start month) is a different thing.
@@ -58,13 +61,26 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   match (a protected attribute: described, never a rating recommendation).
 - **Marker field** — a column filled only on the rows it applies to (a catastrophe event code):
   its blanks mean none, the file's layout, never missing values.
-- **Ledger** — each entity's value at each month-end (its rows in force then, a role summed, or
-  1 for being there), built on all rows and kept where a filter's part holds the chosen row. MRR
-  movements and cohort retention are read from it, never from row sums (Domain 6, 2026-11-05).
-- **Move** — one entity's change between two consecutive month-ends, of one kind: new (from 0,
-  never in force before), reactivation (from 0, in force at an earlier month-end: a stay that began and ended inside
-  one month is unseen, so its return is new), expansion, contraction, churn
-  (to 0). Counted where its later row is (a churn: its earlier row).
+- **Part** — the rows a figure is cut to: a filter's rows, or one group of a by-column. The rows
+  outside it are a part too.
+- **Term rows** — the rows a term reads at a date: in force then, of the KPI's row kinds, meeting
+  its condition (paying, not a contractor).
+- **Ledger** — each entity's value in each part at each month-end: one **ledger line** per
+  (entity, part), its term rows in that part summed (a role), or 1 for being there. An entity's
+  value is the sum of its lines. Built on all rows. MRR movements and a bridge's opening are read
+  from it, never from row sums (Domain 6, 2026-11-05).
+- **Move** — one entity's change between two consecutive month-ends. First, its matched fall in
+  some parts and rise in others is a **transfer move** (out of the parts that fell, into the parts
+  that rose); it adds nothing to the whole. The rest is classed on the entity's whole value, of
+  one kind: new (from 0, never in force before), reactivation (from 0, in force at an earlier
+  month-end: a stay that began and ended inside one month is unseen, so its return is new),
+  expansion, contraction, churn (to 0); it is booked in the parts that moved, in proportion. On
+  counts, a part gained or lost while the entity stays is a transfer on its own. Answers say a
+  transfer as "moved in from / out to another <group>" ("transfer" is a bank transaction and a
+  hospital discharge).
+- **Move breakdown** — a breakdown filed under a level's column (MRR by month) that answers a
+  move the question names (churned MRR by month): decided by what the question names, a move or
+  a level, never by the values. A level summed over dates with no move named is the level.
 - **Month label** — a snapshot date written on the month's 1st that names the whole month (an
   MRR export's `2026-10-01` is October): the as-of is that month's end.
 - **Pack column** — a column the product adds to the data at ingestion from a pack formula (a

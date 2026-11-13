@@ -906,8 +906,7 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             levels = any(c.aggregation in ("last", "first") for c in contract.columns)
             if (levels or defaults_pack(contract)) and (fixed := await asyncio.to_thread(
                     lambda: repair_breakdowns(findings, pd.read_parquet(io.BytesIO(df_parquet)),
-                                              contract, session.task_plan.timeframe
-                                              if session.task_plan else None,
+                                              contract, session.task_plan,
                                               set(raw.get("builtin") or [])))):
                 for note in fixed:   # one label per kind of repair (one meaning per counter)
                     trace_verdict("analysis", PROMPT_VERSION, _repair_label(note))
@@ -1022,33 +1021,35 @@ def drop_formula_correlations(f: AnalysisFindings, contract: DataContract) -> st
             "the other (the product's formula)") if gone else ""
 
 
-def _a_part_of(s, totals: pd.Series) -> bool:
-    """A breakdown of a level whose values sit below the level itself in some group (churned or
-    new MRR by month, a change): another meaning, the model's own, never replaced by the level
-    (lesson 13; Domain 6 smoke saas-8). A level summed over snapshots is at least the level."""
-    def key(k) -> str:
-        k = "|".join(map(str, k)) if isinstance(k, tuple) else str(k)
-        try:   # a date names its day however it is written ('2025-11-01', '2025-11-01 00:00:00')
-            return f"{pd.Timestamp(k):%Y-%m-%d}" if any(ch.isdigit() for ch in k) and "-" in k else k
-        except (ValueError, TypeError):
-            return k
-    level = {key(k): float(v) for k, v in totals.items()}
-    got = {key(r.get("name")): r.get("value") for r in s.results if isinstance(r, dict)}
-    return any(isinstance(v, (int, float)) and k in level and abs(v) < 0.98 * abs(level[k])
-               for k, v in got.items())
+def _moves_asked(task: AnalysisTask | None, contract: DataContract) -> bool:
+    """The question names a move (churned or new MRR): a breakdown the model filed under the
+    level's column is that move by group, its own meaning, never replaced by the level (GLOSSARY
+    Move breakdown; lesson 13, Domain 6 smoke saas-8). Decided by the question, never by the
+    values (C4, PR1-04: a low level-by-month total was kept as "a part of it")."""
+    from domain_pack import defaults_pack, named_kpis, spell_terms
+    pack = defaults_pack(contract)
+    if task is None or pack is None:
+        return False
+    named = [task.targeted_params.kpi] if task.targeted_params.kpi \
+        else named_kpis(pack, contract, task.raw_query)
+    return any(t.spell == "moves" for n in named if pack.kpi(n) for t in spell_terms(pack, n))
 
 
 def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContract,
-                      timeframe: str | None = None, builtin: set[str] = frozenset()) -> list[str]:
+                      task: AnalysisTask | None, builtin: set[str] = frozenset()) -> list[str]:
     """The model's breakdowns, recomputed where its code read the wrong rows (plan v2 B2: the
     sandbox runs model code on every row). A total or mean of a column whose tiles count only
     some rows (domain_pack.rows_for: returns, pending, other currency out) is recomputed from
     those rows. A breakdown that summed a level (balance, MRR) over every snapshot: recomputed
     as its period-end total, the same rule as charts and answers, instead of failing the run
-    (5.5 live run: the model did it twice on the guided retry). Returns notes for the evidence."""
+    (5.5 live run: the model did it twice on the guided retry), unless the question names a move
+    (_moves_asked: churned MRR by month is the model's own meaning). Returns notes for the
+    evidence."""
     from agents.utils import LevelUnavailable, aggregate, column_hint
     from domain_pack import rows_for
     notes = []
+    timeframe = task.timeframe if task is not None else None
+    moves = _moves_asked(task, contract)
     # a trend the built-ins don't make (a QoQ, a WoW): no shared rule recomputes it yet, so its
     # evidence says the model's code made it, where that code could disagree with the tiles
     for t in f.trends:
@@ -1089,16 +1090,14 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
             continue
         if (s.aggregation or "").lower() not in ("sum", "total"):
             continue
-        if hint is None or hint.aggregation not in ("last", "first"):
-            continue
+        if hint is None or hint.aggregation not in ("last", "first") or moves:   # a move asked:
+            continue   # the model's sum is that move (churned MRR by month), never the level
         if hint.aggregation_time in cols:   # by its own snapshot time: a total per date, right
             try:
                 totals = aggregate(df, cols, s.metric_column, hint.aggregation, contract)
             except (LevelUnavailable, KeyError):   # its account column is gone: no total
                 f.segments.remove(s)
                 notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
-                continue
-            if _a_part_of(s, totals):
                 continue
             s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                           "value": round(float(v), 4)} for k, v in totals.items()]
@@ -1116,8 +1115,6 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
         except (LevelUnavailable, KeyError):
             f.segments.remove(s)
             notes.append(f"{s.metric_column} by {s.segment_column} removed: a level can't be summed")
-            continue
-        if _a_part_of(s, totals):
             continue
         s.results = [{"name": "|".join(map(str, k)) if isinstance(k, tuple) else str(k),
                       "value": round(float(v), 4)} for k, v in totals.items()]

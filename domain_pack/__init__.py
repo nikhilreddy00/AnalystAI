@@ -98,6 +98,7 @@ from .spell import (  # noqa: F401
     _memo,
     _spell_key,
     _in_force,
+    term_rows,
     _in_force_at,
     _ended,
     not_counted_yet,
@@ -111,6 +112,7 @@ from .spell import (  # noqa: F401
 )
 from .ledger import (  # noqa: F401
     MOVES,
+    TRANSFERS,
     _ledger,
     _ledger_term,
 )
@@ -119,6 +121,7 @@ from .kpi import (  # noqa: F401
     _within,
     ledger_kpi,
     stock_kpi,
+    stock_rows,
     _spell,
     _order_level,
     _term,
@@ -151,7 +154,6 @@ from .rows import (  # noqa: F401
     version_grain,
     with_row_kind,
     spell_event_columns,
-    stock_population,
     in_force_counted,
     with_spell_events,
     rows_for,

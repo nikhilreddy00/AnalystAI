@@ -11,7 +11,7 @@ Rescored with the current scorer from `analysis-20261106T011019Z` (no new model 
 | pass_rate | 0.8485 |
 | case_majority_pass_rate | 0.9091 |
 | flip_rate | 0.1818 |
-| hard_rule_violations | 0 |
+| hard_rule_violations | 1 |
 | hard_rules_na | 48 |
 | errors | 1 |
 | runs_with_truncated_llm_output | 0 |
@@ -23,16 +23,16 @@ Rescored with the current scorer from `analysis-20261106T011019Z` (no new model 
 | latency_p95_s | 43.48 |
 | numeric_accuracy | 0.8485 |
 | insight_recall | 0.8485 |
-| false_finding_rate | 0.0 |
-| verifiable_claims | 923 |
-| by_domain | {'saas': {'cases': 11, 'k_min': 3, 'k_max': 3, 'cases_passed_all_runs': 8, 'pass_rate': 0.8485, 'hard_rule_violations': 0, 'hard_rules_na': 48, 'builtin_only_cases': ['saas-1', 'saas-2', 'saas-3', 'saas-4'], 'model_dependent_passed': 4, 'model_dependent_cases': 7, 'numeric_accuracy': 0.8485, 'insight_recall': 0.8485, 'false_finding_rate': 0.0, 'verifiable_claims': 923, 'model_dependent_quality': {'numeric_accuracy': 0.7619, 'insight_recall': 0.7619, 'false_finding_rate': 0.0, 'verifiable_claims': 587}}} |
+| false_finding_rate | 0.0021 |
+| verifiable_claims | 936 |
+| by_domain | {'saas': {'cases': 11, 'k_min': 3, 'k_max': 3, 'cases_passed_all_runs': 8, 'pass_rate': 0.8485, 'hard_rule_violations': 1, 'hard_rules_na': 48, 'builtin_only_cases': ['saas-1', 'saas-2', 'saas-3', 'saas-4'], 'model_dependent_passed': 4, 'model_dependent_cases': 7, 'numeric_accuracy': 0.8485, 'insight_recall': 0.8485, 'false_finding_rate': 0.0021, 'verifiable_claims': 936, 'model_dependent_quality': {'numeric_accuracy': 0.7619, 'insight_recall': 0.7619, 'false_finding_rate': 0.0033, 'verifiable_claims': 600}}} |
 
 ## Cases
 
 | case | passes | failing checks / hard rules / error |
 |---|---|---|
 | saas-1 | 3/3 | — |
-| saas-10 | 0/3 | segment_value_truth: no segment breakdown matches logo_churn_by_segment (tried ['cancellation_in_window', 'customer_id', 'customer_id', 'mrr'])<br>segment_value_truth: no segment breakdown matches logo_churn_by_segment (tried ['customer_id', 'customer_id', 'customer_id', 'mrr'])<br>segment_value_truth: no segment breakdown matches logo_churn_by_segment (tried ['customer_id', 'mrr', 'customer_id']) |
+| saas-10 | 0/3 | HARD no_unknown_columns: unknown columns ['cancellation_in_window']<br>segment_value_truth: no segment breakdown matches logo_churn_by_segment (tried ['cancellation_in_window', 'customer_id', 'customer_id', 'mrr'])<br>segment_value_truth: no segment breakdown matches logo_churn_by_segment (tried ['customer_id', 'customer_id', 'customer_id', 'mrr'])<br>segment_value_truth: no segment breakdown matches logo_churn_by_segment (tried ['customer_id', 'mrr', 'customer_id']) |
 | saas-11 | 2/3 | error: GuardrailViolation: analysis: code does not parse: unterminated string literal (detected at line 1) (line 1)<br>retry: code_guard<br>retry: empty<br>segment_value_truth: no findings |
 | saas-2 | 3/3 | — |
 | saas-3 | 3/3 | retry: grounding_rewritten |
@@ -40,5 +40,5 @@ Rescored with the current scorer from `analysis-20261106T011019Z` (no new model 
 | saas-5 | 3/3 | — |
 | saas-6 | 3/3 | — |
 | saas-7 | 3/3 | — |
-| saas-8 | 2/3 | retry: level_recomputed<br>segment_value_truth: no ['month', 'Month', 'churn_month', 'period'] breakdown matches churned_mrr_by_month_window (tried ['mrr']) |
+| saas-8 | 2/3 | false: sum mrr[Mid]<br>false: sum mrr[SMB]<br>retry: level_recomputed<br>segment_value_truth: no ['month', 'Month', 'churn_month', 'period'] breakdown matches churned_mrr_by_month_window (tried ['mrr']) |
 | saas-9 | 3/3 | retry: breakdown_recomputed<br>retry: model_trend_labelled |

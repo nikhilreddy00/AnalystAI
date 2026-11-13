@@ -38,6 +38,11 @@ TEST_MARKER = re.compile(r"(?i)^cus_test|@example\.(?:com|org|net)$|^test(?:@|\+
                          r"|@test\.")
 INTERVAL_MONTHS = {"month": 1, "year": 12}
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
+TRANSFERS = ("transfer_in", "transfer_out")   # a move between parts: nothing in the whole
+MOVE_NAMES = {"new": ("new_mrr", "new_customers"), "expansion": ("expansion_mrr",   # (money, count)
+              "expansion_customers"), "contraction": ("contraction_mrr", "contraction_customers"),
+              "churn": ("churned_mrr", "churned_customers"),
+              "reactivation": ("reactivation_mrr", "reactivated_customers")}
 
 
 def _blank(v) -> bool:
@@ -85,27 +90,39 @@ class Spec:
     fte: str | None = None
     currency: tuple | None = None        # (column, the currency kept)
     test_cols: tuple = field(default=())  # columns the test-account marker reads
+    # columns that are a level at a date (MRR, seats, salary): read on the rows in force, never
+    # summed over dates; the first is the entity's value (MRR, a column the list may not have)
+    levels: tuple = ()
 
 
 HR_ROSTER = Spec(entity="Employee_ID", money=False, value=lambda r: 1.0, start="Hire_Date",
                  end="Termination_Date", status="Employment_Status", ended=HR_ENDED,
                  segment="Department", worker_type="Worker_Type",
-                 category="Termination_Category", fte="FTE")
+                 category="Termination_Category", fte="FTE", levels=("FTE", "Annual_Salary"))
 SPECS = {
     "saas_subscriptions": Spec(
         entity="customer_id", money=True, value=subscription_mrr, start="created",
         end="ended_at", paid_from="trial_end", status="status", ended=SAAS_ENDED,
         out_statuses=SAAS_OUT, concurrent=True, segment="segment", groups=("segment", "plan"),
-        currency=("currency", "USD"), test_cols=("customer_id", "contact_email")),
+        currency=("currency", "USD"), test_cols=("customer_id", "contact_email"), levels=("mrr",)),
     "saas_mrr_snapshots": Spec(
         entity="customer_id", money=True, value=lambda r: float(r["mrr"]), snapshot="month",
-        month_labels=True, segment="segment", groups=("segment",), test_cols=("customer_id",)),
+        month_labels=True, segment="segment", groups=("segment",), test_cols=("customer_id",),
+        levels=("mrr",)),
+    # account-month billing: MRR and seats as levels (the insight cases' book)
+    "subscriptions": Spec(
+        entity="account_id", money=True, value=lambda r: float(r["mrr"]), snapshot="billing_date",
+        month_labels=True, segment="plan", groups=("plan",), levels=("mrr", "seats")),
+    # an account-month export: every account each month, MRR, seats and users as levels
+    "saas_accounts": Spec(
+        entity="account_id", money=True, value=lambda r: float(r["mrr"]), snapshot="month",
+        month_labels=True, segment="plan", groups=("plan",), levels=("mrr", "seats", "active_users")),
     "hr_roster": HR_ROSTER,
     "hr_roster_onerow": HR_ROSTER,   # Hire_Date is the latest hire; Original_Hire_Date unread
     "hr_snapshots": Spec(
         entity="Emp_ID", money=False, value=lambda r: 1.0, snapshot="Snapshot_Date",
         end="Termination_Date", status="Status", ended=HR_ENDED, segment="Department",
-        worker_type="Worker_Type", fte="FTE"),
+        worker_type="Worker_Type", fte="FTE", levels=("FTE", "Base_Salary")),
     "employees": Spec(entity="employee_id", money=False, value=lambda r: 1.0,
                       start="hire_date", end="termination_date", segment="department"),
     # the property tests' small books (tests/test_properties.py)
@@ -250,41 +267,70 @@ def history(rows: list[dict], spec: Spec, lo, month_ends) -> list[pd.Timestamp]:
     return sorted(points)
 
 
-def moves(ledger: dict, points: list, lo) -> dict | None:
-    """Each entity's change between consecutive points whose later point is after lo: new (from
-    0, never in force before), reactivation (from 0, in force at an earlier point), expansion,
-    contraction, churn (to 0). Counted in the segment of the later row (a churn: the earlier).
-    None when no point is after lo (one month of data: GLOSSARY Unavailable, 'no month of
-    moves'; never $0)."""
+def _lines(rs: list[dict], part) -> dict:
+    """An entity's ledger lines at a date: part -> its rows' values summed (GLOSSARY, Ledger)."""
+    out: dict = {}
+    for r in rs:
+        out[part(r)] = out.get(part(r), 0.0) + r["value"]
+    return out
+
+
+def moves(ledger: dict, points: list, lo, part=lambda r: str(r["segment"])) -> dict | None:
+    """Each entity's change between consecutive points whose later point is after lo (GLOSSARY,
+    Move). Per entity, its lines' rises and falls across parts are matched first: the matched
+    amount is a transfer (out of the parts that fell, into the parts that rose, each in
+    proportion to its own rise or fall). The rest is classed on the entity's whole value: new
+    (from 0, never in force before), reactivation (from 0, in force at an earlier point),
+    expansion, contraction, churn (to 0), booked in the parts that moved, in proportion. `count`
+    counts entities per kind (a transfer is no entity's move in the whole). `by_month` keys a
+    move by its later point's month. None when no point is after lo (one month of data: GLOSSARY
+    Unavailable, 'no month of moves'; never $0)."""
     if not any(b > lo for b in points):
         return None
-    amount = {k: 0.0 for k in MOVES}
+    kinds = (*MOVES, *TRANSFERS)
+    amount = {k: 0.0 for k in kinds}
     count = {k: 0 for k in MOVES}
-    by_seg: dict = {k: {} for k in MOVES}
+    by_seg: dict = {k: {} for k in kinds}
+    by_month: dict = {k: {} for k in MOVES}
+    n_month: dict = {k: {} for k in MOVES}
     seen: set = set()
     for a, b in zip(points, points[1:]):
         va, vb = ledger[a], ledger[b]
         seen |= set(va)
         if b <= lo:
             continue
+        month = f"{b:%Y-%m}"
+        for name in MOVES:   # every month of moves, a month with none at 0
+            by_month[name].setdefault(month, 0.0)
+            n_month[name].setdefault(month, 0)
         for c in set(va) | set(vb):
-            x = _value(va[c]) if c in va else 0.0
-            y = _value(vb[c]) if c in vb else 0.0
-            if x == 0 and y > 0:
-                kind, amt = ("reactivation" if c in seen else "new"), y
-            elif x > 0 and y == 0:
-                kind, amt = "churn", x
-            elif y > x:
-                kind, amt = "expansion", y - x
-            elif y < x:
-                kind, amt = "contraction", x - y
-            else:
-                continue
-            seg = _segment(va[c] if kind == "churn" else vb[c])
-            amount[kind] += amt
-            count[kind] += 1
-            by_seg[kind][seg] = by_seg[kind].get(seg, 0.0) + amt
-    return {"amount": amount, "count": count, "by_segment": by_seg}
+            xa, yb = _lines(va.get(c, []), part), _lines(vb.get(c, []), part)
+            x, y = sum(xa.values()), sum(yb.values())
+            d = {k: yb.get(k, 0.0) - xa.get(k, 0.0) for k in set(xa) | set(yb)}
+            up = sum(v for v in d.values() if v > 0)
+            down = sum(-v for v in d.values() if v < 0)
+            matched = min(up, down)
+            rise = ("reactivation" if c in seen else "new") if x == 0 else "expansion"
+            fall = "churn" if y == 0 else "contraction"
+            booked: dict = {}
+            for k, v in d.items():
+                if v == 0:
+                    continue
+                side, kind, size, total = (("transfer_in", rise, v, up) if v > 0
+                                           else ("transfer_out", fall, -v, down))
+                moved = size * matched / total
+                for name, amt in ((side, moved), (kind, size - moved)):
+                    if amt:
+                        amount[name] += amt
+                        by_seg[name][k] = by_seg[name].get(k, 0.0) + amt
+                        booked[name] = booked.get(name, 0.0) + amt
+            for name in MOVES:
+                if booked.get(name):
+                    count[name] += 1
+                    by_month[name][month] = by_month[name].get(month, 0.0) + booked[name]
+                    n_month[name][month] = n_month[name].get(month, 0) + 1
+    return {"amount": amount, "count": count, "by_segment": by_seg, "by_month": by_month,
+            "count_by_month": n_month}
 
 
 def cohort(opening: dict, closing: dict) -> dict:
@@ -305,11 +351,17 @@ def cohort(opening: dict, closing: dict) -> dict:
     return {**one(list(opening)), "by_segment": {s: one(ids) for s, ids in segs.items()}}
 
 
-def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
-    if spec.snapshot:   # a move or a cohort needs a known state: from the first snapshot on
+def ledger_at(rows: list[dict], spec: Spec, lo, month_ends) -> tuple:
+    """(lo, points, ledger): the in-force map at every ledger point. A move or a cohort needs a
+    known state: on snapshots, from the first snapshot on."""
+    if spec.snapshot:
         lo = max(lo, min(r["snap"] for r in rows if r["snap"] is not None))
     points = history(rows, spec, lo, month_ends)
-    ledger = {t: in_force(rows, spec, t) for t in points}
+    return lo, points, {t: in_force(rows, spec, t) for t in points}
+
+
+def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
+    lo, points, ledger = ledger_at(rows, spec, lo, month_ends)
     mv = moves(ledger, points, lo)
     # a cohort needs a span: one month of data opens and ends on the same date (no rate there:
     # GLOSSARY Unavailable, never a 0% churn)
@@ -324,16 +376,22 @@ def ledger_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
            "nrr_by_segment": {s: v["nrr"] for s, v in co["by_segment"].items()} if co else {},
            "logo_churn_rate_by_segment": {s: v["logo_churn_rate"]
                                           for s, v in co["by_segment"].items()} if co else {}}
-    names = {"new": ("new_mrr", "new_customers"), "expansion": ("expansion_mrr",
-             "expansion_customers"), "contraction": ("contraction_mrr", "contraction_customers"),
-             "churn": ("churned_mrr", "churned_customers"),
-             "reactivation": ("reactivation_mrr", "reactivated_customers")}
-    for kind, (money, n) in names.items():
+    for kind, (money, n) in MOVE_NAMES.items():
         out[money] = mv["amount"][kind] if mv else None
         out[n] = mv["count"][kind] if mv else None
         out[f"{money}_by_segment"] = mv["by_segment"][kind] if mv else {}
+        out[f"{money}_by_month"] = mv["by_month"][kind] if mv else {}
+        out[f"{n}_by_month"] = mv["count_by_month"][kind] if mv else {}
+        out[f"{money}_mean_by_month"] = {m: v / mv["count_by_month"][kind][m]
+                                         for m, v in mv["by_month"][kind].items()
+                                         if mv["count_by_month"][kind][m]} if mv else {}
+    for kind in TRANSFERS:   # the whole book is one part: nothing moves; each segment's own
+        out[f"{kind}_mrr"] = 0.0 if mv else None
+        out[f"{kind}_mrr_by_segment"] = mv["by_segment"][kind] if mv else {}
     for col in spec.groups:
         out[f"mrr_by_{col}"] = by_column(now, col)
+    if spec.segment:   # a segment bridge opens on its lines (a cohort places by the opening row)
+        out["opening_mrr_by_segment"] = by_column(ledger[lo], spec.segment) if lo < at else {}
     return out
 
 
@@ -404,6 +462,69 @@ def headcount_kpis(rows: list[dict], spec: Spec, lo, at, month_ends) -> dict:
                     n[str(r["segment"])] = n.get(str(r["segment"]), 0) + 1
             out[f"{name}_by_department"] = {d: n.get(d, 0) / a for d, a in dept_avg.items()}
     return out
+
+
+AGGS = {   # naive, as pandas defines them (std: the sample's, n − 1)
+    "sum": sum, "count": len, "min": min, "max": max,
+    "mean": lambda v: sum(v) / len(v),
+    "median": lambda v: (sorted(v)[(len(v) - 1) // 2] + sorted(v)[len(v) // 2]) / 2,
+    "std": lambda v: (sum((x - sum(v) / len(v)) ** 2 for x in v) / (len(v) - 1)) ** 0.5
+    if len(v) > 1 else float("nan"),
+}
+
+
+def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg: str,
+                 months: set | frozenset = frozenset(),
+                 today: pd.Timestamp | None = None) -> tuple[list[dict], list[dict]]:
+    """(levels, moves): the readings of a level (MRR, seats, salary: the spec's `levels`) by any
+    row columns, as the definitions give them. Levels: the rows in force at the as-of (the
+    population's), grouped by `cols` ('a|b' keys, a date column in `months` by its month
+    'YYYY-MM', an 'Overall' total), `agg` over those rows; per entity (a count of entities, a
+    sum ÷ entities: MRR per customer). Moves of the entity's value: by one column, each move by
+    month (an amount, or its mean per entity); summed by groups, each move by them, transfers
+    included. ([], []) for any other column."""
+    spec = SPECS[name]
+    if metric not in spec.levels or agg not in AGGS:
+        return [], []
+    today = today or pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today())
+    rows = prepare(df, spec)
+    at = as_of(rows, spec, today.normalize())
+    now = in_force(rows, spec, at)
+
+    def value(r) -> float | None:
+        if metric == spec.levels[0] and spec.money:
+            return r["value"]   # the entity's own value (a list's MRR from its price)
+        return None if _blank(r["row"].get(metric)) else float(r["row"][metric])
+
+    def key(r) -> str:
+        return "|".join(f"{_date(r['row'][k]):%Y-%m}" if k in months and _date(r["row"][k])
+                        else str(r["row"][k]) for k in cols)
+
+    vals: dict = {}
+    ents: dict = {}
+    for c, rs in now.items():
+        for r in rs:
+            for k in (key(r), "Overall"):
+                if (v := value(r)) is not None:
+                    vals.setdefault(k, []).append(v)
+                ents.setdefault(k, set()).add(c)
+    levels = [{k: AGGS[agg](v) for k, v in vals.items()}]
+    if agg in ("count", "mean"):   # per entity: customers, MRR per customer
+        levels.append({k: (len(ents[k]) if agg == "count" else sum(vals.get(k, [])) / len(ents[k]))
+                       for k in ents})
+    moved: list[dict] = []
+    if agg in ("sum", "mean") and metric == spec.levels[0] and spec.money:   # the value's moves
+        if len(cols) == 1:   # by month ('YYYY-MM': a month column's groups)
+            got = reference(name, df, today)
+            moved += [got.get(f"{MOVE_NAMES[k][0]}_{'mean_' if agg == 'mean' else ''}by_month") or {}
+                      for k in MOVES]
+        if agg == "sum" and not set(cols) & set(months):   # by the groups, each line its group
+            # (GLOSSARY Move, transfers too)
+            lo, _, month_ends = window(rows, spec, at)
+            lo, points, ledger = ledger_at(rows, spec, lo, month_ends)
+            mv = moves(ledger, points, lo, part=key)
+            moved += [mv["by_segment"][k] for k in (*MOVES, *TRANSFERS)] if mv else []
+    return [o for o in levels if o], [o for o in moved if o]
 
 
 def reference(name: str, df: pd.DataFrame, today: pd.Timestamp | None = None) -> dict:

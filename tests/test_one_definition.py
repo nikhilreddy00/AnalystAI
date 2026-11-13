@@ -388,9 +388,10 @@ def test_the_window_in_force_and_moves_are_defined_once():
     `def` of one of them anywhere in shared code is a second copy of the rule."""
     import ast
     owner = {**dict.fromkeys(["window", "_cut", "spell_as_of", "spell_from", "_in_force_at",
-                              "_ended", "first_known", "_month_ends"], "spell"),
+                              "_ended", "first_known", "_month_ends", "term_rows"], "spell"),
              **dict.fromkeys(["_ledger", "_ledger_term"], "ledger")}
-    owner["MOVES"] = "ledger"   # the move kinds: one tuple
+    owner["MOVES"] = owner["TRANSFERS"] = "ledger"   # the move kinds: one tuple each
+    owner["stock_rows"] = "kpi"   # the stock tile's rows: term_rows of its term
     owner |= {"measure": "kpi", "unavailable_words": "kpi"}   # a KPI's value and why it has none
     defs = [(n.name, _name(p)) for p in SHARED for n in ast.walk(ast.parse(p.read_text()))
             if isinstance(n, ast.FunctionDef) and n.name in owner]
@@ -398,6 +399,29 @@ def test_the_window_in_force_and_moves_are_defined_once():
              if isinstance(n, ast.Assign) for t in n.targets
              if isinstance(t, ast.Name) and t.id in owner]
     assert sorted(defs) == sorted((f, f"domain_pack/{m}.py") for f, m in owner.items()), defs
+
+
+@pytest.mark.parametrize("name", ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees",
+                                  "saas_subscriptions", "saas_mrr_snapshots", "subscriptions",
+                                  "saas_accounts"])
+def test_the_in_force_marker_counts_the_stock_tiles_own_rows(name):
+    """5.7b-2b (C1, PR1-01): which rows a term counts had three copies (the KPI's, the ledger's
+    and the model frame's in_force_now marker). On every spell dataset the marker's rows are
+    the stock tiles' rows: the count tile is their people, the money tile their sum."""
+    import domain_pack as dp
+    from tests.test_oracle import _built
+    _, df, contract, _ = _built(name)
+    pack = dp.pack_for(contract.domain)
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    if not dp.has_spell(pack, roles):
+        pytest.skip("no spell in this data")
+    rows = df.loc[dp.in_force_counted(df, roles, pack, dp.spell_as_of(pack, df, roles))]
+    from domain_pack.pack import _column
+    for k in (k for u in ("count", "money") if (k := dp.stock_kpi(pack, roles, u)) and k.den is None):
+        term = dp.used_terms(pack, k, roles)[0]
+        want = rows[roles[pack.spell.entity]].nunique() if term.sum is None \
+            else _column(rows, roles, term.sum).sum()
+        assert dp.compute_kpi(df, roles, pack, k.name) == pytest.approx(want), k.name
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError,
@@ -428,6 +452,18 @@ def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess(
                         "t": pd.to_datetime(["2026-01-03", "2026-01-04", "2026-06-30",
                                              "2026-02-01", "2026-05-17"])})
     assert set(snapshot_rows(odd, ["a"], "t")["a"]) == {"x", "y"}   # no cadence: nothing cut
+
+
+def test_a_transfer_move_is_said_in_the_packs_words_and_never_routed_by_a_word():
+    """5.7b-2b (C3): "transfer" is a bank transaction type and a hospital discharge, so no pack's
+    glossary routes a question to a transfer move, and a pack with moves says them in its own
+    words ("moved in from another segment")."""
+    import domain_pack as dp
+    for p in dp.load_packs():
+        transfers = {k.name for k in p.kpis if any(t.move in dp.TRANSFERS for alt in k.num for t in alt)}
+        assert not transfers & set(p.glossary), (p.domain, transfers & set(p.glossary))
+        if transfers:
+            assert "{moved_in}" in p.spell.words.moved and "transfer" not in p.spell.words.moved.lower()
 
 
 def test_every_unavailable_reason_has_words_in_every_pack():

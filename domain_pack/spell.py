@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .pack import Pack, _day, _snapshot_column, spell_terms, words
+from .pack import Pack, _day, _meets, _snapshot_column, spell_terms, words
 
 
 # A spell series reaches back at most this many years and has at most this many periods (one
@@ -263,6 +263,18 @@ def _in_force(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t: pd.Time
     return whole.loc[idx]
 
 
+def term_rows(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, counted: pd.Series,
+              where: list | None, t: pd.Timestamp | None = None) -> pd.DataFrame:
+    """THE rows a spell term reads (GLOSSARY: Term rows): of the KPI's row kinds (`counted`, by
+    the whole data's row label) meeting the term's `where`; with `t`, only those in force then
+    (_in_force). The KPI, the ledger and the model frame's markers read it, never their own copy."""
+    rows = whole if t is None else _in_force(whole, roles, pack, t)
+    m = counted.loc[rows.index].to_numpy()   # `counted` labels every row of `whole`
+    if where:
+        m = m & _meets(rows, roles, where).to_numpy()
+    return rows[m]
+
+
 def _in_force_at(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, t) -> pd.DataFrame:
     """_in_force's rule, uncached."""
     s, snap = pack.spell, _snapshot_column(pack, roles)
@@ -350,19 +362,30 @@ def _spell_events(whole: pd.DataFrame, roles: dict[str, str], pack: Pack, which:
     ent = roles[s.entity]
     if snap:
         d = whole.assign(__t=_day(whole[snap])).dropna(subset=["__t"]).sort_values("__t", kind="stable")
-        g = d.groupby([ent, *([roles[s.start]] if s.start in roles else [])], sort=False, dropna=False)
+        # a declared monthly cadence reads months: snapshots on each entity's own day are one
+        # month, and a month with no file at all is no gap (C7)
+        step = d["__t"].dt.to_period("M") if s.snapshot_every else d["__t"]
+        steps = pd.Series(sorted(step.unique()))
+        keys = [ent, *([roles[s.start]] if s.start in roles else [])]
+        if s.start not in roles:   # no start date: back after a step it was missing from is a
+            # new spell, a hire (PR7-01: a return after a gap was no hire)
+            at = pd.Series(steps.searchsorted(step), index=d.index)
+            d = d.assign(__run=(at.groupby(d[ent]).diff() > 1).groupby(d[ent]).cumsum())
+            keys.append("__run")
+        g = d.groupby(keys, dropna=False)   # head / tail keep the frame's order
         if which == "starts":
             rows = g.head(1)
             when = (_day(rows[roles[s.start]]) if s.start in roles
-                    else rows["__t"].where(rows["__t"] > d["__t"].min()))
+                    else rows["__t"].where(step[rows.index] > steps.min()))   # the first holds none
         else:
             rows = g.tail(1)
             when = _day(rows[roles[s.end]]) if s.end in roles else pd.Series(pd.NaT, index=rows.index)
-            dates = pd.Series(sorted(d["__t"].unique()))
-            pos = dates.searchsorted(rows["__t"], side="right")
-            missing = pd.Series([dates[p] if p < len(dates) else pd.NaT for p in pos], index=rows.index)
+            first = d.groupby(step)["__t"].min()   # each step's first snapshot
+            pos = steps.searchsorted(step[rows.index], side="right")
+            missing = pd.Series([first[steps[p]] if p < len(steps) else pd.NaT for p in pos],
+                                index=rows.index)
             when = when.where(when.notna(), missing)
-        rows = rows.drop(columns="__t")
+        rows = rows[whole.columns]
     else:
         col = roles.get(s.start if which == "starts" else s.end)
         if col is None:

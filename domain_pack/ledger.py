@@ -4,39 +4,70 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import Term, Unavailable, _column, _meets, _snapshot_column
-from .spell import SpellView, _in_force, _month_ends
+from .pack import Term, Unavailable, _column, _snapshot_column
+from .spell import SpellView, _month_ends, term_rows
 
 
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
+TRANSFERS = ("transfer_in", "transfer_out")   # a move between parts: nothing in the whole
+IN, GROUP = "__in", "__group"   # a ledger line's part: in the filter's part, its `by` group
 
 
 def _ledger(view: SpellView, term: Term, counted, points, part, by):
-    """THE ledger: (values, in the part, group), each an entity × date frame. An entity's value
-    at t is its rows in force at t (on ALL rows: _in_force) of the KPI's kinds meeting `where`,
-    the term's role summed (concurrent spells add up) or 1 for a count (the entity is there,
-    however many of its spells are); 0 when none. `in part`:
-    one of those rows is in `part` (a filter); `group`: the `by` value of its first row.
-    `counted`: by the whole data's row label, the rows of the KPI's kinds."""
+    """THE ledger (GLOSSARY: Ledger): (lines, in the part, group). `lines`: one row per ledger
+    line (entity, in `part`, `by` group) × date: the entity's term rows at t (term_rows, on ALL
+    rows) in that line, the term's role summed (concurrent spells add up) or 1 for a count
+    (there, however many of its spells are); 0 when none. `in part` / `group`, entity × date: one
+    of its rows is in `part` (a filter) / its `by` value, the first in sort order: where a
+    cohort places an entity (GLOSSARY: Opening cohort). `counted`: by the whole data's row label, the rows of
+    the KPI's kinds."""
     whole, roles, pack = view.whole, view.roles, view.pack
     ent = roles[pack.spell.entity]
     vals, inside, grp = {}, {}, {}
     for t in points:
-        rows = _in_force(whole, roles, pack, t)
-        m = counted.reindex(rows.index, fill_value=False).to_numpy()
-        if term.where:
-            m = m & _meets(rows, roles, term.where).to_numpy()
-        rows = rows[m]
-        if term.sum is not None:
-            vals[t] = _column(rows, roles, term.sum).groupby(rows[ent]).sum()
-        else:   # a count: the entity is there (two concurrent subscriptions are one customer)
-            vals[t] = pd.Series(1.0, index=pd.unique(rows[ent]))
-        inside[t] = pd.Series(rows.index.isin(part), index=rows.index).groupby(rows[ent]).any()
-        if by:
-            grp[t] = rows[by].groupby(rows[ent]).first()
-    values = pd.DataFrame(vals, columns=points).fillna(0.0).clip(lower=0)
-    return (values, pd.DataFrame(inside, columns=points).reindex(values.index).eq(True),
-            pd.DataFrame(grp, columns=points).reindex(values.index) if by else None)
+        rows = term_rows(whole, roles, pack, counted, term.where, t)
+        here = pd.Series(rows.index.isin(part), index=rows.index)
+        key = [rows[ent], here.rename(IN),
+               (rows[by] if by else pd.Series("", index=rows.index)).rename(GROUP)]
+        v = _column(rows, roles, term.sum) if term.sum is not None else pd.Series(1.0, index=rows.index)
+        if len(rows):   # a count: 1 per line, however many rows
+            vals[t] = v.groupby(key, dropna=False).agg("sum" if term.sum is not None else "max")
+        inside[t] = here.groupby(rows[ent]).any()
+        if by:   # two groups at once: the first in sort order, never the file's (PR9-01)
+            s = rows[by].iloc[rows[by].astype(str).argsort()]
+            grp[t] = s.groupby(rows[ent].loc[s.index]).first()
+    lines = pd.DataFrame(vals, columns=points).fillna(0.0).clip(lower=0)
+    if not vals:
+        lines.index = pd.MultiIndex.from_arrays([[], [], []], names=[ent, IN, GROUP])
+    # inside / grp hold the same entities as the lines (each read the same rows)
+    return lines, pd.DataFrame(inside).eq(True), pd.DataFrame(grp)
+
+
+def _moved(x: pd.Series, y: pd.Series, ever: pd.Series, kind: str, count: bool) -> pd.Series:
+    """Each ledger line's amount of one move `kind` between two month-ends (GLOSSARY: Move), x
+    and y its values then. Per entity its lines' matched rise and fall is a transfer, each line's
+    share in proportion to its own; the rest is classed on the entity's whole value (`ever`:
+    in force at an earlier month-end) and booked in the lines that moved. On a count a line is
+    there or not: a part gained or lost while the entity stays is a transfer on its own."""
+    ents = x.index.get_level_values(0)
+    up, down = (y - x).clip(lower=0), (x - y).clip(lower=0)
+
+    def whole(s):
+        return s.groupby(ents).transform("sum")
+    was, now, rose, fell = whole(x), whole(y), whole(up), whole(down)
+    if count:
+        stays = (was > 0) & (now > 0)
+        t_in, t_out = up.where(stays, 0.0), down.where(stays, 0.0)
+    else:
+        matched = pd.concat([rose, fell], axis=1).min(axis=1)
+        t_in = (up * matched / rose.where(rose > 0)).fillna(0.0)
+        t_out = (down * matched / fell.where(fell > 0)).fillna(0.0)
+    rise, fall = up - t_in, down - t_out
+    before = pd.Series(ever.reindex(ents).to_numpy(), index=x.index)   # ever: the same entities
+    return {"transfer_in": t_in, "transfer_out": t_out,
+            "new": rise * ((was == 0) & ~before), "reactivation": rise * ((was == 0) & before),
+            "expansion": rise * (was > 0),
+            "contraction": fall * (now > 0), "churn": fall * (now == 0)}[kind]
 
 
 def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, cohort: bool):
@@ -68,32 +99,28 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, c
         points = sorted({*ends, *starts})
     points = [t for t in points if t <= as_of]
     by = by if axis is None else None   # a period axis is the ledger's own dates, never a group
-    v, inside, g = _ledger(view, term, counted, points, part, by)
+    lines, inside, g = _ledger(view, term, counted, points, part, by)
+    # each entity's value: its lines summed; a count's, there or not (two lines are one customer)
+    v = lines.groupby(level=0).agg("sum" if term.sum is not None else "max")
 
-    def total(x: pd.Series, at, key=None):
-        """x summed over the entities in the part at `at` (by group or one number)."""
-        keep = inside[at]
-        x = x[keep & (x != 0)]
+    def total(x: pd.Series) -> float | pd.Series:
+        """x summed over the ledger lines in the part (by group or one number)."""
+        x = x[x.index.get_level_values(IN).to_numpy() & (x != 0).to_numpy()]
+        if by:
+            return x.groupby(level=GROUP).sum().reindex(groups, fill_value=0).rename_axis(None)
+        return float(x.sum())
+
+    def placed(x: pd.Series, at) -> float | pd.Series:
+        """x summed over a cohort's entities, each placed by its row at `at` (Opening cohort)."""
+        x = x[inside[at] & (x != 0)]
         if by:
             return x.groupby(g.loc[x.index, at]).sum().reindex(groups, fill_value=0)
         return float(x.sum())
 
     if term.spell == "moves":
         prev_ever = (v > 0).cummax(axis=1).shift(1, axis=1, fill_value=False)
-        out = {}
-        for a, b in zip(points, points[1:]):
-            x, y = v[a], v[b]
-            kind = term.move
-            amount = {"new": (x == 0) & (y > 0) & ~prev_ever[a],
-                      "reactivation": (x == 0) & (y > 0) & prev_ever[a],
-                      "expansion": (x > 0) & (y > x), "contraction": (y > 0) & (y < x),
-                      "churn": (x > 0) & (y == 0)}[kind]
-            if term.sum is None:
-                delta = amount.astype(float)
-            else:
-                delta = {"new": y, "reactivation": y, "expansion": y - x, "contraction": x - y,
-                         "churn": x}[kind].where(amount, 0.0)
-            out[b] = total(delta, a if kind == "churn" else b)
+        out = {b: total(_moved(lines[a], lines[b], prev_ever[a], term.move, term.sum is None))
+               for a, b in zip(points, points[1:])}
         if axis is not None:
             per = {}
             for b, n in out.items():
@@ -111,19 +138,21 @@ def _ledger_term(view: SpellView, term: Term, part, counted, by, axis, groups, c
                 if inside_window else pd.Series(0.0, index=groups)
         return float(sum(out[b] for b in inside_window))
 
-    def cohort(start, end):
+    def level(start, end):
         if start not in v.columns or end not in v.columns or start >= end:
             return float("nan")   # a window after the data (a date filter past the as-of)
+        if term.spell == "opening" and not cohort:   # a bridge's opening: its lines (Ledger)
+            return total(lines[start])
         base = v[start]
         if term.spell == "opening":
-            return total(base, start)
+            return placed(base, start)
         later = v[end].where(base > 0, 0.0)
-        return total(later.clip(upper=base) if term.capped else later, start)
+        return placed(later.clip(upper=base) if term.capped else later, start)
 
     if axis is not None:   # a period whose whole cohort precedes the data: NaN, never a short one
-        return pd.Series({p: cohort(s_, e) if pw.full_cohort else float("nan")
+        return pd.Series({p: level(s_, e) if pw.full_cohort else float("nan")
                           for p, pw, s_, e in zip(axis, periods, starts, ends)},
                          dtype=float).reindex(axis)
     if starts[0] >= as_of:   # a cohort of no span (one month of data): no rate, never 0% churn
         return Unavailable("too_short")
-    return cohort(starts[0], as_of)   # both are ledger points, start < end: never NaN
+    return level(starts[0], as_of)   # both are ledger points, start < end: never NaN
