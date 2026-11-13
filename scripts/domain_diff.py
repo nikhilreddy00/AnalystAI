@@ -122,6 +122,9 @@ def main() -> None:
     ap.add_argument("--show", action="store_true",
                     help="print each changed value's text change (evals.snapshot.text_changes)")
     args = ap.parse_args()
+    if args.show:   # this side reads this tree (each _dump gets its tree on PYTHONPATH): import
+        sys.path.append(str(ROOT))   # now, never after minutes of dumps (retro 5.7b-2b)
+        from evals.snapshot import text_changes
     key = subprocess.run([str(ROOT / ".venv/bin/python"), "-c", "from cryptography.fernet import Fernet;"
                           "print(Fernet.generate_key().decode())"], capture_output=True, text=True).stdout.strip()
     env = {**os.environ, "ANALYSTAI_TODAY": "2026-11-01", "ENCRYPTION_KEY": key}   # one key: same pseudonyms
@@ -142,7 +145,6 @@ def main() -> None:
     for n in before:
         print(f"{n}: identical" if n not in changed else f"{n}: CHANGED {len(changed[n])} path(s)")
         if args.show and n in changed:   # the values: a rename reads as one word, a number as one
-            from evals.snapshot import text_changes
             seen: set = set()
             for core, line in text_changes(before[n], after.get(n)):
                 if core not in seen:

@@ -19,8 +19,9 @@ with NEW in a worktree and runs the tests: caught = a test failed.
 Leave tests/test_one_definition.py out of --tests: its guards read source files, and mutmut's
 rewritten ones fail them before any mutant runs. The worktree is HEAD, so a run refuses an
 uncommitted source or test file it reads. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
-(this script adds the test selection). Exit 1 when a function has a mutant that survived or
-that no selected test reached, or when mutmut itself fails."""
+(this script adds the test selection). Exit 2, before any mutant runs, when no selected test
+reaches a named function (it prints the test files that name it). Exit 1 when a mutant survived
+or no test reached it, or when mutmut itself fails."""
 import argparse
 import ast
 import json
