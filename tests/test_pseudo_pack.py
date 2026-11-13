@@ -79,7 +79,7 @@ _TOKEN = re.compile(r"[a-z][a-z]+")
 # English's function and time words: never a domain's (the domain words are built from the packs;
 # "left out", "months", "when it covers less" are the product's own English)
 _STOP = set("the and an no not with from one of a to in on by is per at or as all each its new "
-            "who are so only more first came months when left".split())
+            "who are so only more first came months when left their".split())
 
 
 def _only_its_words(domain: str) -> set[str]:
@@ -92,9 +92,9 @@ def _only_its_words(domain: str) -> set[str]:
     def vocab(p) -> set[str]:
         return tokens([*(k.label for k in p.kpis), *(w for ws in p.glossary.values() for w in ws)])
 
-    def spell(p) -> set[str]:
-        w = p.spell.words if p.spell else None
-        return tokens([*w.model_dump(exclude={"moves"}).values(), *w.moves.values()]) if w else set()
+    def spell(p) -> set[str]:   # its names (customers, Monthly churn), not its sentences' English
+        w = p.spell.words.model_dump(exclude={"moves"}) if p.spell else {}
+        return tokens(v for v in w.values() if len(v.split()) <= 3)
     packs = domain_pack.load_packs()
     others = [p for p in packs if p.domain != domain]
     its = pack_for(domain)
@@ -124,6 +124,8 @@ def test_the_spell_and_ledger_sentences_say_only_the_packs_words(domain, name, m
     SaaS's words in shared Python. On a pack whose every word is a token, and data whose columns
     are neutral, the spell story and each KPI's How hold no word only that pack says."""
     from tests.test_oracle import _built
+    own = _only_its_words(domain)   # from the real packs, before the patch
+    assert {"churn", "customers"} <= _only_its_words("saas") and "people" in _only_its_words("hr")
     p = _wordless(domain)
     monkeypatch.setattr(domain_pack.pack, "load_packs", lambda: tuple(
         p if x.domain == domain else x for x in domain_pack.__dict__["_real_load"]()))
@@ -131,13 +133,15 @@ def test_the_spell_and_ledger_sentences_say_only_the_packs_words(domain, name, m
     neutral = {c: f"col{i}" for i, c in enumerate(clean.columns)}
     df = clean.rename(columns=neutral)
     roles = {r: neutral[c] for r, c in contract.roles.items() if c in clean.columns}
-    texts = [*domain_pack.spell_story(p, df, roles),
+    texts = [*domain_pack.spell_story(p, df, roles), *domain_pack.spell_facts(p, df, roles),
              *(domain_pack.describe_kpi(p, k.name, roles, parts=True) for k in p.kpis
                if domain_pack.computable(p, k.name, roles)),
              *(domain_pack.window_words(p, df, roles, k.name) for k in p.kpis)]
-    # a token, the pack's own value lists and quoted values are its words, said through `where`
-    texts = [re.sub(r"⟦[^⟧]*⟧|\[[^\]]*\]|'[^']*'| where .*", " ", t) for t in texts]
-    own = _only_its_words(domain)
+    # a token and the pack's own value lists (said through `where`) are its words
+    texts = [re.sub(r"⟦[^⟧]*⟧|\[[^\]]*\]| where .*", " ", t) for t in texts]
+    # the data's own values (a plan called Growth, a Legal department) are the user's words
+    own -= {w for c in clean.select_dtypes(exclude="number") for v in clean[c].dropna().unique()[:200]
+            for w in _TOKEN.findall(str(v).lower())}
     leaks = sorted({w for t in texts for w in _TOKEN.findall(t.lower()) if w in own})
     assert texts and not leaks, [t for t in texts if set(_TOKEN.findall(t.lower())) & own][:3]
 
