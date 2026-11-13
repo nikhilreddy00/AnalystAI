@@ -1,4 +1,5 @@
 """scripts/domain_diff.py runs the way CLAUDE.md says: `uv run python scripts/domain_diff.py main --show`."""
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -21,6 +22,7 @@ def test_the_suite_runs_on_head_in_a_worktree_never_the_edited_tree():
     worktree of HEAD, so the tests it runs are the committed ones; the pytest args pass through."""
     run = subprocess.run([sys.executable, "scripts/suite.py", "tests/test_domain_diff_script.py",
                           "-q", "-k", "show_imports", "-p", "no:cacheprovider", "--rootdir", "."],
-                         cwd=ROOT, capture_output=True, text=True)
+                         cwd=ROOT, capture_output=True, text=True,   # a CI shard would deselect it
+                         env={k: v for k, v in os.environ.items() if k != "CI_SHARD"})
     assert run.returncode == 0 and "1 passed" in run.stdout, run.stdout[-500:] + run.stderr[-500:]
     assert "analystai-mutation-" in run.stdout   # the worktree's rootdir, not the repo
