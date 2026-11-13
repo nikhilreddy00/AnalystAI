@@ -3,7 +3,8 @@ import subprocess
 
 import pytest
 
-from scripts.mutation import functions_touching, mutant_lines, planted, scores, uncommitted
+from scripts.mutation import (functions_touching, mutant_lines, naming, planted, scores,
+                              uncommitted, unreached)
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -80,6 +81,25 @@ def test_a_run_refuses_files_that_differ_from_head(tmp_path):
     (tmp_path / "a.py").write_text("x = 2\n")
     (tmp_path / "b.py").write_text("")
     assert uncommitted(["a.py", "b.py", "c.py::test_x"], tmp_path) == ["a.py", "b.py"]
+
+
+def test_a_function_no_selected_test_reaches_is_found_before_any_mutant_runs(tmp_path):
+    """Retro 5.7b-2b: a narrow --tests list showed check_segment_value as 35 no_tests only after
+    hours of mutants. mutmut's stats (which tests reach each function) exist before any mutant
+    runs; a function with none is refused, with the test files that name it."""
+    stats = {"tests_by_mangled_function_name": {
+        "evals.scoring.x_false_findings": ["tests/test_eval_scorer.py::test_a"],
+        "evals.scoring.x_check_segment_value": [],
+        "domain_pack.xǁPackǁkpi": ["tests/test_pack.py::test_k"]}}
+    assert unreached(stats, ["false_findings", "check_segment_value", "Pack.kpi", "handle_kpi"]) \
+        == ["check_segment_value", "handle_kpi"]
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_a.py").write_text("from x import check_segment_value\n")
+    (tmp_path / "tests" / "test_b.py").write_text("check_segment_value_truth\n")   # another word
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    assert naming("check_segment_value", tmp_path) == ["tests/test_a.py"]
+    assert naming("Pack.kpi", tmp_path) == []
 
 
 def test_a_plant_must_match_exactly_once():

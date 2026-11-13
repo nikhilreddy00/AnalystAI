@@ -138,6 +138,21 @@ def mutant_lines(mutated: str, source: str) -> dict[str, tuple[int, str, str]]:
     return out
 
 
+def unreached(stats: dict, functions: list[str]) -> list[str]:
+    """The functions no selected test calls, from mutmut's stats (each of their mutants would
+    be no_tests): known before any mutant runs, so a narrow --tests list fails in minutes."""
+    hit = {_function(k) for k, t in stats.get("tests_by_mangled_function_name", {}).items() if t}
+    return [f for f in functions if f not in hit]
+
+
+def naming(function: str, root: Path = ROOT) -> list[str]:
+    """The test files that name the function: where to look for the tests that reach it."""
+    word = function.rsplit(".", 1)[-1]
+    out = subprocess.run(["git", "-C", str(root), "grep", "-lw", word, "--", "tests/*.py"],
+                         capture_output=True, text=True).stdout
+    return out.split()
+
+
 def uncommitted(paths: list[str], root: Path = ROOT) -> list[str]:
     """The paths (a test node id reads as its file) that differ from HEAD or are untracked: the
     worktree is HEAD, so a run would silently read their committed copy, or none."""
@@ -245,9 +260,21 @@ def main() -> int:
         globs = [f"*.x_{f}__mutmut_*" if "." not in f else
                  f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
         placed = {}
+        # generate the mutants and mutmut's stats (which tests reach each function); the run
+        # below loads the same stats
+        gen = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", "no_such_mutant"], cwd=wt,
+                             env={**os.environ, **ENV}, capture_output=True, text=True)
+        stats = wt / "mutants" / "mutmut-stats.json"
+        if not stats.is_file():
+            print(gen.stdout[-3000:] + gen.stderr[-3000:], file=sys.stderr)
+            print("mutmut wrote no stats (its output is above)", file=sys.stderr)
+            return 2
+        if lost := unreached(json.loads(stats.read_text()), args.functions):
+            for f in lost:
+                print(f"no selected test reaches {f}; tests that name it: "
+                      f"{' '.join(naming(f)) or '(none)'}", file=sys.stderr)
+            return 2   # 1 means a survivor
         if args.lines:   # the gate judges changed lines: run only the mutants on them
-            subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", "no_such_mutant"], cwd=wt,
-                           env={**os.environ, **ENV}, capture_output=True)   # generate them
             changed = changed_lines(args.lines)
             for f, lines in changed.items():
                 if (mutated := wt / "mutants" / f).is_file():
