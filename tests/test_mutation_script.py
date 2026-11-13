@@ -47,8 +47,9 @@ class Pack:
         return 3
 '''
     assert functions_touching(src, {4}) == ["a"]
-    assert functions_touching(src, {7}) == ["b"]          # the decorator line is b's
-    assert functions_touching(src, {10}) == ["b"]         # a nested def belongs to b
+    assert functions_touching(src, {7}, every=True) == ["b"]    # the decorator line is b's
+    assert functions_touching(src, {10}, every=True) == ["b"]   # a nested def belongs to b
+    assert functions_touching(src, {10}) == []   # decorated: mutmut has no mutant of it
     assert functions_touching(src, {16}) == ["Pack.kpi"]
     assert functions_touching(src, {1, 5, 6}) == []       # imports and blank lines: nothing
 
@@ -169,8 +170,12 @@ def test_the_hash_is_the_functions_code_never_its_comments_docstring_or_place():
         .replace("return a + 1", "return a + 1   # why")
     assert function_hashes(same) == h
     assert function_hashes(BASE.replace("a + 1", "a + 2"))["f"] != h["f"]
-    assert function_hashes(BASE.replace("def f", "@cache\ndef f"))["f"] != h["f"]
     assert function_hashes(BASE.replace("return 3", "return 4"))["W.m"] != h["W.m"]
+    # mutmut mutates no decorated function (a lone @staticmethod / @classmethod aside): it is
+    # never in the gate, whose record a mutation run must be able to write
+    assert "f" not in function_hashes(BASE.replace("def f", "@cache\ndef f"))
+    assert "W.m" not in function_hashes(BASE.replace("    def m", "    @property\n    def m"))
+    assert "W.m" in function_hashes(BASE.replace("    def m(self)", "    @staticmethod\n    def m()"))
 
 
 def test_the_gate_refuses_an_unrecorded_change_to_a_gated_function_and_passes_a_recorded_one(tmp_path):

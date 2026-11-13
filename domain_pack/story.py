@@ -407,10 +407,10 @@ def unit_question(pack: Pack, clash: tuple[str, str, str]) -> str:
     said = set(re.findall(r"[\w-]+", words.lower()))
     near = [k.name for k in pack.kpis if k.unit == unit and said & {
         x for w in [k.label, *pack.glossary.get(k.name, [])] for x in re.findall(r"[\w-]+", w.lower())}]
-    label = pack.kpi(kpi).label
-    return (f'"{words}" asked as {_UNIT_NAMES[unit]}: {label} is '
+    named = lambda k: f"{pack.kpi(k).label} ({_UNIT_NAMES[pack.kpi(k).unit]})"   # noqa: E731
+    return (f'"{words}" asked as {_UNIT_NAMES[unit]}: {pack.kpi(kpi).label} is '
             f"{_UNIT_NAMES[pack.kpi(kpi).unit]}. Did you mean "
-            f"{''.join(f'{pack.kpi(k).label}, ' for k in near)}or {label}?")
+            f"{''.join(f'{named(k)}, ' for k in near)}or {named(kpi)}?")
 
 
 def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(ROW_KINDS)) -> str:
@@ -462,7 +462,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
                      "computed by these rules: filter on "
                      "it, never re-derive it. Personal columns (email, names) reach you as "
                      f"pseudonyms, so {pack.label('test')} cannot be found from them: only this "
-                     f"column marks them. {pack.say('rows_brief')} Column "
+                     f"column marks them. {pack.say('rows_brief', spans)} Column "
                      "profiles (eda_summary, distributions) describe every row, as loaded.")
     if rules := row_rules(pack, roles, present):
         lines.append(f"Row kinds: {rules}.")

@@ -428,10 +428,23 @@ def test_pack_prose_names_the_window_through_its_placeholder():
     window, the 12-month cohort's definition, an annual invoice) is no window: it never says
     'months to' a date."""
     import domain_pack as dp
-    said = [t for p in dp.load_packs() for t in (*p.caveats.values(), *p.text.values(),
-                                                  *p.definitions.values(), *p.unsupported.values())]
-    assert not [t for t in said if re.search(r"\b12 months to\b", t)]
-    assert {"{window}", "{moves}"} <= {m for t in said for m in re.findall(r"\{window\}|\{moves\}", t)}
+    # a rule's own span, never this data's window (each checked by hand, 5.7b-2c review)
+    rules = {("saas", "monthly_churn_annualised"): "the definition of annual churn",
+             ("saas", "yoy"): "YoY compares the same window a year earlier, whatever its span",
+             ("hr", "yoy"): "the same",
+             ("saas", "cohort_curve"): "an unsupported concept's definition",
+             ("hr", "first_year_attrition"): "a hire cohort followed 12 months, by definition",
+             ("saas", "months_lt_13"): "says a 12-month cohort is not available on this data",
+             ("hr", "months_lt_13"): "the same, of a 12-month rate",
+             ("saas", "invoice"): "an annual invoice bills 12 months: a price's term"}
+    said = {(p.domain, k): t for p in dp.load_packs()
+            for k, t in [*p.caveats.items(), *p.text.items(), *p.definitions.items(),
+                         *p.unsupported.items(), *p.role_caveats.items()]}
+    span = re.compile(r"\b(?:12|twelve)[- ]months?\b", re.I)
+    assert sorted(k for k, t in said.items() if span.search(t) and k not in rules) == []
+    assert all(span.search(said[k]) for k in rules), "a rule left the allowlist: drop it"
+    used = {m for t in said.values() for m in re.findall(r"\{(window|moves|cohort|window_adj)\}", t)}
+    assert used == {"window", "moves", "cohort", "window_adj"}
 
 
 def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess():

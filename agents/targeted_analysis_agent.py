@@ -159,7 +159,7 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
                  if ln.lower().startswith(tuple(w.lower() for w in pack.glossary.get(params.kpi, [])))]
         scoped = params.group_by or params.segment_column or params.segment_value \
             or params.period_start or params.period_end
-        spans = window_span(pack, df, roles) if has_spell(pack, roles) else None   # PR7-03
+        spans = window_span(pack, df, roles)   # PR7-03
         if story and params.kpi in pack.definitions and not scoped:   # the product computes it as one line (the
             # MRR bridge on monthly snapshots; audit 1: refused there)
             return TargetedResponse(intent=intent, answer_text=" ".join(story) + " "

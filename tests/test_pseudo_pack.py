@@ -79,7 +79,7 @@ _TOKEN = re.compile(r"[a-z][a-z]+")
 # English's function and time words: never a domain's (the domain words are built from the packs;
 # "left out", "months", "when it covers less" are the product's own English)
 _STOP = set("the and an no not with from one of a to in on by is per at or as all each its new "
-            "who are so only more first came months when left their".split())
+            "who are so only more first came months when left their span fewer".split())
 
 
 def _only_its_words(domain: str) -> set[str]:
@@ -139,7 +139,10 @@ def test_the_spell_and_ledger_sentences_say_only_the_packs_words(domain, name, m
     texts = [*domain_pack.spell_story(p, df, roles), *domain_pack.spell_facts(p, df, roles),
              *(domain_pack.describe_kpi(p, k.name, roles, parts=True) for k in p.kpis
                if domain_pack.computable(p, k.name, roles)),
-             *(domain_pack.window_words(p, df, roles, k.name) for k in p.kpis)]
+             *(domain_pack.window_words(p, df, roles, k.name) for k in p.kpis),
+             *(domain_pack.unavailable_words(domain_pack.Unavailable(r, (p.spell.end,)), p)
+               for r in __import__("typing").get_args(domain_pack.pack.Reason)
+               if r != "small_cell")]   # 'fewer than 11 people' in every domain (GLOSSARY Small cell)
     # a token and the pack's own value lists (said through `where`) are its words
     texts = [re.sub(r"⟦[^⟧]*⟧|\[[^\]]*\]| where .*", " ", t) for t in texts]
     # the data's own values (a plan called Growth, a Legal department) are the user's words

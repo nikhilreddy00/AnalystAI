@@ -81,8 +81,10 @@ def rate_values(v: pd.Series, scale: str | None, col: str) -> tuple[pd.Series, l
         scale = "percent" if bool(len(given)) and bool(
             (given > 1).mean() > 0.5 or (len(over) and (given == given.round()).all())) else "fraction"
         if scale == "percent" and bool((over != over.round()).any()):
+            n = int((v > 0).sum())   # the whole column is unreadable: every row with a value
             return v.mask(v > 0), [f"{col} has values over 1 with decimals: a percent can't be told "
-                                   "from an amount, so those rows are left blank."]
+                                   f"from an amount, so its {n:,} row{'s' * (n != 1)} with a value "
+                                   f"{'are' if n != 1 else 'is'} left blank."]
         wrong = (v > 1) if scale == "fraction" else ((v > 0) & (v < 1)) | (v > 100)
     else:
         wrong = (v < 0) | (v > (100 if scale == "percent" else 1))

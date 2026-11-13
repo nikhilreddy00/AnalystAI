@@ -21,8 +21,10 @@ The pre-push gate (ROADMAP 5.7b-2 step 9): the hook can't run mutmut, so it runs
 code (its AST, docstring out: a comment is no change) differs from REF's unless
 docs/mutation/gate.json holds its hash. `--record` (with `--lines REF`) writes those hashes after
 a run whose every surviving mutant on a function's changed lines is one of its named
-`equivalents` ({old, new, n, reason}, written into gate.json by hand first). Known limit: a module
-constant or a pack's YAML changes behaviour without changing any function's hash.
+`equivalents` ({old, new, n, reason}, written into gate.json by hand first). Known limits: a module
+constant or a pack's YAML changes behaviour without changing any function's hash; mutmut mutates
+no decorated function (a @property, a pydantic validator), so neither run nor gate covers one:
+its tests and plants are its check, and --changed-since lists it apart.
 
 --tests drops the guards that read source files (SOURCE_GUARDS): mutmut's rewritten sources
 fail them before any mutant runs. The worktree is HEAD, so a run refuses an
@@ -90,27 +92,40 @@ def scores(metas: list[dict]) -> dict[str, dict]:
     return out
 
 
-def _defs(source: str):
-    """(name, node) per top-level function and method ('Pack.kpi'), named as mutmut names them (a
-    nested function belongs to the one it is in)."""
+def mutated(d: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """mutmut mutates a function unless it is decorated (a lone @staticmethod or @classmethod
+    aside): a @property, a pydantic validator, an @cache function has no mutants, so its tests
+    and plants are its only check (mutmut/mutation/file_mutation.py)."""
+    decs = d.decorator_list
+    return not decs or (len(decs) == 1 and isinstance(decs[0], ast.Name)
+                        and decs[0].id in ("staticmethod", "classmethod"))
+
+
+def _defs(source: str, every: bool = False):
+    """(name, node) per top-level function and method ('Pack.kpi') mutmut mutates (every: all of
+    them), named as mutmut names them (a nested function belongs to the one it is in)."""
     for node in ast.parse(source).body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            yield node.name, node
+            found = [(node.name, node)]
         elif isinstance(node, ast.ClassDef):
-            yield from ((f"{node.name}.{m.name}", m) for m in node.body
-                        if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef)))
+            found = [(f"{node.name}.{m.name}", m) for m in node.body
+                     if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))]
+        else:
+            continue
+        yield from ((n, d) for n, d in found if every or mutated(d))
 
 
-def functions_touching(source: str, lines: set[int]) -> list[str]:
+def functions_touching(source: str, lines: set[int], every: bool = False) -> list[str]:
     """The top-level functions and methods whose span (decorators included) holds any line."""
-    return [name for name, d in _defs(source)
+    return [name for name, d in _defs(source, every)
             if any(min([d.lineno, *(x.lineno for x in d.decorator_list)]) <= n <= d.end_lineno
                    for n in lines)]
 
 
 def function_hashes(source: str) -> dict[str, str]:
-    """Each function's code as a hash: its AST with the docstring out, so a comment, a docstring
-    or a move down the file is the same code, and a changed expression or decorator is not."""
+    """Each function mutmut mutates (the gate's), its code as a hash: its AST with the docstring
+    out, so a comment, a docstring or a move down the file is the same code, and a changed
+    expression is not."""
     out = {}
     for name, d in _defs(source):
         node = copy.copy(d)
@@ -185,10 +200,11 @@ def changed_lines(ref: str) -> dict[str, set[int]]:
     return touched
 
 
-def changed_functions(ref: str) -> list[str]:
-    """Every source_paths function the diff ref...HEAD adds or changes lines in."""
+def changed_functions(ref: str, every: bool = False) -> list[str]:
+    """Every source_paths function mutmut mutates (every: all) the diff ref...HEAD adds or
+    changes lines in."""
     return sorted({name for f, lines in changed_lines(ref).items()
-                   for name in functions_touching((ROOT / f).read_text(), lines)})
+                   for name in functions_touching((ROOT / f).read_text(), lines, every)})
 
 
 def mutant_lines(mutated: str, source: str) -> dict[str, tuple[int, str, str]]:
@@ -368,6 +384,9 @@ def main() -> int:
     if args.changed_since:
         args.functions = sorted({*args.functions, *changed_functions(args.changed_since)})
         print(f"changed since {args.changed_since}: {' '.join(args.functions) or '(none)'}")
+        if skipped := sorted(set(changed_functions(args.changed_since, every=True)) - set(args.functions)):
+            print(f"not mutated (decorated: mutmut skips them; their tests are their check): "
+                  f"{' '.join(skipped)}")
         if not args.functions:
             return 0
     if not args.functions:

@@ -787,10 +787,15 @@ def ordinal(n: int) -> str:
     return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
 
+# what pack prose says with no window known: no number, never a guessed 12 ("over the months to
+# the latest date", "the customers paying a year earlier", "the window the facts name")
+SPAN_UNKNOWN = {"window": "months", "moves": "months", "cohort": "a year", "window_adj": ""}
+
+
 def span_words(spans: dict | None) -> dict[str, str]:
-    """What pack prose says for {window} (flows), {moves} and {cohort}: this data's span ('the 12
-    months', spell.window_span), or 'the months' when no window is known (never a guessed 12)."""
-    return {k: (spans or {}).get(k, "the months") for k in ("window", "moves", "cohort")}
+    """What pack prose says for {window}, {moves}, {cohort} and {window_adj}: this data's span
+    (spell.window_span), else SPAN_UNKNOWN."""
+    return {k: (spans or {}).get(k, v) for k, v in SPAN_UNKNOWN.items()}
 
 
 def and_list(items: list[str]) -> str:

@@ -28,7 +28,6 @@ from domain_pack import (
     describe_kpi,
     first_questions,
     glossary_hits,
-    has_spell,
     named_kpis,
     pack_for,
     unit_clashes,
@@ -145,9 +144,7 @@ def _spans(session: AnalysisSession) -> dict | None:
     pack = defaults_pack(contract) if contract else None
     if not (raw and pack and pack.spell):
         return None
-    df = pd.read_parquet(io.BytesIO(raw))
-    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    return window_span(pack, df, roles) if has_spell(pack, roles) else None
+    return window_span(pack, pd.read_parquet(io.BytesIO(raw)), contract.roles)
 
 
 # A calendar period the targeted path can filter to (not "last month": the built-in MoM has it).

@@ -201,8 +201,9 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
     """'as of 31 Oct 2026' (a state) or '12 months to 31 Oct 2026' (a flow, a rate): how a spell
     KPI's answer names its period, read from its Window; '' for other KPIs."""
     kpi = pack.kpi(name)
-    if kpi and kpi.dated_by in roles:   # billings: the span its own dates cover (PR1-02)
-        t = _day(df[roles[kpi.dated_by]]).dropna()
+    if kpi and kpi.dated_by in roles:   # billings: the span its own rows' dates cover (PR1-02)
+        from .detect import row_kinds   # the rows it counts: a void or a draft is no billing
+        t = _day(df.loc[row_kinds(df, roles, pack).isin(kpi.rows), roles[kpi.dated_by]]).dropna()
         first, last = asked or (None, None)   # an asked period (inclusive), either end open
         if first is not None:
             t = t[t >= pd.Timestamp(first)]
@@ -232,14 +233,17 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
 
 def window_span(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> dict[str, str]:
     """What pack prose names its span as (PR7-03: never a written '12 months'): {window} the
-    flows' months, {moves} the moves', {cohort} the cohort's, each 'the 12 months' on a full
-    year, read from the default Window; {} with no spell window (pack.span_words says 'the
-    months')."""
-    w = window(pack, df, roles) if pack.spell else None
+    flows' months, {moves} the moves', {cohort} the cohort's ('12 months' on a full year; prose
+    writes 'over the {window} to', 'paying {cohort} earlier'), {window_adj} the flows' as an
+    adjective ('the{window_adj} window': ' 12-month'), read from the default Window; {} on data
+    with no spell (pack.span_words then says no number)."""
+    roles = {r: c for r, c in roles.items() if c in df.columns}
+    w = window(pack, df, roles) if has_spell(pack, roles) else None
     if w is None:
         return {}
-    said = lambda n: f"the {n} month{'s' * (n != 1)}"   # noqa: E731
-    return {"window": said(w.months), "moves": said(w.move_months), "cohort": said(w.cohort_months)}
+    said = lambda n: f"{n} month{'s' * (n != 1)}"   # noqa: E731
+    return {"window": said(w.months), "moves": said(w.move_months), "cohort": said(w.cohort_months),
+            "window_adj": f" {w.months}-month"}
 
 
 # THE spell window and cohort span: flows and rates read the months to the as-of; every sentence

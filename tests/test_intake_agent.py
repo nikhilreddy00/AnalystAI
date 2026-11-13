@@ -236,8 +236,9 @@ async def test_a_rate_asked_of_a_money_kpi_asks_which(recorded_llm):
     task = await run_intake_agent(s, "What is our revenue churn rate?", recorded_llm)
     assert task.clarification_needed and task.targeted_params.kpi is None
     assert task.clarification_question == (
-        '"revenue churn" asked as a rate: Churned MRR is an amount. Did you mean Logo churn, '
-        "Net revenue retention, Gross revenue retention, or Churned MRR?")
+        '"revenue churn" asked as a rate: Churned MRR is an amount. Did you mean Logo churn (a '
+        "rate), Net revenue retention (a rate), Gross revenue retention (a rate), or Churned MRR "
+        "(an amount)?")
     from agents.intake_agent import domain_notes
     assert "churned_mrr" not in domain_notes(s.data_contract, "What is our revenue churn rate?")
     recorded_llm.responses.append(_kpi_plan())
@@ -259,3 +260,10 @@ async def test_arpu_is_answered_as_arpa_and_says_so(recorded_llm):
     task = await run_intake_agent(_saas_session(), "What is our ARPU?", recorded_llm)
     assert task.targeted_params.kpi == "arpa"
     assert dp.pack_for("saas").kpi("arpa").label == "ARPA per paying customer"
+
+
+def test_the_arpu_answer_says_arpa_per_paying_customer():
+    """PR1-16: the answer to an ARPU question names what it divides by, never ARPU."""
+    from tests.test_oracle import answer
+    text, _ = answer("saas_subscriptions", "segment_compare", "What is our ARPU?", kpi="arpa")
+    assert "ARPA per paying customer" in text and "ARPU" not in text, text

@@ -108,7 +108,7 @@ def test_an_undeclared_discount_that_is_neither_whole_percents_nor_fractions_is_
     column of only 1s (100% or 1%?) is unreadable too. Each is blank and said, never guessed."""
     assert _rents(pack, "rebate", [12.5, 10, 0]) == ([None, None, 100.0], [
         "monthly_rent: rebate has values over 1 with decimals: a percent can't be told from an "
-        "amount, so those rows are left blank."])
+        "amount, so its 2 rows with a value are left blank."])
     assert _rents(pack, "rebate", [1, 1, 0]) == ([None, None, 100.0], [
         "monthly_rent: rebate holds only 1s: its scale (100% or 1%) is unclear, so those rows "
         "are left blank."])

@@ -234,6 +234,9 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
         n = order.groupby(order).transform("size")
         values = values * (weight / total).where(total > 0, 1 / n)
     if term.net_of:   # read at its scale, as the pack column's net_of is (columns.rate_values)
+        # ponytail: its notes are dropped: a term's role is bound only within 0–1 (detect._fits),
+        # so nothing is left blank today; say them (as pack_columns does) when a term's role
+        # declares a scale
         rate, _ = rate_values(pd.to_numeric(part[roles[term.net_of]], errors="coerce"),
                               scale_of(pack, term.net_of, roles), roles[term.net_of])
         values = values * (1 - rate.fillna(0))

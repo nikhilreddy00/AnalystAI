@@ -430,22 +430,30 @@ def test_the_packs_prose_names_the_window_the_numbers_read():
     known (a first question, before cleaning)."""
     import re
     df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
-    assert dp.window_span(pack, df, roles) == {"window": "the 12 months", "moves": "the 12 months",
-                                              "cohort": "the 12 months"}
+    assert dp.window_span(pack, df, roles) == {"window": "12 months", "moves": "12 months",
+                                              "cohort": "12 months", "window_adj": " 12-month"}
     short = df[pd.to_datetime(df["month"]) >= "2026-04-01"]
     spans = dp.window_span(pack, short, roles)
     moves = int(dp.window_words(pack, short, roles, "new_mrr").split()[0])
     cohort = int(dp.window_words(pack, short, roles, "nrr").split("-")[0])
-    assert spans["moves"] == f"the {moves} months" and spans["cohort"] == f"the {cohort} months"
-    assert moves == cohort   # one {moves} names the movements and the retention in one sentence
+    assert spans["moves"] == f"{moves} months" and spans["cohort"] == f"{cohort} months"
+    # one {moves} names the movements and the retention in one sentence: on the default window
+    # both start at the same date (Window.moves_from = cohort_start)
+    assert moves == cohort
     said = pack.say("unsupported_alternatives", spans)
     assert f"retention over the {moves} months to the latest date" in said
     assert "over the months to the latest date" in pack.say("unsupported_alternatives")
     audit = __import__("orchestrator.state", fromlist=["x"]).CleaningAudit.model_construct(
         decisions=[], date_ranges={}, partial_months={}, main_currency=None, window_span=spans)
     text = " ".join(dp.pack_caveats(pack, audit, roles, "strong"))
-    assert re.search(rf"over the {moves} months to that date", text) and "12 months to" not in text
+    assert re.search(rf"over the {moves} months to that date, .* paying {cohort} months earlier", text)
+    assert not re.search(r"\b12[- ]months?\b", text)
     assert f"MRR over the {moves} months to the latest date" in pack.define("mrr_bridge", spans)
+    brief = " ".join(dp.pack_brief(pack, roles, ["mrr"], spans=spans))
+    assert f"customers paying {cohort} months earlier" in brief and "12 months earlier" not in brief
+    hr = dp.pack_for("hr")   # the adjective: 'the 7-month window the facts name'
+    assert "each exit in the 7-month window" in hr.say("rows_brief", {"window_adj": " 7-month"})
+    assert "each exit in the window the facts name" in hr.say("rows_brief")
 
 
 def test_a_scoped_bridge_question_is_never_answered_with_the_whole_file():
@@ -913,6 +921,9 @@ def test_billings_names_the_invoice_dates_it_sums():
     asked = d[d >= "2026-07-01"]
     assert dp.window_words(pack, df, roles, "billings", ("2026-07-01", None)) == \
         f"{asked.min():%-d %b %Y} to {asked.max():%-d %b %Y}"
+    void = df.iloc[[0]].assign(**{roles["status"]: "void", roles["invoice_date"]: "2024-01-15"})
+    assert dp.window_words(pack, pd.concat([df, void], ignore_index=True), roles, "billings") == \
+        f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"   # a void bills nothing: not its date either
     raw = pack.model_dump(by_alias=True)
     raw["kpis"] = [{**k, "dated_by": "plan"} if k["name"] == "billings" else k for k in raw["kpis"]]
     with pytest.raises(ValueError, match="dated_by plan is not a date role"):
