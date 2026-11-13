@@ -1498,7 +1498,8 @@ def test_thirteen_calendar_months_with_a_partial_last_are_twelve_full_ones():
 
     from domain_pack import pack_caveats
     audit = SimpleNamespace(decisions=[], date_ranges={"Date": ["2025-01-01", "2026-01-15", 13]},
-                            partial_months={"Date": ["2026-01", 15]}, main_currency=None)
+                            partial_months={"Date": ["2026-01", 15]}, main_currency=None,
+                            window_span={})
     got = " ".join(pack_caveats(RETAIL, audit, {"date": "Date"}))
     assert "covers 12 months" in got, got
 

@@ -84,7 +84,7 @@ def test_the_profit_rule_is_only_a_pack_that_names_cost_roles(two_packs):
 
 def test_months_caveat_reads_the_packs_own_date_role(two_packs):
     from types import SimpleNamespace
-    audit = SimpleNamespace(decisions=[], partial_months={}, main_currency=None,
+    audit = SimpleNamespace(decisions=[], partial_months={}, main_currency=None, window_span={},
                             date_ranges={"txn_date": ["2025-01-01", "2025-06-30", 6]})
     roles = {"account_id": "account_id", "amount": "amount", "txn_date": "txn_date"}
     assert pack_caveats(two_packs, audit, roles) == ["The data covers 6 months."]
