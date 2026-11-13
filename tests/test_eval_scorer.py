@@ -695,6 +695,21 @@ def test_segment_value_off_spell_data_reads_every_row():
                                df, "plan", "seats", rel_tol=0.01)[0]
 
 
+def test_segment_value_off_spell_data_also_reads_the_rows_a_pack_counts():
+    """5.7b-2b gate: a pack's counted column (loss_run's paid, last claim versions) is also right
+    over the rows its tiles count, as false_findings reads it."""
+    from agents.ingestion_agent import build_contract
+    from domain_pack import rows_for
+    from evals.scoring import check_segment_value
+    from orchestrator.state import ConnectorType
+    df, _ = datagen.make("loss_run", 1)
+    counted = rows_for(df, build_contract(df, ConnectorType.CSV, {}), "Paid to Date")[0]
+    want = counted.groupby("Line of Business")["Paid to Date"].mean()
+    assert not want.round(2).equals(df.groupby("Line of Business")["Paid to Date"].mean().round(2))
+    assert check_segment_value(_findings(segments=[_seg("Line of Business", "Paid to Date", "mean", want)]),
+                               df, "Line of Business", "Paid to Date")[0]
+
+
 def test_segment_value_on_spell_data_reads_the_reference_never_every_row():
     """5.7b-2b (C1): on spell data the level by group is the reference's in-force reading; the
     same column summed over every row (cancelled subscriptions too) is wrong there, and right
@@ -739,7 +754,7 @@ def test_a_real_group_named_overall_keeps_its_own_value():
 def test_a_claim_on_no_rows_is_false_not_a_crash():
     import pandas as pd
     df = pd.DataFrame({"plan": pd.Series([], dtype=str), "seats": pd.Series([], dtype=float)})
-    assert _ff(df, _seg("plan", "seats", "sum", {"A": 1}))["false"] == 1
+    assert _ff(df, _seg("plan", "seats", "sum", {"A": 1, "Total": 1}))["false"] == 2
 
 
 def test_a_count_of_an_id_column_reads_its_distinct_ids_only_for_a_count():
