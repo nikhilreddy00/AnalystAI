@@ -105,7 +105,25 @@ spell: {entity: customer, start: created, end: ended_at, paid_from: trial_end,
         ended: [canceled, cancelled, incomplete_expired, ended], concurrent: true,
         month_labels: true, snapshot_every: month, today_only: [paused, unpaid],
         words: {start: start, end: end, unknown: end_date_unknown, plural: customers,
-                after_end: rows after the customer left,
+                singular: customer, after_end: rows after the customer left,
+                bridge: "{stock} bridge", monthly_rate: Monthly churn,
+                unsplit: net expansion less contraction (not split in this file),
+                unsplit_why: "This file has no monthly values per {singular}, so expansion and
+                  contraction are not split.",
+                left_vs_rate: "{n} {who} left at a month-end in the window ({lost}); {rate} counts
+                  only the {who} in force on {start} who are not in force now, so the two differ:
+                  {who} who joined in the window or came back are in the count only.",
+                moves: {new: "new moves: each {e} whose value went from 0 (never in force before)
+                          to above 0",
+                        reactivation: "reactivation moves: each {e} whose value went from 0 back
+                          above 0 (in force before)",
+                        expansion: "expansion moves: each {e} whose value went up",
+                        contraction: "contraction moves: each {e} whose value went down (not to 0)",
+                        churn: "churn moves: each {e} whose value went to 0",
+                        transfer_in: "value moved in from another group: each {e}'s rise in a group
+                          matched by its fall in another",
+                        transfer_out: "value moved out to another group: each {e}'s fall in a group
+                          matched by its rise in another"},
                 today_only: "paused or unpaid today: a subscription list holds its status for
                   today only, with no date it began, so they are out of every month-end's MRR,
                   never churned at a guessed date.",

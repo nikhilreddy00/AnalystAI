@@ -42,8 +42,12 @@ kpis:
 caveats:
   read_as_domain_weak: "Read as MRR data: {roles}."
 """
+# a ledger's sentences are its pack's words (C9: a pack with moves must have them): the SaaS
+# pack's, so each sentence below is the one users read
+BOOK = BOOK.replace("month_labels: true}", "month_labels: true, words: " + __import__("json").dumps(
+    __import__("domain_pack").pack_for("saas").spell.words.model_dump()) + "}")
 
-MONTHS = [f"2025-{m:02d}-01" for m in range(10, 13)] + [f"2026-{m:02d}-01" for m in range(1, 11)]
+MONTHS =[f"2025-{m:02d}-01" for m in range(10, 13)] + [f"2026-{m:02d}-01" for m in range(1, 11)]
 # MRR per month Oct 2025 .. Oct 2026 (13 labels); 0 = absent that month
 PLAN = {   # customer: (segment per month or one, mrr per month)
     "A": ("SMB", [100] * 13),                                # steady

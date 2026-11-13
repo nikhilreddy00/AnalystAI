@@ -75,6 +75,62 @@ def test_text_defaults_say_no_domain_word():
     assert _leaks(list(TEXT_DEFAULTS.values()), _lexicon("")) == []
 
 
+_TOKEN = re.compile(r"[a-z][a-z]+")
+# English's function and time words: never a domain's (the domain words are built from the packs;
+# "left out", "months", "when it covers less" are the product's own English)
+_STOP = set("the and an no not with from one of a to in on by is per at or as all each its new "
+            "who are so only more first came months when left".split())
+
+
+def _only_its_words(domain: str) -> set[str]:
+    """C9 (ROADMAP 5.7b-2 step 8): the words only this pack says, built from every pack (never a
+    hand list): its KPI labels' and glossary phrases' words no other pack uses."""
+    def vocab(p) -> set[str]:
+        said = [*(k.label for k in p.kpis), *(w for ws in p.glossary.values() for w in ws)]
+        return {t for w in said for t in _TOKEN.findall(w.lower())}
+    others = set().union(*(vocab(p) for p in domain_pack.load_packs() if p.domain != domain))
+    return vocab(pack_for(domain)) - others - _STOP
+
+
+def _wordless(domain: str):
+    """The pseudo pack with its spell's words replaced too: every sentence they are in."""
+    p = _pseudo(domain)
+    w = p.spell.words
+    words = w.model_copy(update={**{f: f"⟦w_{f}⟧" for f in type(w).model_fields
+                                    if isinstance(getattr(w, f), str) and getattr(w, f)},
+                                 "moves": {m: f"⟦move_{m}⟧" for m in w.moves}})
+    return p.model_copy(update={"spell": p.spell.model_copy(update={"words": words})})
+
+
+SPELL_DATASETS = [("saas", n) for n in ("saas_mrr_snapshots", "saas_subscriptions", "subscriptions",
+                                        "saas_accounts")] + [
+    ("hr", n) for n in ("hr_roster", "hr_snapshots", "employees")]
+
+
+@pytest.mark.parametrize("domain, name", SPELL_DATASETS)
+def test_the_spell_and_ledger_sentences_say_only_the_packs_words(domain, name, monkeypatch):
+    """PR1-09 (C9): the ledger's sentences (the bridge, monthly churn, each move's How) were
+    SaaS's words in shared Python. On a pack whose every word is a token, and data whose columns
+    are neutral, the spell story and each KPI's How hold no word only that pack says."""
+    from tests.test_oracle import _built
+    p = _wordless(domain)
+    monkeypatch.setattr(domain_pack.pack, "load_packs", lambda: tuple(
+        p if x.domain == domain else x for x in domain_pack.__dict__["_real_load"]()))
+    _, clean, contract, _ = _built(name)
+    neutral = {c: f"col{i}" for i, c in enumerate(clean.columns)}
+    df = clean.rename(columns=neutral)
+    roles = {r: neutral[c] for r, c in contract.roles.items() if c in clean.columns}
+    texts = [*domain_pack.spell_story(p, df, roles),
+             *(domain_pack.describe_kpi(p, k.name, roles, parts=True) for k in p.kpis
+               if domain_pack.computable(p, k.name, roles)),
+             *(domain_pack.window_words(p, df, roles, k.name) for k in p.kpis)]
+    # a token, the pack's own value lists and quoted values are its words, said through `where`
+    texts = [re.sub(r"⟦[^⟧]*⟧|\[[^\]]*\]|'[^']*'| where .*", " ", t) for t in texts]
+    own = _only_its_words(domain)
+    leaks = sorted({w for t in texts for w in _TOKEN.findall(t.lower()) if w in own})
+    assert texts and not leaks, [t for t in texts if set(_TOKEN.findall(t.lower())) & own][:3]
+
+
 @pytest.mark.parametrize("pseudo, name", DATASETS, indirect=["pseudo"])
 def test_every_pack_text_producer_uses_the_packs_words(name, pseudo):
     from tests.test_oracle import _built

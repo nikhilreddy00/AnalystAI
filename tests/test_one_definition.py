@@ -316,11 +316,8 @@ def test_a_spells_ended_statuses_are_read_once():
 def test_shared_code_never_says_a_spells_hr_words():
     """Domain 6 (S0): the spell markers and sentences were HR's own words in shared code
     (hire_event_date, 'exit records', 'rows are N people'), so a subscription book read 'exits'.
-    The pack names them (Spell.words); shared code reads spell_event_columns and the words."""
-    hits = _hits(r"hire_event|exit_event|exit_in_window|left_date_unknown|exit records|"
-                 r"rows are \{people:,\} people|\bexits in the period|"
-                 r"stopped paying|not paying now|those paying|churns of customers")   # SaaS's (audit 1)
-    assert not hits, f"say a spell's words through pack.spell.words: {hits}"
+    The pack names them (Spell.words); shared code reads spell_event_columns and the words. The
+    sentences' guard is tests/test_pseudo_pack.py (a word list built from every pack, 5.7b-2c)."""
     import yaml
 
     import domain_pack as dp

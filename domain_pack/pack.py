@@ -177,13 +177,26 @@ class SpellWords(_Strict):
     Shared code never names them (tests/test_one_definition.py)."""
     start: str = "start"
     end: str = "end"
+    ends: str = "ends"                  # the end as events, plural (an HR pack: its exit word's)
     unknown: str = "end_date_unknown"   # the column marking an ended status with no end date
     plural: str = "entities"            # who the entities are ('885 people', '412 customers')
+    singular: str = "entity"            # one of them ('no monthly values per customer')
     after_end: str = "rows after the end"   # an exit record's gloss on snapshots
     today_only: str = ""   # after 'N rows are': why Spell.today_only statuses are out of history
     # a move by group: a group's transfers in and out ({part}, {group}, {moved_in}, {moved_out});
     # '' says nothing (GLOSSARY Move: answers never say "transfer", a bank's own word)
     moved: str = ""
+    # The ledger's sentences, required of a pack with moves (LEDGER_WORDS; story._ledger_story):
+    bridge: str = ""          # the stock's walk from its opening: "{stock} bridge"
+    monthly_rate: str = ""    # lost at a month-end ÷ in force the month-end before: its name
+    unsplit: str = ""         # a bridge's rest when no row has a value per entity per month
+    unsplit_why: str = ""     # why that rest isn't split ({singular})
+    # the move count beside the cohort rate: {n}, {who} (plural), {lost}, {rate}, {start}
+    left_vs_rate: str = ""
+    moves: dict[str, str] = Field(default_factory=dict)   # move → its How text ({e}: the entity)
+
+
+LEDGER_WORDS = ("bridge", "monthly_rate", "unsplit", "unsplit_why", "left_vs_rate")
 
 
 class Spell(_Strict):
@@ -550,6 +563,13 @@ class Pack(_Strict):
         errors += [f"kpi {k.name}: net_of {t.net_of} is not a rate role" for k in self.kpis
                    for alt in [*k.num, *(k.den or [])] for t in alt
                    if t.net_of and t.net_of in self.roles and self.roles[t.net_of].kind != "rate"]
+        moves = {t.move for k in self.kpis for alt in [*k.num, *(k.den or [])] for t in alt
+                 if t.spell == "moves"}
+        if moves and self.spell:   # a ledger's sentences are the pack's words (C9)
+            w = self.spell.words
+            errors += [f"spell.words.moves: no words for the {m} move" for m in sorted(moves - set(w.moves))]
+            errors += [f"spell.words.{f}: required for a pack with moves" for f in LEDGER_WORDS
+                       if not getattr(w, f)]
         errors += [f"first question needs {n}: not a KPI, a role, a row kind or 'year'"
                    for q in self.first_questions if isinstance(q, dict)
                    for need in q.get("needs", []) for n in need.split("|")   # "sku|product": either

@@ -13,7 +13,7 @@ from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, 
 from .detect import main_currency, row_kinds
 from .spell import (WINDOW_MONTHS, Window, _ended_undated, has_spell, not_counted_yet,
                     today_only, window, window_words)
-from .ledger import MOVES, TRANSFERS
+from .ledger import MOVES
 from .kpi import (_person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, stock_rows,
                   used_terms)
 
@@ -99,8 +99,8 @@ def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             out.append(f"{heads.label} at each month-end: " + ", ".join(
                 f"{p} {n[p]:,.0f}" for p in upto(n)) + ".")
             rate = {p: c.get(p, 0) / n[p - 1] for p in months(n) if (p - 1) in n.index and n[p - 1]}
-            out.append(f"Monthly churn ({lost.phrase} at a month-end ÷ {heads.phrase} at the month-end "
-                       "before; never × 12 into an annual rate): " + ", ".join(
+            out.append(f"{pack.spell.words.monthly_rate} ({lost.phrase} at a month-end ÷ "
+                       f"{heads.phrase} at the month-end before; never × 12 into an annual rate): " + ", ".join(
                            f"{p} {v:.2%}" for p, v in rate.items()) + ".")
     for k in (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
               and any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))):
@@ -194,6 +194,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
                                                               "contraction", "churn")}
     opening = ledger_kpi(pack, roles, "opening")
     say = lambda k, v: _amount(df, roles, k, v)   # noqa: E731
+    words = pack.spell.words
     if stock and opening and parts["new"] and parts["churn"]:
         val = {m: _fact(df, roles, pack, k.name) for m, k in parts.items() if k}
         start, now = _fact(df, roles, pack, opening.name), _fact(df, roles, pack, stock.name)
@@ -202,27 +203,22 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
                      else f"− {k.phrase} {say(k, val[m])}" for m, k in parts.items() if k]
             rest = now - start - sum(v if m not in ("contraction", "churn") else -v for m, v in val.items())
             if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
-                terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
-                             f"this file) {say(stock, abs(rest))}")
+                terms.append(f"{'+' if rest > 0 else '−'} {words.unsplit} {say(stock, abs(rest))}")
             begin = w.moves_from   # the bridge opens where its moves start
             span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
             if not span or begin >= as_of:
                 return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
-            out.append(f"{stock.label} bridge, {span}: {say(stock, start)} on "
+            out.append(f"{words.bridge.format(stock=stock.label)}, {span}: {say(stock, start)} on "
                        f"{begin:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
-                       + ("" if parts["expansion"] else " This file has no monthly values per "
-                          f"{pack.spell.words.plural[:-1] if pack.spell.words.plural.endswith('s') else pack.spell.words.plural}, "
-                          "so expansion and contraction are not split."))
+                       + ("" if parts["expansion"] else
+                          " " + words.unsplit_why.format(singular=words.singular)))
     lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
         (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
          and any(t.spell == "retained" and t.sum is None for alt in k.num for t in alt)), None)
     if lost and rate and (n := _fact(df, roles, pack, lost.name)) is not None \
             and _fact(df, roles, pack, rate.name) is not None:   # never without its rate
-        who = pack.spell.words.plural
-        out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
-                   f"counts only the {who} in force on {w.cohort_start:%-d %b %Y} "
-                   "who are not in force now, so "
-                   f"the two differ: {who} who joined in the window or came back are in the count only.")
+        out.append(words.left_vs_rate.format(n=f"{n:,.0f}", who=words.plural, lost=lost.phrase,
+                                             rate=rate.phrase, start=f"{w.cohort_start:%-d %b %Y}"))
     if (k := parts["churn"]) is not None:
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
         e = _fact(frame, roles, pack, k.name, by="_period")
@@ -275,20 +271,11 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                                f"data's first month-end when it covers less ({at}, {gone})",
                     "retained": f"same {ent} (in force at the cohort's start) at the date"
                                 + (", each capped at its value then" if t.capped else ""),
-                    "moves": (("value moved in from another group: each {e}'s rise in a group "
-                               "matched by its fall in another" if t.move == "transfer_in" else
-                               "value moved out to another group: each {e}'s fall in a group "
-                               "matched by its rise in another").format(e=ent)
-                              if t.move in TRANSFERS else
-                              f"{t.move} moves: each {ent} whose value went "
-                              + {"new": "from 0 (never in force before) to above 0",
-                                 "reactivation": "from 0 back above 0 (in force before)",
-                                 "expansion": "up", "contraction": "down (not to 0)",
-                                 "churn": "to 0"}.get(t.move, ""))
-                             + " between consecutive month-ends in the period",
-                    "ends": f"{sp.words.end}s in the period (events: by {roles.get(sp.end, sp.end)}"
+                    "ends": f"{sp.words.ends} in the period (events: by {roles.get(sp.end, sp.end)}"
                             + (", or the first snapshot an entity is missing from" if snap else "")
-                            + f"; a returning {ent}'s {sp.words.end}s count separately)"}[t.spell]
+                            + f"; a returning {ent}'s {sp.words.ends} count separately)"
+                    }[t.spell] if t.spell != "moves" else (   # the pack validator: every move's words
+                        sp.words.moves[t.move].format(e=ent) + " between consecutive month-ends in the period")
             if t.sum is not None:
                 text = f"sum of {roles[t.sum] if isinstance(t.sum, str) else t.sum} over the " + text
             return text + (f" where {where(t.where)}" if t.where else "")
