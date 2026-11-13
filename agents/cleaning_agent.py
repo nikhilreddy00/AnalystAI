@@ -554,8 +554,18 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         partial_months=_partial_months(spell_dated, df, ctx),
         main_currency=currency if ctx.pack and other else None,
         spell_story=_spell_story(df, ctx),
+        window_span=_window_span(df, ctx),
     )
     return df, audit
+
+
+def _window_span(df: pd.DataFrame, ctx) -> dict[str, str]:
+    """On strong spell data, the span the pack's prose names (domain_pack.window_span), read by
+    every caveat said with the report (pack_caveats), as the story is."""
+    from domain_pack import has_spell, window_span
+    if not ctx.pack or not ctx.strong or not has_spell(ctx.pack, ctx.roles):
+        return {}
+    return window_span(ctx.pack, df, ctx.roles)
 
 
 def _spell_story(df: pd.DataFrame, ctx) -> list[str]:

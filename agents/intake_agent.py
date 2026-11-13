@@ -8,6 +8,7 @@ agent (agents.utils.conversation_context), and `llm` as a parameter.
 from __future__ import annotations
 
 import difflib
+import io
 import json
 import logging
 import re
@@ -27,10 +28,12 @@ from domain_pack import (
     describe_kpi,
     first_questions,
     glossary_hits,
+    has_spell,
     named_kpis,
     pack_for,
     unit_clashes,
     unit_question,
+    window_span,
 )
 from guardrails import (
     PLAN_LIST_FIELDS,
@@ -130,7 +133,21 @@ def build_context(session: AnalysisSession, message: str) -> IntakeContext:
     return IntakeContext(
         message=message, schema_text=schema_text, history=conversation_context(session),
         existing_task=_plan_json(session.task_plan) if session.task_plan else "",
-        domain=domain_notes(session.data_contract, message))
+        domain=domain_notes(session.data_contract, message, _spans(session)))
+
+
+def _spans(session: AnalysisSession) -> dict | None:
+    """The span pack prose names (PR7-03): the cleaning audit's after a first run, else read from
+    the frame ingestion loaded; with neither, none (the prose says 'the months', never a 12)."""
+    if session.cleaning_audit:
+        return session.cleaning_audit.window_span
+    contract, raw = session.data_contract, session.__dict__.get("_df_parquet")
+    pack = defaults_pack(contract) if contract else None
+    if not (raw and pack and pack.spell):
+        return None
+    df = pd.read_parquet(io.BytesIO(raw))
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    return window_span(pack, df, roles) if has_spell(pack, roles) else None
 
 
 # A calendar period the targeted path can filter to (not "last month": the built-in MoM has it).
@@ -141,7 +158,7 @@ _PERIOD_RE = re.compile(r"\b(?:q[1-4]|quarter|ytd|year[- ]to[- ]date|year[- ]ove
                         r"\d{4}-\d{2}(?:-\d{2})?|week \d{1,2})\b", re.I)
 
 
-def domain_notes(contract: DataContract | None, message: str) -> str:
+def domain_notes(contract: DataContract | None, message: str, spans: dict | None = None) -> str:
     """The domain pack's words for this question: each KPI or concept it names (with its exact
     definition, mapped to this data's columns), and how to express a calendar period. Empty when
     the data has no pack or the question uses none of its terms: the prompt is then as before."""
@@ -172,7 +189,7 @@ def domain_notes(contract: DataContract | None, message: str) -> str:
             lines.append(f'- "{words}" needs {pack.unsupported[concept]}: set clarification_needed '
                          "and say so.")
         elif concept in pack.definitions:
-            lines.append(f'- "{words}": {pack.definitions[concept]}')
+            lines.append(f'- "{words}": {pack.define(concept, spans)}')
     if period:
         lines.append("- A calendar period: set targeted_params.period_start and period_end (ISO "
                      "dates, inclusive). Anchor 'last quarter', 'this year' on the data's last date "
@@ -384,7 +401,7 @@ async def run_intake_agent(
         data["clarification_needed"] = True
         data["clarification_question"] = (
             f"{pack.name_of(unsupported[0])} needs "
-            f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives')}")
+            f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives', _spans(session))}")
 
     named = (data.get("targeted_params") or {}).get("kpi") if isinstance(
         data.get("targeted_params"), dict) else getattr(data.get("targeted_params"), "kpi", None)

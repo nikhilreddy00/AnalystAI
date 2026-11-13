@@ -423,6 +423,31 @@ def test_on_short_data_the_bridge_still_adds_up_and_says_its_span():
     assert not dp.window_words(pack, short, roles, "nrr").startswith("12-month")
 
 
+def test_the_packs_prose_names_the_window_the_numbers_read():
+    """PR7-03 (C2): read_as_domain and the alternatives said 'over the 12 months to that date' on
+    7 months of data, beside a bridge of 6. The prose's span is the Window's: the moves' and the
+    cohort's months as window_words says them, 12 on a full year, and no number when no window is
+    known (a first question, before cleaning)."""
+    import re
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    assert dp.window_span(pack, df, roles) == {"window": "the 12 months", "moves": "the 12 months",
+                                              "cohort": "the 12 months"}
+    short = df[pd.to_datetime(df["month"]) >= "2026-04-01"]
+    spans = dp.window_span(pack, short, roles)
+    moves = int(dp.window_words(pack, short, roles, "new_mrr").split()[0])
+    cohort = int(dp.window_words(pack, short, roles, "nrr").split("-")[0])
+    assert spans["moves"] == f"the {moves} months" and spans["cohort"] == f"the {cohort} months"
+    assert moves == cohort   # one {moves} names the movements and the retention in one sentence
+    said = pack.say("unsupported_alternatives", spans)
+    assert f"retention over the {moves} months to the latest date" in said
+    assert "over the months to the latest date" in pack.say("unsupported_alternatives")
+    audit = __import__("orchestrator.state", fromlist=["x"]).CleaningAudit.model_construct(
+        decisions=[], date_ranges={}, partial_months={}, main_currency=None, window_span=spans)
+    text = " ".join(dp.pack_caveats(pack, audit, roles, "strong"))
+    assert re.search(rf"over the {moves} months to that date", text) and "12 months to" not in text
+    assert f"MRR over the {moves} months to the latest date" in pack.define("mrr_bridge", spans)
+
+
 def test_a_scoped_bridge_question_is_never_answered_with_the_whole_file():
     from tests.test_oracle import answer
     text, _ = answer("saas_mrr_snapshots", "top_n", "MRR bridge by plan", kpi="mrr_bridge", group_by="plan")
@@ -868,8 +893,27 @@ def test_a_total_and_an_unavailable_kpi_the_question_names_are_both_said():
     pack = dp.pack_for(contract.domain)
     text = _also_named(df.assign(currency="EUR"), TargetedParams(kpi="billings", group_by="line_type"),
                        contract, pack, "total billings by type")
-    assert text == f" Also asked: Billings in total: €{t['billings']:,.2f}.", text
+    d = pd.to_datetime(df[contract.roles["invoice_date"]])   # PR1-02: billings names its period
+    span = f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"
+    assert text == f" Also asked: Billings in total ({span}): €{t['billings']:,.2f}.", text
     df, contract, pack, _, _ = _setup("saas_mrr_snapshots")
     one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
     text = _also_named(one, TargetedParams(kpi="mrr"), contract, pack, "What is our MRR and new MRR?")
     assert text == " Also asked: New MRR: unavailable, the data covers too short a span.", text
+
+
+def test_billings_names_the_invoice_dates_it_sums():
+    """PR1-02 (C2): billings summed every invoice line with no period beside it (the file's time
+    axis is the MRR month, not the invoice date), so a tile read as a month's or a year's. It
+    names its invoice dates, and an asked period's."""
+    _, df, contract, _ = _built("saas_invoices")
+    pack, roles = dp.pack_for(contract.domain), {r: c for r, c in contract.roles.items() if c in df.columns}
+    d = pd.to_datetime(df[roles["invoice_date"]])
+    assert dp.window_words(pack, df, roles, "billings") == f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"
+    asked = d[d >= "2026-07-01"]
+    assert dp.window_words(pack, df, roles, "billings", ("2026-07-01", None)) == \
+        f"{asked.min():%-d %b %Y} to {asked.max():%-d %b %Y}"
+    raw = pack.model_dump(by_alias=True)
+    raw["kpis"] = [{**k, "dated_by": "plan"} if k["name"] == "billings" else k for k in raw["kpis"]]
+    with pytest.raises(ValueError, match="dated_by plan is not a date role"):
+        dp.Pack.model_validate(raw)

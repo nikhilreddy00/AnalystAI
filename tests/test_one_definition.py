@@ -421,16 +421,17 @@ def test_the_in_force_marker_counts_the_stock_tiles_own_rows(name):
         assert dp.compute_kpi(df, roles, pack, k.name) == pytest.approx(want), k.name
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C2: pack prose naming the window gets {window} in 5.7b-2c")
 def test_pack_prose_names_the_window_through_its_placeholder():
-    """5.7b-2 (C2, ROADMAP step 1): prose said with the data that names the window it was read
-    over ('over the 12 months to that date') is wrong on short data; it says {window}, filled
-    from the Window. A rule's own span (the 12-month cohort, expert M3) is no window."""
+    """5.7b-2c (C2, PR7-03): prose said with the data that names the window it was read over
+    ('over the 12 months to that date') was wrong on short data; it says {window} / {moves} /
+    {cohort}, filled from the Window (spell.window_span). A rule's own span (YoY's same 12-month
+    window, the 12-month cohort's definition, an annual invoice) is no window: it never says
+    'months to' a date."""
     import domain_pack as dp
-    said = [t for p in dp.load_packs() for t in (p.caveats.get("read_as_domain", ""),
-                                          p.text.get("unsupported_alternatives", ""))]
-    assert not [t for t in said if re.search(r"\b(?:the )?12 months to\b", t)]
+    said = [t for p in dp.load_packs() for t in (*p.caveats.values(), *p.text.values(),
+                                                  *p.definitions.values(), *p.unsupported.values())]
+    assert not [t for t in said if re.search(r"\b12 months to\b", t)]
+    assert {"{window}", "{moves}"} <= {m for t in said for m in re.findall(r"\{window\}|\{moves\}", t)}
 
 
 def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess():

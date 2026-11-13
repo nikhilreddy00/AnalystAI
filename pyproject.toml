@@ -70,7 +70,8 @@ dev = [
 # module the tests import is copied too (and domain_packs/, read via Path(__file__)).
 # the agent files a 5.7b gate mutates too (5.7b-2a: a changed function is gated wherever it is)
 source_paths = ["domain_pack/", "agents/utils.py", "agents/targeted_analysis_agent.py",
-                "agents/visualization_agent.py", "agents/analysis_agent.py", "evals/scoring.py"]
+                "agents/visualization_agent.py", "agents/analysis_agent.py", "evals/scoring.py",
+                "agents/intake_agent.py", "agents/cleaning_agent.py"]
 # never evals/reference_kpis.py: the oracle is checked against the generators, not the product
 also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
              "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",

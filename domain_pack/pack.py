@@ -309,6 +309,9 @@ class KPI(_Strict):
     # a role whose values the KPI never adds across (exposure units differ by line): computed
     # within one value only; asked without a group, answered by this role
     per: str | None = None
+    # the date role its rows are dated by when it is not the pack's time axis (billings: invoice
+    # dates on a file whose axis is the MRR month): its answer names that span (window_words)
+    dated_by: str | None = None
     # set by Pack._check: every numerator term is a state KPI (ARR = 12 × MRR is as of a date)
     _of_state: bool = PrivateAttr(default=False)
 
@@ -474,8 +477,13 @@ class Pack(_Strict):
         n = (self.glossary.get(concept) or [concept.replace("_", " ")])[0]
         return n[0].upper() + n[1:]
 
-    def say(self, which: str, **kw) -> str:
-        return self.text.get(which, TEXT_DEFAULTS[which]).format(**kw)
+    def say(self, which: str, spans: dict | None = None, **kw) -> str:
+        """A sentence in the pack's words; `spans` fill {window} / {moves} / {cohort}."""
+        return self.text.get(which, TEXT_DEFAULTS[which]).format(**span_words(spans), **kw)
+
+    def define(self, concept: str, spans: dict | None = None) -> str:
+        """A definition, its window named as this data's (spell.window_span)."""
+        return self.definitions[concept].format(**span_words(spans))
 
     @model_validator(mode="after")
     def _check(self) -> Pack:
@@ -563,6 +571,8 @@ class Pack(_Strict):
         errors += [f"kpi {k.name}: net_of {t.net_of} is not a rate role" for k in self.kpis
                    for alt in [*k.num, *(k.den or [])] for t in alt
                    if t.net_of and t.net_of in self.roles and self.roles[t.net_of].kind != "rate"]
+        errors += [f"kpi {k.name}: dated_by {k.dated_by} is not a date role" for k in self.kpis
+                   if k.dated_by and getattr(self.roles.get(k.dated_by), "kind", None) != "date"]
         moves = {t.move for k in self.kpis for alt in [*k.num, *(k.den or [])] for t in alt
                  if t.spell == "moves"}
         if moves and self.spell:   # a ledger's sentences are the pack's words (C9)
@@ -775,6 +785,12 @@ def roles_of(contract, column: str) -> set[str]:
 def ordinal(n: int) -> str:
     """12 → '12th', 1 → '1st', 22 → '22nd'."""
     return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def span_words(spans: dict | None) -> dict[str, str]:
+    """What pack prose says for {window} (flows), {moves} and {cohort}: this data's span ('the 12
+    months', spell.window_span), or 'the months' when no window is known (never a guessed 12)."""
+    return {k: (spans or {}).get(k, "the months") for k in ("window", "moves", "cohort")}
 
 
 def and_list(items: list[str]) -> str:

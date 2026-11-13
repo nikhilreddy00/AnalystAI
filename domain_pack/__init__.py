@@ -92,6 +92,7 @@ from .spell import (  # noqa: F401
     spell_covered,
     _month_ends,
     window_words,
+    window_span,
     WINDOW_MONTHS,
     _MEMO,
     _MEMO_LOCK,

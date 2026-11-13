@@ -145,7 +145,7 @@ overview_kpis: [mrr, nrr, logo_churn_rate, new_mrr, churned_mrr, billings]
 text:
   rows_brief: "MRR, ARR, paying customers, ARPA, the MRR movements (new, expansion, contraction, churned, reactivation), logo churn and net and gross revenue retention are given below as computed facts: use them as they are, never recount them from rows. MRR is a monthly run-rate at a date, not revenue: never call it revenue, and never sum it over months (a month's MRR is each customer's latest value that month, added over customers). On a subscription list the `mrr` column is already normalised by the product (price × seats × (1 − discount) ÷ the billing interval in months: an annual plan's price is ÷ 12): use it, never the raw price. Trials ('trialing'), paused, unpaid and incomplete subscriptions are out of MRR and customer counts; past_due stays in. A subscription converted from a trial pays from its trial_end. canceled_at is the date a cancellation was requested, not the end: a subscription ends at ended_at (a cancel_at after the latest date is a scheduled cancellation, still paying). Who is paying is already marked in columns `df` has beyond the schema: 'in_force_now' ('yes' on each paying subscription in force at the latest date: MRR now, and MRR, customers or ARPA by any group (segment, plan, country), sum mrr over these rows only, because an ended subscription keeps its last price in the file and summing every row adds customers who left), 'end_event_date' and 'start_event_date' (a subscription's own end and start), 'end_in_window', 'end_date_unknown' ('yes' on a canceled subscription with no end date: never in force). A subscription's end is not a churned customer (the customer may hold another subscription or come back): churned customers, new and reactivated customers are the computed facts (a customer whose MRR went to 0 at a month-end, from 0 with no earlier payment, from 0 after an earlier one). Net revenue retention = the MRR at the latest date of the customers paying 12 months earlier ÷ their MRR then (new customers out); gross retention caps each customer at their earlier MRR; logo churn = the share of those customers not paying now. Never multiply a monthly churn rate by 12. Count customers as distinct customer ids, never rows. A partial month is named, never annualised. Invoice lines are billings (invoiced amounts excluding tax, voids and drafts out, credit notes netted, by invoice date), never MRR."
   grain_line: "One row is a subscription, a customer's month of MRR, or an invoice line: count customers as distinct {key}, never rows."
-  unsupported_alternatives: "I can answer with what the data has: MRR, ARR and paying customers now or by month, ARPA, new, churned and reactivated customers, the MRR movements and net and gross revenue retention over the 12 months to the latest date (movements and retention need monthly MRR snapshots), logo churn, by segment, plan or country, and billings on invoice lines. Which would help?"
+  unsupported_alternatives: "I can answer with what the data has: MRR, ARR and paying customers now or by month, ARPA, new, churned and reactivated customers, the MRR movements and net and gross revenue retention over {moves} to the latest date (movements and retention need monthly MRR snapshots), logo churn, by segment, plan or country, and billings on invoice lines. Which would help?"
   kpis_default: its MRR, subscription and invoice columns
   causal_removed: "{n} sentence(s) saying a price, plan, feature, support or a campaign caused customers to churn or expand were removed: from observational data without a controlled comparison that can't be shown."
   people_nouns: "customers, accounts, logos, subscribers"
@@ -271,11 +271,13 @@ kpis:
     label: Billings
     unit: money
     tile: true
+    dated_by: invoice_date   # its tile and answer name the invoice dates (PR1-02)
     num: [[{sum: amount, where: [[{role: invoice, not_in: []}]]}]]
   - name: recurring_share
     label: Recurring share of billings
     unit: percent
     tile: true
+    dated_by: invoice_date
     num: [[{sum: amount, where: [[{role: invoice, not_in: []}, {role: line_type, in: [subscription, recurring, plan, license]}]]}]]
     den: [[{kpi: billings}]]
 
@@ -327,7 +329,7 @@ glossary:
   pause_history: [paused history, when were they paused, pause history, paused last year]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
 definitions:
-  mrr_bridge: "The MRR bridge splits the change in MRR over the 12 months to the latest date into new, expansion, reactivation, contraction and churned MRR, each a customer's change between consecutive month-ends: MRR then + new + expansion + reactivation − contraction − churned = MRR now. Expansion and contraction need monthly MRR snapshots; a subscription list holds today's prices only."
+  mrr_bridge: "The MRR bridge splits the change in MRR over {moves} to the latest date into new, expansion, reactivation, contraction and churned MRR, each a customer's change between consecutive month-ends: MRR then + new + expansion + reactivation − contraction − churned = MRR now. Expansion and contraction need monthly MRR snapshots; a subscription list holds today's prices only."
   monthly_churn_annualised: "An annual churn rate is measured on the customers paying 12 months earlier (logo churn). A monthly rate is never multiplied by 12: monthly churn compounds (1 − (1 − m)^12), and the 12-month cohort figure is the one reported."
   yoy: "Year over year compares the same 12-month window (or the asked period) a year earlier."
 unsupported:
@@ -344,7 +346,7 @@ unsupported:
   cohort_curve: "a retention curve per signup month is not computed here; the 12-month cohort (customers paying 12 months earlier, their logo churn and revenue retention now) is available"
 
 caveats:
-  read_as_domain: "Read as SaaS subscription data ({kpis}). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan ÷ 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate × 12. A customer who starts and leaves inside one month appears in no month-end figure."
+  read_as_domain: "Read as SaaS subscription data ({kpis}). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan ÷ 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over {moves} to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate × 12. A customer who starts and leaves inside one month appears in no month-end figure."
   read_as_domain_weak: "Read as SaaS subscription data because it has {roles} columns; if these are not subscriptions, the SaaS figures here don't apply."
   repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
   partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons; it is not annualised."

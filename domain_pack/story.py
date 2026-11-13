@@ -9,7 +9,7 @@ import pandas as pd
 from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
                    ROW_KIND_COLUMN, Term, _column,
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
-                   ordinal, roles_of, spell_terms)
+                   ordinal, roles_of, span_words, spell_terms)
 from .detect import main_currency, row_kinds
 from .spell import (WINDOW_MONTHS, Window, _ended_undated, has_spell, not_counted_yet,
                     today_only, window, window_words)
@@ -448,7 +448,7 @@ def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(R
 
 def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: str | None = None,
                present: set[str] = frozenset(), currency: str | None = None,
-               kind_column: str = ROW_KIND_COLUMN) -> list[str]:
+               kind_column: str = ROW_KIND_COLUMN, spans: dict | None = None) -> list[str]:
     """The pack's rules, in role names: which rows are not sales (the kinds `present` in this
     data), the grain, and each concept (a KPI or a definition) asked about. Roles, never column
     names: the caller shows the role → column map inside its untrusted-data block."""
@@ -479,7 +479,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
                 lines.append(f"{kpi.label} ({c}): this data lacks the columns it needs; say so, "
                              "never approximate it with another column.")
         elif c in pack.definitions:
-            lines.append(f"{c}: {pack.definitions[c]}")
+            lines.append(f"{c}: {pack.define(c, spans)}")
         elif c in pack.unsupported:
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
     for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
@@ -540,7 +540,8 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}
-    said = [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
+    spans = span_words(audit.window_span if audit else None)   # {window}: this data's (PR7-03)
+    said = [pack.caveats[c].format(**spans, **facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
     return said + [text for role, text in pack.role_caveats.items() if role in roles]
 
 

@@ -18,7 +18,16 @@ from evals.snapshot import GOLDEN, snapshot
 CHANGES: dict[str, dict[str, str]] = {
     "deterministic": {"saas_subscriptions-1": "5.7b-2a C5 (user decision 2026-11-10): the file's "
                       "story says its 10 paused or unpaid rows are out of every month-end (no "
-                      "date they began); no number moved"},
+                      "date they began); no number moved. 5.7b-2c C2: the audit stores its span",
+                      **{d: "5.7b-2c C2 (PR7-03): the cleaning audit stores the span pack prose "
+                         "names (window_span, 'the 12 months' on these full years); no text or "
+                         "number moved" for d in ("employees-1", "employees-2", "employees-3",
+                                                  "hr_roster-1", "hr_roster_onerow-1",
+                                                  "hr_snapshots-1", "saas_accounts-1",
+                                                  "saas_accounts-2", "saas_accounts-3",
+                                                  "saas_mrr_snapshots-1")},
+                      "saas_invoices-1": "5.7b-2c C2 (PR1-02): the billings and recurring-share "
+                      "tiles name the invoice dates they sum (no period before); no number moved"},
     "insight": {"ins-49-saas-subscriptions-overview": "5.7b-2a C5: the same today-only sentence "
                 "in the story the insight reads; no number moved"},
 }

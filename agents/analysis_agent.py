@@ -588,7 +588,7 @@ def _domain(contract: DataContract, task: AnalysisTask, audit, parquet: bytes | 
                if d.operation == "flag" and d.strategy in ROW_KINDS}
     grain = audit.grain if audit else None
     brief = pack_brief(pack, roles, concepts, grain, present, audit.main_currency if audit else None,
-                       kind_column(contract))
+                       kind_column(contract), audit.window_span if audit else None)
     facts: list[str] = []
     if brief and pack.spell and parquet and defaults_pack(contract):   # the product's numbers
         frame = pd.read_parquet(io.BytesIO(parquet))
