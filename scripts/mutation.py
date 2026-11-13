@@ -265,11 +265,15 @@ def main() -> int:
         gen = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", "no_such_mutant"], cwd=wt,
                              env={**os.environ, **ENV}, capture_output=True, text=True)
         stats = wt / "mutants" / "mutmut-stats.json"
-        if not stats.is_file():
+        if stats.is_file():
+            lost = unreached(json.loads(stats.read_text()), args.functions)
+        elif "could not find any test case for any mutant" in gen.stdout:   # it saves none then
+            lost = args.functions
+        else:
             print(gen.stdout[-3000:] + gen.stderr[-3000:], file=sys.stderr)
             print("mutmut wrote no stats (its output is above)", file=sys.stderr)
             return 2
-        if lost := unreached(json.loads(stats.read_text()), args.functions):
+        if lost:
             for f in lost:
                 print(f"no selected test reaches {f}; tests that name it: "
                       f"{' '.join(naming(f)) or '(none)'}", file=sys.stderr)
