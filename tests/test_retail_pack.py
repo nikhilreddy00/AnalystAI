@@ -682,6 +682,10 @@ def test_the_best_header_wins_net_sales_over_gross_sales():
 def test_a_discount_rate_reduces_net_sales_and_asp_uses_net_units():
     df = _lines(o=["1", "2"], q=[10, 10], p=[100.0, 100.0], r=[0.25, 0.0])
     assert compute_kpi(df, {**_r(df), "discount_rate": "r"}, RETAIL, "net_sales") == 1750
+    # 5.7b-2c review: a rate role is fractions (bound only within 0–1), so 1 is 100% off, never
+    # the "only 1s" guess of an undeclared number role (which left them blank: no discount)
+    free = _lines(o=["1", "2"], q=[10, 10], p=[100.0, 100.0], r=[1.0, 0.0])
+    assert compute_kpi(free, {**_r(free), "discount_rate": "r"}, RETAIL, "net_sales") == 1000
     ret = _lines(o=["1", "2"], q=[10, -5], p=[10.0, 10.0])
     assert compute_kpi(ret, _r(ret), RETAIL, "asp") == 10.0
 

@@ -17,7 +17,7 @@ roles:
   moved_in: {kind: date, headers: [moved_in]}
   rent:     {kind: money, headers: [rent]}
   units:    {kind: count, headers: [units]}
-  rebate:   {kind: rate, headers: [rebate, rebate_pct, rebate_share],
+  rebate:   {kind: number, headers: [rebate, rebate_pct, rebate_share],
              scales: {rebate_pct: percent, rebate_share: fraction}}
   term:     {kind: category, headers: [term], numbers: {monthly: 1, quarterly: 3, yearly: 12}}
   terms:    {kind: count, headers: [terms]}
@@ -121,7 +121,7 @@ def test_a_declared_percent_header_fits_its_rate_role_and_an_undeclared_one_must
     """Detection binds a rate role by its values (0–1), unless the header declares its scale: a
     percent_off of 20 still gets its role, and rate_values then says any value off its scale."""
     from domain_pack.detect import _fits
-    r = pack.roles["rebate"]
+    r = pack.roles["rebate"].model_copy(update={"kind": "rate"})
     assert _fits(pd.Series([20.0, 10.0]), r, pack, False, "rebate_pct")
     assert not _fits(pd.Series([20.0, 10.0]), r, pack, False, "rebate")
     assert _fits(pd.Series([0.2, 0.1]), r, pack, False, "rebate")

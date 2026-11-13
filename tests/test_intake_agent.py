@@ -235,10 +235,12 @@ async def test_a_rate_asked_of_a_money_kpi_asks_which(recorded_llm):
     recorded_llm.responses.append(_kpi_plan("churned_mrr"))
     task = await run_intake_agent(s, "What is our revenue churn rate?", recorded_llm)
     assert task.clarification_needed and task.targeted_params.kpi is None
-    assert task.clarification_question == (
-        '"revenue churn" asked as a rate: Churned MRR is an amount. Did you mean Logo churn (a '
-        "rate), Net revenue retention (a rate), Gross revenue retention (a rate), or Churned MRR "
-        "(an amount)?")
+    q = task.clarification_question   # the KPI named, its unit, and the rates sharing a word
+    assert q.startswith('"revenue churn" asked as a rate: Churned MRR is an amount.')
+    assert "Logo churn (a rate)" in q and q.endswith("or Churned MRR (an amount)?"), q
+    recorded_llm.responses.append(_kpi_plan("logo_churn_rate"))   # a rate the model picked: kept
+    task = await run_intake_agent(s, "What is our revenue churn rate?", recorded_llm)
+    assert task.targeted_params.kpi == "logo_churn_rate" and not task.clarification_needed
     from agents.intake_agent import domain_notes
     assert "churned_mrr" not in domain_notes(s.data_contract, "What is our revenue churn rate?")
     recorded_llm.responses.append(_kpi_plan())
@@ -260,6 +262,25 @@ async def test_arpu_is_answered_as_arpa_and_says_so(recorded_llm):
     task = await run_intake_agent(_saas_session(), "What is our ARPU?", recorded_llm)
     assert task.targeted_params.kpi == "arpa"
     assert dp.pack_for("saas").kpi("arpa").label == "ARPA per paying customer"
+
+
+def test_an_unsupported_concept_names_this_datas_window_before_and_after_cleaning(recorded_llm):
+    """PR7-03 through intake: the alternatives offered for an unsupported concept (LTV) name the
+    data's span. On a first question there is no cleaning audit yet: intake reads the frame
+    ingestion loaded; after a run, the audit's."""
+    import asyncio
+
+    from tests.test_saas import _short_session
+    s, moves = _short_session()
+    audit, s.cleaning_audit = s.cleaning_audit, None
+    recorded_llm.responses.append(_kpi_plan())
+    task = asyncio.run(run_intake_agent(s, "What is our LTV?", recorded_llm))
+    assert task.clarification_needed
+    assert f"over the {moves} months to the latest date" in task.clarification_question
+    s.cleaning_audit = audit.model_copy(update={"window_span": {"moves": "5 months"}})
+    recorded_llm.responses.append(_kpi_plan())
+    task = asyncio.run(run_intake_agent(s, "What is our LTV?", recorded_llm))
+    assert "over the 5 months to the latest date" in task.clarification_question
 
 
 def test_the_arpu_answer_says_arpa_per_paying_customer():

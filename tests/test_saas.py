@@ -456,6 +456,35 @@ def test_the_packs_prose_names_the_window_the_numbers_read():
     assert "each exit in the window the facts name" in hr.say("rows_brief")
 
 
+def _short_session():
+    """saas_mrr_snapshots from Apr 2026 (7 month-ends) as production's session holds it, and the
+    moves' months on it."""
+    import io
+    from tests.test_oracle import _built
+    s, clean, contract, _ = _built("saas_mrr_snapshots")
+    short = clean[pd.to_datetime(clean[contract.roles["month"]]) >= "2026-04-01"]
+    buf = io.BytesIO()
+    short.to_parquet(buf)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    roles = {r: c for r, c in contract.roles.items() if c in short.columns}
+    return s, int(dp.window_words(dp.pack_for("saas"), short, roles, "new_mrr").split()[0])
+
+
+def test_a_refused_scoped_bridge_names_this_datas_window():
+    """PR7-03 through the targeted path: a definition and the alternatives said with a refusal
+    name the frame's own span, never a written 12."""
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisTask, QuestionIntent, TargetedParams
+    s, moves = _short_session()
+    assert moves < 12
+    s.task_plan = AnalysisTask(raw_query="MRR bridge by plan", analysis_types=["eda"], target_metrics=[],
+                               question_intent=QuestionIntent("top_n"),
+                               targeted_params=TargetedParams(kpi="mrr_bridge", group_by="plan"))
+    r = run_targeted_analysis(s)
+    text = " ".join([r.answer_text, *r.suggestions])
+    assert f"over the {moves} months to the latest date" in text and "12 months to" not in text, text
+
+
 def test_a_scoped_bridge_question_is_never_answered_with_the_whole_file():
     from tests.test_oracle import answer
     text, _ = answer("saas_mrr_snapshots", "top_n", "MRR bridge by plan", kpi="mrr_bridge", group_by="plan")

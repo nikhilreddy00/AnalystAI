@@ -60,9 +60,12 @@ def layout_blanks(df: pd.DataFrame, contract) -> list[str]:
 
 
 def scale_of(pack: Pack, role: str, roles: dict[str, str]) -> str | None:
-    """The scale the pack declares for the header this data's column of the role has (GLOSSARY
-    Scale), or None: undeclared."""
-    return pack.roles[role].scales.get(expand_header(normalize_header(roles[role]), pack))
+    """The scale of this data's column of the role (GLOSSARY Scale): its header's declared one;
+    else a `kind: rate` role's fractions (detection binds it only within 0–1, so 1 is 100%);
+    else None, guessed from the values (a `kind: number` role: Stripe's 20 or a rate's 0.2)."""
+    r = pack.roles[role]
+    return r.scales.get(expand_header(normalize_header(roles[role]), pack),
+                        "fraction" if r.kind == "rate" else None)
 
 
 def rate_values(v: pd.Series, scale: str | None, col: str) -> tuple[pd.Series, list[str]]:
