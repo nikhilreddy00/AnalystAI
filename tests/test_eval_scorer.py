@@ -671,3 +671,101 @@ def test_an_in_force_mean_by_month_is_accepted():
                                           anomalies=[], statistical_tests=[], code_executed=""), df, {},
                          _spell("hr_roster"))
     assert out["false"] == 0 and out["verifiable"] == len(m)
+
+
+def _seg(col: str, metric: str, agg: str, values) -> SegmentResult:
+    return SegmentResult(segment_column=col, metric_column=metric, aggregation=agg,
+                         results=[{"name": str(k), "value": float(v)} for k, v in dict(values).items()])
+
+
+def test_segment_value_off_spell_data_reads_every_row():
+    """5.7b-2b gate: check_segment_value off spell data is pandas' groupby over the rows; a wrong
+    group says which one and what it wanted."""
+    import pandas as pd
+    from evals.scoring import check_segment_value
+    df = pd.DataFrame({"plan": ["A", "A", "B"], "seats": [1.0, 2.0, 4.0]})
+    assert check_segment_value(_findings(segments=[_seg("plan", "seats", "sum", {"A": 3, "B": 4})]),
+                               df, "plan", "seats") == (True, "ok")
+    assert check_segment_value(_findings(segments=[_seg("plan", "seats", "mean", {"A": 1.5, "B": 4})]),
+                               df, "plan", "seats") == (True, "ok")
+    ok, why = check_segment_value(_findings(segments=[_seg("plan", "seats", "sum", {"A": 3, "B": 5})]),
+                                  df, "plan", "seats")
+    assert not ok and why == "sum seats[B]: got 5.0, want 4.0000"
+    assert check_segment_value(_findings(segments=[_seg("plan", "seats", "sum", {"A": 3.02, "B": 4})]),
+                               df, "plan", "seats", rel_tol=0.01)[0]
+
+
+def test_segment_value_on_spell_data_reads_the_reference_never_every_row():
+    """5.7b-2b (C1): on spell data the level by group is the reference's in-force reading; the
+    same column summed over every row (cancelled subscriptions too) is wrong there, and right
+    off spell data."""
+    from evals.scoring import check_segment_value
+    from tests.test_saas import _setup
+    from agents.analysis_agent import model_frame
+    df, contract, *_ = _setup("saas_subscriptions")
+    f, _ = model_frame(df, contract)
+    now = f[f["in_force_now"] == "yes"].groupby("segment")["mrr"].sum()
+    every = df.groupby("segment")["mrr"].sum()
+    spell = _spell("saas_subscriptions")
+    assert check_segment_value(_findings(segments=[_seg("segment", "mrr", "sum", now)]),
+                               df, "segment", "mrr", spell=spell)[0]
+    assert not check_segment_value(_findings(segments=[_seg("segment", "mrr", "sum", every)]),
+                                   df, "segment", "mrr", spell=spell)[0]
+    assert check_segment_value(_findings(segments=[_seg("segment", "mrr", "sum", every)]),
+                               df, "segment", "mrr")[0]
+
+
+def _ff(df, *segs, spell=None) -> dict:
+    from evals.scoring import false_findings
+    return false_findings(_findings(segments=list(segs)), df, {}, spell)
+
+
+def test_a_total_named_any_overall_word_is_the_whole_populations_value():
+    """5.7b-2b gate: 'Total' or 'All groups' beside the groups reads as the whole (as 'Overall');
+    a wrong total is false."""
+    import pandas as pd
+    df = pd.DataFrame({"plan": ["A", "A", "B"], "seats": [1.0, 2.0, 4.0]})
+    assert _ff(df, _seg("plan", "seats", "sum", {"A": 3, "B": 4, " Total ": 7, "All groups": 7}))["false"] == 0
+    assert _ff(df, _seg("plan", "seats", "sum", {"A": 3, "Total": 8}))["false"] == 1
+
+
+def test_a_real_group_named_overall_keeps_its_own_value():
+    """5.7b-2b gate: a data group literally called 'Overall' is that group, never the whole."""
+    import pandas as pd
+    df = pd.DataFrame({"plan": ["Overall", "A"], "seats": [5.0, 3.0]})
+    assert _ff(df, _seg("plan", "seats", "sum", {"Overall": 5, "A": 3}))["false"] == 0
+
+
+def test_a_claim_on_no_rows_is_false_not_a_crash():
+    import pandas as pd
+    df = pd.DataFrame({"plan": pd.Series([], dtype=str), "seats": pd.Series([], dtype=float)})
+    assert _ff(df, _seg("plan", "seats", "sum", {"A": 1}))["false"] == 1
+
+
+def test_a_count_of_an_id_column_reads_its_distinct_ids_only_for_a_count():
+    """5.7b-2b gate: 'count account_id' by group may be the distinct accounts; a sum that happens
+    to equal the distinct count is still false."""
+    import pandas as pd
+    df = pd.DataFrame({"plan": ["A", "A", "A"], "account_id": [7.0, 7.0, 9.0]})
+    assert _ff(df, _seg("plan", "account_id", "count", {"A": 2}))["false"] == 0
+    assert _ff(df, _seg("plan", "account_id", "sum", {"A": 2}))["false"] == 1
+
+
+def test_months_from_mixed_date_formats_are_one_month():
+    """5.7b-2b gate: a date column written two ways ('2025-09-01', '09/15/2025 10:00') and a junk
+    value group by month as the agent names them."""
+    import pandas as pd
+    df = pd.DataFrame({"d": ["2025-09-01", "09/15/2025 10:00", "n/a", "2025-10-02"],
+                       "amount": [1.0, 2.0, 50.0, 4.0]})
+    out = _ff(df, _seg("d", "amount", "sum", {"2025-09": 3, "2025-10": 4}))
+    assert (out["false"], out["verifiable"]) == (0, 2)
+
+
+def test_a_skipped_kept_level_leaves_the_next_breakdown_scored():
+    """5.7b-2b gate: off spell data a kept sum of a level is skipped, never the rest."""
+    import pandas as pd
+    snaps = datagen.make("saas_mrr_snapshots", 1)[0]
+    snaps["month"] = pd.to_datetime(snaps["month"])
+    n = snaps.groupby("segment")["mrr"].count()
+    out = _ff(snaps, _seg("segment", "mrr", "sum", {"SMB": 1234.5}), _seg("segment", "mrr", "count", n))
+    assert (out["false"], out["verifiable"]) == (0, len(n))
