@@ -143,8 +143,8 @@ def test_the_spell_and_ledger_sentences_say_only_the_packs_words(domain, name, m
     # a token and the pack's own value lists (said through `where`) are its words
     texts = [re.sub(r"⟦[^⟧]*⟧|\[[^\]]*\]| where .*", " ", t) for t in texts]
     # the data's own values (a plan called Growth, a Legal department) are the user's words
-    own -= {w for c in clean.select_dtypes(exclude="number") for v in clean[c].dropna().unique()[:200]
-            for w in _TOKEN.findall(str(v).lower())}
+    own -= {w for c in clean.select_dtypes(exclude="number") if clean[c].nunique() <= 50   # not ids
+            for v in clean[c].dropna().unique() for w in _TOKEN.findall(str(v).lower())}
     leaks = sorted({w for t in texts for w in _TOKEN.findall(t.lower()) if w in own})
     assert texts and not leaks, [t for t in texts if set(_TOKEN.findall(t.lower())) & own][:3]
 
