@@ -330,3 +330,82 @@ scorer:
   numbers false, because `reference_by` offered moves by month only. It now offers each move by
   any group, through the same line rule
   (`tests/test_reference.py::test_each_move_by_a_group_is_a_reading`).
+
+### Mutation gate (changed lines)
+`scripts/mutation.py --changed-since main --lines main`, each run in its own worktree:
+- **First run (c3a7872):** 21 functions, **229 survivors** on changed lines:
+  - domain_pack: 123 (`describe_kpi`'s How text 41, `_spell_events` 25, `_ledger` 19,
+    `_moved` 19, `stock_rows` 12);
+  - scorer: 76 (`check_segment_value` 35 with no test, `false_findings` 37,
+    `_reference_wants` 4);
+  - agents: 30 (`handle_kpi` 13, `repair_breakdowns` 10, `run_analysis_agent` 4 with no test,
+    `_moves_asked` 3).
+  The test list left out `check_segment_value`'s and `run_analysis_agent`'s callers; tests now
+  call both directly.
+- **What closed them** (three parallel agents, one module each, each test killing its mutants
+  in a gate run or a `--plant`):
+  - **Tests:**
+    - `test_ledger.py`: a mover across parts by hand (money and count transfers, under $1, to a
+      blank group, a negative line); the How text of all 7 moves.
+    - `test_spell.py`: the in-force marker with and without a stock tile; snapshots with no
+      start date and no declared cadence; a start date splitting spells; a blank start date
+      that is missing.
+    - `test_eval_scorer.py`: `check_segment_value` off and on spell data and over a pack's
+      counted rows; total words; a group named "Overall"; a claim on no rows; the distinct
+      count; mixed date formats by month; a skipped kept level that doesn't skip the next.
+    - `test_saas.py`: the level repair reading the named KPI, with no task, past an untouched
+      breakdown, at a first value, with no account column, for a stated period; the moved
+      sentence for an asked period and part.
+    - `test_analysis_agent_seam.py`: `run_analysis_agent` passes the session's question to
+      the repair.
+  - **Dead code deleted, no behaviour change:**
+    - `term_rows`' reindex fill;
+    - `_spell_events`' groupby `sort` arguments, `.fillna(2)` and the helper-column drop;
+    - `_ledger`'s `rename`, sort kind and returned frames' `reindex` / `columns`;
+    - `_moved`'s `.where`, which became `* c`, and the `fillna` / `dtype` in `before`;
+    - `total`'s `dtype=bool`.
+- **Found by the gate (C3 words):** on a named part, the moved sentence said "another segment",
+  but a Starter customer who moved to Pro inside SMB is a transfer out of the part. It now says
+  "another plan or segment" (`test_what_moved_between_segments_is_said_for_the_period_and_part_asked`,
+  plant-proven). The numbers were already the reference's.
+- **Final runs:**
+  - domain_pack at 8245f8b: 486 mutants, 13 survivors. The `_spell_events` `dropna` mutant was
+    then killed (plant-proven); the rest are named below.
+  - scorer: 175 mutants, 11 survivors, all named.
+  - `_spell_events` and `handle_kpi` at 741430a, after their last change: 136 mutants, 11
+    survivors. `cut = None` on a named part is caught by `tests/test_protected_cells.py`
+    (plant-proven); the rest are named. **0 unexplained survivors on changed lines.**
+- **Equivalents (31, with reasons):**
+  - **`_spell` / `stock_rows` `pack` → `None` (2):** with no `t`, `term_rows` never reads
+    `pack`, and `used_terms` never reads its `pack`.
+  - **`_ledger` group filler `""` → `None` / NaN / `"XXXX"` (3):** with no `by`, nothing groups by
+    it.
+  - **`dropna=None` (`_ledger`, `_spell_events`) (2):** pandas reads it as `False`.
+  - **`_ledger_term` `float("NAN")` (1):** the same NaN (as in 2a).
+  - **`_moved` `fillna(None)` (2):** it touches only lines where the rise (or fall) is 0. There
+    every kind is NaN, and `total()` skips NaN as it skips 0.
+  - **`describe_kpi` `.get` default (1):** read only for a moves term, whose `move` the pack
+    validator makes a key.
+  - **Scorer `dtype=float` dropped or `None` (9):** every value is read through `float()`, or the
+    Series is only checked for membership.
+  - **`false_findings` `monthly or True` (1):** with no monthly column, `assign(**{})` changes
+    nothing.
+  - **`false_findings` distinct count for every aggregation (1):** it is read only when
+    `agg == "count"`.
+  - **`handle_kpi` `spelled or True` and `else "XXXX"` (2):** unspelled, `spell_terms` is
+    empty, so the move check is False either way.
+  - **`handle_kpi` `cut` → `None` or omitted in the transfer `measure` (2):** `cut` feeds only
+    `protected_cut`, and SaaS, the one pack with moved words, has no protected roles.
+  - **`handle_kpi` `len(moved) == 2 or …` (1):** SaaS declares both transfer KPIs, which
+    measure where the answer's own KPI already measured.
+  - **`handle_kpi` `.get(lead, …)` default (3):** every move of a ledger has its lines'
+    groups, so the lead is always there.
+  - **`handle_kpi` `part = ""` (1):** falsy, like `None`.
+
+### Suite and CI
+- **Full suite at 741430a:** 3,067 passed, 128 skipped, 1 xfailed (PR7-03).
+- **Golden:** unchanged.
+- **`snapshot text main`:** 0 changes.
+- **`domain_diff.py main`:** CHANGES only, the list above, plus the two new transfer KPIs on 5
+  SaaS datasets.
+- **CI:** see PR #9.
