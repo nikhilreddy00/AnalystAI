@@ -16,11 +16,12 @@ diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines tha
 and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
 with NEW in a worktree and runs the tests: caught = a test failed.
 
-Leave tests/test_one_definition.py out of --tests: its guards read source files, and mutmut's
-rewritten ones fail them before any mutant runs. The worktree is HEAD, so a run refuses an
+--tests drops the guards that read source files (SOURCE_GUARDS): mutmut's rewritten sources
+fail them before any mutant runs. The worktree is HEAD, so a run refuses an
 uncommitted source or test file it reads. $0: no model call. Config: `[tool.mutmut]` in pyproject.toml
-(this script adds the test selection). Exit 1 when a function has a mutant that survived or
-that no selected test reached, or when mutmut itself fails."""
+(this script adds the test selection). Exit 2, before any mutant runs, when no selected test
+reaches a named function (it prints the test files that name it). Exit 1 when a mutant survived
+or no test reached it, or when mutmut itself fails."""
 import argparse
 import ast
 import json
@@ -37,6 +38,12 @@ KILLED, SURVIVED, NO_TESTS = {1, 3}, {0}, {5, 33}
 TIMEOUT = {36, 24, -24, 152, 255}
 PREFIX = "analystai-mutation-"   # --status finds running worktrees by it
 ENV = {"ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
+SOURCE_GUARDS = {"tests/test_one_definition.py"}   # grep the sources: mutmut rewrites them
+
+
+def runnable(tests: list[str]) -> list[str]:
+    """The --tests without the source guards (a node id reads as its file)."""
+    return [t for t in tests if t.split("::", 1)[0] not in SOURCE_GUARDS]
 
 
 def _function(key: str) -> str:
@@ -138,6 +145,21 @@ def mutant_lines(mutated: str, source: str) -> dict[str, tuple[int, str, str]]:
     return out
 
 
+def unreached(stats: dict, functions: list[str]) -> list[str]:
+    """The functions no selected test calls, from mutmut's stats (each of their mutants would
+    be no_tests): known before any mutant runs, so a narrow --tests list fails in minutes."""
+    hit = {_function(k) for k, t in stats.get("tests_by_mangled_function_name", {}).items() if t}
+    return [f for f in functions if f not in hit]
+
+
+def naming(function: str, root: Path = ROOT) -> list[str]:
+    """The test files that name the function: where to look for the tests that reach it."""
+    word = function.rsplit(".", 1)[-1]
+    out = subprocess.run(["git", "-C", str(root), "grep", "-lw", word, "--", "tests/*.py"],
+                         capture_output=True, text=True).stdout
+    return out.split()
+
+
 def uncommitted(paths: list[str], root: Path = ROOT) -> list[str]:
     """The paths (a test node id reads as its file) that differ from HEAD or are untracked: the
     worktree is HEAD, so a run would silently read their committed copy, or none."""
@@ -225,6 +247,9 @@ def main() -> int:
         return plant(*args.plant, args.tests, args.keyword)
     _refuse_uncommitted([*tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]
                          ["source_paths"], *args.tests])
+    if dropped := [t for t in args.tests if t not in runnable(args.tests)]:
+        print("left out (they read the sources mutmut rewrites): " + " ".join(dropped))
+        args.tests = runnable(args.tests) or ap.error("no --tests left to run")
     if args.changed_since:
         args.functions = sorted({*args.functions, *changed_functions(args.changed_since)})
         print(f"changed since {args.changed_since}: {' '.join(args.functions) or '(none)'}")
@@ -245,9 +270,25 @@ def main() -> int:
         globs = [f"*.x_{f}__mutmut_*" if "." not in f else
                  f"*.xǁ{f.replace('.', 'ǁ')}__mutmut_*" for f in args.functions]
         placed = {}
+        # generate the mutants and mutmut's stats (which tests reach each function); the run
+        # below loads the same stats
+        gen = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", "no_such_mutant"], cwd=wt,
+                             env={**os.environ, **ENV}, capture_output=True, text=True)
+        stats = wt / "mutants" / "mutmut-stats.json"
+        if stats.is_file():
+            lost = unreached(json.loads(stats.read_text()), args.functions)
+        elif "could not find any test case for any mutant" in gen.stdout:   # it saves none then
+            lost = args.functions
+        else:
+            print(gen.stdout[-3000:] + gen.stderr[-3000:], file=sys.stderr)
+            print("mutmut wrote no stats (its output is above)", file=sys.stderr)
+            return 2
+        if lost:
+            for f in lost:
+                print(f"no selected test reaches {f}; tests that name it: "
+                      f"{' '.join(naming(f)) or '(none)'}", file=sys.stderr)
+            return 2   # 1 means a survivor
         if args.lines:   # the gate judges changed lines: run only the mutants on them
-            subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", "no_such_mutant"], cwd=wt,
-                           env={**os.environ, **ENV}, capture_output=True)   # generate them
             changed = changed_lines(args.lines)
             for f, lines in changed.items():
                 if (mutated := wt / "mutants" / f).is_file():
