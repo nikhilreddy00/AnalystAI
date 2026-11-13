@@ -353,25 +353,77 @@ def named_kpis(pack: Pack, contract, message: str) -> list[str]:
                      and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
 
 
-def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
-    """[(concept, the words used)] for each glossary concept the question names as whole words,
-    unless the words are just one of the data's own column names ("revenue" in a file with a
-    revenue column needs no glossary)."""
+# GLOSSARY Unit words: the same for every domain. A KPI named next to a word of another unit is
+# not that KPI ("revenue churn rate" is no amount of money; PR1-06); `number` (a ratio of counts,
+# FTEs) clashes with none.
+_PERCENT_WORDS = re.compile(r"(?<![\w-])(?:rate|ratio|percent|percentage|pct|share|proportion)"
+                            r"(?![\w-])|%")
+_COUNT_BEFORE = re.compile(r"(?:how many|number of|count of)\s+$")
+_CLASHES = {"money": {"percent", "count"}, "percent": {"count"}, "count": {"percent"}}
+
+
+def unit_said(text: str, start: int = 0, end: int | None = None) -> str | None:
+    """The unit the words text[start:end] are asked in: a percent word inside them or the word
+    right after ("churn rate", "churn %"), else a count word right before ("how many returning
+    customers"). A run rate is money ("monthly run rate")."""
+    end = len(text) if end is None else end
+    after = re.match(r"\s*(%|[\w-]+)", text[end:])
+    said = re.sub(r"\brun rate\b", "", text[start:end] + (" " + after.group(1) if after else ""))
+    if _PERCENT_WORDS.search(said):
+        return "percent"
+    return "count" if _COUNT_BEFORE.search(text[:start]) else None
+
+
+def _glossary_matches(pack: Pack, question: str, columns: list[str]):
+    """(concept, the words used, the unit they clash in or None) per glossary concept the
+    question names as whole words, unless the words are just one of the data's own column names
+    ("revenue" in a file with a revenue column needs no glossary)."""
     q = question.lower()
     own = {normalize_header(c) for c in columns}
     found = [(m.start(), m.end(), concept, w)
              for concept, said in [*pack.glossary.items(), (None, pack.consumed)]
              for w in said for m in re.finditer(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q)]
     taken: list[tuple[int, int]] = []
-    hits: dict[str, str] = {}
-    # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales")
+    hits: dict[str, tuple[str, str | None]] = {}
+    # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales"),
+    # a clashing one too: "revenue churn rate" is asked, never read as "churn rate"
     for start, end, concept, w in sorted(found, key=lambda f: f[0] - f[1]):
         if any(start < e and s < end for s, e in taken):
             continue
         taken.append((start, end))
         if concept and normalize_header(w) not in own and concept not in hits:
-            hits[concept] = w
-    return list(hits.items())
+            unit = unit_said(q, start, end)
+            k = pack.kpi(concept)
+            hits[concept] = (w, unit if k and unit in _CLASHES.get(k.unit, ()) else None)
+    return [(c, w, clash) for c, (w, clash) in hits.items()]
+
+
+def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
+    """[(concept, the words used)] for each glossary concept the question names as whole words
+    (_glossary_matches), never a KPI asked in another unit (unit_clashes)."""
+    return [(c, w) for c, w, clash in _glossary_matches(pack, question, columns) if not clash]
+
+
+def unit_clashes(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str, str]]:
+    """[(KPI, the words used, the unit asked)] for each KPI the question names in another unit:
+    no answer reads it, and intake asks which was meant (unit_question)."""
+    return [(c, w, clash) for c, w, clash in _glossary_matches(pack, question, columns) if clash]
+
+
+_UNIT_NAMES = {"money": "an amount", "percent": "a rate", "count": "a count", "number": "a number"}
+
+
+def unit_question(pack: Pack, clash: tuple[str, str, str]) -> str:
+    """The question intake asks for a KPI named in another unit: the KPI with its own unit, and
+    the KPIs of the asked unit that share a word with the words used."""
+    kpi, words, unit = clash
+    said = set(re.findall(r"[\w-]+", words.lower()))
+    near = [k.name for k in pack.kpis if k.unit == unit and said & {
+        x for w in [k.label, *pack.glossary.get(k.name, [])] for x in re.findall(r"[\w-]+", w.lower())}]
+    label = pack.kpi(kpi).label
+    return (f'"{words}" asked as {_UNIT_NAMES[unit]}: {label} is '
+            f"{_UNIT_NAMES[pack.kpi(kpi).unit]}. Did you mean "
+            f"{''.join(f'{pack.kpi(k).label}, ' for k in near)}or {label}?")
 
 
 def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(ROW_KINDS)) -> str:

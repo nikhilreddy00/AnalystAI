@@ -186,3 +186,76 @@ async def test_a_spell_rate_over_the_last_12_months_is_one_figure_not_a_monthly_
     recorded_llm.responses += [plan, plan]   # a grain asked keeps the series
     task = await run_intake_agent(s, "Involuntary attrition by month over the last 12 months", recorded_llm)
     assert task.question_intent == QuestionIntent.TIME_SERIES
+
+
+def _saas_session():
+    from connectors.csv_connector import CSVConnector, _read_bytes
+    from evals import datagen
+    from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
+    raw, _ = datagen.make("saas_subscriptions", 1)
+    df = _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0]
+    return AnalysisSession(session_id="t", data_contract=CSVConnector(
+        ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df))
+
+
+def _kpi_plan(kpi=None):
+    return json.dumps({"raw_query": "q", "target_metrics": [], "segments": [], "analysis_types": [],
+                       "question_intent": "segment_compare", "clarification_needed": False,
+                       "targeted_params": {"kpi": kpi} if kpi else {}})
+
+
+def test_the_unit_a_kpi_is_asked_in_is_read_beside_its_words():
+    """GLOSSARY Unit words: a percent word inside the words or right after them, a count word
+    right before; a run rate is money; a word further off is another KPI's."""
+    from domain_pack import unit_said
+    assert unit_said("revenue churn rate") == unit_said("churn %") == "percent"
+    q = "how many returning customers"
+    assert unit_said(q, q.index("returning"), len(q)) == "count"
+    assert unit_said("monthly run rate") is None and unit_said("revenue churn") is None
+    q = "mrr and how many paying customers"
+    assert unit_said(q, 0, 3) is None   # "how many" counts the customers, not the MRR
+
+
+def test_every_glossary_phrase_fits_its_kpis_unit():
+    """C6 (ROADMAP 5.7b-2 step 5, PR1-06): a phrase is its KPI's in the KPI's own unit (Kpi.unit,
+    the one declaration), so no phrase's own words name another unit: "churn rate" is never
+    churned MRR, "how many customers" never an amount."""
+    import domain_pack as dp
+    from domain_pack.story import _CLASHES
+    wrong = [(p.domain, c, w) for p in dp.load_packs() for c, ws in p.glossary.items()
+             if (k := p.kpi(c)) for w in ws if dp.unit_said(w.lower()) in _CLASHES.get(k.unit, ())]
+    assert not wrong
+
+
+async def test_a_rate_asked_of_a_money_kpi_asks_which(recorded_llm):
+    """PR1-06: "revenue churn rate" was answered with churned MRR in dollars (the longest phrase,
+    "revenue churn", is a money KPI). It is asked, whatever KPI the model picked; "how many
+    returning customers" is the count of reactivated customers, never reactivation MRR."""
+    s = _saas_session()
+    recorded_llm.responses.append(_kpi_plan("churned_mrr"))
+    task = await run_intake_agent(s, "What is our revenue churn rate?", recorded_llm)
+    assert task.clarification_needed and task.targeted_params.kpi is None
+    assert task.clarification_question == (
+        '"revenue churn" asked as a rate: Churned MRR is an amount. Did you mean Logo churn, '
+        "Net revenue retention, Gross revenue retention, or Churned MRR?")
+    from agents.intake_agent import domain_notes
+    assert "churned_mrr" not in domain_notes(s.data_contract, "What is our revenue churn rate?")
+    recorded_llm.responses.append(_kpi_plan())
+    task = await run_intake_agent(s, "How many returning customers did we have?", recorded_llm)
+    assert task.targeted_params.kpi == "reactivated_customers" and not task.clarification_needed
+    recorded_llm.responses.append(_kpi_plan())   # a count word beside another KPI asks nothing
+    task = await run_intake_agent(s, "What is our MRR and how many paying customers?", recorded_llm)
+    assert task.targeted_params.kpi == "paying_customers" and not task.clarification_needed
+    import domain_pack as dp   # and MRR is still named: the answer gives both (D2-07)
+    assert "mrr" in dp.named_kpis(dp.pack_for("saas"), s.data_contract,
+                                  "What is our MRR and how many paying customers?")
+
+
+async def test_arpu_is_answered_as_arpa_and_says_so(recorded_llm):
+    """PR1-16: ARPU was answered as ARPA silently. ARPU routes to the ARPA KPI, whose label says
+    what it divides by."""
+    import domain_pack as dp
+    recorded_llm.responses.append(_kpi_plan())
+    task = await run_intake_agent(_saas_session(), "What is our ARPU?", recorded_llm)
+    assert task.targeted_params.kpi == "arpa"
+    assert dp.pack_for("saas").kpi("arpa").label == "ARPA per paying customer"

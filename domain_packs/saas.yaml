@@ -273,12 +273,13 @@ glossary:
   churned_mrr: [churned mrr, revenue churn, mrr churn, lost mrr, churned revenue, mrr lost,
                 mrr did we lose, mrr we lost, lose to churn, lost to churn, mrr lost to churn,
                 dollar churn, mrr churned]
-  reactivation_mrr: [reactivation mrr, reactivation, reactivations, win backs, winbacks,
-                     returning customers]
+  reactivation_mrr: [reactivation mrr, reactivation, reactivations, win backs, winbacks]
   new_customers: [new customers, new logos, customers won, customers acquired]
   churned_customers: [churned customers, customers lost, lost customers, customers churned,
                       how many customers churned]
-  reactivated_customers: [reactivated customers, customers who came back, returned customers]
+  # customers are a count: "returning customers" was reactivation MRR's (PR1-06)
+  reactivated_customers: [reactivated customers, customers who came back, returned customers,
+                          returning customers]
   logo_churn_rate: [churn rate, churn, logo churn, customer churn, customer churn rate,
                     logo churn rate, annual churn, attrition]
   nrr: [nrr, ndr, net revenue retention, net dollar retention, net retention, net mrr retention]

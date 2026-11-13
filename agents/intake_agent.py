@@ -29,6 +29,8 @@ from domain_pack import (
     glossary_hits,
     named_kpis,
     pack_for,
+    unit_clashes,
+    unit_question,
 )
 from guardrails import (
     PLAN_LIST_FIELDS,
@@ -188,6 +190,11 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
     if pack is None:
         return {k: v for k, v in params.items() if k not in _NEW_PARAMS}
     if params.get("kpi") and not pack.kpi(params["kpi"]):
+        params["kpi"] = None
+    # a KPI the question names in another unit ("revenue churn rate" is no money KPI) is asked
+    # about, never answered (run_intake_agent): the model's pick of it is dropped too
+    if params.get("kpi") in {c for c, _, _ in unit_clashes(
+            pack, message, [c.name for c in contract.columns])}:
         params["kpi"] = None
     # words that are a column's own name are the column ("average revenue" in a file with a
     # revenue column is that column's mean), unless they are the KPI's own name and the column one
@@ -381,6 +388,10 @@ async def run_intake_agent(
 
     named = (data.get("targeted_params") or {}).get("kpi") if isinstance(
         data.get("targeted_params"), dict) else getattr(data.get("targeted_params"), "kpi", None)
+    clashes = unit_clashes(pack, user_message, list(known or [])) if pack else []
+    if clashes and not named and not is_overview_request:   # PR1-06: asked, never guessed
+        data["clarification_needed"] = True
+        data["clarification_question"] = unit_question(pack, clashes[0])
     if not is_overview_request and data.get("question_intent") == QuestionIntent.OVERVIEW.value \
             and named:   # "What's our NPL ratio?" after the overview: that KPI, latest and change
         data["question_intent"] = QuestionIntent.TIME_SERIES.value
