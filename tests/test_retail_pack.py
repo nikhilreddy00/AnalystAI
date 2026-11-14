@@ -686,7 +686,10 @@ def test_a_discount_rate_reduces_net_sales_and_asp_uses_net_units():
     # the "only 1s" guess of an undeclared number role (which left them blank: no discount)
     free = _lines(o=["1", "2"], q=[10, 10], p=[100.0, 100.0], r=[1.0, 0.0])
     assert compute_kpi(free, {**_r(free), "discount_rate": "r"}, RETAIL, "net_sales") == 1000
-    ret = _lines(o=["1", "2"], q=[10, -5], p=[10.0, 10.0])
+    # a blank or unreadable rate is no discount, never 100% off
+    gaps = _lines(o=["1", "2", "3"], q=[10, 10, 10], p=[100.0] * 3, r=[None, "n/a", 0.25])
+    assert compute_kpi(gaps, {**_r(gaps), "discount_rate": "r"}, RETAIL, "net_sales") == 2750
+    ret =_lines(o=["1", "2"], q=[10, -5], p=[10.0, 10.0])
     assert compute_kpi(ret, _r(ret), RETAIL, "asp") == 10.0
 
 

@@ -12,7 +12,7 @@ from .pack import (Pack, Role, _day, as_text, expand_header, normalize_header, p
 
 # ── Detection ─────────────────────────────────────────────────────────────────────────────────
 
-def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool, header: str = "") -> bool:
+def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool, header: str) -> bool:
     vals = s.dropna()
     if vals.empty:
         return False

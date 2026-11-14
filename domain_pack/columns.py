@@ -134,9 +134,9 @@ def pack_columns(df: pd.DataFrame, pack: Pack | None, roles: dict[str, str]
         out = pd.Series(1.0, index=df.index)
         for x in f.times:
             out = out * value(x, 1.0)
-        if f.net_of:   # a rate: 0.2, or Stripe's percent_off 20 (its scale: rate_values)
-            rate, said = rate_values(value(f.net_of, 0.0), scale_of(pack, f.net_of, roles)
-                                     if f.net_of in roles else None, roles.get(f.net_of, f.net_of))
+        if f.net_of in roles:   # a rate: 0.2, or Stripe's percent_off 20 (its scale: rate_values)
+            rate, said = rate_values(value(f.net_of, 0.0), scale_of(pack, f.net_of, roles),
+                                     roles[f.net_of])
             notes += [f"{name}: {s}" for s in said]
             out = out * (1 - rate)
         for x in f.over:
