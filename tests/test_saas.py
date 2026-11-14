@@ -451,7 +451,9 @@ def test_the_packs_prose_names_the_window_the_numbers_read():
     assert f"MRR over the {moves} months to the latest date" in pack.define("mrr_bridge", spans)
     brief = " ".join(dp.pack_brief(pack, roles, ["mrr"], spans=spans))
     assert f"customers paying {cohort} months earlier" in brief and "12 months earlier" not in brief
-    hr = dp.pack_for("hr")   # the adjective: 'the 7-month window the facts name'
+    assert any(line.startswith("mrr_bridge: ") and f"over the {moves} months to the latest date" in line
+               for line in dp.pack_brief(pack, roles, ["mrr_bridge"], spans=spans))
+    hr =dp.pack_for("hr")   # the adjective: 'the 7-month window the facts name'
     assert "each exit in the 7-month window" in hr.say("rows_brief", {"window_adj": " 7-month"})
     assert "each exit in the window the facts name" in hr.say("rows_brief")
 

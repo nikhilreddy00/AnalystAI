@@ -294,13 +294,15 @@ def test_a_definitions_note_names_this_datas_window():
     assert f"over the {moves} months to the latest date" in notes and "12 months" not in notes, notes
 
 
-async def test_a_column_named_like_a_kpi_is_no_kpi_asked_in_another_unit(recorded_llm):
+def test_a_column_named_like_a_kpi_is_no_kpi_asked_in_another_unit(recorded_llm):
     """PR1-06 asks only of glossary words: "mrr rate" on a file with an mrr column names the
-    column, so nothing is asked."""
+    column, so nothing is asked. Sync: `_built` runs the cleaning agent with asyncio.run."""
+    import asyncio
+
     from tests.test_oracle import _built
     s, _, _, _ = _built("saas_mrr_snapshots")
     recorded_llm.responses.append(_kpi_plan())
-    task = await run_intake_agent(s, "What is the mrr rate by plan?", recorded_llm)
+    task = asyncio.run(run_intake_agent(s, "What is the mrr rate by plan?", recorded_llm))
     assert not task.clarification_needed, task.clarification_question
 
 
