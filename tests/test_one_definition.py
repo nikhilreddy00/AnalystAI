@@ -447,6 +447,13 @@ def test_pack_prose_names_the_window_through_its_placeholder():
     assert used == {"window", "moves", "cohort", "window_adj"}
 
 
+def test_a_definition_in_the_brief_names_this_datas_window():
+    import domain_pack as dp
+    brief = dp.pack_brief(dp.pack_for("saas"), {"mrr": "mrr"}, ["mrr_bridge"], spans={"moves": "7 months"})
+    assert any(line.startswith("mrr_bridge: ") and "over the 7 months to the latest date" in line
+               for line in brief), brief
+
+
 def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess():
     """5.7b-2a (C7): a spell read from snapshots declares how often they are taken, so absence
     from the newest one is never guessed from an entity's gaps. A pack declaring none (a bank's
