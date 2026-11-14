@@ -409,3 +409,186 @@ scorer:
 - **`domain_diff.py main`:** CHANGES only, the list above, plus the two new transfer KPIs on 5
   SaaS datasets.
 - **CI:** see PR #9.
+
+## 5.7b-2c: words, scale and the pre-push gate (2026-11-13)
+
+Plan: `~/.claude/plans/pasted-content-id-105b-start-phase-precious-perlis.md`. It covers ROADMAP
+steps 5, 6, 8 and 9, plus `{window}` in pack prose (PR7-03). Every plan-mode step is checked
+off by name, and Step 0's list of 126 ledger rows is in the plan. The red-team found 5
+blockers, 9 majors and 9 minors, all folded in. Spend: $0.
+
+### The user's decisions (2026-11-13)
+1. **A glossary phrase's unit is its KPI's own `Kpi.unit`.** No second copy is declared in
+   YAML. This deviates from ROADMAP step 5's wording ("each entry declares"), because a
+   declared copy would be the second definition the project forbids.
+2. PR #11 (the ledger ratchet) was merged first.
+
+### Measured first (main `1d04153`, a throwaway worktree)
+| What | Before |
+|---|---|
+| xfail-strict known failures | 1: PR7-03 |
+| golden | 53 passed |
+| retro ledger | 5 passed, UNENFORCED 88 |
+
+### What was built
+- **The pre-push gate** (`scripts/mutation.py`, `docs/mutation/gate.json`).
+  - `--check REF` runs in under a second, with no mutmut. It refuses when:
+    - a changed spell / ledger / pack-column / scorer function (`spell.py`, `ledger.py`,
+      `columns.py`, `kpi.py`, `rows.py`, `evals/scoring.py`) has no hash recorded in
+      `gate.json`; "changed" means its AST, with the docstring out, differs from the
+      merge-base's;
+    - a key names a function that no longer exists.
+  - `--record` writes a function's hash only after a clean gate. A clean gate means every mutant
+    left on its changed lines is a named equivalent (old line, new line, count, reason); a
+    no-tests or timeout mutant is never one.
+  - The hook and CI's zero-suites job run `--check` (CI checks out with `fetch-depth: 0`).
+  - Known limits, written in the script:
+    - a module constant or a pack's YAML changes behaviour without changing a hash;
+    - mutmut mutates no decorated function (a `@property`, a pydantic validator), so the run
+      and the gate leave those out and list them. Their tests and plants are their check.
+- **C6, units** (`domain_pack/story.py`, `agents/intake_agent.py`).
+  - One unit-word rule, inside `glossary_hits`, so every caller gets it:
+    - a percent word inside or right after the words ("revenue churn **rate**");
+    - a count word right before ("**how many** returning customers");
+    - "run rate" is money.
+  - A KPI named in a clashing unit is dropped, and so is the model's pick of it. Intake then
+    asks which KPI was meant, listing the KPIs of the asked unit that share a word, each with
+    its unit.
+  - `returning customers` moves to `reactivated_customers`. Every phrase in every pack is
+    checked against its KPI's unit.
+- **C7, scale** (`domain_pack/columns.py`):
+  - `Role.scales` declares a header's scale. Only Stripe's `percent_off` and
+    `coupon_percent_off` are declared percent, because `pct → percent` would rescale the
+    finished SaaS dataset's 0.1.
+  - One reader, `rate_values`, serves the pack column's net_of and a KPI term's net_of. The
+    term's copy, which assumed 0–1, is deleted, and so is retail's `discount_rate ≤ 1` range.
+  - A `kind: rate` role is read as fractions. Only a `kind: number` role's undeclared header
+    is guessed, and then only when unambiguous: decimals over 1 (12.50: a percent or an
+    amount?) and a column of only 1s are left blank and said.
+- **C9, words** (`domain_pack/pack.py`, `story.py`):
+  - `SpellWords` holds the ledger's sentences: the bridge, monthly churn, the unsplit rest and
+    why, the count beside the cohort rate, and each move's How. It also gains `singular` and
+    `ends`. A pack with moves must give them all. `plural[:-1]` and `end + "s"` are gone.
+  - The guard is an output test. A pack whose every word is a token runs on data with neutral
+    column names through the spell story, the facts, each KPI's How, its window words and
+    `unavailable_words`. The output must hold no word from a list built from every pack:
+    - the words of its labels and glossary that no other pack uses;
+    - the short words of its spell that no other spell uses.
+- **C2, `{window}`** (`spell.window_span`, `Pack.say` / `Pack.define`, `CleaningAudit.window_span`).
+  - Pack prose that names this data's span says `the {window}` (flows), `the {moves}`, `paying
+    {cohort} earlier` or `the{window_adj} window`. These read "12 months" on a full year and
+    "6 months" on short data. With no window known they give no number ("the months", "a
+    year").
+  - Where the span comes from:
+    - the cleaning audit stores it;
+    - intake and analysis read it from the frame when there is no audit;
+    - targeted reads its own frame.
+  - A test refuses any written 12-month span in every pack's caveats, texts, definitions,
+    alternatives and role caveats, except a rule's own span. The allowlist (8 entries, each with
+    its reason) covers YoY, the definition of annual churn, `months_lt_13` and an annual invoice.
+  - `Window.cohort_months` is the one cohort span (`window_words` computed it inline).
+  - `KPI.dated_by`: billings and recurring share name their counted rows' invoice dates.
+
+### Flipped (the xfail marker removed in the fix's commit)
+| Class | Test | Commit |
+|---|---|---|
+| C2 | `test_pack_prose_names_the_window_through_its_placeholder` (PR7-03), widened to every written 12-month span | `33d57e6`, `c3a7926` |
+
+No xfail is left.
+
+### Found on the way (ledger: recurrences raise existing rows)
+- **D3-10 (B), a harness off the production path, recurrence 3:**
+  - the intake harness's session lacked the frame production's intake has (replay caught it);
+  - the golden rendered every analysis context with no frame and no audit, a context no paid
+    run sends (the full suite caught it).
+  - One `evals.run.analysis_session` now serves the paid run and the golden.
+- **PR7-04 (B), a vacuous pass, recurrence 1:** the C9 guard built its word list after
+  patching the pack, so every plant passed. The plants found it.
+- **Review, a real regression caught before merge:** a retail `discount_rate` of only 1s
+  (100% off) was blanked by the "only 1s" guess and read as no discount. A rate role is now
+  fractions (pr-test-analyzer).
+
+### CHANGES (the golden re-pinned at 5.7b-2's end; CHANGES emptied)
+| Where | Change | Class | Truth |
+|---|---|---|---|
+| saas_invoices, the billings and recurring-share tiles (11 dashboard paths) | name their invoice dates ("26 Sep 2025 to 30 Sep 2026") | C2 (PR1-02) | the counted rows' invoice dates; no number moved |
+| 11 spell datasets, the cleaning audit | stores the span (`window_span`) | C2 | "12 months" on these full years; no text moved |
+| 43 analysis contexts (golden) | the golden renders the paid run's session (frame, audit) | D3-10 | the paid inputs equal main's on 103 of 104 cases |
+| saas-9 analysis context | NRR's definition says "paying a year earlier", was "12 months earlier" | C2 | data with no spell window: no window to name |
+| ins-49 context, saas_subscriptions audit | 5.7b-2a's today-only sentence, now pinned | C5 | 2a's entry |
+
+### The readers of each changed rule (CODING_STANDARDS: a widened rule lists its readers)
+- **The unit-word rule (`glossary_hits`):** read by `domain_notes`, the unsupported check and
+  `_pack_params` (intake), insight's named concepts, targeted `_also_named`, and analysis'
+  `named_kpis`. Probes: `test_answer_paths`, the replay of stored intake reports (e2e-81,
+  intake-hr-05, intake-saas-09: unchanged), the golden and the oracle.
+- **`rate_values` / `scale_of`:** read by SaaS MRR (the pack column), retail net sales (a term)
+  and detection's `_fits`. Probes: D, the reference, and the golden (no number moved).
+- **The span placeholders:** read by `pack_caveats` (the insight report, the alert, the
+  scorer), `say` (intake and targeted alternatives), `define` (domain notes, the analysis
+  brief, targeted) and `window_words` (every tile and answer; the `dated_by` branch). Probes:
+  the short-data tests through intake (before and after cleaning), targeted and the brief; and
+  the full-data text, identical on every paid input but saas-9.
+
+### Deviations from the plan
+- **Four placeholders, not two.** `{moves}` and `{window_adj}` were added because one sentence
+  can name moves and flows, and HR writes "the 12-month window". The SaaS alternatives name
+  movements and retention with one `{moves}`: on the default window both start at the same
+  date (tested equal on short data).
+- **`_fits` accepts any number under a declared header.** A bound there would unbind the role
+  silently. `rate_values` says the rows off the scale instead.
+- **The undeclared guess keeps its majority rule** ("most values over 1 is percent").
+  `test_one_odd_discount_never_rescales_the_column` pins it. Only ambiguous decimals over 1 and
+  a column of only 1s are refused. Audit pass 4's fractional 12.5% now needs a declared header,
+  which Stripe's have.
+- **`rate_values(v, scale, col)` plus `scale_of`**, not `(df, roles, pack, role)`: the reader
+  takes the values the caller already parsed.
+- **Intake's span on a first question comes from the frame ingestion loaded,** as the plan
+  allowed. The eval harness was off that path (D3-10).
+- **A KPI term's rate notes are dropped** (`ponytail:` in `kpi._term`): a term's role is a rate
+  role within 0–1, so nothing is left blank today.
+- **D4-15 stays unenforced** (red-team 19: a check means filling `unit_word` on 16 count KPIs
+  across 6 domains).
+- **A KPI term's unreadable rate is no discount, unsaid** (found closing kpi mutants; now pinned
+  by `test_a_discount_rate_reduces_net_sales_and_asp_uses_net_units`). It differs from
+  `pack_columns`, which says it. It is unreachable in the pipeline, where cleaning has already
+  coerced the column.
+
+### The mutation gate on changed lines
+| Run | Mutants on changed lines | Survivors |
+|---|---|---|
+| 1 (`01761c3`) | 643 | 103 (story 34; columns / kpi / detect 30; spell and the agents 39) |
+| 2 (`f589b43`, after closing) | 630 | 7, each a named equivalent |
+
+- The 103 were closed in parallel, one worktree agent per module group, and cherry-picked:
+  - 89 by a test, each plant-proven with `scripts/mutation.py --plant` ("caught");
+  - 7 by deleting dead code:
+    - `_fits`' unused `header=""` default;
+    - `pack_columns`' fallbacks for a net_of role that isn't bound;
+    - `_spans`' `if contract`;
+    - targeted's `chart_configs=[]` and `table_data=[]` (already the defaults);
+  - 7 as named equivalents (below).
+- Two closers had to move: a test that called `asyncio.run` inside an async test passed only
+  on a warm cache, and the gate leaves `test_one_definition.py` out. The `pack_brief` check
+  moved to `test_saas.py` and was plant-proven again.
+- **Recorded** in `docs/mutation/gate.json`: `window_words`, `window_span`, `scale_of`,
+  `rate_values`, `pack_columns` and `_term`. `--check` passes on HEAD and refuses the commit
+  before the record (3 functions named, plus the command to run).
+- **Named equivalents:**
+
+| Where | Mutant | Why no output can change |
+|---|---|---|
+| `columns.rate_values` (gate.json) | `given > 1` → `>= 1` | a 1 changes neither the decimals check nor the percent test; a column of only 1s returned earlier |
+| `columns.scale_of` ×2 (gate.json) | `"fraction"` → `"XXfractionXX"` / `"FRACTION"` | its only reader treats every scale but "percent" as a fraction |
+| `kpi._term` (gate.json) | the column name → `None` | it reaches only the notes, which `_term` drops |
+| `story._ledger_story` | `rest > 0` → `>= 0` | the line runs only when `abs(rest) >= 0.005` |
+| `story.unit_said` | "run rate" → `"XXXX"` (not `""`) | `\b` anchors keep any neighbouring unit word's boundary the same |
+| `targeted._also_named` | currency passed for every kind | `_format_value` ignores currency for percent and count; no additive KPI is a `number` |
+
+### End checks (HEAD)
+- Full suite (`scripts/suite.py`, `f120338`): 3121 passed, 128 skipped, 0 failed. The later
+  commits change only tests (each file was rerun on its own) and `gate.json`.
+- `domain_diff.py main --show`: only `saas_invoices` changed (11 paths, billings' invoice
+  dates). `snapshot text main`: 49 changes, the analysis contexts the golden now renders with a
+  paid run's frame and audit (D3-10). Each is in the CHANGES table above.
+- Retro ledger: UNENFORCED 88 → 83. C1–C7 and C9 are each closed in its Classes table.
