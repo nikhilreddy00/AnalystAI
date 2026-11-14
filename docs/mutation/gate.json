@@ -1,1 +1,53 @@
-{}
+{
+ "domain_pack/columns.py::pack_columns": {
+  "equivalents": [],
+  "hash": "f9ad34f904bfc0da"
+ },
+ "domain_pack/columns.py::rate_values": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "over = given[given >= 1]",
+    "old": "over = given[given > 1]",
+    "reason": "a 1 in `over` changes neither its decimals check (1 is whole) nor its percent test: an all-whole positive column with none above 1 is all 1s, which returned earlier"
+   }
+  ],
+  "hash": "b8e1dc536143b0db"
+ },
+ "domain_pack/columns.py::scale_of": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "\"XXfractionXX\" if r.kind == \"rate\" else None)",
+    "old": "\"fraction\" if r.kind == \"rate\" else None)",
+    "reason": "the only reader, rate_values, reads every scale but \"percent\" as a fraction, in its bound and its note"
+   },
+   {
+    "n": 1,
+    "new": "\"FRACTION\" if r.kind == \"rate\" else None)",
+    "old": "\"fraction\" if r.kind == \"rate\" else None)",
+    "reason": "the only reader, rate_values, reads every scale but \"percent\" as a fraction, in its bound and its note"
+   }
+  ],
+  "hash": "ce5e7821f4397a7b"
+ },
+ "domain_pack/kpi.py::_term": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "scale_of(pack, term.net_of, roles), None)",
+    "old": "scale_of(pack, term.net_of, roles), roles[term.net_of])",
+    "reason": "the column name only reaches rate_values' notes, which _term drops (`rate, _ =`)"
+   }
+  ],
+  "hash": "c44482d43d599a73"
+ },
+ "domain_pack/spell.py::window_span": {
+  "equivalents": [],
+  "hash": "6606e561bc3dd779"
+ },
+ "domain_pack/spell.py::window_words": {
+  "equivalents": [],
+  "hash": "3a96e0d6c123e360"
+ }
+}
