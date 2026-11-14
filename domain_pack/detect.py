@@ -12,7 +12,7 @@ from .pack import (Pack, Role, _day, as_text, expand_header, normalize_header, p
 
 # ── Detection ─────────────────────────────────────────────────────────────────────────────────
 
-def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
+def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool, header: str) -> bool:
     vals = s.dropna()
     if vals.empty:
         return False
@@ -31,8 +31,8 @@ def _fits(s: pd.Series, role: Role, pack: Pack, is_date: bool) -> bool:
             return numeric
         case "count":
             return numeric and (vals.round() == vals).mean() >= 0.95
-        case "rate":
-            return numeric and bool(vals.between(0, 1).all())
+        case "rate":   # a declared scale is read as declared (columns.rate_values says what's off)
+            return numeric and (header in role.scales or bool(vals.between(0, 1).all()))
         case "date":
             return is_date
         case "status":
@@ -118,7 +118,7 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
             for header in r.headers:
                 col = next((c for c, n in expanded.items() if n == header and c not in roles.values()
                             and not (r.kind == "id" and c in pii_columns)
-                            and _fits(df[c], r, pack, c in date_columns)), None)
+                            and _fits(df[c], r, pack, c in date_columns, header)), None)
                 if col is not None:
                     roles[role], matched[role] = col, header
                     break

@@ -25,7 +25,7 @@ def _stored_runs():
 
 
 # fields added to stored structures since runs were recorded (evals/snapshot.py's _set_only)
-NEW_EMPTY_FIELDS = {"spell_story"}
+NEW_EMPTY_FIELDS = {"spell_story", "window_span"}
 
 
 def _same(a, b):

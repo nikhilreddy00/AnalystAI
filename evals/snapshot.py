@@ -49,8 +49,7 @@ async def _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConn
 
     out: dict[str, dict] = {s: {} for s in suites}
     for case in harness.load_cases("analysis", None) if "analysis" in suites else []:
-        session = AnalysisSession(session_id="snap", data_contract=harness.working_frame(case)[1],
-                                  task_plan=AnalysisTask(raw_query=case["question"], **case["task"]))
+        session = harness.analysis_session(case)   # the session a paid run sends (frame, audit)
         out["analysis"][case["id"]] = {"roles": _roles(session.data_contract),
                                        "context": _sha(analysis_agent.build_context(session).render())}
     for case in harness.load_cases("intake", None) if "intake" in suites else []:
@@ -195,7 +194,7 @@ async def deterministic(datasets: set[tuple[str, int]]) -> dict:
             # fields added since pre_5_7 count only when set (a new empty field is no change)
             "contract": _contract_dump(contract),
             "audit": _set_only(audit.model_dump(mode="json"), ("grain", "partial_months", "main_currency",
-                                                              "spell_story")),
+                                                              "spell_story", "window_span")),
             "kpis": [{**k.model_dump(mode="json"), "recipe": _set_only(k.recipe.model_dump(
                 mode="json"), ("kpi",)) if k.recipe else None} for k in kpis],
             "extras": extras,

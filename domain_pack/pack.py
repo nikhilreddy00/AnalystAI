@@ -74,11 +74,17 @@ class Role(_Strict):
     # Headers another meaning shares (a subscription list's next `billing_date`): they fill a
     # spell pack's snapshot role only when each spell repeats over their dates (_snapshot_dates)
     weak_headers: list[str] = Field(default_factory=list)
+    # How a rate's numbers are written under a header (GLOSSARY Scale): Stripe's percent_off is
+    # percent (20 = 20%, 0.5 = 0.5%). Read at that scale, never guessed (columns.rate_values);
+    # an undeclared header is guessed from its values only when that is unambiguous.
+    scales: dict[str, Literal["percent", "fraction"]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _weak_are_headers(self):
         if not set(self.weak_headers) <= set(self.headers):
             raise ValueError(f"weak_headers {self.weak_headers} must be among headers")
+        if not set(self.scales) <= set(self.headers):
+            raise ValueError(f"scales {sorted(self.scales)} must be among headers")
         return self
 
 
@@ -171,13 +177,26 @@ class SpellWords(_Strict):
     Shared code never names them (tests/test_one_definition.py)."""
     start: str = "start"
     end: str = "end"
+    ends: str = "ends"                  # the end as events, plural (an HR pack: its exit word's)
     unknown: str = "end_date_unknown"   # the column marking an ended status with no end date
     plural: str = "entities"            # who the entities are ('885 people', '412 customers')
+    singular: str = "entity"            # one of them ('no monthly values per customer')
     after_end: str = "rows after the end"   # an exit record's gloss on snapshots
     today_only: str = ""   # after 'N rows are': why Spell.today_only statuses are out of history
     # a move by group: a group's transfers in and out ({part}, {group}, {moved_in}, {moved_out});
     # '' says nothing (GLOSSARY Move: answers never say "transfer", a bank's own word)
     moved: str = ""
+    # The ledger's sentences, required of a pack with moves (LEDGER_WORDS; story._ledger_story):
+    bridge: str = ""          # the stock's walk from its opening: "{stock} bridge"
+    monthly_rate: str = ""    # lost at a month-end ÷ in force the month-end before: its name
+    unsplit: str = ""         # a bridge's rest when no row has a value per entity per month
+    unsplit_why: str = ""     # why that rest isn't split ({singular})
+    # the move count beside the cohort rate: {n}, {who} (plural), {lost}, {rate}, {start}
+    left_vs_rate: str = ""
+    moves: dict[str, str] = Field(default_factory=dict)   # move → its How text ({e}: the entity)
+
+
+LEDGER_WORDS = ("bridge", "monthly_rate", "unsplit", "unsplit_why", "left_vs_rate")
 
 
 class Spell(_Strict):
@@ -290,6 +309,9 @@ class KPI(_Strict):
     # a role whose values the KPI never adds across (exposure units differ by line): computed
     # within one value only; asked without a group, answered by this role
     per: str | None = None
+    # the date role its rows are dated by when it is not the pack's time axis (billings: invoice
+    # dates on a file whose axis is the MRR month): its answer names that span (window_words)
+    dated_by: str | None = None
     # set by Pack._check: every numerator term is a state KPI (ARR = 12 × MRR is as of a date)
     _of_state: bool = PrivateAttr(default=False)
 
@@ -455,8 +477,13 @@ class Pack(_Strict):
         n = (self.glossary.get(concept) or [concept.replace("_", " ")])[0]
         return n[0].upper() + n[1:]
 
-    def say(self, which: str, **kw) -> str:
-        return self.text.get(which, TEXT_DEFAULTS[which]).format(**kw)
+    def say(self, which: str, spans: dict | None = None, **kw) -> str:
+        """A sentence in the pack's words; `spans` fill {window} / {moves} / {cohort}."""
+        return self.text.get(which, TEXT_DEFAULTS[which]).format(**span_words(spans), **kw)
+
+    def define(self, concept: str, spans: dict | None = None) -> str:
+        """A definition, its window named as this data's (spell.window_span)."""
+        return self.definitions[concept].format(**span_words(spans))
 
     @model_validator(mode="after")
     def _check(self) -> Pack:
@@ -544,6 +571,15 @@ class Pack(_Strict):
         errors += [f"kpi {k.name}: net_of {t.net_of} is not a rate role" for k in self.kpis
                    for alt in [*k.num, *(k.den or [])] for t in alt
                    if t.net_of and t.net_of in self.roles and self.roles[t.net_of].kind != "rate"]
+        errors += [f"kpi {k.name}: dated_by {k.dated_by} is not a date role" for k in self.kpis
+                   if k.dated_by and getattr(self.roles.get(k.dated_by), "kind", None) != "date"]
+        moves = {t.move for k in self.kpis for alt in [*k.num, *(k.den or [])] for t in alt
+                 if t.spell == "moves"}
+        if moves and self.spell:   # a ledger's sentences are the pack's words (C9)
+            w = self.spell.words
+            errors += [f"spell.words.moves: no words for the {m} move" for m in sorted(moves - set(w.moves))]
+            errors += [f"spell.words.{f}: required for a pack with moves" for f in LEDGER_WORDS
+                       if not getattr(w, f)]
         errors += [f"first question needs {n}: not a KPI, a role, a row kind or 'year'"
                    for q in self.first_questions if isinstance(q, dict)
                    for need in q.get("needs", []) for n in need.split("|")   # "sku|product": either
@@ -749,6 +785,17 @@ def roles_of(contract, column: str) -> set[str]:
 def ordinal(n: int) -> str:
     """12 → '12th', 1 → '1st', 22 → '22nd'."""
     return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+# what pack prose says with no window known: no number, never a guessed 12 ("over the months to
+# the latest date", "the customers paying a year earlier", "the window the facts name")
+SPAN_UNKNOWN = {"window": "months", "moves": "months", "cohort": "a year", "window_adj": ""}
+
+
+def span_words(spans: dict | None) -> dict[str, str]:
+    """What pack prose says for {window}, {moves}, {cohort} and {window_adj}: this data's span
+    (spell.window_span), else SPAN_UNKNOWN."""
+    return {k: (spans or {}).get(k, v) for k, v in SPAN_UNKNOWN.items()}
 
 
 def and_list(items: list[str]) -> str:

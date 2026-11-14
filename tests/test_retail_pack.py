@@ -682,7 +682,14 @@ def test_the_best_header_wins_net_sales_over_gross_sales():
 def test_a_discount_rate_reduces_net_sales_and_asp_uses_net_units():
     df = _lines(o=["1", "2"], q=[10, 10], p=[100.0, 100.0], r=[0.25, 0.0])
     assert compute_kpi(df, {**_r(df), "discount_rate": "r"}, RETAIL, "net_sales") == 1750
-    ret = _lines(o=["1", "2"], q=[10, -5], p=[10.0, 10.0])
+    # 5.7b-2c review: a rate role is fractions (bound only within 0–1), so 1 is 100% off, never
+    # the "only 1s" guess of an undeclared number role (which left them blank: no discount)
+    free = _lines(o=["1", "2"], q=[10, 10], p=[100.0, 100.0], r=[1.0, 0.0])
+    assert compute_kpi(free, {**_r(free), "discount_rate": "r"}, RETAIL, "net_sales") == 1000
+    # a blank or unreadable rate is no discount, never 100% off
+    gaps = _lines(o=["1", "2", "3"], q=[10, 10, 10], p=[100.0] * 3, r=[None, "n/a", 0.25])
+    assert compute_kpi(gaps, {**_r(gaps), "discount_rate": "r"}, RETAIL, "net_sales") == 2750
+    ret =_lines(o=["1", "2"], q=[10, -5], p=[10.0, 10.0])
     assert compute_kpi(ret, _r(ret), RETAIL, "asp") == 10.0
 
 
@@ -1498,7 +1505,8 @@ def test_thirteen_calendar_months_with_a_partial_last_are_twelve_full_ones():
 
     from domain_pack import pack_caveats
     audit = SimpleNamespace(decisions=[], date_ranges={"Date": ["2025-01-01", "2026-01-15", 13]},
-                            partial_months={"Date": ["2026-01", 15]}, main_currency=None)
+                            partial_months={"Date": ["2026-01", 15]}, main_currency=None,
+                            window_span={})
     got = " ".join(pack_caveats(RETAIL, audit, {"date": "Date"}))
     assert "covers 12 months" in got, got
 

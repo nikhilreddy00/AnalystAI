@@ -101,7 +101,7 @@ test_roles: [email, customer_id, order_id]
 # values (Cleaning: at least twice the largest other value). 9,999 is no price code: a ₹9,999 TV
 # among groceries can't be told from one.
 sentinels: {unit_price: [-1, 99999], quantity: [9999, 99999], cost: [-1, 99999]}
-ranges: {unit_price: {ge: 0}, discount_rate: {le: 1}}
+ranges: {unit_price: {ge: 0}}   # a rate's bound is its scale's (columns.rate_values)
 # Shopify writes these on an order's first line only; the total stays there (summing it down an
 # order's lines would count it once per line).
 order_fields: [status, email, customer_id, country, currency, channel]   # never money: a discount

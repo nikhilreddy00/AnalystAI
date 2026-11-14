@@ -125,6 +125,21 @@ def cleaned_for_analysis(case: dict, df: pd.DataFrame, contract) -> tuple[pd.Dat
     return clean(cleaning_context(s))
 
 
+def analysis_session(case: dict) -> AnalysisSession:
+    """The session analysis_node hands the agent: the contract, the (cleaned) frame and its
+    audit. The paid run and the golden snapshot both build it here, so the golden pins the
+    context a paid run sends (5.7b-2c: the snapshot had no frame and no audit)."""
+    df, contract = working_frame(case, guard=True)
+    df, audit = cleaned_for_analysis(case, df, contract)
+    session = AnalysisSession(session_id=str(uuid.uuid4()), cleaning_audit=audit)
+    session.data_contract = contract
+    session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False)
+    session.__dict__["_df_parquet"] = buf.getvalue()
+    return session
+
+
 async def run_analysis_case(case: dict) -> dict:
     from agents.analysis_agent import run_analysis_agent
 
@@ -134,14 +149,7 @@ async def run_analysis_case(case: dict) -> dict:
     uploads: list[str] = []
     E2B_UPLOADS.set(uploads)
     pii_values.set(set())    # this case's guard, as the runner sets one per run
-    df, contract = working_frame(case, guard=True)
-    df, audit = cleaned_for_analysis(case, df, contract)
-    session = AnalysisSession(session_id=str(uuid.uuid4()), cleaning_audit=audit)
-    session.data_contract = contract
-    session.task_plan = AnalysisTask(raw_query=case["question"], **case["task"])
-    buf = io.BytesIO()
-    df.to_parquet(buf, index=False)
-    session.__dict__["_df_parquet"] = buf.getvalue()
+    session = analysis_session(case)
 
     findings, error = None, None
     try:
@@ -397,6 +405,11 @@ def score_e2e(case: dict, session: AnalysisSession, error: str | None) -> dict:
 def intake_contract(case: dict):
     """The DataContract intake sees: a datagen table, or an inline frame (for a database
     source, the result of the query that answered this question, with that SQL attached)."""
+    return _intake_data(case)[1]
+
+
+def _intake_data(case: dict):
+    """(the frame ingestion hands intake, its DataContract)."""
     from connectors.csv_connector import CSVConnector
     src = case["source"]
     if "dataset" in src:
@@ -409,19 +422,24 @@ def intake_contract(case: dict):
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
     if "dataset" in src:   # a column the pack adds (a subscription list's MRR), as ingestion does
         from agents.ingestion_agent import add_pack_columns
-        contract = add_pack_columns(df, contract, ConnectorType.CSV)[1]
+        df, contract, _ = add_pack_columns(df, contract, ConnectorType.CSV)
     if sql := src.get("source_sql"):
         contract.source_query = Evidence(
             id="sql:query", kind="query", claim="query result", code=sql, result_excerpt="",
             row_count=len(df), confidence="high", confidence_reason="eval fixture")
-    return contract
+    return df, contract
 
 
 def intake_session(case: dict) -> AnalysisSession:
-    """The session intake_node would hand the agent at this turn."""
+    """The session intake_node would hand the agent at this turn: the contract, and the frame
+    ingestion loaded (intake reads the window pack prose names from it, 5.7b-2c)."""
+    df, contract = _intake_data(case)
     session = AnalysisSession(session_id=str(uuid.uuid4()), overview_done=case["overview_done"],
-                              data_contract=intake_contract(case),
+                              data_contract=contract,
                               conversation_history=[Message(**m) for m in case.get("history", [])])
+    buf = io.BytesIO()
+    df.to_parquet(buf)
+    session.__dict__["_df_parquet"] = buf.getvalue()
     if prior := case.get("prior_task"):
         last_user = next((m["content"] for m in reversed(case.get("history", []))
                           if m["role"] == "user"), "previous question")

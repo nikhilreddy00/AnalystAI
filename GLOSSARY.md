@@ -33,7 +33,12 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   end, since a list of recent leavers misses who left before it, or before the first start when
   nobody ended). Its month-ends: a span of exactly N months (the 12 months to 24 Oct) has N, the
   end's own month ending at the end; any other span has one per month it touches (since 15 Mar
-  keeps 31 Mar). Moves start at the first known state.
+  keeps 31 Mar). Moves start at the first known state. Prose that names it says this data's
+  span through `{window}` (flows), `{moves}` or `{cohort}` ("the 12 months", "the 7 months" on
+  short data, "the months" when no window is known yet), never a written 12. A rule's own span
+  (YoY's same window a year earlier, an annual invoice) is no window.
+- **Dated by** — the date role a KPI's rows are dated by when it is not the pack's time axis
+  (billings by invoice date on a file of MRR months): its answer names that role's span.
 - **Opening cohort** — the entities in force 12 months before a window's end (or at the first
   date the data knows a state when it covers less); retention, NRR and logo churn follow them to
   the end, whatever period is asked; by group, each entity sits in the group of its row at the
@@ -83,6 +88,19 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   a level, never by the values. A level summed over dates with no move named is the level.
 - **Month label** — a snapshot date written on the month's 1st that names the whole month (an
   MRR export's `2026-10-01` is October): the as-of is that month's end.
+- **Unit** — the kind of number a KPI gives: money, percent, count or number, declared once on
+  the KPI (`unit`). A glossary phrase is its KPI's in that unit; no second copy (5.7b-2c).
+- **Unit words** — the words, the same in every domain, that name a unit beside a KPI's words:
+  a percent word inside them or right after ("churn rate", "%"), a count word right before
+  ("how many"); "run rate" is money. A KPI named in a clashing unit (money vs percent or count,
+  count vs percent; a number clashes with none) is not answered: intake asks which was meant.
+- **Scale** — how a rate role's numbers are written: percent (20 = 20%) or fraction (0.2),
+  declared per header (`Role.scales`: Stripe's `percent_off`). An undeclared header is read
+  from its values only when that is unambiguous (fractions 0–1, whole percents); decimals over
+  1 (12.50: a percent or an amount?) and only 1s are unreadable, left blank and said.
+- **Spell words** — the pack's words for a spell and its ledger's sentences (`Spell.words`:
+  start, end, singular, plural, the bridge, monthly churn, each move's How). Shared code never
+  says them; a pack with moves must give them.
 - **Pack column** — a column the product adds to the data at ingestion from a pack formula (a
   subscription list's MRR from price, seats, discount and interval), read by every agent like
   an uploaded column, and named in the source notes.

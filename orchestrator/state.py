@@ -286,6 +286,9 @@ class CleaningAudit(BaseModel):
     # 5.7 Domain 5: on spell data, the file's story as computed facts (domain_pack.spell_story:
     # year-earlier rates, peak to now, the largest month of ends, people vs rows, dated later)
     spell_story: list[str] = Field(default_factory=list)
+    # 5.7b-2c (PR7-03): on spell data, the span pack prose names ({window}, {moves}, {cohort}:
+    # 'the 12 months', less on short data), from the Window (domain_pack.window_span)
+    window_span: dict[str, str] = Field(default_factory=dict)
 
 
 # ── Agent 4 output: AnalysisFindings ──────────────────────────────────────────

@@ -8,6 +8,7 @@ agent (agents.utils.conversation_context), and `llm` as a parameter.
 from __future__ import annotations
 
 import difflib
+import io
 import json
 import logging
 import re
@@ -29,6 +30,9 @@ from domain_pack import (
     glossary_hits,
     named_kpis,
     pack_for,
+    unit_clashes,
+    unit_question,
+    window_span,
 )
 from guardrails import (
     PLAN_LIST_FIELDS,
@@ -128,7 +132,19 @@ def build_context(session: AnalysisSession, message: str) -> IntakeContext:
     return IntakeContext(
         message=message, schema_text=schema_text, history=conversation_context(session),
         existing_task=_plan_json(session.task_plan) if session.task_plan else "",
-        domain=domain_notes(session.data_contract, message))
+        domain=domain_notes(session.data_contract, message, _spans(session)))
+
+
+def _spans(session: AnalysisSession) -> dict | None:
+    """The span pack prose names (PR7-03): the cleaning audit's after a first run, else read from
+    the frame ingestion loaded; with neither, none (the prose says 'the months', never a 12)."""
+    if session.cleaning_audit:
+        return session.cleaning_audit.window_span
+    contract, raw = session.data_contract, session.__dict__.get("_df_parquet")
+    pack = defaults_pack(contract)
+    if not (raw and pack and pack.spell):
+        return None
+    return window_span(pack, pd.read_parquet(io.BytesIO(raw)), contract.roles)
 
 
 # A calendar period the targeted path can filter to (not "last month": the built-in MoM has it).
@@ -139,7 +155,7 @@ _PERIOD_RE = re.compile(r"\b(?:q[1-4]|quarter|ytd|year[- ]to[- ]date|year[- ]ove
                         r"\d{4}-\d{2}(?:-\d{2})?|week \d{1,2})\b", re.I)
 
 
-def domain_notes(contract: DataContract | None, message: str) -> str:
+def domain_notes(contract: DataContract | None, message: str, spans: dict | None = None) -> str:
     """The domain pack's words for this question: each KPI or concept it names (with its exact
     definition, mapped to this data's columns), and how to express a calendar period. Empty when
     the data has no pack or the question uses none of its terms: the prompt is then as before."""
@@ -170,7 +186,7 @@ def domain_notes(contract: DataContract | None, message: str) -> str:
             lines.append(f'- "{words}" needs {pack.unsupported[concept]}: set clarification_needed '
                          "and say so.")
         elif concept in pack.definitions:
-            lines.append(f'- "{words}": {pack.definitions[concept]}')
+            lines.append(f'- "{words}": {pack.define(concept, spans)}')
     if period:
         lines.append("- A calendar period: set targeted_params.period_start and period_end (ISO "
                      "dates, inclusive). Anchor 'last quarter', 'this year' on the data's last date "
@@ -188,6 +204,11 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
     if pack is None:
         return {k: v for k, v in params.items() if k not in _NEW_PARAMS}
     if params.get("kpi") and not pack.kpi(params["kpi"]):
+        params["kpi"] = None
+    # a KPI the question names in another unit ("revenue churn rate" is no money KPI) is asked
+    # about, never answered (run_intake_agent): the model's pick of it is dropped too
+    if params.get("kpi") in {c for c, _, _ in unit_clashes(
+            pack, message, [c.name for c in contract.columns])}:
         params["kpi"] = None
     # words that are a column's own name are the column ("average revenue" in a file with a
     # revenue column is that column's mean), unless they are the KPI's own name and the column one
@@ -377,10 +398,14 @@ async def run_intake_agent(
         data["clarification_needed"] = True
         data["clarification_question"] = (
             f"{pack.name_of(unsupported[0])} needs "
-            f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives')}")
+            f"{pack.unsupported[unsupported[0]]}. {pack.say('unsupported_alternatives', _spans(session))}")
 
     named = (data.get("targeted_params") or {}).get("kpi") if isinstance(
         data.get("targeted_params"), dict) else getattr(data.get("targeted_params"), "kpi", None)
+    clashes = unit_clashes(pack, user_message, list(known or [])) if pack else []
+    if clashes and not named and not is_overview_request:   # PR1-06: asked, never guessed
+        data["clarification_needed"] = True
+        data["clarification_question"] = unit_question(pack, clashes[0])
     if not is_overview_request and data.get("question_intent") == QuestionIntent.OVERVIEW.value \
             and named:   # "What's our NPL ratio?" after the overview: that KPI, latest and change
         data["question_intent"] = QuestionIntent.TIME_SERIES.value

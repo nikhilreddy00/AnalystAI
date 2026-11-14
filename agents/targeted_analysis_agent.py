@@ -96,6 +96,7 @@ from domain_pack import (
     pack_caveats,
     pack_for,
     row_kinds,
+    window_span,
 )
 from orchestrator.state import (
     AnalysisSession,
@@ -158,13 +159,14 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
                  if ln.lower().startswith(tuple(w.lower() for w in pack.glossary.get(params.kpi, [])))]
         scoped = params.group_by or params.segment_column or params.segment_value \
             or params.period_start or params.period_end
+        spans = window_span(pack, df, roles)   # PR7-03
         if story and params.kpi in pack.definitions and not scoped:   # the product computes it as one line (the
             # MRR bridge on monthly snapshots; audit 1: refused there)
             return TargetedResponse(intent=intent, answer_text=" ".join(story) + " "
-                                    + pack.definitions[params.kpi], chart_configs=[], table_data=[])
+                                    + pack.define(params.kpi, spans))
         why = (f"{name} needs {pack.unsupported[params.kpi]}." if params.kpi in pack.unsupported
-               else f"This isn't one figure here. {pack.definitions[params.kpi]}")
-        return _unanswerable(intent, why, [pack.say("unsupported_alternatives")])
+               else f"This isn't one figure here. {pack.define(params.kpi, spans)}")
+        return _unanswerable(intent, why, [pack.say("unsupported_alternatives", spans)])
     if params and params.kpi and pack and pack.kpi(params.kpi) and intent in _KPI_INTENTS and grouped:
         roles = {r: c for r, c in contract.roles.items() if c in df.columns}
         if not computable(pack, params.kpi, roles):   # named, but the data lacks what it needs
@@ -218,7 +220,9 @@ def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract
         k = pack.kpi(params.kpi)
         _, currency, _ = main_currency(df, roles)
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
-        out.append(f"{k.label} in total: {k.written(_format_value(v.value, kind, currency if kind == 'currency' else None))}.")
+        when = window_words(pack, df, roles, params.kpi)   # billings: its invoice dates (PR1-02)
+        out.append(f"{k.label} in total{f' ({when})' if when else ''}: "
+                   f"{k.written(_format_value(v.value, kind, currency if kind == 'currency' else None))}.")
     for name in named_kpis(pack, contract, question or ""):
         if name == params.kpi or not computable(pack, name, roles):
             continue

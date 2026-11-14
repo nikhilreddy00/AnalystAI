@@ -9,11 +9,11 @@ import pandas as pd
 from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
                    ROW_KIND_COLUMN, Term, _column,
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
-                   ordinal, roles_of, spell_terms)
+                   ordinal, roles_of, span_words, spell_terms)
 from .detect import main_currency, row_kinds
 from .spell import (WINDOW_MONTHS, Window, _ended_undated, has_spell, not_counted_yet,
                     today_only, window, window_words)
-from .ledger import MOVES, TRANSFERS
+from .ledger import MOVES
 from .kpi import (_person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, stock_rows,
                   used_terms)
 
@@ -99,8 +99,8 @@ def _ledger_facts(pack: Pack, df: pd.DataFrame, roles: dict[str, str], lo, as_of
             out.append(f"{heads.label} at each month-end: " + ", ".join(
                 f"{p} {n[p]:,.0f}" for p in upto(n)) + ".")
             rate = {p: c.get(p, 0) / n[p - 1] for p in months(n) if (p - 1) in n.index and n[p - 1]}
-            out.append(f"Monthly churn ({lost.phrase} at a month-end ÷ {heads.phrase} at the month-end "
-                       "before; never × 12 into an annual rate): " + ", ".join(
+            out.append(f"{pack.spell.words.monthly_rate} ({lost.phrase} at a month-end ÷ "
+                       f"{heads.phrase} at the month-end before; never × 12 into an annual rate): " + ", ".join(
                            f"{p} {v:.2%}" for p, v in rate.items()) + ".")
     for k in (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
               and any(t.spell in ("opening", "retained") for t in spell_terms(pack, k.name))):
@@ -194,6 +194,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
                                                               "contraction", "churn")}
     opening = ledger_kpi(pack, roles, "opening")
     say = lambda k, v: _amount(df, roles, k, v)   # noqa: E731
+    words = pack.spell.words
     if stock and opening and parts["new"] and parts["churn"]:
         val = {m: _fact(df, roles, pack, k.name) for m, k in parts.items() if k}
         start, now = _fact(df, roles, pack, opening.name), _fact(df, roles, pack, stock.name)
@@ -202,27 +203,22 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
                      else f"− {k.phrase} {say(k, val[m])}" for m, k in parts.items() if k]
             rest = now - start - sum(v if m not in ("contraction", "churn") else -v for m, v in val.items())
             if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
-                terms.append(f"{'+' if rest > 0 else '−'} net expansion less contraction (not split in "
-                             f"this file) {say(stock, abs(rest))}")
+                terms.append(f"{'+' if rest > 0 else '−'} {words.unsplit} {say(stock, abs(rest))}")
             begin = w.moves_from   # the bridge opens where its moves start
             span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
             if not span or begin >= as_of:
                 return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
-            out.append(f"{stock.label} bridge, {span}: {say(stock, start)} on "
+            out.append(f"{words.bridge.format(stock=stock.label)}, {span}: {say(stock, start)} on "
                        f"{begin:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
-                       + ("" if parts["expansion"] else " This file has no monthly values per "
-                          f"{pack.spell.words.plural[:-1] if pack.spell.words.plural.endswith('s') else pack.spell.words.plural}, "
-                          "so expansion and contraction are not split."))
+                       + ("" if parts["expansion"] else
+                          " " + words.unsplit_why.format(singular=words.singular)))
     lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
         (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
          and any(t.spell == "retained" and t.sum is None for alt in k.num for t in alt)), None)
     if lost and rate and (n := _fact(df, roles, pack, lost.name)) is not None \
             and _fact(df, roles, pack, rate.name) is not None:   # never without its rate
-        who = pack.spell.words.plural
-        out.append(f"{n:,.0f} {who} left at a month-end in the window ({lost.phrase}); {rate.phrase} "
-                   f"counts only the {who} in force on {w.cohort_start:%-d %b %Y} "
-                   "who are not in force now, so "
-                   f"the two differ: {who} who joined in the window or came back are in the count only.")
+        out.append(words.left_vs_rate.format(n=f"{n:,.0f}", who=words.plural, lost=lost.phrase,
+                                             rate=rate.phrase, start=f"{w.cohort_start:%-d %b %Y}"))
     if (k := parts["churn"]) is not None:
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
         e = _fact(frame, roles, pack, k.name, by="_period")
@@ -275,20 +271,11 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                                f"data's first month-end when it covers less ({at}, {gone})",
                     "retained": f"same {ent} (in force at the cohort's start) at the date"
                                 + (", each capped at its value then" if t.capped else ""),
-                    "moves": (("value moved in from another group: each {e}'s rise in a group "
-                               "matched by its fall in another" if t.move == "transfer_in" else
-                               "value moved out to another group: each {e}'s fall in a group "
-                               "matched by its rise in another").format(e=ent)
-                              if t.move in TRANSFERS else
-                              f"{t.move} moves: each {ent} whose value went "
-                              + {"new": "from 0 (never in force before) to above 0",
-                                 "reactivation": "from 0 back above 0 (in force before)",
-                                 "expansion": "up", "contraction": "down (not to 0)",
-                                 "churn": "to 0"}.get(t.move, ""))
-                             + " between consecutive month-ends in the period",
-                    "ends": f"{sp.words.end}s in the period (events: by {roles.get(sp.end, sp.end)}"
+                    "ends": f"{sp.words.ends} in the period (events: by {roles.get(sp.end, sp.end)}"
                             + (", or the first snapshot an entity is missing from" if snap else "")
-                            + f"; a returning {ent}'s {sp.words.end}s count separately)"}[t.spell]
+                            + f"; a returning {ent}'s {sp.words.ends} count separately)"
+                    }[t.spell] if t.spell != "moves" else (   # the pack validator: every move's words
+                        sp.words.moves[t.move].format(e=ent) + " between consecutive month-ends in the period")
             if t.sum is not None:
                 text = f"sum of {roles[t.sum] if isinstance(t.sum, str) else t.sum} over the " + text
             return text + (f" where {where(t.where)}" if t.where else "")
@@ -353,25 +340,77 @@ def named_kpis(pack: Pack, contract, message: str) -> list[str]:
                      and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
 
 
-def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
-    """[(concept, the words used)] for each glossary concept the question names as whole words,
-    unless the words are just one of the data's own column names ("revenue" in a file with a
-    revenue column needs no glossary)."""
+# GLOSSARY Unit words: the same for every domain. A KPI named next to a word of another unit is
+# not that KPI ("revenue churn rate" is no amount of money; PR1-06); `number` (a ratio of counts,
+# FTEs) clashes with none.
+_PERCENT_WORDS = re.compile(r"(?<![\w-])(?:rate|ratio|percent|percentage|pct|share|proportion)"
+                            r"(?![\w-])|%")
+_COUNT_BEFORE = re.compile(r"(?:how many|number of|count of)\s+$")
+_CLASHES = {"money": {"percent", "count"}, "percent": {"count"}, "count": {"percent"}}
+
+
+def unit_said(text: str, start: int = 0, end: int | None = None) -> str | None:
+    """The unit the words text[start:end] are asked in: a percent word inside them or the word
+    right after ("churn rate", "churn %"), else a count word right before ("how many returning
+    customers"). A run rate is money ("monthly run rate")."""
+    end = len(text) if end is None else end
+    after = re.match(r"\s*(%|[\w-]+)", text[end:])
+    said = re.sub(r"\brun rate\b", "", text[start:end] + (" " + after.group(1) if after else ""))
+    if _PERCENT_WORDS.search(said):
+        return "percent"
+    return "count" if _COUNT_BEFORE.search(text[:start]) else None
+
+
+def _glossary_matches(pack: Pack, question: str, columns: list[str]):
+    """(concept, the words used, the unit they clash in or None) per glossary concept the
+    question names as whole words, unless the words are just one of the data's own column names
+    ("revenue" in a file with a revenue column needs no glossary)."""
     q = question.lower()
     own = {normalize_header(c) for c in columns}
     found = [(m.start(), m.end(), concept, w)
              for concept, said in [*pack.glossary.items(), (None, pack.consumed)]
              for w in said for m in re.finditer(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q)]
     taken: list[tuple[int, int]] = []
-    hits: dict[str, str] = {}
-    # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales")
+    hits: dict[str, tuple[str, str | None]] = {}
+    # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales"),
+    # a clashing one too: "revenue churn rate" is asked, never read as "churn rate"
     for start, end, concept, w in sorted(found, key=lambda f: f[0] - f[1]):
         if any(start < e and s < end for s, e in taken):
             continue
         taken.append((start, end))
         if concept and normalize_header(w) not in own and concept not in hits:
-            hits[concept] = w
-    return list(hits.items())
+            unit = unit_said(q, start, end)
+            k = pack.kpi(concept)
+            hits[concept] = (w, unit if k and unit in _CLASHES.get(k.unit, ()) else None)
+    return [(c, w, clash) for c, (w, clash) in hits.items()]
+
+
+def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
+    """[(concept, the words used)] for each glossary concept the question names as whole words
+    (_glossary_matches), never a KPI asked in another unit (unit_clashes)."""
+    return [(c, w) for c, w, clash in _glossary_matches(pack, question, columns) if not clash]
+
+
+def unit_clashes(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str, str]]:
+    """[(KPI, the words used, the unit asked)] for each KPI the question names in another unit:
+    no answer reads it, and intake asks which was meant (unit_question)."""
+    return [(c, w, clash) for c, w, clash in _glossary_matches(pack, question, columns) if clash]
+
+
+_UNIT_NAMES = {"money": "an amount", "percent": "a rate", "count": "a count", "number": "a number"}
+
+
+def unit_question(pack: Pack, clash: tuple[str, str, str]) -> str:
+    """The question intake asks for a KPI named in another unit: the KPI with its own unit, and
+    the KPIs of the asked unit that share a word with the words used."""
+    kpi, words, unit = clash
+    said = set(re.findall(r"[\w-]+", words.lower()))
+    near = [k.name for k in pack.kpis if k.unit == unit and said & {
+        x for w in [k.label, *pack.glossary.get(k.name, [])] for x in re.findall(r"[\w-]+", w.lower())}]
+    named = lambda k: f"{pack.kpi(k).label} ({_UNIT_NAMES[pack.kpi(k).unit]})"   # noqa: E731
+    return (f'"{words}" asked as {_UNIT_NAMES[unit]}: {pack.kpi(kpi).label} is '
+            f"{_UNIT_NAMES[pack.kpi(kpi).unit]}. Did you mean "
+            f"{''.join(f'{named(k)}, ' for k in near)}or {named(kpi)}?")
 
 
 def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(ROW_KINDS)) -> str:
@@ -409,7 +448,7 @@ def row_rules(pack: Pack, roles: dict[str, str], present: set[str] = frozenset(R
 
 def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: str | None = None,
                present: set[str] = frozenset(), currency: str | None = None,
-               kind_column: str = ROW_KIND_COLUMN) -> list[str]:
+               kind_column: str = ROW_KIND_COLUMN, spans: dict | None = None) -> list[str]:
     """The pack's rules, in role names: which rows are not sales (the kinds `present` in this
     data), the grain, and each concept (a KPI or a definition) asked about. Roles, never column
     names: the caller shows the role → column map inside its untrusted-data block."""
@@ -423,7 +462,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
                      "computed by these rules: filter on "
                      "it, never re-derive it. Personal columns (email, names) reach you as "
                      f"pseudonyms, so {pack.label('test')} cannot be found from them: only this "
-                     f"column marks them. {pack.say('rows_brief')} Column "
+                     f"column marks them. {pack.say('rows_brief', spans)} Column "
                      "profiles (eda_summary, distributions) describe every row, as loaded.")
     if rules := row_rules(pack, roles, present):
         lines.append(f"Row kinds: {rules}.")
@@ -440,7 +479,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
                 lines.append(f"{kpi.label} ({c}): this data lacks the columns it needs; say so, "
                              "never approximate it with another column.")
         elif c in pack.definitions:
-            lines.append(f"{c}: {pack.definitions[c]}")
+            lines.append(f"{c}: {pack.define(c, spans)}")
         elif c in pack.unsupported:
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
     for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
@@ -501,7 +540,8 @@ def pack_caveats(pack: Pack, audit, roles: dict[str, str], confidence: str | Non
     if "other_currency" in flags and audit and audit.main_currency:
         facts["mixed_currency"] = {"n": f"{flags['other_currency'].rows_affected:,}",
                                    "currency": audit.main_currency}
-    said = [pack.caveats[c].format(**facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
+    spans = span_words(audit.window_span if audit else None)   # {window}: this data's (PR7-03)
+    said = [pack.caveats[c].format(**spans, **facts[c]) for c in CONDITIONS if c in facts and c in pack.caveats]
     return said + [text for role, text in pack.role_caveats.items() if role in roles]
 
 

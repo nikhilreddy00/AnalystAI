@@ -42,8 +42,12 @@ kpis:
 caveats:
   read_as_domain_weak: "Read as MRR data: {roles}."
 """
+# a ledger's sentences are its pack's words (C9: a pack with moves must have them): the SaaS
+# pack's, so each sentence below is the one users read
+BOOK = BOOK.replace("month_labels: true}", "month_labels: true, words: " + __import__("json").dumps(
+    __import__("domain_pack").pack_for("saas").spell.words.model_dump()) + "}")
 
-MONTHS = [f"2025-{m:02d}-01" for m in range(10, 13)] + [f"2026-{m:02d}-01" for m in range(1, 11)]
+MONTHS =[f"2025-{m:02d}-01" for m in range(10, 13)] + [f"2026-{m:02d}-01" for m in range(1, 11)]
 # MRR per month Oct 2025 .. Oct 2026 (13 labels); 0 = absent that month
 PLAN = {   # customer: (segment per month or one, mrr per month)
     "A": ("SMB", [100] * 13),                                # steady
@@ -245,6 +249,18 @@ def test_a_mover_across_parts_is_a_transfer_by_hand(book):
     assert compute_kpi(df, roles, pack, "opening_mrr") == 940 + 40 + 0.5 + 70   # W: 0, not −30
 
 
+def test_a_pack_with_moves_says_them_in_its_own_words():
+    """C9 (PR1-09): the ledger's sentences were SaaS's words in shared Python; a pack with moves
+    must give each move's words and the ledger's sentences (SpellWords), or it doesn't load."""
+    raw = yaml.safe_load(BOOK)
+    raw["spell"]["words"] = {k: v for k, v in raw["spell"]["words"].items() if k != "bridge"}
+    with pytest.raises(ValueError, match="spell.words.bridge"):
+        Pack.model_validate(raw)
+    raw["spell"]["words"] = {**yaml.safe_load(BOOK)["spell"]["words"], "moves": {"new": "x"}}
+    with pytest.raises(ValueError, match="no words for the churn move"):
+        Pack.model_validate(raw)
+
+
 def test_how_each_move_is_counted_in_words(book):
     """An answer's How for each move: the words written here, by hand."""
     roles, pack = book[2], _moved_pack()
@@ -261,3 +277,56 @@ def test_how_each_move_is_counted_in_words(book):
     for k, how in rule.items():
         assert describe_kpi(pack, k, roles).split(";")[0] == (
             f"Sum of mrr over the {how} between consecutive month-ends in the period"), k
+
+
+def _story(df, roles, drop=(), add=()) -> list[str]:
+    """The ledger story with MRR (and any `add` KPI) as tiles, less the `drop` KPIs."""
+    raw = yaml.safe_load(BOOK)
+    raw["kpis"] = [k for k in raw["kpis"] + list(add) if k["name"] not in drop]
+    raw["kpis"][0]["tile"] = True
+    return spell_facts(Pack.model_validate(raw), df, roles)
+
+
+def _bridge(facts: list[str]) -> str:
+    return next(f for f in facts if f.startswith("MRR bridge"))
+
+
+def test_a_bridge_without_expansion_kpis_ties_with_its_unsplit_rest_and_says_why(book):
+    """By hand from PLAN without the expansion and contraction KPIs: the rest is B's +50, G's
+    +30 and C's −100 (−$20); with C flat, B +$0.50 and G flat, it is +$0.50."""
+    _, df, roles = book
+    drop = ("expansion_mrr", "contraction_mrr")
+    line = _bridge(_story(df, roles, drop))
+    assert line.endswith("− net expansion less contraction (not split in this file) $20.00 = $770.00."
+                         " This file has no monthly values per customer, so expansion and "
+                         "contraction are not split."), line
+    up = df.astype({"mrr": float})
+    up.loc[up["customer_id"] == "C", "mrr"] = 400
+    up.loc[up["customer_id"] == "G", "mrr"] = 60
+    up.loc[(up["customer_id"] == "B") & (up["month"] >= "2026-04-01"), "mrr"] = 100.5
+    assert "+ net expansion less contraction (not split in this file) $0.50 = $790.50." \
+        in _bridge(_story(up, roles, drop))
+
+
+def test_a_bridge_with_its_expansion_kpis_has_no_unsplit_rest(book):
+    _, df, roles = book
+    assert _bridge(_story(df, roles)).endswith("− churned MRR $280.00 = $770.00.")
+
+
+def test_monthly_churn_is_each_months_churned_over_the_month_end_before(book):
+    """By hand: 6 paying at Oct's and Nov's ends (A B C D F G); none churn in Nov (0/6), F in Dec
+    (1/6), none in Jan (0/5)."""
+    _, df, roles = book
+    heads = {"name": "customers", "label": "Customers", "unit": "count", "tile": True,
+             "num": [[{"spell": "active"}]]}
+    line = next(f for f in _story(df, roles, add=[heads]) if f.startswith("Monthly churn"))
+    assert "rate): 2025-11 0.00%, 2025-12 16.67%, 2026-01 0.00%, 2026-02 " in line, line
+
+
+def test_ends_are_said_by_the_end_dates_column(book):
+    """An ends term names the column its events are dated by, or the role when no column has it."""
+    raw = yaml.safe_load(BOOK)
+    raw["kpis"].append({"name": "ended", "label": "Ended", "unit": "count", "num": [[{"spell": "ends"}]]})
+    pack, roles = Pack.model_validate(raw), book[2]
+    assert "(events: by cancelled_on" in describe_kpi(pack, "ended", {**roles, "end_date": "cancelled_on"})
+    assert "(events: by end_date" in describe_kpi(pack, "ended", roles)

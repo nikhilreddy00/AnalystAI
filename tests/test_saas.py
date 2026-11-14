@@ -379,6 +379,23 @@ def test_stripes_percent_off_reaches_mrr():
     assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["percent_off"] / 100) / months)
 
 
+def test_a_finished_datasets_pct_header_keeps_its_scale():
+    """5.7b-2c (C7 red-team 6): `pct` expands to `percent` (saas.yaml abbreviations), so a
+    declared `discount_percent` would read the finished dataset's 0.1 as 0.1%. Only Stripe's own
+    headers declare percent; discount_pct stays a guessed fraction."""
+    raw = datagen.make("saas_subscriptions", 1)[0]
+    contract = __import__("connectors.csv_connector", fromlist=["x"]).CSVConnector(
+        __import__("orchestrator.state", fromlist=["x"]).ConnectorConfig(type="csv")).build_data_contract(raw)
+    from agents.ingestion_agent import add_pack_columns
+    from domain_pack.columns import scale_of
+    out, c, _ = add_pack_columns(raw, contract, "csv")
+    assert c.roles["discount_pct"] == "discount_pct"
+    assert scale_of(dp.pack_for("saas"), "discount_pct", c.roles) is None
+    row = out[out["discount_pct"] > 0].iloc[0]
+    months = {"month": 1, "year": 12}[row["interval"]] * row["interval_count"]
+    assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["discount_pct"]) / months)
+
+
 def test_a_benchmark_verdict_after_the_metric_is_never_said():
     """Audit pass 2 (a stored ins-04 report): 'net revenue retention of 106.5% — healthy' passed
     the never_say pattern, which wanted 'is/looks' before the verdict."""
@@ -404,6 +421,122 @@ def test_on_short_data_the_bridge_still_adds_up_and_says_its_span():
     assert k["mrr"] == pytest.approx(k["opening_mrr"] + k["new_mrr"] + k["expansion_mrr"]
                                      + k["reactivation_mrr"] - k["contraction_mrr"] - k["churned_mrr"])
     assert not dp.window_words(pack, short, roles, "nrr").startswith("12-month")
+
+
+def test_the_packs_prose_names_the_window_the_numbers_read():
+    """PR7-03 (C2): read_as_domain and the alternatives said 'over the 12 months to that date' on
+    7 months of data, beside a bridge of 6. The prose's span is the Window's: the moves' and the
+    cohort's months as window_words says them, 12 on a full year, and no number when no window is
+    known (a first question, before cleaning)."""
+    import re
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    assert dp.window_span(pack, df, roles) == {"window": "12 months", "moves": "12 months",
+                                              "cohort": "12 months", "window_adj": " 12-month"}
+    short = df[pd.to_datetime(df["month"]) >= "2026-04-01"]
+    spans = dp.window_span(pack, short, roles)
+    moves = int(dp.window_words(pack, short, roles, "new_mrr").split()[0])
+    cohort = int(dp.window_words(pack, short, roles, "nrr").split("-")[0])
+    assert spans["moves"] == f"{moves} months" and spans["cohort"] == f"{cohort} months"
+    # one {moves} names the movements and the retention in one sentence: on the default window
+    # both start at the same date (Window.moves_from = cohort_start)
+    assert moves == cohort
+    said = pack.say("unsupported_alternatives", spans)
+    assert f"retention over the {moves} months to the latest date" in said
+    assert "over the months to the latest date" in pack.say("unsupported_alternatives")
+    audit = __import__("orchestrator.state", fromlist=["x"]).CleaningAudit.model_construct(
+        decisions=[], date_ranges={}, partial_months={}, main_currency=None, window_span=spans)
+    text = " ".join(dp.pack_caveats(pack, audit, roles, "strong"))
+    assert re.search(rf"over the {moves} months to that date, .* paying {cohort} months earlier", text)
+    assert not re.search(r"\b12[- ]months?\b", text)
+    assert f"MRR over the {moves} months to the latest date" in pack.define("mrr_bridge", spans)
+    brief = " ".join(dp.pack_brief(pack, roles, ["mrr"], spans=spans))
+    assert f"customers paying {cohort} months earlier" in brief and "12 months earlier" not in brief
+    assert any(line.startswith("mrr_bridge: ") and f"over the {moves} months to the latest date" in line
+               for line in dp.pack_brief(pack, roles, ["mrr_bridge"], spans=spans))
+    hr =dp.pack_for("hr")   # the adjective: 'the 7-month window the facts name'
+    assert "each exit in the 7-month window" in hr.say("rows_brief", {"window_adj": " 7-month"})
+    assert "each exit in the window the facts name" in hr.say("rows_brief")
+
+
+def _short_session():
+    """saas_mrr_snapshots from Apr 2026 (7 month-ends) as production's session holds it, and the
+    moves' months on it."""
+    import io
+    from tests.test_oracle import _built
+    s, clean, contract, _ = _built("saas_mrr_snapshots")
+    short = clean[pd.to_datetime(clean[contract.roles["month"]]) >= "2026-04-01"]
+    buf = io.BytesIO()
+    short.to_parquet(buf)
+    s.__dict__["_df_parquet"] = buf.getvalue()
+    roles = {r: c for r, c in contract.roles.items() if c in short.columns}
+    return s, int(dp.window_words(dp.pack_for("saas"), short, roles, "new_mrr").split()[0])
+
+
+def test_a_refused_scoped_bridge_names_this_datas_window():
+    """PR7-03 through the targeted path: a definition and the alternatives said with a refusal
+    name the frame's own span, never a written 12."""
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from orchestrator.state import AnalysisTask, QuestionIntent, TargetedParams
+    s, moves = _short_session()
+    assert moves < 12
+    s.task_plan = AnalysisTask(raw_query="MRR bridge by plan", analysis_types=["eda"], target_metrics=[],
+                               question_intent=QuestionIntent("top_n"),
+                               targeted_params=TargetedParams(kpi="mrr_bridge", group_by="plan"))
+    r = run_targeted_analysis(s)
+    text = " ".join([r.answer_text, *r.suggestions])
+    assert f"over the {moves} months to the latest date" in text and "12 months to" not in text, text
+    # both the definition said as the reason and the alternatives offered name it
+    assert f"over the {moves} months to the latest date" in r.unanswerable_reason, r.unanswerable_reason
+    assert f"over the {moves} months to the latest date" in r.suggestions[0], r.suggestions
+    s.task_plan = s.task_plan.model_copy(update={"targeted_params": TargetedParams(kpi="mrr_bridge")})
+    r = run_targeted_analysis(s)   # unscoped: the product's bridge line, then its definition
+    assert r.answer_text.startswith("MRR bridge, ") and \
+        f"over the {moves} months to the latest date" in r.answer_text, r.answer_text
+
+
+def _first_question_and_audit():
+    """The short session on a first question (no cleaning audit yet) and the audit cleaning its
+    frame gives."""
+    import asyncio
+
+    from agents.cleaning_agent import run_cleaning_agent
+    s, moves = _short_session()
+    s.cleaning_audit = None
+    _, audit = asyncio.run(run_cleaning_agent(_copy(s)))
+    return s, moves, audit
+
+
+def _copy(s):
+    own = s.model_copy(deep=True)
+    own.__dict__["_df_parquet"] = s.__dict__["_df_parquet"]
+    return own
+
+
+def test_cleaning_stores_the_window_span_on_strong_spell_data_only():
+    """PR7-03: the audit carries the frame's span (the moves' months on 7 month-ends), so every
+    caveat said with the report names it; a weak match changes nothing by default: no span."""
+    import asyncio
+
+    from agents.cleaning_agent import run_cleaning_agent
+    s, moves, audit = _first_question_and_audit()
+    assert audit.window_span["moves"] == f"{moves} months" and moves < 12, audit.window_span
+    weak = _copy(s)
+    weak.data_contract = weak.data_contract.model_copy(update={"domain_confidence": "weak"})
+    assert asyncio.run(run_cleaning_agent(weak))[1].window_span == {}
+
+
+def test_the_analysis_brief_names_the_window_from_the_audit_or_the_frame():
+    """PR7-03 through analysis: the brief's cohort words name this data's months, read from the
+    cleaning audit (no frame needed) or, with none, from the frame; and the row-kind column."""
+    from agents.analysis_agent import _domain
+    from orchestrator.state import AnalysisTask
+    s, _, audit = _first_question_and_audit()
+    cohort = audit.window_span["cohort"]
+    task = AnalysisTask(raw_query="What is our MRR?", analysis_types=["eda"], target_metrics=[])
+    for brief in (" ".join(_domain(s.data_contract, task, audit)["domain"]),
+                  " ".join(_domain(s.data_contract, task, None, s.__dict__["_df_parquet"])["domain"])):
+        assert f"customers paying {cohort} earlier" in brief and "12 months" not in brief, brief
+        assert f"'{dp.ROW_KIND_COLUMN}'" in brief
 
 
 def test_a_scoped_bridge_question_is_never_answered_with_the_whole_file():
@@ -518,17 +651,20 @@ def test_a_neutral_sentence_is_no_verdict(t):
     assert not re.search(bench.pattern, t, re.I)
 
 
-@pytest.mark.parametrize("vals, want", [([10, 12.5, 15, 7.5], [90, 87.5, 85, 92.5]),
-                                        ([1, 1, 1, 20], [99, 99, 99, 80]),
-                                        ([0.2, 0.2, 0.1], [80, 80, 90])])
-def test_discount_scales(vals, want):
-    """Audit pass 4: fractional Stripe percents (12.5) and 1% read right; never rescaled by one."""
+@pytest.mark.parametrize("header, vals, want", [("rebate_pct", [10, 12.5, 15, 7.5], [90, 87.5, 85, 92.5]),
+                                                ("rebate", [1, 1, 1, 20], [99, 99, 99, 80]),
+                                                ("rebate", [0.2, 0.2, 0.1], [80, 80, 90])])
+def test_discount_scales(header, vals, want):
+    """Audit pass 4: fractional Stripe percents (12.5) and 1% read right; never rescaled by one.
+    5.7b-2c (PR1-07): 12.5 is read as a percent under a header that declares it (Stripe's
+    percent_off); under an undeclared one it could be an amount, so it is said unreadable."""
     from tests.test_pack_columns import TOY
     import yaml
     pack = dp.Pack.model_validate(yaml.safe_load(TOY))
     df = pd.DataFrame({"unit_id": [str(i) for i in range(len(vals))], "rent": [100.0] * len(vals),
-                       "rebate": vals, "term": ["monthly"] * len(vals)})
-    out, _ = dp.pack_columns(df, pack, {r: r for r in df.columns})
+                       header: vals, "term": ["monthly"] * len(vals)})
+    out, _ = dp.pack_columns(df, pack, {"unit_id": "unit_id", "rent": "rent", "rebate": header,
+                                        "term": "term"})
     assert out["monthly_rent"].tolist() == pytest.approx(want)
 
 
@@ -575,6 +711,7 @@ def test_short_snapshots_bridge_months_are_its_moves():
     df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
     short = df[pd.to_datetime(df["month"]) >= "2026-08-01"]
     assert dp.window_words(pack, short, roles, "new_mrr") == "2 months to 31 Oct 2026"
+    assert dp.window_span(pack, short, roles)["moves"] == "2 months"   # the prose says it as the bridge does
     assert next(ln for ln in dp.spell_story(pack, short, roles) if ln.startswith("MRR bridge")).startswith(
         "MRR bridge, 2 months to 31 Oct 2026: $538,652.55 on 31 Aug 2026")
 
@@ -848,8 +985,39 @@ def test_a_total_and_an_unavailable_kpi_the_question_names_are_both_said():
     pack = dp.pack_for(contract.domain)
     text = _also_named(df.assign(currency="EUR"), TargetedParams(kpi="billings", group_by="line_type"),
                        contract, pack, "total billings by type")
-    assert text == f" Also asked: Billings in total: €{t['billings']:,.2f}.", text
+    d = pd.to_datetime(df[contract.roles["invoice_date"]])   # PR1-02: billings names its period
+    span = f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"
+    assert text == f" Also asked: Billings in total ({span}): €{t['billings']:,.2f}.", text
     df, contract, pack, _, _ = _setup("saas_mrr_snapshots")
     one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
     text = _also_named(one, TargetedParams(kpi="mrr"), contract, pack, "What is our MRR and new MRR?")
     assert text == " Also asked: New MRR: unavailable, the data covers too short a span.", text
+    _, df, contract, _ = _built("retail_lines")   # net sales names no period of its own: none said
+    text = _also_named(df, TargetedParams(kpi="net_sales", group_by=contract.roles["country"]),
+                       contract, dp.pack_for(contract.domain), "total net sales by country")
+    assert text.startswith(" Also asked: Net sales in total: $"), text
+
+
+def test_billings_names_the_invoice_dates_it_sums():
+    """PR1-02 (C2): billings summed every invoice line with no period beside it (the file's time
+    axis is the MRR month, not the invoice date), so a tile read as a month's or a year's. It
+    names its invoice dates, and an asked period's."""
+    _, df, contract, _ = _built("saas_invoices")
+    pack, roles = dp.pack_for(contract.domain), {r: c for r, c in contract.roles.items() if c in df.columns}
+    d = pd.to_datetime(df[roles["invoice_date"]])
+    assert dp.window_words(pack, df, roles, "billings") == f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"
+    asked = d[d >= "2026-07-01"]
+    assert dp.window_words(pack, df, roles, "billings", ("2026-07-01", None)) == \
+        f"{asked.min():%-d %b %Y} to {asked.max():%-d %b %Y}"
+    # an asked period is inclusive at both ends: the invoice dates' own first and last day keep both
+    assert dp.window_words(pack, df, roles, "billings", (f"{d.min():%Y-%m-%d}", f"{d.max():%Y-%m-%d}")) == \
+        f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"
+    assert dp.window_words(pack, df, roles, "billings", (f"{d.max() + pd.Timedelta(days=1):%Y-%m-%d}", None)) \
+        == ""   # a period after the last invoice names no dates
+    void =df.iloc[[0]].assign(**{roles["status"]: "void", roles["invoice_date"]: "2024-01-15"})
+    assert dp.window_words(pack, pd.concat([df, void], ignore_index=True), roles, "billings") == \
+        f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"   # a void bills nothing: not its date either
+    raw = pack.model_dump(by_alias=True)
+    raw["kpis"] = [{**k, "dated_by": "plan"} if k["name"] == "billings" else k for k in raw["kpis"]]
+    with pytest.raises(ValueError, match="dated_by plan is not a date role"):
+        dp.Pack.model_validate(raw)

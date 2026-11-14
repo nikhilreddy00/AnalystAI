@@ -316,11 +316,8 @@ def test_a_spells_ended_statuses_are_read_once():
 def test_shared_code_never_says_a_spells_hr_words():
     """Domain 6 (S0): the spell markers and sentences were HR's own words in shared code
     (hire_event_date, 'exit records', 'rows are N people'), so a subscription book read 'exits'.
-    The pack names them (Spell.words); shared code reads spell_event_columns and the words."""
-    hits = _hits(r"hire_event|exit_event|exit_in_window|left_date_unknown|exit records|"
-                 r"rows are \{people:,\} people|\bexits in the period|"
-                 r"stopped paying|not paying now|those paying|churns of customers")   # SaaS's (audit 1)
-    assert not hits, f"say a spell's words through pack.spell.words: {hits}"
+    The pack names them (Spell.words); shared code reads spell_event_columns and the words. The
+    sentences' guard is tests/test_pseudo_pack.py (a word list built from every pack, 5.7b-2c)."""
     import yaml
 
     import domain_pack as dp
@@ -424,16 +421,30 @@ def test_the_in_force_marker_counts_the_stock_tiles_own_rows(name):
         assert dp.compute_kpi(df, roles, pack, k.name) == pytest.approx(want), k.name
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="C2: pack prose naming the window gets {window} in 5.7b-2c")
 def test_pack_prose_names_the_window_through_its_placeholder():
-    """5.7b-2 (C2, ROADMAP step 1): prose said with the data that names the window it was read
-    over ('over the 12 months to that date') is wrong on short data; it says {window}, filled
-    from the Window. A rule's own span (the 12-month cohort, expert M3) is no window."""
+    """5.7b-2c (C2, PR7-03): prose said with the data that names the window it was read over
+    ('over the 12 months to that date') was wrong on short data; it says {window} / {moves} /
+    {cohort}, filled from the Window (spell.window_span). A rule's own span (YoY's same 12-month
+    window, the 12-month cohort's definition, an annual invoice) is no window: it never says
+    'months to' a date."""
     import domain_pack as dp
-    said = [t for p in dp.load_packs() for t in (p.caveats.get("read_as_domain", ""),
-                                          p.text.get("unsupported_alternatives", ""))]
-    assert not [t for t in said if re.search(r"\b(?:the )?12 months to\b", t)]
+    # a rule's own span, never this data's window (each checked by hand, 5.7b-2c review)
+    rules = {("saas", "monthly_churn_annualised"): "the definition of annual churn",
+             ("saas", "yoy"): "YoY compares the same window a year earlier, whatever its span",
+             ("hr", "yoy"): "the same",
+             ("saas", "cohort_curve"): "an unsupported concept's definition",
+             ("hr", "first_year_attrition"): "a hire cohort followed 12 months, by definition",
+             ("saas", "months_lt_13"): "says a 12-month cohort is not available on this data",
+             ("hr", "months_lt_13"): "the same, of a 12-month rate",
+             ("saas", "invoice"): "an annual invoice bills 12 months: a price's term"}
+    said = {(p.domain, k): t for p in dp.load_packs()
+            for k, t in [*p.caveats.items(), *p.text.items(), *p.definitions.items(),
+                         *p.unsupported.items(), *p.role_caveats.items()]}
+    span = re.compile(r"\b(?:12|twelve)[- ]months?\b", re.I)
+    assert sorted(k for k, t in said.items() if span.search(t) and k not in rules) == []
+    assert all(span.search(said[k]) for k in rules), "a rule left the allowlist: drop it"
+    used = {m for t in said.values() for m in re.findall(r"\{(window|moves|cohort|window_adj)\}", t)}
+    assert used == {"window", "moves", "cohort", "window_adj"}
 
 
 def test_a_snapshot_spell_pack_declares_its_cadence_and_the_rest_keep_the_guess():

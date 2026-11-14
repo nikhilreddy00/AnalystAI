@@ -101,6 +101,10 @@ class Window:
     def move_months(self) -> int:   # the month-ends moves are counted at (after moves_from)
         return sum(e > self.moves_from for e in self.month_ends)
 
+    @property
+    def cohort_months(self) -> int:   # the cohort's span in whole months (12, or less on short data)
+        return round((self.as_of - self.cohort_start).days / 30.44)
+
     def year_earlier(self) -> Window | None:
         """The same window a year earlier, or None when the data covers fewer of its month-ends
         (a 4-month prior is no year-earlier 12)."""
@@ -197,6 +201,15 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
     """'as of 31 Oct 2026' (a state) or '12 months to 31 Oct 2026' (a flow, a rate): how a spell
     KPI's answer names its period, read from its Window; '' for other KPIs."""
     kpi = pack.kpi(name)
+    if kpi and kpi.dated_by in roles:   # billings: the span its own rows' dates cover (PR1-02)
+        from .detect import row_kinds   # the rows it counts: a void or a draft is no billing
+        t = _day(df.loc[row_kinds(df, roles, pack).isin(kpi.rows), roles[kpi.dated_by]]).dropna()
+        first, last = asked or (None, None)   # an asked period (inclusive), either end open
+        if first is not None:
+            t = t[t >= pd.Timestamp(first)]
+        if last is not None:
+            t = t[t <= pd.Timestamp(last)]
+        return f"{t.min():%-d %b %Y} to {t.max():%-d %b %Y}" if len(t) else ""
     if not pack.spell or not kpi or not spell_terms(pack, name):
         return ""
     w = window(pack, df, roles, asked)
@@ -211,11 +224,26 @@ def window_words(pack: Pack, df: pd.DataFrame, roles: dict[str, str], name: str,
         if months < 1:
             return ""
     if "retained" in spells:   # a cohort rate: the cohort ending there, whatever period is asked
-        n = round((w.as_of - w.cohort_start).days / 30.44)
+        n = w.cohort_months
         return f"{n}-month cohort to {w.as_of:%-d %b %Y}" if n >= 1 else ""
     if spells == {"opening"}:   # a bridge's opening level (Opening MRR): where its moves start
         return f"on {w.moves_from:%-d %b %Y}"
     return f"{months} month{'s' * (months != 1)} to {w.as_of:%-d %b %Y}"
+
+
+def window_span(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> dict[str, str]:
+    """What pack prose names its span as (PR7-03: never a written '12 months'): {window} the
+    flows' months, {moves} the moves', {cohort} the cohort's ('12 months' on a full year; prose
+    writes 'over the {window} to', 'paying {cohort} earlier'), {window_adj} the flows' as an
+    adjective ('the{window_adj} window': ' 12-month'), read from the default Window; {} on data
+    with no spell (pack.span_words then says no number)."""
+    roles = {r: c for r, c in roles.items() if c in df.columns}
+    w = window(pack, df, roles) if has_spell(pack, roles) else None
+    if w is None:
+        return {}
+    said = lambda n: f"{n} month{'s' * (n != 1)}"   # noqa: E731
+    return {"window": said(w.months), "moves": said(w.move_months), "cohort": said(w.cohort_months),
+            "window_adj": f" {w.months}-month"}
 
 
 # THE spell window and cohort span: flows and rates read the months to the as-of; every sentence
