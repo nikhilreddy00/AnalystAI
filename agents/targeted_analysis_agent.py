@@ -163,7 +163,7 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
         if story and params.kpi in pack.definitions and not scoped:   # the product computes it as one line (the
             # MRR bridge on monthly snapshots; audit 1: refused there)
             return TargetedResponse(intent=intent, answer_text=" ".join(story) + " "
-                                    + pack.define(params.kpi, spans), chart_configs=[], table_data=[])
+                                    + pack.define(params.kpi, spans))
         why = (f"{name} needs {pack.unsupported[params.kpi]}." if params.kpi in pack.unsupported
                else f"This isn't one figure here. {pack.define(params.kpi, spans)}")
         return _unanswerable(intent, why, [pack.say("unsupported_alternatives", spans)])

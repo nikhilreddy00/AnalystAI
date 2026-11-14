@@ -141,7 +141,7 @@ def _spans(session: AnalysisSession) -> dict | None:
     if session.cleaning_audit:
         return session.cleaning_audit.window_span
     contract, raw = session.data_contract, session.__dict__.get("_df_parquet")
-    pack = defaults_pack(contract) if contract else None
+    pack = defaults_pack(contract)
     if not (raw and pack and pack.spell):
         return None
     return window_span(pack, pd.read_parquet(io.BytesIO(raw)), contract.roles)

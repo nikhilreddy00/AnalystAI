@@ -283,6 +283,45 @@ def test_an_unsupported_concept_names_this_datas_window_before_and_after_cleanin
     assert "over the 5 months to the latest date" in task.clarification_question
 
 
+def test_a_definitions_note_names_this_datas_window():
+    """PR7-03 in the domain notes: a concept the question names (the MRR bridge) is defined over
+    the frame's own months on a first question, never a written 12."""
+    from agents.intake_agent import build_context
+    from tests.test_saas import _short_session
+    s, moves = _short_session()
+    s.cleaning_audit = None
+    notes = build_context(s, "Show the MRR bridge").domain
+    assert f"over the {moves} months to the latest date" in notes and "12 months" not in notes, notes
+
+
+async def test_a_column_named_like_a_kpi_is_no_kpi_asked_in_another_unit(recorded_llm):
+    """PR1-06 asks only of glossary words: "mrr rate" on a file with an mrr column names the
+    column, so nothing is asked."""
+    from tests.test_oracle import _built
+    s, _, _, _ = _built("saas_mrr_snapshots")
+    recorded_llm.responses.append(_kpi_plan())
+    task = await run_intake_agent(s, "What is the mrr rate by plan?", recorded_llm)
+    assert not task.clarification_needed, task.clarification_question
+
+
+async def test_data_with_no_pack_is_planned_as_the_model_says(recorded_llm):
+    """No domain pack (weather readings): no glossary, no unit question, the model's plan."""
+    import pandas as pd
+
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import AnalysisSession, ConnectorConfig, ConnectorType
+    df = pd.DataFrame({"city": ["Oslo", "Lima", "Pune"] * 4, "temperature": [3.5, 19.0, 28.2] * 4})
+    s = AnalysisSession(session_id="t", data_contract=CSVConnector(
+        ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df))
+    assert s.data_contract.domain is None
+    recorded_llm.responses.append(json.dumps({
+        "raw_query": "q", "target_metrics": ["temperature"], "segments": [], "analysis_types": ["eda"],
+        "question_intent": "segment_compare", "clarification_needed": False,
+        "targeted_params": {"metric_column": "temperature", "group_by": "city"}}))
+    task = await run_intake_agent(s, "How many temperature readings per city?", recorded_llm)
+    assert task.targeted_params.group_by == "city" and not task.clarification_needed
+
+
 def test_the_arpu_answer_says_arpa_per_paying_customer():
     """PR1-16: the answer to an ARPU question names what it divides by, never ARPU."""
     from tests.test_oracle import answer

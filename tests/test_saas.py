@@ -483,6 +483,58 @@ def test_a_refused_scoped_bridge_names_this_datas_window():
     r = run_targeted_analysis(s)
     text = " ".join([r.answer_text, *r.suggestions])
     assert f"over the {moves} months to the latest date" in text and "12 months to" not in text, text
+    # both the definition said as the reason and the alternatives offered name it
+    assert f"over the {moves} months to the latest date" in r.unanswerable_reason, r.unanswerable_reason
+    assert f"over the {moves} months to the latest date" in r.suggestions[0], r.suggestions
+    s.task_plan = s.task_plan.model_copy(update={"targeted_params": TargetedParams(kpi="mrr_bridge")})
+    r = run_targeted_analysis(s)   # unscoped: the product's bridge line, then its definition
+    assert r.answer_text.startswith("MRR bridge, ") and \
+        f"over the {moves} months to the latest date" in r.answer_text, r.answer_text
+
+
+def _first_question_and_audit():
+    """The short session on a first question (no cleaning audit yet) and the audit cleaning its
+    frame gives."""
+    import asyncio
+
+    from agents.cleaning_agent import run_cleaning_agent
+    s, moves = _short_session()
+    s.cleaning_audit = None
+    _, audit = asyncio.run(run_cleaning_agent(_copy(s)))
+    return s, moves, audit
+
+
+def _copy(s):
+    own = s.model_copy(deep=True)
+    own.__dict__["_df_parquet"] = s.__dict__["_df_parquet"]
+    return own
+
+
+def test_cleaning_stores_the_window_span_on_strong_spell_data_only():
+    """PR7-03: the audit carries the frame's span (the moves' months on 7 month-ends), so every
+    caveat said with the report names it; a weak match changes nothing by default: no span."""
+    import asyncio
+
+    from agents.cleaning_agent import run_cleaning_agent
+    s, moves, audit = _first_question_and_audit()
+    assert audit.window_span["moves"] == f"{moves} months" and moves < 12, audit.window_span
+    weak = _copy(s)
+    weak.data_contract = weak.data_contract.model_copy(update={"domain_confidence": "weak"})
+    assert asyncio.run(run_cleaning_agent(weak))[1].window_span == {}
+
+
+def test_the_analysis_brief_names_the_window_from_the_audit_or_the_frame():
+    """PR7-03 through analysis: the brief's cohort words name this data's months, read from the
+    cleaning audit (no frame needed) or, with none, from the frame; and the row-kind column."""
+    from agents.analysis_agent import _domain
+    from orchestrator.state import AnalysisTask
+    s, _, audit = _first_question_and_audit()
+    cohort = audit.window_span["cohort"]
+    task = AnalysisTask(raw_query="What is our MRR?", analysis_types=["eda"], target_metrics=[])
+    for brief in (" ".join(_domain(s.data_contract, task, audit)["domain"]),
+                  " ".join(_domain(s.data_contract, task, None, s.__dict__["_df_parquet"])["domain"])):
+        assert f"customers paying {cohort} earlier" in brief and "12 months" not in brief, brief
+        assert f"'{dp.ROW_KIND_COLUMN}'" in brief
 
 
 def test_a_scoped_bridge_question_is_never_answered_with_the_whole_file():
@@ -657,6 +709,7 @@ def test_short_snapshots_bridge_months_are_its_moves():
     df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
     short = df[pd.to_datetime(df["month"]) >= "2026-08-01"]
     assert dp.window_words(pack, short, roles, "new_mrr") == "2 months to 31 Oct 2026"
+    assert dp.window_span(pack, short, roles)["moves"] == "2 months"   # the prose says it as the bridge does
     assert next(ln for ln in dp.spell_story(pack, short, roles) if ln.startswith("MRR bridge")).startswith(
         "MRR bridge, 2 months to 31 Oct 2026: $538,652.55 on 31 Aug 2026")
 
@@ -937,6 +990,10 @@ def test_a_total_and_an_unavailable_kpi_the_question_names_are_both_said():
     one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
     text = _also_named(one, TargetedParams(kpi="mrr"), contract, pack, "What is our MRR and new MRR?")
     assert text == " Also asked: New MRR: unavailable, the data covers too short a span.", text
+    _, df, contract, _ = _built("retail_lines")   # net sales names no period of its own: none said
+    text = _also_named(df, TargetedParams(kpi="net_sales", group_by=contract.roles["country"]),
+                       contract, dp.pack_for(contract.domain), "total net sales by country")
+    assert text.startswith(" Also asked: Net sales in total: $"), text
 
 
 def test_billings_names_the_invoice_dates_it_sums():
@@ -950,7 +1007,12 @@ def test_billings_names_the_invoice_dates_it_sums():
     asked = d[d >= "2026-07-01"]
     assert dp.window_words(pack, df, roles, "billings", ("2026-07-01", None)) == \
         f"{asked.min():%-d %b %Y} to {asked.max():%-d %b %Y}"
-    void = df.iloc[[0]].assign(**{roles["status"]: "void", roles["invoice_date"]: "2024-01-15"})
+    # an asked period is inclusive at both ends: the invoice dates' own first and last day keep both
+    assert dp.window_words(pack, df, roles, "billings", (f"{d.min():%Y-%m-%d}", f"{d.max():%Y-%m-%d}")) == \
+        f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"
+    assert dp.window_words(pack, df, roles, "billings", (f"{d.max() + pd.Timedelta(days=1):%Y-%m-%d}", None)) \
+        == ""   # a period after the last invoice names no dates
+    void =df.iloc[[0]].assign(**{roles["status"]: "void", roles["invoice_date"]: "2024-01-15"})
     assert dp.window_words(pack, pd.concat([df, void], ignore_index=True), roles, "billings") == \
         f"{d.min():%-d %b %Y} to {d.max():%-d %b %Y}"   # a void bills nothing: not its date either
     raw = pack.model_dump(by_alias=True)
