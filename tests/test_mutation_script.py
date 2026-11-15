@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from scripts.mutation import (ROOT, check, function_hashes, functions_touching, mutant_lines,
-                              naming, plant, plant_verdict, planted, recorded, runnable, scores,
-                              uncommitted, unnamed, unreached)
+                              naming, plant, plant_verdict, planted, progress, recorded, runnable,
+                              scores, uncommitted, unnamed, unreached, without_spinner)
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -127,6 +127,19 @@ def test_a_plant_refuses_tests_the_gate_never_runs(capsys):
     which leaves that file out, still found the survivor."""
     assert plant("domain_pack/story.py", "x", "y", ["tests/test_one_definition.py"], None) == 2
     assert "no --tests the gate runs" in capsys.readouterr().out
+
+
+def test_status_says_how_many_of_the_runs_mutants_are_done():
+    """Retro 5.7b-2c: 'how long is left?' took five calls; mutmut's own count is every mutant."""
+    got = {"f": {"killed": 3, "survived": 1, "no_tests": 0, "timeout": 1, "score": 0.75},
+           "g": {"killed": 2, "survived": 0, "no_tests": 1, "timeout": 0, "score": 0.67}}
+    assert progress(got, 40) == "done 8 of 40, 2 not killed"
+    assert progress(got, None) == "done 8, 2 not killed"
+
+
+def test_a_logged_run_keeps_mutmuts_lines_but_not_its_spinner():
+    raw = "⠋ Generating mutants⠙ Generating mutants\r    done in 69s\r⠦ 0/31562  🎉 0\r⠧ 1/31562\n🎉 a.x_f__mutmut_1\n"
+    assert without_spinner(raw) == "    done in 69s\n🎉 a.x_f__mutmut_1"
 
 
 def test_a_plant_must_match_exactly_once():

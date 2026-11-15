@@ -52,6 +52,8 @@ ROOT = Path(__file__).resolve().parents[1]
 KILLED, SURVIVED, NO_TESTS = {1, 3}, {0}, {5, 33}
 TIMEOUT = {36, 24, -24, 152, 255}
 PREFIX = "analystai-mutation-"   # --status finds running worktrees by it
+TOTAL = ".mutation-total"        # in the worktree: the mutants a --lines run will run
+SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 ENV = {"ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
 SOURCE_GUARDS = {"tests/test_one_definition.py"}   # grep the sources: mutmut rewrites them
 # the pre-push gate's files: spell, ledger, pack-column and scorer functions (kpi's _spell and
@@ -302,14 +304,29 @@ def worktree():
                            check=False)
 
 
+def progress(got: dict[str, dict], total: int | None) -> str:
+    """One line for --status: mutants run so far (of the run's total on changed lines, when it
+    wrote one) and how many no test killed."""
+    done = sum(c[k] for c in got.values() for k in ("killed", "survived", "no_tests", "timeout"))
+    left = sum(c["survived"] + c["no_tests"] for c in got.values())
+    return f"done {done}" + (f" of {total}" if total else "") + f", {left} not killed"
+
+
+def without_spinner(text: str) -> str:
+    """mutmut's output without its progress frames (each a '\\r'-separated spinner line)."""
+    return "\n".join(line for line in text.splitlines() if line.strip() and line[0] not in SPINNER)
+
+
 def status() -> int:
     """Scores so far of every mutation run still going (read from its worktree's .meta files)."""
     runs = sorted(Path(tempfile.gettempdir()).glob(f"{PREFIX}*/mut/mutants"))
     if not runs:
         print("no mutation run is going")
     for m in runs:
-        print(m.parent)
-        for f, c in scores([json.loads(p.read_text()) for p in m.rglob("*.meta")]).items():
+        got = scores([json.loads(p.read_text()) for p in m.rglob("*.meta")])
+        total = m.parent / TOTAL
+        print(f"{m.parent}: {progress(got, int(total.read_text()) if total.is_file() else None)}")
+        for f, c in got.items():
             print(f"  {f:28} {c['score']}  " + " ".join(f"{k}={v}" for k, v in c.items()
                                                         if k != "score"))
     return 0
@@ -461,8 +478,13 @@ def main() -> int:
                                if m[0] in lines and _function(k) in args.functions}
             globs = sorted(placed) or ["no_such_mutant"]
             print(f"{len(placed)} mutants on lines changed since {args.lines}")
+            (wt / TOTAL).write_text(str(len(placed)))   # --status: done N of this
+        # into a log file, mutmut's spinner frames ('\r') are megabytes: keep its other lines
+        log = not sys.stdout.isatty()
         run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt,
-                             env={**os.environ, **ENV})
+                             env={**os.environ, **ENV}, capture_output=log, text=True)
+        if log:
+            print(without_spinner(run.stdout + run.stderr), flush=True)
         metas = [json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")]
         got = scores(metas)
         if args.lines and run.returncode:   # never '0 survivors' from a run that never ran
