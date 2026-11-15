@@ -14,7 +14,8 @@ A mutant no selected test reaches counts as not killed; timeouts are shown apart
 `--changed-since REF` mutates every function in `[tool.mutmut] source_paths` whose lines the
 diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines that diff changed
 and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
-with NEW in a worktree and runs the tests: caught = a test failed.
+with NEW in a worktree and runs the tests: caught = they pass on HEAD and one fails with the
+plant (a source guard is refused: the gate never runs it).
 
 The pre-push gate (ROADMAP 5.7b-2 step 9): the hook can't run mutmut, so it runs
 `--check "$(git merge-base HEAD origin/main)"` (< 1 s), which refuses a GATED function whose
@@ -304,18 +305,36 @@ def status() -> int:
     return 0
 
 
+def plant_verdict(clean: int, bugged: int) -> tuple[str, int]:
+    """(word, exit) from pytest's exit on HEAD and with the plant. Caught only when the tests
+    pass without the plant: a test already red (a cold cache, an ordering bug) proves nothing
+    (retro 5.7b-2c: a plant said 'caught' on a test that failed on its own)."""
+    if clean:
+        return f"ERROR: the tests fail without the plant (pytest exit {clean})", 2
+    return {1: ("caught", 0), 0: ("MISSED: every selected test passed", 1)}.get(
+        bugged, (f"ERROR: pytest exit {bugged}", 2))
+
+
 def plant(file: str, old: str, new: str, tests: list[str], keyword: str | None) -> int:
-    """0 when a selected test fails on the planted bug, 1 when every test passes, 2 when pytest
-    errors or selects nothing (an error is not a catch)."""
+    """0 when the selected tests pass on HEAD and one fails on the planted bug, 1 when every
+    test passes with it, 2 otherwise (an error is not a catch)."""
+    if dropped := [t for t in tests if t not in runnable(tests)]:
+        print("left out (the gate never runs them: they read the sources mutmut rewrites): "
+              + " ".join(dropped))
+    if not (tests := runnable(tests)):
+        print(f"plant in {file}: ERROR: no --tests the gate runs; put the check in another file")
+        return 2
+    cmd = [str(ROOT / ".venv/bin/python"), "-m", "pytest", "-q", "-x", "-p", "no:warnings",
+           *tests, *(["-k", keyword] if keyword else [])]
     with worktree() as wt:
+        clean = subprocess.run(cmd, cwd=wt, env={**os.environ, **ENV}, capture_output=True,
+                               text=True)
         src = wt / file
         src.write_text(planted(src.read_text(), old, new))
-        run = subprocess.run([str(ROOT / ".venv/bin/python"), "-m", "pytest", "-q", "-x",
-                              "-p", "no:warnings", *tests, *(["-k", keyword] if keyword else [])],
-                             cwd=wt, env={**os.environ, **ENV}, capture_output=True, text=True)
+        run = subprocess.run(cmd, cwd=wt, env={**os.environ, **ENV}, capture_output=True,
+                             text=True) if not clean.returncode else clean
     print("\n".join(run.stdout.strip().splitlines()[-3:]))
-    verdict = {1: ("caught", 0), 0: ("MISSED: every selected test passed", 1)}
-    word, code = verdict.get(run.returncode, (f"ERROR: pytest exit {run.returncode}", 2))
+    word, code = plant_verdict(clean.returncode, run.returncode)
     print(f"plant in {file}: {word}")
     return code
 

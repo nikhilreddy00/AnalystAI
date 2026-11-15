@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 
 from scripts.mutation import (ROOT, check, function_hashes, functions_touching, mutant_lines,
-                              naming, planted, recorded, runnable, scores, uncommitted, unreached)
+                              naming, plant, plant_verdict, planted, recorded, runnable, scores,
+                              uncommitted, unreached)
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -111,6 +112,21 @@ def test_the_source_guards_are_left_out_of_a_mutation_run():
     assert runnable(["tests/test_spell.py", "tests/test_one_definition.py",
                      "tests/test_one_definition.py::test_x", "tests/test_saas.py::test_y"]) \
         == ["tests/test_spell.py", "tests/test_saas.py::test_y"]
+
+
+def test_a_plant_is_caught_only_by_tests_that_pass_without_it():
+    """Retro 5.7b-2c: a test red on its own (asyncio.run on a cold cache) read as 'caught'."""
+    assert plant_verdict(0, 1) == ("caught", 0)
+    assert plant_verdict(0, 0)[1] == 1
+    assert plant_verdict(1, 1)[1] == 2 and "without the plant" in plant_verdict(1, 1)[0]
+    assert plant_verdict(0, 5)[1] == 2   # pytest selected nothing
+
+
+def test_a_plant_refuses_tests_the_gate_never_runs(capsys):
+    """Retro 5.7b-2c: a kill planted against test_one_definition.py said 'caught', and the gate,
+    which leaves that file out, still found the survivor."""
+    assert plant("domain_pack/story.py", "x", "y", ["tests/test_one_definition.py"], None) == 2
+    assert "no --tests the gate runs" in capsys.readouterr().out
 
 
 def test_a_plant_must_match_exactly_once():
