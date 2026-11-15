@@ -7,7 +7,7 @@ import pytest
 
 from scripts.mutation import (ROOT, check, function_hashes, functions_touching, mutant_lines,
                               naming, plant, plant_verdict, planted, recorded, runnable, scores,
-                              uncommitted, unreached)
+                              uncommitted, unnamed, unreached)
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -224,6 +224,27 @@ def test_the_gate_refuses_a_recorded_function_that_no_longer_exists(tmp_path):
             **_gate({f"{SPELL}::f2": {"hash": function_hashes(renamed)["f2"], "equivalents": []},
                      f"{SPELL}::f": {"hash": function_hashes(BASE)["f"], "equivalents": []}})})
     assert _keys(check(base, tmp_path)) == [f"{SPELL}::f"]
+
+
+def test_a_file_outside_the_gate_holds_named_equivalents_but_no_orphan(tmp_path):
+    """Retro 5.7b-2c: an equivalent in an agent file lived in prose only, so the --lines run
+    failed on it. gate.json may name it; its function must still exist."""
+    commit = _repo(tmp_path)
+    eq = {"equivalents": [{"old": "a", "new": "b", "n": 1, "reason": "r"}]}
+    base = commit({SPELL: BASE, "agents/x.py": "def y():\n    return 1\n",
+                   **_gate({"agents/x.py::y": eq})})
+    assert check(base, tmp_path) == []
+    commit({"agents/x.py": "def z():\n    return 1\n"})
+    assert _keys(check(base, tmp_path)) == ["agents/x.py::y"]
+
+
+def test_a_survivor_is_unexplained_unless_named_as_often_as_it_is_left():
+    """The one rule --record and the --lines exit share."""
+    entry = {"equivalents": [{"old": "a", "new": "b", "n": 1, "reason": "r"}]}
+    assert unnamed(entry, [("survived", "a", "b")]) == []
+    assert len(unnamed(entry, [("survived", "a", "b")] * 2)) == 2
+    assert unnamed(entry, [("no_tests", "a", "b")]) == [("no_tests", "a", "b")]
+    assert unnamed({}, [("survived", "a", "b")]) == [("survived", "a", "b")]
 
 
 def test_a_function_is_recorded_only_when_every_mutant_left_on_its_changed_lines_is_a_named_equivalent():
