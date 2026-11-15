@@ -104,3 +104,17 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
 - **Pack column** — a column the product adds to the data at ingestion from a pack formula (a
   subscription list's MRR from price, seats, discount and interval), read by every agent like
   an uploaded column, and named in the source notes.
+- **Typed claim** — a report statement the model gives as data, never as prose (a report
+  statement, not an insurance claim): a cause (a cause, an effect, its evidence), a benchmark
+  verdict (a metric, a verdict, a source) or a comparison (a metric, two named values, its
+  evidence). The product checks it against the evidence and writes its sentence.
+- **Causal claim** — one thing made another happen. Said as a cause only on a controlled test's
+  evidence; on any other evidence it is said as an association; with no evidence, not said.
+- **Benchmark verdict** — a KPI's level judged against an outside norm (healthy, best-in-class,
+  top quartile, a weakness). The data holds no norm, so the value is said without a verdict.
+- **Free text** — report prose the model wrote outside a typed claim. It may state no cause and
+  no benchmark verdict; a sentence that does (an overreach) is removed and the report says so.
+  Arithmetic of parts ("churned MRR fell because 3 accounts left") and investigations ("to see
+  what drives churn") are no overreach.
+- **Bridge** — a level's opening, each move over the window (signed: falls negative) and the
+  unsplit rest, adding up to its closing level.
