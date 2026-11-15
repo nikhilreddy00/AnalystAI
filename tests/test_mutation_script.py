@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 
 from scripts.mutation import (ROOT, check, function_hashes, functions_touching, mutant_lines,
-                              naming, planted, recorded, runnable, scores, uncommitted, unreached)
+                              naming, plant, plant_verdict, planted, progress, recorded, runnable,
+                              scores, uncommitted, unnamed, unreached, without_spinner)
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -113,6 +114,34 @@ def test_the_source_guards_are_left_out_of_a_mutation_run():
         == ["tests/test_spell.py", "tests/test_saas.py::test_y"]
 
 
+def test_a_plant_is_caught_only_by_tests_that_pass_without_it():
+    """Retro 5.7b-2c: a test red on its own (asyncio.run on a cold cache) read as 'caught'."""
+    assert plant_verdict(0, 1) == ("caught", 0)
+    assert plant_verdict(0, 0)[1] == 1
+    assert plant_verdict(1, 1)[1] == 2 and "without the plant" in plant_verdict(1, 1)[0]
+    assert plant_verdict(0, 5)[1] == 2   # pytest selected nothing
+
+
+def test_a_plant_refuses_tests_the_gate_never_runs(capsys):
+    """Retro 5.7b-2c: a kill planted against test_one_definition.py said 'caught', and the gate,
+    which leaves that file out, still found the survivor."""
+    assert plant("domain_pack/story.py", "x", "y", ["tests/test_one_definition.py"], None) == 2
+    assert "no --tests the gate runs" in capsys.readouterr().out
+
+
+def test_status_says_how_many_of_the_runs_mutants_are_done():
+    """Retro 5.7b-2c: 'how long is left?' took five calls; mutmut's own count is every mutant."""
+    got = {"f": {"killed": 3, "survived": 1, "no_tests": 0, "timeout": 1, "score": 0.75},
+           "g": {"killed": 2, "survived": 0, "no_tests": 1, "timeout": 0, "score": 0.67}}
+    assert progress(got, 40) == "done 8 of 40, 2 not killed"
+    assert progress(got, None) == "done 8, 2 not killed"
+
+
+def test_a_logged_run_keeps_mutmuts_lines_but_not_its_spinner():
+    raw = "⠋ Generating mutants⠙ Generating mutants\r    done in 69s\r⠦ 0/31562  🎉 0\r⠧ 1/31562\n🎉 a.x_f__mutmut_1\n"
+    assert without_spinner(raw) == "    done in 69s\n🎉 a.x_f__mutmut_1"
+
+
 def test_a_plant_must_match_exactly_once():
     assert planted("a = 1\nb = 2\n", "b = 2", "b = 3") == "a = 1\nb = 3\n"
     for text in ("a = 1\n", "b = 2\nb = 2\n"):
@@ -208,6 +237,27 @@ def test_the_gate_refuses_a_recorded_function_that_no_longer_exists(tmp_path):
             **_gate({f"{SPELL}::f2": {"hash": function_hashes(renamed)["f2"], "equivalents": []},
                      f"{SPELL}::f": {"hash": function_hashes(BASE)["f"], "equivalents": []}})})
     assert _keys(check(base, tmp_path)) == [f"{SPELL}::f"]
+
+
+def test_a_file_outside_the_gate_holds_named_equivalents_but_no_orphan(tmp_path):
+    """Retro 5.7b-2c: an equivalent in an agent file lived in prose only, so the --lines run
+    failed on it. gate.json may name it; its function must still exist."""
+    commit = _repo(tmp_path)
+    eq = {"equivalents": [{"old": "a", "new": "b", "n": 1, "reason": "r"}]}
+    base = commit({SPELL: BASE, "agents/x.py": "def y():\n    return 1\n",
+                   **_gate({"agents/x.py::y": eq})})
+    assert check(base, tmp_path) == []
+    commit({"agents/x.py": "def z():\n    return 1\n"})
+    assert _keys(check(base, tmp_path)) == ["agents/x.py::y"]
+
+
+def test_a_survivor_is_unexplained_unless_named_as_often_as_it_is_left():
+    """The one rule --record and the --lines exit share."""
+    entry = {"equivalents": [{"old": "a", "new": "b", "n": 1, "reason": "r"}]}
+    assert unnamed(entry, [("survived", "a", "b")]) == []
+    assert len(unnamed(entry, [("survived", "a", "b")] * 2)) == 2
+    assert unnamed(entry, [("no_tests", "a", "b")]) == [("no_tests", "a", "b")]
+    assert unnamed({}, [("survived", "a", "b")]) == [("survived", "a", "b")]
 
 
 def test_a_function_is_recorded_only_when_every_mutant_left_on_its_changed_lines_is_a_named_equivalent():

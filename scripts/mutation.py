@@ -13,8 +13,10 @@ A mutant no selected test reaches counts as not killed; timeouts are shown apart
 
 `--changed-since REF` mutates every function in `[tool.mutmut] source_paths` whose lines the
 diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines that diff changed
-and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines). `--plant` replaces the one exact occurrence of OLD
-with NEW in a worktree and runs the tests: caught = a test failed.
+and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines but the
+equivalents gate.json names, in any source file). `--plant` replaces the one exact occurrence of OLD
+with NEW in a worktree and runs the tests: caught = they pass on HEAD and one fails with the
+plant (a source guard is refused: the gate never runs it).
 
 The pre-push gate (ROADMAP 5.7b-2 step 9): the hook can't run mutmut, so it runs
 `--check "$(git merge-base HEAD origin/main)"` (< 1 s), which refuses a GATED function whose
@@ -50,6 +52,8 @@ ROOT = Path(__file__).resolve().parents[1]
 KILLED, SURVIVED, NO_TESTS = {1, 3}, {0}, {5, 33}
 TIMEOUT = {36, 24, -24, 152, 255}
 PREFIX = "analystai-mutation-"   # --status finds running worktrees by it
+TOTAL = ".mutation-total"        # in the worktree: the mutants a --lines run will run
+SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 ENV = {"ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
 SOURCE_GUARDS = {"tests/test_one_definition.py"}   # grep the sources: mutmut rewrites them
 # the pre-push gate's files: spell, ledger, pack-column and scorer functions (kpi's _spell and
@@ -148,16 +152,30 @@ def check(ref: str, root: Path = ROOT) -> list[str]:
     text = _at("HEAD", GATE, root)
     gate = json.loads(text) if text else {}
     problems, exist = [], set()
-    for f in GATED:
-        before, now = function_hashes(_at(ref, f, root)), function_hashes(_at("HEAD", f, root))
+    # a file outside GATED may hold named equivalents only (the --lines run reads them)
+    for f in sorted({*GATED, *(k.split("::", 1)[0] for k in gate)}):
+        now = function_hashes(_at("HEAD", f, root))
+        exist |= {f"{f}::{name}" for name in now}
+        if f not in GATED:
+            continue
+        before = function_hashes(_at(ref, f, root))
         for name, h in now.items():
-            exist.add(key := f"{f}::{name}")
-            if before.get(name) != h and gate.get(key, {}).get("hash") != h:
+            if before.get(name) != h and gate.get(key := f"{f}::{name}", {}).get("hash") != h:
                 problems.append(f"{key}: changed since {ref[:12]} with no clean mutation gate "
                                 f"recorded")
     problems += [f"{k}: in {GATE}, but no such function (renamed or deleted)"
                  for k in gate if k not in exist]
     return problems
+
+
+def unnamed(entry: dict, mutants: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    """The left mutants ((kind, old line, new line)) a GATE entry's equivalents don't explain:
+    any that isn't a survivor, and a survivor seen more times than it is named."""
+    named = Counter()
+    for e in entry.get("equivalents", []):
+        named[e["old"], e["new"]] += e["n"]
+    seen = Counter(m[1:] for m in mutants if m[0] == "survived")
+    return [m for m in mutants if m[0] != "survived" or seen[m[1:]] > named[m[1:]]]
 
 
 def recorded(gate: dict, hashes: dict[str, str],
@@ -170,12 +188,7 @@ def recorded(gate: dict, hashes: dict[str, str],
     for key, h in hashes.items():
         entry = new.setdefault(key, {})
         entry.setdefault("equivalents", [])
-        named = Counter()
-        for e in entry["equivalents"]:
-            named[e["old"], e["new"]] += e["n"]
-        mutants = left.get(key, [])
-        seen = Counter((old, nu) for kind, old, nu in mutants if kind == "survived")
-        if bad := [m for m in mutants if m[0] != "survived" or seen[m[1:]] > named[m[1:]]]:
+        if bad := unnamed(entry, left.get(key, [])):
             unexplained[key] = bad
             entry.pop("hash", None)
         else:
@@ -291,31 +304,64 @@ def worktree():
                            check=False)
 
 
+def progress(got: dict[str, dict], total: int | None) -> str:
+    """One line for --status: mutants run so far (of the run's total on changed lines, when it
+    wrote one) and how many no test killed."""
+    done = sum(c[k] for c in got.values() for k in ("killed", "survived", "no_tests", "timeout"))
+    left = sum(c["survived"] + c["no_tests"] for c in got.values())
+    return f"done {done}" + (f" of {total}" if total else "") + f", {left} not killed"
+
+
+def without_spinner(text: str) -> str:
+    """mutmut's output without its progress frames (each a '\\r'-separated spinner line)."""
+    return "\n".join(line for line in text.splitlines() if line.strip() and line[0] not in SPINNER)
+
+
 def status() -> int:
     """Scores so far of every mutation run still going (read from its worktree's .meta files)."""
     runs = sorted(Path(tempfile.gettempdir()).glob(f"{PREFIX}*/mut/mutants"))
     if not runs:
         print("no mutation run is going")
     for m in runs:
-        print(m.parent)
-        for f, c in scores([json.loads(p.read_text()) for p in m.rglob("*.meta")]).items():
+        got = scores([json.loads(p.read_text()) for p in m.rglob("*.meta")])
+        total = m.parent / TOTAL
+        print(f"{m.parent}: {progress(got, int(total.read_text()) if total.is_file() else None)}")
+        for f, c in got.items():
             print(f"  {f:28} {c['score']}  " + " ".join(f"{k}={v}" for k, v in c.items()
                                                         if k != "score"))
     return 0
 
 
+def plant_verdict(clean: int, bugged: int) -> tuple[str, int]:
+    """(word, exit) from pytest's exit on HEAD and with the plant. Caught only when the tests
+    pass without the plant: a test already red (a cold cache, an ordering bug) proves nothing
+    (retro 5.7b-2c: a plant said 'caught' on a test that failed on its own)."""
+    if clean:
+        return f"ERROR: the tests fail without the plant (pytest exit {clean})", 2
+    return {1: ("caught", 0), 0: ("MISSED: every selected test passed", 1)}.get(
+        bugged, (f"ERROR: pytest exit {bugged}", 2))
+
+
 def plant(file: str, old: str, new: str, tests: list[str], keyword: str | None) -> int:
-    """0 when a selected test fails on the planted bug, 1 when every test passes, 2 when pytest
-    errors or selects nothing (an error is not a catch)."""
+    """0 when the selected tests pass on HEAD and one fails on the planted bug, 1 when every
+    test passes with it, 2 otherwise (an error is not a catch)."""
+    if dropped := [t for t in tests if t not in runnable(tests)]:
+        print("left out (the gate never runs them: they read the sources mutmut rewrites): "
+              + " ".join(dropped))
+    if not (tests := runnable(tests)):
+        print(f"plant in {file}: ERROR: no --tests the gate runs; put the check in another file")
+        return 2
+    cmd = [str(ROOT / ".venv/bin/python"), "-m", "pytest", "-q", "-x", "-p", "no:warnings",
+           *tests, *(["-k", keyword] if keyword else [])]
     with worktree() as wt:
+        clean = subprocess.run(cmd, cwd=wt, env={**os.environ, **ENV}, capture_output=True,
+                               text=True)
         src = wt / file
         src.write_text(planted(src.read_text(), old, new))
-        run = subprocess.run([str(ROOT / ".venv/bin/python"), "-m", "pytest", "-q", "-x",
-                              "-p", "no:warnings", *tests, *(["-k", keyword] if keyword else [])],
-                             cwd=wt, env={**os.environ, **ENV}, capture_output=True, text=True)
+        run = subprocess.run(cmd, cwd=wt, env={**os.environ, **ENV}, capture_output=True,
+                             text=True) if not clean.returncode else clean
     print("\n".join(run.stdout.strip().splitlines()[-3:]))
-    verdict = {1: ("caught", 0), 0: ("MISSED: every selected test passed", 1)}
-    word, code = verdict.get(run.returncode, (f"ERROR: pytest exit {run.returncode}", 2))
+    word, code = plant_verdict(clean.returncode, run.returncode)
     print(f"plant in {file}: {word}")
     return code
 
@@ -432,19 +478,37 @@ def main() -> int:
                                if m[0] in lines and _function(k) in args.functions}
             globs = sorted(placed) or ["no_such_mutant"]
             print(f"{len(placed)} mutants on lines changed since {args.lines}")
+            (wt / TOTAL).write_text(str(len(placed)))   # --status: done N of this
+        # into a log file, mutmut's spinner frames ('\r') are megabytes: keep its other lines
+        log = not sys.stdout.isatty()
         run = subprocess.run([str(ROOT / ".venv/bin/mutmut"), "run", *globs], cwd=wt,
-                             env={**os.environ, **ENV})
+                             env={**os.environ, **ENV}, capture_output=log, text=True)
+        if log:
+            print(without_spinner(run.stdout + run.stderr), flush=True)
         metas = [json.loads(p.read_text()) for p in (wt / "mutants").rglob("*.meta")]
         got = scores(metas)
         if args.lines and run.returncode:   # never '0 survivors' from a run that never ran
             print(f"MUTMUT FAILED (exit {run.returncode}): no survivor count; see its output above")
         elif args.lines:   # every mutant run is on a changed line: each survivor fails the gate
-            on = sorted(k for m in metas for k, c in m.get("exit_code_by_key", {}).items()
-                        if c in SURVIVED | NO_TESTS and k in placed)
-            print(f"survivors on lines changed since {args.lines}: {len(on)}")
+            codes = {k: c for m in metas for k, c in m.get("exit_code_by_key", {}).items()
+                     if c in SURVIVED | NO_TESTS and k in placed}
+            on = sorted(codes)
+            left = {}
+            for k in on:
+                f, _, old, new = placed[k]
+                kind = "survived" if codes[k] in SURVIVED else "no_tests"
+                left.setdefault(f"{f}::{_function(k)}", []).append((kind, old, new))
+            gate = json.loads(path.read_text()) if (path := ROOT / GATE).is_file() else {}
+            bad = {key: unnamed(gate.get(key, {}), ms) for key, ms in left.items()}
+            unexplained = sum(map(len, bad.values()))
+            print(f"survivors on lines changed since {args.lines}: {len(on)}, "
+                  f"{len(on) - unexplained} of them named equivalents in {GATE}")
             for k in on:   # the changed line itself: no `mutmut show` needed to judge it
                 f, n, old, new = placed[k]
-                print(f"  {f}:{n}  {k}\n    - {old}\n    + {new}")
+                kind = "survived" if codes[k] in SURVIVED else "no_tests"
+                named = (kind, old, new) not in bad[f"{f}::{_function(k)}"]
+                print(f"  {f}:{n}  {k}{'  (named equivalent)' if named else ''}"
+                      f"\n    - {old}\n    + {new}")
             if args.record:
                 record(changed, metas, placed, args.functions)
     got = {f: got.get(f, {"score": None}) for f in args.functions}
@@ -456,7 +520,7 @@ def main() -> int:
         Path(args.json).write_text(json.dumps({"head": head, "tests": args.tests, "scores": got},
                                               indent=1))
     if args.lines:
-        return 1 if run.returncode or on else 0
+        return 1 if run.returncode or unexplained else 0
     return 1 if run.returncode or any(c.get("survived") or c.get("no_tests")
                                       for c in got.values()) else 0
 

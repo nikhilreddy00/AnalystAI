@@ -1,4 +1,14 @@
 {
+ "agents/targeted_analysis_agent.py::_also_named": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "f\"{k.written(_format_value(v.value, kind, currency if (kind == 'currency') or True else None))}.\")",
+    "old": "f\"{k.written(_format_value(v.value, kind, currency if kind == 'currency' else None))}.\")",
+    "reason": "_format_value ignores the currency for percent and count, and no pack's additive KPI is a number"
+   }
+  ]
+ },
  "domain_pack/columns.py::pack_columns": {
   "equivalents": [],
   "hash": "f9ad34f904bfc0da"
@@ -49,5 +59,25 @@
  "domain_pack/spell.py::window_words": {
   "equivalents": [],
   "hash": "3a96e0d6c123e360"
+ },
+ "domain_pack/story.py::_ledger_story": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "terms.append(f\"{'+' if rest >= 0 else '−'} {words.unsplit} {say(stock, abs(rest))}\")",
+    "old": "terms.append(f\"{'+' if rest > 0 else '−'} {words.unsplit} {say(stock, abs(rest))}\")",
+    "reason": "the line runs only when abs(rest) >= 0.005, so rest is never 0 there"
+   }
+  ]
+ },
+ "domain_pack/story.py::unit_said": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "said = re.sub(r\"\\brun rate\\b\", \"XXXX\", text[start:end] + (\" \" + after.group(1) if after else \"\"))",
+    "old": "said = re.sub(r\"\\brun rate\\b\", \"\", text[start:end] + (\" \" + after.group(1) if after else \"\"))",
+    "reason": "the \\b anchors leave a non-word character or a string edge on both sides, so no unit word's boundary changes"
+   }
+  ]
  }
 }

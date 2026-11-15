@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 
 import pandas as pd
@@ -52,7 +53,9 @@ def _built_once(name: str, seed: int = 1, transform: str = ""):
     s = AnalysisSession(session_id="oracle", data_contract=contract, task_plan=AnalysisTask(
         raw_query="o", analysis_types=["eda"], target_metrics=[]))
     s.__dict__["_df_parquet"] = _parquet(df)
-    clean, audit = asyncio.run(run_cleaning_agent(s))
+    # its own thread: asyncio.run refuses a running loop, and an async test may be first here
+    with ThreadPoolExecutor(1) as one:
+        clean, audit = one.submit(asyncio.run, run_cleaning_agent(s)).result()
     s.cleaning_audit = audit
     s.__dict__["_df_parquet"] = _parquet(clean)
     return s, clean, contract, truth
@@ -122,6 +125,13 @@ def close(got: dict | float, want: dict | float, tol: float = 0.01) -> bool:
 
 
 # ── Truth: the loan tape (the clean export) ───────────────────────────────────────────────────
+
+async def test_an_async_test_builds_a_dataset_on_a_cold_cache():
+    """Retro 5.7b-2c: the builder ran cleaning with asyncio.run, so an async test reaching it
+    passed on a warm cache and failed alone (and under the mutation gate)."""
+    s, *_ = _built_once.__wrapped__("loan_tape")
+    assert s.cleaning_audit is not None
+
 
 def test_loan_tape_tiles_are_the_truth():
     t, truth = tiles("loan_tape"), _built("loan_tape")[3]
