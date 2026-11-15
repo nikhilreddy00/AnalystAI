@@ -86,6 +86,42 @@ def test_the_judges_prompt_and_phrases_say_no_domains_words():
     assert not (acronyms | nouns) & words, sorted((acronyms | nouns) & words)
 
 
+def test_with_a_judge_that_flags_nothing_every_overreach_sentence_passes_untouched():
+    """D1-09, PR1-08 (C8), the behaviour guard: no regex judges a cause or a verdict anywhere.
+    With the judge flagging nothing, every 'yes' sentence of the tuning set passes the insight
+    report, the quality checks and a drill-down answer unchanged, but for the benchmark phrases;
+    a regex re-added under any name fails here (sentences with a number are left out: grounding
+    reads those)."""
+    import asyncio
+
+    from agents.drill_down_agent import checked_answer
+    from agents.insight_agent import _assemble, build_context
+    from agents.prose_judge import phrase_hit
+    from agents.quality_agent import check_claims
+    from evals.run import EVALS_DIR, insight_bundle
+    from orchestrator.state import Claim, ExecutiveSummary, InsightReport
+    from tests.test_retail_pack import _audited
+    case = yaml.safe_load(next((EVALS_DIR / "cases" / "insight").glob("ins-01*.yaml")).read_text())
+    session = asyncio.run(insight_bundle(case))[0]
+    ctx, ev = build_context(session), "corr:revenue__marketing_spend"
+    retail = _audited("retail_lines")   # a strong pack match: drill-down checks run
+    said = [x["text"] for x in yaml.safe_load((SETS / "tuning.yaml").read_text())
+            if x["label"] and not any(ch.isdigit() for ch in x["text"])]
+    assert len(said) >= 15
+    for s in said:
+        hit = phrase_hit(s)
+        # insight's phrase hits come through the judge's own result (flagged), here: nothing
+        report = _assemble(session, ctx, {"headline": {"text": s, "evidence": [ev]}}, set())
+        assert report.executive_view.headline == s, s
+        session.insight_report = InsightReport(
+            executive_summary=s, technical_findings=[], recommended_actions=[], anomaly_alerts=[],
+            proactive_questions=[], methodology_notes="",
+            executive_view=ExecutiveSummary(headline=s, headline_evidence_ids=[ev],
+                                            findings=[Claim(text=s, evidence_ids=[ev])]))
+        assert bool(check_claims(session, session.insight_report, ctx, set())) is hit, s
+        assert (checked_answer(s, retail, [s], set()) == s) is not hit, s
+
+
 def test_the_held_out_set_is_balanced_and_shares_no_sentence_with_tuning():
     tune = yaml.safe_load((SETS / "tuning.yaml").read_text())
     held = yaml.safe_load((SETS / "held_out.yaml").read_text())

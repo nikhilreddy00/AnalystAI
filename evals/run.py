@@ -784,6 +784,17 @@ def _insight_case(cid: str) -> dict:
     return _INSIGHT_CASES[cid]
 
 QUALITY_CHECKS_ONLY = {"on": False}   # --checks-only: the deterministic half, at $0
+# The paid quality report whose prose-judge replies --checks-only replays (ADR-0009, 5.7b-3):
+# the judge is a review's first call, so its reply is each run's first. Set after a paid run.
+QUALITY_JUDGE_REPORT: str | None = None
+
+
+def judge_replay(case: dict):
+    """The paid run's replies for this case in a RecordedClient: the $0 suite runs the prose judge
+    on the production path. A case that run didn't cover fails loudly (KeyError), never passes."""
+    from llm.client import RecordedClient
+    runs = json.loads((EVALS_DIR / "reports" / QUALITY_JUDGE_REPORT).read_text())["runs"][case["id"]]
+    return RecordedClient([r["text"] for r in runs[0].get("replies", [])])
 
 
 async def run_quality_case(case: dict) -> dict:
@@ -796,9 +807,11 @@ async def run_quality_case(case: dict) -> dict:
     assert [c["text"] for c in report_claims(session.insight_report)] == \
         [c["text"] for c in insight_claims(report)], case["id"]
     review, error = None, None
+    checks_only = QUALITY_CHECKS_ONLY["on"]
     try:
-        review = (await run_quality_check(session, get_client(), critic=not QUALITY_CHECKS_ONLY["on"],
-                                         past=past or None)
+        llm = judge_replay(case) if checks_only and QUALITY_JUDGE_REPORT else get_client()
+        review = (await run_quality_check(session, llm, critic=not checks_only, past=past or None,
+                                          judge=not checks_only or bool(QUALITY_JUDGE_REPORT))
                   ).model_dump(mode="json")
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"

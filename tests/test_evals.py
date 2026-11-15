@@ -373,7 +373,7 @@ VIZ = load_cases("visualization", None)
 
 
 def test_viz_case_mix_and_labels():
-    assert len(VIZ) == 31   # 5.7 insurance: +2, hr: +2
+    assert len(VIZ) == 33   # 5.7 insurance: +2, hr: +2; 5.7b-3: the SaaS bridge and NRR line
     assert sum(c["id"].endswith("holdout") for c in VIZ) == 5
     assert {c["category"] for c in VIZ} == {"finding", "profile", "targeted"}
     for c in VIZ:

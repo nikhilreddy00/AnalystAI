@@ -396,20 +396,6 @@ def test_a_finished_datasets_pct_header_keeps_its_scale():
     assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["discount_pct"]) / months)
 
 
-def test_a_benchmark_verdict_after_the_metric_is_never_said():
-    """Audit pass 2 (a stored ins-04 report): 'net revenue retention of 106.5% — healthy' passed
-    the never_say pattern, which wanted 'is/looks' before the verdict."""
-    import re
-    pack = dp.pack_for("saas")
-    bench = next(n for n in pack.never_say if "benchmark" in n.reason)
-    for t in ("with net revenue retention of 106.5% — healthy, but below last year",
-              "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is best-in-class"):
-        assert re.search(bench.pattern, t, re.I), t
-    for t in ("Net revenue retention was 91.1% over the 12 months to 31 Oct 2026.",
-              "Logo churn rose to 18.8% from 13.7%."):
-        assert not re.search(bench.pattern, t, re.I), t
-
-
 def test_on_short_data_the_bridge_still_adds_up_and_says_its_span():
     """Fix-diff review of audit 1: on 7 months of data the cohort opened before the data (\$0) and
     the bridge was off by the opening MRR."""
@@ -576,81 +562,6 @@ def test_pass_3_windows_spans_and_the_list_bridge():
     assert tail == pytest.approx(t["mrr"])
 
 
-def test_a_neutral_strong_or_weak_is_no_verdict():
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    for t in ("Logo churn rose to 20.1% while new MRR showed strong growth.",
-              "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
-              "Logo churn of 18.8% is strong evidence of a problem."):
-        assert not re.search(bench.pattern, t, re.I), t
-    for t in ("gross revenue retention remains strong at 99.3%.",
-              "with net revenue retention of 106.5% — healthy, but below last year"):
-        assert re.search(bench.pattern, t, re.I), t
-
-
-# audit pass 5's own sentences (a reviewer wrote them; "NRR had a strong quarter" is ambiguous
-# and left out) plus the real report sentences of passes 2-4
-_V = ["Strong NRR of 106.5% shows customers expand.", "Weak retention in SMB drags MRR.",
- "Poor retention among monthly plans.", "Excellent net revenue retention of 112%.",
- "NRR remained strong year over year.", "Retention was strong month over month.",
- "Gross revenue retention is above the benchmark.", "NRR of 106.5% is well above the SMB median.",
-
- "Retention is solid at 95%.", "Churn is low for a SaaS business.", "NRR is robust.",
- "Retention is a strong point for the business.", "Churn is a weak spot.",
- "Retention is strong, at 99.3%.", "GRR is weak; expansion is fine.",
- "Churn of 3% is poor by SaaS standards.", "NRR above 100% signals a healthy business.",
- "A best-in-class 120% NRR.", "Logo churn is excellent at 2%.", "Net revenue retention is world-class.",
- "NRR is top-quartile.", "Retention compares well with SaaS peers."]
-_N = ["Churn was concentrated in poor-fit accounts.", "Retention data is poor for 2024 (few rows).",
- "Churn rose despite strong performance in Enterprise.", "NRR fell to 91.1% after a strong start to 2025.",
- "Churn among healthy accounts was 2%.", "Logo churn rose amid strong headwinds in SMB.",
- "Retention shows a strong seasonal pattern.", "Churn shows a strong upward trend.",
- "NRR saw a strong rebound in Q3.", "Churn hit weak cohorts hardest.", "Churn was 4% in weak markets.",
- "Retention fell; strong customers stayed.", "NRR reached 106.5%, driven by strong upsell.",
- "Logo churn of 18.8% coincided with strong new MRR.", "Churn spiked after a poor product release.",
- "GRR was 99.3% with strong expansion.", "Churn rose 3 points; a strong correlation with price.",
- "Retention by plan: Pro 95%, Basic 80%.", "Churn was highest among poor payers.",
- "NRR was 106.5%; healthy is not a grade this report gives.", "Churn fell after strong onboarding.",
- "Retention improved with strong adoption of the new tier."]
-VERDICTS = [*_V, "Logo churn is below the industry benchmark at 1.8% a month.",
-            "GRR sits below median for mid-market SaaS.", "Retention is weaker than the SaaS median.", "NRR is healthy.", "Churn is weak at 4%.", "Retention, at 95.0% GRR, is solid.",
-            "Overall, churn was poor.", "Retention looks robust, at 112%.", "NRR (as of October 2026) is strong.", "NRR, as of October, at 106.5%, is strong.",
-            "Retention, hence, is robust.", "Net dollar retention, so far, seems strong.", "NRR, as of October 2026, is strong.", "Retention, as expected, remains healthy.",
-            "Logo churn, yet again, was poor.", "NRR, so far this year, is healthy.",
-            "Churn, because of annual contracts, is weak.", "NRR, thus far, remains robust.", "Net revenue retention, at 106.5% over the 12 months to 31 Oct 2026, is strong.",
-            "NRR, which reached 104%, remains healthy.", "GRR of 91.2%, up from 89%, is solid.",
-            "Retention in Enterprise, SMB and Mid-Market is strong.", "Churn, at 2.1% a month, is relatively strong.", "with net revenue retention of 106.5% — healthy, but below", "GRR remains strong at 99.3%.",
-            "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is healthy and improving."]
-NEUTRAL = [*_N, "Retention in EMEA (where demand was solid) reached 96.4%.",
-           "Churn rose in March after an outage, when support response times were weak.",
-           "Churn rose when support was weak.",
-           "Churn was 1.9%, while expansion from top-quartile accounts drove NRR to 107%.", "NRR rose 3.5 points as upsell activity was strong in Q3.",
-           "Churn fell because onboarding was strong.", "Retention improved since adoption was healthy.",
-           "Churn rose in SMB so the pipeline is weak.", "NRR fell with higher churn, so the team is strong.",
-           "Churn rose with lower retention, as onboarding was weak.",
-           "Retention fell with more churn, since adoption was poor.",
-           "MRR rose despite churn, as expansion was strong.", "Churn dropped in Q3, so the team is strong.",
-           "Churn was flat, so the pipeline remains healthy.", "Retention held, as adoption was strong.", "Logo churn rose to 20.1% while new MRR showed strong growth.",
-           "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
-           "Logo churn of 18.8% is strong evidence of a problem.",
-           "Net revenue retention was 91.1% over the 12 months to 31 Oct 2026."]
-
-
-@pytest.mark.parametrize("t", VERDICTS)
-def test_every_benchmark_verdict_is_never_said(t):
-    """Audit pass 4: the pass-3 narrowing let 11 of 21 verdicts through."""
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert re.search(bench.pattern, t, re.I)
-
-
-@pytest.mark.parametrize("t", NEUTRAL)
-def test_a_neutral_sentence_is_no_verdict(t):
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert not re.search(bench.pattern, t, re.I)
-
-
 @pytest.mark.parametrize("header, vals, want", [("rebate_pct", [10, 12.5, 15, 7.5], [90, 87.5, 85, 92.5]),
                                                 ("rebate", [1, 1, 1, 20], [99, 99, 99, 80]),
                                                 ("rebate", [0.2, 0.2, 0.1], [80, 80, 90])])
@@ -695,17 +606,6 @@ def test_pass_5_minors():
     assert line.startswith(f"MRR bridge, {dp.window_words(pack, df, roles, 'new_mrr')}:")
 
 
-@pytest.mark.parametrize("t, verdict", [
-    ("Churn was poor-fit driven.", False), ("Retention figures are poor for 2024 (few rows).", False),
-    ("Churn coverage is weak before 2025.", False), ("The churn analysis is solid.", False),
-    ("Retention is still quite solid.", True), ("Churn is low compared with industry benchmarks.", True),
-    ("NRR is impressive at 115%.", True)])
-def test_pass_6_sentences(t, verdict):
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert bool(re.search(bench.pattern, t, re.I)) == verdict
-
-
 def test_short_snapshots_bridge_months_are_its_moves():
     """Pass 6: on Aug-Oct snapshots the bridge said '3 months' (2 months of moves)."""
     df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
@@ -714,15 +614,6 @@ def test_short_snapshots_bridge_months_are_its_moves():
     assert dp.window_span(pack, short, roles)["moves"] == "2 months"   # the prose says it as the bridge does
     assert next(ln for ln in dp.spell_story(pack, short, roles) if ln.startswith("MRR bridge")).startswith(
         "MRR bridge, 2 months to 31 Oct 2026: $538,652.55 on 31 Aug 2026")
-
-
-@pytest.mark.parametrize("t", ["NRR was 104%; expansion was strong in Enterprise.",
-                               "Retention fell to 88% while pipeline is healthy.",
-                               "Churn in SMB, where new bookings are strong, rose to 4%."])
-def test_a_verdict_in_another_clause_is_not_the_metrics(t):
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert not re.search(bench.pattern, t, re.I)
 
 
 def test_one_month_of_moves_is_unknown_never_zero():

@@ -130,7 +130,6 @@ text:
   rows_brief: "Money figures and balances use rows of kind 'on_book' (posted transactions, accounts on the books); reversed, reversal, pending, declined and closed-account rows are left out. A balance is a level: per period take each account's latest row of ANY kind first (a loan charged off this month is out, never its last month's balance), then keep kind 'on_book', and sum across accounts, never across dates. An average per account divides by the accounts left after that step: a paid-off, charged-off or closed account is not in the denominator."
   unsupported_alternatives: "I can answer with what the data has: balances, delinquency or transaction flows by product, branch or month. Which would help?"
   kpis_default: its balance and transaction columns
-  causal_removed: "{n} sentence(s) saying a rate change, campaign or offer caused a change were removed: without a control group that can't be shown."
   refunded_rule: reversed (left out)
   cancel_rule: pending, declined or closed (left out)
   non_product_rule: a reversal entry (left out)
@@ -273,9 +272,6 @@ caveats:
   non_product_excluded: "{n} reversal entries are left out of money figures."
   level_as_of: "Balances are as of {date}: each account's latest snapshot, added across accounts, never across dates."
 
-causal_triggers: [rate cut, rate cuts, rate hike, rate hikes, rate increase, rate increases,
-                  campaign, campaigns, promotion, promotions, offer, offers, fee waiver,
-                  fee waivers, marketing, teaser rate]
 
 first_questions:
   - {q: "How has the total balance moved month over month, and against the same month last year?", needs: [total_balance, year]}

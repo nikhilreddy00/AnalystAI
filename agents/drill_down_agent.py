@@ -18,11 +18,11 @@ from domain_pack import entity_rows, pack_for, rows_for
 from guardrails import (
     _SENTENCE_RE,
     UNTRUSTED_NOTE,
-    claim_causal_overreach,
     delimit_untrusted,
     ungrounded_numbers,
     without_dates,
 )
+from agents import prose_judge
 from agents.visualization_agent import _why, build_context, finalize_charts
 from llm.client import get_client, trace_verdict
 from orchestrator.state import (
@@ -161,10 +161,16 @@ Answer in JSON as specified.
                 "I had trouble formatting an answer. Try rephrasing your question.",
             ) from exc
 
-    answer = checked_answer(str(payload.get("answer_text") or "").strip(), session,
+    text = str(payload.get("answer_text") or "").strip()
+    # a cause or a benchmark verdict in the answer (ADR-0009), judged where the checks run
+    said = [s for s in _SENTENCE_RE.split(text) if s.strip()] \
+        if contract is not None and pack_for(contract.domain) else []
+    got = await prose_judge.flagged(said, get_client()) if said else set()
+    answer = checked_answer(text, session,
                             [report.executive_summary, report.technical_findings,
                              json.dumps(findings.eda_summary, default=str) if findings else "",
-                             contract.row_count if contract else 0])
+                             contract.row_count if contract else 0],
+                            None if got is None else {said[i] for i in got})
     chart_configs: list[ChartConfig] = []
     spec = payload.get("chart_spec")
     if spec and isinstance(spec, dict):
@@ -214,28 +220,31 @@ Answer in JSON as specified.
     )
 
 
-def checked_answer(answer: str, session: AnalysisSession, shown: list) -> str:
+def checked_answer(answer: str, session: AnalysisSession, shown: list,
+                   overreach: set[str] | None = frozenset()) -> str:
     """The follow-up answer, sentence by sentence, through the report's own checks (Phase 5.7):
-    a number not in what the model was shown, or a promotion credited with a change (a domain
-    pack's causal words, no experiment cited), is removed and counted. Nothing left: a fixed
-    reply, never an unchecked one."""
+    a number not in what the model was shown, or a sentence the prose judge flagged as a cause or
+    a benchmark verdict (`overreach`; None when the judge failed: only the benchmark phrases are
+    read, and the answer says so), is removed and counted. Nothing left: a fixed reply, never an
+    unchecked one."""
     contract = session.data_contract
-    # any pack match: a weak one only hedges defaults, but an ungrounded number or a promotion
-    # credited with a change is wrong whatever the confidence. No pack: answers as before.
+    # any pack match: a weak one only hedges defaults, but an ungrounded number or a cause the
+    # data can't show is wrong whatever the confidence. No pack: answers as before.
     pack = pack_for(contract.domain) if contract is not None else None
     if pack is None:
         return answer
-    triggers = pack.causal_triggers
     has_dates = bool(contract and contract.date_columns)
     kept, dropped = [], 0
     for s in (x for x in _SENTENCE_RE.split(answer) if x.strip()):
-        if ungrounded_numbers(without_dates(s, has_dates), shown) or (
-                triggers and claim_causal_overreach(s, [], triggers)):
+        if ungrounded_numbers(without_dates(s, has_dates), shown) or prose_judge.phrase_hit(s) \
+                or (overreach is not None and s in overreach):
             dropped += 1
         else:
             kept.append(s)
     if dropped:
         trace_verdict("drill_down", "v0", "sentence_removed")
+    if overreach is None and kept:
+        kept.append("(Its wording could not be checked for causes the data can't show.)")
     if not kept:
         return ("I couldn't answer that from the analysis already done without stating numbers "
                 "it doesn't hold. Ask it as a new question and I'll compute it.") if dropped else ""

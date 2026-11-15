@@ -29,7 +29,7 @@ CONDITIONS = ("read_as_domain", "read_as_domain_weak", "repeated_rows_kept", "pa
 RowKind = Literal["sale", "return", "refunded", "cancel", "test", "non_product"]
 # A pack's own sentences; each has a domain-neutral default (TEXT_DEFAULTS).
 TextKey = Literal["rows_brief", "grain_line", "unsupported_alternatives", "kpis_default",
-                  "causal_removed", "return_rule", "refunded_rule", "cancel_rule",
+                  "free_text_removed", "return_rule", "refunded_rule", "cancel_rule",
                   "non_product_rule", "money_rows_note", "people_nouns"]
 TEXT_DEFAULTS = {   # fit every domain: a pack says its own words (tests/test_pseudo_pack.py)
     "rows_brief": "Figures use the rows these rules keep; net figures also the netted rows.",
@@ -37,8 +37,9 @@ TEXT_DEFAULTS = {   # fit every domain: a pack says its own words (tests/test_ps
                   "rows; an average per record divides by records.",
     "unsupported_alternatives": "I can answer with what the data has. Which would help?",
     "kpis_default": "its main columns",
-    "causal_removed": "{n} sentence(s) saying an action caused a change were removed: without a "
-                      "control group that can't be shown.",
+    # the prose judge's removals (ADR-0009): a cause or a benchmark verdict in free text
+    "free_text_removed": "{n} sentence(s) stating a cause or grading a result against a norm were "
+                         "removed: this data shows neither a controlled test nor an outside benchmark.",
     "return_rule": "netted (in net figures)",
     "refunded_rule": "reversed (left out)",
     "cancel_rule": "excluded (left out)",
@@ -437,7 +438,6 @@ class Pack(_Strict):
     consumed: list[str] = Field(default_factory=list)   # "sales tax": uses its words, means none
     unsupported: dict[str, str] = Field(default_factory=dict)      # concept → what it needs
     caveats: dict[str, str] = Field(default_factory=dict)          # condition → text
-    causal_triggers: list[str] = Field(default_factory=list)
     never_say: list[NeverSay] = Field(default_factory=list)
     # On patient data: a reported count of 1–10 of these (patients, deaths …) is a small cell
     small_cell_nouns: list[str] = Field(default_factory=list)

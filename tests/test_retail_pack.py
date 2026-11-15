@@ -874,27 +874,14 @@ def test_must_say_lines_reach_the_summary_alerts_and_the_analyst_view():
     assert not any(a.title == "How these numbers are counted" for a in _alerts(other)[0])
 
 
-@pytest.mark.parametrize("sentence, flagged", [
-    ("The discount drove a 12% rise in sales.", True), ("Markdowns boosted unit sales.", True),
-    ("Higher discounts lifted order counts.", True),
-    ("Discount levels were flat while seasonality drove the rise.", False),
-    ("Sales rose 12%; the promotion may have contributed.", False),
-    ("The campaign did not cause the increase.", False),
-    ("Net sales grew 8% year over year, driven by the North region.", False),
-    ("Readmissions fell, driven by the discharge program.", False),   # another domain's words
-])
-def test_promotions_are_not_credited_with_a_change_without_a_control(sentence, flagged):
-    from guardrails import claim_causal_overreach
-    assert bool(claim_causal_overreach(sentence, ["segment"], RETAIL.causal_triggers)) is flagged
-    assert claim_causal_overreach(sentence, ["test"], RETAIL.causal_triggers) is None   # an A/B test
-
-
 def test_a_drill_down_answer_keeps_only_what_the_analysis_supports():
+    """An ungrounded number, and a sentence the prose judge flagged (a cause: ADR-0009), are
+    removed and counted."""
     from agents.drill_down_agent import checked_answer
     s = _audited("retail_lines")
     shown = ["Net sales were $310,635.46 over 2,272 orders."]
     out = checked_answer("Net sales were $310,635.46. The discount drove that. It was $999,999.",
-                         s, shown)
+                         s, shown, {"The discount drove that."})
     assert out.startswith("Net sales were $310,635.46.") and "discount" not in out
     assert "2 sentence(s)" in out
     assert checked_answer("It was $999,999.", s, shown).startswith("I couldn't answer")
@@ -1306,58 +1293,6 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     # with the pack's rows and periods (paid intake gate: 'net sales' on store_weeks' Net Sales)
     assert _pack_params({}, c, "What were gross sales by location?") == {"kpi": "gross_sales"}
     assert _pack_params({}, c, "How much sales tax by location?") == {}
-
-
-@pytest.mark.parametrize("sentence, flagged", [
-    ("November sales rose 40%, driven by the holiday season and Black Friday promotions.", True),
-    ("The markdown increased units sold by 30%.", True),
-    ("Sales lifted after the promo, though without a control group the effect is unclear.", False),
-    ("Units increased 5% in stores without a promotion.", False),
-    ("The Black Friday promotion doubled weekend traffic.", True),
-    # diff review: a trigger inside a modifier is a description, not a cause
-    ("Sales in the promotion weeks grew 40% over the other weeks.", False),
-    ("Units sold at a discount increased from 120 to 180.", False),
-    ("The campaign weeks grew 8% but non-campaign weeks grew 10%.", False),
-    # audit pass 2 (M4): the trigger word's own change is a fact, not a cause (no object)
-    ("Discounts increased 15% year over year, to $4,210.", False),
-    ("Markdowns doubled in November.", False),
-    ("Total discount increased 12%.", False),
-    ("Promotions grew from 3 to 7 per month.", False),
-    # diff review 3 (M5): a noun phrase may open with a year, a digit, this or last ...
-    ("Promotions increased year-end sales by 12%.", True),
-    ("The Black Friday promotion increased this quarter's revenue.", True),
-    ("Discounts increased 2025 holiday sales.", True),
-    ("Promotions increased last-minute orders.", True),
-    # ... and an adverb, 'as' or 'while' ends the verb phrase: the word's own change
-    ("Promotions increased markedly in Q4.", False),
-    ("Coupons increased as a share of orders.", False),
-    ("Discounts increased while sales were flat.", False),
-    ("Discounts increased $500 in March.", False),
-    # audit pass 3 (M5): a time phrase after the verb is the word's own change ...
-    ("Discounts increased year over year.", False),
-    ("Promotions doubled last quarter.", False),
-    ("Markdowns grew this year, to 8% of gross sales.", False),
-    # ... (M6) and these phrasings give the cause
-    ("Net sales rose 20% due to the spring promotion.", True),
-    ("Sales rose 20% as a result of the discount.", True),
-    ("The November promotion was responsible for the spike in units.", True),
-    ("The coupon campaign contributed to the 15% rise in orders.", True),
-    ("Discounting raised order volume in March.", True),
-    # audit pass 4 (m4, m5): a share is no cause; 'non-discounted' is not a discount
-    ("Discounted orders were responsible for 30% of net sales in Q4.", False),
-    ("Coupon orders contributed to 12% of December net sales.", False),
-    ("Net sales rose 8% in Q4, driven by full-price demand for non-discounted lines.", False),
-])
-def test_promotions_given_credit_anywhere_in_the_claim(sentence, flagged):
-    from guardrails import claim_causal_overreach
-    assert bool(claim_causal_overreach(sentence, ["segment"], RETAIL.causal_triggers)) is flagged
-
-
-@pytest.mark.parametrize("sentence", ["Fuel cost per km is higher on long routes (r = 0.62).",
-                                      "Diesel fuel spend tracks distance closely."])
-def test_fuel_the_noun_is_no_cause(sentence):
-    from guardrails import claim_causal_overreach
-    assert claim_causal_overreach(sentence, ["correlation"]) is None
 
 
 def test_profit_claims_need_a_cost_or_profit_column():
