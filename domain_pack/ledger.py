@@ -10,6 +10,10 @@ from .spell import SpellView, _month_ends, term_rows
 
 MOVES = ("new", "expansion", "contraction", "churn", "reactivation")
 TRANSFERS = ("transfer_in", "transfer_out")   # a move between parts: nothing in the whole
+# THE bridge's order and signs (GLOSSARY Bridge): rises, then falls; read by the story and the chart
+BRIDGE = ("new", "expansion", "reactivation", "contraction", "churn", *TRANSFERS)
+SIGN = {"new": 1, "expansion": 1, "reactivation": 1, "contraction": -1, "churn": -1,
+        "transfer_in": 1, "transfer_out": -1}
 IN, GROUP = "__in", "__group"   # a ledger line's part: in the filter's part, its `by` group
 
 

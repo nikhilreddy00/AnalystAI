@@ -1021,3 +1021,88 @@ def test_billings_names_the_invoice_dates_it_sums():
     raw["kpis"] = [{**k, "dated_by": "plan"} if k["name"] == "billings" else k for k in raw["kpis"]]
     with pytest.raises(ValueError, match="dated_by plan is not a date role"):
         dp.Pack.model_validate(raw)
+
+
+# ── 5.7b-3: the ledger charts (PR1-20) ────────────────────────────────────────────────────────
+
+def _bridge(name, filters=None):
+    from agents.visualization_agent import filtered_dashboard
+    from tests.test_dashboard_filters import _dashboard
+    clean, contract, charts, _, _ = _dashboard(name)
+    chart = next((c for c in charts if c.rationale and c.rationale.rule == "pack:bridge→bars"), None)
+    if chart is None or filters is None:
+        return clean, contract, chart, chart and chart.data, chart and chart.title
+    out = filtered_dashboard(clean, contract, charts, filters)
+    return clean, contract, chart, out["charts"][chart.id], out["titles"][chart.id]
+
+
+SMB = {"segment": {"kind": "equality", "value": "SMB"}}
+
+
+@pytest.mark.parametrize("name, filters", [("saas_mrr_snapshots", None), ("saas_mrr_snapshots", SMB),
+                                           ("saas_subscriptions", None), ("saas_subscriptions", SMB)])
+def test_each_bridge_bar_is_its_tile_and_the_bridge_adds_up(name, filters):
+    """PR1-20 (D2-09, C3): every bar is its KPI's own number on the same rows (a filter's part, its
+    cut), the falls negative, and opening + the bars = closing: in the whole and in a segment,
+    where a customer moving in or out of it is a bar of its own."""
+    clean, contract, chart, data, title = _bridge(name, filters)
+    pack = dp.pack_for("saas")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    part = clean if filters is None else clean[clean[roles["segment"]] == "SMB"]
+    at = {} if filters is None else {"full": clean, "cut": (roles["segment"],)}
+    tile = {k.label: (dp.SIGN[m], dp.measure(part, roles, pack, k.name, **at).value)
+            for m in dp.BRIDGE if (k := dp.ledger_kpi(pack, roles, "moves", m))}
+    bars = {d["step"]: d["value"] for d in data}
+    assert [s for s in bars if s in tile] == list(tile)   # every move the pack measures, in order
+    for step, (sign, v) in tile.items():
+        assert bars[step] == pytest.approx(sign * v, abs=0.005), step
+    opening = dp.measure(part, roles, pack, "opening_mrr", **at).value
+    closing = dp.measure(part, roles, pack, "mrr", **at).value
+    assert opening + sum(bars.values()) == pytest.approx(closing, abs=0.05)
+    assert title.endswith(f"→ ${closing:,.2f}")
+    if "Expansion MRR" in bars:   # the moves split every change: no rest bar
+        assert len(bars) == len(tile)
+    if filters is not None and name == "saas_mrr_snapshots":   # customers moved between segments
+        assert bars["MRR moved in"] > 0 > bars["MRR moved out"]
+
+
+def test_the_bridge_reads_the_tiles_window_and_a_date_range_moves_it():
+    """D1-14 (C2): the bridge's span is its moves' window words (the tiles'), and a dashboard date
+    range is the spell KPIs' window: the bridge and its title follow it."""
+    clean, contract, chart, data, title = _bridge("saas_mrr_snapshots")
+    pack = dp.pack_for("saas")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    assert f", {dp.window_words(pack, clean, roles, 'new_mrr')}:" in title
+    h1 = {roles["month"]: {"kind": "date_range", "from": "2026-01-01", "to": "2026-06-30"}}
+    *_, cut, cut_title = _bridge("saas_mrr_snapshots", h1)
+    assert "30 Jun 2026" in cut_title and cut != data
+    win = ("2026-01-01", "2026-06-30")
+    new = dp.measure(clean, roles, pack, "new_mrr", full=clean, window=win).value
+    assert {d["step"]: d["value"] for d in cut}["New MRR"] == pytest.approx(new, abs=0.005)
+
+
+def test_an_unavailable_move_draws_no_bridge_and_a_spell_without_moves_none():
+    """D1-40 (C5): a list without its end date can't count churn (Unavailable): no bridge, never a
+    $0 churn bar; HR's spells have no ledger moves: no bridge."""
+    from agents.visualization_agent import bridge_chart, build_context
+    clean, contract, chart, *_ = _bridge("saas_subscriptions")
+    assert chart is not None
+    roles = {r: c for r, c in contract.roles.items() if r != "ended_at"}
+    blind = contract.model_copy(update={"roles": roles})
+    assert bridge_chart(clean, build_context(clean, contract=blind)) is None
+    assert _bridge("hr_snapshots")[2] is None
+
+
+def test_the_ledger_charts_lint_clean_and_keep_their_colours_under_a_filter():
+    """finalize_charts keeps both (a rationale, no lint objection); each bridge step keeps its
+    colour whatever a filter does to the values (colours are by position in the frontend)."""
+    from agents.visualization_agent import _NEGATIVE, _POSITIVE, build_context, finalize_charts
+    from tests.test_dashboard_filters import _dashboard
+    clean, contract, charts, _, _ = _dashboard("saas_mrr_snapshots")
+    kept = finalize_charts(charts, build_context(clean, contract=contract))
+    assert "pack:bridge→bars" in [c.rationale.rule for c in kept]
+    assert "Net revenue retention over time" in [c.title for c in kept]
+    _, _, chart, data, _ = _bridge("saas_mrr_snapshots", SMB)
+    assert [d["step"] for d in data] == [d["step"] for d in chart.data]
+    falls = {"Contraction MRR", "Churned MRR", "MRR moved out"}
+    assert chart.colors == [_NEGATIVE if d["step"] in falls else _POSITIVE for d in chart.data]

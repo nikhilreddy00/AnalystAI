@@ -2774,7 +2774,8 @@ def _overview_asks(pack, roles: dict[str, str], columns) -> list[tuple[QuestionI
     if not can:
         return []
     group = next((roles[r] for r in pack.overview_groups if roles.get(r) in columns), None)
-    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=can[0].name, frequency="M"))]
+    series = [k for k in can if k.name in pack.overview_series] or can[:1]
+    asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=k.name, frequency="M")) for k in series]
     if group:
         asks += [(QuestionIntent.TOP_N, TargetedParams(kpi=k.name, segment_column=group,
                                                        group_by=group)) for k in can]
@@ -2791,7 +2792,9 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     pack = defaults_pack(ctx.contract)
     asks = _overview_asks(pack, ctx.contract.roles if ctx.contract else {}, df.columns) if pack else []
     out = []
-    for intent, params in asks:
+    for i, (intent, params) in enumerate(asks):
+        if intent != QuestionIntent.TIME_SERIES and i and asks[i - 1][0] == QuestionIntent.TIME_SERIES:
+            out += [c for c in [bridge_chart(df, ctx)] if c]   # after the lines, before the groups
         if ctx.window:   # a dashboard date range on spell data: the KPIs' window
             params = params.model_copy(update={"period_start": ctx.window[0], "period_end": ctx.window[1]})
         try:
@@ -2800,6 +2803,47 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
         except Exception:   # a chart the KPI code can't make is left out, never a failed run
             trace_verdict("visualization", "pack", "pack_chart_failed")
     return out
+
+
+# a bar per bridge step: rises green, falls red, the unsplit rest neutral (fixed per step, so a
+# filter that changes the values never moves a colour onto another step)
+_BRIDGE_COLORS = {1: _POSITIVE, -1: _NEGATIVE, 0: _NEUTRAL_TEAL}
+
+
+def bridge_chart(df: pd.DataFrame, ctx: VizContext) -> ChartConfig | None:
+    """The stock's bridge over the window (GLOSSARY Bridge): a bar per move the pack measures,
+    rises positive, falls negative, then the rest the moves don't split; the opening and closing
+    in the title. Every bar is its KPI's tile on the same rows, window and cut (domain_pack.bridge),
+    so the bars add up to closing − opening. None without a ledger, or with a step unavailable."""
+    from domain_pack import BRIDGE, SIGN, bridge, window, window_words
+    pack = defaults_pack(ctx.contract)
+    roles = {r: c for r, c in (ctx.contract.roles if ctx.contract else {}).items() if c in df.columns}
+    if not pack or not pack.spell:
+        return None
+    full = df if ctx.full is None else ctx.full
+    at = {"full": ctx.full, "window": ctx.window, "cut": tuple(ctx.cut or ())}
+    b = bridge(pack, df, roles, BRIDGE, **at)
+    w = window(pack, full, roles, ctx.window)
+    span = b and window_words(pack, full, roles, b.moves["new"][0].name, ctx.window)
+    if not b or not w or not span or w.moves_from >= w.as_of:
+        return None   # no month of moves: no bridge (as the story)
+    steps = [(k.label, SIGN[m] * v, SIGN[m]) for m, (k, v) in b.moves.items()]
+    if "expansion" not in b.moves:   # rises and falls of one entity, not split (as the story)
+        steps.append((pack.spell.words.unsplit[:1].upper() + pack.spell.words.unsplit[1:], b.rest, 0))
+    money = main_currency(df, roles)[1]
+    title = (f"{pack.spell.words.bridge.format(stock=b.stock.label)}, {span}: "
+             f"{_format_currency(b.start, money)} → {_format_currency(b.now, money)}")
+    chart = ChartConfig(
+        id=str(uuid.uuid4()), chart_type=ChartType.BAR, title=title,
+        data=[{"step": s, "value": round(float(v), 2) + 0.0} for s, v, _ in steps],   # never −0
+        x_key="step", y_keys=["value"], colors=[_BRIDGE_COLORS[d] for *_, d in steps],
+        x_label="Move", y_label=b.stock.label, show_legend=False, source_finding="pack",
+        layout_hint="full_width")
+    names = [b.opening.name, *(k.name for k, _ in b.moves.values()), b.stock.name]
+    return _why(chart, ctx, "pack:bridge→bars",
+                f"{b.stock.label} from {w.moves_from:%-d %b %Y} to {w.as_of:%-d %b %Y}: each bar "
+                "is its own tile, and the bars add up to the change between the two dates",
+                "step", b.stock.label, "sum", len(df), code=" + ".join(names))
 
 
 async def run_visualization_agent(session: AnalysisSession) -> list[ChartConfig]:

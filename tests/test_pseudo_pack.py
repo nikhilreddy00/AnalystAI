@@ -143,6 +143,11 @@ def test_the_spell_and_ledger_sentences_say_only_the_packs_words(domain, name, m
              *(domain_pack.unavailable_words(domain_pack.Unavailable(r, (p.spell.end,)), p)
                for r in __import__("typing").get_args(domain_pack.pack.Reason)
                if r != "small_cell")]   # 'fewer than 11 people' in every domain (GLOSSARY Small cell)
+    from agents.visualization_agent import bridge_chart, build_context
+    chart = bridge_chart(df, build_context(df, contract=contract.model_copy(update={"roles": roles})))
+    if chart:   # the bridge chart (5.7b-3): its title, axes, steps and why
+        texts += [chart.title, chart.x_label, chart.y_label, chart.rationale.reason,
+                  *(d["step"] for d in chart.data)]
     # a token and the pack's own value lists (said through `where`) are its words
     texts = [re.sub(r"⟦[^⟧]*⟧|\[[^\]]*\]| where .*", " ", t) for t in texts]
     # the data's own values (a plan called Growth, a Legal department) are the user's words
