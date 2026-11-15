@@ -74,10 +74,7 @@ function AutoDashboardInner() {
   const [showFilters, setShowFilters] = useState(false); // phones only; always shown from lg
 
   const { filters, setFilter, clearFilters } = useDashboardFilter();
-  const { status, rowCount, detail, options } = useDashboardData();
-  // a click filters only by a column the server offers as a filter (a bridge's steps are no column)
-  const filterable = useMemo(() => new Set(options.map((o) => o.column)), [options]);
-  const clickFilter = (key: string, value: FilterValue) => { if (filterable.has(key)) setFilter(key, value); };
+  const { status, rowCount, detail } = useDashboardData();
 
   // All hooks must be called unconditionally on every render (Rules of Hooks).
   // Early returns for status/loading gates live BELOW this hook block.
@@ -328,7 +325,7 @@ function AutoDashboardInner() {
               hasActiveFilters={hasActiveFilters}
               server={server}
               failed={failed}
-              onElementClick={clickFilter}
+              onElementClick={setFilter}
               chartRefs={chartRefs}
               busy={busy}
               onDownloadChart={handleDownloadChart}

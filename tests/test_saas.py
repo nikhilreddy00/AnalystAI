@@ -1079,6 +1079,10 @@ def test_the_bridge_reads_the_tiles_window_and_a_date_range_moves_it():
     win = ("2026-01-01", "2026-06-30")
     new = dp.measure(clean, roles, pack, "new_mrr", full=clean, window=win).value
     assert {d["step"]: d["value"] for d in cut}["New MRR"] == pytest.approx(new, abs=0.005)
+    from agents.visualization_agent import bridge_chart, build_context
+    ctx = build_context(clean, contract=contract)
+    ctx.full, ctx.window = clean, win
+    assert bridge_chart(clean, ctx).rationale.reason.startswith("MRR from 31 Dec 2025 to 30 Jun 2026")
 
 
 def test_an_unavailable_move_draws_no_bridge_and_a_spell_without_moves_none():
