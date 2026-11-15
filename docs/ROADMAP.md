@@ -515,6 +515,25 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   - after each fix round, one reviewer reads only that fix diff before the next broad pass;
   - pass 1 broad; later passes only re-open areas the previous fixes touched;
   - the per-pass count (major/minor) is recorded in the review note's bug ledger.
+- **The audit procedure (added 2026-11-15, 5.7b-3; from Domain 7 on it replaces "audit until an
+  auditor finds nothing"):**
+  1. Reviews start only when the properties (`tests/test_properties.py`, P1–P5 and D) and the
+     mutation gate (`scripts/mutation.py --check`) are green on the branch.
+  2. 1–2 read-only reviewer passes. The brief is the invariant list (P1–P5, the hard rules, the
+     one-definition guards in `tests/test_one_definition.py`) and the class ledger
+     (`docs/retro-ledger.md`: classes C0–C9 and their rows), never the diff.
+  3. One pass runs on a different Claude model than the builder's (only Claude models are wired
+     here; a different model family is not available).
+  4. A finding is a ledger row, or a recurrence that raises an existing row's count, and closes
+     with a plant-proven check (`scripts/mutation.py --plant`). Pass 2 re-reads only what pass
+     1's fixes touched.
+  5. **Stop rule:** properties, the mutation gate and the ledger checks
+     (`tests/test_retro_ledger.py`) are green. "An auditor found nothing" is no longer the rule.
+  6. The session note names each plan-mode step and this stop rule
+     (`tests/test_plan_steps.py`).
+- **A new pack registers its shapes with the P1–P5 generators** (`SHAPES_BY_PACK` in
+  `tests/test_properties.py`), or the property hook fails; retail, banking, healthcare and
+  insurance are a named gap (PR14-01) that only shrinks.
 - **Domain regression contract (added 2026-11-02, after Domain 1; applies to every domain
   session and to Phase 6).** Building domain N must never break domains 1..N-1, and after all
   eight, uploading any domain's data again must find no bug. Enforced by code, not memory:
@@ -768,7 +787,9 @@ Phase 5.8 (data sources) → Phase 6.
   - E2E answer correctness is ≥ 80% and hard rules hold 100%;
   - a fresh clone on a clean machine reaches a first answer in ≤ 15 minutes, following only the
     README;
-  - a second person (or a clean VM run) confirms it.
+  - a second person (or a clean VM run) confirms it;
+  - every domain pack runs the P1–P5 property generators: `NO_GENERATOR_YET` in
+    `tests/test_properties.py` is empty (PR14-01; `test_every_pack_has_a_generator` XPASSes).
 
 ---
 
