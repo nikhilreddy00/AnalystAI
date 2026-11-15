@@ -121,8 +121,90 @@ async def calibrate(path: Path) -> dict:
     return out
 
 
+PROSE = EVALS_DIR / "cases" / "prose_judge"
+PROSE_LOG = PROSE / "held_out_log.json"   # one entry per held-out run, appended, never edited
+_PROSE_BATCH = 25                          # sentences per call: about one report's free text
+_PROSE_USD_PER_CALL = 0.003                # Haiku 4.5: ~1.6k tokens in, ~50 out, plus margin
+
+
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """The 95% Wilson interval of k successes in n (a rate on 50 sentences is not exact)."""
+    if not n:
+        return 0.0, 0.0
+    p, d = k / n, 1 + z * z / n
+    mid, half = (p + z * z / (2 * n)) / d, z * ((p * (1 - p) + z * z / (4 * n)) / n) ** 0.5 / d
+    return round(mid - half, 4), round(mid + half, 4)
+
+
+def prose_shas() -> dict:
+    """What a held-out run measured: the judge's prompt (with the untrusted note), the set, the
+    model. A held-out entry counts only while all three are today's."""
+    from agents import prose_judge
+    sha = lambda b: __import__("hashlib").sha256(b).hexdigest()   # noqa: E731
+    return {"prompt_version": prose_judge.PROMPT_VERSION, "prompt_sha": sha(prose_judge._SYSTEM.encode()),
+            "set_sha": sha((PROSE / "held_out.yaml").read_bytes()), "model": settings.llm_fast_model}
+
+
+def prose_rates(rows: list[dict]) -> dict:
+    """TPR (overreach caught) and TNR (a sound sentence kept), overall and per kind, with their
+    Wilson intervals."""
+    def rate(rs, want):
+        k, n = sum(r["got"] == want for r in rs), len(rs)
+        return {"rate": round(k / n, 4) if n else None, "k": k, "n": n, "ci95": wilson(k, n)}
+    pos, neg = [r for r in rows if r["label"]], [r for r in rows if not r["label"]]
+    out = {"tpr": rate(pos, True), "tnr": rate(neg, False)}
+    for kind in ("causal", "benchmark"):
+        out[f"tpr_{kind}"] = rate([r for r in pos if r.get("kind") == kind], True)
+        out[f"tnr_near_{kind}"] = rate([r for r in neg if r.get("near") == kind], False)
+    return out
+
+
+async def prose(which: str, max_usd: float) -> dict:
+    """The prose judge on its tuning set (any number of times) or its held-out set (once per
+    prompt: the log refuses a second run of the same prompt, set and model)."""
+    from agents.prose_judge import flagged
+    items = yaml.safe_load((PROSE / ("tuning.yaml" if which == "tune" else "held_out.yaml")).read_text())
+    shas = prose_shas()
+    log = json.loads(PROSE_LOG.read_text()) if PROSE_LOG.exists() else []
+    if which == "held-out" and any({k: e.get(k) for k in shas} == shas for e in log):
+        raise SystemExit("this prompt, set and model already had their held-out run (one per prompt)")
+    batches = [items[i:i + _PROSE_BATCH] for i in range(0, len(items), _PROSE_BATCH)]
+    estimate = len(batches) * _PROSE_USD_PER_CALL
+    print(f"estimate ${estimate:.3f} for {len(items)} sentences in {len(batches)} calls")
+    if estimate > max_usd:
+        raise SystemExit(f"estimate ${estimate:.3f} is over --max-usd {max_usd}")
+    meter: list[dict] = []
+    trace_meter.set(meter)
+    rows = []
+    for batch in batches:
+        got = await flagged([x["text"] for x in batch], get_client())
+        if got is None:
+            raise SystemExit("the judge failed (no JSON reply): nothing is scored")
+        rows += [{**x, "got": i in got} for i, x in enumerate(batch)]
+    out = {"set": which, **shas, "sentences": len(rows), **prose_rates(rows),
+           "cost_usd": round(sum(m.get("cost_usd", 0) for m in meter), 4),
+           "stamp": datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")}
+    dest = EVALS_DIR / "reports" / f"prose_judge-{which}-{out['stamp']}.json"
+    print(json.dumps(out, indent=1))
+    if which == "held-out":   # its sentences are never printed (no tuning on them)
+        PROSE_LOG.write_text(json.dumps(log + [out], indent=1) + "\n")
+        dest.write_text(json.dumps(out, indent=1))
+    else:
+        dest.write_text(json.dumps({**out, "rows": rows}, indent=1))
+        for r in rows:
+            if r["got"] != r["label"]:
+                print(f"  want {'yes' if r['label'] else 'no ':<3} got {'yes' if r['got'] else 'no ':<3} {r['text']}")
+    print(f"→ {dest}")
+    return out
+
+
 if __name__ == "__main__":
-    if sys.argv[1:2] != ["calibrate"]:
-        raise SystemExit("usage: python -m evals.judge calibrate [calibration.yaml]")
-    asyncio.run(calibrate(Path(sys.argv[2]) if len(sys.argv) > 2 else
-                          EVALS_DIR / "cases" / "insight_judge" / "calibration.yaml"))
+    if sys.argv[1:2] == ["prose"] and sys.argv[2:3] in (["tune"], ["held-out"]):
+        usd = float(sys.argv[sys.argv.index("--max-usd") + 1]) if "--max-usd" in sys.argv else 0.05
+        asyncio.run(prose(sys.argv[2], usd))
+    elif sys.argv[1:2] == ["calibrate"]:
+        asyncio.run(calibrate(Path(sys.argv[2]) if len(sys.argv) > 2 else
+                              EVALS_DIR / "cases" / "insight_judge" / "calibration.yaml"))
+    else:
+        raise SystemExit("usage: python -m evals.judge calibrate [calibration.yaml] | "
+                         "prose tune|held-out [--max-usd N]")

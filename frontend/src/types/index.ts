@@ -66,9 +66,23 @@ export interface AnomalyAlert {
 // PROMPT-3: structured executive-tab content. Plain English, no stats notation,
 // no raw column names — backend enforces via prompt + sanitizer.
 // Phase 5 Insight: one executive sentence and the Evidence ids it rests on.
+/** 5.7b-3: a cause, a benchmark verdict or a comparison given as data; its text is the server's. */
+export interface TypedClaim {
+  kind: "causal" | "benchmark" | "comparison";
+  evidence_id: string;
+  cause: string;
+  effect: string;
+  metric: string;
+  verdict: string;
+  source: string;
+  a: string;
+  b: string;
+}
+
 export interface Claim {
   text: string;
   evidence_ids: string[];
+  typed?: TypedClaim | null;
 }
 
 export interface ActionItem {

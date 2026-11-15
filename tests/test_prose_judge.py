@@ -21,6 +21,19 @@ def test_the_labelled_sets_and_their_guide_are_frozen(name):
     assert hashlib.sha256((SETS / name).read_bytes()).hexdigest() == FROZEN[name], name
 
 
+def test_the_held_out_run_matches_the_current_prompt_set_and_model():
+    """D6-12, PR1-08 (C8): the judge counts only on its held-out run of THIS prompt (with the
+    untrusted note), set and model, at TPR and TNR ≥ 0.9. A prompt edit after the run fails here
+    until it has its own held-out run (`python -m evals.judge prose held-out`)."""
+    import json
+
+    from evals.judge import PROSE_LOG, prose_shas
+    last = json.loads(PROSE_LOG.read_text())[-1]
+    assert {k: last[k] for k in prose_shas()} == prose_shas()
+    assert last["tpr"]["rate"] >= 0.9 and last["tnr"]["rate"] >= 0.9, (last["tpr"], last["tnr"])
+    assert last["sentences"] == 100
+
+
 def test_the_held_out_set_is_balanced_and_shares_no_sentence_with_tuning():
     tune = yaml.safe_load((SETS / "tuning.yaml").read_text())
     held = yaml.safe_load((SETS / "held_out.yaml").read_text())
